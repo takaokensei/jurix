@@ -1,0 +1,77 @@
+{% extends 'legislation/base.html' %}
+
+{% block title %}Normas Consolidadas - Jurix{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Normas Consolidadas</h2>
+    
+    <div class="alert alert-info">
+        <strong>Total de normas consolidadas:</strong> {{ total_consolidated }}
+    </div>
+    
+    <form method="get" style="margin-bottom: 20px;">
+        <input type="text" name="q" value="{{ search_query }}" placeholder="Buscar por ementa, número ou tipo..." 
+               style="padding: 10px; width: 300px; border: 1px solid #ddd; border-radius: 4px;">
+        <button type="submit" class="btn">Buscar</button>
+        {% if search_query %}
+        <a href="{% url 'legislation:norma_list' %}" class="btn btn-secondary">Limpar</a>
+        {% endif %}
+    </form>
+    
+    {% if normas %}
+    <table>
+        <thead>
+            <tr>
+                <th>Tipo</th>
+                <th>Número/Ano</th>
+                <th>Ementa</th>
+                <th>Status</th>
+                <th>Data Publicação</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for norma in normas %}
+            <tr>
+                <td><strong>{{ norma.tipo }}</strong></td>
+                <td>{{ norma.numero }}/{{ norma.ano }}</td>
+                <td>{{ norma.ementa|truncatewords:15 }}</td>
+                <td>
+                    <span class="badge badge-success">{{ norma.get_status_display }}</span>
+                </td>
+                <td>{{ norma.data_publicacao|date:"d/m/Y"|default:"-" }}</td>
+                <td>
+                    <a href="{% url 'legislation:norma_detail' norma.pk %}" class="btn" style="padding: 6px 12px; font-size: 12px;">Ver</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% if is_paginated %}
+    <div style="margin-top: 20px; text-align: center;">
+        {% if page_obj.has_previous %}
+        <a href="?page=1{% if search_query %}&q={{ search_query }}{% endif %}" class="btn btn-secondary">« Primeira</a>
+        <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}" class="btn btn-secondary">‹ Anterior</a>
+        {% endif %}
+        
+        <span style="margin: 0 15px;">
+            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+        </span>
+        
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}" class="btn btn-secondary">Próxima ›</a>
+        <a href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&q={{ search_query }}{% endif %}" class="btn btn-secondary">Última »</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% else %}
+    <div class="alert alert-info">
+        <p>Nenhuma norma consolidada encontrada{% if search_query %} para "{{ search_query }}"{% endif %}.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
