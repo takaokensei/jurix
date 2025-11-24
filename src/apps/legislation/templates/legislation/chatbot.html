@@ -148,13 +148,15 @@
         });
         
         // ===== TEXTAREA AUTO-GROW =====
+        // Expands textarea automatically as user types, up to max height of 200px (~8 lines)
         const textarea = document.getElementById('question-textarea');
         textarea.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+            this.style.height = 'auto'; // Reset height to recalculate
+            this.style.height = Math.min(this.scrollHeight, 200) + 'px'; // Grow up to 200px
         });
         
-        // Handle Enter key (submit) vs Shift+Enter (new line)
+        // ===== ENTER vs SHIFT+ENTER HANDLING =====
+        // Enter: Submit message | Shift+Enter: New line
         textarea.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
