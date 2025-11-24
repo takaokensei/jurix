@@ -106,7 +106,7 @@ class RAGService:
                 texto,
                 ordem,
                 embedding_model,
-                (1 - (embedding <-> %s::vector)) as similarity_score,
+                GREATEST(0.0, LEAST(1.0, 1 - (embedding <-> %s::vector))) as similarity_score,
                 (embedding <-> %s::vector) as distance
             FROM legislation_dispositivo
             WHERE embedding IS NOT NULL
@@ -174,9 +174,13 @@ class RAGService:
                     'parent': str(dispositivo.dispositivo_pai) if dispositivo.dispositivo_pai else None,
                 }
                 
+                # Ensure similarity_score is normalized between 0.0 and 1.0
+                raw_score = float(raw_result['similarity_score'])
+                normalized_score = max(0.0, min(1.0, raw_score))
+                
                 results.append({
                     'dispositivo': dispositivo,
-                    'similarity_score': float(raw_result['similarity_score']),
+                    'similarity_score': normalized_score,
                     'distance': float(raw_result['distance']),
                     'context': context,
                     'embedding_model': raw_result['embedding_model'],
