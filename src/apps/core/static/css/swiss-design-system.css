@@ -391,17 +391,33 @@ strong, b {
     background: var(--color-primary-hover);
 }
 
-/* Cards */
+/* Cards - Theme-aware shadows and borders */
 .card {
     background: var(--color-bg-secondary);
     border: var(--border-width-thin) solid var(--color-border);
     border-radius: var(--radius-md);
     padding: var(--space-4);
-    transition: box-shadow var(--transition-base);
+    transition: box-shadow var(--transition-base), border-color var(--transition-base);
+}
+
+/* Light mode: subtle shadows */
+.card {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
 }
 
 .card:hover {
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+/* Dark mode: subtle borders instead of heavy shadows */
+[data-theme="dark"] .card {
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: none;
+}
+
+[data-theme="dark"] .card:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 /* Badges */
@@ -426,12 +442,21 @@ strong, b {
    ======================================== */
 
 .navbar {
-    background: var(--color-bg-secondary);
+    background: rgba(255, 255, 255, 0.8); /* Glassmorphism base */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-bottom: var(--border-width-thin) solid var(--color-border);
     padding: 0;
     position: sticky;
     top: 0;
     z-index: var(--z-sticky);
+    transition: background-color var(--transition-base);
+}
+
+/* Dark mode glassmorphism */
+[data-theme="dark"] .navbar {
+    background: rgba(15, 23, 42, 0.8); /* gray-900 with opacity */
+    border-bottom-color: rgba(255, 255, 255, 0.1);
 }
 
 .navbar-container {
@@ -579,59 +604,81 @@ strong, b {
     display: flex;
     height: 100vh;
     width: 100vw;
-    transition: all var(--transition-base);
+    position: relative;
+    overflow: hidden;
 }
 
-/* Chat main area - fluid layout */
+/* Chat main area - Focus Mode with Zoom Effect */
 .chat-main {
     flex: 1;
     display: flex;
     flex-direction: column;
     background: var(--color-bg-primary);
-    transition: width var(--transition-base), margin-left var(--transition-base);
     min-width: 0; /* Allows flex shrinking */
     overflow: hidden;
+    /* Layout Reflow with Zoom Effect */
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: center;
+    transform: scale(1);
 }
 
-/* Sidebar collapsed state */
-/* Sidebar - Theme aware with smooth transitions */
+/* Zoom in effect when sidebar collapses - Applied via JS class */
+.workspace.sidebar-collapsed .chat-main {
+    transform: scale(1.005); /* Subtle zoom for immersion */
+    width: 100%;
+}
+
+/* Sidebar - Focus Mode with Layout Reflow */
 .sidebar {
     width: var(--width-sidebar);
+    min-width: var(--width-sidebar);
+    max-width: var(--width-sidebar);
     background: var(--color-gray-900); /* Dark by default */
     color: var(--color-text-inverse);
     display: flex;
     flex-direction: column;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+    /* Remove translateX, use width transition for proper reflow */
+    transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                min-width 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                max-width 0.5s cubic-bezier(0.16, 1, 0.3, 1),
                 background-color var(--transition-base), 
                 color var(--transition-base),
-                width var(--transition-base);
-    z-index: var(--z-sticky); /* Below skip-link */
+                opacity 0.3s ease-out,
+                visibility 0.3s ease-out;
+    z-index: var(--z-sticky);
     flex-shrink: 0;
+    overflow: hidden;
+    opacity: 1;
+    visibility: visible;
 }
 
-/* Sidebar in light mode */
+/* Sidebar in light mode - Glassmorphism */
 [data-theme="light"] .sidebar {
-    background: var(--color-gray-50);
+    background: rgba(248, 250, 252, 0.9); /* gray-50 with glassmorphism */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     color: var(--color-text);
     border-right: 1px solid var(--color-border);
 }
 
-/* Sidebar in dark mode (explicit) */
+/* Sidebar in dark mode - Glassmorphism */
 [data-theme="dark"] .sidebar {
-    background: var(--color-gray-900);
+    background: rgba(15, 23, 42, 0.95); /* gray-900 with opacity */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     color: var(--color-text-inverse);
 }
 
+/* Sidebar collapsed - Proper Layout Reflow */
 .sidebar.collapsed {
-    transform: translateX(-100%);
     width: 0;
-    overflow: hidden;
+    min-width: 0;
+    max-width: 0;
+    opacity: 0;
+    visibility: hidden;
     border-right: none;
-}
-
-.sidebar.collapsed + .chat-main {
-    width: 100%;
-    margin-left: 0;
+    /* No translateX - let width do the work for proper reflow */
 }
 
 .sidebar-header {
@@ -911,16 +958,26 @@ strong, b {
     position: relative;
 }
 
-/* Top Bar */
+/* Top Bar - Glassmorphism */
 .top-bar {
     height: var(--height-navbar);
-    background: var(--color-bg-secondary);
+    background: rgba(255, 255, 255, 0.8); /* Glassmorphism base */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-bottom: var(--border-width-thin) solid var(--color-border);
     display: flex;
     align-items: center;
     padding: 0 var(--space-3);
     gap: var(--space-2);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+    transition: background-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+/* Dark mode glassmorphism */
+[data-theme="dark"] .top-bar {
+    background: rgba(15, 23, 42, 0.8);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
 }
 
 .toggle-sidebar {
@@ -938,6 +995,32 @@ strong, b {
 
 .toggle-sidebar:hover {
     background: var(--color-bg-primary);
+}
+
+.command-palette-trigger {
+    padding: var(--space-1);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+}
+
+.command-palette-trigger:hover {
+    background: var(--color-bg-primary);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.command-palette-trigger:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
 }
 
 .top-bar-title {
@@ -1095,6 +1178,18 @@ strong, b {
     border: var(--border-width-thin) solid var(--color-border);
     font-size: var(--font-size-base);
     line-height: var(--line-height-relaxed);
+    transition: box-shadow var(--transition-base), border-color var(--transition-base);
+}
+
+/* Light mode: subtle shadow */
+.message-body {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Dark mode: subtle border */
+[data-theme="dark"] .message-body {
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: none;
 }
 
 .message-user .message-body {
@@ -2032,5 +2127,145 @@ a:focus-visible,
     .dispositivo-node[data-level="4"] {
         margin-left: var(--space-5); /* 40px */
     }
+}
+
+/* ============================
+   COMMAND PALETTE (⌘K / Ctrl+K)
+   ============================ */
+/*
+ * Spotlight-style command palette for quick navigation
+ * Trigger: ⌘K (Mac) or Ctrl+K (Windows/Linux)
+ * Modal overlay with blurred background
+ */
+.command-palette-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: var(--z-modal);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease-out;
+}
+
+.command-palette-overlay.active {
+    display: flex;
+    opacity: 1;
+}
+
+.command-palette {
+    width: 90%;
+    max-width: 600px;
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    transform: scale(0.95);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.command-palette-overlay.active .command-palette {
+    transform: scale(1);
+}
+
+.command-palette-header {
+    padding: var(--space-3);
+    border-bottom: var(--border-width-thin) solid var(--color-border);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.command-palette-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: var(--font-size-lg);
+    font-family: var(--font-sans);
+    color: var(--color-text);
+    padding: var(--space-2) 0;
+}
+
+.command-palette-input::placeholder {
+    color: var(--color-text-secondary);
+}
+
+.command-palette-shortcut {
+    display: flex;
+    gap: var(--space-1);
+    align-items: center;
+    padding: var(--space-1) var(--space-2);
+    background: var(--color-bg-tertiary);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    font-family: var(--font-mono);
+    color: var(--color-text-secondary);
+}
+
+.command-palette-shortcut kbd {
+    padding: 2px 6px;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+}
+
+.command-palette-results {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: var(--space-2);
+}
+
+.command-palette-item {
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.command-palette-item:hover,
+.command-palette-item.selected {
+    background: var(--color-bg-primary);
+}
+
+.command-palette-item-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    color: var(--color-text-secondary);
+}
+
+.command-palette-item-content {
+    flex: 1;
+}
+
+.command-palette-item-title {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+    margin-bottom: 2px;
+}
+
+.command-palette-item-description {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+}
+
+.command-palette-empty {
+    padding: var(--space-6);
+    text-align: center;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
 }
 
