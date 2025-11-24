@@ -55,6 +55,27 @@
                     </div>
                 </nav>
                 
+                <!-- Dark Mode Toggle -->
+                <div class="sidebar-section">
+                    <div class="theme-toggle-container">
+                        <label for="theme-toggle" class="theme-toggle-label">
+                            <span class="theme-toggle-icon">🌙</span>
+                            <span class="theme-toggle-text">Modo Escuro</span>
+                        </label>
+                        <button 
+                            type="button" 
+                            id="theme-toggle" 
+                            class="theme-toggle" 
+                            aria-label="Alternar modo escuro/claro"
+                            aria-pressed="false"
+                        >
+                            <span class="theme-toggle-track">
+                                <span class="theme-toggle-thumb"></span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+                
                 <div class="sidebar-stats">
                     <h3 style="margin-bottom: 1rem;">Sistema</h3>
                     <div class="stat-item">
@@ -731,6 +752,77 @@
             document.addEventListener('DOMContentLoaded', renderRandomSuggestions);
         } else {
             renderRandomSuggestions();
+        }
+        
+        // ===== DARK MODE TOGGLE =====
+        // Implements theme switching with localStorage persistence
+        // Detects system preference on first load
+        
+        function getSystemThemePreference() {
+            return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+        }
+        
+        function getStoredTheme() {
+            return localStorage.getItem('jurix-theme');
+        }
+        
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('jurix-theme', theme);
+            
+            const toggle = document.getElementById('theme-toggle');
+            if (toggle) {
+                toggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+                
+                // Update icon and text
+                const icon = document.querySelector('.theme-toggle-icon');
+                const text = document.querySelector('.theme-toggle-text');
+                if (icon && text) {
+                    icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+                    text.textContent = theme === 'dark' ? 'Modo Claro' : 'Modo Escuro';
+                }
+            }
+        }
+        
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') || 'light';
+            const newTheme = current === 'dark' ? 'light' : 'dark';
+            setTheme(newTheme);
+        }
+        
+        // Initialize theme on page load
+        function initTheme() {
+            const stored = getStoredTheme();
+            const theme = stored || getSystemThemePreference();
+            setTheme(theme);
+            
+            // Listen for system theme changes (if no manual preference)
+            if (!stored && window.matchMedia) {
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                    if (!getStoredTheme()) {
+                        setTheme(e.matches ? 'dark' : 'light');
+                    }
+                });
+            }
+        }
+        
+        // Attach event listener to toggle button
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                initTheme();
+                const toggle = document.getElementById('theme-toggle');
+                if (toggle) {
+                    toggle.addEventListener('click', toggleTheme);
+                }
+            });
+        } else {
+            initTheme();
+            const toggle = document.getElementById('theme-toggle');
+            if (toggle) {
+                toggle.addEventListener('click', toggleTheme);
+            }
         }
     </script>
 </body>

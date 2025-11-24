@@ -179,6 +179,19 @@
     --breakpoint-2xl: 1536px;   /* Large desktop */
     
     /* ========================================
+       Z-INDEX SCALE
+       ======================================== */
+    
+    --z-base: 1;
+    --z-dropdown: 10;
+    --z-sticky: 100;
+    --z-fixed: 200;
+    --z-modal: 300;
+    --z-popover: 400;
+    --z-tooltip: 500;
+    --z-skip-link: 10000; /* Always on top */
+    
+    /* ========================================
        TRANSIÇÕES - TIMING
        ======================================== */
     
@@ -191,6 +204,34 @@
     --easing-ease-in: cubic-bezier(0.4, 0, 1, 1);
     --easing-ease-out: cubic-bezier(0, 0, 0.2, 1);
     --easing-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========================================
+   DARK MODE THEME OVERRIDES
+   ======================================== */
+/*
+ * Dark theme variables (applied when [data-theme="dark"])
+ * Follows Swiss Design: Monochromatic with single accent
+ * All colors inverted for dark background while maintaining contrast
+ */
+[data-theme="dark"] {
+    /* Background colors (inverted) */
+    --color-bg-primary: #0f172a;      /* gray-900 */
+    --color-bg-secondary: #1e293b;    /* gray-800 */
+    --color-bg-tertiary: #334155;     /* gray-700 */
+    
+    /* Text colors (light) */
+    --color-text: #f1f5f9;            /* gray-100 */
+    --color-text-secondary: #cbd5e1;  /* gray-300 */
+    --color-text-tertiary: #94a3b8;   /* gray-400 */
+    
+    /* Border colors */
+    --color-border: #334155;          /* gray-700 */
+    --color-border-strong: #475569;   /* gray-600 */
+    --color-border-dark: #64748b;     /* gray-500 */
+    
+    /* Primary accent stays the same (Azul Jurix #1e40af) */
+    /* Sidebar stays dark in dark mode (gray-900) */
 }
 
 /* ========================================
@@ -217,6 +258,7 @@ body {
     color: var(--color-text);
     background-color: var(--color-bg-primary);
     overflow-x: hidden;
+    position: relative; /* For skip-link absolute positioning */
 }
 
 /* ========================================
@@ -446,6 +488,39 @@ strong, b {
     color: var(--color-primary);
 }
 
+/* Theme Toggle in Navbar */
+.theme-toggle-navbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-secondary);
+    color: var(--color-text);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-size: var(--font-size-lg);
+}
+
+.theme-toggle-navbar:hover {
+    background: var(--color-bg-primary);
+    border-color: var(--color-primary);
+    transform: scale(1.05);
+}
+
+.theme-toggle-navbar:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.theme-toggle-icon-navbar {
+    display: block;
+    line-height: 1;
+}
+
 .nav-link:active {
     background: var(--color-primary-lightest);
     color: var(--color-primary);
@@ -489,7 +564,7 @@ strong, b {
     display: flex;
     flex-direction: column;
     transition: transform 0.3s ease;
-    z-index: var(--z-fixed);
+    z-index: var(--z-sticky); /* Below skip-link */
 }
 
 .sidebar.collapsed {
@@ -515,6 +590,7 @@ strong, b {
     font-size: var(--font-size-xl);
     font-weight: var(--font-weight-bold);
     letter-spacing: var(--letter-spacing-tight);
+    color: var(--color-text-inverse); /* CRITICAL FIX: White text on dark sidebar */
     margin: 0;
 }
 
@@ -534,7 +610,7 @@ strong, b {
     font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
     letter-spacing: var(--letter-spacing-wide);
-    color: var(--color-gray-400);
+    color: rgba(255, 255, 255, 0.6); /* Better contrast: 60% white on dark bg */
     margin-bottom: var(--space-2);
 }
 
@@ -542,9 +618,9 @@ strong, b {
     padding: var(--space-2) var(--space-2);
     border-radius: var(--radius-md);
     cursor: pointer;
-    transition: background-color var(--transition-fast);
+    transition: background-color var(--transition-fast), color var(--transition-fast);
     font-size: var(--font-size-sm);
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.9); /* Improved contrast: 90% white */
     display: block;
     text-decoration: none;
 }
@@ -557,6 +633,89 @@ strong, b {
 .sidebar-item.active {
     background: var(--color-primary);
     color: var(--color-text-inverse);
+}
+
+/* Theme Toggle */
+.theme-toggle-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2);
+    background: var(--color-gray-800);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-2);
+}
+
+.theme-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--font-size-sm);
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    user-select: none;
+}
+
+.theme-toggle-icon {
+    font-size: var(--font-size-base);
+}
+
+.theme-toggle-text {
+    font-weight: var(--font-weight-medium);
+}
+
+/* Toggle Switch (iOS style) */
+.theme-toggle {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background-color var(--transition-base);
+    padding: 0;
+    outline: none;
+}
+
+.theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.theme-toggle:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.theme-toggle-track {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    position: relative;
+}
+
+.theme-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: transform var(--transition-base);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Active state (dark mode on) */
+[data-theme="dark"] .theme-toggle,
+.theme-toggle[aria-pressed="true"] {
+    background: var(--color-primary);
+}
+
+[data-theme="dark"] .theme-toggle-thumb,
+.theme-toggle[aria-pressed="true"] .theme-toggle-thumb {
+    transform: translateX(20px);
 }
 
 .sidebar-stats {
@@ -1530,22 +1689,39 @@ a:focus-visible,
     box-shadow: 0 0 0 4px rgba(30, 64, 175, 0.1);
 }
 
-/* Skip link for keyboard users (hidden until focus) */
+/* ============================
+   SKIP LINKS (A11Y)
+   ============================ */
+/*
+ * Skip links for keyboard navigation (WCAG 2.1 Level AA - Bypass Blocks)
+ * Completely hidden until focused (using clip-path for true invisibility)
+ * High z-index to appear above all content including sidebar
+ */
 .skip-link {
     position: absolute;
-    top: -40px;
+    top: 0;
     left: 0;
+    /* Completely hide until focus using clip-path */
+    clip-path: inset(0 0 100% 0);
+    width: auto;
+    height: auto;
+    padding: var(--space-2) var(--space-3);
     background: var(--color-primary);
     color: var(--color-text-inverse);
-    padding: var(--space-2) var(--space-3);
     text-decoration: none;
+    font-weight: var(--font-weight-semibold);
     border-radius: 0 0 var(--radius-sm) 0;
-    z-index: 1000;
-    transition: top var(--transition-fast);
+    z-index: var(--z-skip-link); /* Always on top */
+    transition: clip-path var(--transition-fast);
+    /* Ensure it's not inside sidebar */
+    pointer-events: auto;
 }
 
 .skip-link:focus {
-    top: 0;
+    /* Show when focused */
+    clip-path: inset(0);
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
 }
 
 /* Reduced motion for users with vestibular disorders */

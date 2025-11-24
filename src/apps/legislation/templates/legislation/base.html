@@ -127,6 +127,16 @@
                 <a href="{% url 'legislation:norma_list' %}" class="nav-link">Normas</a>
                 <a href="{% url 'legislation:chatbot' %}" class="nav-link">Assistente IA</a>
                 <a href="/admin/" class="nav-link">Admin</a>
+                <button 
+                    type="button" 
+                    id="theme-toggle-navbar" 
+                    class="theme-toggle-navbar" 
+                    aria-label="Alternar modo escuro/claro"
+                    aria-pressed="false"
+                    title="Alternar tema"
+                >
+                    <span class="theme-toggle-icon-navbar">🌙</span>
+                </button>
             </nav>
         </div>
     </header>
@@ -141,6 +151,87 @@
     </footer>
     
     {% block extra_js %}{% endblock %}
+    
+    <!-- Global Dark Mode Toggle Script -->
+    <script>
+        // ===== GLOBAL DARK MODE TOGGLE =====
+        // Works across all pages (base.html)
+        
+        function getSystemThemePreference() {
+            return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+        }
+        
+        function getStoredTheme() {
+            return localStorage.getItem('jurix-theme');
+        }
+        
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('jurix-theme', theme);
+            
+            // Update navbar toggle
+            const navbarToggle = document.getElementById('theme-toggle-navbar');
+            if (navbarToggle) {
+                navbarToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+                const icon = navbarToggle.querySelector('.theme-toggle-icon-navbar');
+                if (icon) {
+                    icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+                }
+            }
+            
+            // Update sidebar toggle (if exists)
+            const sidebarToggle = document.getElementById('theme-toggle');
+            if (sidebarToggle) {
+                sidebarToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+                const icon = sidebarToggle.closest('.theme-toggle-container')?.querySelector('.theme-toggle-icon');
+                const text = sidebarToggle.closest('.theme-toggle-container')?.querySelector('.theme-toggle-text');
+                if (icon && text) {
+                    icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+                    text.textContent = theme === 'dark' ? 'Modo Claro' : 'Modo Escuro';
+                }
+            }
+        }
+        
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') || 'light';
+            const newTheme = current === 'dark' ? 'light' : 'dark';
+            setTheme(newTheme);
+        }
+        
+        function initTheme() {
+            const stored = getStoredTheme();
+            const theme = stored || getSystemThemePreference();
+            setTheme(theme);
+            
+            // Listen for system theme changes (if no manual preference)
+            if (!stored && window.matchMedia) {
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                    if (!getStoredTheme()) {
+                        setTheme(e.matches ? 'dark' : 'light');
+                    }
+                });
+            }
+        }
+        
+        // Initialize on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                initTheme();
+                const navbarToggle = document.getElementById('theme-toggle-navbar');
+                if (navbarToggle) {
+                    navbarToggle.addEventListener('click', toggleTheme);
+                }
+            });
+        } else {
+            initTheme();
+            const navbarToggle = document.getElementById('theme-toggle-navbar');
+            if (navbarToggle) {
+                navbarToggle.addEventListener('click', toggleTheme);
+            }
+        }
+    </script>
 </body>
 </html>
 
