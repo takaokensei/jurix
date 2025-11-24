@@ -367,3 +367,95 @@ strong, b {
 .badge-warning { background: var(--color-warning-light); color: var(--color-warning); }
 .badge-error { background: var(--color-error-light); color: var(--color-error); }
 
+/* ========================================
+   NAVBAR - SWISS MINIMALISM
+   ======================================== */
+
+.navbar {
+    background: var(--color-bg-secondary);
+    border-bottom: var(--border-width-thin) solid var(--color-border);
+    padding: 0;
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+}
+
+.navbar-container {
+    max-width: var(--width-content-wide);
+    margin: 0 auto;
+    padding: var(--space-2) var(--space-3);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    text-decoration: none;
+}
+
+.navbar-logo {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+}
+
+.navbar-title {
+    font-family: var(--font-sans);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+    letter-spacing: var(--letter-spacing-tight);
+}
+
+.navbar-menu {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.nav-link {
+    font-family: var(--font-sans);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+}
+
+.nav-link:hover {
+    background: var(--color-bg-primary);
+    color: var(--color-primary);
+}
+
+.nav-link:active {
+    background: var(--color-primary-lightest);
+    color: var(--color-primary);
+}
+
+/* Responsive Navbar (Mobile) */
+@media (max-width: 768px) {
+    .navbar-container {
+        padding: var(--space-2);
+    }
+    
+    .navbar-title {
+        font-size: var(--font-size-base);
+    }
+    
+    .navbar-menu {
+        gap: var(--space-1);
+    }
+    
+    .nav-link {
+        font-size: var(--font-size-xs);
+        padding: var(--space-1);
+    }
+}
+
