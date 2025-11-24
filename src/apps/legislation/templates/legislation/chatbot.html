@@ -1,754 +1,1088 @@
-{% extends "legislation/base.html" %}
-
-{% block title %}{{ page_title }}{% endblock %}
-
-{% block content %}
-<!-- Content Security Policy for Markdown Libraries -->
-<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;">
-
-<!-- Google Fonts -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-<style>
-    /* Modern Design System */
-    * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-    }
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/logo-icon.svg' %}">
+    <title>{{ page_title }} | Jurix</title>
     
-    body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-        line-height: 1.6;
-        color: #1f2937;
-        background: #f9fafb;
-    }
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;">
     
-    .chat-container {
-        max-width: 1200px;
-        margin: 0 auto;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        background: white;
-        box-shadow: 0 0 40px rgba(0, 0, 0, 0.08);
-    }
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
-    /* Header */
-    .chat-header {
-        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-        color: white;
-        padding: 2rem 2.5rem;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .chat-header::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -10%;
-        width: 400px;
-        height: 400px;
-        background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
-        border-radius: 50%;
-    }
-    
-    .chat-header-content {
-        position: relative;
-        z-index: 1;
-    }
-    
-    .chat-title {
-        font-size: 1.75rem;
-        font-weight: 700;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-    
-    .chat-subtitle {
-        font-size: 0.9375rem;
-        opacity: 0.95;
-        margin: 0.5rem 0 0 0;
-    }
-    
-    .chat-stats {
-        display: flex;
-        gap: 2rem;
-        margin-top: 1rem;
-        font-size: 0.875rem;
-        opacity: 0.9;
-        flex-wrap: wrap;
-    }
-    
-    /* Messages Area */
-    .chat-messages {
-        flex: 1;
-        overflow-y: auto;
-        padding: 2rem;
-        background: linear-gradient(to bottom, #f9fafb 0%, #ffffff 50%);
-    }
-    
-    .chat-messages::-webkit-scrollbar {
-        width: 8px;
-    }
-    
-    .chat-messages::-webkit-scrollbar-track {
-        background: #f1f5f9;
-    }
-    
-    .chat-messages::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 4px;
-    }
-    
-    .chat-messages::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-    }
-    
-    /* Message Bubbles */
-    .message {
-        margin-bottom: 1.5rem;
-        animation: slideIn 0.3s ease-out;
-    }
-    
-    @keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateY(15px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    .message-user {
-        display: flex;
-        justify-content: flex-end;
-    }
-    
-    .message-user .message-content {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 1.25rem 1.25rem 0.25rem 1.25rem;
-        max-width: 70%;
-        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
-        font-weight: 500;
-    }
-    
-    .message-assistant {
-        display: flex;
-        justify-content: flex-start;
-        gap: 0.75rem;
-    }
-    
-    .message-avatar {
-        width: 38px;
-        height: 38px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #3b82f6, #2563eb);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-        flex-shrink: 0;
-        box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
-    }
-    
-    .message-assistant .message-content {
-        background: white;
-        padding: 1.25rem 1.5rem;
-        border-radius: 0.25rem 1.25rem 1.25rem 1.25rem;
-        max-width: 75%;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-        border: 1px solid #e5e7eb;
-    }
-    
-    /* Markdown Content Styling */
-    .message-content p {
-        margin: 0.75rem 0;
-        line-height: 1.7;
-    }
-    
-    .message-content p:first-child {
-        margin-top: 0;
-    }
-    
-    .message-content p:last-child {
-        margin-bottom: 0;
-    }
-    
-    .message-content strong {
-        font-weight: 700;
-        color: #1e40af;
-    }
-    
-    .message-content ul,
-    .message-content ol {
-        margin: 0.75rem 0;
-        padding-left: 1.75rem;
-    }
-    
-    .message-content li {
-        margin: 0.5rem 0;
-        line-height: 1.7;
-    }
-    
-    .message-content h3 {
-        font-size: 1.0625rem;
-        font-weight: 700;
-        color: #1e40af;
-        margin: 1.25rem 0 0.75rem 0;
-        padding-bottom: 0.375rem;
-        border-bottom: 2px solid #e5e7eb;
-    }
-    
-    .message-content code {
-        background: #f3f4f6;
-        padding: 0.125rem 0.5rem;
-        border-radius: 0.375rem;
-        font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
-        font-size: 0.875em;
-        color: #dc2626;
-    }
-    
-    .message-content blockquote {
-        border-left: 3px solid #3b82f6;
-        padding-left: 1rem;
-        margin: 0.75rem 0;
-        color: #6b7280;
-        font-style: italic;
-    }
-    
-    /* Sources Section */
-    .sources-section {
-        margin-top: 1.25rem;
-        padding-top: 1.25rem;
-        border-top: 1px solid #e5e7eb;
-    }
-    
-    .sources-title {
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: #6b7280;
-        margin-bottom: 0.75rem;
-    }
-    
-    .source-item {
-        background: #f9fafb;
-        padding: 1rem;
-        margin-bottom: 0.75rem;
-        border-radius: 0.5rem;
-        border-left: 3px solid #3b82f6;
-        font-size: 0.875rem;
-        transition: all 0.2s;
-    }
-    
-    .source-item:hover {
-        background: #f3f4f6;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-    }
-    
-    .source-ref {
-        font-weight: 600;
-        color: #1e40af;
-        margin-bottom: 0.375rem;
-    }
-    
-    .source-text {
-        color: #4b5563;
-        line-height: 1.6;
-    }
-    
-    .source-score {
-        display: inline-block;
-        background: #dbeafe;
-        color: #1e40af;
-        padding: 0.25rem 0.625rem;
-        border-radius: 1rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-        margin-top: 0.5rem;
-    }
-    
-    /* Loading Indicator */
-    .loading-indicator {
-        display: none;
-        padding: 1.5rem;
-        text-align: center;
-        color: #6b7280;
-    }
-    
-    .loading-indicator.active {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.75rem;
-    }
-    
-    .typing-animation {
-        display: flex;
-        gap: 0.375rem;
-    }
-    
-    .typing-dot {
-        width: 8px;
-        height: 8px;
-        background: #3b82f6;
-        border-radius: 50%;
-        animation: bounce 1.4s infinite;
-    }
-    
-    .typing-dot:nth-child(1) {
-        animation-delay: 0s;
-    }
-    
-    .typing-dot:nth-child(2) {
-        animation-delay: 0.2s;
-    }
-    
-    .typing-dot:nth-child(3) {
-        animation-delay: 0.4s;
-    }
-    
-    @keyframes bounce {
-        0%, 60%, 100% {
-            transform: translateY(0);
-            opacity: 0.6;
-        }
-        30% {
-            transform: translateY(-10px);
-            opacity: 1;
-        }
-    }
-    
-    /* Input Container - Sticky Footer */
-    .chat-input-container {
-        background: white;
-        padding: 1.5rem 2rem;
-        border-top: 1px solid #e5e7eb;
-        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
-        position: sticky;
-        bottom: 0;
-    }
-    
-    .chat-input-form {
-        display: flex;
-        gap: 1rem;
-        max-width: 1200px;
-        margin: 0 auto;
-    }
-    
-    .chat-input {
-        flex: 1;
-        padding: 1rem 1.5rem;
-        border: 2px solid #e5e7eb;
-        border-radius: 2rem;
-        font-size: 0.9375rem;
-        font-family: inherit;
-        transition: all 0.2s;
-        background: #f9fafb;
-    }
-    
-    .chat-input:focus {
-        outline: none;
-        border-color: #3b82f6;
-        background: white;
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-    }
-    
-    .chat-submit {
-        padding: 1rem 2.5rem;
-        background: linear-gradient(135deg, #3b82f6, #2563eb);
-        color: white;
-        border: none;
-        border-radius: 2rem;
-        font-weight: 600;
-        font-size: 0.9375rem;
-        cursor: pointer;
-        transition: all 0.3s;
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        white-space: nowrap;
-    }
-    
-    .chat-submit:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-    }
-    
-    .chat-submit:active:not(:disabled) {
-        transform: translateY(0);
-    }
-    
-    .chat-submit:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        transform: none;
-    }
-    
-    /* Confidence Badge */
-    .confidence-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
-        padding: 0.375rem 0.875rem;
-        border-radius: 1rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-        margin-top: 0.75rem;
-    }
-    
-    .confidence-high {
-        background: #d1fae5;
-        color: #065f46;
-    }
-    
-    .confidence-medium {
-        background: #fef3c7;
-        color: #92400e;
-    }
-    
-    .confidence-low {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-    
-    /* Responsive Design */
-    @media (max-width: 768px) {
-        .chat-header {
-            padding: 1.5rem;
+    <style>
+        /* ===== DESIGN SYSTEM ===== */
+        :root {
+            --color-primary: #1e40af;
+            --color-primary-light: #3b82f6;
+            --color-primary-dark: #1e3a8a;
+            --color-accent: #60a5fa;
+            --color-bg: #0f172a;
+            --color-bg-secondary: #1e293b;
+            --color-bg-tertiary: #334155;
+            --color-surface: #ffffff;
+            --color-surface-secondary: #f8fafc;
+            --color-border: #e2e8f0;
+            --color-text: #0f172a;
+            --color-text-secondary: #64748b;
+            --color-text-muted: #94a3b8;
+            --color-success: #10b981;
+            --color-warning: #f59e0b;
+            --color-error: #ef4444;
+            
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
         }
         
-        .chat-title {
-            font-size: 1.5rem;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
         
-        .chat-stats {
+        body {
+            font-family: var(--font-sans);
+            color: var(--color-text);
+            background: var(--color-surface-secondary);
+            line-height: 1.6;
+            overflow: hidden;
+        }
+        
+        /* ===== WORKSPACE LAYOUT ===== */
+        .workspace {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--color-bg);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+        
+        .sidebar.collapsed {
+            transform: translateX(-280px);
+        }
+        
+        .sidebar-header {
+            padding: 1.5rem 1.25rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .sidebar-header img {
+            width: 36px;
+            height: 36px;
+        }
+        
+        .sidebar-header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+        
+        .sidebar-content {
+            flex: 1;
+            padding: 1.25rem;
+            overflow-y: auto;
+        }
+        
+        .sidebar-section {
+            margin-bottom: 2rem;
+        }
+        
+        .sidebar-section h3 {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--color-text-muted);
+            margin-bottom: 0.75rem;
+        }
+        
+        .sidebar-item {
+            padding: 0.625rem 0.875rem;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 0.875rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .sidebar-item:hover {
+            background: var(--color-bg-secondary);
+            color: white;
+        }
+        
+        .sidebar-item.active {
+            background: var(--color-primary);
+            color: white;
+        }
+        
+        .sidebar-stats {
+            padding: 1rem;
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-md);
+            margin-top: 1rem;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            font-size: 0.875rem;
+        }
+        
+        .stat-label {
+            color: var(--color-text-muted);
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            color: var(--color-accent);
+        }
+        
+        /* Main Chat Area */
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--color-surface-secondary);
+            position: relative;
+        }
+        
+        /* Top Bar */
+        .top-bar {
+            height: 64px;
+            background: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
             gap: 1rem;
+            box-shadow: var(--shadow-sm);
         }
         
-        .chat-messages {
+        .toggle-sidebar {
+            padding: 0.5rem;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: background-color 0.2s;
+            color: var(--color-text-secondary);
+        }
+        
+        .toggle-sidebar:hover {
+            background: var(--color-surface-secondary);
+        }
+        
+        .top-bar-title {
+            flex: 1;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--color-text-secondary);
+        }
+        
+        /* Messages Container */
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+            scroll-behavior: smooth;
+        }
+        
+        .messages-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        /* Welcome State */
+        .welcome-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .welcome-state img {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 1.5rem;
+            opacity: 0.9;
+        }
+        
+        .welcome-state h2 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: var(--color-text);
+        }
+        
+        .welcome-state p {
+            font-size: 1rem;
+            color: var(--color-text-secondary);
+            max-width: 500px;
+            margin-bottom: 2rem;
+        }
+        
+        .suggestion-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: center;
+            max-width: 600px;
+        }
+        
+        .chip {
+            padding: 0.625rem 1rem;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+            color: var(--color-text);
+        }
+        
+        .chip:hover {
+            border-color: var(--color-primary);
+            background: var(--color-primary);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        /* Message Bubbles */
+        .message {
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 1rem;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+        
+        .message-user .message-avatar {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+            color: white;
+        }
+        
+        .message-assistant .message-avatar {
+            background: var(--color-surface);
+            border: 2px solid var(--color-border);
+            padding: 4px;
+        }
+        
+        .message-assistant .message-avatar img {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .message-content {
+            flex: 1;
+        }
+        
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .message-role {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--color-text);
+        }
+        
+        .message-timestamp {
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+        }
+        
+        .message-body {
+            background: var(--color-surface);
+            padding: 1rem 1.25rem;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--color-border);
+            font-size: 0.9375rem;
+            line-height: 1.7;
+        }
+        
+        .message-user .message-body {
+            background: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+        
+        /* Markdown Styling */
+        .message-body h1,
+        .message-body h2,
+        .message-body h3 {
+            margin-top: 1.25rem;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .message-body h1 { font-size: 1.5rem; }
+        .message-body h2 { font-size: 1.25rem; }
+        .message-body h3 { font-size: 1.125rem; }
+        
+        .message-body p {
+            margin-bottom: 0.75rem;
+        }
+        
+        .message-body ul,
+        .message-body ol {
+            margin-left: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .message-body li {
+            margin-bottom: 0.375rem;
+        }
+        
+        .message-body code {
+            background: var(--color-surface-secondary);
+            padding: 0.125rem 0.375rem;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-size: 0.875em;
+        }
+        
+        .message-body pre {
+            background: var(--color-bg);
+            color: white;
             padding: 1rem;
+            border-radius: var(--radius-md);
+            overflow-x: auto;
+            margin-bottom: 0.75rem;
         }
         
-        .message-user .message-content,
-        .message-assistant .message-content {
-            max-width: 85%;
+        .message-body pre code {
+            background: none;
+            padding: 0;
         }
         
-        .chat-input-container {
+        /* Sources Cards */
+        .sources-section {
+            margin-top: 1.25rem;
+        }
+        
+        .sources-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+        }
+        
+        .sources-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 0.75rem;
+        }
+        
+        .source-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
             padding: 1rem;
+            transition: all 0.2s;
+            cursor: pointer;
         }
         
-        .chat-submit {
-            padding: 1rem 1.5rem;
+        .source-card:hover {
+            border-color: var(--color-primary);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
         }
-    }
-    
-    /* Hide CSRF token input */
-    input[name="csrfmiddlewaretoken"] {
-        display: none;
-    }
-</style>
-
-<div class="chat-container">
-    <div class="chat-header">
-        <div class="chat-header-content">
-            <h1 class="chat-title">
-                <span>🤖</span>
-                <span>Assistente Jurídico Inteligente</span>
-            </h1>
-            <p class="chat-subtitle">
-                Faça perguntas sobre a legislação de Natal/RN em linguagem natural
-            </p>
-            <div class="chat-stats">
-                <span>📚 {{ total_normas }} normas consolidadas</span>
-                <span>📋 {{ total_dispositivos }} dispositivos indexados</span>
-                <span>🎯 Busca semântica com IA</span>
+        
+        .source-card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+        
+        .source-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--color-text);
+            flex: 1;
+        }
+        
+        .source-score {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--color-success);
+        }
+        
+        .score-bar {
+            width: 40px;
+            height: 4px;
+            background: var(--color-surface-secondary);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .score-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--color-success) 0%, var(--color-accent) 100%);
+            transition: width 0.3s ease;
+        }
+        
+        .source-meta {
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+            margin-bottom: 0.5rem;
+        }
+        
+        .source-snippet {
+            font-size: 0.8125rem;
+            color: var(--color-text-secondary);
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        /* Loading State */
+        .loading-message {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.25rem;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            font-size: 0.9375rem;
+            color: var(--color-text-secondary);
+        }
+        
+        .loading-dots {
+            display: flex;
+            gap: 0.25rem;
+        }
+        
+        .loading-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--color-primary);
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        
+        .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+        
+        /* Input Area */
+        .input-area {
+            background: var(--color-surface);
+            border-top: 1px solid var(--color-border);
+            padding: 1.5rem;
+            box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+        
+        .input-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .input-container {
+            position: relative;
+            background: var(--color-surface);
+            border: 2px solid var(--color-border);
+            border-radius: var(--radius-xl);
+            transition: all 0.2s;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .input-container:focus-within {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+        }
+        
+        #question-textarea {
+            width: 100%;
+            min-height: 52px;
+            max-height: 200px;
+            padding: 0.875rem 3.5rem 0.875rem 1.25rem;
+            border: none;
+            outline: none;
+            font-family: var(--font-sans);
+            font-size: 0.9375rem;
+            line-height: 1.6;
+            resize: none;
+            background: transparent;
+            color: var(--color-text);
+        }
+        
+        #question-textarea::placeholder {
+            color: var(--color-text-muted);
+        }
+        
+        .send-button {
+            position: absolute;
+            right: 8px;
+            bottom: 8px;
+            width: 36px;
+            height: 36px;
+            background: var(--color-primary);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .send-button:hover:not(:disabled) {
+            background: var(--color-primary-dark);
+            transform: scale(1.05);
+        }
+        
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .send-button svg {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .input-disclaimer {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+            margin-top: 0.75rem;
+        }
+        
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--color-border);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--color-text-muted);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                height: 100vh;
+                box-shadow: var(--shadow-xl);
+            }
+            
+            .sidebar.collapsed {
+                transform: translateX(-100%);
+            }
+            
+            .messages-container {
+                padding: 1rem;
+            }
+            
+            .input-area {
+                padding: 1rem;
+            }
+            
+            .sources-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="workspace">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <img src="{% static 'img/logo-icon.svg' %}" alt="Jurix">
+                <h1>Jurix</h1>
             </div>
-        </div>
-    </div>
-    
-    <div class="chat-messages" id="chatMessages">
-        <div class="message message-assistant">
-            <div class="message-avatar">🤖</div>
-            <div class="message-content">
-                <p>
-                    👋 Olá! Sou o assistente jurídico do Jurix. Posso te ajudar a entender a legislação municipal de Natal/RN.
-                </p>
-                <p style="font-size: 0.875rem; opacity: 0.85; margin-top: 1rem;">
-                    <strong>Exemplos de perguntas:</strong><br>
-                    • Como funciona o zoneamento urbano em Natal?<br>
-                    • Quais são as regras para obter licença de construção?<br>
-                    • O que diz a lei sobre IPTU?
-                </p>
+            
+            <div class="sidebar-content">
+                <div class="sidebar-section">
+                    <h3>Assistente</h3>
+                    <div class="sidebar-item active">
+                        <span>💬 Nova Conversa</span>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>Navegação</h3>
+                    <div class="sidebar-item" onclick="window.location.href='{% url 'legislation:norma_list' %}'">
+                        <span>📋 Normas Consolidadas</span>
+                    </div>
+                    <div class="sidebar-item" onclick="window.location.href='/admin/'">
+                        <span>⚙️ Admin</span>
+                    </div>
+                </div>
+                
+                <div class="sidebar-stats">
+                    <h3 style="margin-bottom: 1rem;">Sistema</h3>
+                    <div class="stat-item">
+                        <span class="stat-label">Normas</span>
+                        <span class="stat-value">{{ total_normas }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Dispositivos</span>
+                        <span class="stat-value">{{ total_dispositivos }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Modelo</span>
+                        <span class="stat-value">Llama3</span>
+                    </div>
+                </div>
             </div>
-        </div>
+        </aside>
+        
+        <!-- Main Chat Area -->
+        <main class="chat-main">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <button class="toggle-sidebar" id="toggle-sidebar" title="Toggle Sidebar">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 7H17M3 13H17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <div class="top-bar-title">Assistente Jurídico Inteligente</div>
+            </div>
+            
+            <!-- Messages Container -->
+            <div class="messages-container" id="messages-container">
+                <div class="messages-wrapper" id="messages-wrapper">
+                    <!-- Welcome State -->
+                    <div class="welcome-state" id="welcome-state">
+                        <img src="{% static 'img/logo.svg' %}" alt="Jurix">
+                        <h2>Como posso ajudar?</h2>
+                        <p>Faça perguntas sobre a legislação municipal de Natal/RN. Sou alimentado por IA e tenho acesso a {{ total_normas }} normas consolidadas.</p>
+                        
+                        <div class="suggestion-chips">
+                            <div class="chip" onclick="askQuestion(this.textContent)">Como funciona o zoneamento urbano?</div>
+                            <div class="chip" onclick="askQuestion(this.textContent)">Quais as regras para licença de construção?</div>
+                            <div class="chip" onclick="askQuestion(this.textContent)">Explique as normas de uso do solo</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Input Area -->
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <form id="chat-form">
+                        <div class="input-container">
+                            <textarea 
+                                id="question-textarea" 
+                                name="question" 
+                                placeholder="Digite sua pergunta sobre legislação..."
+                                rows="1"
+                                required
+                            ></textarea>
+                            <button type="submit" class="send-button" id="send-button">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </form>
+                    <div class="input-disclaimer">
+                        Jurix pode cometer erros. Verifique informações importantes nas fontes citadas.
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
     
-    <div class="loading-indicator" id="loadingIndicator">
-        <div class="typing-animation">
-            <div class="typing-dot"></div>
-            <div class="typing-dot"></div>
-            <div class="typing-dot"></div>
-        </div>
-        <span>Processando sua pergunta...</span>
-    </div>
+    <!-- Markdown & Sanitization Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     
-    <div class="chat-input-container">
-        <form class="chat-input-form" id="chatForm">
-            {% csrf_token %}
-            <input 
-                type="text" 
-                class="chat-input" 
-                id="questionInput"
-                placeholder="Digite sua pergunta sobre legislação..." 
-                required
-                autocomplete="off"
-            >
-            <button type="submit" class="chat-submit" id="submitButton">
-                Enviar
-            </button>
-        </form>
-    </div>
-</div>
-
-<!-- Load external libraries before main script -->
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
-<script>
-// Debug: Check if libraries loaded
-console.log('Marked loaded:', typeof marked !== 'undefined' ? '✓' : '✗ FAILED');
-console.log('DOMPurify loaded:', typeof DOMPurify !== 'undefined' ? '✓' : '✗ FAILED');
-
-// Get CSRF token from cookies
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
+    <script>
+        // ===== APP STATE =====
+        let isProcessing = false;
+        
+        // ===== SIDEBAR TOGGLE =====
+        document.getElementById('toggle-sidebar').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+        });
+        
+        // ===== TEXTAREA AUTO-GROW =====
+        const textarea = document.getElementById('question-textarea');
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+        });
+        
+        // Handle Enter key (submit) vs Shift+Enter (new line)
+        textarea.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('chat-form').dispatchEvent(new Event('submit'));
             }
-        }
-    }
-    return cookieValue;
-}
-
-function getCsrfToken() {
-    let token = getCookie('csrftoken');
-    if (!token) {
-        const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
-        if (csrfInput) {
-            token = csrfInput.value;
-        }
-    }
-    return token;
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const chatForm = document.getElementById('chatForm');
-    const questionInput = document.getElementById('questionInput');
-    const submitButton = document.getElementById('submitButton');
-    const chatMessages = document.getElementById('chatMessages');
-    const loadingIndicator = document.getElementById('loadingIndicator');
-    
-    chatForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
+        });
         
-        const question = questionInput.value.trim();
-        if (!question) return;
-        
-        // Add user message
-        addMessage('user', question);
-        
-        // Clear input and disable form
-        questionInput.value = '';
-        submitButton.disabled = true;
-        loadingIndicator.classList.add('active');
-        
-        try {
-            const csrftoken = getCsrfToken();
+        // ===== FORM SUBMISSION =====
+        document.getElementById('chat-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
             
-            if (!csrftoken) {
-                addMessage('assistant', '❌ Erro: Token CSRF não encontrado. Por favor, recarregue a página.');
-                submitButton.disabled = false;
-                loadingIndicator.classList.remove('active');
-                return;
-            }
+            if (isProcessing) return;
             
-            // Send question to backend
-            const response = await fetch('{% url "legislation:chatbot" %}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrftoken
-                },
-                body: JSON.stringify({
-                    question: question,
-                    k: 5,
-                    model: 'llama3'
-                })
-            });
+            const question = textarea.value.trim();
+            if (!question) return;
             
-            const data = await response.json();
+            // Hide welcome state
+            document.getElementById('welcome-state').style.display = 'none';
             
-            if (data.success) {
-                addMessage('assistant', data.answer, data.sources, data.confidence);
-            } else {
-                addMessage('assistant', `❌ Erro: ${data.error}`);
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            addMessage('assistant', `❌ Erro ao processar pergunta: ${error.message}`);
-        } finally {
-            submitButton.disabled = false;
-            loadingIndicator.classList.remove('active');
-            questionInput.focus();
-        }
-    });
-    
-    function addMessage(role, content, sources = [], confidence = 0) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message message-${role}`;
-        
-        // Add avatar for assistant messages
-        if (role === 'assistant') {
-            const avatar = document.createElement('div');
-            avatar.className = 'message-avatar';
-            avatar.textContent = '🤖';
-            messageDiv.appendChild(avatar);
-        }
-        
-        const messageContent = document.createElement('div');
-        messageContent.className = 'message-content';
-        
-        // Render content with Markdown support for assistant messages (with security)
-        const contentDiv = document.createElement('div');
-        if (role === 'assistant' && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+            // Add user message
+            addUserMessage(question);
+            
+            // Clear input
+            textarea.value = '';
+            textarea.style.height = 'auto';
+            
+            // Show loading
+            const loadingId = addLoadingMessage();
+            
+            // Disable input
+            isProcessing = true;
+            document.getElementById('send-button').disabled = true;
+            
             try {
-                // Configure marked for better rendering
-                marked.setOptions({
-                    breaks: true,
-                    gfm: true,
-                    headerIds: false,
-                    mangle: false
+                // Get CSRF token
+                const csrfToken = getCookie('csrftoken');
+                
+                // Send request
+                const response = await fetch('{% url "legislation:chatbot" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ question })
                 });
                 
-                // Step 1: Convert Markdown to HTML
-                const rawHtml = marked.parse(content);
+                const data = await response.json();
                 
-                // Step 2: Sanitize HTML to prevent XSS
-                const cleanHtml = DOMPurify.sanitize(rawHtml, {
-                    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'code', 'pre', 'ul', 'ol', 'li', 'h3', 'h4', 'blockquote'],
-                    ALLOWED_ATTR: []
-                });
+                // Remove loading
+                removeLoadingMessage(loadingId);
                 
-                // Step 3: Inject sanitized HTML
-                contentDiv.innerHTML = cleanHtml;
-                console.log('Markdown rendered successfully');
-            } catch (error) {
-                console.error('Markdown rendering failed:', error);
-                // Fallback to plain text with basic formatting
-                contentDiv.textContent = content;
-                contentDiv.style.lineHeight = '1.7';
-            }
-        } else {
-            // Libraries not loaded - show error and use plain text
-            if (role === 'assistant') {
-                console.error('Markdown libraries not loaded. Marked:', typeof marked, 'DOMPurify:', typeof DOMPurify);
-            }
-            contentDiv.textContent = content;
-            contentDiv.style.lineHeight = '1.7';
-        }
-        messageContent.appendChild(contentDiv);
-        
-        // Add confidence badge for assistant messages
-        if (role === 'assistant' && confidence > 0) {
-            const confidenceSpan = document.createElement('span');
-            let confidenceClass = 'confidence-low';
-            let confidenceText = 'Baixa confiança';
-            
-            if (confidence > 0.7) {
-                confidenceClass = 'confidence-high';
-                confidenceText = '✓ Alta confiança';
-            } else if (confidence > 0.4) {
-                confidenceClass = 'confidence-medium';
-                confidenceText = '○ Média confiança';
-            } else {
-                confidenceText = '! Baixa confiança';
-            }
-            
-            confidenceSpan.className = `confidence-badge ${confidenceClass}`;
-            confidenceSpan.textContent = `${confidenceText} (${(confidence * 100).toFixed(0)}%)`;
-            messageContent.appendChild(confidenceSpan);
-        }
-        
-        // Add sources if available
-        if (sources && sources.length > 0) {
-            const sourcesSection = document.createElement('div');
-            sourcesSection.className = 'sources-section';
-            
-            const sourcesTitle = document.createElement('div');
-            sourcesTitle.className = 'sources-title';
-            sourcesTitle.textContent = `📚 Fontes consultadas (${sources.length}):`;
-            sourcesSection.appendChild(sourcesTitle);
-            
-            sources.forEach(source => {
-                const sourceItem = document.createElement('div');
-                sourceItem.className = 'source-item';
-                
-                const sourceRef = document.createElement('div');
-                sourceRef.className = 'source-ref';
-                sourceRef.textContent = `${source.norma_ref} - ${source.dispositivo_ref}`;
-                sourceItem.appendChild(sourceRef);
-                
-                const sourceText = document.createElement('div');
-                sourceText.className = 'source-text';
-                sourceText.textContent = source.text;
-                sourceItem.appendChild(sourceText);
-                
-                // Smart score display: show "< 1%" for very small scores
-                const rawScore = parseFloat(source.similarity_score) || 0;
-                const scorePercent = rawScore * 100;
-                
-                const sourceScore = document.createElement('span');
-                sourceScore.className = 'source-score';
-                
-                if (scorePercent >= 1) {
-                    sourceScore.textContent = `Relevância: ${scorePercent.toFixed(0)}%`;
-                } else if (scorePercent > 0) {
-                    sourceScore.textContent = `Relevância: < 1%`;
+                if (data.success) {
+                    // Add assistant message with typewriter effect
+                    addAssistantMessage(data.data.answer, data.data.sources);
                 } else {
-                    // Hide score if 0
-                    sourceScore.style.display = 'none';
+                    addErrorMessage(data.error || 'Erro ao processar pergunta');
                 }
                 
-                sourceItem.appendChild(sourceScore);
-                sourcesSection.appendChild(sourceItem);
-            });
+            } catch (error) {
+                removeLoadingMessage(loadingId);
+                addErrorMessage('Erro de conexão. Tente novamente.');
+                console.error('Error:', error);
+            } finally {
+                isProcessing = false;
+                document.getElementById('send-button').disabled = false;
+                textarea.focus();
+            }
+        });
+        
+        // ===== MESSAGE FUNCTIONS =====
+        function addUserMessage(text) {
+            const messagesWrapper = document.getElementById('messages-wrapper');
+            const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             
-            messageContent.appendChild(sourcesSection);
+            const messageHtml = `
+                <div class="message message-user">
+                    <div class="message-avatar">V</div>
+                    <div class="message-content">
+                        <div class="message-header">
+                            <span class="message-role">Você</span>
+                            <span class="message-timestamp">${timestamp}</span>
+                        </div>
+                        <div class="message-body">${escapeHtml(text)}</div>
+                    </div>
+                </div>
+            `;
+            
+            messagesWrapper.insertAdjacentHTML('beforeend', messageHtml);
+            scrollToBottom();
         }
         
-        messageDiv.appendChild(messageContent);
-        chatMessages.appendChild(messageDiv);
+        function addLoadingMessage() {
+            const messagesWrapper = document.getElementById('messages-wrapper');
+            const loadingId = 'loading-' + Date.now();
+            
+            const loadingHtml = `
+                <div class="message message-assistant" id="${loadingId}">
+                    <div class="message-avatar">
+                        <img src="{% static 'img/logo-icon.svg' %}" alt="Jurix">
+                    </div>
+                    <div class="message-content">
+                        <div class="loading-message">
+                            <div class="loading-dots">
+                                <div class="loading-dot"></div>
+                                <div class="loading-dot"></div>
+                                <div class="loading-dot"></div>
+                            </div>
+                            <span>Pensando...</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            messagesWrapper.insertAdjacentHTML('beforeend', loadingHtml);
+            scrollToBottom();
+            return loadingId;
+        }
         
-        // Smooth scroll to bottom
-        chatMessages.scrollTo({
-            top: chatMessages.scrollHeight,
-            behavior: 'smooth'
-        });
-    }
-});
-</script>
-{% endblock %}
+        function removeLoadingMessage(loadingId) {
+            const loadingMsg = document.getElementById(loadingId);
+            if (loadingMsg) loadingMsg.remove();
+        }
+        
+        function addAssistantMessage(answer, sources) {
+            const messagesWrapper = document.getElementById('messages-wrapper');
+            const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const messageId = 'msg-' + Date.now();
+            
+            // Create message structure
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message message-assistant';
+            messageDiv.innerHTML = `
+                <div class="message-avatar">
+                    <img src="{% static 'img/logo-icon.svg' %}" alt="Jurix">
+                </div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-role">Jurix</span>
+                        <span class="message-timestamp">${timestamp}</span>
+                    </div>
+                    <div class="message-body" id="${messageId}"></div>
+                    ${sources && sources.length > 0 ? createSourcesSection(sources) : ''}
+                </div>
+            `;
+            
+            messagesWrapper.appendChild(messageDiv);
+            scrollToBottom();
+            
+            // Typewriter effect
+            typewriterEffect(messageId, answer);
+        }
+        
+        function createSourcesSection(sources) {
+            const sourcesCards = sources.map(source => {
+                const scorePercent = Math.round(source.relevance_score * 100);
+                const scoreColor = scorePercent >= 80 ? 'var(--color-success)' : 
+                                   scorePercent >= 60 ? 'var(--color-warning)' : 'var(--color-text-muted)';
+                
+                return `
+                    <div class="source-card">
+                        <div class="source-card-header">
+                            <div class="source-title">${escapeHtml(source.norma)}</div>
+                            <div class="source-score">
+                                <div class="score-bar">
+                                    <div class="score-fill" style="width: ${scorePercent}%; background: ${scoreColor};"></div>
+                                </div>
+                                <span>${scorePercent}%</span>
+                            </div>
+                        </div>
+                        <div class="source-meta">${escapeHtml(source.dispositivo)}</div>
+                        <div class="source-snippet">${escapeHtml(source.texto.substring(0, 120))}...</div>
+                    </div>
+                `;
+            }).join('');
+            
+            return `
+                <div class="sources-section">
+                    <div class="sources-header">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M8 2V14M2 8H14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        <span>${sources.length} ${sources.length === 1 ? 'Fonte' : 'Fontes'}</span>
+                    </div>
+                    <div class="sources-grid">
+                        ${sourcesCards}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function addErrorMessage(errorText) {
+            const messagesWrapper = document.getElementById('messages-wrapper');
+            const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            
+            const errorHtml = `
+                <div class="message message-assistant">
+                    <div class="message-avatar">
+                        <img src="{% static 'img/logo-icon.svg' %}" alt="Jurix">
+                    </div>
+                    <div class="message-content">
+                        <div class="message-header">
+                            <span class="message-role">Jurix</span>
+                            <span class="message-timestamp">${timestamp}</span>
+                        </div>
+                        <div class="message-body" style="border-color: var(--color-error); background: #fef2f2;">
+                            ⚠️ ${escapeHtml(errorText)}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            messagesWrapper.insertAdjacentHTML('beforeend', errorHtml);
+            scrollToBottom();
+        }
+        
+        // ===== TYPEWRITER EFFECT =====
+        function typewriterEffect(elementId, text) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            
+            // Parse markdown first
+            const htmlContent = marked.parse(text);
+            const sanitizedContent = DOMPurify.sanitize(htmlContent);
+            
+            // For typewriter effect, we'll add the content progressively
+            let tempDiv = document.createElement('div');
+            tempDiv.innerHTML = sanitizedContent;
+            const textContent = tempDiv.textContent || tempDiv.innerText;
+            
+            let index = 0;
+            const speed = 10; // milliseconds per character
+            
+            function type() {
+                if (index < textContent.length) {
+                    // For simplicity, show chunks of text
+                    const chunk = textContent.substring(0, index + 3);
+                    element.textContent = chunk;
+                    index += 3;
+                    scrollToBottomIfAtBottom();
+                    setTimeout(type, speed);
+                } else {
+                    // Once complete, render the full markdown
+                    element.innerHTML = sanitizedContent;
+                    scrollToBottom();
+                }
+            }
+            
+            type();
+        }
+        
+        // ===== UTILITY FUNCTIONS =====
+        function scrollToBottom() {
+            const container = document.getElementById('messages-container');
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function scrollToBottomIfAtBottom() {
+            const container = document.getElementById('messages-container');
+            const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+            if (isAtBottom) {
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        function askQuestion(question) {
+            textarea.value = question;
+            document.getElementById('chat-form').dispatchEvent(new Event('submit'));
+        }
+        
+        // ===== INITIALIZATION =====
+        console.log('Jurix Chatbot 2.0 initialized');
+        console.log('Marked:', typeof marked !== 'undefined' ? '✓' : '✗');
+        console.log('DOMPurify:', typeof DOMPurify !== 'undefined' ? '✓' : '✗');
+    </script>
+</body>
+</html>
