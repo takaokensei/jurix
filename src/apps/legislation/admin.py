@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Norma
+from .models import Norma, Dispositivo, EventoAlteracao
 
 
 @admin.register(Norma)
@@ -80,4 +80,109 @@ class NormaAdmin(admin.ModelAdmin):
         count = queryset.update(status='pending', needs_review=False, processing_error='')
         self.message_user(request, f'{count} norma(s) resetada(s).')
     resetar_status.short_description = 'Resetar status'
+
+
+@admin.register(Dispositivo)
+class DispositivoAdmin(admin.ModelAdmin):
+    list_display = ('get_identifier', 'norma', 'tipo', 'numero', 'ordem', 'get_nivel_display')
+    list_filter = ('tipo', 'norma__tipo', 'norma__ano')
+    search_fields = ('texto', 'numero', 'norma__numero', 'norma__ementa')
+    ordering = ('norma', 'ordem')
+    raw_id_fields = ('norma', 'dispositivo_pai')
+    
+    fieldsets = (
+        ('Identificação', {
+            'fields': ('norma', 'tipo', 'numero', 'ordem')
+        }),
+        ('Hierarquia', {
+            'fields': ('dispositivo_pai',)
+        }),
+        ('Conteúdo', {
+            'fields': ('texto',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    readonly_fields = ('created_at', 'updated_at')
+    
+    def get_identifier(self, obj):
+        """Retorna identificador curto do dispositivo."""
+        return obj.get_full_identifier()
+    get_identifier.short_description = 'Dispositivo'
+    
+    def get_nivel_display(self, obj):
+        """Exibe o nível hierárquico."""
+        nivel = obj.get_nivel()
+        return f"{'  ' * nivel}Nível {nivel}"
+    get_nivel_display.short_description = 'Nível'
+
+
+@admin.register(EventoAlteracao)
+class EventoAlteracaoAdmin(admin.ModelAdmin):
+    list_display = (
+        'get_fonte_display', 'acao', 'target_text_short', 
+        'norma_alvo', 'extraction_confidence', 'validado', 'created_at'
+    )
+    list_filter = ('acao', 'validado', 'extraction_method', 'dispositivo_fonte__norma__tipo')
+    search_fields = (
+        'target_text', 'dispositivo_fonte__texto', 
+        'norma_alvo__numero', 'norma_alvo__ementa'
+    )
+    ordering = ('-created_at',)
+    raw_id_fields = ('dispositivo_fonte', 'norma_alvo', 'dispositivo_alvo')
+    
+    fieldsets = (
+        ('Evento', {
+            'fields': ('dispositivo_fonte', 'acao', 'target_text')
+        }),
+        ('Alvos Identificados', {
+            'fields': ('norma_alvo', 'dispositivo_alvo')
+        }),
+        ('Extração Detalhada', {
+            'fields': (
+                'referencia_tipo', 'referencia_numero', 
+                'extraction_confidence', 'extraction_method'
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Validação', {
+            'fields': ('validado',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    readonly_fields = ('created_at', 'updated_at')
+    
+    actions = ['marcar_validado', 'marcar_nao_validado']
+    
+    def get_fonte_display(self, obj):
+        """Exibe fonte de forma resumida."""
+        fonte = obj.dispositivo_fonte
+        return f"{fonte.norma.tipo} {fonte.norma.numero}/{fonte.norma.ano} - {fonte.get_full_identifier()}"
+    get_fonte_display.short_description = 'Fonte'
+    
+    def target_text_short(self, obj):
+        """Exibe target_text truncado."""
+        if len(obj.target_text) > 50:
+            return obj.target_text[:50] + '...'
+        return obj.target_text
+    target_text_short.short_description = 'Referência'
+    
+    def marcar_validado(self, request, queryset):
+        """Marca eventos como validados."""
+        count = queryset.update(validado=True)
+        self.message_user(request, f'{count} evento(s) marcado(s) como validado.')
+    marcar_validado.short_description = 'Marcar como validado'
+    
+    def marcar_nao_validado(self, request, queryset):
+        """Marca eventos como não validados."""
+        count = queryset.update(validado=False)
+        self.message_user(request, f'{count} evento(s) marcado(s) como não validado.')
+    marcar_nao_validado.short_description = 'Marcar como não validado'
 

@@ -20,8 +20,9 @@ from django.conf import settings
 from django.utils.dateparse import parse_date
 
 from src.clients.sapl.sapl_client import SaplAPIClient
-from src.apps.legislation.models import Norma, Dispositivo
+from src.apps.legislation.models import Norma, Dispositivo, EventoAlteracao
 from src.processing.legal_parser import LegalTextParser
+from src.processing.ner_extractor import LegalNERExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -802,3 +803,225 @@ def segment_text_task(self, norma_id: int) -> Dict[str, Any]:
             'error': str(e),
             'norma_id': norma_id
         }
+
+
+@shared_task(
+    bind=True,
+    name='ingestion.extract_entities',
+    max_retries=3,
+    default_retry_delay=60
+)
+def extract_entities_task(self, norma_id: int) -> Dict[str, Any]:
+    """
+    Extract named entities and alteration events from segmented Norma.
+    
+    This task:
+    1. Loads a Norma with status='segmented'
+    2. Iterates through all its Dispositivos
+    3. Uses NER (regex + SpaCy) to detect:
+       - Action verbs (revoga, altera, adiciona, etc.)
+       - Legal references (Art. X, Lei Y/Z)
+       - Target entities
+    4. Creates EventoAlteracao instances for each detected event
+    5. Updates Norma status to 'entities_extracted'
+    
+    Args:
+        norma_id: Primary key of the Norma to process
+        
+    Returns:
+        Dictionary with success status and extraction statistics
+    """
+    task_id = self.request.id
+    start_time = time.time()
+    
+    logger.info(
+        f"[Task {task_id}] Starting NER entity extraction for Norma ID={norma_id}"
+    )
+    
+    try:
+        # Fetch Norma
+        norma = Norma.objects.get(id=norma_id)
+        
+        # Validate status
+        if norma.status != 'segmented':
+            logger.warning(
+                f"[Task {task_id}] Norma {norma} has status '{norma.status}', "
+                f"expected 'segmented'. Proceeding anyway."
+            )
+        
+        # Update status to processing
+        norma.status = 'entity_extraction'
+        norma.save(update_fields=['status', 'updated_at'])
+        
+        # Initialize NER extractor
+        extractor = LegalNERExtractor()
+        
+        # Fetch all dispositivos for this norma
+        dispositivos = Dispositivo.objects.filter(norma=norma).select_related('norma')
+        
+        if not dispositivos.exists():
+            logger.warning(
+                f"[Task {task_id}] No dispositivos found for Norma {norma}. "
+                f"Cannot extract entities."
+            )
+            norma.status = 'segmented'
+            norma.save(update_fields=['status', 'updated_at'])
+            return {
+                'success': True,
+                'norma_id': norma_id,
+                'events_created': 0,
+                'dispositivos_processed': 0,
+                'message': 'No dispositivos to process'
+            }
+        
+        logger.info(
+            f"[Task {task_id}] Found {dispositivos.count()} dispositivos to analyze"
+        )
+        
+        # Extract events from each dispositivo
+        events_to_create = []
+        dispositivos_with_events = 0
+        
+        for dispositivo in dispositivos:
+            texto = dispositivo.texto.strip()
+            
+            if len(texto) < 20:  # Skip very short texts
+                continue
+            
+            # Extract events using NER
+            extracted_events = extractor.extract_events(
+                texto=texto,
+                dispositivo_id=dispositivo.id
+            )
+            
+            if extracted_events:
+                dispositivos_with_events += 1
+                
+                for event_data in extracted_events:
+                    # Try to resolve norma_alvo if we have norma_info
+                    norma_alvo = None
+                    if event_data.get('norma_referenciada'):
+                        norma_info = event_data['norma_referenciada']
+                        # Attempt to find the referenced norma
+                        norma_alvo = _resolve_norma_reference(
+                            tipo=norma_info.get('tipo', ''),
+                            numero=norma_info.get('numero', ''),
+                            ano=norma_info.get('ano', '')
+                        )
+                    
+                    # Handle self-references (desta Lei)
+                    if event_data['referencia_tipo'] == 'self_reference':
+                        norma_alvo = norma
+                    
+                    # Create EventoAlteracao instance
+                    evento = EventoAlteracao(
+                        dispositivo_fonte=dispositivo,
+                        acao=event_data['acao'],
+                        target_text=event_data['target_text'][:500],  # Truncate to max_length
+                        norma_alvo=norma_alvo,
+                        extraction_confidence=event_data['extraction_confidence'],
+                        extraction_method=event_data['extraction_method'],
+                        referencia_tipo=event_data['referencia_tipo'][:50],
+                        referencia_numero=event_data['referencia_numero'][:50],
+                    )
+                    events_to_create.append(evento)
+        
+        # Bulk create all events
+        if events_to_create:
+            EventoAlteracao.objects.bulk_create(events_to_create, batch_size=500)
+            logger.info(
+                f"[Task {task_id}] Created {len(events_to_create)} EventoAlteracao instances"
+            )
+        
+        # Update norma status
+        norma.status = 'entities_extracted'
+        norma.processing_error = ''
+        norma.save(update_fields=['status', 'processing_error', 'updated_at'])
+        
+        processing_time = time.time() - start_time
+        
+        # Calculate statistics by action type
+        action_stats = {}
+        for evento in events_to_create:
+            action_stats[evento.acao] = action_stats.get(evento.acao, 0) + 1
+        
+        logger.info(
+            f"[Task {task_id}] Entity extraction completed for Norma {norma}: "
+            f"{len(events_to_create)} events from {dispositivos_with_events} dispositivos "
+            f"(out of {dispositivos.count()} total) in {processing_time:.2f}s. "
+            f"Action distribution: {action_stats}"
+        )
+        
+        return {
+            'success': True,
+            'norma_id': norma_id,
+            'norma_str': str(norma),
+            'events_created': len(events_to_create),
+            'dispositivos_processed': dispositivos.count(),
+            'dispositivos_with_events': dispositivos_with_events,
+            'action_stats': action_stats,
+            'processing_time': processing_time
+        }
+        
+    except Norma.DoesNotExist:
+        error_msg = f"Norma ID={norma_id} not found in database"
+        logger.error(f"[Task {task_id}] {error_msg}")
+        return {'success': False, 'error': error_msg, 'norma_id': norma_id}
+        
+    except Exception as e:
+        error_msg = f"Critical error in entity extraction for Norma ID={norma_id}: {str(e)}"
+        logger.error(f"[Task {task_id}] {error_msg}", exc_info=True)
+        
+        # Mark norma with error
+        try:
+            norma = Norma.objects.get(id=norma_id)
+            norma.needs_review = True
+            norma.processing_error = f"Entity extraction error: {str(e)[:200]}"
+            norma.status = 'failed'
+            norma.save(update_fields=['needs_review', 'processing_error', 'status', 'updated_at'])
+        except:
+            pass
+        
+        # Retry if attempts remaining
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
+        
+        return {
+            'success': False,
+            'error': str(e),
+            'norma_id': norma_id
+        }
+
+
+def _resolve_norma_reference(tipo: str, numero: str, ano: str) -> Optional[Norma]:
+    """
+    Attempt to resolve a norma reference to an existing Norma in the database.
+    
+    Args:
+        tipo: Type of norma (Lei, Decreto, etc.)
+        numero: Number of the norma
+        ano: Year of the norma
+        
+    Returns:
+        Norma instance if found, None otherwise
+    """
+    if not tipo or not numero or not ano:
+        return None
+    
+    try:
+        # Normalize tipo for matching
+        tipo_normalized = tipo.strip().lower()
+        numero_clean = numero.strip()
+        ano_int = int(ano)
+        
+        # Try exact match
+        norma = Norma.objects.filter(
+            tipo__iexact=tipo_normalized,
+            numero=numero_clean,
+            ano=ano_int
+        ).first()
+        
+        return norma
+    except Exception as e:
+        logger.debug(f"Could not resolve norma reference: {tipo} {numero}/{ano}: {e}")
+        return None
