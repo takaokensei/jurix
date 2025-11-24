@@ -43,6 +43,11 @@ class Command(BaseCommand):
             action='store_true',
             help='Executar de forma assíncrona via Celery'
         )
+        parser.add_argument(
+            '--auto-download',
+            action='store_true',
+            help='Baixar PDFs automaticamente após ingestão (requer worker ativo)'
+        )
     
     def handle(self, *args, **options):
         limit = options['limit']
@@ -50,10 +55,11 @@ class Command(BaseCommand):
         tipo = options['tipo']
         ano = options['ano']
         is_async = options['async']
+        auto_download = options['auto_download']
         
         self.stdout.write(self.style.NOTICE(
             f'Iniciando ingestão: limit={limit}, offset={offset}, '
-            f'tipo={tipo}, ano={ano}'
+            f'tipo={tipo}, ano={ano}, auto_download={auto_download}'
         ))
         
         try:
@@ -63,11 +69,16 @@ class Command(BaseCommand):
                     limit=limit,
                     offset=offset,
                     tipo=tipo,
-                    ano=ano
+                    ano=ano,
+                    auto_download=auto_download
                 )
                 self.stdout.write(self.style.SUCCESS(
                     f'Task Celery iniciada: {task.id}'
                 ))
+                if auto_download:
+                    self.stdout.write(self.style.NOTICE(
+                        'Downloads de PDFs serão disparados automaticamente'
+                    ))
                 self.stdout.write(
                     'Use "celery -A config inspect active" para monitorar'
                 )
@@ -77,7 +88,8 @@ class Command(BaseCommand):
                     limit=limit,
                     offset=offset,
                     tipo=tipo,
-                    ano=ano
+                    ano=ano,
+                    auto_download=auto_download
                 )
                 
                 self.stdout.write(self.style.SUCCESS(
@@ -85,7 +97,8 @@ class Command(BaseCommand):
                     f'  - Total buscadas: {stats["total_fetched"]}\n'
                     f'  - Criadas: {stats["created"]}\n'
                     f'  - Atualizadas: {stats["updated"]}\n'
-                    f'  - Falhas: {stats["failed"]}'
+                    f'  - Falhas: {stats["failed"]}\n'
+                    f'  - Downloads disparados: {len(stats.get("download_tasks", []))}'
                 ))
                 
                 if stats['errors']:
