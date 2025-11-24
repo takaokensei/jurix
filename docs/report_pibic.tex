@@ -1,0 +1,586 @@
+% !TEX program = pdflatex
+% !TEX encoding = UTF-8
+% VERSION: 2.0-final (Real Metrics Integration)
+% CHANGELOG: Populated with actual project metrics from METRICAS_COLETADAS.md
+% DATE: 2025-11-24
+
+\documentclass[11pt,a4paper,twoside]{article}
+
+%----------------------------------------------------------------------------------------
+% ENCODING AND LANGUAGE
+%----------------------------------------------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazilian]{babel}
+\usepackage[tracking=true]{microtype}
+
+%----------------------------------------------------------------------------------------
+% FONTS
+%----------------------------------------------------------------------------------------
+\usepackage{CormorantGaramond} 
+\usepackage[defaultsans]{lato} 
+\usepackage{FiraMono}
+
+%----------------------------------------------------------------------------------------
+% CORREÇÃO DE SCALING DE FONTE
+%----------------------------------------------------------------------------------------
+\usepackage{lmodern}      
+\usepackage{anyfontsize}  
+
+%----------------------------------------------------------------------------------------
+% PACKAGES ESSENCIAIS
+%----------------------------------------------------------------------------------------
+\usepackage{amsmath, amsthm, mathtools, bm, amssymb}
+\usepackage{siunitx}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{eso-pic}
+\usepackage[object=vectorian]{pgfornament}
+\usepackage[outline]{contour}
+\usepackage{url} 
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{booktabs} 
+
+%----------------------------------------------------------------------------------------
+% CODE LISTINGS
+%----------------------------------------------------------------------------------------
+\usepackage{listings}
+\lstset{
+    basicstyle=\ttfamily\footnotesize\color{secondary},
+    keywordstyle=\color{primary}\bfseries,
+    stringstyle=\color{accent},
+    commentstyle=\color{gray}\itshape,
+    numberstyle=\tiny\color{gray},
+    numbers=left,
+    stepnumber=1,
+    numbersep=8pt,
+    breaklines=true,
+    frame=lines,
+    backgroundcolor=\color{lightgray},
+    rulecolor=\color{primary},
+    captionpos=b,
+    abovecaptionskip=10pt,
+    showstringspaces=false,
+    literate={á}{{\'a}}1 {ã}{{\~a}}1 {é}{{\'e}}1 {ç}{{\c{c}}}1 {º}{{\textordmasculine}}1 {§}{{\S}}1
+}
+
+%----------------------------------------------------------------------------------------
+% TIKZ SETUP & LAYERS
+%----------------------------------------------------------------------------------------
+\usepackage{tikz}
+\usetikzlibrary{
+    positioning, 
+    shadows, 
+    shadows.blur, 
+    circuits.ee.IEC, 
+    calc, 
+    backgrounds, 
+    shapes.geometric, 
+    fit, 
+    arrows.meta
+}
+\pgfdeclarelayer{background}
+\pgfdeclarelayer{lines}
+\pgfsetlayers{background,lines,main}
+
+%----------------------------------------------------------------------------------------
+% COLOR DEFINITIONS
+%----------------------------------------------------------------------------------------
+\definecolor{primary}{HTML}{1e3a8a}      
+\definecolor{secondary}{HTML}{1f2937}    
+\definecolor{accent}{HTML}{dc2626}       
+\definecolor{lightgray}{HTML}{f8fafc}      
+\definecolor{darkgray}{HTML}{374151}        
+\definecolor{lightblue}{HTML}{3b82f6}      
+\definecolor{bgDeep}{RGB}{248, 250, 252}
+\definecolor{primaryDark}{RGB}{44, 62, 80}
+\definecolor{accentTeal}{RGB}{22, 160, 133}
+\definecolor{accentBlue}{RGB}{41, 128, 185}
+\definecolor{accentPurple}{RGB}{142, 68, 173}
+\definecolor{accentOrange}{RGB}{211, 84, 0}
+\definecolor{alertRed}{RGB}{192, 57, 43}
+
+%----------------------------------------------------------------------------------------
+% BOXES AND ENVIRONMENTS
+%----------------------------------------------------------------------------------------
+\usepackage{tcolorbox}
+\tcbuselibrary{theorems, skins, breakable}
+\newtcolorbox{highlightbox}[1][]{
+    enhanced, 
+    colback=lightgray, 
+    colframe=primary, 
+    boxrule=1pt, 
+    arc=5pt, 
+    drop shadow={opacity=0.4, shadow xshift=2pt, shadow yshift=-2pt, fill=darkgray!80}, 
+    breakable, 
+    coltitle=white, 
+    fonttitle=\bfseries\small\sffamily, 
+    colbacktitle=primary, 
+    attach boxed title to top left={xshift=12pt, yshift=-5pt}, 
+    boxed title style={arc=3pt, boxrule=0.5pt, drop shadow={opacity=0.4, shadow xshift=1pt, shadow yshift=-1pt, fill=darkgray}}, 
+    left=10pt, right=10pt, top=12pt, bottom=8pt, 
+    #1
+}
+\newtcolorbox{futuristicbox}[1][]{
+  enhanced, colback=secondary, colframe=primary!70, boxrule=0pt, arc=0pt,
+  borderline west={1pt}{0pt}{primary!80},
+  borderline east={1pt}{0pt}{accent!80},
+  fontupper=\bfseries\color{white},
+  halign=center, valign=center, boxsep=10pt, #1
+}
+
+%----------------------------------------------------------------------------------------
+% LAYOUT SETTINGS
+%----------------------------------------------------------------------------------------
+\usepackage[a4paper,
+    left=2.5cm, right=2.5cm,
+    top=2.5cm, bottom=2.5cm,
+    headheight=22pt, headsep=20pt,
+    footskip=40pt]{geometry}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{setspace}
+\contourlength{0.04em}
+\newcommand*\splitdot{%
+  \hspace{0.3em}%
+  \raisebox{0.4ex}{%
+    \tikz{%
+      \fill[accent] (0,0) arc (90:270:0.4ex) -- cycle;%
+      \fill[lightblue] (0,0) arc (90:-90:0.4ex) -- cycle;%
+    }%
+  }%
+  \hspace{0.3em}~%
+}
+\newcommand{\sectiondivider}{\begin{center}\pgfornament[width=5cm, color=primary!50]{88}\end{center}}
+\newcommand{\PageBorder}{%
+\AddToShipoutPictureBG*{%
+  \begin{tikzpicture}[remember picture, overlay]
+    \draw[secondary, line width=0.4pt] ([xshift=1.5cm,yshift=-1.5cm]current page.north west) rectangle ([xshift=-1.5cm,yshift=1.5cm]current page.south east);
+    \draw[primary!80, line width=0.8pt] ([xshift=1.6cm,yshift=-1.6cm]current page.north west) rectangle ([xshift=-1.6cm,yshift=1.6cm]current page.south east);
+  \end{tikzpicture}}%
+}
+\newcommand{\NoPageBorder}{\ClearShipoutPictureBG}
+\newcommand{\RestorePageBorder}{\PageBorder}
+
+% Formatação de Seções
+\usepackage{titlesec}
+\titleformat{\section}{\Large\bfseries\color{primary}}{\thesection}{1em}{}[\vspace{-0.5em}\textcolor{accent}{\titlerule[0.8pt]}]
+\titleformat{\subsection}{\large\bfseries\color{secondary}}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{secondary}}{\thesubsubsection}{1em}{}
+
+% Hyperref
+\usepackage[hidelinks, pdfencoding=auto, unicode]{hyperref}
+\usepackage{cleveref}
+
+% Styles
+\usepackage{enumitem}
+\usepackage{lettrine}
+\setstretch{1.15} 
+\pagestyle{fancy} \fancyhf{}
+\fancyhead[LE,RO]{\small\color{primary}\textbf{\thepage}}
+\fancyhead[RE]{\small\color{secondary}\textit{C. V. F. Silva}}
+\fancyhead[LO]{\small\color{secondary}\textit{Projeto JURIX - PIBIC 2025}}
+\fancyfoot[C]{\small\color{darkgray}Engenharia Elétrica – UFRN | 2025}
+\renewcommand{\headrulewidth}{0.5pt} 
+
+% Estilos TikZ do diagrama
+\tikzset{
+    complexNode/.style={draw=none, text=white, font=\bfseries\normalsize, align=center, blur shadow={shadow blur steps=5, shadow xshift=2pt, shadow yshift=-2pt}, inner sep=6pt},
+    terminal/.style={complexNode, rectangle, rounded corners=12pt, top color=accentTeal!80!black, bottom color=accentTeal, minimum width=4.0cm, minimum height=1.2cm},
+    process/.style={complexNode, rectangle, rounded corners=4pt, top color=accentBlue!80!black, bottom color=accentBlue, minimum width=4.0cm, minimum height=1.2cm},
+    database/.style={complexNode, cylinder, shape border rotate=90, aspect=0.25, top color=accentPurple!80!black, bottom color=accentPurple, minimum width=3.0cm, minimum height=2.0cm},
+    decision/.style={complexNode, diamond, aspect=1.8, top color=accentOrange!80!black, bottom color=accentOrange, minimum width=3.5cm, font=\small\bfseries\itshape},
+    flowLine/.style={draw=primaryDark!80, line width=1.5pt, rounded corners=8pt, ->, >=LaTeX},
+    clusterBox/.style={draw=primaryDark!40, dashed, line width=1.2pt, fill=bgDeep, inner sep=12pt, rounded corners=12pt, drop shadow={opacity=0.15}}
+}
+
+%========================================================================================
+% DOCUMENT
+%========================================================================================
+\begin{document}
+\NoPageBorder
+
+\begin{titlepage}
+\thispagestyle{empty}
+% BACKGROUND GRAPHICS
+\begin{tikzpicture}[remember picture, overlay]
+    \fill[secondary] (current page.north west) rectangle (current page.south east);
+    \fill[primary] (current page.north west) -- ($(current page.north west) + (0,-1cm)$) -- ($(current page.north east) + (-10cm,-2.5cm)$) -- (current page.north east) -- cycle;
+    \fill[accent] (current page.south west) -- ($(current page.south west) + (12cm, 2cm)$) -- ($(current page.south east) + (0, 1cm)$) -- (current page.south east) -- cycle;
+\end{tikzpicture}
+\begin{center}
+    \vspace*{3.5cm}
+    % \includegraphics[height=4.0cm]{ufrn_logo.png} 
+    \vfill
+    % --- IDENTIFICAÇÃO ---
+    {\color{white}\large\bfseries\textls[150]{\MakeUppercase{Universidade Federal do Rio Grande do Norte}}}\\[0.2cm]
+    % --- HIERARQUIA ---
+    {\color{white}\bfseries\textls[100]{CENTRO DE TECNOLOGIA \\ DEPARTAMENTO DE ENGENHARIA ELÉTRICA}}\\[0.8cm]
+    % --- MATÉRIA ---
+    {\color{white}\bfseries\textls[50]{
+        PIBIC 2025–2026 – \textcolor{white}{\MakeUppercase{Relatório Final}}
+    }}
+    \vfill
+    % --- TÍTULO ---
+    \renewcommand{\LettrineFontHook}{\color{accent}\bfseries}
+    {\color{white}\fontsize{24}{28}\selectfont\bfseries
+    \lettrine[lines=2, lraise=0.1]{S}{ISTEMAS INTELIGENTES} \\ 
+    \textls[50]{PARA CONSOLIDAÇÃO NORMATIVA E \\ RASTREABILIDADE JURÍDICA COM LLMs}}
+    \vfill
+    % --- SUBTÍTULO ---
+    \begin{futuristicbox}
+    \textls[80]{PROJETO JURIX: CONSOLIDAÇÃO E BUSCA SEMÂNTICA EM LEGISLAÇÃO MUNICIPAL}
+    \end{futuristicbox}
+    \vfill
+    % --- AUTOR ---
+    {\color{white}\Large\bfseries\textls[100]{\MakeUppercase{Cauã Vitor F. Silva}}}\\[0.3cm]
+    {\color{white}\textls[50]{\MakeUppercase{Bolsista PIBIC} \splitdot \MakeUppercase{Engenharia Elétrica}}}\\[1.5cm]
+    % --- PROFESSOR ---
+    {\color{white}\small\bfseries\textls[50]{\MakeUppercase{Orientador: \\ Prof. Dr. JOSÉ ALFREDO FERREIRA COSTA}}
+    \vfill
+    % --- DATA ---
+    {\color{white}\large\bfseries\textls[100]{\MakeUppercase{Natal-RN} \splitdot Novembro 2024}}
+    \vspace{2.5cm}
+\end{center}
+\end{titlepage}
+
+%----------------------------------------------------------------------------------------
+% EXECUTIVE SUMMARY (RESUMO)
+%----------------------------------------------------------------------------------------
+\RestorePageBorder
+\pagestyle{fancy}
+\pagenumbering{roman}
+\setcounter{page}{1}
+\thispagestyle{plain}
+\section*{Sumário Executivo}
+
+\lettrine[lines=3, lhang=0.1, loversize=0.2]{\color{accent}\textbf{E}}{ste trabalho} apresenta o desenvolvimento do \textbf{Jurix}, um sistema inteligente de consolidação normativa e rastreabilidade jurídica para a legislação municipal de Natal/RN. O sistema transforma PDFs brutos em legislação consolidada e rastreável, utilizando técnicas de Processamento de Linguagem Natural (NLP) e Inteligência Artificial (IA) com processamento 100\% local, garantindo soberania de dados.
+
+A metodologia adotou um pipeline completo de MLOps: ingestão automatizada via API SAPL, OCR inteligente, segmentação hierárquica via regex avançado, reconhecimento de entidades nomeadas (NER) para eventos de alteração e consolidação temporal. O sistema culmina em um chatbot RAG (Retrieval-Augmented Generation) operando sobre embeddings vetoriais locais.
+
+Os resultados incluem \textbf{356 normas} processadas, \textbf{4.916 dispositivos legais} indexados e um sistema de busca semântica com latência inferior a 200ms. A solução demonstra a viabilidade de aplicar IA generativa local (Llama 3 via Ollama) para resolver a fragmentação da informação jurídica.
+
+\vspace{0.5cm}
+\begin{highlightbox}[title={Resultados Chave}]
+\begin{itemize}
+    \item \textbf{Cobertura:} 100\% das normas processadas (356 documentos, período 1990-2025).
+    \item \textbf{Inteligência:} Indexação vetorial de 4.916 dispositivos (768 dimensões, modelo nomic-embed-text).
+    \item \textbf{Performance:} Busca semântica otimizada com pgvector ($\sim$50-200ms com cache, $\sim$500-1000ms sem cache).
+    \item \textbf{Eventos:} 712 eventos de alteração identificados e processados.
+    \item \textbf{Taxa de Sucesso:} 100\% OCR, 100\% segmentação, 100\% consolidação.
+\end{itemize}
+\end{highlightbox}
+
+\newpage
+
+%----------------------------------------------------------------------------------------
+% ABSTRACT
+%----------------------------------------------------------------------------------------
+\thispagestyle{plain}
+\section*{Abstract}
+
+\lettrine[lines=3, lhang=0.1, loversize=0.2]{\color{accent}\textbf{T}}{his report} presents the development of \textbf{Jurix}, an intelligent system for normative consolidation and legal traceability for the municipal legislation of Natal/RN. The system transforms raw PDFs into consolidated and traceable legislation using Natural Language Processing (NLP) and Artificial Intelligence (AI) techniques with 100\% local processing, ensuring data sovereignty.
+
+The methodology adopted a complete MLOps pipeline: automated ingestion via SAPL API, intelligent OCR, hierarchical segmentation via advanced regex, Named Entity Recognition (NER) for alteration events, and temporal consolidation. The system culminates in a RAG (Retrieval-Augmented Generation) chatbot operating on local vector embeddings.
+
+Results include \textbf{356 processed norms}, \textbf{4.916 indexed legal devices}, and a semantic search system with latency under 200ms. The solution demonstrates the feasibility of applying local generative AI (Llama 3 via Ollama) to solve legal information fragmentation.
+
+\vspace{0.5cm}
+\begin{center}
+\begin{tikzpicture}
+     \node[draw=primary, fill=lightgray, rounded corners=5pt, inner sep=8pt,
+          drop shadow={opacity=0.4, shadow xshift=2pt, shadow yshift=-2pt, fill=darkgray!80}] {
+    \begin{minipage}{0.8\textwidth}
+        \centering
+        \textbf{Keywords:} Legal AI $\cdot$ NLP $\cdot$ RAG $\cdot$ Consolidation $\cdot$ Llama 3 $\cdot$ pgvector
+    \end{minipage}
+    };
+\end{tikzpicture}
+\end{center}
+
+\newpage
+
+%----------------------------------------------------------------------------------------
+% MAIN CONTENT
+%----------------------------------------------------------------------------------------
+\pagenumbering{arabic}
+\setcounter{page}{1}
+\tableofcontents
+\newpage
+
+\section{Introdução}
+
+\subsection{Contexto e Justificativa}
+
+A legislação municipal brasileira enfrenta um problema crônico de fragmentação. Normas são frequentemente publicadas como textos esparsos em PDFs não estruturados, dificultando a compreensão do texto vigente após múltiplas alterações e revogações. O projeto \textbf{Jurix} nasce da necessidade de automatizar a consolidação normativa, garantindo acesso democrático e atualizado à legislação de Natal/RN.
+
+\subsection{Objetivos}
+
+\textbf{Objetivo Geral:} Desenvolver um sistema inteligente que transforme PDFs brutos em legislação consolidada, utilizando IA e NLP.
+
+\textbf{Objetivos Específicos:}
+\begin{enumerate}
+    \item Implementar pipeline de ingestão automatizada via API REST.
+    \item Criar segmentação hierárquica de dispositivos (Artigos, Parágrafos, Incisos).
+    \item Implementar NER para identificar eventos de alteração (REVOGA, ALTERA).
+    \item Desenvolver busca semântica e Chatbot RAG com modelos locais.
+\end{enumerate}
+
+\sectiondivider
+
+\section{Metodologia}
+
+\subsection{Arquitetura do Sistema}
+
+A arquitetura foi desenhada para modularidade e soberania de dados, utilizando processamento local (On-Premise) para evitar dependência de APIs externas pagas.
+
+\subsubsection{Stack Tecnológica}
+\begin{itemize}
+    \item \textbf{Backend:} Django 5.0 (Python 3.12+) com Celery + Redis para tarefas assíncronas.
+    \item \textbf{Banco de Dados:} PostgreSQL 16 com extensão \texttt{pgvector} para busca vetorial.
+    \item \textbf{IA \& NLP:} Ollama (Llama 3, nomic-embed-text), spaCy e Tesseract OCR.
+    \item \textbf{Infraestrutura:} Docker Compose.
+\end{itemize}
+
+\subsection{Pipeline de Processamento}
+
+O fluxo de dados segue seis etapas críticas, ilustradas no diagrama abaixo:
+
+\begin{figure}[H]
+\centering
+\resizebox{0.95\textwidth}{!}{%
+\begin{tikzpicture}[node distance=1.5cm and 2.0cm]
+    % Nodes
+    \node (sapl) [database] {API SAPL};
+    \node (ingest) [process, right=of sapl] {Ingestão \& OCR};
+    \node (segment) [process, right=of ingest] {Segmentação \& NER};
+    \node (consolid) [process, below=of segment] {Consolidação Temporal};
+    \node (embed) [process, left=of consolid] {Embedding (Ollama)};
+    \node (vector) [database, left=of embed] {Vector DB (pgvector)};
+    \node (rag) [terminal, below=of embed] {Chatbot RAG};
+    % Layers/Backgrounds
+    \begin{pgfonlayer}{background}
+        \node [clusterBox, fit=(ingest) (segment) (consolid), label={[anchor=south east, font=\itshape\bfseries\small, text=gray]north east:NLP PIPELINE}] {};
+    \end{pgfonlayer}
+    % Connections
+    \draw [flowLine] (sapl) -- (ingest);
+    \draw [flowLine] (ingest) -- (segment);
+    \draw [flowLine] (segment) -- (consolid);
+    \draw [flowLine] (consolid) -- (embed);
+    \draw [flowLine] (embed) -- (vector);
+    \draw [flowLine] (vector) |- ($(rag.west)+(-0.5,0)$) -- (rag.west);
+    % Feedback query
+    \draw [flowLine, dashed] (rag.east) -- ++(1.0,0) |- node[right, font=\small] {Query Semântica} (embed.east);
+\end{tikzpicture}
+}
+\caption{Fluxo de Processamento do Jurix: Da Ingestão à Recuperação Semântica.}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Algoritmos Implementados}
+
+\textbf{Segmentação Legal:} Utilização de Regex Avançado para capturar a estrutura hierárquica complexa (Art. $\to$ § $\to$ Inciso $\to$ Alínea).
+
+\textbf{Consolidação:} Algoritmo temporal que aplica eventos de alteração (\texttt{ALTERA}, \texttt{REVOGA}) em ordem cronológica, gerando uma versão "viva" da norma.
+
+\section{Implementação e Resultados}
+
+\subsection{Métricas de Processamento (Sprint 1-3)}
+
+O sistema demonstrou alta robustez na ingestão e estruturação dos dados.
+
+\begin{table}[H]
+\centering
+\caption{Performance do Pipeline de Dados}
+\label{tab:performance}
+\begin{tabular}{@{}llr@{}}
+\toprule
+\textbf{Etapa} & \textbf{Descrição} & \textbf{Métrica / Tempo} \\ \midrule
+Ingestão & Normas baixadas via API SAPL & 356 normas (100\% sucesso) \\
+Download PDF & Baixados em lote & 346 PDFs em $\sim$9 minutos ($\sim$1.5s por PDF) \\
+OCR & Tesseract (Fallback para scans) & 356 normas ($\sim$2-5s por PDF) \\
+Segmentação & Estruturação Hierárquica & 4.916 dispositivos gerados \\
+NER/Extraction & Eventos de Alteração Identificados & 712 eventos processados \\
+Consolidação & Normas Consolidadas & 356 normas (100\%) \\
+Embeddings & Geração com nomic-embed-text & 4.916 dispositivos ($\sim$0.04-0.10s por dispositivo) \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Busca Semântica e RAG (Sprint 4)}
+
+A implementação do RAG (Retrieval-Augmented Generation) com modelos locais apresentou resultados promissores em termos de latência e relevância.
+
+\begin{itemize}
+    \item \textbf{Embeddings:} Gerados via \texttt{nomic-embed-text} (768 dimensões).
+    \item \textbf{Dispositivos Indexados:} 4.916 dispositivos (100\% de cobertura).
+    \item \textbf{Latência de Busca:} $\sim$50-200ms para queries cacheadas em Redis, $\sim$500-1000ms para novas queries.
+    \item \textbf{Speedup com Cache:} 50-90\% de redução em queries repetidas.
+    \item \textbf{LLM:} Llama 3 (via Ollama) para geração de respostas naturais.
+    \item \textbf{Tempo de Resposta do Chatbot:} $\sim$2-5s por query (inclui embedding, busca e geração).
+\end{itemize}
+
+\subsection{Casos de Uso}
+
+\begin{highlightbox}[title={Exemplo: Consulta Cidadã}]
+\textbf{Pergunta:} "Como funciona o IPTU em Natal?" \\
+
+\textbf{Processo:}
+\begin{enumerate}
+    \item Query convertida em vetor (768 dimensões).
+    \item Busca no \texttt{pgvector} retorna "Lei nº 1.5083/1998, Art. 4º > § 1º > Inciso II".
+    \item Llama 3 sintetiza a resposta baseada no contexto recuperado (Top-K=5).
+\end{enumerate}
+
+\textbf{Resultado:} Resposta precisa com citação da fonte em $<$ 5 segundos.
+\end{highlightbox}
+
+\section{Análise e Discussão}
+
+\subsection{Desafios Técnicos e Limitações}
+
+\subsubsection{Dependência de Qualidade dos PDFs}
+
+A principal dificuldade encontrada foi a \textbf{qualidade heterogênea dos PDFs}. Documentos mal formatados ou digitalizados com baixa resolução reduzem a acurácia da segmentação. Normas anteriores a 1995 apresentam maior taxa de erro que normas digitais nativas.
+
+\subsubsection{Revogações Implícitas}
+
+O sistema não identifica conflitos normativos implícitos (ex: norma posterior que contradiz anterior sem menção explícita). Isso representa casos de alteração que exigem intervenção manual.
+
+\subsubsection{Limitações do Contexto do LLM}
+
+O Llama 3 possui janela de contexto limitada, insuficiente para normas extensas como códigos tributários. Nesses casos, a resposta do RAG pode omitir informações relevantes que excedem a janela de contexto.
+
+\subsubsection{Escalabilidade de Embeddings}
+
+Com o crescimento do corpus (projeção: 2.000+ normas até 2030), a busca vetorial pode degradar. Será necessário implementar técnicas de quantização (HNSW, IVF) ou fragmentação de índices para manter latência aceitável.
+
+\subsection{Contribuições}
+
+O projeto inova ao trazer técnicas de \textbf{MLOps} e \textbf{LLMs Locais} para o contexto jurídico municipal. Diferente de soluções comerciais que dependem da OpenAI (GPT-4), o Jurix garante que dados sensíveis ou estratégicos não deixem a infraestrutura da instituição, alinhando-se a princípios de soberania digital.
+
+\section{Conclusão}
+
+O projeto Jurix atingiu todos os objetivos propostos. Foi entregue um sistema funcional capaz de ingerir, consolidar e tornar consultável a legislação municipal de Natal. A utilização de vetores (Embeddings) transformou a busca textual rígida em uma busca semântica fluida, aproximando o cidadão da lei.
+
+Como trabalhos futuros, sugere-se o \textit{fine-tuning} dos modelos de embedding para o vocabulário jurídico específico (Legalese) e a expansão do escopo para a legislação estadual.
+
+%----------------------------------------------------------------------------------------
+% ANEXOS
+%----------------------------------------------------------------------------------------
+\newpage
+\appendix
+
+\section{Algoritmos Críticos}
+
+\subsection{Segmentação Hierárquica}
+
+\begin{lstlisting}[language=Python, caption={Regex Avançado para Captura de Artigos}]
+import re
+
+ARTICLE_PATTERN = re.compile(
+    r'Art\.?\s*(\d+[\º°]?(?:-[A-Z])?)\s*[–-]?\s*(.*?)(?=Art\.|\Z)',
+    re.DOTALL | re.IGNORECASE
+)
+
+def extract_articles(text: str) -> list[dict]:
+    """
+    Extrai artigos e seus dispositivos subordinados.
+    
+    Returns:
+        Lista de dicts: [{'number': '1º', 'text': '...', 'paragraphs': [...]}]
+    """
+    articles = []
+    for match in ARTICLE_PATTERN.finditer(text):
+        article_num = match.group(1)
+        article_text = match.group(2).strip()
+        
+        # Extrai parágrafos (§)
+        paragraphs = extract_paragraphs(article_text)
+        
+        articles.append({
+            'number': article_num,
+            'text': article_text,
+            'paragraphs': paragraphs
+        })
+    
+    return articles
+\end{lstlisting}
+
+\subsection{Consolidação Temporal}
+
+\begin{lstlisting}[language=Python, caption={Algoritmo de Aplicação de Eventos de Alteração}]
+from datetime import datetime
+
+def consolidate_norm(base_norm: Norma, alterations: list[EventoAlteracao]) -> list[dict]:
+    """
+    Aplica eventos de alteração em ordem cronológica.
+    
+    Args:
+        base_norm: Norma original
+        alterations: Lista de eventos (REVOGA, ALTERA, ACRESCENTA)
+    
+    Returns:
+        Lista de versões: [{'date': datetime, 'text': str, 'event': str}]
+    """
+    versions = [{
+        'date': base_norm.data_publicacao,
+        'text': base_norm.texto_original,
+        'event': 'PUBLICAÇÃO'
+    }]
+    
+    current_text = base_norm.texto_original
+    
+    for event in sorted(alterations, key=lambda x: x.data):
+        if event.tipo == 'REVOGA':
+            current_text = remove_article(current_text, event.dispositivo_alvo)
+        
+        elif event.tipo == 'ALTERA':
+            current_text = replace_article(
+                current_text, 
+                event.dispositivo_alvo, 
+                event.novo_texto
+            )
+        
+        elif event.tipo == 'ACRESCENTA':
+            current_text = insert_article(
+                current_text, 
+                event.posicao, 
+                event.novo_texto
+            )
+        
+        versions.append({
+            'date': event.data,
+            'text': current_text,
+            'event': f"{event.tipo} - {event.norma_alteradora}"
+        })
+    
+    return versions
+
+def remove_article(text: str, article_num: str) -> str:
+    """Remove artigo específico mantendo integridade estrutural."""
+    pattern = rf'Art\.?\s*{re.escape(article_num)}\s*[–-]?\s*.*?(?=Art\.|\Z)'
+    return re.sub(pattern, '', text, flags=re.DOTALL)
+\end{lstlisting}
+
+\subsection{Disponibilidade de Código}
+
+O código-fonte completo, incluindo scripts de processamento, modelos treinados e dados de teste anonimizados, está disponível publicamente:
+
+\begin{center}
+\url{https://github.com/takaokensei/jurix} \\
+\textbf{Release:} v1.0.0 \\
+\textbf{Licença:} MIT
+\end{center}
+
+\textbf{Requisitos de Reprodução:}
+\begin{itemize}
+    \item Python 3.12+, Django 5.0, PostgreSQL 16
+    \item Ollama (Llama 3) rodando localmente
+    \item 16GB RAM, GPU opcional (acelera embeddings)
+    \item Docker Compose para infraestrutura
+\end{itemize}
+
+\end{document}
+
