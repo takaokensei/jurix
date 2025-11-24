@@ -12,9 +12,20 @@ The job was not started because your account is locked due to a billing issue.
 
 ### Opção 1: Resolver o Billing (Recomendado)
 
+**Problema Comum:** Mesmo com 0 minutos usados, o GitHub pode bloquear o CI se:
+- Não houver método de pagamento cadastrado
+- O limite de gastos estiver em $0
+
+**Solução:**
+
 1. Acesse: https://github.com/settings/billing
-2. Verifique o status da conta
-3. Adicione método de pagamento se necessário
+2. **Adicione um método de pagamento** (mesmo que não vá usar - o plano Free não cobra nada)
+   - Vá em "Payment information"
+   - Adicione um cartão de crédito (não será cobrado se ficar dentro do limite gratuito)
+3. **Ajuste o limite de gastos:**
+   - Vá em "Budgets and alerts" ou "Spending limits"
+   - Defina um limite acima de $0 (ex: $5 ou $10)
+   - Isso permite que o GitHub Actions funcione mesmo sem cobrança
 4. GitHub Actions oferece **2.000 minutos/mês gratuitos** para contas pessoais
 
 ### Opção 2: Executar Testes Localmente (Temporário)
