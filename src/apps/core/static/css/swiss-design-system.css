@@ -517,11 +517,33 @@ strong, b {
 }
 
 .theme-toggle-icon-navbar {
+    width: 18px;
+    height: 18px;
     display: block;
-    line-height: 1;
-    font-size: var(--font-size-base);
-    /* Use text instead of emoji for professional look */
-    font-family: var(--font-sans);
+    flex-shrink: 0;
+}
+
+.theme-toggle-icon-navbar svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* Hide/show icons based on theme */
+[data-theme="light"] .theme-toggle-icon-navbar.theme-toggle-icon-sun {
+    display: block;
+}
+
+[data-theme="light"] .theme-toggle-icon-navbar.theme-toggle-icon-moon {
+    display: none;
+}
+
+[data-theme="dark"] .theme-toggle-icon-navbar.theme-toggle-icon-sun {
+    display: none;
+}
+
+[data-theme="dark"] .theme-toggle-icon-navbar.theme-toggle-icon-moon {
+    display: block;
 }
 
 .nav-link:active {
@@ -557,21 +579,59 @@ strong, b {
     display: flex;
     height: 100vh;
     width: 100vw;
+    transition: all var(--transition-base);
 }
 
-/* Sidebar (Dark) */
+/* Chat main area - fluid layout */
+.chat-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-bg-primary);
+    transition: width var(--transition-base), margin-left var(--transition-base);
+    min-width: 0; /* Allows flex shrinking */
+    overflow: hidden;
+}
+
+/* Sidebar collapsed state */
+/* Sidebar - Theme aware with smooth transitions */
 .sidebar {
     width: var(--width-sidebar);
-    background: var(--color-gray-900);
+    background: var(--color-gray-900); /* Dark by default */
     color: var(--color-text-inverse);
     display: flex;
     flex-direction: column;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                background-color var(--transition-base), 
+                color var(--transition-base),
+                width var(--transition-base);
     z-index: var(--z-sticky); /* Below skip-link */
+    flex-shrink: 0;
+}
+
+/* Sidebar in light mode */
+[data-theme="light"] .sidebar {
+    background: var(--color-gray-50);
+    color: var(--color-text);
+    border-right: 1px solid var(--color-border);
+}
+
+/* Sidebar in dark mode (explicit) */
+[data-theme="dark"] .sidebar {
+    background: var(--color-gray-900);
+    color: var(--color-text-inverse);
 }
 
 .sidebar.collapsed {
-    transform: translateX(-280px);
+    transform: translateX(-100%);
+    width: 0;
+    overflow: hidden;
+    border-right: none;
+}
+
+.sidebar.collapsed + .chat-main {
+    width: 100%;
+    margin-left: 0;
 }
 
 .sidebar-header {
@@ -580,6 +640,12 @@ strong, b {
     display: flex;
     align-items: center;
     gap: var(--space-2);
+    transition: border-color var(--transition-base);
+}
+
+/* Light mode adjustments */
+[data-theme="light"] .sidebar-header {
+    border-bottom-color: var(--color-border);
 }
 
 .sidebar-header img,
@@ -593,8 +659,15 @@ strong, b {
     font-size: var(--font-size-xl);
     font-weight: var(--font-weight-bold);
     letter-spacing: var(--letter-spacing-tight);
-    color: var(--color-text-inverse); /* CRITICAL FIX: White text on dark sidebar */
+    color: var(--color-text-inverse); /* Dark mode default */
     margin: 0;
+    transition: color var(--transition-base);
+}
+
+/* Light mode adjustments */
+[data-theme="light"] .sidebar-header h1,
+[data-theme="light"] .sidebar-title {
+    color: var(--color-text);
 }
 
 .sidebar-content {
@@ -613,8 +686,15 @@ strong, b {
     font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
     letter-spacing: var(--letter-spacing-wide);
-    color: rgba(255, 255, 255, 0.6); /* Better contrast: 60% white on dark bg */
+    color: rgba(255, 255, 255, 0.6); /* Dark mode default */
     margin-bottom: var(--space-2);
+    transition: color var(--transition-base);
+}
+
+/* Light mode adjustments */
+[data-theme="light"] .sidebar-section h3,
+[data-theme="light"] .sidebar-section-title {
+    color: var(--color-text-secondary);
 }
 
 .sidebar-item {
@@ -623,7 +703,7 @@ strong, b {
     cursor: pointer;
     transition: background-color var(--transition-fast), color var(--transition-fast);
     font-size: var(--font-size-sm);
-    color: rgba(255, 255, 255, 0.9); /* Improved contrast: 90% white */
+    color: rgba(255, 255, 255, 0.9); /* Dark mode default */
     display: block;
     text-decoration: none;
 }
@@ -633,12 +713,22 @@ strong, b {
     color: var(--color-text-inverse);
 }
 
+/* Light mode adjustments */
+[data-theme="light"] .sidebar-item {
+    color: var(--color-text);
+}
+
+[data-theme="light"] .sidebar-item:hover {
+    background: var(--color-gray-100);
+    color: var(--color-text);
+}
+
 .sidebar-item.active {
     background: var(--color-primary);
     color: var(--color-text-inverse);
 }
 
-/* Theme Toggle */
+/* Theme Toggle - Premium Design */
 .theme-toggle-container {
     display: flex;
     align-items: center;
@@ -647,6 +737,12 @@ strong, b {
     background: var(--color-gray-800);
     border-radius: var(--radius-md);
     margin-bottom: var(--space-2);
+    transition: background-color var(--transition-base);
+}
+
+/* Light mode adjustments */
+[data-theme="light"] .theme-toggle-container {
+    background: var(--color-gray-100);
 }
 
 .theme-toggle-label {
@@ -657,32 +753,61 @@ strong, b {
     color: rgba(255, 255, 255, 0.9);
     cursor: pointer;
     user-select: none;
+    transition: color var(--transition-base);
+}
+
+/* Light mode adjustments */
+[data-theme="light"] .theme-toggle-label {
+    color: var(--color-text);
 }
 
 .theme-toggle-icon {
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-semibold);
-    line-height: 1;
-    /* Use text instead of emoji for professional look */
-    font-family: var(--font-sans);
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    transition: opacity var(--transition-base), transform var(--transition-base);
+}
+
+.theme-toggle-icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* Hide/show icons based on theme */
+[data-theme="light"] .theme-toggle-icon-sun {
+    display: block;
+}
+
+[data-theme="light"] .theme-toggle-icon-moon {
+    display: none;
+}
+
+[data-theme="dark"] .theme-toggle-icon-sun {
+    display: none;
+}
+
+[data-theme="dark"] .theme-toggle-icon-moon {
+    display: block;
 }
 
 .theme-toggle-text {
-    font-weight: var(--font-weight-medium);
+    display: none; /* Hide text, use icons only */
 }
 
-/* Toggle Switch (iOS style) */
+/* Toggle Switch - Premium iOS style with smooth transitions */
 .theme-toggle {
     position: relative;
-    width: 44px;
-    height: 24px;
+    width: 52px;
+    height: 28px;
     border: none;
     background: rgba(255, 255, 255, 0.2);
-    border-radius: 12px;
+    border-radius: 14px;
     cursor: pointer;
     transition: background-color var(--transition-base);
     padding: 0;
     outline: none;
+    flex-shrink: 0;
 }
 
 .theme-toggle:hover {
@@ -694,35 +819,45 @@ strong, b {
     outline-offset: 2px;
 }
 
+/* Light mode: sun background */
+[data-theme="light"] .theme-toggle {
+    background: #fbbf24; /* Amber for sun */
+}
+
+/* Dark mode: moon background */
+[data-theme="dark"] .theme-toggle,
+.theme-toggle[aria-pressed="true"] {
+    background: #1e293b; /* Dark slate for moon */
+}
+
 .theme-toggle-track {
     display: block;
     width: 100%;
     height: 100%;
-    border-radius: 12px;
+    border-radius: 14px;
     position: relative;
+    overflow: hidden;
 }
 
 .theme-toggle-thumb {
     position: absolute;
     top: 2px;
     left: 2px;
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     background: white;
     border-radius: 50%;
-    transition: transform var(--transition-base);
+    transition: transform var(--transition-base) cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-/* Active state (dark mode on) */
-[data-theme="dark"] .theme-toggle,
-.theme-toggle[aria-pressed="true"] {
-    background: var(--color-primary);
-}
-
+/* Dark mode: thumb moves right */
 [data-theme="dark"] .theme-toggle-thumb,
 .theme-toggle[aria-pressed="true"] .theme-toggle-thumb {
-    transform: translateX(20px);
+    transform: translateX(24px);
 }
 
 .sidebar-stats {
@@ -730,6 +865,12 @@ strong, b {
     background: var(--color-gray-800);
     border-radius: var(--radius-md);
     margin-top: var(--space-2);
+    transition: background-color var(--transition-base);
+}
+
+/* Light mode adjustments */
+[data-theme="light"] .sidebar-stats {
+    background: var(--color-gray-100);
 }
 
 .stat-item {
