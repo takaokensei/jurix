@@ -251,16 +251,24 @@ def chatbot_view(request: HttpRequest) -> HttpResponse:
                 similarity_score = float(similarity) if similarity is not None else 0.0
                 similarity_score = max(0.0, min(1.0, similarity_score))
                 
+                # Get PDF and SAPL URLs from norma
+                norma = disp.norma
+                pdf_url = norma.pdf_url if norma.pdf_url else None
+                sapl_url = norma.sapl_url if norma.sapl_url else None
+                
                 sources.append({
                     'id': disp.id,
                     'text': disp.texto[:200] + ('...' if len(disp.texto) > 200 else ''),
                     'full_text': disp.texto,
                     'similarity_score': similarity_score,
                     'distance': float(distance) if distance is not None else 1.0,
-                    'norma_ref': f"{disp.norma.tipo} {disp.norma.numero}/{disp.norma.ano}",
-                    'norma_id': disp.norma.id,
+                    'norma_ref': f"{norma.tipo} {norma.numero}/{norma.ano}",
+                    'norma_id': norma.id,
                     'dispositivo_ref': disp.get_full_identifier(),
-                    'hierarchy': source.get('context', {}).get('hierarchy', '')
+                    'hierarchy': source.get('context', {}).get('hierarchy', ''),
+                    'pdf_url': pdf_url,
+                    'sapl_url': sapl_url,
+                    'dispositivo_id': disp.id
                 })
             
             return JsonResponse({

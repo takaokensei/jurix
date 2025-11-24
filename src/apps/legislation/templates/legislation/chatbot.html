@@ -439,6 +439,9 @@
             border-radius: var(--radius-md);
             padding: 1rem;
             transition: all 0.2s;
+        }
+        
+        .source-card-clickable {
             cursor: pointer;
         }
         
@@ -446,6 +449,18 @@
             border-color: var(--color-primary);
             box-shadow: var(--shadow-md);
             transform: translateY(-2px);
+        }
+        
+        .source-link-hint {
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--color-primary);
+            font-weight: 500;
+            opacity: 0.8;
+        }
+        
+        .source-card:hover .source-link-hint {
+            opacity: 1;
         }
         
         .source-card-header {
@@ -1038,9 +1053,20 @@
                 // If score is exactly 0 or very close, try distance-based calculation
                 if (normalizedScore === 0 || normalizedScore < 0.001) {
                     const distance = parseFloat(source.distance || 1.0);
-                    // Distance in pgvector cosine is typically 0-2, convert to similarity
-                    // For cosine distance: similarity = 1 - distance (clamped)
-                    normalizedScore = Math.max(0, Math.min(1, 1 - distance));
+                    // Distance handling: cosine distance should be 0-2, but we're seeing much higher values
+                    // This suggests embeddings may not be normalized or using different distance metric
+                    // Convert distance to similarity with better handling for high distances
+                    if (distance > 10) {
+                        // Very high distances: use inverse scaling
+                        // Map distance range (10-20) to similarity (0.1-0.0)
+                        normalizedScore = Math.max(0, 0.1 - ((distance - 10) / 100));
+                    } else if (distance > 2) {
+                        // Medium-high distances: likely not cosine, use exponential decay
+                        normalizedScore = Math.max(0, Math.exp(-distance / 2));
+                    } else {
+                        // Normal cosine distance range (0-2)
+                        normalizedScore = Math.max(0, Math.min(1, 1 - distance));
+                    }
                 }
                 
                 // Convert to percentage with better scaling
@@ -1070,6 +1096,11 @@
                 const normaRef = source.norma_ref || 'Norma não especificada';
                 const dispositivoRef = source.dispositivo_ref || '';
                 const snippet = source.text || source.full_text || '';
+                const pdfUrl = source.pdf_url || null;
+                const saplUrl = source.sapl_url || null;
+                
+                // Determine which URL to use (PDF preferred, SAPL as fallback)
+                const linkUrl = pdfUrl || saplUrl;
                 
                 // Debug logging
                 console.log(`Source ${index + 1}:`, { 
@@ -1077,11 +1108,18 @@
                     rawScore, 
                     normalizedScore, 
                     scorePercent,
-                    distance: source.distance 
+                    distance: source.distance,
+                    pdfUrl,
+                    saplUrl
                 });
                 
+                // Make card clickable if we have a URL
+                const cardClasses = linkUrl ? 'source-card source-card-clickable' : 'source-card';
+                const onClickAttr = linkUrl ? `onclick="window.open('${linkUrl}', '_blank')"` : '';
+                const cursorStyle = linkUrl ? 'cursor: pointer;' : '';
+                
                 return `
-                    <div class="source-card">
+                    <div class="${cardClasses}" ${onClickAttr} style="${cursorStyle}" title="${linkUrl ? 'Clique para abrir no SAPL/PDF' : ''}">
                         <div class="source-card-header">
                             <div class="source-title">${escapeHtml(normaRef)}</div>
                             <div class="source-score">
@@ -1093,6 +1131,7 @@
                         </div>
                         <div class="source-meta">${escapeHtml(dispositivoRef)}</div>
                         <div class="source-snippet">${escapeHtml(snippet.substring(0, 120))}${snippet.length > 120 ? '...' : ''}</div>
+                        ${linkUrl ? '<div class="source-link-hint">🔗 Clique para ver no SAPL</div>' : ''}
                     </div>
                 `;
         }
