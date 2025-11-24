@@ -273,6 +273,10 @@
             scrollToBottom();
         }
         
+        // ===== LOADING STATES =====
+        // Shows animated loading indicator while RAG processes query (5-10s latency)
+        // Provides immediate visual feedback to improve perceived performance
+        // Animation: 3 bouncing dots (1.4s cycle) + "Pensando..." text
         function addLoadingMessage() {
             const messagesWrapper = document.getElementById('messages-wrapper');
             const loadingId = 'loading-' + Date.now();
@@ -297,9 +301,10 @@
             
             messagesWrapper.insertAdjacentHTML('beforeend', loadingHtml);
             scrollToBottom();
-            return loadingId;
+            return loadingId; // Return ID for later removal
         }
         
+        // Removes loading indicator when response is ready
         function removeLoadingMessage(loadingId) {
             const loadingMsg = document.getElementById(loadingId);
             if (loadingMsg) loadingMsg.remove();
