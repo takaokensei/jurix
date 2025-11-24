@@ -30,7 +30,8 @@ def ingest_normas_task(
     limit: int = 50,
     offset: int = 0,
     tipo: Optional[str] = None,
-    ano: Optional[int] = None
+    ano: Optional[int] = None,
+    auto_download: bool = False
 ) -> Dict[str, Any]:
     """
     Task Celery para ingestão de normas da API SAPL.
@@ -39,13 +40,15 @@ def ingest_normas_task(
     1. Buscar metadados de normas via SaplAPIClient
     2. Criar/Atualizar registros no modelo Norma
     3. Salvar metadados brutos para auditoria
-    4. Reportar estatísticas de ingestão
+    4. Opcionalmente disparar download de PDFs de forma assíncrona
+    5. Reportar estatísticas de ingestão
     
     Args:
         limit: Número máximo de normas a buscar
         offset: Offset para paginação
         tipo: Filtro por tipo de norma
         ano: Filtro por ano
+        auto_download: Se True, dispara automaticamente download_pdf_task para cada norma
         
     Returns:
         Dicionário com estatísticas da ingestão
@@ -53,7 +56,7 @@ def ingest_normas_task(
     task_id = self.request.id
     logger.info(
         f"[Task {task_id}] Iniciando ingestão: "
-        f"limit={limit}, offset={offset}, tipo={tipo}, ano={ano}"
+        f"limit={limit}, offset={offset}, tipo={tipo}, ano={ano}, auto_download={auto_download}"
     )
     
     stats = {
@@ -62,7 +65,8 @@ def ingest_normas_task(
         'created': 0,
         'updated': 0,
         'failed': 0,
-        'errors': []
+        'errors': [],
+        'download_tasks': []  # IDs das tasks de download disparadas
     }
     
     client = None
@@ -86,12 +90,16 @@ def ingest_normas_task(
         # Processar cada norma
         for norma_data in normas_data:
             try:
-                result = _process_norma_data(norma_data)
+                result = _process_norma_data(norma_data, auto_download=auto_download)
                 
                 if result['created']:
                     stats['created'] += 1
                 else:
                     stats['updated'] += 1
+                
+                # Registrar task de download se foi disparada
+                if 'download_task_id' in result:
+                    stats['download_tasks'].append(result['download_task_id'])
                     
             except Exception as e:
                 stats['failed'] += 1
@@ -102,7 +110,8 @@ def ingest_normas_task(
         logger.info(
             f"[Task {task_id}] Ingestão concluída: "
             f"{stats['created']} criadas, {stats['updated']} atualizadas, "
-            f"{stats['failed']} falhas"
+            f"{stats['failed']} falhas, "
+            f"{len(stats['download_tasks'])} downloads disparados"
         )
         
         return stats
@@ -119,15 +128,22 @@ def ingest_normas_task(
             client.close()
 
 
-def _process_norma_data(norma_data: Dict[str, Any]) -> Dict[str, Any]:
+def _process_norma_data(norma_data: Dict[str, Any], auto_download: bool = False) -> Dict[str, Any]:
     """
     Processa dados brutos de uma norma e cria/atualiza o registro no banco.
     
     Args:
         norma_data: Dicionário com dados da API SAPL
+        auto_download: Se True, dispara automaticamente a task de download do PDF
         
     Returns:
-        Dicionário com resultado do processamento {'created': bool, 'norma_id': int}
+        Dicionário com resultado do processamento:
+        {
+            'created': bool,
+            'norma_id': int,
+            'sapl_id': int,
+            'download_task_id': str (se auto_download=True)
+        }
     """
     sapl_id = norma_data.get('id')
     
@@ -181,11 +197,19 @@ def _process_norma_data(norma_data: Dict[str, Any]) -> Dict[str, Any]:
     action = "criada" if created else "atualizada"
     logger.info(f"Norma {norma} {action} com sucesso (ID DB={norma.id})")
     
-    return {
+    result = {
         'created': created,
         'norma_id': norma.id,
         'sapl_id': sapl_id
     }
+    
+    # Disparar download automático do PDF (se solicitado)
+    if auto_download and pdf_url:
+        logger.info(f"Disparando download automático do PDF para Norma ID={norma.id}")
+        task = download_pdf_task.delay(norma.id)
+        result['download_task_id'] = task.id
+    
+    return result
 
 
 @shared_task(
@@ -272,58 +296,114 @@ def bulk_ingest_normas_task(
         raise self.retry(exc=e)
 
 
-@shared_task(name='ingestion.download_pdf_task')
-def download_pdf_task(norma_id: int) -> Dict[str, Any]:
+@shared_task(
+    bind=True,
+    name='ingestion.download_pdf_task',
+    max_retries=3,
+    default_retry_delay=60
+)
+def download_pdf_task(self, norma_id: int) -> Dict[str, Any]:
     """
-    Task para baixar o PDF de uma norma específica.
+    Task Celery para baixar o PDF de uma norma específica de forma assíncrona.
+    
+    Fluxo:
+    1. Busca a norma no banco via ID
+    2. Valida se existe URL de PDF
+    3. Baixa o arquivo usando SaplAPIClient
+    4. Salva em data/raw/{pk}.pdf
+    5. Atualiza status da norma para 'pdf_downloaded'
     
     Args:
         norma_id: ID da norma no banco de dados local
         
     Returns:
-        Status do download
+        Dict com status do download: {'success': bool, 'path': str, 'error': str}
+        
+    Raises:
+        Retry automático em caso de falha de rede (3x com backoff de 60s)
     """
-    logger.info(f"Iniciando download de PDF para Norma ID={norma_id}")
+    task_id = self.request.id
+    logger.info(f"[Task {task_id}] Iniciando download de PDF para Norma ID={norma_id}")
     
     try:
         norma = Norma.objects.get(id=norma_id)
         
+        # Validação: Norma precisa ter URL de PDF
         if not norma.pdf_url:
-            logger.warning(f"Norma {norma} não possui URL de PDF")
-            return {'success': False, 'error': 'URL de PDF não disponível'}
+            logger.warning(f"[Task {task_id}] Norma {norma} não possui URL de PDF")
+            norma.needs_review = True
+            norma.processing_error = 'URL de PDF não disponível no SAPL'
+            norma.save(update_fields=['needs_review', 'processing_error', 'updated_at'])
+            return {'success': False, 'error': 'URL de PDF não disponível', 'norma_id': norma_id}
         
-        # Criar diretório de destino
-        output_dir = Path(settings.RAW_DATA_DIR) / 'pdfs'
+        # Criar diretório de destino (data/raw/)
+        output_dir = Path(settings.RAW_DATA_DIR)
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Nome do arquivo: Lei_123_2020.pdf
-        filename = f"{norma.tipo.replace(' ', '_')}_{norma.numero}_{norma.ano}.pdf"
+        # Nome do arquivo: {pk_da_norma}.pdf (conforme especificação)
+        filename = f"{norma.id}.pdf"
         output_path = output_dir / filename
         
-        # Baixar PDF
+        logger.debug(f"[Task {task_id}] Baixando PDF de {norma.pdf_url} para {output_path}")
+        
+        # Baixar PDF usando SaplAPIClient
         client = SaplAPIClient()
-        success = client.download_pdf(norma.pdf_url, str(output_path))
-        client.close()
+        try:
+            success = client.download_pdf(norma.pdf_url, str(output_path))
+        finally:
+            client.close()
         
         if success:
-            # Atualizar norma com caminho do PDF
+            # Atualizar norma com caminho do PDF e status
             norma.pdf_path = str(output_path)
             norma.status = 'pdf_downloaded'
-            norma.save(update_fields=['pdf_path', 'status', 'updated_at'])
+            norma.processing_error = ''  # Limpar erros anteriores
+            norma.save(update_fields=['pdf_path', 'status', 'processing_error', 'updated_at'])
             
-            logger.info(f"PDF baixado com sucesso para Norma {norma}")
-            return {'success': True, 'path': str(output_path)}
+            logger.info(
+                f"[Task {task_id}] PDF baixado com sucesso: Norma {norma} -> {output_path}"
+            )
+            return {
+                'success': True,
+                'path': str(output_path),
+                'norma_id': norma_id,
+                'norma_str': str(norma)
+            }
         else:
+            # Marcar para revisão em caso de falha
             norma.needs_review = True
-            norma.processing_error = 'Falha no download do PDF'
+            norma.processing_error = 'Falha no download do PDF (HTTP error ou timeout)'
             norma.save(update_fields=['needs_review', 'processing_error', 'updated_at'])
             
-            return {'success': False, 'error': 'Falha no download'}
+            logger.error(f"[Task {task_id}] Falha no download do PDF da Norma {norma}")
+            
+            # Retry com backoff exponencial
+            raise self.retry(
+                exc=Exception(f"Download falhou para norma_id={norma_id}"),
+                countdown=60 * (2 ** self.request.retries)
+            )
         
     except Norma.DoesNotExist:
-        logger.error(f"Norma ID={norma_id} não encontrada")
-        return {'success': False, 'error': 'Norma não encontrada'}
+        error_msg = f"Norma ID={norma_id} não encontrada no banco de dados"
+        logger.error(f"[Task {task_id}] {error_msg}")
+        return {'success': False, 'error': error_msg, 'norma_id': norma_id}
+        
     except Exception as e:
-        logger.error(f"Erro ao baixar PDF da Norma ID={norma_id}: {str(e)}")
-        return {'success': False, 'error': str(e)}
+        error_msg = f"Erro crítico ao baixar PDF da Norma ID={norma_id}: {str(e)}"
+        logger.error(f"[Task {task_id}] {error_msg}")
+        
+        # Tentar marcar a norma com erro (graceful degradation)
+        try:
+            norma = Norma.objects.get(id=norma_id)
+            norma.needs_review = True
+            norma.processing_error = f"Erro crítico: {str(e)[:200]}"
+            norma.save(update_fields=['needs_review', 'processing_error', 'updated_at'])
+        except:
+            pass  # Se falhar ao salvar, apenas logar
+        
+        # Retry
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
+        
+        return {'success': False, 'error': str(e), 'norma_id': norma_id}
 
