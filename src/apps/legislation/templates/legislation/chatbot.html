@@ -3,10 +3,6 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_head %}
-<!-- Marked.js for Markdown rendering -->
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<!-- DOMPurify for XSS protection -->
-<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
 <!-- Google Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -522,7 +518,15 @@
     </div>
 </div>
 
+<!-- Load external libraries before main script -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
 <script>
+// Debug: Check if libraries loaded
+console.log('Marked loaded:', typeof marked !== 'undefined' ? '✓' : '✗ FAILED');
+console.log('DOMPurify loaded:', typeof DOMPurify !== 'undefined' ? '✓' : '✗ FAILED');
+
 // Get CSRF token from cookies
 function getCookie(name) {
     let cookieValue = null;
@@ -630,27 +634,38 @@ document.addEventListener('DOMContentLoaded', function() {
         // Render content with Markdown support for assistant messages (with security)
         const contentDiv = document.createElement('div');
         if (role === 'assistant' && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
-            // Configure marked for better rendering
-            marked.setOptions({
-                breaks: true,
-                gfm: true,
-                headerIds: false,
-                mangle: false
-            });
-            
-            // Step 1: Convert Markdown to HTML
-            const rawHtml = marked.parse(content);
-            
-            // Step 2: Sanitize HTML to prevent XSS
-            const cleanHtml = DOMPurify.sanitize(rawHtml, {
-                ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'code', 'pre', 'ul', 'ol', 'li', 'h3', 'h4', 'blockquote'],
-                ALLOWED_ATTR: []
-            });
-            
-            // Step 3: Inject sanitized HTML
-            contentDiv.innerHTML = cleanHtml;
+            try {
+                // Configure marked for better rendering
+                marked.setOptions({
+                    breaks: true,
+                    gfm: true,
+                    headerIds: false,
+                    mangle: false
+                });
+                
+                // Step 1: Convert Markdown to HTML
+                const rawHtml = marked.parse(content);
+                
+                // Step 2: Sanitize HTML to prevent XSS
+                const cleanHtml = DOMPurify.sanitize(rawHtml, {
+                    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'code', 'pre', 'ul', 'ol', 'li', 'h3', 'h4', 'blockquote'],
+                    ALLOWED_ATTR: []
+                });
+                
+                // Step 3: Inject sanitized HTML
+                contentDiv.innerHTML = cleanHtml;
+                console.log('Markdown rendered successfully');
+            } catch (error) {
+                console.error('Markdown rendering failed:', error);
+                // Fallback to plain text with basic formatting
+                contentDiv.textContent = content;
+                contentDiv.style.lineHeight = '1.7';
+            }
         } else {
-            // Fallback to plain text
+            // Libraries not loaded - show error and use plain text
+            if (role === 'assistant') {
+                console.error('Markdown libraries not loaded. Marked:', typeof marked, 'DOMPurify:', typeof DOMPurify);
+            }
             contentDiv.textContent = content;
             contentDiv.style.lineHeight = '1.7';
         }
