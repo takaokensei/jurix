@@ -82,6 +82,8 @@ class Norma(TimeStampedModel):
         ('ocr_completed', 'OCR Completo'),
         ('segmentation_processing', 'Segmentação em Processamento'),
         ('segmented', 'Texto Segmentado'),
+        ('entity_extraction', 'Extração de Entidades'),
+        ('entities_extracted', 'Entidades Extraídas'),
         ('nlp_processing', 'NLP em Processamento'),
         ('ready', 'Pronto para Consolidação'),
         ('failed', 'Falha no Processamento'),
@@ -283,4 +285,153 @@ class Dispositivo(TimeStampedModel):
             pai = pai.dispositivo_pai
         
         return nivel
+
+
+class EventoAlteracao(TimeStampedModel):
+    """
+    Model for tracking legal alteration events and cross-references.
+    
+    Represents relationships where one dispositivo modifies, revokes, or
+    references another norma or dispositivo.
+    
+    Examples:
+    - "Revoga-se o Art. 5º da Lei 1.234/2020"
+    - "Dê-se nova redação ao § 2º do Art. 10"
+    - "Fica alterado o inciso III..."
+    """
+    
+    # Action types for legal modifications
+    ACAO_CHOICES = [
+        ('REVOGA', 'Revogação'),          # Revokes/annuls
+        ('ALTERA', 'Alteração'),          # Modifies/changes
+        ('ADICIONA', 'Adição'),           # Adds new content
+        ('SUBSTITUI', 'Substituição'),    # Replaces
+        ('REGULAMENTA', 'Regulamentação'), # Regulates
+        ('REFERENCIA', 'Referência'),     # Generic reference
+    ]
+    
+    # Source: the dispositivo that causes the change
+    dispositivo_fonte = models.ForeignKey(
+        Dispositivo,
+        on_delete=models.CASCADE,
+        related_name='alteracoes_causadas',
+        verbose_name='Dispositivo Fonte',
+        help_text='Dispositivo que origina a alteração'
+    )
+    
+    # Action type
+    acao = models.CharField(
+        max_length=20,
+        choices=ACAO_CHOICES,
+        verbose_name='Ação',
+        db_index=True,
+        help_text='Tipo de ação legal (revoga, altera, etc.)'
+    )
+    
+    # Raw text of the reference (for auditing)
+    target_text = models.CharField(
+        max_length=500,
+        verbose_name='Texto da Referência',
+        help_text='Texto bruto da referência extraída (ex: "o Art. 5º da Lei 123/2020")'
+    )
+    
+    # Target norma (if identified)
+    norma_alvo = models.ForeignKey(
+        Norma,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='alteracoes_recebidas',
+        verbose_name='Norma Alvo',
+        help_text='Norma que é alvo da alteração (se identificada)'
+    )
+    
+    # Target dispositivo (if identified within same norma or linked norma)
+    dispositivo_alvo = models.ForeignKey(
+        Dispositivo,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='alteracoes_recebidas',
+        verbose_name='Dispositivo Alvo',
+        help_text='Dispositivo específico que é alvo da alteração'
+    )
+    
+    # Extraction metadata
+    extraction_confidence = models.FloatField(
+        verbose_name='Confiança da Extração',
+        default=0.0,
+        help_text='Confiança do NER na extração (0-1)'
+    )
+    
+    extraction_method = models.CharField(
+        max_length=50,
+        verbose_name='Método de Extração',
+        default='regex',
+        help_text='Método usado para extração (regex, spacy, bert, etc.)'
+    )
+    
+    # Parsed components (for complex references)
+    referencia_tipo = models.CharField(
+        max_length=50,
+        verbose_name='Tipo Referenciado',
+        blank=True,
+        help_text='Tipo do elemento referenciado (artigo, parágrafo, lei, etc.)'
+    )
+    
+    referencia_numero = models.CharField(
+        max_length=50,
+        verbose_name='Número Referenciado',
+        blank=True,
+        help_text='Número do elemento referenciado (ex: "5º", "123/2020")'
+    )
+    
+    # Status tracking
+    validado = models.BooleanField(
+        default=False,
+        verbose_name='Validado',
+        help_text='Se a referência foi validada/confirmada manualmente'
+    )
+    
+    class Meta:
+        verbose_name = 'Evento de Alteração'
+        verbose_name_plural = 'Eventos de Alteração'
+        ordering = ['dispositivo_fonte__norma', 'dispositivo_fonte__ordem']
+        indexes = [
+            models.Index(fields=['dispositivo_fonte', 'acao']),
+            models.Index(fields=['norma_alvo']),
+            models.Index(fields=['dispositivo_alvo']),
+            models.Index(fields=['acao']),
+        ]
+    
+    def __str__(self) -> str:
+        acao_display = self.get_acao_display()
+        fonte = str(self.dispositivo_fonte)
+        
+        if self.dispositivo_alvo:
+            return f"{fonte} {acao_display} {self.dispositivo_alvo}"
+        elif self.norma_alvo:
+            return f"{fonte} {acao_display} {self.norma_alvo}"
+        else:
+            return f"{fonte} {acao_display} (não identificado)"
+    
+    def get_descricao_completa(self) -> str:
+        """
+        Retorna descrição completa do evento com contexto.
+        """
+        fonte_caminho = self.dispositivo_fonte.get_caminho_completo()
+        norma_fonte = self.dispositivo_fonte.norma
+        
+        desc = f"Na {norma_fonte}, o {fonte_caminho} {self.get_acao_display()}"
+        
+        if self.dispositivo_alvo:
+            desc += f" o {self.dispositivo_alvo.get_caminho_completo()}"
+            if self.dispositivo_alvo.norma != norma_fonte:
+                desc += f" da {self.dispositivo_alvo.norma}"
+        elif self.norma_alvo:
+            desc += f" dispositivo(s) da {self.norma_alvo}"
+        else:
+            desc += f" '{self.target_text}'"
+        
+        return desc
 
