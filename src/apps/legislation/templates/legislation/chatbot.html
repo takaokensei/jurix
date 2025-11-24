@@ -220,6 +220,11 @@
         background: #fee2e2;
         color: #991b1b;
     }
+    
+    /* Hide CSRF token input (it's sent via header) */
+    input[name="csrfmiddlewaretoken"] {
+        display: none;
+    }
 </style>
 {% endblock %}
 
@@ -260,6 +265,7 @@
     
     <div class="chat-input-container">
         <form class="chat-input-form" id="chatForm">
+            {% csrf_token %}
             <input 
                 type="text" 
                 class="chat-input" 
@@ -276,6 +282,39 @@
 </div>
 
 <script>
+// Get CSRF token from cookies (Django standard)
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Get CSRF token (try cookie first, then form input)
+function getCsrfToken() {
+    // Try to get from cookie
+    let token = getCookie('csrftoken');
+    
+    // If not found, try to get from form input (Django adds it when {% csrf_token %} is used)
+    if (!token) {
+        const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (csrfInput) {
+            token = csrfInput.value;
+        }
+    }
+    
+    return token;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const chatForm = document.getElementById('chatForm');
     const questionInput = document.getElementById('questionInput');
@@ -298,11 +337,22 @@ document.addEventListener('DOMContentLoaded', function() {
         loadingIndicator.classList.add('active');
         
         try {
+            // Get CSRF token
+            const csrftoken = getCsrfToken();
+            
+            if (!csrftoken) {
+                addMessage('assistant', '❌ Erro: Token CSRF não encontrado. Por favor, recarregue a página.');
+                submitButton.disabled = false;
+                loadingIndicator.classList.remove('active');
+                return;
+            }
+            
             // Send question to backend
             const response = await fetch('{% url "legislation:chatbot" %}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
                 },
                 body: JSON.stringify({
                     question: question,
