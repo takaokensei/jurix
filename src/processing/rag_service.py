@@ -11,6 +11,7 @@ from django.db import connection
 
 from src.apps.legislation.models import Dispositivo
 from src.llm_engine.ollama_service import OllamaService
+from src.processing.cache_service import get_cache_service
 
 logger = logging.getLogger(__name__)
 
@@ -25,15 +26,18 @@ class RAGService:
     - Ranked results by relevance
     """
     
-    def __init__(self, model: str = "nomic-embed-text"):
+    def __init__(self, model: str = "nomic-embed-text", use_cache: bool = True):
         """
         Initialize RAG service.
         
         Args:
             model: Ollama model to use for query embeddings
+            use_cache: Enable Redis caching for embeddings and results
         """
         self.ollama = OllamaService(model=model)
         self.model = model
+        self.use_cache = use_cache
+        self.cache = get_cache_service() if use_cache else None
     
     def semantic_search(
         self,
@@ -69,14 +73,24 @@ class RAGService:
         
         logger.info(f"Performing semantic search for query: '{query_text[:100]}...'")
         
-        # Step 1: Generate query embedding
-        query_embedding = self.ollama.generate_embedding(query_text.strip())
+        # Step 1: Try to get cached embedding
+        query_embedding = None
+        if self.use_cache and self.cache:
+            query_embedding = self.cache.get_embedding(query_text.strip(), self.model)
         
+        # Step 2: Generate embedding if not cached
         if not query_embedding:
-            logger.error("Failed to generate embedding for query")
-            return []
+            query_embedding = self.ollama.generate_embedding(query_text.strip())
+            
+            if not query_embedding:
+                logger.error("Failed to generate embedding for query")
+                return []
+            
+            # Cache the generated embedding
+            if self.use_cache and self.cache:
+                self.cache.set_embedding(query_text.strip(), self.model, query_embedding)
         
-        logger.debug(f"Generated query embedding of dimension {len(query_embedding)}")
+        logger.debug(f"Query embedding dimension: {len(query_embedding)}")
         
         # Step 2: Execute vector similarity search using raw SQL
         # Using <-> operator for cosine distance (pgvector)
