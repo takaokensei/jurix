@@ -965,17 +965,63 @@
             // Typewriter effect - callback when complete to show sources
             typewriterEffect(messageId, answer, () => {
                 // Callback: Add sources only after answer is complete
+                // Show sources gradually, ordered by relevance
                 if (sources && sources.length > 0) {
-                    sourcesContainer.innerHTML = createSourcesSection(sources);
-                    scrollToBottom();
+                    showSourcesGradually(sourcesContainer, sources);
                 }
             });
         }
         
-        function createSourcesSection(sources) {
-            if (!sources || sources.length === 0) return '';
+        function showSourcesGradually(container, sources) {
+            if (!sources || sources.length === 0) return;
             
-            const sourcesCards = sources.map((source, index) => {
+            // Sort sources by similarity_score (highest first)
+            const sortedSources = [...sources].sort((a, b) => {
+                const scoreA = parseFloat(a.similarity_score || 0);
+                const scoreB = parseFloat(b.similarity_score || 0);
+                return scoreB - scoreA; // Descending order
+            });
+            
+            // Create header first
+            const headerHtml = `
+                <div class="sources-section">
+                    <div class="sources-header">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M8 2V14M2 8H14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        <span>${sortedSources.length} ${sortedSources.length === 1 ? 'Fonte' : 'Fontes'}</span>
+                    </div>
+                    <div class="sources-grid" id="sources-grid-${Date.now()}"></div>
+                </div>
+            `;
+            
+            container.innerHTML = headerHtml;
+            const gridContainer = container.querySelector('.sources-grid');
+            
+            // Show each source with progressive delay (stagger effect)
+            sortedSources.forEach((source, index) => {
+                setTimeout(() => {
+                    const cardHtml = createSourceCard(source, index);
+                    gridContainer.insertAdjacentHTML('beforeend', cardHtml);
+                    
+                    // Trigger animation
+                    const cardElement = gridContainer.lastElementChild;
+                    if (cardElement) {
+                        cardElement.style.opacity = '0';
+                        cardElement.style.transform = 'translateY(10px)';
+                        requestAnimationFrame(() => {
+                            cardElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                            cardElement.style.opacity = '1';
+                            cardElement.style.transform = 'translateY(0)';
+                        });
+                    }
+                    
+                    scrollToBottom();
+                }, index * 150); // 150ms delay between each source
+            });
+        }
+        
+        function createSourceCard(source, index) {
                 // Backend returns: { id, text, full_text, similarity_score, norma_ref, dispositivo_ref, distance, ... }
                 let rawScore = source.similarity_score;
                 
@@ -987,20 +1033,35 @@
                 }
                 
                 // Parse and normalize score
-                const normalizedScore = Math.max(0, Math.min(1, parseFloat(rawScore) || 0));
+                let normalizedScore = Math.max(0, Math.min(1, parseFloat(rawScore) || 0));
                 
-                // Convert to percentage - use a more visible scale if scores are very low
-                // If all scores are very low (< 0.1), scale them up for visibility
-                const minScore = Math.min(...sources.map(s => parseFloat(s.similarity_score || 0)));
-                const maxScore = Math.max(...sources.map(s => parseFloat(s.similarity_score || 0)));
+                // If score is exactly 0 or very close, try distance-based calculation
+                if (normalizedScore === 0 || normalizedScore < 0.001) {
+                    const distance = parseFloat(source.distance || 1.0);
+                    // Distance in pgvector cosine is typically 0-2, convert to similarity
+                    // For cosine distance: similarity = 1 - distance (clamped)
+                    normalizedScore = Math.max(0, Math.min(1, 1 - distance));
+                }
                 
+                // Convert to percentage with better scaling
+                // Use relative scaling if scores are low but not zero
                 let scorePercent;
-                if (maxScore < 0.1 && maxScore > 0) {
-                    // Scale low scores to 40-100% range for better visibility
-                    scorePercent = Math.round(40 + (normalizedScore / maxScore) * 60);
+                if (normalizedScore === 0) {
+                    // If truly zero, show as 1% minimum for visibility
+                    scorePercent = 1;
+                } else if (normalizedScore < 0.01) {
+                    // Very low scores: scale to 10-30% range
+                    scorePercent = Math.round(10 + (normalizedScore / 0.01) * 20);
+                } else if (normalizedScore < 0.1) {
+                    // Low scores: scale to 30-70% range
+                    scorePercent = Math.round(30 + (normalizedScore / 0.1) * 40);
                 } else {
+                    // Normal scores: direct conversion
                     scorePercent = Math.round(normalizedScore * 100);
                 }
+                
+                // Ensure minimum visibility
+                scorePercent = Math.max(1, Math.min(100, scorePercent));
                 
                 const scoreColor = scorePercent >= 80 ? 'var(--color-success)' : 
                                    scorePercent >= 60 ? 'var(--color-warning)' : 
@@ -1034,7 +1095,19 @@
                         <div class="source-snippet">${escapeHtml(snippet.substring(0, 120))}${snippet.length > 120 ? '...' : ''}</div>
                     </div>
                 `;
-            }).join('');
+        }
+        
+        // Legacy function for backward compatibility (not used anymore)
+        function createSourcesSection(sources) {
+            if (!sources || sources.length === 0) return '';
+            
+            const sortedSources = [...sources].sort((a, b) => {
+                const scoreA = parseFloat(a.similarity_score || 0);
+                const scoreB = parseFloat(b.similarity_score || 0);
+                return scoreB - scoreA;
+            });
+            
+            const sourcesCards = sortedSources.map((source, index) => createSourceCard(source, index)).join('');
             
             return `
                 <div class="sources-section">
@@ -1042,7 +1115,7 @@
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M8 2V14M2 8H14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         </svg>
-                        <span>${sources.length} ${sources.length === 1 ? 'Fonte' : 'Fontes'}</span>
+                        <span>${sortedSources.length} ${sortedSources.length === 1 ? 'Fonte' : 'Fontes'}</span>
                     </div>
                     <div class="sources-grid">
                         ${sourcesCards}

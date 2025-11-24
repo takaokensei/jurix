@@ -176,12 +176,31 @@ class RAGService:
                 
                 # Ensure similarity_score is normalized between 0.0 and 1.0
                 raw_score = float(raw_result['similarity_score'])
-                normalized_score = max(0.0, min(1.0, raw_score))
+                raw_distance = float(raw_result['distance'])
+                
+                # Log for debugging
+                logger.debug(
+                    f"Dispositivo {dispositivo.id}: "
+                    f"raw_score={raw_score:.6f}, distance={raw_distance:.6f}, "
+                    f"calculated_similarity={1-raw_distance:.6f}"
+                )
+                
+                # If similarity is negative or zero, recalculate from distance
+                if raw_score <= 0:
+                    # Cosine distance can be 0-2, similarity should be 1 - distance
+                    # But clamp to ensure valid range
+                    normalized_score = max(0.0, min(1.0, 1.0 - raw_distance))
+                    logger.warning(
+                        f"Dispositivo {dispositivo.id}: "
+                        f"Raw score was {raw_score}, recalculated to {normalized_score:.6f} from distance {raw_distance:.6f}"
+                    )
+                else:
+                    normalized_score = max(0.0, min(1.0, raw_score))
                 
                 results.append({
                     'dispositivo': dispositivo,
                     'similarity_score': normalized_score,
-                    'distance': float(raw_result['distance']),
+                    'distance': raw_distance,
                     'context': context,
                     'embedding_model': raw_result['embedding_model'],
                 })
