@@ -279,8 +279,14 @@ class RAGService:
                 'confidence': 0.0
             }
         
-        # Step 2: Build prompt for LLM
+        # Step 2: Build prompt for LLM with Markdown formatting instructions
         prompt = f"""Você é um assistente jurídico especializado em legislação brasileira.
+
+IMPORTANTE: Formate sua resposta em Markdown para melhor legibilidade:
+- Use **negrito** para destacar nomes de leis, artigos e termos jurídicos importantes
+- Use listas com bullet points (- ou •) para enumerar regras, requisitos ou condições
+- Separe parágrafos claramente com quebras de linha duplas
+- Use ### para subtítulos quando necessário organizar a resposta
 
 Com base nos seguintes dispositivos legais relevantes, responda a pergunta do usuário de forma clara e objetiva.
 
@@ -292,7 +298,7 @@ PERGUNTA DO USUÁRIO:
 
 INSTRUÇÕES:
 - Responda em português claro e objetivo
-- Cite os dispositivos específicos que fundamentam sua resposta
+- Cite os dispositivos específicos usando **negrito** para as referências legais
 - Se não houver informação suficiente, seja honesto sobre as limitações
 - NUNCA invente ou alucine informações legais
 
