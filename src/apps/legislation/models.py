@@ -37,6 +37,11 @@ class Norma(TimeStampedModel):
     
     # Conteúdo
     texto_original = models.TextField(verbose_name='Texto Original', blank=True)
+    texto_consolidado = models.TextField(
+        verbose_name='Texto Consolidado',
+        blank=True,
+        help_text='Texto legal consolidado após aplicação de todas as alterações'
+    )
     observacao = models.TextField(verbose_name='Observação', blank=True)
     
     # Recursos (PDF)
@@ -84,6 +89,8 @@ class Norma(TimeStampedModel):
         ('segmented', 'Texto Segmentado'),
         ('entity_extraction', 'Extração de Entidades'),
         ('entities_extracted', 'Entidades Extraídas'),
+        ('consolidation', 'Consolidação em Processamento'),
+        ('consolidated', 'Consolidado'),
         ('nlp_processing', 'NLP em Processamento'),
         ('ready', 'Pronto para Consolidação'),
         ('failed', 'Falha no Processamento'),
