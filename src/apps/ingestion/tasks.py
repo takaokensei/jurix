@@ -20,7 +20,8 @@ from django.conf import settings
 from django.utils.dateparse import parse_date
 
 from src.clients.sapl.sapl_client import SaplAPIClient
-from src.apps.legislation.models import Norma
+from src.apps.legislation.models import Norma, Dispositivo
+from src.processing.legal_parser import LegalTextParser
 
 logger = logging.getLogger(__name__)
 
@@ -581,6 +582,220 @@ def ocr_pdf_task(self, norma_id: int) -> Dict[str, Any]:
         # Retry se ainda houver tentativas
         if self.request.retries < self.max_retries:
             raise self.retry(exc=e, countdown=120 * (2 ** self.request.retries))
+        
+        return {
+            'success': False,
+            'error': str(e),
+            'norma_id': norma_id
+        }
+
+
+@shared_task(
+    bind=True,
+    name='ingestion.segment_text_task',
+    max_retries=2,
+    default_retry_delay=60
+)
+def segment_text_task(self, norma_id: int) -> Dict[str, Any]:
+    """
+    Task Celery for segmenting legal text into hierarchical Dispositivo structure.
+    
+    Flow:
+    1. Load norma with texto_original
+    2. Parse text using regex patterns (LegalTextParser)
+    3. Build hierarchy (parent-child relationships)
+    4. Save Dispositivo instances to database
+    5. Update norma status to 'segmented'
+    
+    Args:
+        norma_id: ID of the norma in local database
+        
+    Returns:
+        Dict with segmentation statistics:
+        {
+            'success': bool,
+            'norma_id': int,
+            'dispositivos_created': int,
+            'articles': int,
+            'paragraphs': int,
+            'incisos': int,
+            'alineas': int,
+            'processing_time': float,
+            'error': str (if failure)
+        }
+        
+    Raises:
+        Automatic retry in case of failure (2x with 60s backoff)
+    """
+    task_id = self.request.id
+    start_time = time.time()
+    
+    logger.info(f"[Task {task_id}] Starting text segmentation for Norma ID={norma_id}")
+    
+    try:
+        norma = Norma.objects.get(id=norma_id)
+        
+        # Validation: norma must have OCR text
+        if not norma.texto_original:
+            error_msg = f"No texto_original found for segmentation"
+            logger.warning(f"[Task {task_id}] {error_msg}")
+            norma.needs_review = True
+            norma.processing_error = error_msg
+            norma.save(update_fields=['needs_review', 'processing_error', 'updated_at'])
+            return {
+                'success': False,
+                'error': error_msg,
+                'norma_id': norma_id
+            }
+        
+        # Mark as processing
+        norma.status = 'segmentation_processing'
+        norma.save(update_fields=['status', 'updated_at'])
+        
+        logger.info(f"[Task {task_id}] Parsing legal text ({len(norma.texto_original)} chars)")
+        
+        # Parse text with regex
+        parser = LegalTextParser()
+        elements = parser.parse_legal_text(norma.texto_original)
+        
+        if not elements:
+            error_msg = f"No legal elements found in text (no articles, paragraphs, etc.)"
+            logger.warning(f"[Task {task_id}] {error_msg}")
+            norma.needs_review = True
+            norma.processing_error = error_msg
+            norma.status = 'ocr_completed'  # Revert to previous status
+            norma.save(update_fields=['needs_review', 'processing_error', 'status', 'updated_at'])
+            
+            return {
+                'success': False,
+                'error': error_msg,
+                'norma_id': norma_id
+            }
+        
+        # Build hierarchy
+        hierarchy = parser.build_hierarchy(elements)
+        
+        logger.info(
+            f"[Task {task_id}] Found {len(hierarchy)} elements, "
+            f"building hierarchical structure"
+        )
+        
+        # Delete existing dispositivos (in case of reprocessing)
+        deleted_count = Dispositivo.objects.filter(norma=norma).delete()[0]
+        if deleted_count > 0:
+            logger.info(f"[Task {task_id}] Deleted {deleted_count} existing dispositivos")
+        
+        # Create Dispositivo instances
+        dispositivos_to_create = []
+        dispositivos_map = {}  # index -> Dispositivo instance
+        
+        stats = {
+            'artigo': 0,
+            'paragrafo': 0,
+            'inciso': 0,
+            'alinea': 0
+        }
+        
+        # First pass: create all dispositivos without parent relationships
+        for elem in hierarchy:
+            texto_limpo = parser.clean_text(elem['texto'])
+            
+            dispositivo = Dispositivo(
+                norma=norma,
+                tipo=elem['tipo'],
+                numero=elem['numero'],
+                texto=texto_limpo,
+                texto_bruto=elem['full_match'],
+                ordem=elem['index'],
+                segmentation_confidence=1.0  # High confidence for regex matches
+            )
+            
+            dispositivos_map[elem['index']] = dispositivo
+            dispositivos_to_create.append(dispositivo)
+            
+            # Count by type
+            tipo = elem['tipo']
+            if tipo in stats:
+                stats[tipo] += 1
+        
+        # Bulk create (fast)
+        created_dispositivos = Dispositivo.objects.bulk_create(dispositivos_to_create)
+        
+        logger.info(
+            f"[Task {task_id}] Created {len(created_dispositivos)} dispositivos "
+            f"(bulk insert)"
+        )
+        
+        # Second pass: set parent relationships
+        updates_needed = []
+        for elem in hierarchy:
+            if elem['parent_index'] is not None:
+                child = dispositivos_map[elem['index']]
+                parent = dispositivos_map[elem['parent_index']]
+                
+                # Find the created instance by ordem
+                child_db = Dispositivo.objects.get(norma=norma, ordem=elem['index'])
+                parent_db = Dispositivo.objects.get(norma=norma, ordem=elem['parent_index'])
+                
+                child_db.dispositivo_pai = parent_db
+                updates_needed.append(child_db)
+        
+        # Bulk update parents (if any)
+        if updates_needed:
+            Dispositivo.objects.bulk_update(updates_needed, ['dispositivo_pai'])
+            logger.info(
+                f"[Task {task_id}] Updated {len(updates_needed)} parent relationships"
+            )
+        
+        # Update norma status
+        norma.status = 'segmented'
+        norma.processing_error = ''
+        norma.save(update_fields=['status', 'processing_error', 'updated_at'])
+        
+        processing_time = time.time() - start_time
+        
+        logger.info(
+            f"[Task {task_id}] Segmentation completed for Norma {norma}: "
+            f"{len(created_dispositivos)} dispositivos "
+            f"({stats['artigo']} articles, {stats['paragrafo']} paragraphs, "
+            f"{stats['inciso']} incisos, {stats['alinea']} alineas) "
+            f"in {processing_time:.2f}s"
+        )
+        
+        return {
+            'success': True,
+            'norma_id': norma_id,
+            'norma_str': str(norma),
+            'dispositivos_created': len(created_dispositivos),
+            'articles': stats['artigo'],
+            'paragraphs': stats['paragrafo'],
+            'incisos': stats['inciso'],
+            'alineas': stats['alinea'],
+            'processing_time': processing_time
+        }
+        
+    except Norma.DoesNotExist:
+        error_msg = f"Norma ID={norma_id} not found in database"
+        logger.error(f"[Task {task_id}] {error_msg}")
+        return {'success': False, 'error': error_msg, 'norma_id': norma_id}
+        
+    except Exception as e:
+        error_msg = f"Critical error in text segmentation for Norma ID={norma_id}: {str(e)}"
+        logger.error(f"[Task {task_id}] {error_msg}")
+        
+        # Mark norma with error
+        try:
+            norma = Norma.objects.get(id=norma_id)
+            norma.needs_review = True
+            norma.processing_error = f"Segmentation error: {str(e)[:200]}"
+            norma.status = 'failed'
+            norma.save(update_fields=['needs_review', 'processing_error', 'status', 'updated_at'])
+        except:
+            pass
+        
+        # Retry if attempts remaining
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
         
         return {
             'success': False,
