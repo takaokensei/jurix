@@ -304,8 +304,17 @@ class RAGService:
 IMPORTANTE: Formate sua resposta em Markdown para melhor legibilidade:
 - Use **negrito** para destacar nomes de leis, artigos e termos jurídicos importantes
 - Use listas com bullet points (- ou •) para enumerar regras, requisitos ou condições
+- **CRÍTICO**: Cada item de lista DEVE estar em uma linha separada. Use quebra de linha ANTES de cada bullet point
 - Separe parágrafos claramente com quebras de linha duplas
 - Use ### para subtítulos quando necessário organizar a resposta
+
+EXEMPLO CORRETO:
+• Item 1
+• Item 2
+• Item 3
+
+EXEMPLO INCORRETO (NÃO FAÇA ISSO):
+• Item 1; • Item 2; • Item 3
 
 Com base nos seguintes dispositivos legais relevantes, responda a pergunta do usuário de forma clara e objetiva.
 
@@ -338,6 +347,9 @@ RESPOSTA:"""
                 'confidence': 0.0
             }
         
+        # Step 4: Post-process markdown to fix formatting issues
+        answer = self._fix_markdown_formatting(answer)
+        
         # Calculate average confidence from similarity scores
         avg_confidence = sum(r['similarity_score'] for r in results) / len(results)
         
@@ -348,6 +360,45 @@ RESPOSTA:"""
             'model': model,
             'context_length': len(context)
         }
+    
+    def _fix_markdown_formatting(self, text: str) -> str:
+        """
+        Post-process markdown to fix common formatting issues.
+        
+        Fixes:
+        - Lists without proper line breaks (e.g., "• Item 1; • Item 2" → "• Item 1\n• Item 2")
+        - Multiple bullet points on same line
+        """
+        import re
+        
+        # Fix: Multiple bullet points on same line separated by semicolons
+        # Pattern: "• Text1; • Text2" → "• Text1\n• Text2"
+        text = re.sub(
+            r'([•\-])\s+([^•\n]+?);\s+([•\-])',
+            r'\1 \2\n\3',
+            text
+        )
+        
+        # Fix: Multiple bullet points on same line (no semicolon, just space)
+        # Pattern: "• Text1 • Text2" → "• Text1\n• Text2"
+        text = re.sub(
+            r'([•\-])\s+([^•\n]+?)\s+([•\-])\s+',
+            r'\1 \2\n\3 ',
+            text
+        )
+        
+        # Fix: Ensure bullet points are on separate lines
+        # Replace "; •" or "; -" with newline + bullet
+        text = re.sub(r';\s+([•\-])', r'\n\1', text)
+        
+        # Fix: Ensure proper spacing before bullet points
+        # Add newline before bullet if not already there
+        text = re.sub(r'([^\n])([•\-])\s+', r'\1\n\2 ', text)
+        
+        # Clean up: Remove multiple consecutive newlines (max 2)
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        
+        return text
 
 
 # Convenience function for quick searches

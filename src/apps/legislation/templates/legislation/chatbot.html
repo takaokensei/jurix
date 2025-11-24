@@ -439,6 +439,7 @@
             border-radius: var(--radius-md);
             padding: 1rem;
             transition: all 0.2s;
+            position: relative;
         }
         
         .source-card-clickable {
@@ -451,16 +452,26 @@
             transform: translateY(-2px);
         }
         
-        .source-link-hint {
-            margin-top: 0.5rem;
-            font-size: 0.75rem;
-            color: var(--color-primary);
-            font-weight: 500;
-            opacity: 0.8;
+        /* Swiss design: minimal hover for clickable cards */
+        .source-card-clickable:hover {
+            border-color: var(--color-primary);
         }
         
-        .source-card:hover .source-link-hint {
-            opacity: 1;
+        /* Swiss design: subtle hover indication for clickable sources */
+        .source-card-clickable::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--color-primary);
+            transform: scaleX(0);
+            transition: transform 0.2s ease;
+        }
+        
+        .source-card-clickable:hover::after {
+            transform: scaleX(1);
         }
         
         .source-card-header {
@@ -1131,7 +1142,6 @@
                         </div>
                         <div class="source-meta">${escapeHtml(dispositivoRef)}</div>
                         <div class="source-snippet">${escapeHtml(snippet.substring(0, 120))}${snippet.length > 120 ? '...' : ''}</div>
-                        ${linkUrl ? '<div class="source-link-hint">🔗 Clique para ver no SAPL</div>' : ''}
                     </div>
                 `;
         }
@@ -1188,10 +1198,34 @@
             scrollToBottom();
         }
         
+        // ===== MARKDOWN POST-PROCESSING =====
+        function fixMarkdownFormatting(text) {
+            // Fix: Multiple bullet points on same line
+            // Pattern: "• Item 1; • Item 2" → "• Item 1\n• Item 2"
+            text = text.replace(/([•\-])\s+([^•\n]+?);\s+([•\-])/g, '$1 $2\n$3');
+            
+            // Fix: Multiple bullets without semicolon
+            text = text.replace(/([•\-])\s+([^•\n]+?)\s+([•\-])\s+/g, '$1 $2\n$3 ');
+            
+            // Fix: Semicolon before bullet → newline
+            text = text.replace(/;\s+([•\-])/g, '\n$1');
+            
+            // Fix: Ensure bullets are on separate lines
+            text = text.replace(/([^\n])([•\-])\s+/g, '$1\n$2 ');
+            
+            // Clean up: Remove excessive newlines
+            text = text.replace(/\n{3,}/g, '\n\n');
+            
+            return text;
+        }
+        
         // ===== TYPEWRITER EFFECT WITH INCREMENTAL MARKDOWN =====
         function typewriterEffect(elementId, text, onComplete) {
             const element = document.getElementById(elementId);
             if (!element) return;
+            
+            // Fix markdown formatting before processing
+            text = fixMarkdownFormatting(text);
             
             // Split text into words for smoother typewriter effect
             // This allows us to render markdown incrementally word-by-word
