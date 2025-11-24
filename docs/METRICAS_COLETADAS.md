@@ -33,7 +33,7 @@
 - **Taxa de Sucesso:** 100% (todas as normas segmentadas)
 
 #### 5. NER/Extraction
-- **Eventos de Alteração:** [A ser contabilizado]
+- **Eventos de Alteração:** 712 eventos identificados
 - **Referências Cruzadas:** [A ser contabilizado]
 
 #### 6. Consolidação

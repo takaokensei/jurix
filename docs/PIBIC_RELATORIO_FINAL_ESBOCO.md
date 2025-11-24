@@ -228,7 +228,7 @@ Desenvolver um sistema inteligente de consolidação normativa que transforme PD
 
 **Métricas:**
 - ✅ Normas consolidadas: **356 normas** (100% do acervo)
-- ✅ Eventos de alteração identificados: **A ser contabilizado** (requer query no banco)
+- ✅ Eventos de alteração identificados: **712 eventos** (média de ~2 eventos por norma)
 - ✅ Taxa de acurácia de consolidação: **A ser validada** (requer revisão manual de amostra)
 
 #### 4.1.4. Sprint 4: RAG e Busca Semântica
