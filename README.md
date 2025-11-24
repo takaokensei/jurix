@@ -45,7 +45,8 @@ class Jurix:
             {"feature": "Rastreabilidade Jurídica", "icon": "🔍"},
             {"feature": "Ingestão Automatizada (SAPL)", "icon": "📥"},
             {"feature": "OCR + NLP Processing", "icon": "🧠"},
-            {"feature": "Vetorização Semântica", "icon": "🎯"}
+            {"feature": "Vetorização Semântica", "icon": "🎯"},
+            {"feature": "Chatbot RAG", "icon": "💬"}
         ]
     
     def differentiators(self):
@@ -243,7 +244,7 @@ jurix/
 
 ```bash
 # 1. Clone o repositório
-git clone https://github.com/seu-usuario/jurix.git
+git clone https://github.com/takaokensei/jurix.git
 cd jurix
 
 # 2. Configure Ollama no host
@@ -271,8 +272,10 @@ docker-compose exec web python manage.py migrate
 docker-compose exec web python manage.py createsuperuser
 
 # 8. Acesse o sistema
-# Admin: http://localhost:8000/admin
-# API: http://localhost:8000/api
+# Django Admin: http://localhost:8000/admin
+# Chatbot RAG: http://localhost:8000/normas/chatbot/
+# Lista de Normas: http://localhost:8000/normas/
+# API REST: http://localhost:8000/api/v1/
 ```
 
 ### Verificação de Instalação
@@ -356,8 +359,8 @@ celery -A config worker -l info
 
 ### 📋 Sprint 1: Infraestrutura Base
 
-<img src="https://img.shields.io/badge/Status-In_Progress-FFA500?style=for-the-badge"/>
-<img src="https://img.shields.io/badge/Completion-65%25-1e40af?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/Status-Completed-10B981?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/Completion-100%25-1e40af?style=for-the-badge"/>
 
 </div>
 
@@ -394,49 +397,88 @@ celery -A config worker -l info
 </tr>
 <tr>
 <td align="center">🌐 Cliente SAPL API</td>
-<td align="center">🔄 Em Desenvolvimento</td>
-<td align="center">🟡 Média</td>
+<td align="center">✅ Completo</td>
+<td align="center">🔴 Alta</td>
 </tr>
 <tr>
-<td align="center">📥 Ingestão de teste (50 PDFs)</td>
-<td align="center">⏳ Pendente</td>
-<td align="center">🟡 Média</td>
+<td align="center">📥 Ingestão de normas</td>
+<td align="center">✅ Completo</td>
+<td align="center">🔴 Alta</td>
 </tr>
 <tr>
 <td align="center">📄 OCR Pipeline</td>
-<td align="center">⏳ Pendente</td>
-<td align="center">🟢 Baixa</td>
+<td align="center">✅ Completo</td>
+<td align="center">🟡 Média</td>
 </tr>
 </table>
+
+### 🚀 Sprint 2-3: IA e RAG (Em Progresso)
+
+<div align="center">
+
+<img src="https://img.shields.io/badge/Status-In_Progress-FFA500?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/Completion-80%25-1e40af?style=for-the-badge"/>
+
+</div>
+
+<table align="center">
+<tr>
+<td align="center"><strong>Task</strong></td>
+<td align="center"><strong>Status</strong></td>
+</tr>
+<tr>
+<td align="center">🎯 Busca Semântica (pgvector)</td>
+<td align="center">✅ Completo</td>
+</tr>
+<tr>
+<td align="center">💬 Chatbot RAG (Ollama + Llama3)</td>
+<td align="center">✅ Completo</td>
+</tr>
+<tr>
+<td align="center">🔍 Segmentação Hierárquica</td>
+<td align="center">✅ Completo</td>
+</tr>
+<tr>
+<td align="center">📊 Embeddings Vetoriais</td>
+<td align="center">✅ Completo</td>
+</tr>
+<tr>
+<td align="center">🎨 Interface Web Moderna</td>
+<td align="center">✅ Completo</td>
+</tr>
+<tr>
+<td align="center">🔧 Refinamento de Segmentação</td>
+<td align="center">🔄 Em Progresso</td>
+</tr>
+</table>
+
+### 📊 Status Atual do Projeto
+
+<div align="center">
+
+**346 Normas** processadas | **4.652 Dispositivos Legais** indexados | **1990-2025**
+
+</div>
 
 ### Próximos Sprints
 
 <table align="center">
 <tr>
-<td align="center" width="33%">
-<strong>📊 Sprint 2</strong><br/><br/>
+<td align="center" width="50%">
+<strong>🧠 Sprint 4: Consolidação Inteligente</strong><br/><br/>
 <samp>
-• Pipeline OCR completo<br/>
-• NLP entity recognition<br/>
-• Vetorização pgvector<br/>
-• API REST básica
+• Engine de consolidação temporal<br/>
+• Detecção automática de alterações<br/>
+• Rastreabilidade jurídica completa<br/>
+• Visualização comparada de versões
 </samp>
 </td>
-<td align="center" width="33%">
-<strong>🎯 Sprint 3</strong><br/><br/>
+<td align="center" width="50%">
+<strong>🚀 Sprint 5: Otimização & Deploy</strong><br/><br/>
 <samp>
-• Busca semântica<br/>
-• Consolidação normativa<br/>
-• Rastreabilidade jurídica<br/>
-• Interface Django Admin
-</samp>
-</td>
-<td align="center" width="33%">
-<strong>🚀 Sprint 4</strong><br/><br/>
-<samp>
-• Frontend HTMX<br/>
 • Dashboard analytics<br/>
-• Otimização performance<br/>
+• Otimização de performance<br/>
+• Fine-tuning do modelo Llama3<br/>
 • Deploy produção
 </samp>
 </td>
@@ -449,25 +491,31 @@ celery -A config worker -l info
 
 <table align="center">
 <tr>
-<td align="center" width="25%">
-<strong>🔍 Busca Semântica</strong><br/><br/>
+<td align="center" width="20%">
+<strong>💬 Chatbot RAG</strong><br/><br/>
 <samp>
-pgvector + embeddings Ollama para busca por <strong>similaridade conceitual</strong>, não apenas palavras-chave.
+Assistente jurídico com <strong>RAG (Retrieval-Augmented Generation)</strong> usando Llama3 local. Responde perguntas sobre legislação com citações precisas.
 </samp>
 </td>
-<td align="center" width="25%">
+<td align="center" width="20%">
+<strong>🔍 Busca Semântica</strong><br/><br/>
+<samp>
+pgvector + embeddings para busca por <strong>similaridade conceitual</strong>, não apenas palavras-chave.
+</samp>
+</td>
+<td align="center" width="20%">
 <strong>📋 Consolidação</strong><br/><br/>
 <samp>
 Rastreamento automático de <strong>alterações, revogações e vigência</strong> de normas municipais.
 </samp>
 </td>
-<td align="center" width="25%">
+<td align="center" width="20%">
 <strong>⚡ Processamento Assíncrono</strong><br/><br/>
 <samp>
 Celery workers para <strong>ingestão massiva</strong> de PDFs sem bloquear interface.
 </samp>
 </td>
-<td align="center" width="25%">
+<td align="center" width="20%">
 <strong>🤖 IA Local</strong><br/><br/>
 <samp>
 Ollama hospedado localmente. <strong>Zero dependência</strong> de APIs pagas externas.
@@ -490,6 +538,65 @@ Ollama hospedado localmente. <strong>Zero dependência</strong> de APIs pagas ex
 | **Docker-first** | Deploy reproduzível em qualquer ambiente | ✅ Implementado |
 
 </div>
+
+<br/>
+
+## `> chatbot_rag`
+
+### 💬 Assistente Jurídico Inteligente
+
+O Jurix inclui um **chatbot RAG (Retrieval-Augmented Generation)** que permite consultas em linguagem natural sobre a legislação municipal de Natal/RN. O sistema utiliza:
+
+- **Busca Semântica:** Recupera dispositivos legais relevantes usando embeddings vetoriais (pgvector)
+- **Geração com Contexto:** O modelo Llama3 gera respostas baseadas nos dispositivos recuperados
+- **Citações Precisas:** Cada resposta inclui referências às fontes legais (norma, artigo, parágrafo)
+- **Interface Moderna:** Interface web responsiva com design moderno
+
+### 🎯 Exemplos de Uso
+
+Acesse o chatbot em: `http://localhost:8000/normas/chatbot/`
+
+**Perguntas que o sistema pode responder:**
+
+- "Como funciona o zoneamento urbano em Natal?"
+- "Quais as regras para licença de construção?"
+- "Quais são os requisitos para aprovação de projetos habitacionais?"
+- "Explique as normas sobre uso e ocupação do solo"
+
+### 🔧 API Endpoints
+
+```bash
+# Busca semântica
+POST /api/v1/search/
+{
+  "query": "zoneamento urbano",
+  "k": 5
+}
+
+# Resposta RAG
+POST /api/v1/rag/answer/
+{
+  "question": "Como funciona o zoneamento?",
+  "k": 5,
+  "model": "llama3"
+}
+```
+
+### 📊 Arquitetura RAG
+
+```
+Usuário faz pergunta
+    ↓
+Busca Semântica (pgvector)
+    ↓
+Top-K dispositivos relevantes
+    ↓
+Contexto formatado + Prompt
+    ↓
+Ollama (Llama3) - Geração
+    ↓
+Resposta + Fontes citadas
+```
 
 <br/>
 
@@ -734,7 +841,7 @@ docker-compose logs --tail=100 -f web worker
   institution  = {Universidade Federal do Rio Grande do Norte},
   program      = {PIBIC},
   type         = {Projeto de Iniciação Científica},
-  url          = {https://github.com/seu-usuario/jurix}
+  url          = {https://github.com/takaokensei/jurix}
 }
 ```
 
@@ -776,9 +883,26 @@ docker-compose logs --tail=100 -f web worker
 
 ## 🏁 Project Status
 
-**Status:** ✅ **Completed**  
-**Version:** 1.0.0  
-**Completion Date:** November 2024  
+**Status:** 🚀 **In Active Development**  
+**Version:** 0.8.0  
+**Current Focus:** Refinamento de Segmentação e Consolidação Temporal  
+
+### 📊 Estatísticas do Sistema
+
+- **346 Normas** processadas e consolidadas (período 1990-2025)
+- **4.652 Dispositivos Legais** indexados com embeddings vetoriais
+- **Sistema RAG** funcional com modelo Llama3 local
+- **Interface Web** moderna com chatbot interativo
+
+### 🎯 Funcionalidades Principais Implementadas
+
+✅ **Ingestão Automatizada** via API SAPL da Câmara Municipal de Natal  
+✅ **OCR Pipeline** completo com Tesseract  
+✅ **Segmentação Hierárquica** de dispositivos legais (Artigos, Parágrafos, Incisos)  
+✅ **Busca Semântica** com pgvector e embeddings  
+✅ **Chatbot RAG** com resposta em linguagem natural e citação de fontes  
+✅ **Interface Web Moderna** com design responsivo  
+
 **PIBIC Report:** Available in `docs/PIBIC_RELATORIO_FINAL_ESBOCO.md`
 
 This project successfully demonstrates the application of NLP and AI techniques to Brazilian legal texts, maintaining full data sovereignty through local processing.
