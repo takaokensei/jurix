@@ -1,8 +1,11 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/logo-icon.svg' %}">
+    <link rel="alternate icon" href="{% static 'img/logo-icon.svg' %}" type="image/svg+xml">
     <title>{% block title %}Jurix - Sistema de Consolidação Normativa{% endblock %}</title>
     <style>
         * {
@@ -200,9 +203,13 @@
 <body>
     <header>
         <div class="container">
-            <h1>🏛️ Jurix - Sistema de Consolidação Normativa</h1>
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <img src="{% static 'img/logo-icon.svg' %}" alt="Jurix Logo" style="width: 48px; height: 48px;">
+                <h1 style="margin: 0;">Jurix</h1>
+            </div>
             <nav>
                 <a href="{% url 'legislation:norma_list' %}">Normas Consolidadas</a>
+                <a href="{% url 'legislation:chatbot' %}">Assistente IA</a>
                 <a href="/admin/">Admin</a>
             </nav>
         </div>

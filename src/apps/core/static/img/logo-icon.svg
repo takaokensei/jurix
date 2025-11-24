@@ -1,0 +1,31 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Jurix Favicon: Minimalist Column Icon -->
+  <defs>
+    <linearGradient id="colGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e40af;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e3a8a;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="64" height="64" fill="#1e3a8a" rx="8"/>
+  
+  <!-- Simplified Column -->
+  <rect x="22" y="12" width="20" height="40" fill="url(#colGrad)" rx="1"/>
+  
+  <!-- Circuit lines -->
+  <line x1="26" y1="16" x2="26" y2="48" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.8"/>
+  <line x1="32" y1="16" x2="32" y2="48" stroke="#93c5fd" stroke-width="2" stroke-dasharray="4,1" opacity="0.9"/>
+  <line x1="38" y1="16" x2="38" y2="48" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.8"/>
+  
+  <!-- Connection nodes -->
+  <circle cx="32" cy="24" r="2" fill="#93c5fd"/>
+  <circle cx="32" cy="40" r="2" fill="#93c5fd"/>
+  
+  <!-- Top capital -->
+  <rect x="18" y="8" width="28" height="4" fill="#1e3a8a"/>
+  
+  <!-- Bottom base -->
+  <rect x="18" y="52" width="28" height="4" fill="#1e3a8a"/>
+</svg>
+
