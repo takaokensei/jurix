@@ -83,7 +83,7 @@
    - Scores de relevância exibidos
    - Citações de dispositivos legais específicos
 
-**📄 Documentação completa:** `docs/VALIDACAO_FINAL.md`
+**📄 Documentação:** Ver `docs/PIPELINE_PROCESSAMENTO_COMPLETO.md` para comandos de processamento
 
 ---
 
@@ -124,11 +124,7 @@
 
 ### Documentação Técnica
 - ✅ `docs/METRICAS_COLETADAS.md` - Métricas do sistema
-- ✅ `docs/VALIDACAO_FINAL.md` - Guia de validação
-- ✅ `docs/INGESTAO_HISTORICA_COMANDO.md` - Comandos de ingestão
 - ✅ `docs/PIPELINE_PROCESSAMENTO_COMPLETO.md` - Pipeline completo
-- ✅ `docs/SOLUCAO_DADOS_INCOMPLETOS.md` - Solução de problemas
-- ✅ `docs/CI_BILLING_ISSUE.md` - Troubleshooting CI
 - ✅ `docs/INFRASTRUCTURE_SETUP.md` - Setup de infraestrutura
 - ✅ `docs/SETUP.md` - Guia de setup
 
