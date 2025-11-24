@@ -70,11 +70,33 @@ Para evitar custos do GitHub Actions, você pode configurar um runner self-hoste
 - **CI Pipeline:** ⚠️ Bloqueado por billing
 - **Testes Locais:** ✅ Passando (14 testes)
 
+## 💡 Solução Rápida (Passo a Passo)
+
+### Para Resolver Agora:
+
+1. **Na página "Budgets and alerts"** (onde você está agora):
+   - Clique nos **três pontos (⋮)** ao lado de "Actions"
+   - Selecione **"Edit budget"** ou **"Update budget"**
+   - Altere o valor de **"$0 budget"** para **"$5"** ou **"$10"**
+   - Salve as alterações
+
+2. **Alternativamente:**
+   - Clique no botão **"New budget"** no topo
+   - Selecione "Actions" como produto
+   - Defina um limite (ex: $5)
+   - Salve
+
+3. **Após ajustar:**
+   - Faça um novo commit ou re-execute o workflow manualmente
+   - O CI deve funcionar normalmente
+
+**Importante:** Você não será cobrado enquanto estiver dentro dos 2.000 minutos gratuitos. O limite é apenas uma proteção.
+
 ## 💡 Recomendação
 
-1. **Imediato:** Execute testes localmente antes de cada commit
-2. **Curto Prazo:** Resolva o billing do GitHub para reativar o CI
-3. **Longo Prazo:** Configure limites de minutos no GitHub Actions para evitar surpresas
+1. **Imediato:** Ajuste o limite de gastos para $5-$10
+2. **Curto Prazo:** Adicione método de pagamento (opcional, mas recomendado)
+3. **Longo Prazo:** Configure alertas para monitorar uso
 
 ---
 
