@@ -2,6 +2,7 @@
 Legislation models for Jurix project.
 """
 from django.db import models
+from pgvector.django import VectorField
 from src.apps.core.models import TimeStampedModel
 
 
@@ -235,6 +236,29 @@ class Dispositivo(TimeStampedModel):
         verbose_name='Texto Bruto',
         blank=True,
         help_text='Texto original antes da limpeza (para auditoria)'
+    )
+    
+    # Embedding for semantic search (pgvector)
+    embedding = VectorField(
+        dimensions=768,  # BERTimbau embedding size (or llama3 embedding size)
+        null=True,
+        blank=True,
+        verbose_name='Embedding Vetorial',
+        help_text='Vetor de embedding para busca semântica (gerado via Ollama/BERTimbau)'
+    )
+    
+    embedding_model = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name='Modelo de Embedding',
+        help_text='Nome do modelo usado para gerar o embedding (ex: "nomic-embed-text")'
+    )
+    
+    embedding_generated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Data de Geração do Embedding',
+        help_text='Timestamp de quando o embedding foi gerado'
     )
     
     class Meta:
