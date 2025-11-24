@@ -306,6 +306,9 @@ def bulk_ingest_normas_task(
         raise self.retry(exc=e)
 
 
+# Celery task for asynchronous PDF download from SAPL API
+# Downloads legal norm PDFs and stores them in data/raw/ directory
+# Implements retry logic with exponential backoff for network failures
 @shared_task(
     bind=True,
     name='ingestion.download_pdf_task',
@@ -314,7 +317,7 @@ def bulk_ingest_normas_task(
 )
 def download_pdf_task(self, norma_id: int) -> Dict[str, Any]:
     """
-    Task Celery para baixar o PDF de uma norma específica de forma assíncrona.
+    Celery task to download PDF of a specific legal norm asynchronously.
     
     Fluxo:
     1. Busca a norma no banco via ID

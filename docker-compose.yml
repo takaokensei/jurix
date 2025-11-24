@@ -1,3 +1,7 @@
+# Jurix Infrastructure Configuration
+# Docker Compose setup for Jurix legal consolidation system
+# Services: PostgreSQL (pgvector), Redis, Django Web, Celery Worker
+
 services:
   db:
     image: pgvector/pgvector:pg16

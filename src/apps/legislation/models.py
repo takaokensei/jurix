@@ -8,10 +8,18 @@ from src.apps.core.models import TimeStampedModel
 
 class Norma(TimeStampedModel):
     """
-    Modelo base para uma Norma Jurídica (Lei, Decreto, etc).
+    Core model representing a legal norm (Law, Decree, etc.).
     
-    Armazena metadados originais da API SAPL e controla o status de processamento
-    através do pipeline (Download PDF -> OCR -> NLP -> Consolidação).
+    Stores original metadata from SAPL API and controls processing status
+    through the pipeline (PDF Download -> OCR -> NLP -> Consolidation).
+    
+    Attributes:
+        tipo: Type of legal norm (e.g., "Lei", "Decreto")
+        numero: Norm number
+        ano: Year of publication
+        texto_original: Original text extracted from PDF
+        texto_consolidado: Consolidated text after applying all alterations
+        status: Current processing status in the pipeline
     """
     
     # Identificação (Fonte: API SAPL)
