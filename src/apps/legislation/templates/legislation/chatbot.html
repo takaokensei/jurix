@@ -26,31 +26,34 @@
     </style>
 </head>
 <body>
+    <!-- Skip link for keyboard navigation -->
+    <a href="#messages-container" class="skip-link">Pular para a conversa</a>
+    
     <div class="workspace">
         <!-- Sidebar -->
-        <aside class="sidebar" id="sidebar">
+        <aside class="sidebar" id="sidebar" role="complementary" aria-label="Barra lateral de navegação">
             <div class="sidebar-header">
-                <img src="{% static 'img/logo-icon.svg' %}" alt="Jurix">
+                <img src="{% static 'img/logo-icon.svg' %}" alt="Logo Jurix">
                 <h1>Jurix</h1>
             </div>
             
             <div class="sidebar-content">
                 <div class="sidebar-section">
                     <h3>Assistente</h3>
-                    <div class="sidebar-item active">
+                    <div class="sidebar-item active" role="button" tabindex="0">
                         <span>💬 Nova Conversa</span>
                     </div>
                 </div>
                 
-                <div class="sidebar-section">
+                <nav class="sidebar-section" role="navigation" aria-label="Menu principal">
                     <h3>Navegação</h3>
-                    <div class="sidebar-item" onclick="window.location.href='{% url 'legislation:norma_list' %}'">
+                    <div class="sidebar-item" role="button" tabindex="0" onclick="window.location.href='{% url 'legislation:norma_list' %}'" onkeydown="if(event.key==='Enter')window.location.href='{% url 'legislation:norma_list' %}'">
                         <span>📋 Normas Consolidadas</span>
                     </div>
-                    <div class="sidebar-item" onclick="window.location.href='/admin/'">
+                    <div class="sidebar-item" role="button" tabindex="0" onclick="window.location.href='/admin/'" onkeydown="if(event.key==='Enter')window.location.href='/admin/'">
                         <span>⚙️ Admin</span>
                     </div>
-                </div>
+                </nav>
                 
                 <div class="sidebar-stats">
                     <h3 style="margin-bottom: 1rem;">Sistema</h3>
@@ -71,11 +74,11 @@
         </aside>
         
         <!-- Main Chat Area -->
-        <main class="chat-main">
+        <main class="chat-main" role="main">
             <!-- Top Bar -->
             <div class="top-bar">
-                <button class="toggle-sidebar" id="toggle-sidebar" title="Toggle Sidebar">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <button class="toggle-sidebar" id="toggle-sidebar" aria-label="Alternar barra lateral" aria-expanded="true">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                         <path d="M3 7H17M3 13H17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </button>
@@ -83,15 +86,15 @@
             </div>
             
             <!-- Messages Container -->
-            <div class="messages-container" id="messages-container">
+            <div class="messages-container" id="messages-container" role="log" aria-live="polite" aria-atomic="false" aria-label="Histórico da conversa">
                 <div class="messages-wrapper" id="messages-wrapper">
                     <!-- Welcome State -->
                     <div class="welcome-state" id="welcome-state">
-                        <img src="{% static 'img/logo.svg' %}" alt="Jurix">
+                        <img src="{% static 'img/logo.svg' %}" alt="Logo Jurix - Símbolo de coluna grega com linhas de circuito">
                         <h2>Como posso ajudar?</h2>
                         <p>Faça perguntas sobre a legislação municipal de Natal/RN. Sou alimentado por IA e tenho acesso a {{ total_normas }} normas consolidadas.</p>
                         
-                        <div class="suggestion-chips" id="suggestion-chips">
+                        <div class="suggestion-chips" id="suggestion-chips" role="list" aria-label="Sugestões de perguntas">
                             <!-- Chips serão gerados dinamicamente via JavaScript -->
                         </div>
                     </div>
@@ -101,23 +104,25 @@
             <!-- Input Area -->
             <div class="input-area">
                 <div class="input-wrapper">
-                    <form id="chat-form">
+                    <form id="chat-form" role="search" aria-label="Formulário de pesquisa de legislação">
                         <div class="input-container">
                             <textarea 
                                 id="question-textarea" 
                                 name="question" 
-                                placeholder="Digite sua pergunta sobre legislação..."
-                                rows="1"
+                                placeholder="Digite sua pergunta sobre legislação..." 
+                                rows="1" 
                                 required
+                                aria-label="Digite sua pergunta sobre legislação"
+                                aria-describedby="input-disclaimer"
                             ></textarea>
-                            <button type="submit" class="send-button" id="send-button">
-                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <button type="submit" class="send-button" id="send-button" aria-label="Enviar pergunta">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                                     <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 </svg>
                             </button>
                         </div>
                     </form>
-                    <div class="input-disclaimer">
+                    <div class="input-disclaimer" id="input-disclaimer" role="note">
                         Jurix pode cometer erros. Verifique informações importantes nas fontes citadas.
                     </div>
                 </div>

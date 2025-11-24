@@ -114,13 +114,16 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    <!-- Skip link for keyboard navigation (WCAG 2.1) -->
+    <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
+    
     <header class="navbar">
         <div class="navbar-container">
             <div class="navbar-brand">
                 <img src="{% static 'img/logo-icon.svg' %}" alt="Jurix" class="navbar-logo">
                 <span class="navbar-title">Jurix</span>
             </div>
-            <nav class="navbar-menu">
+            <nav class="navbar-menu" role="navigation" aria-label="Navegação principal">
                 <a href="{% url 'legislation:norma_list' %}" class="nav-link">Normas</a>
                 <a href="{% url 'legislation:chatbot' %}" class="nav-link">Assistente IA</a>
                 <a href="/admin/" class="nav-link">Admin</a>
@@ -128,11 +131,11 @@
         </div>
     </header>
     
-    <div class="container">
+    <main id="main-content" class="container">
         {% block content %}{% endblock %}
-    </div>
+    </main>
     
-    <footer>
+    <footer role="contentinfo">
         <p>Jurix - Sistema de Consolidação Normativa | Projeto PIBIC 2025</p>
         <p>Powered by Django + PostgreSQL + Ollama</p>
     </footer>
