@@ -251,17 +251,18 @@
         });
         
         // ===== MESSAGE FUNCTIONS =====
+        // ===== USER MESSAGE =====
+        // Renders user message with Swiss clean design (no avatar for user)
         function addUserMessage(text) {
             const messagesWrapper = document.getElementById('messages-wrapper');
             const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             
             const messageHtml = `
                 <div class="message message-user">
-                    <div class="message-avatar">V</div>
                     <div class="message-content">
                         <div class="message-header">
                             <span class="message-role">Você</span>
-                            <span class="message-timestamp">${timestamp}</span>
+                            <span class="message-time">${timestamp}</span>
                         </div>
                         <div class="message-body">${escapeHtml(text)}</div>
                     </div>
@@ -304,13 +305,15 @@
             if (loadingMsg) loadingMsg.remove();
         }
         
+        // ===== ASSISTANT MESSAGE =====
+        // Renders assistant message with logo avatar and Swiss typography
         function addAssistantMessage(answer, sources) {
             const messagesWrapper = document.getElementById('messages-wrapper');
             const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             const messageId = 'msg-' + Date.now();
             const sourcesId = 'sources-' + Date.now();
             
-            // Create message structure WITHOUT sources initially
+            // Create message structure WITHOUT sources initially (sources appear after typewriter)
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message message-assistant';
             messageDiv.innerHTML = `
@@ -320,7 +323,7 @@
                 <div class="message-content">
                     <div class="message-header">
                         <span class="message-role">Jurix</span>
-                        <span class="message-timestamp">${timestamp}</span>
+                        <span class="message-time">${timestamp}</span>
                     </div>
                     <div class="message-body" id="${messageId}"></div>
                     <div id="${sourcesId}"></div>
@@ -530,7 +533,7 @@
                     <div class="message-content">
                         <div class="message-header">
                             <span class="message-role">Jurix</span>
-                            <span class="message-timestamp">${timestamp}</span>
+                            <span class="message-time">${timestamp}</span>
                         </div>
                         <div class="message-body" style="border-color: var(--color-error); background: #fef2f2;">
                             ⚠️ ${escapeHtml(errorText)}
