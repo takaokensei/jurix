@@ -1,0 +1,369 @@
+/**
+ * JURIX SWISS DESIGN SYSTEM
+ * Design Tokens & Foundation
+ * Version: 1.0.0
+ * 
+ * Filosofia: Conteúdo é rei. Tipografia como hierarquia. Espaço branco estratégico.
+ */
+
+:root {
+    /* ========================================
+       CORES - PALETA MONOCROMÁTICA + ACENTO
+       ======================================== */
+    
+    /* Escala de Cinzas (10 níveis) */
+    --color-gray-50: #f8fafc;
+    --color-gray-100: #f1f5f9;
+    --color-gray-200: #e2e8f0;
+    --color-gray-300: #cbd5e1;
+    --color-gray-400: #94a3b8;
+    --color-gray-500: #64748b;
+    --color-gray-600: #475569;
+    --color-gray-700: #334155;
+    --color-gray-800: #1e293b;
+    --color-gray-900: #0f172a;
+    --color-gray-950: #020617;
+    
+    /* Azul Jurix (Primário) */
+    --color-primary: #1e40af;          /* blue-800 */
+    --color-primary-hover: #1e3a8a;    /* blue-900 */
+    --color-primary-light: #3b82f6;    /* blue-600 */
+    --color-primary-lighter: #60a5fa;  /* blue-400 */
+    --color-primary-lightest: #dbeafe; /* blue-100 */
+    
+    /* Cores Semânticas */
+    --color-success: #10b981;          /* green-500 */
+    --color-success-light: #d1fae5;    /* green-100 */
+    --color-warning: #f59e0b;          /* amber-500 */
+    --color-warning-light: #fef3c7;    /* amber-100 */
+    --color-error: #ef4444;            /* red-500 */
+    --color-error-light: #fee2e2;      /* red-100 */
+    
+    /* Contextuais */
+    --color-text: var(--color-gray-900);
+    --color-text-secondary: var(--color-gray-500);
+    --color-text-tertiary: var(--color-gray-400);
+    --color-text-inverse: #ffffff;
+    
+    --color-bg-primary: var(--color-gray-50);
+    --color-bg-secondary: #ffffff;
+    --color-bg-tertiary: var(--color-gray-100);
+    --color-bg-elevated: #ffffff;
+    
+    --color-border: var(--color-gray-200);
+    --color-border-strong: var(--color-gray-300);
+    --color-border-focus: var(--color-primary);
+    
+    /* ========================================
+       TIPOGRAFIA - INTER + JETBRAINS MONO
+       ======================================== */
+    
+    /* Font Families */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', Consolas, monospace;
+    
+    /* Font Sizes (Major Third Scale - 1.25 ratio) */
+    --font-size-xs: 0.75rem;     /* 12px */
+    --font-size-sm: 0.875rem;    /* 14px */
+    --font-size-base: 1rem;      /* 16px */
+    --font-size-lg: 1.125rem;    /* 18px */
+    --font-size-xl: 1.25rem;     /* 20px */
+    --font-size-2xl: 1.5rem;     /* 24px */
+    --font-size-3xl: 1.875rem;   /* 30px */
+    --font-size-4xl: 2.25rem;    /* 36px */
+    --font-size-5xl: 3rem;       /* 48px */
+    
+    /* Font Weights (hierarquia por peso) */
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    
+    /* Line Heights (leitura confortável) */
+    --line-height-tight: 1.25;
+    --line-height-snug: 1.375;
+    --line-height-normal: 1.6;
+    --line-height-relaxed: 1.8;
+    --line-height-loose: 2;
+    
+    /* Letter Spacing */
+    --letter-spacing-tight: -0.025em;
+    --letter-spacing-normal: 0;
+    --letter-spacing-wide: 0.025em;
+    
+    /* ========================================
+       ESPAÇAMENTO - GRID DE 8PX
+       ======================================== */
+    
+    --space-0: 0;
+    --space-1: 8px;      /* 8px */
+    --space-2: 16px;     /* 16px */
+    --space-3: 24px;     /* 24px */
+    --space-4: 32px;     /* 32px */
+    --space-5: 40px;     /* 40px */
+    --space-6: 48px;     /* 48px */
+    --space-8: 64px;     /* 64px */
+    --space-10: 80px;    /* 80px */
+    --space-12: 96px;    /* 96px */
+    --space-16: 128px;   /* 128px */
+    
+    /* Espaçamento Semântico */
+    --spacing-section: var(--space-8);
+    --spacing-component: var(--space-4);
+    --spacing-element: var(--space-2);
+    
+    /* ========================================
+       SOMBRAS - USO RESTRITO
+       ======================================== */
+    
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    
+    /* ========================================
+       BORDAS & RAIOS
+       ======================================== */
+    
+    --border-width-thin: 1px;
+    --border-width-normal: 2px;
+    --border-width-thick: 3px;
+    
+    --radius-none: 0;
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-full: 9999px;
+    
+    /* ========================================
+       DIMENSÕES - LAYOUT
+       ======================================== */
+    
+    /* Larguras de Conteúdo */
+    --width-sidebar: 280px;
+    --width-sidebar-collapsed: 64px;
+    --width-content-narrow: 640px;   /* Prosa curta */
+    --width-content-normal: 800px;   /* Textos legais (70-80 chars) */
+    --width-content-wide: 1200px;    /* Tabelas e grids */
+    --width-content-full: 100%;
+    
+    /* Alturas */
+    --height-navbar: 64px;
+    --height-input: 40px;
+    --height-input-lg: 48px;
+    
+    /* ========================================
+       Z-INDEX - LAYERS
+       ======================================== */
+    
+    --z-base: 0;
+    --z-dropdown: 10;
+    --z-sticky: 20;
+    --z-fixed: 30;
+    --z-modal-backdrop: 40;
+    --z-modal: 50;
+    --z-popover: 60;
+    --z-tooltip: 70;
+    
+    /* ========================================
+       TRANSIÇÕES - TIMING
+       ======================================== */
+    
+    --transition-fast: 150ms ease-in-out;
+    --transition-base: 250ms ease-in-out;
+    --transition-slow: 350ms ease-in-out;
+    
+    --easing-linear: linear;
+    --easing-ease: ease;
+    --easing-ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --easing-ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --easing-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========================================
+   RESET & BASE STYLES
+   ======================================== */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+body {
+    font-family: var(--font-sans);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-normal);
+    color: var(--color-text);
+    background-color: var(--color-bg-primary);
+    overflow-x: hidden;
+}
+
+/* ========================================
+   TIPOGRAFIA GLOBAL
+   ======================================== */
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-tight);
+    color: var(--color-text);
+    margin-bottom: var(--space-3);
+    letter-spacing: var(--letter-spacing-tight);
+}
+
+h1 { font-size: var(--font-size-4xl); }
+h2 { font-size: var(--font-size-3xl); }
+h3 { font-size: var(--font-size-2xl); }
+h4 { font-size: var(--font-size-xl); }
+h5 { font-size: var(--font-size-lg); }
+h6 { font-size: var(--font-size-base); }
+
+p {
+    margin-bottom: var(--space-3);
+    line-height: var(--line-height-relaxed);
+}
+
+a {
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+a:hover {
+    color: var(--color-primary-hover);
+}
+
+code, pre {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+}
+
+code {
+    background: var(--color-gray-100);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    color: var(--color-primary);
+}
+
+pre {
+    background: var(--color-gray-900);
+    color: var(--color-gray-50);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    line-height: var(--line-height-normal);
+}
+
+strong, b {
+    font-weight: var(--font-weight-semibold);
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+/* Text Utilities */
+.text-xs { font-size: var(--font-size-xs); }
+.text-sm { font-size: var(--font-size-sm); }
+.text-base { font-size: var(--font-size-base); }
+.text-lg { font-size: var(--font-size-lg); }
+.text-xl { font-size: var(--font-size-xl); }
+
+.text-normal { font-weight: var(--font-weight-normal); }
+.text-medium { font-weight: var(--font-weight-medium); }
+.text-semibold { font-weight: var(--font-weight-semibold); }
+.text-bold { font-weight: var(--font-weight-bold); }
+
+.text-primary { color: var(--color-primary); }
+.text-secondary { color: var(--color-text-secondary); }
+.text-tertiary { color: var(--color-text-tertiary); }
+
+/* Spacing Utilities */
+.m-0 { margin: 0; }
+.m-1 { margin: var(--space-1); }
+.m-2 { margin: var(--space-2); }
+.m-3 { margin: var(--space-3); }
+.m-4 { margin: var(--space-4); }
+
+.p-0 { padding: 0; }
+.p-1 { padding: var(--space-1); }
+.p-2 { padding: var(--space-2); }
+.p-3 { padding: var(--space-3); }
+.p-4 { padding: var(--space-4); }
+
+/* Display Utilities */
+.hidden { display: none; }
+.block { display: block; }
+.inline { display: inline; }
+.inline-block { display: inline-block; }
+.flex { display: flex; }
+.grid { display: grid; }
+
+/* ========================================
+   COMPONENTES BASE
+   ======================================== */
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-2) var(--space-4);
+    font-family: var(--font-sans);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
+}
+
+.btn-primary:hover {
+    background: var(--color-primary-hover);
+}
+
+/* Cards */
+.card {
+    background: var(--color-bg-secondary);
+    border: var(--border-width-thin) solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    transition: box-shadow var(--transition-base);
+}
+
+.card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+/* Badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    border-radius: var(--radius-full);
+    background: var(--color-gray-100);
+    color: var(--color-text);
+}
+
+.badge-primary { background: var(--color-primary-lightest); color: var(--color-primary); }
+.badge-success { background: var(--color-success-light); color: var(--color-success); }
+.badge-warning { background: var(--color-warning-light); color: var(--color-warning); }
+.badge-error { background: var(--color-error-light); color: var(--color-error); }
+

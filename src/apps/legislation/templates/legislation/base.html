@@ -4,198 +4,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/svg+xml" href="{% static 'img/logo-icon.svg' %}">
-    <link rel="alternate icon" href="{% static 'img/logo-icon.svg' %}" type="image/svg+xml">
     <title>{% block title %}Jurix - Sistema de Consolidação Normativa{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/logo-icon.svg' %}">
+    <link rel="apple-touch-icon" href="{% static 'img/logo-icon.svg' %}">
+    <link rel="mask-icon" href="{% static 'img/logo-icon.svg' %}" color="#1e40af">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Design System -->
+    <link rel="stylesheet" href="{% static 'css/swiss-design-system.css' %}">
+    
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f5f5f5;
-        }
-        
+        /* Layout específico do base template */
         .container {
-            max-width: 1200px;
+            max-width: var(--width-content-wide);
             margin: 0 auto;
-            padding: 20px;
+            padding: var(--space-3);
         }
         
         header {
-            background-color: #2c3e50;
-            color: white;
-            padding: 20px 0;
-            margin-bottom: 30px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+            color: var(--color-text-inverse);
+            padding: var(--space-3) 0;
+            margin-bottom: var(--space-6);
+            box-shadow: var(--shadow-sm);
         }
         
         header h1 {
-            font-size: 28px;
-            font-weight: 600;
+            font-size: var(--font-size-2xl);
+            font-weight: var(--font-weight-semibold);
+            margin: 0;
         }
         
         nav {
-            margin-top: 15px;
+            margin-top: var(--space-2);
         }
         
         nav a {
-            color: white;
+            color: var(--color-text-inverse);
             text-decoration: none;
-            margin-right: 20px;
-            padding: 8px 16px;
-            border-radius: 4px;
-            transition: background-color 0.3s;
+            margin-right: var(--space-3);
+            padding: var(--space-1) var(--space-2);
+            border-radius: var(--radius-sm);
+            transition: background-color var(--transition-fast);
+            font-weight: var(--font-weight-medium);
         }
         
         nav a:hover {
-            background-color: rgba(255, 255, 255, 0.1);
+            background-color: rgba(255, 255, 255, 0.15);
         }
         
-        .card {
-            background: white;
-            border-radius: 8px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .card h2 {
-            color: #2c3e50;
-            margin-bottom: 16px;
-            font-size: 24px;
-        }
-        
-        .badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        
-        .badge-success {
-            background-color: #27ae60;
-            color: white;
-        }
-        
-        .badge-info {
-            background-color: #3498db;
-            color: white;
-        }
-        
-        .badge-warning {
-            background-color: #f39c12;
-            color: white;
-        }
-        
-        .btn {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #3498db;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            transition: background-color 0.3s;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        .btn:hover {
-            background-color: #2980b9;
-        }
-        
-        .btn-secondary {
-            background-color: #95a5a6;
-        }
-        
-        .btn-secondary:hover {
-            background-color: #7f8c8d;
-        }
-        
+        /* Tables */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 16px;
+            margin-top: var(--space-2);
         }
         
         th, td {
-            padding: 12px;
+            padding: var(--space-2);
             text-align: left;
-            border-bottom: 1px solid #ecf0f1;
+            border-bottom: var(--border-width-thin) solid var(--color-border);
         }
         
         th {
-            background-color: #f8f9fa;
-            font-weight: 600;
-            color: #2c3e50;
+            background-color: var(--color-bg-tertiary);
+            font-weight: var(--font-weight-semibold);
+            color: var(--color-text);
+            font-size: var(--font-size-sm);
+            text-transform: uppercase;
+            letter-spacing: var(--letter-spacing-wide);
         }
         
         tr:hover {
-            background-color: #f8f9fa;
+            background-color: var(--color-bg-tertiary);
         }
         
-        pre {
-            background-color: #f8f9fa;
-            padding: 16px;
-            border-radius: 4px;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 13px;
-            line-height: 1.5;
-        }
-        
+        /* Alert */
         .alert {
-            padding: 12px 16px;
-            border-radius: 4px;
-            margin-bottom: 16px;
+            padding: var(--space-2) var(--space-3);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-3);
         }
         
         .alert-info {
-            background-color: #d4edff;
-            border-left: 4px solid #3498db;
-            color: #2c3e50;
+            background-color: var(--color-primary-lightest);
+            border-left: 4px solid var(--color-primary);
+            color: var(--color-text);
         }
         
+        /* Footer */
         footer {
             text-align: center;
-            padding: 20px;
-            color: #7f8c8d;
-            margin-top: 40px;
+            padding: var(--space-6) var(--space-3);
+            color: var(--color-text-secondary);
+            margin-top: var(--space-8);
+            border-top: var(--border-width-thin) solid var(--color-border);
+            font-size: var(--font-size-sm);
         }
         
+        footer p {
+            margin-bottom: var(--space-1);
+        }
+        
+        /* Stats Grid */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin: 20px 0;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: var(--space-3);
+            margin: var(--space-4) 0;
         }
         
         .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+            color: var(--color-text-inverse);
+            padding: var(--space-4);
+            border-radius: var(--radius-md);
             text-align: center;
+            box-shadow: var(--shadow-md);
         }
         
         .stat-card h3 {
-            font-size: 32px;
-            margin-bottom: 8px;
+            font-size: var(--font-size-4xl);
+            margin-bottom: var(--space-1);
+            font-weight: var(--font-weight-bold);
         }
         
         .stat-card p {
-            font-size: 14px;
-            opacity: 0.9;
+            font-size: var(--font-size-sm);
+            opacity: 0.95;
+            margin: 0;
         }
     </style>
     {% block extra_css %}{% endblock %}
