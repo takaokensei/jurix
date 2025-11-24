@@ -54,13 +54,25 @@ class Command(BaseCommand):
         # Construir queryset
         if force:
             # Baixar todas, independente de já terem PDF
-            queryset = Norma.objects.filter(status=status)
+            queryset = Norma.objects.filter(status=status) if status else Norma.objects.all()
         else:
             # Baixar apenas as que não têm PDF local
-            queryset = Norma.objects.filter(
-                status=status,
-                pdf_path=''
-            ).exclude(pdf_url='')
+            if download_all:
+                # Se --all, buscar todas as normas sem PDF, independente do status
+                queryset = Norma.objects.filter(
+                    pdf_path__isnull=True
+                ) | Norma.objects.filter(pdf_path='')
+                queryset = queryset.exclude(pdf_url='')
+            else:
+                # Filtrar por status se especificado
+                queryset = Norma.objects.filter(
+                    status=status,
+                    pdf_path__isnull=True
+                ) | Norma.objects.filter(
+                    status=status,
+                    pdf_path=''
+                )
+                queryset = queryset.exclude(pdf_url='')
         
         # Aplicar limite se especificado
         if limit:

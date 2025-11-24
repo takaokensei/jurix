@@ -26,6 +26,12 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         """Define command arguments."""
         parser.add_argument(
+            '--all',
+            action='store_true',
+            help='Process all dispositivos without embeddings (default behavior if no limit specified)'
+        )
+        
+        parser.add_argument(
             '--limit',
             type=int,
             default=None,
@@ -74,6 +80,7 @@ class Command(BaseCommand):
     
     def handle(self, *args, **options):
         """Execute the bulk embedding generation."""
+        process_all: bool = options['all']
         limit: Optional[int] = options['limit']
         offset: int = options['offset']
         sync_mode: bool = options['sync']
@@ -126,8 +133,21 @@ class Command(BaseCommand):
         
         # Apply ordering, offset, and limit
         queryset = queryset.select_related('norma').order_by('id')[offset:]
+        
+        # Apply limit if specified, or if --all is not set and no limit, ask for confirmation
         if limit:
             queryset = queryset[:limit]
+        elif not process_all:
+            # If not --all and not --limit, ask for confirmation if count > 10
+            count = queryset.count()
+            if count > 10:
+                self.stdout.write(self.style.WARNING(
+                    f'You are about to process embeddings for {count} dispositivos.'
+                ))
+                confirm = input('Continue? (y/N): ')
+                if confirm.lower() != 'y':
+                    self.stdout.write(self.style.ERROR('Operation cancelled'))
+                    return
         
         total = queryset.count()
         
