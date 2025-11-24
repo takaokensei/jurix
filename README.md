@@ -662,7 +662,7 @@ docker-compose logs --tail=100 -f web worker
 **Projeto de Pesquisa:**
 - **Instituição:** Universidade Federal do Rio Grande do Norte (UFRN)
 - **Programa:** PIBIC (Programa Institucional de Bolsas de Iniciação Científica)
-- **Área:** Ciência da Computação / Inteligência Artificial Aplicada ao Direito
+- **Área:** Engenharia Elétrica / Inteligência Artificial Aplicada ao Direito
 - **Objetivo:** Desenvolver sistema de consolidação normativa inteligente para legislação municipal
 - **Escopo:** Município de Natal/RN como caso de uso piloto
 
@@ -746,7 +746,7 @@ docker-compose logs --tail=100 -f web worker
   
   <strong>Cauã Vitor F. Silva</strong>
   <br/>
-  <samp>UFRN - Ciência da Computação</samp>
+  <samp>UFRN - Engenharia Elétrica</samp>
   <br/>
   <samp>PIBIC - Consolidação Normativa Inteligente</samp>
   
