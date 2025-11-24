@@ -1,61 +1,60 @@
 <svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-  <!-- Jurix Logo: Stylized Greek Column with Circuit Lines -->
-  <defs>
-    <linearGradient id="columnGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#1e40af;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#1e3a8a;stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="circuitGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.6" />
-      <stop offset="50%" style="stop-color:#60a5fa;stop-opacity:0.8" />
-      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.6" />
-    </linearGradient>
-  </defs>
+  <!-- Background Circle (subtle) -->
+  <circle cx="100" cy="100" r="90" fill="#f8fafc" opacity="0.5"/>
   
-  <!-- Background Circle -->
-  <circle cx="100" cy="100" r="95" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+  <!-- Column Base (Bottom) -->
+  <rect x="60" y="150" width="80" height="12" fill="#1e3a8a" rx="2"/>
+  <rect x="55" y="162" width="90" height="8" fill="#1e40af" rx="1"/>
   
-  <!-- Column Base (Capital) -->
-  <path d="M 60 170 L 50 180 L 150 180 L 140 170 Z" fill="url(#columnGradient)"/>
-  
-  <!-- Column Shaft with Circuit Pattern -->
-  <rect x="70" y="50" width="60" height="120" fill="url(#columnGradient)" rx="2"/>
-  
-  <!-- Circuit Lines (Flutes replacement) -->
-  <!-- Vertical lines -->
-  <line x1="80" y1="55" x2="80" y2="165" stroke="url(#circuitGradient)" stroke-width="2" stroke-dasharray="5,3"/>
-  <line x1="90" y1="60" x2="90" y2="170" stroke="url(#circuitGradient)" stroke-width="2" stroke-dasharray="4,4"/>
-  <line x1="100" y1="55" x2="100" y2="165" stroke="url(#circuitGradient)" stroke-width="2.5" stroke-dasharray="6,2"/>
-  <line x1="110" y1="60" x2="110" y2="170" stroke="url(#circuitGradient)" stroke-width="2" stroke-dasharray="4,4"/>
-  <line x1="120" y1="55" x2="120" y2="165" stroke="url(#circuitGradient)" stroke-width="2" stroke-dasharray="5,3"/>
-  
-  <!-- Horizontal circuit connections -->
-  <line x1="75" y1="80" x2="125" y2="80" stroke="#60a5fa" stroke-width="1.5" opacity="0.6"/>
-  <circle cx="80" cy="80" r="2.5" fill="#3b82f6"/>
-  <circle cx="100" cy="80" r="2.5" fill="#3b82f6"/>
-  <circle cx="120" cy="80" r="2.5" fill="#3b82f6"/>
-  
-  <line x1="75" y1="110" x2="125" y2="110" stroke="#60a5fa" stroke-width="1.5" opacity="0.6"/>
-  <circle cx="90" cy="110" r="2.5" fill="#3b82f6"/>
-  <circle cx="110" cy="110" r="2.5" fill="#3b82f6"/>
-  
-  <line x1="75" y1="140" x2="125" y2="140" stroke="#60a5fa" stroke-width="1.5" opacity="0.6"/>
-  <circle cx="80" cy="140" r="2.5" fill="#3b82f6"/>
-  <circle cx="100" cy="140" r="2.5" fill="#3b82f6"/>
-  <circle cx="120" cy="140" r="2.5" fill="#3b82f6"/>
+  <!-- Column Shaft with Circuit Lines -->
+  <g id="column-shaft">
+    <!-- Main shaft -->
+    <rect x="70" y="50" width="60" height="100" fill="#1e40af" rx="2"/>
+    
+    <!-- Circuit lines (vertical grooves) -->
+    <line x1="80" y1="55" x2="80" y2="145" stroke="#60a5fa" stroke-width="2" stroke-linecap="round"/>
+    <line x1="90" y1="60" x2="90" y2="140" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="100" y1="55" x2="100" y2="145" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="110" y1="60" x2="110" y2="140" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="120" y1="55" x2="120" y2="145" stroke="#60a5fa" stroke-width="2" stroke-linecap="round"/>
+    
+    <!-- Circuit nodes (dots) -->
+    <circle cx="80" cy="70" r="2" fill="#dbeafe"/>
+    <circle cx="90" cy="85" r="1.5" fill="#dbeafe"/>
+    <circle cx="100" cy="75" r="2.5" fill="#dbeafe"/>
+    <circle cx="110" cy="95" r="1.5" fill="#dbeafe"/>
+    <circle cx="120" cy="80" r="2" fill="#dbeafe"/>
+    
+    <circle cx="80" cy="120" r="2" fill="#dbeafe"/>
+    <circle cx="90" cy="110" r="1.5" fill="#dbeafe"/>
+    <circle cx="100" cy="125" r="2.5" fill="#dbeafe"/>
+    <circle cx="110" cy="115" r="1.5" fill="#dbeafe"/>
+    <circle cx="120" cy="130" r="2" fill="#dbeafe"/>
+    
+    <!-- Horizontal circuit connections -->
+    <line x1="80" y1="70" x2="90" y2="85" stroke="#60a5fa" stroke-width="0.5" opacity="0.6"/>
+    <line x1="90" y1="85" x2="100" y2="75" stroke="#60a5fa" stroke-width="0.5" opacity="0.6"/>
+    <line x1="100" y1="75" x2="110" y2="95" stroke="#60a5fa" stroke-width="0.5" opacity="0.6"/>
+    <line x1="110" y1="95" x2="120" y2="80" stroke="#60a5fa" stroke-width="0.5" opacity="0.6"/>
+    
+    <line x1="80" y1="120" x2="90" y2="110" stroke="#60a5fa" stroke-width="0.5" opacity="0.6"/>
+    <line x1="90" y1="110" x2="100" y2="125" stroke="#60a5fa" stroke-width="0.5" opacity="0.6"/>
+    <line x1="100" y1="125" x2="110" y2="115" stroke="#60a5fa" stroke-width="0.5" opacity="0.6"/>
+    <line x1="110" y1="115" x2="120" y2="130" stroke="#60a5fa" stroke-width="0.5" opacity="0.6"/>
+    
+    <!-- Depth/Shadow effect (subtle) -->
+    <rect x="70" y="50" width="6" height="100" fill="#1e3a8a" opacity="0.3" rx="2"/>
+    <rect x="124" y="50" width="6" height="100" fill="#1e3a8a" opacity="0.15" rx="2"/>
+  </g>
   
   <!-- Column Capital (Top) -->
-  <path d="M 65 50 L 55 40 L 145 40 L 135 50 Z" fill="url(#columnGradient)"/>
-  <rect x="55" y="35" width="90" height="5" fill="#1e3a8a"/>
+  <rect x="55" y="38" width="90" height="8" fill="#1e40af" rx="1"/>
+  <rect x="60" y="46" width="80" height="4" fill="#1e3a8a"/>
   
-  <!-- Neural network nodes overlay (top) -->
-  <circle cx="100" cy="30" r="4" fill="#60a5fa" opacity="0.8"/>
-  <line x1="100" y1="30" x2="85" y2="20" stroke="#60a5fa" stroke-width="1" opacity="0.5"/>
-  <line x1="100" y1="30" x2="115" y2="20" stroke="#60a5fa" stroke-width="1" opacity="0.5"/>
-  <circle cx="85" cy="20" r="3" fill="#3b82f6" opacity="0.7"/>
-  <circle cx="115" cy="20" r="3" fill="#3b82f6" opacity="0.7"/>
+  <!-- Subtle glow effect -->
+  <circle cx="100" cy="100" r="85" fill="none" stroke="#60a5fa" stroke-width="0.5" opacity="0.2"/>
   
-  <!-- Subtle text "JX" monogram -->
-  <text x="100" y="125" font-family="'Inter', 'Segoe UI', sans-serif" font-size="32" font-weight="700" fill="#f8fafc" text-anchor="middle" opacity="0.3">JX</text>
+  <!-- Top circuit accent (crown effect) -->
+  <path d="M 70 35 L 75 28 L 80 35 M 90 35 L 95 25 L 100 35 M 110 35 L 115 28 L 120 35 M 125 35 L 130 30 L 135 35" 
+        stroke="#60a5fa" stroke-width="1.5" fill="none" stroke-linecap="round"/>
 </svg>
-
