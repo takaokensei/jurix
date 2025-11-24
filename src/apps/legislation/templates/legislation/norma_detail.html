@@ -37,6 +37,30 @@
     </div>
 </div>
 
+{% if dispositivos %}
+<div class="card">
+    <h2>Estrutura Hierárquica ({{ dispositivos.count }} Dispositivos)</h2>
+    <div class="dispositivos-tree">
+        {% for disp in dispositivos %}
+        <article class="dispositivo-node" data-level="{{ disp.get_nivel }}">
+            <div class="dispositivo-header">
+                <span class="dispositivo-label">{{ disp.get_full_identifier }}</span>
+                <span class="dispositivo-tipo badge">{{ disp.get_tipo_display }}</span>
+            </div>
+            <div class="dispositivo-text">
+                {{ disp.texto|truncatewords:50 }}
+            </div>
+            {% if disp.texto|wordcount > 50 %}
+            <button class="dispositivo-expand" onclick="this.previousElementSibling.style.webkitLineClamp='unset'; this.style.display='none';">
+                Ver texto completo
+            </button>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 {% if norma.data_publicacao or norma.data_vigencia %}
 <div class="card">
     <h2>Informações Temporais</h2>
