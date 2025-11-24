@@ -161,38 +161,39 @@ Caso a complexidade da infraestrutura bloqueie o progresso por mais de 4 horas:
 
 ## 7. Protocolo de Desenvolvimento (Rigorous Engineering)
 
-### 🌿 Workflow de GitHub (Profissional)
+### 🌿 Workflow de GitHub (Profissional Automatizado)
 
 Como desenvolvedor solo assistido por IA, siga este fluxo estritamente:
 
-1.  **Issue First:** Antes de codar, crie uma Issue no GitHub (ex: "Configurar Docker").
-2.  **Branching:** Crie uma branch para a Issue: `git checkout -b feat/docker-setup`.
+1.  **Issue First:** Crie a Issue no GitHub.
+2.  **Branching:** Crie a branch para a Issue: `git checkout -b feat/...`
 3.  **Coding:** Gere o código e teste.
-4.  **Commit:** Use **Conventional Commits** (ex: `feat: add docker-compose with postgres service`).
-5.  **Merge:** Dê push, abra um PR (Pull Request) para a `main`, linke a Issue ("Closes \#1") e faça o merge.
-6.  **Release:** Ao fim da Sprint, crie uma Tag (`v0.1.0`).
+4.  **Finalização (Automação):** O AGENT DEVE EXECUTAR ESTA SEQUÊNCIA NO TERMINAL para fechar o ciclo da feature.
+    * `git push -u origin [current-branch]`
+    * `gh pr create --title "feat: [Descreva o que foi feito]" --body "Closes #N. [Descreva as mudanças técnicas]" --fill` (Cria o Pull Request e linka à Issue)
+    * `gh pr merge --squash --delete-branch` (Faz o Merge, squash commit e deleta a branch).
 
 ### 📌 Convenção de Commits
 
-  - `feat`: Nova funcionalidade.
-  - `fix`: Correção de bug.
-  - `chore`: Configuração (Docker, Requirements).
-  - `arch`: Decisões de arquitetura.
+- `feat`: Nova funcionalidade.
+- `fix`: Correção de bug.
+- `chore`: Configuração (Docker, Requirements).
+- `arch`: Decisões de arquitetura.
 
 ### 🚨 Tratamento de Erros Obrigatório
 
 Todo código gerado DEVE incluir:
 
-  - **Logging Estruturado:** `logger.info("Baixando Lei 1234...")`, `logger.error("Falha de parser...")`.
-  - **Graceful Degradation:** Se o OCR falhar, salvar o PDF bruto e marcar flag `needs_review`.
-  - **Type Hints:** Obrigatório em todas as funções de `src/`.
+- **Logging Estruturado:** `logger.info("...")`, `logger.error("...")`.
+- **Graceful Degradation:** Se o OCR falhar, salvar o PDF bruto e marcar flag `needs_review`.
+- **Type Hints:** Obrigatório em todas as funções de `src/`.
 
 ### 🚫 Anti-Patterns a Evitar
 
-  - ❌ **"God Scripts":** Scripts únicos que baixam, processam e salvam. Separe em `clients/`, `processors/`, `models/`.
-  - ❌ **Hardcoding:** URLs, caminhos de arquivo e credenciais devem vir de `.env` ou constantes de configuração.
-  - ❌ **Ignorar Migrations:** No Django, qualquer mudança de modelo deve ter sua `migration` commitada.
-  - ❌ **Regex na Camada Errada:** Regex é permitido somente na camada de `processing/` para extração de texto estruturado. Nunca deve ser usado na camada de `clients/` para parsear JSON ou HTML.
+- ❌ **"God Scripts":** Scripts únicos que baixam, processam e salvam. Separe em `clients/`, `processors/`, `models/`.
+- ❌ **Hardcoding:** URLs, caminhos de arquivo e credenciais devem vir de `.env` ou constantes de configuração.
+- ❌ **Ignorar Migrations:** No Django, qualquer mudança de modelo deve ter sua `migration` commitada.
+- ❌ **Regex na Camada Errada:** Regex é permitido somente na camada de `processing/` para extração de texto estruturado. Nunca deve ser usado na camada de `clients/` para parsear JSON ou HTML.
 
 ---
 
