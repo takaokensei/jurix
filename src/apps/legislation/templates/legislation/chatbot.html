@@ -825,6 +825,13 @@
                 // Get CSRF token
                 const csrfToken = getCookie('csrftoken');
                 
+                if (!csrfToken) {
+                    console.error('CSRF token not found');
+                    removeLoadingMessage(loadingId);
+                    addErrorMessage('Erro de segurança. Recarregue a página.');
+                    return;
+                }
+                
                 // Send request
                 const response = await fetch('{% url "legislation:chatbot" %}', {
                     method: 'POST',
@@ -835,22 +842,38 @@
                     body: JSON.stringify({ question })
                 });
                 
+                // Check if response is ok
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const data = await response.json();
+                
+                console.log('Response received:', data);
                 
                 // Remove loading
                 removeLoadingMessage(loadingId);
                 
                 if (data.success) {
+                    // Backend returns: { success: true, answer: "...", sources: [...], confidence, metadata }
+                    const answer = data.answer || 'Desculpe, não consegui gerar uma resposta.';
+                    const sources = data.sources || [];
+                    
+                    console.log('Answer:', answer.substring(0, 100) + '...');
+                    console.log('Sources count:', sources.length);
+                    
                     // Add assistant message with typewriter effect
-                    addAssistantMessage(data.data.answer, data.data.sources);
+                    addAssistantMessage(answer, sources);
                 } else {
-                    addErrorMessage(data.error || 'Erro ao processar pergunta');
+                    const errorMsg = data.error || 'Erro ao processar pergunta';
+                    console.error('Backend error:', errorMsg);
+                    addErrorMessage(errorMsg);
                 }
                 
             } catch (error) {
                 removeLoadingMessage(loadingId);
-                addErrorMessage('Erro de conexão. Tente novamente.');
-                console.error('Error:', error);
+                console.error('Request error:', error);
+                addErrorMessage('Erro de conexão. Verifique sua conexão e tente novamente.');
             } finally {
                 isProcessing = false;
                 document.getElementById('send-button').disabled = false;
@@ -942,15 +965,23 @@
         }
         
         function createSourcesSection(sources) {
+            if (!sources || sources.length === 0) return '';
+            
             const sourcesCards = sources.map(source => {
-                const scorePercent = Math.round(source.relevance_score * 100);
+                // Backend returns: { id, text, full_text, similarity_score, norma_ref, dispositivo_ref, ... }
+                const score = source.similarity_score || source.relevance_score || 0;
+                const scorePercent = Math.round(score * 100);
                 const scoreColor = scorePercent >= 80 ? 'var(--color-success)' : 
                                    scorePercent >= 60 ? 'var(--color-warning)' : 'var(--color-text-muted)';
+                
+                const normaRef = source.norma_ref || 'Norma não especificada';
+                const dispositivoRef = source.dispositivo_ref || '';
+                const snippet = source.text || source.full_text || '';
                 
                 return `
                     <div class="source-card">
                         <div class="source-card-header">
-                            <div class="source-title">${escapeHtml(source.norma)}</div>
+                            <div class="source-title">${escapeHtml(normaRef)}</div>
                             <div class="source-score">
                                 <div class="score-bar">
                                     <div class="score-fill" style="width: ${scorePercent}%; background: ${scoreColor};"></div>
@@ -958,8 +989,8 @@
                                 <span>${scorePercent}%</span>
                             </div>
                         </div>
-                        <div class="source-meta">${escapeHtml(source.dispositivo)}</div>
-                        <div class="source-snippet">${escapeHtml(source.texto.substring(0, 120))}...</div>
+                        <div class="source-meta">${escapeHtml(dispositivoRef)}</div>
+                        <div class="source-snippet">${escapeHtml(snippet.substring(0, 120))}${snippet.length > 120 ? '...' : ''}</div>
                     </div>
                 `;
             }).join('');
