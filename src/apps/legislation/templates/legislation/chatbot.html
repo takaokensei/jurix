@@ -3,6 +3,8 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_head %}
+<!-- Marked.js for Markdown rendering -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
     .chat-container {
         max-width: 1200px;
@@ -225,6 +227,61 @@
     input[name="csrfmiddlewaretoken"] {
         display: none;
     }
+    
+    /* Markdown content styling */
+    .message-content p {
+        margin: 0.5rem 0;
+        line-height: 1.6;
+    }
+    
+    .message-content p:first-child {
+        margin-top: 0;
+    }
+    
+    .message-content p:last-child {
+        margin-bottom: 0;
+    }
+    
+    .message-content strong {
+        font-weight: 700;
+        color: #1e40af;
+    }
+    
+    .message-content ul,
+    .message-content ol {
+        margin: 0.75rem 0;
+        padding-left: 1.5rem;
+    }
+    
+    .message-content li {
+        margin: 0.375rem 0;
+        line-height: 1.6;
+    }
+    
+    .message-content h3 {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e40af;
+        margin: 1rem 0 0.5rem 0;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 0.25rem;
+    }
+    
+    .message-content code {
+        background: #f3f4f6;
+        padding: 0.125rem 0.375rem;
+        border-radius: 4px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.875em;
+    }
+    
+    .message-content blockquote {
+        border-left: 3px solid #3b82f6;
+        padding-left: 1rem;
+        margin: 0.75rem 0;
+        color: #4b5563;
+        font-style: italic;
+    }
 </style>
 {% endblock %}
 
@@ -386,11 +443,23 @@ document.addEventListener('DOMContentLoaded', function() {
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
         
-        const textP = document.createElement('p');
-        textP.style.margin = '0';
-        textP.style.lineHeight = '1.6';
-        textP.textContent = content;
-        messageContent.appendChild(textP);
+        // Render content with Markdown support for assistant messages
+        const contentDiv = document.createElement('div');
+        if (role === 'assistant' && typeof marked !== 'undefined') {
+            // Configure marked options for better rendering
+            marked.setOptions({
+                breaks: true,  // Convert \n to <br>
+                gfm: true,     // GitHub Flavored Markdown
+                sanitize: false // Allow HTML (we control the input)
+            });
+            contentDiv.innerHTML = marked.parse(content);
+        } else {
+            // Fallback to plain text for user messages or if marked is not loaded
+            contentDiv.textContent = content;
+            contentDiv.style.margin = '0';
+            contentDiv.style.lineHeight = '1.6';
+        }
+        messageContent.appendChild(contentDiv);
         
         // Add confidence badge for assistant messages
         if (role === 'assistant' && confidence > 0) {
