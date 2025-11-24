@@ -1,4 +1,7 @@
-﻿# Python
+﻿# Git ignore patterns for Jurix project
+# Excludes build artifacts, virtual environments, and sensitive data
+
+# Python
 __pycache__/
 *.py[cod]
 *$py.class

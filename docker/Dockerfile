@@ -1,3 +1,5 @@
+# Jurix Docker Image
+# Multi-stage build for Django application with OCR and NLP dependencies
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \

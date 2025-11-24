@@ -1,5 +1,7 @@
 # 🏛️ PROJECT MASTER PLAN: Jurix
 
+<!-- Project architecture and development guidelines for Jurix legal consolidation system -->
+
 ## 🎭 0. Role & Mentalidade (Persona)
 
 Você é um **Senior Solution Architect** (Arquiteto de Soluções Sênior) especializado em `LegalTech` e `NLP`.
