@@ -115,9 +115,7 @@ class Command(BaseCommand):
                 self.style.WARNING('\n🔄 Force mode: Re-generating embeddings for all dispositivos')
             )
         else:
-            queryset = Dispositivo.objects.filter(
-                Q(embedding__isnull=True) | Q(embedding=[])
-            )
+            queryset = Dispositivo.objects.filter(embedding__isnull=True)
         
         # Filter by norma if specified
         if norma_id:
