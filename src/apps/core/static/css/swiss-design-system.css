@@ -751,7 +751,7 @@ strong, b {
     color: var(--color-text);
 }
 
-.message-timestamp {
+.message-time {
     font-size: var(--font-size-xs);
     color: var(--color-text-tertiary);
 }
