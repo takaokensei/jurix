@@ -729,7 +729,7 @@ docker-compose logs --tail=100 -f web worker
 @misc{jurix2025,
   title        = {Jurix: Sistema de Consolidação Normativa e 
                   Rastreabilidade Jurídica Inteligente},
-  author       = {[Seu Nome]},
+  author       = {Cauã Vitor F. Silva},
   year         = {2025},
   institution  = {Universidade Federal do Rio Grande do Norte},
   program      = {PIBIC},
@@ -744,7 +744,7 @@ docker-compose logs --tail=100 -f web worker
 
 <div align="center">
   
-  <strong>[Seu Nome]</strong>
+  <strong>Cauã Vitor F. Silva</strong>
   <br/>
   <samp>UFRN - Ciência da Computação</samp>
   <br/>
