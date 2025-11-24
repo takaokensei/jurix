@@ -395,8 +395,11 @@
             });
         }
         
+        // ===== SOURCE CARD CREATION =====
+        // Creates interactive source citation cards with confidence visualization
+        // Features: Hover states, clickable URLs, dynamic confidence bars, color-coded scores
         function createSourceCard(source, index) {
-                // Backend returns: { id, text, full_text, similarity_score, norma_ref, dispositivo_ref, distance, ... }
+                // Backend returns: { id, text, full_text, similarity_score, norma_ref, dispositivo_ref, distance, pdf_url, sapl_url }
                 let rawScore = source.similarity_score;
                 
                 // Handle different score formats
@@ -445,9 +448,13 @@
                     scorePercent = Math.round(normalizedScore * 100);
                 }
                 
-                // Ensure minimum visibility
+                // Ensure minimum visibility (1-100% range)
                 scorePercent = Math.max(1, Math.min(100, scorePercent));
                 
+                // Swiss Design: Functional color coding for confidence levels
+                // Green (success): High confidence (80%+)
+                // Yellow (warning): Medium confidence (60-79%)
+                // Gray (secondary/muted): Low confidence (<60%)
                 const scoreColor = scorePercent >= 80 ? 'var(--color-success)' : 
                                    scorePercent >= 60 ? 'var(--color-warning)' : 
                                    scorePercent >= 40 ? 'var(--color-text-secondary)' : 'var(--color-text-muted)';
@@ -461,7 +468,7 @@
                 // Determine which URL to use (PDF preferred, SAPL as fallback)
                 const linkUrl = pdfUrl || saplUrl;
                 
-                // Debug logging
+                // Debug logging (similarity score calculation)
                 console.log(`Source ${index + 1}:`, { 
                     normaRef, 
                     rawScore, 
@@ -472,7 +479,8 @@
                     saplUrl
                 });
                 
-                // Make card clickable if we have a URL
+                // Swiss Design: Clickable cards open PDF/SAPL in new tab
+                // Subtle hover indication (border animation) instead of explicit "click" text
                 const cardClasses = linkUrl ? 'source-card source-card-clickable' : 'source-card';
                 const onClickAttr = linkUrl ? `onclick="window.open('${linkUrl}', '_blank')"` : '';
                 const cursorStyle = linkUrl ? 'cursor: pointer;' : '';
@@ -494,16 +502,20 @@
                 `;
         }
         
-        // Legacy function for backward compatibility (not used anymore)
+        // ===== SOURCES SECTION =====
+        // Renders grid of source cards, sorted by relevance (similarity_score)
+        // Swiss Design: Clean grid layout, responsive columns (3→2→1)
         function createSourcesSection(sources) {
             if (!sources || sources.length === 0) return '';
             
+            // Sort sources by similarity score (highest first)
             const sortedSources = [...sources].sort((a, b) => {
                 const scoreA = parseFloat(a.similarity_score || 0);
                 const scoreB = parseFloat(b.similarity_score || 0);
                 return scoreB - scoreA;
             });
             
+            // Generate source cards HTML
             const sourcesCards = sortedSources.map((source, index) => createSourceCard(source, index)).join('');
             
             return `
