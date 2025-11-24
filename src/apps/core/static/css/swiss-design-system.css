@@ -519,6 +519,9 @@ strong, b {
 .theme-toggle-icon-navbar {
     display: block;
     line-height: 1;
+    font-size: var(--font-size-base);
+    /* Use text instead of emoji for professional look */
+    font-family: var(--font-sans);
 }
 
 .nav-link:active {
@@ -657,7 +660,11 @@ strong, b {
 }
 
 .theme-toggle-icon {
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+    /* Use text instead of emoji for professional look */
+    font-family: var(--font-sans);
 }
 
 .theme-toggle-text {
@@ -739,6 +746,19 @@ strong, b {
 .stat-value {
     font-weight: var(--font-weight-semibold);
     color: var(--color-primary-lighter);
+}
+
+/* Dark mode adjustments for sidebar stats */
+[data-theme="dark"] .sidebar-stats {
+    background: var(--color-gray-800);
+}
+
+[data-theme="dark"] .stat-label {
+    color: rgba(255, 255, 255, 0.6); /* Light text on dark background */
+}
+
+[data-theme="dark"] .stat-value {
+    color: var(--color-primary-lighter); /* Keep blue accent, works on dark */
 }
 
 /* Main Chat Area */

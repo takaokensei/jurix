@@ -41,17 +41,17 @@
                 <div class="sidebar-section">
                     <h3>Assistente</h3>
                     <div class="sidebar-item active" role="button" tabindex="0">
-                        <span>💬 Nova Conversa</span>
+                        <span>Nova Conversa</span>
                     </div>
                 </div>
                 
                 <nav class="sidebar-section" role="navigation" aria-label="Menu principal">
                     <h3>Navegação</h3>
                     <div class="sidebar-item" role="button" tabindex="0" onclick="window.location.href='{% url 'legislation:norma_list' %}'" onkeydown="if(event.key==='Enter')window.location.href='{% url 'legislation:norma_list' %}'">
-                        <span>📋 Normas Consolidadas</span>
+                        <span>Normas Consolidadas</span>
                     </div>
                     <div class="sidebar-item" role="button" tabindex="0" onclick="window.location.href='/admin/'" onkeydown="if(event.key==='Enter')window.location.href='/admin/'">
-                        <span>⚙️ Admin</span>
+                        <span>Admin</span>
                     </div>
                 </nav>
                 
@@ -59,7 +59,7 @@
                 <div class="sidebar-section">
                     <div class="theme-toggle-container">
                         <label for="theme-toggle" class="theme-toggle-label">
-                            <span class="theme-toggle-icon">🌙</span>
+                            <span class="theme-toggle-icon" aria-hidden="true">Dark</span>
                             <span class="theme-toggle-text">Modo Escuro</span>
                         </label>
                         <button 
@@ -579,7 +579,7 @@
                             <span class="message-time">${timestamp}</span>
                         </div>
                         <div class="message-body" style="border-color: var(--color-error); background: #fef2f2;">
-                            ⚠️ ${escapeHtml(errorText)}
+                            <span class="error-icon" aria-hidden="true">!</span> ${escapeHtml(errorText)}
                         </div>
                     </div>
                 </div>
@@ -780,7 +780,7 @@
                 const icon = document.querySelector('.theme-toggle-icon');
                 const text = document.querySelector('.theme-toggle-text');
                 if (icon && text) {
-                    icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+                    icon.textContent = theme === 'dark' ? 'Light' : 'Dark';
                     text.textContent = theme === 'dark' ? 'Modo Claro' : 'Modo Escuro';
                 }
             }

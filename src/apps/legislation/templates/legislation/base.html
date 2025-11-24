@@ -135,7 +135,7 @@
                     aria-pressed="false"
                     title="Alternar tema"
                 >
-                    <span class="theme-toggle-icon-navbar">🌙</span>
+                    <span class="theme-toggle-icon-navbar" aria-hidden="true">Dark</span>
                 </button>
             </nav>
         </div>
@@ -177,7 +177,7 @@
                 navbarToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
                 const icon = navbarToggle.querySelector('.theme-toggle-icon-navbar');
                 if (icon) {
-                    icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+                    icon.textContent = theme === 'dark' ? 'Light' : 'Dark';
                 }
             }
             
@@ -188,7 +188,7 @@
                 const icon = sidebarToggle.closest('.theme-toggle-container')?.querySelector('.theme-toggle-icon');
                 const text = sidebarToggle.closest('.theme-toggle-container')?.querySelector('.theme-toggle-text');
                 if (icon && text) {
-                    icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+                    icon.textContent = theme === 'dark' ? 'Light' : 'Dark';
                     text.textContent = theme === 'dark' ? 'Modo Claro' : 'Modo Escuro';
                 }
             }
