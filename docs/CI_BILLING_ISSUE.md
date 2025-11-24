@@ -1,4 +1,4 @@
-# ⚠️ GitHub Actions CI - Problema de Billing (RESOLVIDO)
+# ⚠️ GitHub Actions CI - Problema de Billing
 
 ## 🚨 Situação
 
@@ -91,6 +91,26 @@ Para evitar custos do GitHub Actions, você pode configurar um runner self-hoste
    - O CI deve funcionar normalmente
 
 **Importante:** Você não será cobrado enquanto estiver dentro dos 2.000 minutos gratuitos. O limite é apenas uma proteção.
+
+### ⏱️ Processamento Pode Levar Alguns Minutos
+
+Após ajustar o budget, o GitHub pode levar alguns minutos para processar a mudança. Se o erro persistir:
+
+1. **Verifique se o budget foi salvo:**
+   - Volte para "Budgets and alerts"
+   - Confirme que o valor mudou de "$0" para "$5" ou mais
+
+2. **Adicione método de pagamento (recomendado):**
+   - Vá em "Payment information"
+   - Adicione um cartão de crédito
+   - Mesmo sem uso, o GitHub pode exigir isso para habilitar o CI
+
+3. **Aguarde 5-10 minutos** e tente fazer um novo commit
+
+4. **Verifique o status:**
+   ```bash
+   gh run list --limit 1
+   ```
 
 ## 💡 Recomendação
 
