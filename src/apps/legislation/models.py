@@ -292,6 +292,19 @@ class Dispositivo(TimeStampedModel):
             pai = pai.dispositivo_pai
         
         return nivel
+    
+    def get_full_identifier(self) -> str:
+        """
+        Retorna o identificador completo do dispositivo.
+        
+        Alias para get_caminho_completo() para compatibilidade com 
+        código existente (especialmente no Admin e ConsolidationEngine).
+        
+        Returns:
+            String formatada com o caminho hierárquico completo
+            Exemplo: "Art. 1º > § 2º > Inciso III"
+        """
+        return self.get_caminho_completo()
 
 
 class EventoAlteracao(TimeStampedModel):
