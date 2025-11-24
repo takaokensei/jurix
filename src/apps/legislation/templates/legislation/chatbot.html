@@ -969,14 +969,20 @@
             
             const sourcesCards = sources.map(source => {
                 // Backend returns: { id, text, full_text, similarity_score, norma_ref, dispositivo_ref, ... }
-                const score = source.similarity_score || source.relevance_score || 0;
-                const scorePercent = Math.round(score * 100);
+                const rawScore = source.similarity_score || source.relevance_score || 0;
+                // Ensure score is between 0 and 1, then convert to percentage
+                const normalizedScore = Math.max(0, Math.min(1, parseFloat(rawScore)));
+                const scorePercent = Math.round(normalizedScore * 100);
                 const scoreColor = scorePercent >= 80 ? 'var(--color-success)' : 
-                                   scorePercent >= 60 ? 'var(--color-warning)' : 'var(--color-text-muted)';
+                                   scorePercent >= 60 ? 'var(--color-warning)' : 
+                                   scorePercent >= 40 ? 'var(--color-text-secondary)' : 'var(--color-text-muted)';
                 
                 const normaRef = source.norma_ref || 'Norma não especificada';
                 const dispositivoRef = source.dispositivo_ref || '';
                 const snippet = source.text || source.full_text || '';
+                
+                // Debug logging
+                console.log('Source:', { normaRef, score: normalizedScore, scorePercent });
                 
                 return `
                     <div class="source-card">
@@ -1035,34 +1041,43 @@
             scrollToBottom();
         }
         
-        // ===== TYPEWRITER EFFECT =====
+        // ===== TYPEWRITER EFFECT WITH INCREMENTAL MARKDOWN =====
         function typewriterEffect(elementId, text) {
             const element = document.getElementById(elementId);
             if (!element) return;
             
-            // Parse markdown first
-            const htmlContent = marked.parse(text);
-            const sanitizedContent = DOMPurify.sanitize(htmlContent);
+            // Split text into words for smoother typewriter effect
+            // This allows us to render markdown incrementally word-by-word
+            const words = text.split(/(\s+)/); // Split preserving whitespace
+            let wordIndex = 0;
+            const speed = 20; // milliseconds per word
+            const wordsPerChunk = 1; // words to add per iteration
             
-            // For typewriter effect, we'll add the content progressively
-            let tempDiv = document.createElement('div');
-            tempDiv.innerHTML = sanitizedContent;
-            const textContent = tempDiv.textContent || tempDiv.innerText;
-            
-            let index = 0;
-            const speed = 10; // milliseconds per character
+            // Store the full rendered HTML for final display
+            const fullHtml = DOMPurify.sanitize(marked.parse(text));
             
             function type() {
-                if (index < textContent.length) {
-                    // For simplicity, show chunks of text
-                    const chunk = textContent.substring(0, index + 3);
-                    element.textContent = chunk;
-                    index += 3;
+                if (wordIndex < words.length) {
+                    // Build text up to current word
+                    const visibleWords = words.slice(0, wordIndex + wordsPerChunk);
+                    const visibleText = visibleWords.join('');
+                    
+                    // Render markdown up to this point
+                    try {
+                        const partialHtml = marked.parse(visibleText);
+                        const sanitized = DOMPurify.sanitize(partialHtml);
+                        element.innerHTML = sanitized;
+                    } catch (e) {
+                        // Fallback: if markdown parsing fails, show plain text
+                        element.textContent = visibleText;
+                    }
+                    
+                    wordIndex += wordsPerChunk;
                     scrollToBottomIfAtBottom();
                     setTimeout(type, speed);
                 } else {
-                    // Once complete, render the full markdown
-                    element.innerHTML = sanitizedContent;
+                    // Render complete markdown when done
+                    element.innerHTML = fullHtml;
                     scrollToBottom();
                 }
             }

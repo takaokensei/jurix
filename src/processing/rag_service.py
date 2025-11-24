@@ -309,7 +309,7 @@ RESPOSTA:"""
             prompt=prompt,
             model=model,
             temperature=0.3,  # Lower temperature for factual answers
-            max_tokens=500
+            max_tokens=2048  # Increased for longer, complete answers
         )
         
         if not answer:
