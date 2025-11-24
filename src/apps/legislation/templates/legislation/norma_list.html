@@ -3,75 +3,116 @@
 {% block title %}Normas Consolidadas - Jurix{% endblock %}
 
 {% block content %}
-<div class="card">
-    <h2>Normas Consolidadas</h2>
-    
-    <div class="alert alert-info">
-        <strong>Total de normas consolidadas:</strong> {{ total_consolidated }}
-    </div>
-    
-    <form method="get" style="margin-bottom: 20px;">
-        <input type="text" name="q" value="{{ search_query }}" placeholder="Buscar por ementa, número ou tipo..." 
-               style="padding: 10px; width: 300px; border: 1px solid #ddd; border-radius: 4px;">
-        <button type="submit" class="btn">Buscar</button>
-        {% if search_query %}
-        <a href="{% url 'legislation:norma_list' %}" class="btn btn-secondary">Limpar</a>
-        {% endif %}
+<!-- Header Section -->
+<div class="page-header">
+    <h1>Normas Consolidadas</h1>
+    <p class="page-subtitle">{{ total_consolidated }} {{ total_consolidated|pluralize:"norma,normas" }} cadastradas no sistema</p>
+</div>
+
+<!-- Search Bar -->
+<div class="search-section">
+    <form method="get" class="search-form">
+        <div class="search-container">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" class="search-icon">
+                <path d="M9 17A8 8 0 1 0 9 1a8 8 0 0 0 0 16zM16 16l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Buscar por ementa, número ou tipo..." class="search-input">
+            <button type="submit" class="btn btn-primary">Buscar</button>
+            {% if search_query %}
+            <a href="{% url 'legislation:norma_list' %}" class="btn btn-secondary">Limpar</a>
+            {% endif %}
+        </div>
     </form>
-    
-    {% if normas %}
-    <table>
-        <thead>
-            <tr>
-                <th>Tipo</th>
-                <th>Número/Ano</th>
-                <th>Ementa</th>
-                <th>Status</th>
-                <th>Data Publicação</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for norma in normas %}
-            <tr>
-                <td><strong>{{ norma.tipo }}</strong></td>
-                <td>{{ norma.numero }}/{{ norma.ano }}</td>
-                <td>{{ norma.ementa|truncatewords:15 }}</td>
-                <td>
-                    <span class="badge badge-success">{{ norma.get_status_display }}</span>
-                </td>
-                <td>{{ norma.data_publicacao|date:"d/m/Y"|default:"-" }}</td>
-                <td>
-                    <a href="{% url 'legislation:norma_detail' norma.pk %}" class="btn" style="padding: 6px 12px; font-size: 12px;">Ver</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    
-    {% if is_paginated %}
-    <div style="margin-top: 20px; text-align: center;">
-        {% if page_obj.has_previous %}
-        <a href="?page=1{% if search_query %}&q={{ search_query }}{% endif %}" class="btn btn-secondary">« Primeira</a>
-        <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}" class="btn btn-secondary">‹ Anterior</a>
-        {% endif %}
+</div>
+
+<!-- Norma Grid -->
+{% if normas %}
+<div class="norma-grid">
+    {% for norma in normas %}
+    <article class="norma-card">
+        <header class="norma-card-header">
+            <div class="norma-title-row">
+                <h3 class="norma-title">{{ norma.tipo }} {{ norma.numero }}/{{ norma.ano }}</h3>
+                <span class="badge badge-success">{{ norma.get_status_display }}</span>
+            </div>
+        </header>
         
-        <span style="margin: 0 15px;">
-            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
-        </span>
+        <div class="norma-card-body">
+            <p class="norma-ementa">{{ norma.ementa|truncatewords:20 }}</p>
+        </div>
         
-        {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}" class="btn btn-secondary">Próxima ›</a>
-        <a href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&q={{ search_query }}{% endif %}" class="btn btn-secondary">Última »</a>
-        {% endif %}
-    </div>
+        <footer class="norma-card-footer">
+            <time class="norma-date">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="1" y="2" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M4 1v2M10 1v2M1 5h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                {{ norma.data_publicacao|date:"d/m/Y"|default:"-" }}
+            </time>
+            <a href="{% url 'legislation:norma_detail' norma.pk %}" class="link-primary">
+                Ver detalhes
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </a>
+        </footer>
+    </article>
+    {% endfor %}
+</div>
+
+
+<!-- Pagination -->
+{% if is_paginated %}
+<nav class="pagination">
+    {% if page_obj.has_previous %}
+    <a href="?page=1{% if search_query %}&q={{ search_query }}{% endif %}" class="pagination-link">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 12L6 8l4-4M12 12L8 8l4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Primeira
+    </a>
+    <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}" class="pagination-link">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Anterior
+    </a>
     {% endif %}
     
-    {% else %}
-    <div class="alert alert-info">
-        <p>Nenhuma norma consolidada encontrada{% if search_query %} para "{{ search_query }}"{% endif %}.</p>
-    </div>
+    <span class="pagination-info">
+        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+    </span>
+    
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}" class="pagination-link">
+        Próxima
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 12l4-4-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </a>
+    <a href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&q={{ search_query }}{% endif %}" class="pagination-link">
+        Última
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 12l4-4-4-4M4 12l4-4-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </a>
+    {% endif %}
+</nav>
+{% endif %}
+
+{% else %}
+<!-- Empty State -->
+<div class="empty-state">
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" class="empty-state-icon">
+        <circle cx="32" cy="32" r="30" stroke="currentColor" stroke-width="2"/>
+        <path d="M20 32h24M32 20v24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <h3>Nenhuma norma encontrada</h3>
+    <p>{% if search_query %}Não encontramos resultados para "{{ search_query }}".{% else %}Nenhuma norma consolidada cadastrada no sistema.{% endif %}</p>
+    {% if search_query %}
+    <a href="{% url 'legislation:norma_list' %}" class="btn btn-primary">Limpar busca</a>
     {% endif %}
 </div>
+{% endif %}
 {% endblock %}
 
