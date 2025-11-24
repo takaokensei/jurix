@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -22,7 +20,7 @@ services:
     image: redis:7-alpine
     container_name: jurix_redis
     ports:
-      - "6379:6379"
+      - "6380:6379"  # Porta externa 6380 mapeada para interna 6379 (evita conflito)
     volumes:
       - redis_data:/data
     healthcheck:
