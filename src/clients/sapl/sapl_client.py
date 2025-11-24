@@ -245,6 +245,86 @@ class SaplAPIClient:
             logger.error(f"Falha ao buscar norma ID={norma_id}: {str(e)}")
             raise
     
+    def fetch_normas_by_year_range(
+        self,
+        ano_inicio: int,
+        ano_fim: int,
+        tipo: Optional[str] = None,
+        max_normas_por_ano: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Busca normas por intervalo de anos (workaround para limitação de paginação da API).
+        
+        Esta estratégia contorna a limitação da API SAPL que retorna sempre as mesmas
+        10 normas independente do offset, iterando ano por ano.
+        
+        Args:
+            ano_inicio: Ano inicial do intervalo (inclusive)
+            ano_fim: Ano final do intervalo (inclusive)
+            tipo: Filtro opcional por tipo de norma
+            max_normas_por_ano: Limite máximo de normas por ano (None = todas)
+            
+        Returns:
+            Lista completa de normas do intervalo
+        """
+        logger.info(
+            f"Iniciando fetch por intervalo de anos: {ano_inicio}-{ano_fim}, "
+            f"tipo={tipo}, max_por_ano={max_normas_por_ano}"
+        )
+        
+        all_normas = []
+        anos_para_processar = list(range(ano_inicio, ano_fim + 1))
+        
+        for ano in anos_para_processar:
+            try:
+                logger.info(f"Buscando normas do ano {ano}...")
+                
+                # Buscar todas as normas deste ano
+                normas_do_ano = self.fetch_all_normas(
+                    max_normas=max_normas_por_ano,
+                    tipo=tipo,
+                    ano=ano,
+                    page_size=50
+                )
+                
+                # Remover duplicatas por sapl_id
+                normas_unicas = {}
+                for norma in normas_do_ano:
+                    sapl_id = norma.get('id')
+                    if sapl_id and sapl_id not in normas_unicas:
+                        normas_unicas[sapl_id] = norma
+                
+                normas_do_ano_unicas = list(normas_unicas.values())
+                all_normas.extend(normas_do_ano_unicas)
+                
+                logger.info(
+                    f"Ano {ano}: {len(normas_do_ano_unicas)} normas únicas encontradas "
+                    f"(total acumulado: {len(all_normas)})"
+                )
+                
+                # Rate limiting entre anos
+                time.sleep(0.5)
+                
+            except Exception as e:
+                logger.error(f"Erro ao buscar normas do ano {ano}: {str(e)}")
+                continue
+        
+        # Remover duplicatas finais (caso alguma norma apareça em múltiplos anos)
+        normas_finais_unicas = {}
+        for norma in all_normas:
+            sapl_id = norma.get('id')
+            if sapl_id and sapl_id not in normas_finais_unicas:
+                normas_finais_unicas[sapl_id] = norma
+        
+        resultado_final = list(normas_finais_unicas.values())
+        
+        logger.info(
+            f"Fetch por intervalo de anos concluído: {len(resultado_final)} normas únicas "
+            f"de {ano_inicio} a {ano_fim}"
+        )
+        
+        return resultado_final
+    
     def fetch_all_normas(
         self,
         max_normas: Optional[int] = None,
@@ -254,6 +334,9 @@ class SaplAPIClient:
     ) -> List[Dict[str, Any]]:
         """
         Busca todas as normas com paginação automática.
+        
+        NOTA: Devido à limitação da API SAPL (retorna sempre as mesmas 10 normas),
+        recomenda-se usar fetch_normas_by_year_range para busca histórica completa.
         
         Args:
             max_normas: Número máximo de normas (None = todas)
@@ -271,6 +354,7 @@ class SaplAPIClient:
         
         all_normas = []
         offset = 0
+        seen_ids = set()  # Para detectar duplicatas
         
         while True:
             try:
@@ -285,7 +369,19 @@ class SaplAPIClient:
                     logger.info("Nenhuma norma adicional encontrada. Fetch completo.")
                     break
                 
-                all_normas.extend(normas)
+                # Filtrar duplicatas
+                novas_normas = []
+                for norma in normas:
+                    sapl_id = norma.get('id')
+                    if sapl_id and sapl_id not in seen_ids:
+                        seen_ids.add(sapl_id)
+                        novas_normas.append(norma)
+                
+                if not novas_normas:
+                    logger.info("Apenas normas duplicadas encontradas. Encerrando paginação.")
+                    break
+                
+                all_normas.extend(novas_normas)
                 logger.info(f"Progresso: {len(all_normas)} normas acumuladas")
                 
                 if max_normas and len(all_normas) >= max_normas:
