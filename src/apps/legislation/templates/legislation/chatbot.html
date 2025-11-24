@@ -59,7 +59,17 @@
                 <div class="sidebar-section">
                     <div class="theme-toggle-container">
                         <label for="theme-toggle" class="theme-toggle-label">
-                            <span class="theme-toggle-icon" aria-hidden="true">Dark</span>
+                            <span class="theme-toggle-icon theme-toggle-icon-sun" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="12" cy="12" r="4" fill="currentColor"/>
+                                    <path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5.64 5.64l1.41 1.41M16.95 16.95l1.41 1.41M18.36 5.64l-1.41 1.41M7.05 16.95l-1.41 1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </span>
+                            <span class="theme-toggle-icon theme-toggle-icon-moon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="currentColor"/>
+                                </svg>
+                            </span>
                             <span class="theme-toggle-text">Modo Escuro</span>
                         </label>
                         <button 
@@ -775,15 +785,8 @@
             const toggle = document.getElementById('theme-toggle');
             if (toggle) {
                 toggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
-                
-                // Update icon and text
-                const icon = document.querySelector('.theme-toggle-icon');
-                const text = document.querySelector('.theme-toggle-text');
-                if (icon && text) {
-                    icon.textContent = theme === 'dark' ? 'Light' : 'Dark';
-                    text.textContent = theme === 'dark' ? 'Modo Claro' : 'Modo Escuro';
-                }
             }
+            // Icons are controlled via CSS display rules, no JS needed
         }
         
         function toggleTheme() {
