@@ -1,4 +1,4 @@
-# ⚠️ GitHub Actions CI - Problema de Billing
+# ⚠️ GitHub Actions CI - Problema de Billing (RESOLVIDO)
 
 ## 🚨 Situação
 
