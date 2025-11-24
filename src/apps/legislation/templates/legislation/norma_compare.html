@@ -1,0 +1,96 @@
+{% extends 'legislation/base.html' %}
+
+{% block title %}Comparação - {{ norma.tipo }} {{ norma.numero }}/{{ norma.ano }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .compare-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+    
+    .compare-panel {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+    }
+    
+    .compare-panel h3 {
+        color: #2c3e50;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #ecf0f1;
+    }
+    
+    .original-text {
+        border-left: 4px solid #95a5a6;
+    }
+    
+    .consolidated-text {
+        border-left: 4px solid #27ae60;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Comparação de Versões - {{ norma.tipo }} {{ norma.numero }}/{{ norma.ano }}</h2>
+    <p style="color: #7f8c8d; margin-top: 8px;">
+        Compare o texto original extraído por OCR com o texto consolidado após aplicação de alterações.
+    </p>
+    
+    <div style="margin: 16px 0;">
+        <span class="badge badge-info">{{ original_length }} linhas (original)</span>
+        <span class="badge badge-success">{{ consolidated_length }} linhas (consolidado)</span>
+        <span class="badge badge-warning">{{ eventos.count }} eventos aplicados</span>
+    </div>
+</div>
+
+<div class="compare-container">
+    <div class="compare-panel original-text">
+        <h3>📄 Texto Original (OCR)</h3>
+        <pre style="max-height: 600px; overflow-y: auto;">{{ norma.texto_original|default:"Texto original não disponível" }}</pre>
+    </div>
+    
+    <div class="compare-panel consolidated-text">
+        <h3>✅ Texto Consolidado</h3>
+        <pre style="max-height: 600px; overflow-y: auto;">{{ norma.texto_consolidado|default:"Texto consolidado não disponível" }}</pre>
+    </div>
+</div>
+
+{% if eventos %}
+<div class="card">
+    <h2>Eventos Aplicados ({{ eventos.count }})</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Ação</th>
+                <th>Fonte</th>
+                <th>Referência</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for evento in eventos %}
+            <tr>
+                <td><span class="badge badge-info">{{ evento.get_acao_display }}</span></td>
+                <td>
+                    {% if evento.dispositivo_fonte %}
+                    {{ evento.dispositivo_fonte.norma.tipo }} {{ evento.dispositivo_fonte.norma.numero }}/{{ evento.dispositivo_fonte.norma.ano }}
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td>{{ evento.target_text|truncatewords:15 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div style="margin-top: 20px;">
+    <a href="{% url 'legislation:norma_detail' norma.pk %}" class="btn btn-secondary">« Voltar</a>
+</div>
+{% endblock %}
+

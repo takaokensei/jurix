@@ -1,0 +1,119 @@
+{% extends 'legislation/base.html' %}
+
+{% block title %}{{ norma.tipo }} {{ norma.numero }}/{{ norma.ano }} - Jurix{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>{{ norma.tipo }} Nº {{ norma.numero }}/{{ norma.ano }}</h2>
+        <span class="badge badge-success">{{ norma.get_status_display }}</span>
+    </div>
+    
+    {% if norma.ementa %}
+    <div style="margin: 16px 0; padding: 16px; background-color: #f8f9fa; border-left: 4px solid #3498db; border-radius: 4px;">
+        <strong>EMENTA:</strong> {{ norma.ementa }}
+    </div>
+    {% endif %}
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>{{ stats.total_dispositivos }}</h3>
+            <p>Dispositivos</p>
+        </div>
+        <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <h3>{{ stats.total_eventos }}</h3>
+            <p>Eventos de Alteração</p>
+        </div>
+        <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <h3>{{ stats.total_chars }}</h3>
+            <p>Caracteres</p>
+        </div>
+    </div>
+    
+    <div style="margin: 20px 0;">
+        <a href="{% url 'legislation:norma_compare' norma.pk %}" class="btn">Comparar Versões</a>
+        <a href="{% url 'legislation:norma_tree' norma.pk %}" class="btn btn-secondary">Visualizar Árvore</a>
+        <a href="/admin/legislation/norma/{{ norma.pk }}/change/" class="btn btn-secondary">Editar no Admin</a>
+    </div>
+</div>
+
+{% if norma.data_publicacao or norma.data_vigencia %}
+<div class="card">
+    <h2>Informações Temporais</h2>
+    <table>
+        <tr>
+            <th>Data de Publicação:</th>
+            <td>{{ norma.data_publicacao|date:"d/m/Y"|default:"-" }}</td>
+        </tr>
+        <tr>
+            <th>Data de Vigência:</th>
+            <td>{{ norma.data_vigencia|date:"d/m/Y"|default:"-" }}</td>
+        </tr>
+        <tr>
+            <th>Status Vigência:</th>
+            <td>
+                {% if norma.is_em_vacatio_legis %}
+                <span class="badge badge-warning">⚠️ Vacatio Legis</span>
+                {% else %}
+                <span class="badge badge-success">✓ Vigente</span>
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+</div>
+{% endif %}
+
+{% if eventos_recebidos %}
+<div class="card">
+    <h2>Eventos de Alteração ({{ eventos_recebidos.count }})</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Ação</th>
+                <th>Fonte</th>
+                <th>Alvo</th>
+                <th>Confiança</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for evento in eventos_recebidos %}
+            <tr>
+                <td>
+                    <span class="badge badge-info">{{ evento.get_acao_display }}</span>
+                </td>
+                <td>
+                    {{ evento.dispositivo_fonte.norma.tipo }} {{ evento.dispositivo_fonte.norma.numero }}/{{ evento.dispositivo_fonte.norma.ano }}
+                    <br><small>{{ evento.dispositivo_fonte }}</small>
+                </td>
+                <td>
+                    {% if evento.dispositivo_alvo %}
+                    {{ evento.dispositivo_alvo }}
+                    {% else %}
+                    <em>{{ evento.target_text|truncatewords:10 }}</em>
+                    {% endif %}
+                </td>
+                <td>{{ evento.extraction_confidence|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Texto Consolidado</h2>
+    
+    {% if norma.texto_consolidado %}
+    <pre>{{ norma.texto_consolidado }}</pre>
+    {% else %}
+    <div class="alert alert-info">
+        <p>Texto consolidado não disponível para esta norma.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div style="margin-top: 20px;">
+    <a href="{% url 'legislation:norma_list' %}" class="btn btn-secondary">« Voltar para a lista</a>
+</div>
+{% endblock %}
+

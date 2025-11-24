@@ -1,0 +1,20 @@
+<div class="tree-node level-{{ level }}">
+    <div class="node-header">
+        {{ node.dispositivo }}
+    </div>
+    <div class="node-text">
+        {{ node.dispositivo.texto|truncatewords:30 }}
+    </div>
+    <div class="node-meta">
+        Tipo: {{ node.dispositivo.get_tipo_display }} | Ordem: {{ node.dispositivo.ordem }} | Confiança: {{ node.dispositivo.segmentation_confidence|floatformat:2 }}
+    </div>
+    
+    {% if node.children %}
+    <div style="margin-top: 10px;">
+        {% for child in node.children %}
+            {% include 'legislation/tree_node.html' with node=child level=level|add:1 %}
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
