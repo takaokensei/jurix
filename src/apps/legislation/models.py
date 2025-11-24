@@ -80,12 +80,14 @@ class Norma(TimeStampedModel):
         ('pdf_downloaded', 'PDF Baixado'),
         ('ocr_processing', 'OCR em Processamento'),
         ('ocr_completed', 'OCR Completo'),
+        ('segmentation_processing', 'Segmentação em Processamento'),
+        ('segmented', 'Texto Segmentado'),
         ('nlp_processing', 'NLP em Processamento'),
         ('ready', 'Pronto para Consolidação'),
         ('failed', 'Falha no Processamento'),
     ]
     status = models.CharField(
-        max_length=20,
+        max_length=30,
         choices=STATUS_CHOICES,
         default='pending',
         verbose_name='Status',
@@ -136,4 +138,149 @@ class Norma(TimeStampedModel):
         
         hoje = timezone.now().date()
         return self.data_publicacao <= hoje < self.data_vigencia
+
+
+class Dispositivo(TimeStampedModel):
+    """
+    Modelo para armazenar a estrutura hierárquica de uma norma jurídica.
+    
+    Representa elementos estruturais como Artigos, Parágrafos, Incisos, Alíneas, etc.
+    Mantém relações pai-filho para navegação hierárquica.
+    
+    Exemplos:
+    - Artigo 1º (sem pai)
+    - § 1º (pai: Artigo 1º)
+    - Inciso I (pai: § 1º ou Artigo 1º)
+    - Alínea a) (pai: Inciso I)
+    """
+    
+    # Tipos de dispositivos legais
+    TIPO_CHOICES = [
+        ('artigo', 'Artigo'),
+        ('paragrafo', 'Parágrafo'),
+        ('inciso', 'Inciso'),
+        ('alinea', 'Alínea'),
+        ('item', 'Item'),
+        ('capitulo', 'Capítulo'),
+        ('secao', 'Seção'),
+        ('titulo', 'Título'),
+        ('livro', 'Livro'),
+        ('parte', 'Parte'),
+    ]
+    
+    # Relacionamentos
+    norma = models.ForeignKey(
+        Norma,
+        on_delete=models.CASCADE,
+        related_name='dispositivos',
+        verbose_name='Norma',
+        help_text='Norma à qual este dispositivo pertence'
+    )
+    
+    dispositivo_pai = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='filhos',
+        verbose_name='Dispositivo Pai',
+        help_text='Dispositivo pai na hierarquia (null para elementos raiz)'
+    )
+    
+    # Identificação
+    tipo = models.CharField(
+        max_length=20,
+        choices=TIPO_CHOICES,
+        verbose_name='Tipo',
+        db_index=True,
+        help_text='Tipo do dispositivo (artigo, parágrafo, etc.)'
+    )
+    
+    numero = models.CharField(
+        max_length=50,
+        verbose_name='Número',
+        help_text='Número ou identificador do dispositivo (ex: "1º", "I", "a")'
+    )
+    
+    # Conteúdo
+    texto = models.TextField(
+        verbose_name='Texto',
+        help_text='Conteúdo textual do dispositivo'
+    )
+    
+    # Ordenação
+    ordem = models.IntegerField(
+        verbose_name='Ordem',
+        help_text='Ordem sequencial do dispositivo na norma (para preservar sequência original)',
+        db_index=True
+    )
+    
+    # Metadados de segmentação
+    segmentation_confidence = models.FloatField(
+        verbose_name='Confiança da Segmentação',
+        default=1.0,
+        help_text='Confiança do regex na identificação deste dispositivo (0-1)'
+    )
+    
+    texto_bruto = models.TextField(
+        verbose_name='Texto Bruto',
+        blank=True,
+        help_text='Texto original antes da limpeza (para auditoria)'
+    )
+    
+    class Meta:
+        verbose_name = 'Dispositivo'
+        verbose_name_plural = 'Dispositivos'
+        ordering = ['norma', 'ordem']
+        indexes = [
+            models.Index(fields=['norma', 'tipo']),
+            models.Index(fields=['norma', 'ordem']),
+            models.Index(fields=['dispositivo_pai']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['norma', 'ordem'],
+                name='unique_dispositivo_ordem'
+            )
+        ]
+    
+    def __str__(self) -> str:
+        if self.tipo == 'artigo':
+            return f"Art. {self.numero}"
+        elif self.tipo == 'paragrafo':
+            return f"§ {self.numero}"
+        elif self.tipo == 'inciso':
+            return f"Inciso {self.numero}"
+        elif self.tipo == 'alinea':
+            return f"Alínea {self.numero}"
+        else:
+            return f"{self.get_tipo_display()} {self.numero}"
+    
+    def get_caminho_completo(self) -> str:
+        """
+        Retorna o caminho hierárquico completo do dispositivo.
+        
+        Exemplo: "Art. 1º > § 2º > Inciso III > Alínea b"
+        """
+        caminho = [str(self)]
+        pai = self.dispositivo_pai
+        
+        while pai:
+            caminho.insert(0, str(pai))
+            pai = pai.dispositivo_pai
+        
+        return " > ".join(caminho)
+    
+    def get_nivel(self) -> int:
+        """
+        Retorna o nível hierárquico do dispositivo (0 = raiz).
+        """
+        nivel = 0
+        pai = self.dispositivo_pai
+        
+        while pai:
+            nivel += 1
+            pai = pai.dispositivo_pai
+        
+        return nivel
 
