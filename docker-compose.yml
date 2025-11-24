@@ -20,7 +20,7 @@ services:
     image: redis:7-alpine
     container_name: jurix_redis
     ports:
-      - "6380:6379"  # Porta externa 6380 mapeada para interna 6379 (evita conflito)
+      - "16379:6379"  # Porta externa 16379 mapeada para interna 6379 (evita conflito Windows)
     volumes:
       - redis_data:/data
     healthcheck:
