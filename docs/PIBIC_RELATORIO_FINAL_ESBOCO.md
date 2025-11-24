@@ -3,10 +3,10 @@
 **Projeto:** Jurix - Sistema de Consolidação Normativa e Rastreabilidade Jurídica Inteligente  
 **Instituição:** Universidade Federal do Rio Grande do Norte (UFRN)  
 **Programa:** Programa Institucional de Bolsas de Iniciação Científica (PIBIC)  
-**Área:** Ciência da Computação / Inteligência Artificial Aplicada ao Direito  
-**Período:** 2024-2025  
-**Bolsista:** [NOME DO BOLSISTA]  
-**Orientador(a):** [NOME DO ORIENTADOR]  
+**Área:** Engenharia Elétrica / Inteligência Artificial Aplicada ao Direito  
+**Período:** 2025-2026  
+**Bolsista:** Cauã Vitor Figueredo Silva  
+**Orientador(a):** José Alfredo Ferreira Costa 
 **Data de Conclusão:** Novembro 2024
 
 ---
