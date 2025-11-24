@@ -771,3 +771,21 @@ docker-compose logs --tail=100 -f web worker
   <img src="https://img.shields.io/badge/Powered_by-Ollama_🤖-dc2626?style=for-the-badge"/>
   <img src="https://img.shields.io/badge/Built_at-UFRN_🎓-1e40af?style=for-the-badge"/>
 </div>
+
+---
+
+## 🏁 Project Status
+
+**Status:** ✅ **Completed**  
+**Version:** 1.0.0  
+**Completion Date:** November 2024  
+**PIBIC Report:** Available in `docs/PIBIC_RELATORIO_FINAL_ESBOCO.md`
+
+This project successfully demonstrates the application of NLP and AI techniques to Brazilian legal texts, maintaining full data sovereignty through local processing.
+
+---
+
+<div align="center">
+  <img width="100%" src="https://capsule-render.vercel.app/api?type=waving&color=1e40af&height=120&section=footer"/>
+</div>
+
