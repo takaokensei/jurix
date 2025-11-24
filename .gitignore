@@ -1,0 +1,21 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.class
+venv/
+.venv/
+.env
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+media/
+
+# Docker / Volumes Locais
+data/
+.docker/
+
+# IDEs
+.vscode/
+.idea/
