@@ -17,31 +17,44 @@ class LegalTextParser:
     
     Extracts hierarchical elements like articles, paragraphs, items, etc.
     Follows ABNT NBR 6022 and Brazilian legislative writing conventions.
+    
+    CRITICAL FIX: Patterns now capture multiline text until next marker.
     """
     
-    # Regex patterns for legal structure
-    PATTERNS = {
+    # Regex patterns for legal structure markers (start of devices only)
+    # These patterns match the START of a device, not capture its text
+    MARKER_PATTERNS = {
         'artigo': re.compile(
-            r'^Art\.?\s+(\d+[ºª°]?(?:-[A-Z])?)\s*[\.–-]?\s+(.*?)$',
+            r'^Art\.?\s+(\d+[ºª°]?(?:-[A-Z])?)\s*[\.–-]?\s*',
             re.MULTILINE | re.IGNORECASE
         ),
         'paragrafo': re.compile(
-            r'^§\s*(\d+[ºª°]?(?:-[A-Z])?)\s*[\.–-]?\s+(.*?)$',
+            r'^§\s*(\d+[ºª°]?(?:-[A-Z])?)\s*[\.–-]?\s*',
             re.MULTILINE
         ),
+        'paragrafo_unico': re.compile(
+            r'^Parágrafo\s+único\.?\s*[\.–-]?\s*',
+            re.MULTILINE | re.IGNORECASE
+        ),
         'inciso': re.compile(
-            r'^([IVX]+)\s*[\.–-]?\s+(.*?)$',
+            r'^([IVX]+)\s*[\.–-]?\s*',
             re.MULTILINE
         ),
         'alinea': re.compile(
-            r'^([a-z])\)\s+(.*?)$',
+            r'^([a-z])\)\s+',
             re.MULTILINE
         ),
         'item': re.compile(
-            r'^(\d+)\.\s+(.*?)$',
+            r'^(\d+)\.\s+',
             re.MULTILINE
         ),
     }
+    
+    # Combined pattern to find ANY marker (for text extraction between markers)
+    ALL_MARKERS_PATTERN = re.compile(
+        r'^(?:Art\.?\s+\d+|§\s*\d+|Parágrafo\s+único|([IVX]+)\s*[\.–-]|([a-z])\)\s+|\d+\.\s+)',
+        re.MULTILINE | re.IGNORECASE
+    )
     
     # Patterns for structural divisions
     DIVISION_PATTERNS = {
@@ -60,32 +73,107 @@ class LegalTextParser:
     }
     
     @staticmethod
-    def extract_articles(text: str) -> List[Dict[str, Any]]:
+    def _find_all_markers(text: str) -> List[Tuple[int, str, Any]]:
         """
-        Extract all articles from legal text.
+        Find all device markers in text and return sorted list.
+        
+        Returns:
+            List of tuples: (position, tipo, match_object)
+            Sorted by position
+        """
+        markers = []
+        
+        # Find all marker types
+        for tipo, pattern in LegalTextParser.MARKER_PATTERNS.items():
+            for match in pattern.finditer(text):
+                markers.append((match.start(), tipo, match))
+        
+        # Sort by position
+        markers.sort(key=lambda x: x[0])
+        
+        return markers
+    
+    @staticmethod
+    def _extract_text_until_next_marker(
+        text: str, 
+        marker_start: int, 
+        marker_end: int,
+        all_markers: List[Tuple[int, str, Any]]
+    ) -> str:
+        """
+        Extract text from a device marker until the next marker (multiline).
+        
+        Args:
+            text: Full legal text
+            marker_start: Start position of current marker
+            marker_end: End position of current marker (where text begins)
+            all_markers: List of all markers (from _find_all_markers)
+            
+        Returns:
+            Extracted text (multiline) until next marker, cleaned and normalized
+        """
+        # Find the next marker after current position
+        next_marker_pos = None
+        for pos, _, _ in all_markers:
+            if pos > marker_start:
+                next_marker_pos = pos
+                break
+        
+        # Extract text from end of marker to next marker (or end of text)
+        if next_marker_pos is not None:
+            extracted_text = text[marker_end:next_marker_pos]
+        else:
+            extracted_text = text[marker_end:]
+        
+        # Clean text: preserve structure but normalize whitespace
+        extracted_text = extracted_text.rstrip()  # Remove trailing whitespace
+        # Normalize multiple consecutive newlines to max 2 (paragraph break)
+        extracted_text = re.sub(r'\n{3,}', '\n\n', extracted_text)
+        # Normalize multiple spaces within lines (but keep newlines)
+        lines = extracted_text.split('\n')
+        lines = [re.sub(r'[ \t]+', ' ', line).strip() for line in lines]
+        extracted_text = '\n'.join(lines)
+        extracted_text = extracted_text.strip()
+        
+        return extracted_text
+    
+    @staticmethod
+    def extract_articles(text: str, all_markers: Optional[List[Tuple[int, str, Any]]] = None) -> List[Dict[str, Any]]:
+        """
+        Extract all articles from legal text (multiline support).
         
         Args:
             text: Full text of the legal document
+            all_markers: Optional pre-computed list of all markers (for efficiency)
             
         Returns:
             List of dicts with article info:
             {
                 'tipo': 'artigo',
                 'numero': '1º',
-                'texto': '...',
+                'texto': '...',  # Full multiline text
                 'start_pos': int,
                 'end_pos': int
             }
         """
+        if all_markers is None:
+            all_markers = LegalTextParser._find_all_markers(text)
+        
         articles = []
         
-        for match in LegalTextParser.PATTERNS['artigo'].finditer(text):
+        for match in LegalTextParser.MARKER_PATTERNS['artigo'].finditer(text):
+            marker_start = match.start()
+            marker_end = match.end()
+            texto = LegalTextParser._extract_text_until_next_marker(
+                text, marker_start, marker_end, all_markers
+            )
+            
             articles.append({
                 'tipo': 'artigo',
                 'numero': match.group(1).strip(),
-                'texto': match.group(2).strip(),
-                'start_pos': match.start(),
-                'end_pos': match.end(),
+                'texto': texto,
+                'start_pos': marker_start,
+                'end_pos': marker_end + len(texto),
                 'full_match': match.group(0)
             })
         
@@ -93,17 +181,52 @@ class LegalTextParser:
         return articles
     
     @staticmethod
-    def extract_paragraphs(text: str) -> List[Dict[str, Any]]:
-        """Extract all paragraphs (§) from text."""
+    def extract_paragraphs(text: str, all_markers: Optional[List[Tuple[int, str, Any]]] = None) -> List[Dict[str, Any]]:
+        """
+        Extract all paragraphs (§) and "Parágrafo único" from text (multiline support).
+        
+        Returns both numbered paragraphs (§ 1º, § 2º) and "Parágrafo único".
+        
+        Args:
+            text: Full legal text
+            all_markers: Optional pre-computed list of all markers (for efficiency)
+        """
+        if all_markers is None:
+            all_markers = LegalTextParser._find_all_markers(text)
+        
         paragraphs = []
         
-        for match in LegalTextParser.PATTERNS['paragrafo'].finditer(text):
+        # Extract numbered paragraphs (§ 1º, § 2º, etc.)
+        for match in LegalTextParser.MARKER_PATTERNS['paragrafo'].finditer(text):
+            marker_start = match.start()
+            marker_end = match.end()
+            texto = LegalTextParser._extract_text_until_next_marker(
+                text, marker_start, marker_end, all_markers
+            )
+            
             paragraphs.append({
                 'tipo': 'paragrafo',
                 'numero': match.group(1).strip(),
-                'texto': match.group(2).strip(),
-                'start_pos': match.start(),
-                'end_pos': match.end(),
+                'texto': texto,
+                'start_pos': marker_start,
+                'end_pos': marker_end + len(texto),
+                'full_match': match.group(0)
+            })
+        
+        # Extract "Parágrafo único"
+        for match in LegalTextParser.MARKER_PATTERNS['paragrafo_unico'].finditer(text):
+            marker_start = match.start()
+            marker_end = match.end()
+            texto = LegalTextParser._extract_text_until_next_marker(
+                text, marker_start, marker_end, all_markers
+            )
+            
+            paragraphs.append({
+                'tipo': 'paragrafo',
+                'numero': 'único',
+                'texto': texto,
+                'start_pos': marker_start,
+                'end_pos': marker_end + len(texto),
                 'full_match': match.group(0)
             })
         
@@ -111,22 +234,45 @@ class LegalTextParser:
         return paragraphs
     
     @staticmethod
-    def extract_incisos(text: str) -> List[Dict[str, Any]]:
-        """Extract all incisos (I, II, III, etc.) from text."""
+    def extract_incisos(text: str, all_markers: Optional[List[Tuple[int, str, Any]]] = None) -> List[Dict[str, Any]]:
+        """
+        Extract all incisos (I, II, III, etc.) from text (multiline support).
+        
+        Validates that the match is actually an inciso (not part of a date).
+        
+        Args:
+            text: Full legal text
+            all_markers: Optional pre-computed list of all markers (for efficiency)
+        """
+        if all_markers is None:
+            all_markers = LegalTextParser._find_all_markers(text)
+        
         incisos = []
         
-        for match in LegalTextParser.PATTERNS['inciso'].finditer(text):
+        for match in LegalTextParser.MARKER_PATTERNS['inciso'].finditer(text):
+            marker_start = match.start()
+            
             # Skip if it's part of a date or other context
-            before = text[max(0, match.start()-5):match.start()]
-            if re.search(r'\d', before):  # Likely part of date
+            before = text[max(0, marker_start-10):marker_start]
+            if re.search(r'\d{4}|\d{1,2}/\d{1,2}', before):  # Likely part of date
                 continue
+            
+            # Additional validation: inciso should start at line beginning or after article marker
+            if marker_start > 0 and text[marker_start-1] not in ['\n', '.', ':', ';', ')', ']']:
+                # Check if it's actually part of previous text
+                continue
+            
+            marker_end = match.end()
+            texto = LegalTextParser._extract_text_until_next_marker(
+                text, marker_start, marker_end, all_markers
+            )
             
             incisos.append({
                 'tipo': 'inciso',
                 'numero': match.group(1).strip(),
-                'texto': match.group(2).strip(),
-                'start_pos': match.start(),
-                'end_pos': match.end(),
+                'texto': texto,
+                'start_pos': marker_start,
+                'end_pos': marker_end + len(texto),
                 'full_match': match.group(0)
             })
         
@@ -134,17 +280,32 @@ class LegalTextParser:
         return incisos
     
     @staticmethod
-    def extract_alineas(text: str) -> List[Dict[str, Any]]:
-        """Extract all alíneas (a), b), c), etc.) from text."""
+    def extract_alineas(text: str, all_markers: Optional[List[Tuple[int, str, Any]]] = None) -> List[Dict[str, Any]]:
+        """
+        Extract all alíneas (a), b), c), etc.) from text (multiline support).
+        
+        Args:
+            text: Full legal text
+            all_markers: Optional pre-computed list of all markers (for efficiency)
+        """
+        if all_markers is None:
+            all_markers = LegalTextParser._find_all_markers(text)
+        
         alineas = []
         
-        for match in LegalTextParser.PATTERNS['alinea'].finditer(text):
+        for match in LegalTextParser.MARKER_PATTERNS['alinea'].finditer(text):
+            marker_start = match.start()
+            marker_end = match.end()
+            texto = LegalTextParser._extract_text_until_next_marker(
+                text, marker_start, marker_end, all_markers
+            )
+            
             alineas.append({
                 'tipo': 'alinea',
                 'numero': match.group(1).strip(),
-                'texto': match.group(2).strip(),
-                'start_pos': match.start(),
-                'end_pos': match.end(),
+                'texto': texto,
+                'start_pos': marker_start,
+                'end_pos': marker_end + len(texto),
                 'full_match': match.group(0)
             })
         
@@ -154,7 +315,9 @@ class LegalTextParser:
     @staticmethod
     def parse_legal_text(text: str) -> List[Dict[str, Any]]:
         """
-        Parse full legal text and extract all structured elements.
+        Parse full legal text and extract all structured elements (multiline support).
+        
+        CRITICAL FIX: Now captures full multiline text until next marker.
         
         Returns a list of all elements sorted by position, ready for
         hierarchical organization.
@@ -163,22 +326,25 @@ class LegalTextParser:
             text: Full legal text
             
         Returns:
-            List of all extracted elements, sorted by position
+            List of all extracted elements, sorted by position, with full text content
         """
+        # Find all markers once for efficiency
+        all_markers = LegalTextParser._find_all_markers(text)
+        
         all_elements = []
         
-        # Extract all types
-        all_elements.extend(LegalTextParser.extract_articles(text))
-        all_elements.extend(LegalTextParser.extract_paragraphs(text))
-        all_elements.extend(LegalTextParser.extract_incisos(text))
-        all_elements.extend(LegalTextParser.extract_alineas(text))
+        # Extract all types (pass all_markers to avoid recomputing)
+        all_elements.extend(LegalTextParser.extract_articles(text, all_markers))
+        all_elements.extend(LegalTextParser.extract_paragraphs(text, all_markers))
+        all_elements.extend(LegalTextParser.extract_incisos(text, all_markers))
+        all_elements.extend(LegalTextParser.extract_alineas(text, all_markers))
         
         # Sort by position in text
         all_elements.sort(key=lambda x: x['start_pos'])
         
         logger.info(
             f"Parsed legal text: {len(all_elements)} total elements "
-            f"(articles, paragraphs, incisos, alineas)"
+            f"(articles, paragraphs, incisos, alineas) - FULL MULTILINE TEXT CAPTURED"
         )
         
         return all_elements
