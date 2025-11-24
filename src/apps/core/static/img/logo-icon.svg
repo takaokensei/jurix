@@ -1,31 +1,40 @@
 <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-  <!-- Jurix Favicon: Minimalist Column Icon -->
-  <defs>
-    <linearGradient id="colGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#1e40af;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#1e3a8a;stop-opacity:1" />
-    </linearGradient>
-  </defs>
+  <!-- Simplified column for favicon - high contrast -->
   
-  <!-- Background -->
-  <rect width="64" height="64" fill="#1e3a8a" rx="8"/>
+  <!-- Column Base -->
+  <rect x="18" y="52" width="28" height="4" fill="#1e40af" rx="1"/>
+  <rect x="16" y="56" width="32" height="3" fill="#1e3a8a" rx="0.5"/>
   
-  <!-- Simplified Column -->
-  <rect x="22" y="12" width="20" height="40" fill="url(#colGrad)" rx="1"/>
+  <!-- Column Shaft -->
+  <rect x="22" y="15" width="20" height="37" fill="#1e40af" rx="1"/>
   
-  <!-- Circuit lines -->
-  <line x1="26" y1="16" x2="26" y2="48" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.8"/>
-  <line x1="32" y1="16" x2="32" y2="48" stroke="#93c5fd" stroke-width="2" stroke-dasharray="4,1" opacity="0.9"/>
-  <line x1="38" y1="16" x2="38" y2="48" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.8"/>
+  <!-- Circuit lines (3 vertical lines for simplicity) -->
+  <line x1="27" y1="18" x2="27" y2="49" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="32" y1="18" x2="32" y2="49" stroke="#dbeafe" stroke-width="2" stroke-linecap="round"/>
+  <line x1="37" y1="18" x2="37" y2="49" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round"/>
   
-  <!-- Connection nodes -->
-  <circle cx="32" cy="24" r="2" fill="#93c5fd"/>
-  <circle cx="32" cy="40" r="2" fill="#93c5fd"/>
+  <!-- Circuit nodes (simplified) -->
+  <circle cx="27" cy="25" r="1.5" fill="#dbeafe"/>
+  <circle cx="32" cy="28" r="2" fill="#ffffff"/>
+  <circle cx="37" cy="25" r="1.5" fill="#dbeafe"/>
   
-  <!-- Top capital -->
-  <rect x="18" y="8" width="28" height="4" fill="#1e3a8a"/>
+  <circle cx="27" cy="42" r="1.5" fill="#dbeafe"/>
+  <circle cx="32" cy="39" r="2" fill="#ffffff"/>
+  <circle cx="37" cy="42" r="1.5" fill="#dbeafe"/>
   
-  <!-- Bottom base -->
-  <rect x="18" y="52" width="28" height="4" fill="#1e3a8a"/>
+  <!-- Horizontal connections -->
+  <line x1="27" y1="25" x2="32" y2="28" stroke="#60a5fa" stroke-width="0.5" opacity="0.7"/>
+  <line x1="32" y1="28" x2="37" y2="25" stroke="#60a5fa" stroke-width="0.5" opacity="0.7"/>
+  <line x1="27" y1="42" x2="32" y2="39" stroke="#60a5fa" stroke-width="0.5" opacity="0.7"/>
+  <line x1="32" y1="39" x2="37" y2="42" stroke="#60a5fa" stroke-width="0.5" opacity="0.7"/>
+  
+  <!-- Column Capital -->
+  <rect x="16" y="12" width="32" height="3" fill="#1e40af" rx="0.5"/>
+  
+  <!-- Top accent (simplified crown) -->
+  <path d="M 22 10 L 24 6 L 26 10 M 30 10 L 32 5 L 34 10 M 38 10 L 40 6 L 42 10" 
+        stroke="#60a5fa" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+  
+  <!-- Subtle shadow for depth -->
+  <rect x="22" y="15" width="3" height="37" fill="#1e3a8a" opacity="0.3" rx="1"/>
 </svg>
-
