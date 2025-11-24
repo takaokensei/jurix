@@ -11,39 +11,42 @@ from src.processing.cache_service import CacheService
 from src.apps.legislation.models import Norma, Dispositivo
 
 
-@pytest.mark.django_db
-@pytest.mark.skipif(
-    True,
-    reason="Requires pgvector extension - skip in unit tests, run in integration tests"
-)
 class TestRAGService:
+    """
+    Test suite for RAGService with mocked Ollama and database.
+    
+    These tests use mocks to avoid requiring pgvector extension or real database setup.
+    For integration tests that require pgvector, use pytest with --nomigrations flag.
+    """
     """Test suite for RAGService with mocked Ollama."""
     
     @pytest.fixture
-    def mock_norma(self, db):
-        """Create a test Norma."""
-        return Norma.objects.create(
-            tipo='Lei',
-            numero='123',
-            ano=2020,
-            ementa='Test Law',
-            status='consolidated'
-        )
+    def mock_norma(self):
+        """Create a mock Norma object."""
+        norma = Mock()
+        norma.id = 1
+        norma.tipo = 'Lei'
+        norma.numero = '123'
+        norma.ano = 2020
+        norma.ementa = 'Test Law'
+        norma.status = 'consolidated'
+        return norma
     
     @pytest.fixture
-    def mock_dispositivo(self, mock_norma, db):
-        """Create a test Dispositivo with embedding."""
-        dispositivo = Dispositivo.objects.create(
-            norma=mock_norma,
-            tipo='artigo',
-            numero='1º',
-            texto='Este é um artigo de teste sobre zoneamento urbano.',
-            ordem=1
-        )
-        # Set mock embedding (768 dimensions)
+    def mock_dispositivo(self, mock_norma):
+        """Create a mock Dispositivo object."""
+        dispositivo = Mock()
+        dispositivo.id = 1
+        dispositivo.norma = mock_norma
+        dispositivo.tipo = 'artigo'
+        dispositivo.numero = '1º'
+        dispositivo.texto = 'Este é um artigo de teste sobre zoneamento urbano.'
+        dispositivo.ordem = 1
         dispositivo.embedding = [0.1] * 768
         dispositivo.embedding_model = 'nomic-embed-text'
-        dispositivo.save()
+        dispositivo.dispositivo_pai = None
+        dispositivo.get_caminho_completo.return_value = "Art. 1º"
+        dispositivo.get_full_identifier.return_value = "Art. 1º"
         return dispositivo
     
     @patch('src.processing.rag_service.OllamaService')
@@ -70,13 +73,14 @@ class TestRAGService:
         assert service.cache is None
     
     @patch('src.processing.rag_service.OllamaService')
+    @patch('src.processing.rag_service.Dispositivo')
     @patch('src.processing.rag_service.connection')
     def test_semantic_search_with_cached_embedding(
         self, 
         mock_connection,
+        mock_disp_class,
         mock_ollama_class,
-        mock_dispositivo,
-        db
+        mock_dispositivo
     ):
         """Test semantic search using cached embedding."""
         # Mock Ollama
@@ -92,6 +96,9 @@ class TestRAGService:
         # Mock cache to return cached embedding
         service.cache.get_embedding = Mock(return_value=cached_embedding)
         service.cache.set_embedding = Mock()
+        
+        # Mock Dispositivo.objects.filter
+        mock_disp_class.objects.filter.return_value.select_related.return_value = [mock_dispositivo]
         
         # Mock database cursor
         mock_cursor = Mock()
@@ -131,13 +138,14 @@ class TestRAGService:
         service.cache.get_embedding.assert_called_once_with(query_text, service.model)
     
     @patch('src.processing.rag_service.OllamaService')
+    @patch('src.processing.rag_service.Dispositivo')
     @patch('src.processing.rag_service.connection')
     def test_semantic_search_generates_embedding(
         self,
         mock_connection,
+        mock_disp_class,
         mock_ollama_class,
-        mock_dispositivo,
-        db
+        mock_dispositivo
     ):
         """Test semantic search when embedding is not cached."""
         # Mock Ollama
@@ -177,11 +185,14 @@ class TestRAGService:
         
         mock_connection.cursor.return_value = mock_cursor
         
+        # Mock Dispositivo.objects.filter
+        mock_disp_class.objects.filter.return_value.select_related.return_value = [mock_dispositivo]
+        
         query_text = "nova query"
         results = service.semantic_search(query_text, k=5)
         
-        # Verify Ollama was called
-        mock_ollama.generate_embedding.assert_called_once_with(query_text.strip(), service.model)
+        # Verify Ollama was called (without model parameter in current implementation)
+        mock_ollama.generate_embedding.assert_called_once_with(query_text.strip())
         
         # Verify embedding was cached
         service.cache.set_embedding.assert_called_once_with(
@@ -223,31 +234,46 @@ class TestRAGService:
         mock_ollama.generate_embedding.assert_called_once()
     
     @patch('src.processing.rag_service.OllamaService')
-    def test_get_relevant_context(self, mock_ollama_class, mock_dispositivo, db):
+    @patch('src.processing.rag_service.Dispositivo')
+    @patch('src.processing.rag_service.connection')
+    def test_get_relevant_context(self, mock_connection, mock_disp_class, mock_ollama_class, mock_dispositivo):
         """Test context retrieval for RAG prompts."""
         mock_ollama = Mock()
         mock_ollama.generate_embedding.return_value = [0.1] * 768
         mock_ollama_class.return_value = mock_ollama
         
-        # Mock database search
-        with patch('src.processing.rag_service.connection') as mock_connection:
-            mock_cursor = Mock()
-            mock_cursor.__enter__ = Mock(return_value=mock_cursor)
-            mock_cursor.__exit__ = Mock(return_value=False)
-            mock_cursor.execute = Mock()
-            mock_cursor.description = [
-                ('id',), ('similarity_score',), ('distance',)
-            ]
-            mock_cursor.fetchall.return_value = [
-                (mock_dispositivo.id, 0.85, 0.15)
-            ]
-            mock_connection.cursor.return_value = mock_cursor
-            
-            service = RAGService()
-            service.cache = None  # Disable cache for simplicity
-            
-            context, results = service.get_relevant_context("test query", k=3, max_tokens=1000)
-            
-            assert context != ""
-            assert len(results) >= 0  # May be empty if no dispositivos match
+        # Mock Dispositivo.objects.filter
+        mock_disp_class.objects.filter.return_value.select_related.return_value = [mock_dispositivo]
+        
+        # Mock database cursor
+        mock_cursor = Mock()
+        mock_cursor.__enter__ = Mock(return_value=mock_cursor)
+        mock_cursor.__exit__ = Mock(return_value=False)
+        mock_cursor.execute = Mock()
+        mock_cursor.description = [
+            ('id',), ('norma_id',), ('tipo',), ('numero',), ('texto',),
+            ('ordem',), ('embedding_model',), ('similarity_score',), ('distance',)
+        ]
+        mock_cursor.fetchall.return_value = [
+            (
+                mock_dispositivo.id,
+                mock_dispositivo.norma.id,
+                'artigo',
+                '1º',
+                mock_dispositivo.texto,
+                1,
+                'nomic-embed-text',
+                0.85,  # similarity_score
+                0.15   # distance
+            )
+        ]
+        mock_connection.cursor.return_value = mock_cursor
+        
+        service = RAGService()
+        service.cache = None  # Disable cache for simplicity
+        
+        context, results = service.get_relevant_context("test query", k=3, max_tokens=1000)
+        
+        assert context != ""
+        assert len(results) >= 0  # May be empty if no dispositivos match
 
