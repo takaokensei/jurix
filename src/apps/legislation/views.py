@@ -7,13 +7,17 @@ comparing versions.
 
 import logging
 from typing import Any, Dict
+import json
 
 from django.shortcuts import render, get_object_or_404
 from django.views.generic import ListView, DetailView
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.db.models import Q
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import Norma, Dispositivo, EventoAlteracao
+from src.processing.rag_service import RAGService
 
 logger = logging.getLogger(__name__)
 
@@ -186,4 +190,91 @@ def norma_dispositivos_tree_view(request: HttpRequest, pk: int) -> HttpResponse:
     }
     
     return render(request, 'legislation/norma_tree.html', context)
+
+
+def chatbot_view(request: HttpRequest) -> HttpResponse:
+    """
+    Chatbot interface for RAG-based legal question answering.
+    
+    GET: Renders the chat interface
+    POST: Processes questions and returns AI-generated answers
+    """
+    if request.method == 'GET':
+        # Render chat interface
+        context = {
+            'page_title': 'Assistente Jurídico - Jurix',
+            'total_dispositivos': Dispositivo.objects.filter(embedding__isnull=False).count(),
+            'total_normas': Norma.objects.filter(status='consolidated').count(),
+        }
+        return render(request, 'legislation/chatbot.html', context)
+    
+    elif request.method == 'POST':
+        # Process question via AJAX
+        try:
+            # Parse JSON body
+            data = json.loads(request.body)
+            question = data.get('question', '').strip()
+            
+            if not question:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Pergunta vazia'
+                }, status=400)
+            
+            # Get optional parameters
+            k = data.get('k', 5)
+            model = data.get('model', 'llama3')
+            
+            logger.info(f"Chatbot question received: '{question[:100]}...'")
+            
+            # Initialize RAG service
+            rag_service = RAGService()
+            
+            # Generate answer
+            response = rag_service.answer_question(
+                question=question,
+                k=k,
+                model=model
+            )
+            
+            # Format sources for frontend
+            sources = []
+            for source in response.get('sources', []):
+                disp = source['dispositivo']
+                sources.append({
+                    'id': disp.id,
+                    'text': disp.texto[:200] + ('...' if len(disp.texto) > 200 else ''),
+                    'full_text': disp.texto,
+                    'similarity_score': source['similarity_score'],
+                    'norma_ref': f"{disp.norma.tipo} {disp.norma.numero}/{disp.norma.ano}",
+                    'norma_id': disp.norma.id,
+                    'dispositivo_ref': disp.get_full_identifier(),
+                    'hierarchy': source['context']['hierarchy']
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'answer': response['answer'],
+                'sources': sources,
+                'confidence': response['confidence'],
+                'metadata': {
+                    'model': response.get('model', model),
+                    'context_length': response.get('context_length', 0),
+                    'sources_count': len(sources)
+                }
+            })
+            
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': 'JSON inválido'
+            }, status=400)
+        except Exception as e:
+            logger.error(f"Error in chatbot: {e}", exc_info=True)
+            return JsonResponse({
+                'success': False,
+                'error': f'Erro ao processar pergunta: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
 

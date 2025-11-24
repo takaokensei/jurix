@@ -752,13 +752,13 @@ docker-compose logs --tail=100 -f web worker
   
   <br/><br/>
   
-  <a href="mailto:seu-email@ufrn.br">
+  <a href="mailto:cauavitorfigueredo@gmail.com">
     <img src="https://img.shields.io/badge/-Email-EA4335?style=for-the-badge&logo=gmail&logoColor=white"/>
   </a>
-  <a href="https://github.com/seu-usuario">
+  <a href="https://github.com/takaokensei">
     <img src="https://img.shields.io/badge/-GitHub-181717?style=for-the-badge&logo=github&logoColor=white"/>
   </a>
-  <a href="https://linkedin.com/in/seu-perfil">
+  <a href="https://linkedin.com/in/cauã-vitor-7bb072286">
     <img src="https://img.shields.io/badge/-LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white"/>
   </a>
 
@@ -771,5 +771,3 @@ docker-compose logs --tail=100 -f web worker
   <img src="https://img.shields.io/badge/Powered_by-Ollama_🤖-dc2626?style=for-the-badge"/>
   <img src="https://img.shields.io/badge/Built_at-UFRN_🎓-1e40af?style=for-the-badge"/>
 </div>
-
-<img width="100%" src="https://capsule-render.vercel.app/api?type=waving&color=1e40af&height=100&section=footer"/>

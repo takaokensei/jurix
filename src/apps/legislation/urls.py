@@ -15,5 +15,8 @@ urlpatterns = [
     path('<int:pk>/', views.NormaDetailView.as_view(), name='norma_detail'),
     path('<int:pk>/compare/', views.norma_compare_view, name='norma_compare'),
     path('<int:pk>/tree/', views.norma_dispositivos_tree_view, name='norma_tree'),
+    
+    # Chatbot interface
+    path('chatbot/', views.chatbot_view, name='chatbot'),
 ]
 
