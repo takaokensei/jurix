@@ -169,6 +169,16 @@
     --z-tooltip: 70;
     
     /* ========================================
+       BREAKPOINTS (RESPONSIVE)
+       ======================================== */
+    
+    --breakpoint-sm: 640px;     /* Mobile landscape */
+    --breakpoint-md: 768px;     /* Tablet portrait */
+    --breakpoint-lg: 1024px;    /* Tablet landscape */
+    --breakpoint-xl: 1280px;    /* Desktop */
+    --breakpoint-2xl: 1536px;   /* Large desktop */
+    
+    /* ========================================
        TRANSIÇÕES - TIMING
        ======================================== */
     
@@ -1491,13 +1501,162 @@ strong, b {
     text-decoration: underline;
 }
 
-/* Responsive - Norma List */
+/* ============================
+   ACESSIBILIDADE (WCAG AA)
+   ============================ */
+/*
+ * Focus states, skip links, keyboard navigation
+ * Target: WCAG 2.1 Level AA compliance
+ */
+
+/* Focus styles for keyboard navigation */
+*:focus {
+    outline: none;
+}
+
+*:focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+}
+
+/* High contrast focus for buttons and links */
+button:focus-visible,
+a:focus-visible,
+.btn:focus-visible,
+.nav-link:focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(30, 64, 175, 0.1);
+}
+
+/* Skip link for keyboard users (hidden until focus) */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
+    padding: var(--space-2) var(--space-3);
+    text-decoration: none;
+    border-radius: 0 0 var(--radius-sm) 0;
+    z-index: 1000;
+    transition: top var(--transition-fast);
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* Reduced motion for users with vestibular disorders */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    :root {
+        --color-border: var(--color-gray-400);
+        --color-border-strong: var(--color-gray-600);
+    }
+    
+    .btn,
+    .source-card,
+    .dispositivo-node {
+        border-width: 2px;
+    }
+}
+
+/* ============================
+   PRINT STYLES
+   ============================ */
+/*
+ * Optimized for printing legal documents
+ * Remove decorative elements, ensure readability
+ */
+@media print {
+    /* Hide navigation and interactive elements */
+    .navbar,
+    .sidebar,
+    .top-bar,
+    .input-area,
+    .btn,
+    .skip-link {
+        display: none !important;
+    }
+    
+    /* Remove shadows and backgrounds */
+    * {
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+    
+    /* Ensure black text on white */
+    body {
+        background: white !important;
+        color: black !important;
+    }
+    
+    /* Page breaks */
+    h1, h2, h3 {
+        page-break-after: avoid;
+    }
+    
+    .dispositivo-node,
+    .norma-card {
+        page-break-inside: avoid;
+    }
+    
+    /* Expand links */
+    a[href]::after {
+        content: " (" attr(href) ")";
+        font-size: var(--font-size-xs);
+        color: var(--color-gray-600);
+    }
+    
+    /* Simplify borders */
+    .card,
+    .dispositivo-node {
+        border: 1px solid black !important;
+        margin-bottom: 1em;
+    }
+}
+
+/* ============================
+   RESPONSIVE DESIGN
+   ============================ */
+/*
+ * Mobile-first approach with strategic breakpoints
+ * Breakpoints: 640px (sm), 768px (md), 1024px (lg), 1280px (xl)
+ */
+
+/* Desktop Large (1280px+) - Optimize for wide screens */
+@media (min-width: 1280px) {
+    .norma-grid {
+        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    }
+    
+    .chat-main {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+}
+
+/* Tablet Landscape (1024px) */
 @media (max-width: 1024px) {
     .norma-grid {
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     }
 }
 
+/* Tablet Portrait & Mobile (768px) */
 @media (max-width: 768px) {
     .norma-grid {
         grid-template-columns: 1fr;
