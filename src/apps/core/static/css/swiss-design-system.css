@@ -52,6 +52,7 @@
     
     --color-border: var(--color-gray-200);
     --color-border-strong: var(--color-gray-300);
+    --color-border-dark: var(--color-gray-400);
     --color-border-focus: var(--color-primary);
     
     /* ========================================
@@ -131,6 +132,7 @@
     --border-width-thick: 3px;
     
     --radius-none: 0;
+    --radius-xs: 4px;
     --radius-sm: 6px;
     --radius-md: 12px;
     --radius-lg: 16px;
@@ -1380,6 +1382,115 @@ strong, b {
     margin-bottom: var(--space-4);
 }
 
+/* ============================
+   NORMA DETAIL - HIERARCHICAL TREE
+   ============================ */
+/*
+ * Hierarchical tree view for legal dispositivos (Articles, Paragraphs, Items)
+ * Visual indentation based on hierarchy level (0-4)
+ * Swiss Design: Clean typography, precise spacing, monospace for labels
+ */
+.dispositivos-tree {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+}
+
+.dispositivo-node {
+    background: var(--color-bg-secondary);
+    border-left: 3px solid var(--color-primary);
+    border-radius: var(--radius-sm);
+    padding: var(--space-3);
+    transition: all var(--transition-fast);
+}
+
+.dispositivo-node:hover {
+    background: var(--color-bg-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Hierarchical indentation (8px per level) */
+.dispositivo-node[data-level="0"] {
+    margin-left: 0;
+    border-left-width: 4px;
+}
+
+.dispositivo-node[data-level="1"] {
+    margin-left: var(--space-4); /* 32px */
+    border-left-color: var(--color-primary-light);
+}
+
+.dispositivo-node[data-level="2"] {
+    margin-left: var(--space-6); /* 48px */
+    border-left-color: var(--color-primary-lighter);
+}
+
+.dispositivo-node[data-level="3"] {
+    margin-left: var(--space-8); /* 64px */
+    border-left-color: var(--color-border-dark);
+}
+
+.dispositivo-node[data-level="4"] {
+    margin-left: calc(var(--space-8) + var(--space-4)); /* 96px */
+    border-left-color: var(--color-border);
+}
+
+.dispositivo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.dispositivo-label {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-primary);
+    flex-shrink: 0;
+}
+
+.dispositivo-tipo {
+    font-size: var(--font-size-xs);
+    padding: 2px var(--space-1);
+    border-radius: var(--radius-xs);
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.dispositivo-text {
+    font-family: var(--font-sans);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-relaxed);
+    color: var(--color-text);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.dispositivo-expand {
+    margin-top: var(--space-2);
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+    padding: 0;
+    font-family: var(--font-sans);
+    font-weight: var(--font-weight-medium);
+    transition: color var(--transition-fast);
+}
+
+.dispositivo-expand:hover {
+    color: var(--color-primary-dark);
+    text-decoration: underline;
+}
+
 /* Responsive - Norma List */
 @media (max-width: 1024px) {
     .norma-grid {
@@ -1407,6 +1518,23 @@ strong, b {
     .pagination-link {
         padding: var(--space-1) var(--space-2);
         font-size: var(--font-size-xs);
+    }
+    
+    /* Reduce hierarchical indentation on mobile */
+    .dispositivo-node[data-level="1"] {
+        margin-left: var(--space-2); /* 16px */
+    }
+    
+    .dispositivo-node[data-level="2"] {
+        margin-left: var(--space-3); /* 24px */
+    }
+    
+    .dispositivo-node[data-level="3"] {
+        margin-left: var(--space-4); /* 32px */
+    }
+    
+    .dispositivo-node[data-level="4"] {
+        margin-left: var(--space-5); /* 40px */
     }
 }
 
