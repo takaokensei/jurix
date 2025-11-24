@@ -145,36 +145,70 @@ graph TD
 jurix/
 │
 ├── 🐳 docker/
-│   └── Dockerfile              # Dockerfile para serviços Django
+│   ├── web.Dockerfile              # Django + dependencies
+│   ├── worker.Dockerfile           # Celery worker image
+│   └── docker-compose.yml          # Orquestração completa
 │
 ├── ⚙️ config/
-│   ├── settings.py             # Configurações do projeto
-│   ├── urls.py                 # Roteamento global
-│   └── celery.py               # Configuração do Celery
+│   ├── settings/
+│   │   ├── base.py                 # Configurações compartilhadas
+│   │   ├── development.py          # Dev com DEBUG=True
+│   │   └── production.py           # Prod otimizado
+│   ├── urls.py                     # Roteamento global
+│   └── celery.py                   # Task queue config
 │
 ├── 📦 src/
 │   ├── apps/
-│   │   ├── core/               # Modelos e lógica base
-│   │   ├── ingestion/          # Lógica de ingestão de dados (SAPL)
-│   │   └── legislation/        # Domínio principal da legislação
+│   │   ├── core/                   # Modelos base abstratos
+│   │   │   ├── models.py           # TimeStampedModel, etc.
+│   │   │   └── mixins.py           # Behavior mixins
+│   │   │
+│   │   ├── legislation/            # Domínio principal
+│   │   │   ├── models.py           # Law, Article, Amendment
+│   │   │   ├── admin.py            # Django Admin customizado
+│   │   │   └── serializers.py     # API serialization
+│   │   │
+│   │   └── ingestion/              # Controle de ingestão
+│   │       ├── models.py           # IngestionRun, Document
+│   │       ├── tasks.py            # Celery tasks
+│   │       └── sapl_client.py     # SAPL API integration
 │   │
 │   ├── clients/
-│   │   └── sapl/               # Cliente para a API do SAPL
+│   │   └── sapl.py                 # Cliente HTTP SAPL
 │   │
-│   ├── llm_engine/             # Integração com Ollama (LLM)
+│   ├── processing/
+│   │   ├── ocr/                    # Tesseract wrappers
+│   │   ├── nlp/                    # spaCy pipelines
+│   │   └── parsers/                # PDF structure parsing
 │   │
-│   └── processing/             # Lógica de processamento de dados
+│   └── llm_engine/
+│       ├── ollama_client.py        # HTTP client para Ollama
+│       ├── prompts.py              # Templates de prompts
+│       └── embeddings.py           # Geração de vetores
 │
-├── 📊 data/                    # Dados não versionados (.gitignore)
-│   ├── logs/
-│   └── raw/
+├── 📊 data/                        # Não versionado (.gitignore)
+│   ├── pdfs/                       # PDFs baixados
+│   ├── cache/                      # Resultados intermediários
+│   └── logs/                       # Logs de processamento
 │
 ├── 📄 docs/
-│   └── SETUP.md                # Documentação de setup
+│   ├── architecture.md             # Diagramas de arquitetura
+│   ├── api.md                      # Documentação da API
+│   └── deployment.md               # Guia de deploy
 │
-├── 🐳 docker-compose.yml       # Orquestração dos containers
-├── 📝 manage.py                # Django CLI
-├── 📦 requirements.txt         # Dependências Python
+├── 🧪 tests/
+│   ├── unit/                       # Testes unitários
+│   ├── integration/                # Testes de integração
+│   └── fixtures/                   # Dados de teste
+│
+├── 📦 requirements/
+│   ├── base.txt                    # Core dependencies
+│   ├── development.txt             # Dev tools
+│   └── production.txt              # Prod optimization
+│
+├── 🔐 .env.example                 # Template de variáveis
+├── 🐳 docker-compose.yml           # Stack completo
+├── 📝 manage.py                    # Django CLI
 └── 📖 README.md
 ```
 
