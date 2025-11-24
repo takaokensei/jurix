@@ -731,10 +731,8 @@
                         <h2>Como posso ajudar?</h2>
                         <p>Faça perguntas sobre a legislação municipal de Natal/RN. Sou alimentado por IA e tenho acesso a {{ total_normas }} normas consolidadas.</p>
                         
-                        <div class="suggestion-chips">
-                            <div class="chip" onclick="askQuestion(this.textContent)">Como funciona o zoneamento urbano?</div>
-                            <div class="chip" onclick="askQuestion(this.textContent)">Quais as regras para licença de construção?</div>
-                            <div class="chip" onclick="askQuestion(this.textContent)">Explique as normas de uso do solo</div>
+                        <div class="suggestion-chips" id="suggestion-chips">
+                            <!-- Chips serão gerados dinamicamente via JavaScript -->
                         </div>
                     </div>
                 </div>
@@ -939,8 +937,9 @@
             const messagesWrapper = document.getElementById('messages-wrapper');
             const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             const messageId = 'msg-' + Date.now();
+            const sourcesId = 'sources-' + Date.now();
             
-            // Create message structure
+            // Create message structure WITHOUT sources initially
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message message-assistant';
             messageDiv.innerHTML = `
@@ -953,26 +952,56 @@
                         <span class="message-timestamp">${timestamp}</span>
                     </div>
                     <div class="message-body" id="${messageId}"></div>
-                    ${sources && sources.length > 0 ? createSourcesSection(sources) : ''}
+                    <div id="${sourcesId}"></div>
                 </div>
             `;
             
             messagesWrapper.appendChild(messageDiv);
             scrollToBottom();
             
-            // Typewriter effect
-            typewriterEffect(messageId, answer);
+            // Store sources to be added after typewriter completes
+            const sourcesContainer = document.getElementById(sourcesId);
+            
+            // Typewriter effect - callback when complete to show sources
+            typewriterEffect(messageId, answer, () => {
+                // Callback: Add sources only after answer is complete
+                if (sources && sources.length > 0) {
+                    sourcesContainer.innerHTML = createSourcesSection(sources);
+                    scrollToBottom();
+                }
+            });
         }
         
         function createSourcesSection(sources) {
             if (!sources || sources.length === 0) return '';
             
-            const sourcesCards = sources.map(source => {
-                // Backend returns: { id, text, full_text, similarity_score, norma_ref, dispositivo_ref, ... }
-                const rawScore = source.similarity_score || source.relevance_score || 0;
-                // Ensure score is between 0 and 1, then convert to percentage
-                const normalizedScore = Math.max(0, Math.min(1, parseFloat(rawScore)));
-                const scorePercent = Math.round(normalizedScore * 100);
+            const sourcesCards = sources.map((source, index) => {
+                // Backend returns: { id, text, full_text, similarity_score, norma_ref, dispositivo_ref, distance, ... }
+                let rawScore = source.similarity_score;
+                
+                // Handle different score formats
+                if (rawScore === undefined || rawScore === null) {
+                    // If no similarity_score, try to calculate from distance
+                    const distance = source.distance || 1.0;
+                    rawScore = Math.max(0, 1 - parseFloat(distance));
+                }
+                
+                // Parse and normalize score
+                const normalizedScore = Math.max(0, Math.min(1, parseFloat(rawScore) || 0));
+                
+                // Convert to percentage - use a more visible scale if scores are very low
+                // If all scores are very low (< 0.1), scale them up for visibility
+                const minScore = Math.min(...sources.map(s => parseFloat(s.similarity_score || 0)));
+                const maxScore = Math.max(...sources.map(s => parseFloat(s.similarity_score || 0)));
+                
+                let scorePercent;
+                if (maxScore < 0.1 && maxScore > 0) {
+                    // Scale low scores to 40-100% range for better visibility
+                    scorePercent = Math.round(40 + (normalizedScore / maxScore) * 60);
+                } else {
+                    scorePercent = Math.round(normalizedScore * 100);
+                }
+                
                 const scoreColor = scorePercent >= 80 ? 'var(--color-success)' : 
                                    scorePercent >= 60 ? 'var(--color-warning)' : 
                                    scorePercent >= 40 ? 'var(--color-text-secondary)' : 'var(--color-text-muted)';
@@ -982,7 +1011,13 @@
                 const snippet = source.text || source.full_text || '';
                 
                 // Debug logging
-                console.log('Source:', { normaRef, score: normalizedScore, scorePercent });
+                console.log(`Source ${index + 1}:`, { 
+                    normaRef, 
+                    rawScore, 
+                    normalizedScore, 
+                    scorePercent,
+                    distance: source.distance 
+                });
                 
                 return `
                     <div class="source-card">
@@ -1042,7 +1077,7 @@
         }
         
         // ===== TYPEWRITER EFFECT WITH INCREMENTAL MARKDOWN =====
-        function typewriterEffect(elementId, text) {
+        function typewriterEffect(elementId, text, onComplete) {
             const element = document.getElementById(elementId);
             if (!element) return;
             
@@ -1079,6 +1114,11 @@
                     // Render complete markdown when done
                     element.innerHTML = fullHtml;
                     scrollToBottom();
+                    
+                    // Call completion callback (to show sources)
+                    if (onComplete && typeof onComplete === 'function') {
+                        onComplete();
+                    }
                 }
             }
             
@@ -1125,10 +1165,44 @@
             document.getElementById('chat-form').dispatchEvent(new Event('submit'));
         }
         
+        // ===== SUGGESTION CHIPS (Randomized) =====
+        const SUGGESTION_QUESTIONS = [
+            'Como funciona o zoneamento urbano?',
+            'Quais as regras para licença de construção?',
+            'Explique as normas de uso do solo',
+            'Quais são os requisitos para alvará de funcionamento?',
+            'Como funciona o cadastramento de imóveis?',
+            'Quais as normas sobre reformas e ampliações?',
+            'Explique as regras de regularização de construções',
+            'Como funciona o licenciamento ambiental?',
+            'Quais são as regras de parcelamento do solo?',
+            'Explique as normas de ocupação do solo'
+        ];
+        
+        function renderRandomSuggestions() {
+            const chipsContainer = document.getElementById('suggestion-chips');
+            if (!chipsContainer) return;
+            
+            // Shuffle array and take first 3
+            const shuffled = [...SUGGESTION_QUESTIONS].sort(() => Math.random() - 0.5);
+            const selected = shuffled.slice(0, 3);
+            
+            chipsContainer.innerHTML = selected.map(question => 
+                `<div class="chip" onclick="askQuestion('${question.replace(/'/g, "\\'")}')">${escapeHtml(question)}</div>`
+            ).join('');
+        }
+        
         // ===== INITIALIZATION =====
         console.log('Jurix Chatbot 2.0 initialized');
         console.log('Marked:', typeof marked !== 'undefined' ? '✓' : '✗');
         console.log('DOMPurify:', typeof DOMPurify !== 'undefined' ? '✓' : '✗');
+        
+        // Initialize random suggestions when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', renderRandomSuggestions);
+        } else {
+            renderRandomSuggestions();
+        }
     </script>
 </body>
 </html>
