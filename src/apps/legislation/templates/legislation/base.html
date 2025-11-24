@@ -27,37 +27,7 @@
             padding: var(--space-3);
         }
         
-        header {
-            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-            color: var(--color-text-inverse);
-            padding: var(--space-3) 0;
-            margin-bottom: var(--space-6);
-            box-shadow: var(--shadow-sm);
-        }
-        
-        header h1 {
-            font-size: var(--font-size-2xl);
-            font-weight: var(--font-weight-semibold);
-            margin: 0;
-        }
-        
-        nav {
-            margin-top: var(--space-2);
-        }
-        
-        nav a {
-            color: var(--color-text-inverse);
-            text-decoration: none;
-            margin-right: var(--space-3);
-            padding: var(--space-1) var(--space-2);
-            border-radius: var(--radius-sm);
-            transition: background-color var(--transition-fast);
-            font-weight: var(--font-weight-medium);
-        }
-        
-        nav a:hover {
-            background-color: rgba(255, 255, 255, 0.15);
-        }
+        /* Navbar styles moved to swiss-design-system.css */
         
         /* Tables */
         table {
@@ -144,16 +114,16 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <header>
-        <div class="container">
-            <div style="display: flex; align-items: center; gap: 16px;">
-                <img src="{% static 'img/logo-icon.svg' %}" alt="Jurix Logo" style="width: 48px; height: 48px;">
-                <h1 style="margin: 0;">Jurix</h1>
+    <header class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <img src="{% static 'img/logo-icon.svg' %}" alt="Jurix" class="navbar-logo">
+                <span class="navbar-title">Jurix</span>
             </div>
-            <nav>
-                <a href="{% url 'legislation:norma_list' %}">Normas Consolidadas</a>
-                <a href="{% url 'legislation:chatbot' %}">Assistente IA</a>
-                <a href="/admin/">Admin</a>
+            <nav class="navbar-menu">
+                <a href="{% url 'legislation:norma_list' %}" class="nav-link">Normas</a>
+                <a href="{% url 'legislation:chatbot' %}" class="nav-link">Assistente IA</a>
+                <a href="/admin/" class="nav-link">Admin</a>
             </nav>
         </div>
     </header>
