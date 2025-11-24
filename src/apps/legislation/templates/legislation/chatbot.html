@@ -580,21 +580,25 @@
         }
         
         // ===== TYPEWRITER EFFECT WITH INCREMENTAL MARKDOWN =====
+        // ===== TYPEWRITER EFFECT =====
+        // Simulates streaming to mask RAG latency (~5-10s)
+        // Renders markdown incrementally word-by-word for smooth animation
+        // Speed: ~50 words/second (20ms per word) = ~250 chars/second effective
         function typewriterEffect(elementId, text, onComplete) {
             const element = document.getElementById(elementId);
             if (!element) return;
             
-            // Fix markdown formatting before processing
+            // Fix markdown formatting before processing (bullet points, line breaks)
             text = fixMarkdownFormatting(text);
             
             // Split text into words for smoother typewriter effect
-            // This allows us to render markdown incrementally word-by-word
+            // Word-by-word is faster than char-by-char and allows markdown re-rendering
             const words = text.split(/(\s+)/); // Split preserving whitespace
             let wordIndex = 0;
-            const speed = 20; // milliseconds per word
-            const wordsPerChunk = 1; // words to add per iteration
+            const speed = 20; // milliseconds per word (~50 words/sec)
+            const wordsPerChunk = 1; // words to add per iteration (can be increased for faster typing)
             
-            // Store the full rendered HTML for final display
+            // Pre-render full markdown for final display (ensures correct formatting)
             const fullHtml = DOMPurify.sanitize(marked.parse(text));
             
             function type() {
@@ -632,14 +636,23 @@
         }
         
         // ===== UTILITY FUNCTIONS =====
+        
+        // Scroll to bottom (force scroll regardless of user position)
+        // Used: After adding new message, after typewriter completes
         function scrollToBottom() {
             const container = document.getElementById('messages-container');
             container.scrollTop = container.scrollHeight;
         }
         
+        // Intelligent auto-scroll: Only scroll if user is near bottom
+        // Respects user scroll position (doesn't interrupt if user scrolled up)
+        // Threshold: 100px from bottom (allows small scroll tolerance)
+        // Used: During typewriter effect to follow typing
         function scrollToBottomIfAtBottom() {
             const container = document.getElementById('messages-container');
-            const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+            const threshold = 100; // pixels from bottom
+            const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+            
             if (isAtBottom) {
                 container.scrollTop = container.scrollHeight;
             }
