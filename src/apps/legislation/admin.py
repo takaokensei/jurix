@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Norma, Dispositivo, EventoAlteracao
+from .models import Norma, Dispositivo, EventoAlteracao, ChatSession, ChatMessage
 
 
 @admin.register(Norma)
@@ -41,148 +41,78 @@ class NormaAdmin(admin.ModelAdmin):
     def status_badge(self, obj):
         """Exibe badge colorido para o status."""
         colors = {
-            'pending': '#6c757d',
-            'pdf_downloaded': '#17a2b8',
-            'ocr_processing': '#ffc107',
-            'ocr_completed': '#28a745',
-            'nlp_processing': '#007bff',
-            'ready': '#28a745',
-            'failed': '#dc3545',
+            'consolidated': '#10b981',  # green
+            'ready': '#3b82f6',  # blue
+            'failed': '#ef4444',  # red
+            'pending': '#f59e0b',  # yellow
         }
-        color = colors.get(obj.status, '#6c757d')
+        color = colors.get(obj.status, '#6b7280')
         return format_html(
-            '<span style="background-color: {}; color: white; padding: 3px 8px; '
-            'border-radius: 3px; font-size: 11px;">{}</span>',
+            '<span style="background: {}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">{}</span>',
             color,
             obj.get_status_display()
         )
     status_badge.short_description = 'Status'
     
     def vacatio_status(self, obj):
-        """Indica se a norma está em vacatio legis."""
+        """Indica se está em vacatio legis."""
         if obj.is_em_vacatio_legis():
-            return format_html(
-                '<span style="color: #ff6600; font-weight: bold;">⚠️ Vacatio Legis</span>'
-            )
-        return '✓'
-    vacatio_status.short_description = 'Vigência'
-    
-    actions = ['marcar_para_revisao', 'resetar_status']
-    
-    def marcar_para_revisao(self, request, queryset):
-        """Marca normas selecionadas para revisão manual."""
-        count = queryset.update(needs_review=True)
-        self.message_user(request, f'{count} norma(s) marcada(s) para revisão.')
-    marcar_para_revisao.short_description = 'Marcar para revisão'
-    
-    def resetar_status(self, request, queryset):
-        """Reseta o status para 'pending'."""
-        count = queryset.update(status='pending', needs_review=False, processing_error='')
-        self.message_user(request, f'{count} norma(s) resetada(s).')
-    resetar_status.short_description = 'Resetar status'
+            return format_html('<span style="color: #f59e0b;">⚠️ Em vacatio legis</span>')
+        return '—'
+    vacatio_status.short_description = 'Vacatio Legis'
 
 
 @admin.register(Dispositivo)
 class DispositivoAdmin(admin.ModelAdmin):
-    list_display = ('get_identifier', 'norma', 'tipo', 'numero', 'ordem', 'get_nivel_display')
+    list_display = ('norma', 'tipo', 'numero', 'texto_preview', 'has_embedding')
     list_filter = ('tipo', 'norma__tipo', 'norma__ano')
-    search_fields = ('texto', 'numero', 'norma__numero', 'norma__ementa')
+    search_fields = ('texto', 'numero', 'norma__numero', 'norma__tipo')
     ordering = ('norma', 'ordem')
-    raw_id_fields = ('norma', 'dispositivo_pai')
+    readonly_fields = ('created_at', 'updated_at', 'embedding_generated_at')
     
-    fieldsets = (
-        ('Identificação', {
-            'fields': ('norma', 'tipo', 'numero', 'ordem')
-        }),
-        ('Hierarquia', {
-            'fields': ('dispositivo_pai',)
-        }),
-        ('Conteúdo', {
-            'fields': ('texto',)
-        }),
-        ('Timestamps', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
+    def texto_preview(self, obj):
+        """Preview do texto (primeiros 100 caracteres)."""
+        return obj.texto[:100] + ('...' if len(obj.texto) > 100 else '')
+    texto_preview.short_description = 'Texto'
     
-    readonly_fields = ('created_at', 'updated_at')
-    
-    def get_identifier(self, obj):
-        """Retorna identificador curto do dispositivo."""
-        return obj.get_full_identifier()
-    get_identifier.short_description = 'Dispositivo'
-    
-    def get_nivel_display(self, obj):
-        """Exibe o nível hierárquico."""
-        nivel = obj.get_nivel()
-        return f"{'  ' * nivel}Nível {nivel}"
-    get_nivel_display.short_description = 'Nível'
+    def has_embedding(self, obj):
+        """Indica se tem embedding."""
+        return '✅' if obj.embedding else '❌'
+    has_embedding.short_description = 'Embedding'
 
 
 @admin.register(EventoAlteracao)
 class EventoAlteracaoAdmin(admin.ModelAdmin):
-    list_display = (
-        'get_fonte_display', 'acao', 'target_text_short', 
-        'norma_alvo', 'extraction_confidence', 'validado', 'created_at'
-    )
-    list_filter = ('acao', 'validado', 'extraction_method', 'dispositivo_fonte__norma__tipo')
-    search_fields = (
-        'target_text', 'dispositivo_fonte__texto', 
-        'norma_alvo__numero', 'norma_alvo__ementa'
-    )
+    list_display = ('dispositivo_fonte', 'acao', 'norma_alvo', 'dispositivo_alvo', 'validado')
+    list_filter = ('acao', 'validado', 'extraction_method')
+    search_fields = ('target_text', 'dispositivo_fonte__texto', 'norma_alvo__numero')
     ordering = ('-created_at',)
-    raw_id_fields = ('dispositivo_fonte', 'norma_alvo', 'dispositivo_alvo')
-    
-    fieldsets = (
-        ('Evento', {
-            'fields': ('dispositivo_fonte', 'acao', 'target_text')
-        }),
-        ('Alvos Identificados', {
-            'fields': ('norma_alvo', 'dispositivo_alvo')
-        }),
-        ('Extração Detalhada', {
-            'fields': (
-                'referencia_tipo', 'referencia_numero', 
-                'extraction_confidence', 'extraction_method'
-            ),
-            'classes': ('collapse',)
-        }),
-        ('Validação', {
-            'fields': ('validado',)
-        }),
-        ('Timestamps', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
-    
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(ChatSession)
+class ChatSessionAdmin(admin.ModelAdmin):
+    list_display = ('title', 'user', 'is_active', 'message_count', 'created_at', 'updated_at')
+    list_filter = ('is_active', 'created_at', 'updated_at')
+    search_fields = ('title', 'user__username')
+    ordering = ('-updated_at',)
     readonly_fields = ('created_at', 'updated_at')
     
-    actions = ['marcar_validado', 'marcar_nao_validado']
-    
-    def get_fonte_display(self, obj):
-        """Exibe fonte de forma resumida."""
-        fonte = obj.dispositivo_fonte
-        return f"{fonte.norma.tipo} {fonte.norma.numero}/{fonte.norma.ano} - {fonte.get_full_identifier()}"
-    get_fonte_display.short_description = 'Fonte'
-    
-    def target_text_short(self, obj):
-        """Exibe target_text truncado."""
-        if len(obj.target_text) > 50:
-            return obj.target_text[:50] + '...'
-        return obj.target_text
-    target_text_short.short_description = 'Referência'
-    
-    def marcar_validado(self, request, queryset):
-        """Marca eventos como validados."""
-        count = queryset.update(validado=True)
-        self.message_user(request, f'{count} evento(s) marcado(s) como validado.')
-    marcar_validado.short_description = 'Marcar como validado'
-    
-    def marcar_nao_validado(self, request, queryset):
-        """Marca eventos como não validados."""
-        count = queryset.update(validado=False)
-        self.message_user(request, f'{count} evento(s) marcado(s) como não validado.')
-    marcar_nao_validado.short_description = 'Marcar como não validado'
+    def message_count(self, obj):
+        """Conta mensagens na sessão."""
+        return obj.messages.count()
+    message_count.short_description = 'Mensagens'
 
+
+@admin.register(ChatMessage)
+class ChatMessageAdmin(admin.ModelAdmin):
+    list_display = ('session', 'role', 'content_preview', 'created_at')
+    list_filter = ('role', 'created_at', 'session__user')
+    search_fields = ('content', 'session__title', 'session__user__username')
+    ordering = ('-created_at',)
+    readonly_fields = ('created_at', 'updated_at')
+    
+    def content_preview(self, obj):
+        """Preview do conteúdo."""
+        return obj.content[:100] + ('...' if len(obj.content) > 100 else '')
+    content_preview.short_description = 'Conteúdo'

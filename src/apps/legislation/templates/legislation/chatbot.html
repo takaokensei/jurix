@@ -39,9 +39,21 @@
             
             <div class="sidebar-content">
                 <div class="sidebar-section">
-                    <h3>Assistente</h3>
-                    <div class="sidebar-item active" role="button" tabindex="0">
-                        <span>Nova Conversa</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+                        <h3>Assistente</h3>
+                        <button 
+                            id="new-chat-button" 
+                            class="new-chat-button"
+                            aria-label="Nova Conversa"
+                            title="Nova Conversa"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="chat-sessions-list" class="chat-sessions-list">
+                        <!-- Sessões serão carregadas via JavaScript -->
                     </div>
                 </div>
                 
@@ -209,54 +221,320 @@
         }
         // ===== APP STATE =====
         let isProcessing = false;
+        let currentSessionId = null;
+        
+        // ===== CHAT SESSIONS MANAGEMENT =====
+        // Load and display chat sessions in sidebar
+        async function loadChatSessions() {
+            try {
+                const response = await fetch('/api/v1/chat/sessions/');
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                if (!data.success || !data.sessions) return;
+                
+                const sessionsList = document.getElementById('chat-sessions-list');
+                if (!sessionsList) return;
+                
+                if (data.sessions.length === 0) {
+                    sessionsList.innerHTML = '<div style="padding: var(--space-2); color: var(--color-text-secondary); font-size: var(--font-size-xs); text-align: center;">Nenhuma conversa ainda</div>';
+                    return;
+                }
+                
+                sessionsList.innerHTML = data.sessions.map(session => `
+                    <div class="chat-session-item ${session.is_active ? 'active' : ''}" 
+                         data-session-id="${session.id}" 
+                         role="button" 
+                         tabindex="0"
+                         onclick="loadSession(${session.id})"
+                         onkeydown="if(event.key==='Enter') loadSession(${session.id})">
+                        <div style="flex: 1; min-width: 0;">
+                            <div class="chat-session-title">${escapeHtml(session.title)}</div>
+                            ${session.last_message_preview ? `<div class="chat-session-preview">${escapeHtml(session.last_message_preview)}</div>` : ''}
+                        </div>
+                        <button 
+                            class="delete-session-button" 
+                            onclick="event.stopPropagation(); deleteSession(${session.id})"
+                            aria-label="Deletar conversa"
+                            title="Deletar conversa">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading chat sessions:', error);
+            }
+        }
+        
+        // Create new chat session
+        async function createNewSession() {
+            try {
+                // Check if there's already an empty "Nova Conversa" session
+                const sessionsResponse = await fetch('/api/v1/chat/sessions/');
+                if (sessionsResponse.ok) {
+                    const sessionsData = await sessionsResponse.json();
+                    if (sessionsData.success && sessionsData.sessions) {
+                        // Find empty "Nova Conversa" sessions (no messages)
+                        const emptyNewSessions = sessionsData.sessions.filter(session => 
+                            session.title === 'Nova Conversa' && session.message_count === 0
+                        );
+                        
+                        if (emptyNewSessions.length > 0) {
+                            // Redirect to existing empty session
+                            currentSessionId = emptyNewSessions[0].id;
+                            await loadSession(currentSessionId);
+                            return;
+                        }
+                    }
+                }
+                
+                // Create new session if no empty one exists
+                const csrfToken = getCookie('csrftoken');
+                const response = await fetch('/api/v1/chat/sessions/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ title: 'Nova Conversa' })
+                });
+                
+                if (!response.ok) throw new Error('Failed to create session');
+                
+                const data = await response.json();
+                if (data.success && data.session) {
+                    currentSessionId = data.session.id;
+                    clearMessages();
+                    await loadChatSessions();
+                    const welcomeState = document.getElementById('welcome-state');
+                    if (welcomeState) welcomeState.style.display = 'flex';
+                    
+                    // Clear saved text for this new session
+                    if (textarea) {
+                        localStorage.removeItem(`chat-input-${currentSessionId}`);
+                        textarea.value = '';
+                    }
+                }
+            } catch (error) {
+                console.error('Error creating new session:', error);
+            }
+        }
+        
+        // Delete a chat session
+        async function deleteSession(sessionId) {
+            if (!sessionId || !confirm('Tem certeza que deseja deletar esta conversa?')) return;
+            
+            try {
+                const csrfToken = getCookie('csrftoken');
+                const response = await fetch(`/api/v1/chat/sessions/${sessionId}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Failed to delete session');
+                
+                // If deleted session was the current one, create a new one
+                if (currentSessionId === sessionId) {
+                    currentSessionId = null;
+                    clearMessages();
+                    const welcomeState = document.getElementById('welcome-state');
+                    if (welcomeState) welcomeState.style.display = 'flex';
+                    
+                    // Clear saved text
+                    if (textarea) {
+                        localStorage.removeItem(`chat-input-${sessionId}`);
+                        textarea.value = '';
+                    }
+                }
+                
+                // Reload sessions list
+                await loadChatSessions();
+            } catch (error) {
+                console.error('Error deleting session:', error);
+                alert('Erro ao deletar conversa. Tente novamente.');
+            }
+        }
+        
+        // Load a specific session and display its messages
+        async function loadSession(sessionId) {
+            if (!sessionId) return;
+            
+            try {
+                const response = await fetch(`/api/v1/chat/sessions/${sessionId}/`);
+                if (!response.ok) throw new Error('Failed to load session');
+                
+                const data = await response.json();
+                if (!data.success || !data.messages) return;
+                
+                currentSessionId = sessionId;
+                clearMessages();
+                
+                // Update active state in sidebar
+                document.querySelectorAll('.chat-session-item').forEach(item => {
+                    item.classList.remove('active');
+                    if (parseInt(item.dataset.sessionId) === sessionId) {
+                        item.classList.add('active');
+                    }
+                });
+                
+                // Hide welcome state (only if there are messages)
+                const welcomeState = document.getElementById('welcome-state');
+                if (welcomeState && data.messages.length > 0) {
+                    welcomeState.style.display = 'none';
+                } else if (welcomeState && data.messages.length === 0) {
+                    welcomeState.style.display = 'flex';
+                }
+                
+                // Load saved text for this session after messages are loaded
+                if (textarea) {
+                    loadSavedText(sessionId);
+                }
+                
+                // Load and render messages
+                const assistantMessages = data.messages.filter(m => m.role === 'assistant');
+                let messageIndex = 0;
+                
+                for (let i = 0; i < data.messages.length; i++) {
+                    const msg = data.messages[i];
+                    if (msg.role === 'user') {
+                        addUserMessage(msg.content);
+                    } else if (msg.role === 'assistant') {
+                        messageIndex++;
+                        // Show regenerate only on the last assistant message
+                        const isLastAssistant = messageIndex === assistantMessages.length;
+                        addAssistantMessage(msg.content, msg.sources || [], isLastAssistant && currentSessionId ? true : false);
+                    }
+                }
+                
+                scrollToBottom();
+            } catch (error) {
+                console.error('Error loading session:', error);
+            }
+        }
+        
+        // Clear all messages from chat
+        function clearMessages() {
+            const messagesWrapper = document.getElementById('messages-wrapper');
+            if (messagesWrapper) {
+                messagesWrapper.innerHTML = '';
+            }
+        }
+        
+        // Initialize: Load sessions on page load
+        if (document.getElementById('chat-sessions-list')) {
+            // Load sessions first
+            loadChatSessions().then(() => {
+                // After loading sessions, load active session if exists
+                const activeSessionItem = document.querySelector('.chat-session-item.active');
+                if (activeSessionItem) {
+                    const sessionId = parseInt(activeSessionItem.dataset.sessionId);
+                    if (sessionId) {
+                        currentSessionId = sessionId;
+                        loadSession(sessionId);
+                    }
+                } else if (textarea) {
+                    // Load saved text for current session if no active session selected
+                    {% if current_session %}
+                    currentSessionId = {{ current_session.id }};
+                    loadSavedText({{ current_session.id }});
+                    {% endif %}
+                }
+            });
+            
+            // New chat button
+            const newChatBtn = document.getElementById('new-chat-button');
+            if (newChatBtn) {
+                newChatBtn.addEventListener('click', createNewSession);
+            }
+        }
         
         // ===== SIDEBAR TOGGLE =====
-        document.getElementById('toggle-sidebar').addEventListener('click', () => {
-            document.getElementById('sidebar').classList.toggle('collapsed');
-        });
+        const toggleSidebarBtn = document.getElementById('toggle-sidebar');
+        const sidebar = document.getElementById('sidebar');
+        if (toggleSidebarBtn && sidebar) {
+            toggleSidebarBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('collapsed');
+            });
+        }
         
         // ===== TEXTAREA AUTO-GROW =====
         // Expands textarea automatically as user types, up to max height of 200px (~8 lines)
         const textarea = document.getElementById('question-textarea');
-        textarea.addEventListener('input', function() {
-            this.style.height = 'auto'; // Reset height to recalculate
-            this.style.height = Math.min(this.scrollHeight, 200) + 'px'; // Grow up to 200px
-        });
         
-        // ===== ENTER vs SHIFT+ENTER HANDLING =====
-        // Enter: Submit message | Shift+Enter: New line
-        textarea.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                document.getElementById('chat-form').dispatchEvent(new Event('submit'));
+        // Function to load saved text for a session
+        function loadSavedText(sessionId) {
+            if (!textarea || !sessionId) return;
+            const savedText = localStorage.getItem(`chat-input-${sessionId}`);
+            if (savedText !== null) {
+                textarea.value = savedText;
+                textarea.style.height = 'auto';
+                textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
             }
-        });
+        }
+        
+        if (textarea) {
+            textarea.addEventListener('input', function() {
+                // Auto-grow
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+                
+                // Save text to localStorage for current session
+                if (currentSessionId) {
+                    localStorage.setItem(`chat-input-${currentSessionId}`, this.value);
+                }
+            });
+            
+            // ===== ENTER vs SHIFT+ENTER HANDLING =====
+            // Enter: Submit message | Shift+Enter: New line
+            textarea.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    const chatForm = document.getElementById('chat-form');
+                    if (chatForm) chatForm.dispatchEvent(new Event('submit'));
+                }
+            });
+        }
         
         // ===== FORM SUBMISSION =====
-        document.getElementById('chat-form').addEventListener('submit', async (e) => {
+        const chatForm = document.getElementById('chat-form');
+        if (chatForm) {
+            chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             if (isProcessing) return;
+            
+            if (!textarea) return;
             
             const question = textarea.value.trim();
             if (!question) return;
             
             // Hide welcome state
-            document.getElementById('welcome-state').style.display = 'none';
+            const welcomeStateEl = document.getElementById('welcome-state');
+            if (welcomeStateEl) welcomeStateEl.style.display = 'none';
             
             // Add user message
             addUserMessage(question);
             
-            // Clear input
+            // Clear input and save empty state
             textarea.value = '';
             textarea.style.height = 'auto';
+            
+            // Clear saved text after sending
+            if (currentSessionId) {
+                localStorage.removeItem(`chat-input-${currentSessionId}`);
+            }
             
             // Show loading
             const loadingId = addLoadingMessage();
             
             // Disable input
             isProcessing = true;
-            document.getElementById('send-button').disabled = true;
+            const sendButton = document.getElementById('send-button');
+            if (sendButton) sendButton.disabled = true;
             
             try {
                 // Get CSRF token
@@ -276,7 +554,11 @@
                         'Content-Type': 'application/json',
                         'X-CSRFToken': csrfToken
                     },
-                    body: JSON.stringify({ question })
+                    body: JSON.stringify({ 
+                        question,
+                        session_id: currentSessionId,
+                        regenerate: false
+                    })
                 });
                 
                 // Check if response is ok
@@ -292,6 +574,13 @@
                 removeLoadingMessage(loadingId);
                 
                 if (data.success) {
+                    // Update current session ID if returned
+                    if (data.session_id) {
+                        currentSessionId = data.session_id;
+                        // Reload sessions to update active state
+                        loadChatSessions();
+                    }
+                    
                     // Backend returns: { success: true, answer: "...", sources: [...], confidence, metadata }
                     const answer = data.answer || 'Desculpe, não consegui gerar uma resposta.';
                     const sources = data.sources || [];
@@ -313,10 +602,12 @@
                 addErrorMessage('Erro de conexão. Verifique sua conexão e tente novamente.');
             } finally {
                 isProcessing = false;
-                document.getElementById('send-button').disabled = false;
-                textarea.focus();
+                const sendButton = document.getElementById('send-button');
+                if (sendButton) sendButton.disabled = false;
+                if (textarea) textarea.focus();
             }
         });
+        }
         
         // ===== MESSAGE FUNCTIONS =====
         // ===== USER MESSAGE =====
@@ -398,7 +689,7 @@
         
         // ===== ASSISTANT MESSAGE =====
         // Renders assistant message with logo avatar and Swiss typography
-        function addAssistantMessage(answer, sources) {
+        function addAssistantMessage(answer, sources, showRegenerate = false) {
             const messagesWrapper = document.getElementById('messages-wrapper');
             const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             const messageId = 'msg-' + Date.now();
@@ -419,6 +710,14 @@
                     </div>
                     <div class="message-body" id="${messageId}"></div>
                     <div class="message-actions" id="actions-${Date.now()}">
+                        <button class="regenerate-button" id="regenerate-${Date.now()}" aria-label="Tentar novamente" title="Tentar novamente" style="display: none;">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M21 3v5h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M3 21v-5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
                         <button class="copy-response-button" id="${copyButtonId}" aria-label="Copiar resposta em Markdown" title="Copiar resposta">
                             <svg class="copy-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
@@ -451,10 +750,28 @@
                 copyResponseToClipboard(storedMarkdown, copyButton);
             });
             
+            // Get regenerate button
+            const regenerateBtn = messageDiv.querySelector('.regenerate-button');
+            const regenerateBtnId = regenerateBtn ? regenerateBtn.id : null;
+            
             // Typewriter effect - callback when complete to show sources and copy button
             typewriterEffect(messageId, answer, () => {
                 // Show copy button after answer is complete with animation
                 copyButton.classList.add('show');
+                
+                // Show regenerate button only on last assistant message (only if session exists and flag is true)
+                if (regenerateBtn && currentSessionId && showRegenerate) {
+                    regenerateBtn.style.display = 'inline-flex';
+                    regenerateBtn.classList.add('show');
+                    
+                    // Setup regenerate functionality
+                    regenerateBtn.addEventListener('click', async () => {
+                        await regenerateLastResponse(currentSessionId, messageDiv, sourcesContainer);
+                    });
+                } else if (regenerateBtn) {
+                    // Hide regenerate button if not the last message
+                    regenerateBtn.style.display = 'none';
+                }
                 
                 // Callback: Add sources only after answer is complete
                 // Show sources gradually, ordered by relevance
@@ -462,6 +779,95 @@
                     showSourcesGradually(sourcesContainer, sources);
                 }
             });
+        }
+        
+        // Regenerate last assistant response
+        async function regenerateLastResponse(sessionId, messageDiv, sourcesContainer) {
+            if (!sessionId || isProcessing) return;
+            
+            try {
+                isProcessing = true;
+                const regenerateBtn = messageDiv.querySelector('.regenerate-button');
+                const copyButton = messageDiv.querySelector('.copy-response-button');
+                
+                if (regenerateBtn) {
+                    regenerateBtn.disabled = true;
+                    regenerateBtn.style.opacity = '0.5';
+                }
+                
+                // Show loading state in message body
+                const messageBody = messageDiv.querySelector('.message-body');
+                if (messageBody) {
+                    const originalContent = messageBody.innerHTML;
+                    messageBody.innerHTML = '<div class="loading-message"><div class="loading-dots"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div><span>Regenerando resposta...</span></div>';
+                }
+                
+                // Hide sources during regeneration
+                if (sourcesContainer) sourcesContainer.innerHTML = '';
+                
+                // Hide buttons during regeneration
+                if (copyButton) copyButton.style.display = 'none';
+                if (regenerateBtn) regenerateBtn.style.display = 'none';
+                
+                const csrfToken = getCookie('csrftoken');
+                const response = await fetch(`/api/v1/chat/sessions/${sessionId}/regenerate/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ k: 5, model: 'llama3' })
+                });
+                
+                if (!response.ok) throw new Error('Failed to regenerate');
+                
+                const data = await response.json();
+                if (data.success && messageBody) {
+                    // Clear message body for new content
+                    messageBody.innerHTML = '';
+                    
+                    // Update copy button data
+                    if (copyButton) {
+                        copyButton.setAttribute('data-markdown', data.answer);
+                    }
+                    
+                    // Typewriter effect for new answer
+                    typewriterEffect(messageBody.id, data.answer, () => {
+                        // Show buttons again
+                        if (copyButton) {
+                            copyButton.style.display = 'inline-flex';
+                            copyButton.classList.add('show');
+                        }
+                        if (regenerateBtn) {
+                            regenerateBtn.style.display = 'inline-flex';
+                            regenerateBtn.classList.add('show');
+                            regenerateBtn.disabled = false;
+                            regenerateBtn.style.opacity = '1';
+                        }
+                        
+                        // Show sources
+                        if (data.sources && data.sources.length > 0) {
+                            showSourcesGradually(sourcesContainer, data.sources);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error regenerating response:', error);
+                const messageBody = messageDiv.querySelector('.message-body');
+                if (messageBody) {
+                    messageBody.innerHTML = '<p style="color: var(--color-error);">Erro ao regenerar resposta. Tente novamente.</p>';
+                }
+                
+                // Re-enable button on error
+                const regenerateBtn = messageDiv.querySelector('.regenerate-button');
+                if (regenerateBtn) {
+                    regenerateBtn.disabled = false;
+                    regenerateBtn.style.opacity = '1';
+                    regenerateBtn.style.display = 'inline-flex';
+                }
+            } finally {
+                isProcessing = false;
+            }
         }
         
         // Copy response as Markdown to clipboard
@@ -860,12 +1266,22 @@
             'Explique as normas de ocupação do solo'
         ];
         
+        // Fisher-Yates shuffle algorithm for true randomness
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+        
         function renderRandomSuggestions() {
             const chipsContainer = document.getElementById('suggestion-chips');
             if (!chipsContainer) return;
             
-            // Shuffle array and take first 3
-            const shuffled = [...SUGGESTION_QUESTIONS].sort(() => Math.random() - 0.5);
+            // Use Fisher-Yates shuffle for better randomness
+            const shuffled = shuffleArray(SUGGESTION_QUESTIONS);
             const selected = shuffled.slice(0, 3);
             
             chipsContainer.innerHTML = selected.map(question => 
@@ -1031,34 +1447,111 @@
             selectedIndex = -1;
             
             if (filtered.length === 0) {
-                commandPaletteResults.innerHTML = '<div class="command-palette-empty">Nenhum comando encontrado</div>';
+                // Animate out existing items before clearing
+                const existingItems = commandPaletteResults.querySelectorAll('.command-palette-item');
+                existingItems.forEach((item, index) => {
+                    setTimeout(() => {
+                        item.style.opacity = '0';
+                        item.style.transform = 'translateY(-10px)';
+                    }, index * 30);
+                });
+                
+                setTimeout(() => {
+                    commandPaletteResults.innerHTML = '<div class="command-palette-empty">Nenhum comando encontrado</div>';
+                }, existingItems.length * 30 + 100);
                 return;
             }
             
-            commandPaletteResults.innerHTML = filtered.map((cmd, index) => `
-                <div class="command-palette-item" data-action="${cmd.id}" data-command-id="${cmd.id}">
-                    <span class="command-palette-item-icon">${cmd.icon}</span>
-                    <div class="command-palette-item-content">
-                        <div class="command-palette-item-title">${cmd.title}</div>
-                        <div class="command-palette-item-description">${cmd.description}</div>
-                    </div>
-                </div>
-            `).join('');
-            
-            // Attach click handlers to items
-            commandPaletteResults.querySelectorAll('.command-palette-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    executeCommand(item.dataset.commandId || item.dataset.action);
-                });
+            // Animate out existing items with spring effect
+            const existingItems = commandPaletteResults.querySelectorAll('.command-palette-item');
+            existingItems.forEach((item, index) => {
+                item.style.transition = 'opacity 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                setTimeout(() => {
+                    item.style.opacity = '0';
+                    item.style.transform = 'translateY(-8px) scale(0.95)';
+                }, index * 20);
             });
+            
+            // Wait for exit animation, then add new items with spring entrance
+            setTimeout(() => {
+                commandPaletteResults.innerHTML = filtered.map((cmd, index) => `
+                    <div class="command-palette-item" 
+                         data-action="${cmd.id}" 
+                         data-command-id="${cmd.id}"
+                         style="opacity: 0; transform: translateY(10px) scale(0.95);">
+                        <span class="command-palette-item-icon">${cmd.icon}</span>
+                        <div class="command-palette-item-content">
+                            <div class="command-palette-item-title">${cmd.title}</div>
+                            <div class="command-palette-item-description">${cmd.description}</div>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Animate in new items with spring effect (staggered)
+                const newItems = commandPaletteResults.querySelectorAll('.command-palette-item');
+                newItems.forEach((item, index) => {
+                    // Force reflow
+                    void item.offsetHeight;
+                    
+                    setTimeout(() => {
+                        item.style.transition = 'opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                        item.style.opacity = '1';
+                        item.style.transform = 'translateY(0) scale(1)';
+                    }, index * 40); // Staggered entrance for spring effect
+                });
+                
+                // Attach click handlers to items
+                commandPaletteResults.querySelectorAll('.command-palette-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        executeCommand(item.dataset.commandId || item.dataset.action);
+                    });
+                });
+            }, existingItems.length * 20 + 50);
         }
         
         function executeCommand(commandId) {
             const cmd = commands.find(c => c.id === commandId);
             if (cmd) {
                 closeCommandPalette();
-                cmd.action();
+                
+                // Add page transition with skeleton screen
+                showPageTransition(() => {
+                    cmd.action();
+                });
             }
+        }
+        
+        // Page transition with skeleton screen for smooth navigation
+        function showPageTransition(callback) {
+            // Create skeleton overlay if it doesn't exist
+            let skeletonOverlay = document.getElementById('page-transition-skeleton');
+            if (!skeletonOverlay) {
+                skeletonOverlay = document.createElement('div');
+                skeletonOverlay.id = 'page-transition-skeleton';
+                skeletonOverlay.className = 'page-transition-skeleton';
+                skeletonOverlay.innerHTML = `
+                    <div class="skeleton-content">
+                        <div class="skeleton-line" style="width: 60%;"></div>
+                        <div class="skeleton-line" style="width: 80%;"></div>
+                        <div class="skeleton-line" style="width: 40%;"></div>
+                    </div>
+                `;
+                document.body.appendChild(skeletonOverlay);
+            }
+            
+            // Show skeleton with fade in
+            skeletonOverlay.classList.add('active');
+            
+            // Execute callback after brief delay (enough to see transition)
+            setTimeout(() => {
+                // Navigate will happen naturally, skeleton will disappear on page load
+                if (callback) callback();
+                
+                // Hide skeleton after navigation completes (fallback)
+                setTimeout(() => {
+                    skeletonOverlay.classList.remove('active');
+                }, 500);
+            }, 200);
         }
         
         // Event listeners
