@@ -1421,10 +1421,19 @@
             console.log('Suggestions rendered:', selected.length);
         }
         
+        // Flag to prevent multiple simultaneous streaming executions
+        let isStreamingGreeting = false;
+        
         // Show welcome state with streaming greeting effect
         function showWelcomeStateWithStreaming() {
             const welcomeState = document.getElementById('welcome-state');
             if (!welcomeState) return;
+            
+            // Prevent multiple simultaneous executions
+            if (isStreamingGreeting) {
+                console.log('Greeting streaming already in progress, skipping...');
+                return;
+            }
             
             // Show welcome state
             welcomeState.style.display = 'flex';
@@ -1434,22 +1443,23 @@
             const greetingTextEl = welcomeState.querySelector('.greeting-text');
             
             if (greetingNameEl && greetingTextEl) {
-                // Get name from data attribute first (most reliable)
+                // IMPORTANT: Get name from data attribute BEFORE doing anything else
+                // This prevents reading already-streamed text
                 let fullName = greetingNameEl.getAttribute('data-user-name');
                 if (!fullName || fullName.trim() === '') {
-                    // Fallback: try to get from current text content (before clearing)
-                    fullName = (greetingNameEl.textContent || greetingNameEl.innerText || '').trim();
-                    if (!fullName) {
-                        fullName = 'Admin'; // Final fallback
-                    }
+                    // Only use fallback if attribute is missing
+                    fullName = 'Admin';
                 }
+                
+                // Clear both elements IMMEDIATELY to prevent reading existing text
+                greetingTextEl.textContent = '';
+                greetingNameEl.textContent = '';
+                
+                // Set flag to prevent multiple executions
+                isStreamingGreeting = true;
                 
                 const greetingText = 'Olá, ';
                 const greetingTextLength = greetingText.length;
-                
-                // Clear both elements BEFORE streaming
-                greetingTextEl.textContent = '';
-                greetingNameEl.textContent = '';
                 
                 // Stream the greeting token by token (Swiss Design: smooth, elegant)
                 let charIndex = 0;
@@ -1469,7 +1479,9 @@
                         charIndex++;
                         setTimeout(streamNextChar, 50); // Normal speed for name
                     } else {
-                        // Greeting complete, render suggestions
+                        // Greeting complete, reset flag and render suggestions
+                        isStreamingGreeting = false;
+                        
                         if (typeof renderRandomSuggestions === 'function') {
                             renderRandomSuggestions();
                         } else {
