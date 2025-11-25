@@ -53,14 +53,18 @@ class Command(BaseCommand):
         
         # Build queryset
         if force:
-            # Reprocess all with given status
-            queryset = Norma.objects.filter(status=status)
+            if process_all:
+                # Reprocess ALL normas with texto_original, regardless of status
+                queryset = Norma.objects.exclude(texto_original='').exclude(texto_original__isnull=True)
+            else:
+                # Reprocess all with given status
+                queryset = Norma.objects.filter(status=status).exclude(texto_original='')
         else:
             # Only process ocr_completed normas (not yet segmented)
             queryset = Norma.objects.filter(status='ocr_completed')
         
         # Exclude normas without texto_original
-        queryset = queryset.exclude(texto_original='')
+        queryset = queryset.exclude(texto_original='').exclude(texto_original__isnull=True)
         
         # Apply limit if specified
         if limit:
