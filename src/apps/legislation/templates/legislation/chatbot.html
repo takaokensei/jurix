@@ -314,9 +314,25 @@
                 
                 const data = await response.json();
                 if (data.success && data.session) {
+                    // Get any temporary saved text before setting currentSessionId
+                    const tempText = localStorage.getItem('chat-input-temp');
+                    
                     currentSessionId = data.session.id;
                     clearMessages();
                     await loadChatSessions();
+                    
+                    // Restore temporary text if it exists BEFORE showing welcome state
+                    if (textarea && tempText && tempText.trim()) {
+                        textarea.value = tempText;
+                        textarea.style.height = 'auto';
+                        textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+                        // Save to the new session immediately
+                        localStorage.setItem(`chat-input-${currentSessionId}`, tempText);
+                        localStorage.removeItem('chat-input-temp');
+                    } else if (textarea) {
+                        // Load any saved text for this session (if exists)
+                        loadSavedText(currentSessionId);
+                    }
                     
                     // Show welcome state with streaming greeting and suggestions
                     showWelcomeStateWithStreaming();
