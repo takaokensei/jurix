@@ -1316,6 +1316,7 @@ strong, b {
     display: none; /* Hidden initially, shown after typewriter completes */
     align-items: center;
     justify-content: center;
+    position: relative;
     width: 36px; /* Square button, icon only */
     height: 36px;
     padding: 0;
@@ -1353,9 +1354,15 @@ strong, b {
     transition: all var(--transition-fast);
 }
 
+/* Icons positioned absolutely for smooth swap animation */
 .copy-response-button .copy-icon,
 .copy-response-button .check-icon {
     position: absolute;
+    display: block;
+}
+
+.copy-response-button .check-icon {
+    display: none;
 }
 
 /* Swiss Design: Subtle feedback on copy - primary color, not green */
@@ -1368,6 +1375,14 @@ strong, b {
 .copy-response-button.copied:hover {
     background: var(--color-primary-hover);
     border-color: var(--color-primary-hover);
+}
+
+.copy-response-button.copied .copy-icon {
+    display: none;
+}
+
+.copy-response-button.copied .check-icon {
+    display: block;
 }
 
 /* Sources Cards */
