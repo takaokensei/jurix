@@ -1434,41 +1434,40 @@
             const greetingTextEl = welcomeState.querySelector('.greeting-text');
             
             if (greetingNameEl && greetingTextEl) {
-                // Get the full name from the element (or from Django template)
-                let fullName = greetingNameEl.textContent || greetingNameEl.innerText;
-                let greetingText = greetingTextEl.textContent || greetingTextEl.innerText || 'Olá, ';
-                
-                // If elements are empty, get from template (fallback)
+                // Get name from data attribute first (most reliable)
+                let fullName = greetingNameEl.getAttribute('data-user-name');
                 if (!fullName || fullName.trim() === '') {
-                    // Try to get from HTML attribute or use username
-                    const userNameEl = greetingNameEl.getAttribute('data-user-name');
-                    fullName = userNameEl || 'Admin';
-                }
-                if (!greetingText || greetingText.trim() === '') {
-                    greetingText = 'Olá, ';
+                    // Fallback: try to get from current text content (before clearing)
+                    fullName = (greetingNameEl.textContent || greetingNameEl.innerText || '').trim();
+                    if (!fullName) {
+                        fullName = 'Admin'; // Final fallback
+                    }
                 }
                 
-                // Clear both elements for streaming
+                const greetingText = 'Olá, ';
+                const greetingTextLength = greetingText.length;
+                
+                // Clear both elements BEFORE streaming
                 greetingTextEl.textContent = '';
                 greetingNameEl.textContent = '';
                 
                 // Stream the greeting token by token (Swiss Design: smooth, elegant)
-                const fullGreeting = greetingText + fullName;
                 let charIndex = 0;
-                const greetingTextLength = greetingText.length;
                 
                 function streamNextChar() {
-                    if (charIndex < fullGreeting.length) {
-                        const char = fullGreeting[charIndex];
-                        if (charIndex < greetingTextLength) {
-                            greetingTextEl.textContent += char;
-                        } else {
-                            greetingNameEl.textContent += char;
-                        }
+                    if (charIndex < greetingTextLength) {
+                        // Stream greeting text
+                        const char = greetingText[charIndex];
+                        greetingTextEl.textContent += char;
                         charIndex++;
-                        // Variable speed: faster for text (30ms), normal for name (50ms)
-                        const speed = charIndex <= greetingTextLength ? 30 : 50;
-                        setTimeout(streamNextChar, speed);
+                        setTimeout(streamNextChar, 30); // Faster for greeting text
+                    } else if (charIndex < greetingTextLength + fullName.length) {
+                        // Stream name
+                        const nameIndex = charIndex - greetingTextLength;
+                        const char = fullName[nameIndex];
+                        greetingNameEl.textContent += char;
+                        charIndex++;
+                        setTimeout(streamNextChar, 50); // Normal speed for name
                     } else {
                         // Greeting complete, render suggestions
                         if (typeof renderRandomSuggestions === 'function') {

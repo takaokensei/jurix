@@ -1204,11 +1204,74 @@ strong, b {
     opacity: 0.9;
 }
 
-.welcome-state h2 {
-    font-size: var(--font-size-4xl); /* Larger heading */
-    font-weight: var(--font-weight-bold);
-    margin-bottom: var(--space-3);
+/* Welcome Greeting - Gemini Style with Beautiful Gradient Typography */
+.welcome-greeting {
+    font-size: clamp(2.5rem, 5vw, 4rem); /* Responsive, elegant sizing */
+    font-weight: var(--font-weight-semibold);
+    margin-bottom: var(--space-6);
     color: var(--color-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25em; /* Small gap between "Olá," and name */
+    text-align: center;
+    line-height: 1.2; /* Tight line height for large text */
+    letter-spacing: -0.02em; /* Slightly tighter letter spacing for elegance */
+}
+
+.greeting-text {
+    color: var(--color-text); /* Normal text color */
+    font-weight: var(--font-weight-normal); /* Lighter weight for "Olá," */
+}
+
+.greeting-name {
+    /* Beautiful live gradient animation - Gemini style */
+    background: linear-gradient(
+        135deg,
+        #667eea 0%,
+        #764ba2 25%,
+        #f093fb 50%,
+        #4facfe 75%,
+        #00f2fe 100%
+    );
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent; /* Fallback for browsers that don't support background-clip */
+    font-weight: var(--font-weight-semibold);
+    animation: gradientShift 8s ease infinite;
+    position: relative;
+}
+
+/* Smooth gradient animation */
+@keyframes gradientShift {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* Dark mode: Adjust gradient for better contrast */
+[data-theme="dark"] .greeting-name {
+    background: linear-gradient(
+        135deg,
+        #818cf8 0%, /* lighter indigo */
+        #a78bfa 25%, /* lighter purple */
+        #f472b6 50%, /* lighter pink */
+        #60a5fa 75%, /* lighter blue */
+        #34d399 100% /* lighter teal */
+    );
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradientShift 8s ease infinite;
 }
 
 .welcome-state p {
