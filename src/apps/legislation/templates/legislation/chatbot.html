@@ -1591,10 +1591,14 @@
         // ===== COMMAND PALETTE (⌘K / Ctrl+K) =====
         // Spotlight-style command palette for quick navigation
         
+        // Check if command palette elements exist before proceeding
         const commandPaletteOverlay = document.getElementById('command-palette-overlay');
         const commandPaletteInput = document.getElementById('command-palette-input');
         const commandPaletteResults = document.getElementById('command-palette-results');
         const commandPaletteTrigger = document.getElementById('command-palette-trigger');
+        
+        // Only initialize command palette if all elements exist
+        if (commandPaletteOverlay && commandPaletteInput && commandPaletteResults) {
         
         // Global variable to store chat sessions for command palette search
         // Use window object to avoid conflicts if script runs multiple times
