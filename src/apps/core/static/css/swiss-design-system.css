@@ -852,46 +852,68 @@ strong, b {
     background: transparent;
     border: none;
     border-radius: var(--radius-sm);
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(255, 255, 255, 0.4);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); /* Swiss Design: smooth spring easing */
     opacity: 0;
     flex-shrink: 0;
-    transform: scale(0.8);
+    transform: scale(0.85) translateY(2px); /* Slightly offset for more dynamic feel */
     pointer-events: none;
 }
 
-/* Animate in on hover */
+/* Swiss Design: Animate in on hover with spring physics */
 .chat-session-item:hover .delete-session-button {
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1) translateY(0);
     pointer-events: auto;
-    animation: fadeInScale 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: fadeInScaleSpring 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy spring */
 }
 
-@keyframes fadeInScale {
-    from {
+@keyframes fadeInScaleSpring {
+    0% {
         opacity: 0;
-        transform: scale(0.8);
+        transform: scale(0.7) translateY(4px);
     }
-    to {
+    60% {
+        transform: scale(1.05) translateY(-1px); /* Overshoot for spring effect */
+    }
+    100% {
         opacity: 1;
-        transform: scale(1);
+        transform: scale(1) translateY(0);
     }
 }
 
-/* Smooth transition for fade out (handled by transition property) */
+/* Swiss Design: Animate out when item loses hover */
+.chat-session-item:not(:hover) .delete-session-button {
+    animation: fadeOutScaleSpring 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeOutScaleSpring {
+    0% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.85) translateY(2px);
+    }
+}
+
+/* Swiss Design: Subtle hover feedback */
 .delete-session-button:hover {
     color: var(--color-error);
-    background: rgba(239, 68, 68, 0.15);
-    transform: scale(1.1);
+    background: rgba(239, 68, 68, 0.12); /* More subtle background */
+    transform: scale(1.08) translateY(-1px); /* Lift effect */
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15); /* Subtle shadow */
 }
 
+/* Swiss Design: Active state - press feedback */
 .delete-session-button:active {
-    transform: scale(0.95);
+    transform: scale(0.96) translateY(0);
+    transition: transform 0.1s cubic-bezier(0.16, 1, 0.3, 1); /* Faster on press */
 }
 
 [data-theme="light"] .delete-session-button {
@@ -1213,61 +1235,100 @@ strong, b {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 65vh; /* Better vertical distribution */
+    min-height: 60vh;
     text-align: center;
     padding: var(--space-8) var(--space-6);
-    max-width: 100%; /* Use full available width */
+    max-width: 100%;
     width: 100%;
 }
 
-.welcome-state img {
-    width: 96px; /* Slightly larger */
-    height: 96px;
-    margin-bottom: var(--space-4);
-    opacity: 0.9;
-}
-
-.welcome-state h2 {
-    font-size: var(--font-size-4xl); /* Larger heading */
+/* Gemini-style greeting with beautiful gradient */
+.welcome-greeting {
+    font-size: clamp(3rem, 8vw, 5rem); /* Responsive: 3rem to 5rem */
     font-weight: var(--font-weight-bold);
-    margin-bottom: var(--space-3);
-    color: var(--color-text);
+    margin: 0 0 var(--space-8) 0;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradientShift 8s ease infinite;
+    letter-spacing: -0.02em;
 }
 
-.welcome-state p {
-    font-size: var(--font-size-lg); /* Slightly larger text */
-    color: var(--color-text-secondary);
-    max-width: 600px; /* Wider description */
-    margin: 0 auto var(--space-6);
-    line-height: var(--line-height-relaxed);
+@keyframes gradientShift {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.greeting-text {
+    display: inline-block;
+}
+
+.greeting-name {
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradientShift 8s ease infinite;
+}
+
+/* Dark mode: Brighter gradient */
+[data-theme="dark"] .welcome-greeting,
+[data-theme="dark"] .greeting-name {
+    background: linear-gradient(135deg, #818cf8 0%, #a78bfa 25%, #f472b6 50%, #60a5fa 75%, #34d399 100%);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .suggestion-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-3); /* More spacing */
+    gap: var(--space-3);
     justify-content: center;
-    max-width: 900px; /* Wider chips area to match messages wrapper */
+    max-width: 900px;
     width: 100%;
+    margin-top: var(--space-6);
+    min-height: 60px; /* Ensure space for chips */
 }
 
 .chip {
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-3) var(--space-5);
     background: var(--color-bg-secondary);
-    border: var(--border-width-thin) solid var(--color-border);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     cursor: pointer;
-    transition: all var(--transition-fast);
-    font-size: var(--font-size-sm);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
     color: var(--color-text);
+    box-shadow: var(--shadow-sm);
+    min-width: 120px;
+    text-align: center;
 }
 
 .chip:hover {
     border-color: var(--color-primary);
     background: var(--color-primary);
     color: var(--color-text-inverse);
-    transform: translateY(-2px);
+    transform: translateY(-2px) scale(1.02);
     box-shadow: var(--shadow-md);
+}
+
+.chip:active {
+    transform: translateY(0) scale(0.98);
 }
 
 /* Message Bubbles */

@@ -137,12 +137,12 @@
             <!-- Messages Container -->
             <div class="messages-container" id="messages-container" role="log" aria-live="polite" aria-atomic="false" aria-label="Histórico da conversa">
                 <div class="messages-wrapper" id="messages-wrapper">
-                    <!-- Welcome State -->
+                    <!-- Welcome State - Gemini Style -->
                     <div class="welcome-state" id="welcome-state">
-                        <img src="{% static 'img/logo.svg' %}" alt="Logo Jurix - Símbolo de coluna grega com linhas de circuito">
-                        <h2>Como posso ajudar?</h2>
-                        <p>Faça perguntas sobre a legislação municipal de Natal/RN. Sou alimentado por IA e tenho acesso a {{ total_normas }} normas consolidadas.</p>
-                        
+                        <h1 class="welcome-greeting">
+                            <span class="greeting-text">Olá, </span>
+                            <span class="greeting-name">{{ request.user.first_name|default:request.user.username|title }}</span>
+                        </h1>
                         <div class="suggestion-chips" id="suggestion-chips" role="list" aria-label="Sugestões de perguntas">
                             <!-- Chips serão gerados dinamicamente via JavaScript -->
                         </div>
@@ -311,6 +311,13 @@
                     await loadChatSessions();
                     const welcomeState = document.getElementById('welcome-state');
                     if (welcomeState) welcomeState.style.display = 'flex';
+                    
+                    // Render suggestions for new session
+                    if (typeof renderRandomSuggestions === 'function') {
+                        setTimeout(() => {
+                            renderRandomSuggestions();
+                        }, 100);
+                    }
                     
                     // Clear saved text for this new session
                     if (textarea) {
@@ -502,10 +509,23 @@
                 welcomeStateInit.style.display = 'flex';
             }
             
-            // Render suggestions immediately
-            if (typeof renderRandomSuggestions === 'function') {
-                renderRandomSuggestions();
+            // Render suggestions with multiple attempts to ensure they appear
+            function tryRenderSuggestions(attempt = 0) {
+                const chipsContainer = document.getElementById('suggestion-chips');
+                if (chipsContainer && typeof renderRandomSuggestions === 'function') {
+                    renderRandomSuggestions();
+                    // Verify suggestions were rendered
+                    if (chipsContainer.children.length === 0 && attempt < 3) {
+                        setTimeout(() => tryRenderSuggestions(attempt + 1), 100 * (attempt + 1));
+                    }
+                } else if (attempt < 5) {
+                    // Container not found yet, try again
+                    setTimeout(() => tryRenderSuggestions(attempt + 1), 100 * (attempt + 1));
+                }
             }
+            
+            // Try to render suggestions immediately
+            tryRenderSuggestions();
             
             if (document.getElementById('chat-sessions-list')) {
                 // Load sessions first
@@ -535,7 +555,9 @@
                         
                         // Re-render suggestions if needed
                         if (typeof renderRandomSuggestions === 'function') {
-                            renderRandomSuggestions();
+                            setTimeout(() => {
+                                renderRandomSuggestions();
+                            }, 100);
                         }
                     }
                 });
@@ -1412,15 +1434,25 @@
         
         function renderRandomSuggestions() {
             const chipsContainer = document.getElementById('suggestion-chips');
-            if (!chipsContainer) return;
+            if (!chipsContainer) {
+                console.warn('suggestion-chips container not found');
+                return;
+            }
             
             // Use Fisher-Yates shuffle for better randomness
             const shuffled = shuffleArray(SUGGESTION_QUESTIONS);
             const selected = shuffled.slice(0, 3);
             
+            if (selected.length === 0) {
+                console.warn('No suggestions to render');
+                return;
+            }
+            
             chipsContainer.innerHTML = selected.map(question => 
                 `<div class="chip" onclick="askQuestion('${question.replace(/'/g, "\\'")}')">${escapeHtml(question)}</div>`
             ).join('');
+            
+            console.log('Suggestions rendered:', selected.length);
         }
         
         // ===== DARK MODE TOGGLE =====
@@ -1527,8 +1559,12 @@
                             icon: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
                             action: () => {
                                 if (session.id) {
-                                    loadSession(session.id);
+                                    // Close palette smoothly first, then load session
                                     closeCommandPalette();
+                                    // Wait for closing animation before loading session
+                                    setTimeout(() => {
+                                        loadSession(session.id);
+                                    }, 300); // Match animation duration
                                 }
                             }
                         }));
