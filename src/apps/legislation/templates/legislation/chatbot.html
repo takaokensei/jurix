@@ -249,8 +249,7 @@
                          onclick="loadSession(${session.id})"
                          onkeydown="if(event.key==='Enter') loadSession(${session.id})">
                         <div style="flex: 1; min-width: 0;">
-                            <div class="chat-session-title">${escapeHtml(session.title)}</div>
-                            ${session.last_message_preview ? `<div class="chat-session-preview">${escapeHtml(session.last_message_preview)}</div>` : ''}
+                            ${session.latest_message_preview ? `<div class="chat-session-title">${escapeHtml(session.latest_message_preview)}</div>` : `<div class="chat-session-title">${escapeHtml(session.title)}</div>`}
                         </div>
                         <button 
                             class="delete-session-button" 
