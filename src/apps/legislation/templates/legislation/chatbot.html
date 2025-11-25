@@ -139,6 +139,7 @@
             </div>
             
             <!-- Input Area -->
+            <!-- Input Area - Gemini Style -->
             <div class="input-area">
                 <div class="input-wrapper">
                     <form id="chat-form" role="search" aria-label="Formulário de pesquisa de legislação">
@@ -146,7 +147,7 @@
                             <textarea 
                                 id="question-textarea" 
                                 name="question" 
-                                placeholder="Digite sua pergunta sobre legislação..." 
+                                placeholder="Peça ao Jurix..." 
                                 rows="1" 
                                 required
                                 aria-label="Digite sua pergunta sobre legislação"
@@ -324,6 +325,24 @@
             const messagesWrapper = document.getElementById('messages-wrapper');
             const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             
+            // Check if text contains markdown (basic detection)
+            const hasMarkdown = /[#*_`\[\]()]/.test(text) || text.includes('\n\n');
+            
+            // Render markdown if detected, otherwise escape HTML
+            let messageBodyContent;
+            if (hasMarkdown) {
+                try {
+                    const markdownHtml = DOMPurify.sanitize(marked.parse(text));
+                    messageBodyContent = markdownHtml;
+                } catch (e) {
+                    // Fallback to escaped HTML if markdown parsing fails
+                    messageBodyContent = escapeHtml(text);
+                }
+            } else {
+                // Plain text - preserve line breaks
+                messageBodyContent = escapeHtml(text).replace(/\n/g, '<br>');
+            }
+            
             const messageHtml = `
                 <div class="message message-user">
                     <div class="message-content">
@@ -331,7 +350,7 @@
                             <span class="message-role">Você</span>
                             <span class="message-time">${timestamp}</span>
                         </div>
-                        <div class="message-body">${escapeHtml(text)}</div>
+                        <div class="message-body">${messageBodyContent}</div>
                     </div>
                 </div>
             `;
@@ -384,6 +403,7 @@
             const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             const messageId = 'msg-' + Date.now();
             const sourcesId = 'sources-' + Date.now();
+            const copyButtonId = 'copy-btn-' + Date.now();
             
             // Create message structure WITHOUT sources initially (sources appear after typewriter)
             const messageDiv = document.createElement('div');
@@ -398,6 +418,17 @@
                         <span class="message-time">${timestamp}</span>
                     </div>
                     <div class="message-body" id="${messageId}"></div>
+                    <div class="message-actions" id="actions-${Date.now()}">
+                        <button class="copy-response-button" id="${copyButtonId}" aria-label="Copiar resposta em Markdown" title="Copiar resposta">
+                            <svg class="copy-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                            <svg class="check-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+                                <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
                     <div id="${sourcesId}"></div>
                 </div>
             `;
@@ -405,16 +436,75 @@
             messagesWrapper.appendChild(messageDiv);
             scrollToBottom();
             
-            // Store sources to be added after typewriter completes
+            // Store sources and copy button to be added after typewriter completes
             const sourcesContainer = document.getElementById(sourcesId);
+            const copyButton = document.getElementById(copyButtonId);
+            const messageBody = document.getElementById(messageId);
             
-            // Typewriter effect - callback when complete to show sources
+            // Store raw markdown answer for copy functionality
+            // Store in data attribute for later retrieval
+            copyButton.setAttribute('data-markdown', answer);
+            
+            // Setup copy button functionality
+            copyButton.addEventListener('click', () => {
+                const storedMarkdown = copyButton.getAttribute('data-markdown') || answer;
+                copyResponseToClipboard(storedMarkdown, copyButton);
+            });
+            
+            // Typewriter effect - callback when complete to show sources and copy button
             typewriterEffect(messageId, answer, () => {
+                // Show copy button after answer is complete with animation
+                copyButton.classList.add('show');
+                
                 // Callback: Add sources only after answer is complete
                 // Show sources gradually, ordered by relevance
                 if (sources && sources.length > 0) {
                     showSourcesGradually(sourcesContainer, sources);
                 }
+            });
+        }
+        
+        // Copy response as Markdown to clipboard
+        function copyResponseToClipboard(markdownText, button) {
+            // Get the raw markdown text (before HTML rendering)
+            // The answer from backend is already in markdown format
+            // Store it when message is created
+            if (!markdownText) {
+                // Fallback: try to extract from rendered HTML (reverse markdown conversion is complex)
+                const messageBody = button.closest('.message-content').querySelector('.message-body');
+                if (messageBody) {
+                    // Get text content as fallback
+                    markdownText = messageBody.innerText || messageBody.textContent;
+                }
+            }
+            
+            if (!markdownText) {
+                console.error('No markdown text to copy');
+                return;
+            }
+            
+            navigator.clipboard.writeText(markdownText).then(() => {
+                // Visual feedback - Swiss Design: subtle and elegant
+                const copyIcon = button.querySelector('.copy-icon');
+                const checkIcon = button.querySelector('.check-icon');
+                
+                if (copyIcon && checkIcon) {
+                    // Hide copy icon, show check icon
+                    copyIcon.style.display = 'none';
+                    checkIcon.style.display = 'block';
+                    button.classList.add('copied');
+                    
+                    // Restore after 2 seconds
+                    setTimeout(() => {
+                        copyIcon.style.display = 'block';
+                        checkIcon.style.display = 'none';
+                        button.classList.remove('copied');
+                    }, 2000);
+                }
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                // Fallback: show alert
+                alert('Não foi possível copiar para a área de transferência');
             });
         }
         
@@ -868,9 +958,31 @@
         const commandPaletteTrigger = document.getElementById('command-palette-trigger');
         
         const commands = [
-            { id: 'norms', title: 'Ver Normas Consolidadas', description: 'Abrir lista de normas', icon: '📋', action: () => window.location.href = '{% url "legislation:norma_list" %}' },
-            { id: 'admin', title: 'Painel Admin', description: 'Acessar área administrativa', icon: '⚙️', action: () => window.location.href = '/admin/' },
-            { id: 'new-chat', title: 'Nova Conversa', description: 'Limpar histórico e começar novo chat', icon: '💬', action: () => { document.getElementById('messages-wrapper').innerHTML = document.querySelector('.welcome-state').outerHTML; } },
+            { 
+                id: 'norms', 
+                title: 'Ver Normas Consolidadas', 
+                description: 'Abrir lista de normas', 
+                icon: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 12h6M9 16h6M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.586a1 1 0 0 1 .707.293l3.414 3.414A1 1 0 0 1 19 7.414V19a2 2 0 0 1-2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`, 
+                action: () => window.location.href = '{% url "legislation:norma_list" %}' 
+            },
+            { 
+                id: 'admin', 
+                title: 'Painel Admin', 
+                description: 'Acessar área administrativa', 
+                icon: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`, 
+                action: () => window.location.href = '/admin/' 
+            },
+            { 
+                id: 'new-chat', 
+                title: 'Nova Conversa', 
+                description: 'Limpar histórico e começar novo chat', 
+                icon: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`, 
+                action: () => { 
+                    const welcomeState = document.querySelector('.welcome-state').cloneNode(true);
+                    document.getElementById('messages-wrapper').innerHTML = '';
+                    document.getElementById('messages-wrapper').appendChild(welcomeState);
+                } 
+            },
         ];
         
         function openCommandPalette() {
@@ -897,7 +1009,7 @@
             }
             
             commandPaletteResults.innerHTML = filtered.map((cmd, index) => `
-                <div class="command-palette-item ${index === 0 ? 'selected' : ''}" data-action="${cmd.id}">
+                <div class="command-palette-item ${index === 0 ? 'selected' : ''}" data-action="${cmd.id}" data-command-id="${cmd.id}">
                     <span class="command-palette-item-icon">${cmd.icon}</span>
                     <div class="command-palette-item-content">
                         <div class="command-palette-item-title">${cmd.title}</div>
@@ -905,6 +1017,13 @@
                     </div>
                 </div>
             `).join('');
+            
+            // Attach click handlers to items
+            commandPaletteResults.querySelectorAll('.command-palette-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    executeCommand(item.dataset.commandId || item.dataset.action);
+                });
+            });
         }
         
         function executeCommand(commandId) {
@@ -926,16 +1045,44 @@
             if (e.key === 'Escape') {
                 closeCommandPalette();
             } else if (e.key === 'Enter') {
+                e.preventDefault();
                 const selected = commandPaletteResults.querySelector('.command-palette-item.selected');
                 if (selected) {
-                    executeCommand(selected.dataset.action);
+                    executeCommand(selected.dataset.commandId || selected.dataset.action);
+                } else {
+                    // If no item selected, try to find match by search query
+                    const query = commandPaletteInput.value.toLowerCase().trim();
+                    if (query) {
+                        // Search for norms if query contains "norma"
+                        if (query.includes('norma') || query.includes('normas')) {
+                            executeCommand('norms');
+                            return;
+                        }
+                        // Try to match first filtered result
+                        const filtered = commands.filter(cmd => 
+                            cmd.title.toLowerCase().includes(query) ||
+                            cmd.description.toLowerCase().includes(query)
+                        );
+                        if (filtered.length > 0) {
+                            executeCommand(filtered[0].id);
+                        }
+                    }
                 }
             }
         });
         
+        // Click on overlay background to close
         commandPaletteOverlay?.addEventListener('click', (e) => {
             if (e.target === commandPaletteOverlay) {
                 closeCommandPalette();
+            }
+        });
+        
+        // Click on command items to execute (in addition to Enter key)
+        commandPaletteResults?.addEventListener('click', (e) => {
+            const item = e.target.closest('.command-palette-item');
+            if (item) {
+                executeCommand(item.dataset.commandId || item.dataset.action);
             }
         });
         
