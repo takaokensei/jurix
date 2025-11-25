@@ -185,10 +185,7 @@
             const navbarToggle = document.getElementById('theme-toggle-navbar');
             if (navbarToggle) {
                 navbarToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
-                const icon = navbarToggle.querySelector('.theme-toggle-icon-navbar');
-                if (icon) {
-                    icon.textContent = theme === 'dark' ? 'Light' : 'Dark';
-                }
+                // Icons are controlled via CSS display rules, no JS needed
             }
             
             // Update sidebar toggle (if exists)
