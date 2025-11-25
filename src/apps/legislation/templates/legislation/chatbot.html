@@ -324,7 +324,69 @@
         
         // Delete a chat session
         async function deleteSession(sessionId) {
-            if (!sessionId || !confirm('Tem certeza que deseja deletar esta conversa?')) return;
+            if (!sessionId) return;
+            
+            // Show elegant modal instead of confirm()
+            showDeleteModal(sessionId);
+        }
+        
+        // Show elegant delete confirmation modal (Swiss Design)
+        function showDeleteModal(sessionId) {
+            // Create modal overlay if it doesn't exist
+            let modalOverlay = document.getElementById('delete-session-modal');
+            if (!modalOverlay) {
+                modalOverlay = document.createElement('div');
+                modalOverlay.id = 'delete-session-modal';
+                modalOverlay.className = 'delete-modal-overlay';
+                modalOverlay.innerHTML = `
+                    <div class="delete-modal">
+                        <div class="delete-modal-header">
+                            <h3>Deletar Conversa</h3>
+                        </div>
+                        <div class="delete-modal-body">
+                            <p>Tem certeza que deseja deletar esta conversa? Esta ação não pode ser desfeita.</p>
+                        </div>
+                        <div class="delete-modal-footer">
+                            <button class="delete-modal-cancel" id="delete-modal-cancel">Cancelar</button>
+                            <button class="delete-modal-confirm" id="delete-modal-confirm">Deletar</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modalOverlay);
+                
+                // Setup event listeners
+                document.getElementById('delete-modal-cancel').addEventListener('click', () => {
+                    modalOverlay.classList.remove('active');
+                });
+                
+                modalOverlay.addEventListener('click', (e) => {
+                    if (e.target === modalOverlay) {
+                        modalOverlay.classList.remove('active');
+                    }
+                });
+                
+                // ESC key to close
+                document.addEventListener('keydown', function escHandler(e) {
+                    if (e.key === 'Escape' && modalOverlay.classList.contains('active')) {
+                        modalOverlay.classList.remove('active');
+                        document.removeEventListener('keydown', escHandler);
+                    }
+                });
+            }
+            
+            // Setup confirm button
+            const confirmBtn = document.getElementById('delete-modal-confirm');
+            confirmBtn.onclick = async () => {
+                modalOverlay.classList.remove('active');
+                await performDeleteSession(sessionId);
+            };
+            
+            // Show modal
+            modalOverlay.classList.add('active');
+        }
+        
+        // Perform the actual deletion
+        async function performDeleteSession(sessionId) {
             
             try {
                 const csrfToken = getCookie('csrftoken');
@@ -343,6 +405,11 @@
                     clearMessages();
                     const welcomeState = document.getElementById('welcome-state');
                     if (welcomeState) welcomeState.style.display = 'flex';
+                    
+                    // Reload suggestions
+                    if (typeof renderRandomSuggestions === 'function') {
+                        renderRandomSuggestions();
+                    }
                     
                     // Clear saved text
                     if (textarea) {
@@ -406,7 +473,8 @@
                         messageIndex++;
                         // Show regenerate only on the last assistant message
                         const isLastAssistant = messageIndex === assistantMessages.length;
-                        addAssistantMessage(msg.content, msg.sources || [], isLastAssistant && currentSessionId ? true : false);
+                        // Skip streaming when loading old sessions (skipStreaming = true)
+                        addAssistantMessage(msg.content, msg.sources || [], isLastAssistant && currentSessionId ? true : false, true);
                     }
                 }
                 
@@ -426,6 +494,12 @@
         
         // Initialize: Load sessions on page load
         if (document.getElementById('chat-sessions-list')) {
+            // Ensure welcome state is visible initially
+            const welcomeStateInit = document.getElementById('welcome-state');
+            if (welcomeStateInit) {
+                welcomeStateInit.style.display = 'flex';
+            }
+            
             // Load sessions first
             loadChatSessions().then(() => {
                 // After loading sessions, load active session if exists
@@ -436,12 +510,25 @@
                         currentSessionId = sessionId;
                         loadSession(sessionId);
                     }
-                } else if (textarea) {
-                    // Load saved text for current session if no active session selected
-                    {% if current_session %}
-                    currentSessionId = {{ current_session.id }};
-                    loadSavedText({{ current_session.id }});
-                    {% endif %}
+                } else {
+                    // No active session - ensure welcome state is visible
+                    const welcomeState = document.getElementById('welcome-state');
+                    if (welcomeState) {
+                        welcomeState.style.display = 'flex';
+                    }
+                    
+                    // Load saved text for current session if exists
+                    if (textarea) {
+                        {% if current_session %}
+                        currentSessionId = {{ current_session.id }};
+                        loadSavedText({{ current_session.id }});
+                        {% endif %}
+                    }
+                    
+                    // Ensure suggestions are rendered
+                    if (typeof renderRandomSuggestions === 'function') {
+                        renderRandomSuggestions();
+                    }
                 }
             });
             
@@ -589,7 +676,8 @@
                     console.log('Sources count:', sources.length);
                     
                     // Add assistant message with typewriter effect
-                    addAssistantMessage(answer, sources);
+                    // Always show regenerate on new messages (they are the latest)
+                    addAssistantMessage(answer, sources, true);
                 } else {
                     const errorMsg = data.error || 'Erro ao processar pergunta';
                     console.error('Backend error:', errorMsg);
@@ -689,7 +777,8 @@
         
         // ===== ASSISTANT MESSAGE =====
         // Renders assistant message with logo avatar and Swiss typography
-        function addAssistantMessage(answer, sources, showRegenerate = false) {
+        // skipStreaming: if true, renders answer immediately without typewriter effect (for loading old sessions)
+        function addAssistantMessage(answer, sources, showRegenerate = false, skipStreaming = false) {
             const messagesWrapper = document.getElementById('messages-wrapper');
             const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             const messageId = 'msg-' + Date.now();
@@ -755,30 +844,58 @@
             const regenerateBtnId = regenerateBtn ? regenerateBtn.id : null;
             
             // Typewriter effect - callback when complete to show sources and copy button
-            typewriterEffect(messageId, answer, () => {
-                // Show copy button after answer is complete with animation
+            // Skip streaming if loading old session
+            if (skipStreaming) {
+                // Render answer immediately (no typewriter effect for old messages)
+                if (messageBody && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+                    const markdownHtml = marked.parse(answer);
+                    messageBody.innerHTML = DOMPurify.sanitize(markdownHtml);
+                } else {
+                    messageBody.textContent = answer;
+                }
+                
+                // Show buttons immediately
                 copyButton.classList.add('show');
                 
-                // Show regenerate button only on last assistant message (only if session exists and flag is true)
                 if (regenerateBtn && currentSessionId && showRegenerate) {
                     regenerateBtn.style.display = 'inline-flex';
                     regenerateBtn.classList.add('show');
-                    
-                    // Setup regenerate functionality
                     regenerateBtn.addEventListener('click', async () => {
                         await regenerateLastResponse(currentSessionId, messageDiv, sourcesContainer);
                     });
-                } else if (regenerateBtn) {
-                    // Hide regenerate button if not the last message
-                    regenerateBtn.style.display = 'none';
                 }
                 
-                // Callback: Add sources only after answer is complete
-                // Show sources gradually, ordered by relevance
+                // Show sources immediately
                 if (sources && sources.length > 0) {
                     showSourcesGradually(sourcesContainer, sources);
                 }
-            });
+            } else {
+                // Normal flow with typewriter effect for new messages
+                typewriterEffect(messageId, answer, () => {
+                    // Show copy button after answer is complete with animation
+                    copyButton.classList.add('show');
+                    
+                    // Show regenerate button only on last assistant message (only if session exists and flag is true)
+                    if (regenerateBtn && currentSessionId && showRegenerate) {
+                        regenerateBtn.style.display = 'inline-flex';
+                        regenerateBtn.classList.add('show');
+                        
+                        // Setup regenerate functionality
+                        regenerateBtn.addEventListener('click', async () => {
+                            await regenerateLastResponse(currentSessionId, messageDiv, sourcesContainer);
+                        });
+                    } else if (regenerateBtn) {
+                        // Hide regenerate button if not the last message
+                        regenerateBtn.style.display = 'none';
+                    }
+                    
+                    // Callback: Add sources only after answer is complete
+                    // Show sources gradually, ordered by relevance
+                    if (sources && sources.length > 0) {
+                        showSourcesGradually(sourcesContainer, sources);
+                    }
+                });
+            }
         }
         
         // Regenerate last assistant response
@@ -1373,6 +1490,66 @@
         const commandPaletteResults = document.getElementById('command-palette-results');
         const commandPaletteTrigger = document.getElementById('command-palette-trigger');
         
+        // Global variable to store chat sessions for command palette search
+        let chatSessionsForSearch = [];
+        
+        // Load chat sessions for search
+        async function loadChatSessionsForSearch() {
+            try {
+                const response = await fetch('/api/v1/chat/sessions/');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.sessions) {
+                        chatSessionsForSearch = data.sessions.map(session => ({
+                            id: `chat-${session.id}`,
+                            title: session.title || 'Conversa sem título',
+                            description: session.latest_message_preview || 'Sem mensagens',
+                            sessionId: session.id,
+                            icon: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+                            action: () => {
+                                if (session.id) {
+                                    loadSession(session.id);
+                                    closeCommandPalette();
+                                }
+                            }
+                        }));
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading chat sessions for search:', error);
+            }
+        }
+        
+        // Global variable to store chat sessions for command palette search
+        let chatSessionsForSearch = [];
+        
+        // Load chat sessions for search
+        async function loadChatSessionsForSearch() {
+            try {
+                const response = await fetch('/api/v1/chat/sessions/');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.sessions) {
+                        chatSessionsForSearch = data.sessions.map(session => ({
+                            id: `chat-${session.id}`,
+                            title: session.title || 'Conversa sem título',
+                            description: session.latest_message_preview || 'Sem mensagens',
+                            sessionId: session.id,
+                            icon: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+                            action: () => {
+                                if (session.id) {
+                                    loadSession(session.id);
+                                    closeCommandPalette();
+                                }
+                            }
+                        }));
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading chat sessions for search:', error);
+            }
+        }
+        
         const commands = [
             { 
                 id: 'norms', 
@@ -1394,9 +1571,8 @@
                 description: 'Limpar histórico e começar novo chat', 
                 icon: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`, 
                 action: () => { 
-                    const welcomeState = document.querySelector('.welcome-state').cloneNode(true);
-                    document.getElementById('messages-wrapper').innerHTML = '';
-                    document.getElementById('messages-wrapper').appendChild(welcomeState);
+                    createNewSession();
+                    closeCommandPalette();
                 } 
             },
         ];
@@ -1406,7 +1582,10 @@
             commandPaletteOverlay.classList.remove('closing'); // Remove closing class if present
             commandPaletteOverlay.classList.add('active');
             commandPaletteInput.focus();
-            updateCommandPaletteResults('');
+            // Load chat sessions when opening palette
+            loadChatSessionsForSearch().then(() => {
+                updateCommandPaletteResults('');
+            });
         }
         
         function selectItem(index) {
@@ -1438,9 +1617,13 @@
         }
         
         function updateCommandPaletteResults(query) {
-            const filtered = commands.filter(cmd => 
-                cmd.title.toLowerCase().includes(query.toLowerCase()) ||
-                cmd.description.toLowerCase().includes(query.toLowerCase())
+            // Combine commands with chat sessions for search
+            const allCommands = [...commands, ...chatSessionsForSearch];
+            const queryLower = query.toLowerCase();
+            
+            const filtered = allCommands.filter(cmd => 
+                cmd.title.toLowerCase().includes(queryLower) ||
+                cmd.description.toLowerCase().includes(queryLower)
             );
             
             // Reset selection when filtering
@@ -1579,7 +1762,8 @@
                             return;
                         }
                         // Try to match first filtered result
-                        const filtered = commands.filter(cmd => 
+                        const allCommands = [...commands, ...chatSessionsForSearch];
+                        const filtered = allCommands.filter(cmd => 
                             cmd.title.toLowerCase().includes(query) ||
                             cmd.description.toLowerCase().includes(query)
                         );

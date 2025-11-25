@@ -384,7 +384,6 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
             
             sessions_data = []
             for session in sessions:
-                last_message = session.messages.order_by('-created_at').first()
                 sessions_data.append({
                     'id': session.id,
                     'title': session.title or 'Conversa sem título',
@@ -392,7 +391,7 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
                     'created_at': session.created_at.isoformat(),
                     'updated_at': session.updated_at.isoformat(),
                     'message_count': session.messages.count(),
-                    'last_message_preview': last_message.content[:50] + ('...' if last_message and len(last_message.content) > 50 else '') if last_message else ''
+                    'latest_message_preview': session.get_last_message_preview()  # Get first user question instead of last message
                 })
             
             return JsonResponse({'success': True, 'sessions': sessions_data, 'count': len(sessions_data)})

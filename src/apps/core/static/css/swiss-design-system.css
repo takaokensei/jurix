@@ -59,9 +59,9 @@
        TIPOGRAFIA - INTER + JETBRAINS MONO
        ======================================== */
     
-    /* Font Families */
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --font-mono: 'JetBrains Mono', 'Courier New', Consolas, monospace;
+    /* Font Families - Elegant Typography */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', Consolas, monospace;
     
     /* Font Sizes (Major Third Scale - 1.25 ratio) */
     --font-size-xs: 0.75rem;     /* 12px */
@@ -251,10 +251,19 @@ html {
     text-rendering: optimizeLegibility;
 }
 
+/* Apply elegant typography globally */
+* {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
 body {
     font-family: var(--font-sans);
     font-size: var(--font-size-base);
-    line-height: var(--line-height-normal);
+    line-height: var(--line-height-relaxed);
+    font-weight: var(--font-weight-normal);
+    letter-spacing: var(--letter-spacing-normal);
     color: var(--color-text);
     background-color: var(--color-bg-primary);
     overflow-x: hidden;
@@ -1177,7 +1186,7 @@ strong, b {
 
 /* Welcome State - Better space distribution */
 .welcome-state {
-    display: flex;
+    display: flex !important; /* Force display to ensure visibility */
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -1655,6 +1664,15 @@ strong, b {
     height: 100%;
     background: linear-gradient(90deg, var(--color-success) 0%, var(--color-primary-lighter) 100%);
     transition: width 0.3s ease;
+}
+
+/* Dark mode: More saturated green for better visibility */
+[data-theme="dark"] .score-fill {
+    background: linear-gradient(90deg, #22c55e 0%, #60a5fa 100%); /* More saturated green-500 */
+}
+
+[data-theme="dark"] .source-score {
+    color: #22c55e; /* More saturated green for text */
 }
 
 .source-meta {
@@ -2730,6 +2748,120 @@ a:focus-visible,
     width: 100%;
     max-width: 800px;
     padding: var(--space-6);
+}
+
+/* ============================
+   DELETE CONFIRMATION MODAL
+   Swiss Design Elegant Modal
+   ============================ */
+.delete-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: calc(var(--z-modal) + 1);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.delete-modal-overlay.active {
+    display: flex;
+    opacity: 1;
+}
+
+.delete-modal {
+    width: 90%;
+    max-width: 420px;
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    transform: scale(0.92) translateY(-10px);
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.delete-modal-overlay.active .delete-modal {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+.delete-modal-header {
+    padding: var(--space-4) var(--space-4) var(--space-3);
+    border-bottom: var(--border-width-thin) solid var(--color-border);
+}
+
+.delete-modal-header h3 {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+    margin: 0;
+}
+
+.delete-modal-body {
+    padding: var(--space-4);
+}
+
+.delete-modal-body p {
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-relaxed);
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.delete-modal-footer {
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    display: flex;
+    gap: var(--space-2);
+    justify-content: flex-end;
+    border-top: var(--border-width-thin) solid var(--color-border);
+}
+
+.delete-modal-cancel,
+.delete-modal-confirm {
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border: 1px solid var(--color-border);
+}
+
+.delete-modal-cancel {
+    background: var(--color-bg-secondary);
+    color: var(--color-text);
+}
+
+.delete-modal-cancel:hover {
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-border-strong);
+}
+
+.delete-modal-confirm {
+    background: var(--color-error);
+    color: var(--color-text-inverse);
+    border-color: var(--color-error);
+}
+
+.delete-modal-confirm:hover {
+    background: #dc2626;
+    border-color: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.delete-modal-confirm:active {
+    transform: translateY(0);
 }
 
 @keyframes skeleton-shimmer {

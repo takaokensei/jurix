@@ -530,10 +530,11 @@ class ChatSession(TimeStampedModel):
         return f"{self.title or 'Conversa sem título'} - {self.user.username}"
     
     def get_last_message_preview(self) -> str:
-        """Retorna preview da última mensagem da sessão."""
-        last_msg = self.messages.order_by('-created_at').first()
-        if last_msg and last_msg.role == 'user':
-            return last_msg.content[:50] + ('...' if len(last_msg.content) > 50 else '')
+        """Retorna preview da primeira pergunta do usuário da sessão."""
+        first_user_msg = self.messages.filter(role='user').order_by('created_at').first()
+        if first_user_msg:
+            preview = first_user_msg.content[:50] + ('...' if len(first_user_msg.content) > 50 else '')
+            return preview
         return ''
 
 
