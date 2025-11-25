@@ -137,12 +137,12 @@
             <!-- Messages Container -->
             <div class="messages-container" id="messages-container" role="log" aria-live="polite" aria-atomic="false" aria-label="Histórico da conversa">
                 <div class="messages-wrapper" id="messages-wrapper">
-                    <!-- Welcome State -->
+                    <!-- Welcome State - Gemini Style -->
                     <div class="welcome-state" id="welcome-state">
-                        <img src="{% static 'img/logo.svg' %}" alt="Logo Jurix - Símbolo de coluna grega com linhas de circuito">
-                        <h2>Como posso ajudar?</h2>
-                        <p>Faça perguntas sobre a legislação municipal de Natal/RN. Sou alimentado por IA e tenho acesso a {{ total_normas }} normas consolidadas.</p>
-                        
+                        <h1 class="welcome-greeting">
+                            <span class="greeting-text">Olá, </span>
+                            <span class="greeting-name" data-user-name="{{ request.user.first_name|default:request.user.username|title }}">{{ request.user.first_name|default:request.user.username|title }}</span>
+                        </h1>
                         <div class="suggestion-chips" id="suggestion-chips" role="list" aria-label="Sugestões de perguntas">
                             <!-- Chips serão gerados dinamicamente via JavaScript -->
                         </div>
@@ -284,7 +284,16 @@
                         if (emptyNewSessions.length > 0) {
                             // Redirect to existing empty session
                             currentSessionId = emptyNewSessions[0].id;
-                            await loadSession(currentSessionId);
+                            clearMessages();
+                            await loadChatSessions();
+                            
+                            // Show welcome state with streaming greeting
+                            showWelcomeStateWithStreaming();
+                            
+                            // Load any saved text for this session
+                            if (textarea) {
+                                loadSavedText(currentSessionId);
+                            }
                             return;
                         }
                     }
@@ -308,14 +317,9 @@
                     currentSessionId = data.session.id;
                     clearMessages();
                     await loadChatSessions();
-                    const welcomeState = document.getElementById('welcome-state');
-                    if (welcomeState) welcomeState.style.display = 'flex';
                     
-                    // Clear saved text for this new session
-                    if (textarea) {
-                        localStorage.removeItem(`chat-input-${currentSessionId}`);
-                        textarea.value = '';
-                    }
+                    // Show welcome state with streaming greeting
+                    showWelcomeStateWithStreaming();
                 }
             } catch (error) {
                 console.error('Error creating new session:', error);
@@ -493,45 +497,52 @@
         }
         
         // Initialize: Load sessions on page load
-        if (document.getElementById('chat-sessions-list')) {
-            // Ensure welcome state is visible initially
-            const welcomeStateInit = document.getElementById('welcome-state');
-            if (welcomeStateInit) {
-                welcomeStateInit.style.display = 'flex';
-            }
+        function initializeChatbot() {
+            // Show welcome state with streaming on initial load
+            showWelcomeStateWithStreaming();
             
-            // Load sessions first
-            loadChatSessions().then(() => {
-                // After loading sessions, load active session if exists
-                const activeSessionItem = document.querySelector('.chat-session-item.active');
-                if (activeSessionItem) {
-                    const sessionId = parseInt(activeSessionItem.dataset.sessionId);
-                    if (sessionId) {
-                        currentSessionId = sessionId;
-                        loadSession(sessionId);
+            // Load chat sessions
+            if (document.getElementById('chat-sessions-list')) {
+                loadChatSessions().then(() => {
+                    // After loading sessions, check for active session
+                    const activeSessionItem = document.querySelector('.chat-session-item.active');
+                    if (activeSessionItem) {
+                        const sessionId = parseInt(activeSessionItem.dataset.sessionId);
+                        if (sessionId) {
+                            // Check if session has messages before loading
+                            fetch(`/api/v1/chat/sessions/${sessionId}/`)
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success && data.messages && data.messages.length > 0) {
+                                        // Session has messages - load it
+                                        loadSession(sessionId);
+                                    } else {
+                                        // Session is empty - show welcome state with streaming
+                                        showWelcomeStateWithStreaming();
+                                    }
+                                })
+                                .catch(() => {
+                                    // On error, show welcome state with streaming
+                                    showWelcomeStateWithStreaming();
+                                });
+                        }
                     }
-                } else {
-                    // No active session - ensure welcome state is visible
-                    const welcomeState = document.getElementById('welcome-state');
-                    if (welcomeState) {
-                        welcomeState.style.display = 'flex';
-                    }
-                    
-                // Don't load saved text on initial load - wait for user to create session
-                // Session will be created when user sends first message
-                    
-                    // Ensure suggestions are rendered
-                    if (typeof renderRandomSuggestions === 'function') {
-                        renderRandomSuggestions();
-                    }
-                }
-            });
+                });
+            }
             
             // New chat button
             const newChatBtn = document.getElementById('new-chat-button');
             if (newChatBtn) {
                 newChatBtn.addEventListener('click', createNewSession);
             }
+        }
+        
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeChatbot);
+        } else {
+            // DOM already loaded, initialize immediately
+            setTimeout(initializeChatbot, 50);
         }
         
         // ===== SIDEBAR TOGGLE =====
@@ -1390,28 +1401,107 @@
         
         function renderRandomSuggestions() {
             const chipsContainer = document.getElementById('suggestion-chips');
-            if (!chipsContainer) return;
+            if (!chipsContainer) {
+                console.warn('suggestion-chips container not found');
+                return;
+            }
             
             // Use Fisher-Yates shuffle for better randomness
             const shuffled = shuffleArray(SUGGESTION_QUESTIONS);
             const selected = shuffled.slice(0, 3);
             
+            if (selected.length === 0) {
+                console.warn('No suggestions to render');
+                return;
+            }
+            
             chipsContainer.innerHTML = selected.map(question => 
                 `<div class="chip" onclick="askQuestion('${question.replace(/'/g, "\\'")}')">${escapeHtml(question)}</div>`
             ).join('');
+            
+            console.log('Suggestions rendered:', selected.length);
+        }
+        
+        // Show welcome state with streaming greeting effect
+        function showWelcomeStateWithStreaming() {
+            const welcomeState = document.getElementById('welcome-state');
+            if (!welcomeState) return;
+            
+            // Show welcome state
+            welcomeState.style.display = 'flex';
+            
+            // Get user name from greeting element (already rendered in HTML)
+            const greetingNameEl = welcomeState.querySelector('.greeting-name');
+            const greetingTextEl = welcomeState.querySelector('.greeting-text');
+            
+            if (greetingNameEl && greetingTextEl) {
+                // Get the full name from the element (or from Django template)
+                let fullName = greetingNameEl.textContent || greetingNameEl.innerText;
+                let greetingText = greetingTextEl.textContent || greetingTextEl.innerText || 'Olá, ';
+                
+                // If elements are empty, get from template (fallback)
+                if (!fullName || fullName.trim() === '') {
+                    // Try to get from HTML attribute or use username
+                    const userNameEl = greetingNameEl.getAttribute('data-user-name');
+                    fullName = userNameEl || 'Admin';
+                }
+                if (!greetingText || greetingText.trim() === '') {
+                    greetingText = 'Olá, ';
+                }
+                
+                // Clear both elements for streaming
+                greetingTextEl.textContent = '';
+                greetingNameEl.textContent = '';
+                
+                // Stream the greeting token by token (Swiss Design: smooth, elegant)
+                const fullGreeting = greetingText + fullName;
+                let charIndex = 0;
+                const greetingTextLength = greetingText.length;
+                
+                function streamNextChar() {
+                    if (charIndex < fullGreeting.length) {
+                        const char = fullGreeting[charIndex];
+                        if (charIndex < greetingTextLength) {
+                            greetingTextEl.textContent += char;
+                        } else {
+                            greetingNameEl.textContent += char;
+                        }
+                        charIndex++;
+                        // Variable speed: faster for text (30ms), normal for name (50ms)
+                        const speed = charIndex <= greetingTextLength ? 30 : 50;
+                        setTimeout(streamNextChar, speed);
+                    } else {
+                        // Greeting complete, render suggestions
+                        if (typeof renderRandomSuggestions === 'function') {
+                            renderRandomSuggestions();
+                        } else {
+                            setTimeout(() => {
+                                if (typeof renderRandomSuggestions === 'function') {
+                                    renderRandomSuggestions();
+                                }
+                            }, 200);
+                        }
+                    }
+                }
+                
+                // Start streaming after a brief delay
+                setTimeout(() => {
+                    streamNextChar();
+                }, 150);
+            } else {
+                // Fallback: just show welcome state and suggestions
+                if (typeof renderRandomSuggestions === 'function') {
+                    setTimeout(() => {
+                        renderRandomSuggestions();
+                    }, 100);
+                }
+            }
         }
         
         // ===== INITIALIZATION =====
         console.log('Jurix Chatbot 2.0 initialized');
         console.log('Marked:', typeof marked !== 'undefined' ? '✓' : '✗');
         console.log('DOMPurify:', typeof DOMPurify !== 'undefined' ? '✓' : '✗');
-        
-        // Initialize random suggestions when page loads
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', renderRandomSuggestions);
-        } else {
-            renderRandomSuggestions();
-        }
         
         // ===== DARK MODE TOGGLE =====
         // Implements theme switching with localStorage persistence
