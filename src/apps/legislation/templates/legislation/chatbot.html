@@ -141,7 +141,7 @@
                     <div class="welcome-state" id="welcome-state">
                         <h1 class="welcome-greeting">
                             <span class="greeting-text">Olá, </span>
-                            <span class="greeting-name">{{ request.user.first_name|default:request.user.username|title }}</span>
+                            <span class="greeting-name" data-user-name="{{ request.user.first_name|default:request.user.username|title }}">{{ request.user.first_name|default:request.user.username|title }}</span>
                         </h1>
                         <div class="suggestion-chips" id="suggestion-chips" role="list" aria-label="Sugestões de perguntas">
                             <!-- Chips serão gerados dinamicamente via JavaScript -->
@@ -623,9 +623,19 @@
                 const greetingTextEl = welcomeState.querySelector('.greeting-text');
                 
                 if (greetingNameEl && greetingTextEl) {
-                    // Get the full name from the element
-                    const fullName = greetingNameEl.textContent || greetingNameEl.innerText;
-                    const greetingText = greetingTextEl.textContent || greetingTextEl.innerText || 'Olá, ';
+                    // Get the full name from the element (or from Django template)
+                    let fullName = greetingNameEl.textContent || greetingNameEl.innerText;
+                    let greetingText = greetingTextEl.textContent || greetingTextEl.innerText || 'Olá, ';
+                    
+                    // If elements are empty, get from template (fallback)
+                    if (!fullName || fullName.trim() === '') {
+                        // Try to get from HTML attribute or use username
+                        const userNameEl = greetingNameEl.getAttribute('data-user-name');
+                        fullName = userNameEl || 'Admin';
+                    }
+                    if (!greetingText || greetingText.trim() === '') {
+                        greetingText = 'Olá, ';
+                    }
                     
                     // Clear both elements for streaming
                     greetingTextEl.textContent = '';
@@ -634,18 +644,19 @@
                     // Stream the greeting token by token (Swiss Design: smooth, elegant)
                     const fullGreeting = greetingText + fullName;
                     let charIndex = 0;
+                    const greetingTextLength = greetingText.length;
                     
                     function streamNextChar() {
                         if (charIndex < fullGreeting.length) {
                             const char = fullGreeting[charIndex];
-                            if (charIndex < greetingText.length) {
+                            if (charIndex < greetingTextLength) {
                                 greetingTextEl.textContent += char;
                             } else {
                                 greetingNameEl.textContent += char;
                             }
                             charIndex++;
-                            // Variable speed: faster for text, normal for name
-                            const speed = charIndex <= greetingText.length ? 30 : 50;
+                            // Variable speed: faster for text (30ms), normal for name (50ms)
+                            const speed = charIndex <= greetingTextLength ? 30 : 50;
                             setTimeout(streamNextChar, speed);
                         } else {
                             // Greeting complete, render suggestions
@@ -664,7 +675,7 @@
                     // Start streaming after a brief delay
                     setTimeout(() => {
                         streamNextChar();
-                    }, 100);
+                    }, 150);
                 } else {
                     // Fallback: just show welcome state and suggestions
                     if (typeof renderRandomSuggestions === 'function') {
