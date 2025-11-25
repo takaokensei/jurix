@@ -857,18 +857,41 @@ strong, b {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all var(--transition-fast);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     opacity: 0;
     flex-shrink: 0;
+    transform: scale(0.8);
+    pointer-events: none;
 }
 
+/* Animate in on hover */
 .chat-session-item:hover .delete-session-button {
     opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+    animation: fadeInScale 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Smooth transition for fade out (handled by transition property) */
 .delete-session-button:hover {
     color: var(--color-error);
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(239, 68, 68, 0.15);
+    transform: scale(1.1);
+}
+
+.delete-session-button:active {
+    transform: scale(0.95);
 }
 
 [data-theme="light"] .delete-session-button {

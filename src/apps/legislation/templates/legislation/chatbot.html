@@ -219,6 +219,7 @@
                 mangle: false
             });
         }
+        
         // ===== APP STATE =====
         let isProcessing = false;
         let currentSessionId = null;
@@ -250,7 +251,7 @@
                          onkeydown="if(event.key==='Enter') loadSession(${session.id})">
                         <div style="flex: 1; min-width: 0;">
                             <div class="chat-session-title">${escapeHtml(session.title)}</div>
-                            ${session.last_message_preview ? `<div class="chat-session-preview">${escapeHtml(session.last_message_preview)}</div>` : ''}
+                            ${session.latest_message_preview ? `<div class="chat-session-preview">${escapeHtml(session.latest_message_preview)}</div>` : ''}
                         </div>
                         <button 
                             class="delete-session-button" 
@@ -493,50 +494,66 @@
         }
         
         // Initialize: Load sessions on page load
-        if (document.getElementById('chat-sessions-list')) {
+        // Delay initialization to ensure DOM is ready
+        function initializeChatbot() {
             // Ensure welcome state is visible initially
             const welcomeStateInit = document.getElementById('welcome-state');
             if (welcomeStateInit) {
                 welcomeStateInit.style.display = 'flex';
             }
             
-            // Load sessions first
-            loadChatSessions().then(() => {
-                // After loading sessions, load active session if exists
-                const activeSessionItem = document.querySelector('.chat-session-item.active');
-                if (activeSessionItem) {
-                    const sessionId = parseInt(activeSessionItem.dataset.sessionId);
-                    if (sessionId) {
-                        currentSessionId = sessionId;
-                        loadSession(sessionId);
-                    }
-                } else {
-                    // No active session - ensure welcome state is visible
-                    const welcomeState = document.getElementById('welcome-state');
-                    if (welcomeState) {
-                        welcomeState.style.display = 'flex';
-                    }
-                    
-                    // Load saved text for current session if exists
-                    if (textarea) {
-                        {% if current_session %}
-                        currentSessionId = {{ current_session.id }};
-                        loadSavedText({{ current_session.id }});
-                        {% endif %}
-                    }
-                    
-                    // Ensure suggestions are rendered
-                    if (typeof renderRandomSuggestions === 'function') {
-                        renderRandomSuggestions();
-                    }
-                }
-            });
-            
-            // New chat button
-            const newChatBtn = document.getElementById('new-chat-button');
-            if (newChatBtn) {
-                newChatBtn.addEventListener('click', createNewSession);
+            // Render suggestions immediately
+            if (typeof renderRandomSuggestions === 'function') {
+                renderRandomSuggestions();
             }
+            
+            if (document.getElementById('chat-sessions-list')) {
+                // Load sessions first
+                loadChatSessions().then(() => {
+                    // After loading sessions, load active session if exists
+                    const activeSessionItem = document.querySelector('.chat-session-item.active');
+                    if (activeSessionItem) {
+                        const sessionId = parseInt(activeSessionItem.dataset.sessionId);
+                        if (sessionId) {
+                            currentSessionId = sessionId;
+                            loadSession(sessionId);
+                        }
+                    } else {
+                        // No active session - ensure welcome state is visible
+                        const welcomeState = document.getElementById('welcome-state');
+                        if (welcomeState) {
+                            welcomeState.style.display = 'flex';
+                        }
+                        
+                        // Load saved text for current session if exists
+                        if (textarea) {
+                            {% if current_session %}
+                            currentSessionId = {{ current_session.id }};
+                            loadSavedText({{ current_session.id }});
+                            {% endif %}
+                        }
+                        
+                        // Re-render suggestions if needed
+                        if (typeof renderRandomSuggestions === 'function') {
+                            renderRandomSuggestions();
+                        }
+                    }
+                });
+                
+                // New chat button
+                const newChatBtn = document.getElementById('new-chat-button');
+                if (newChatBtn) {
+                    newChatBtn.addEventListener('click', createNewSession);
+                }
+            }
+        }
+        
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeChatbot);
+        } else {
+            // DOM already loaded, initialize immediately
+            setTimeout(initializeChatbot, 50);
         }
         
         // ===== SIDEBAR TOGGLE =====
@@ -1406,20 +1423,8 @@
             ).join('');
         }
         
-        // ===== INITIALIZATION =====
-        console.log('Jurix Chatbot 2.0 initialized');
-        console.log('Marked:', typeof marked !== 'undefined' ? '✓' : '✗');
-        console.log('DOMPurify:', typeof DOMPurify !== 'undefined' ? '✓' : '✗');
-        
-        // Initialize random suggestions when page loads
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', renderRandomSuggestions);
-        } else {
-            renderRandomSuggestions();
-        }
-        
         // ===== DARK MODE TOGGLE =====
-        // Implements theme switching with localStorage persistence
+        // Implements theme switching with localStorage persistence (independent from base.html)
         // Detects system preference on first load
         
         function getSystemThemePreference() {
@@ -1440,7 +1445,6 @@
             if (toggle) {
                 toggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
             }
-            // Icons are controlled via CSS display rules, no JS needed
         }
         
         function toggleTheme() {
@@ -1449,13 +1453,11 @@
             setTheme(newTheme);
         }
         
-        // Initialize theme on page load
         function initTheme() {
             const stored = getStoredTheme();
             const theme = stored || getSystemThemePreference();
             setTheme(theme);
             
-            // Listen for system theme changes (if no manual preference)
             if (!stored && window.matchMedia) {
                 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
                     if (!getStoredTheme()) {
@@ -1465,7 +1467,7 @@
             }
         }
         
-        // Attach event listener to toggle button
+        // Initialize theme on page load
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
                 initTheme();
@@ -1482,6 +1484,20 @@
             }
         }
         
+        // ===== INITIALIZATION =====
+        console.log('Jurix Chatbot 2.0 initialized');
+        console.log('Marked:', typeof marked !== 'undefined' ? '✓' : '✗');
+        console.log('DOMPurify:', typeof DOMPurify !== 'undefined' ? '✓' : '✗');
+        
+        // Initialize random suggestions when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                renderRandomSuggestions();
+            });
+        } else {
+            renderRandomSuggestions();
+        }
+        
         // ===== COMMAND PALETTE (⌘K / Ctrl+K) =====
         // Spotlight-style command palette for quick navigation
         
@@ -1491,38 +1507,11 @@
         const commandPaletteTrigger = document.getElementById('command-palette-trigger');
         
         // Global variable to store chat sessions for command palette search
-        let chatSessionsForSearch = [];
-        
-        // Load chat sessions for search
-        async function loadChatSessionsForSearch() {
-            try {
-                const response = await fetch('/api/v1/chat/sessions/');
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success && data.sessions) {
-                        chatSessionsForSearch = data.sessions.map(session => ({
-                            id: `chat-${session.id}`,
-                            title: session.title || 'Conversa sem título',
-                            description: session.latest_message_preview || 'Sem mensagens',
-                            sessionId: session.id,
-                            icon: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-                            action: () => {
-                                if (session.id) {
-                                    loadSession(session.id);
-                                    closeCommandPalette();
-                                }
-                            }
-                        }));
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading chat sessions for search:', error);
-            }
+        // Use window object to avoid conflicts if script runs multiple times
+        if (!window.chatSessionsForSearch) {
+            window.chatSessionsForSearch = [];
         }
         
-        // Global variable to store chat sessions for command palette search
-        let chatSessionsForSearch = [];
-        
         // Load chat sessions for search
         async function loadChatSessionsForSearch() {
             try {
@@ -1530,7 +1519,7 @@
                 if (response.ok) {
                     const data = await response.json();
                     if (data.success && data.sessions) {
-                        chatSessionsForSearch = data.sessions.map(session => ({
+                        window.chatSessionsForSearch = data.sessions.map(session => ({
                             id: `chat-${session.id}`,
                             title: session.title || 'Conversa sem título',
                             description: session.latest_message_preview || 'Sem mensagens',
@@ -1618,7 +1607,7 @@
         
         function updateCommandPaletteResults(query) {
             // Combine commands with chat sessions for search
-            const allCommands = [...commands, ...chatSessionsForSearch];
+            const allCommands = [...commands, ...(window.chatSessionsForSearch || [])];
             const queryLower = query.toLowerCase();
             
             const filtered = allCommands.filter(cmd => 
@@ -1762,7 +1751,7 @@
                             return;
                         }
                         // Try to match first filtered result
-                        const allCommands = [...commands, ...chatSessionsForSearch];
+                        const allCommands = [...commands, ...(window.chatSessionsForSearch || [])];
                         const filtered = allCommands.filter(cmd => 
                             cmd.title.toLowerCase().includes(query) ||
                             cmd.description.toLowerCase().includes(query)
