@@ -2716,7 +2716,50 @@ a:focus-visible,
 .command-palette-results {
     max-height: 400px;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: var(--space-2);
+    /* Swiss Design: Custom scrollbar - Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+/* Swiss Design: Custom scrollbar for WebKit browsers (Chrome, Safari, Edge) */
+.command-palette-results::-webkit-scrollbar {
+    width: 8px;
+}
+
+.command-palette-results::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: var(--radius-sm);
+}
+
+.command-palette-results::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-sm);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: background 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.command-palette-results::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-secondary);
+    background-clip: padding-box;
+}
+
+/* Dark mode scrollbar - Swiss Design */
+[data-theme="dark"] .command-palette-results {
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+[data-theme="dark"] .command-palette-results::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+[data-theme="dark"] .command-palette-results::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.35);
+    background-clip: padding-box;
 }
 
 .command-palette-item {

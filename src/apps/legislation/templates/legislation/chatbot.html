@@ -620,12 +620,11 @@
                 // No sessions list element, just ensure welcome state is visible
                 ensureWelcomeStateVisible();
             }
-                
-                // New chat button
-                const newChatBtn = document.getElementById('new-chat-button');
-                if (newChatBtn) {
-                    newChatBtn.addEventListener('click', createNewSession);
-                }
+            
+            // New chat button
+            const newChatBtn = document.getElementById('new-chat-button');
+            if (newChatBtn) {
+                newChatBtn.addEventListener('click', createNewSession);
             }
         }
         
@@ -1900,13 +1899,15 @@
         document.addEventListener('keydown', (e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                 e.preventDefault();
-                if (commandPaletteOverlay.classList.contains('active')) {
+                if (commandPaletteOverlay && commandPaletteOverlay.classList.contains('active')) {
                     closeCommandPalette();
                 } else {
                     openCommandPalette();
                 }
             }
         });
+        
+        } // End of command palette initialization check
     </script>
 </body>
 </html>
