@@ -143,7 +143,7 @@
        ======================================== */
     
     /* Larguras de Conteúdo */
-    --width-sidebar: 280px;
+    --width-sidebar: 320px; /* Increased from 280px for better space utilization */
     --width-sidebar-collapsed: 64px;
     --width-content-narrow: 640px;   /* Prosa curta */
     --width-content-normal: 800px;   /* Textos legais (70-80 chars) */
@@ -1030,57 +1030,66 @@ strong, b {
     color: var(--color-text-secondary);
 }
 
-/* Messages Container */
+/* Messages Container - Better space distribution */
 .messages-container {
     flex: 1;
     overflow-y: auto;
-    padding: var(--space-4);
+    padding: var(--space-6) var(--space-6) var(--space-4);
     scroll-behavior: smooth;
 }
 
 .messages-wrapper {
-    max-width: var(--width-content-normal);
+    max-width: 900px; /* Increased from 800px for better space distribution */
     margin: 0 auto;
+    width: 100%;
+    padding: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
-/* Welcome State */
+/* Welcome State - Better space distribution */
 .welcome-state {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100%;
+    min-height: 65vh; /* Better vertical distribution */
     text-align: center;
-    padding: var(--space-4);
+    padding: var(--space-8) var(--space-6);
+    max-width: 100%; /* Use full available width */
+    width: 100%;
 }
 
 .welcome-state img {
-    width: 80px;
-    height: 80px;
-    margin-bottom: var(--space-3);
+    width: 96px; /* Slightly larger */
+    height: 96px;
+    margin-bottom: var(--space-4);
     opacity: 0.9;
 }
 
 .welcome-state h2 {
-    font-size: var(--font-size-3xl);
+    font-size: var(--font-size-4xl); /* Larger heading */
     font-weight: var(--font-weight-bold);
-    margin-bottom: var(--space-2);
+    margin-bottom: var(--space-3);
     color: var(--color-text);
 }
 
 .welcome-state p {
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-lg); /* Slightly larger text */
     color: var(--color-text-secondary);
-    max-width: 500px;
-    margin-bottom: var(--space-4);
+    max-width: 600px; /* Wider description */
+    margin: 0 auto var(--space-6);
+    line-height: var(--line-height-relaxed);
 }
 
 .suggestion-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2);
+    gap: var(--space-3); /* More spacing */
     justify-content: center;
-    max-width: 600px;
+    max-width: 900px; /* Wider chips area to match messages wrapper */
+    width: 100%;
 }
 
 .chip {
@@ -1198,6 +1207,27 @@ strong, b {
     border-color: var(--color-primary);
 }
 
+/* Markdown styling in user messages (if user uses markdown) */
+.message-user .message-body h1,
+.message-user .message-body h2,
+.message-user .message-body h3,
+.message-user .message-body h4 {
+    color: var(--color-text-inverse);
+    margin-top: var(--space-2);
+    margin-bottom: var(--space-1);
+}
+
+.message-user .message-body code {
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--color-text-inverse);
+}
+
+.message-user .message-body pre {
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--color-text-inverse);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 /* Markdown Styling in Messages */
 .message-body h1,
 .message-body h2,
@@ -1273,6 +1303,71 @@ strong, b {
     background: none;
     padding: 0;
     color: inherit;
+}
+
+/* Message Actions Container */
+.message-actions {
+    margin-top: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+/* Copy Response Button - Before Sources - Swiss Design Minimalist */
+.copy-response-button {
+    display: none; /* Hidden initially, shown after typewriter completes */
+    align-items: center;
+    justify-content: center;
+    width: 36px; /* Square button, icon only */
+    height: 36px;
+    padding: 0;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    opacity: 0;
+    transform: translateY(-8px);
+}
+
+.copy-response-button.show {
+    display: inline-flex;
+    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+
+.copy-response-button:hover {
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.copy-response-button:active {
+    transform: translateY(0) scale(0.95);
+}
+
+.copy-response-button svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    transition: all var(--transition-fast);
+}
+
+.copy-response-button .copy-icon,
+.copy-response-button .check-icon {
+    position: absolute;
+}
+
+/* Swiss Design: Subtle feedback on copy - primary color, not green */
+.copy-response-button.copied {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-text-inverse);
+}
+
+.copy-response-button.copied:hover {
+    background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
 }
 
 /* Sources Cards */
@@ -1435,58 +1530,90 @@ strong, b {
     }
 }
 
-/* Input Area */
+/* Input Area - Gemini Style Elegant Design */
 .input-area {
-    background: var(--color-bg-secondary);
-    border-top: var(--border-width-thin) solid var(--color-border);
-    padding: var(--space-3);
-    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
+    background: transparent !important; /* Fully transparent - no gray background */
+    border-top: none;
+    padding: var(--space-4) var(--space-4) var(--space-6);
+    box-shadow: none;
 }
 
 .input-wrapper {
-    max-width: var(--width-content-normal);
+    max-width: 900px; /* Increased for better space distribution */
     margin: 0 auto;
+    position: relative;
 }
 
+/* Gemini-inspired elegant input container - Fully transparent like Gemini */
 .input-container {
     position: relative;
-    background: var(--color-bg-secondary);
-    border: 2px solid var(--color-border);
-    border-radius: var(--radius-xl);
-    transition: all var(--transition-fast);
-    box-shadow: var(--shadow-sm);
+    background: transparent; /* Fully transparent - no background */
+    border: 1px solid var(--color-border);
+    border-radius: 28px; /* More rounded like Gemini */
+    transition: all var(--transition-base);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03); /* Very subtle shadow */
+    padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-2);
+    min-height: 56px; /* Taller, more prominent */
+}
+
+/* Light mode: subtle border */
+[data-theme="light"] .input-container {
+    background: transparent;
+    border-color: rgba(0, 0, 0, 0.12);
+}
+
+/* Dark mode: subtle border */
+[data-theme="dark"] .input-container {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.15);
 }
 
 .input-container:focus-within {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+    box-shadow: 0 2px 12px rgba(30, 64, 175, 0.2), 
+                0 0 0 1px var(--color-primary);
+    background: transparent; /* Keep transparent even on focus */
 }
 
+[data-theme="light"] .input-container:focus-within {
+    background: transparent;
+    border-color: var(--color-primary);
+}
+
+[data-theme="dark"] .input-container:focus-within {
+    background: transparent;
+    border-color: var(--color-primary);
+}
+
+/* Textarea - clean, spacious */
 #question-textarea {
-    width: 100%;
-    min-height: 52px;
+    flex: 1;
+    min-height: 24px;
     max-height: 200px;
-    padding: var(--space-2) 3.5rem var(--space-2) var(--space-3);
+    padding: 0;
     border: none;
     outline: none;
     font-family: var(--font-sans);
     font-size: var(--font-size-base);
-    line-height: var(--line-height-normal);
+    line-height: var(--line-height-relaxed);
     resize: none;
     background: transparent;
     color: var(--color-text);
+    overflow-y: auto;
 }
 
 #question-textarea::placeholder {
     color: var(--color-text-tertiary);
+    opacity: 0.7;
 }
 
+/* Send button - elegant floating circle */
 .send-button {
-    position: absolute;
-    right: 8px;
-    bottom: 8px;
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     background: var(--color-primary);
     border: none;
     border-radius: 50%;
@@ -1495,29 +1622,38 @@ strong, b {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all var(--transition-fast);
+    transition: all var(--transition-base);
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(30, 64, 175, 0.2);
 }
 
 .send-button:hover:not(:disabled) {
     background: var(--color-primary-hover);
     transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(30, 64, 175, 0.3);
+}
+
+.send-button:active:not(:disabled) {
+    transform: scale(0.95);
 }
 
 .send-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    transform: none;
 }
 
 .send-button svg {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
 }
 
 .input-disclaimer {
     text-align: center;
     font-size: var(--font-size-xs);
     color: var(--color-text-tertiary);
-    margin-top: var(--space-2);
+    margin-top: var(--space-3);
+    padding: 0 var(--space-2);
 }
 
 /* Scrollbar Styling */
@@ -2143,20 +2279,26 @@ a:focus-visible,
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
     z-index: var(--z-modal);
     display: none;
     align-items: center;
     justify-content: center;
     opacity: 0;
-    transition: opacity 0.2s ease-out;
+    /* Swiss Design: Smooth entrance animation */
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                background 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                backdrop-filter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .command-palette-overlay.active {
     display: flex;
     opacity: 1;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
 .command-palette {
@@ -2166,12 +2308,36 @@ a:focus-visible,
     border-radius: var(--radius-lg);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     overflow: hidden;
-    transform: scale(0.95);
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    /* Swiss Design: Elegant scale + fade entrance */
+    transform: scale(0.92) translateY(-10px);
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .command-palette-overlay.active .command-palette {
-    transform: scale(1);
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+/* Staggered animation for command palette content */
+.command-palette-overlay.active .command-palette-header {
+    animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+.command-palette-overlay.active .command-palette-results {
+    animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .command-palette-header {
@@ -2228,10 +2394,15 @@ a:focus-visible,
     padding: var(--space-3);
     border-radius: var(--radius-md);
     cursor: pointer;
-    transition: background-color var(--transition-fast);
+    transition: all var(--transition-fast);
     display: flex;
     align-items: center;
     gap: var(--space-3);
+    user-select: none;
+}
+
+.command-palette-item:active {
+    transform: scale(0.98);
 }
 
 .command-palette-item:hover,
@@ -2244,6 +2415,37 @@ a:focus-visible,
     height: 20px;
     flex-shrink: 0;
     color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color var(--transition-fast);
+}
+
+.command-palette-item-icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* Different icon colors for different command types (Gemini-style) */
+.command-palette-item[data-command-id="norms"] .command-palette-item-icon,
+.command-palette-item[data-action="norms"] .command-palette-item-icon {
+    color: #d97706; /* Amber for documents */
+}
+
+.command-palette-item[data-command-id="admin"] .command-palette-item-icon,
+.command-palette-item[data-action="admin"] .command-palette-item-icon {
+    color: #7c3aed; /* Purple for settings */
+}
+
+.command-palette-item[data-command-id="new-chat"] .command-palette-item-icon,
+.command-palette-item[data-action="new-chat"] .command-palette-item-icon {
+    color: #0891b2; /* Cyan for chat */
+}
+
+.command-palette-item:hover .command-palette-item-icon,
+.command-palette-item.selected .command-palette-item-icon {
+    color: var(--color-primary);
 }
 
 .command-palette-item-content {
