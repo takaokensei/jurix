@@ -2838,26 +2838,45 @@ a:focus-visible,
    DELETE CONFIRMATION MODAL
    Swiss Design Elegant Modal
    ============================ */
+/* Swiss Design: Elegant delete modal with smooth pop-in/pop-out animations */
 .delete-modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
     z-index: calc(var(--z-modal) + 1);
     display: none;
     align-items: center;
     justify-content: center;
     opacity: 0;
-    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    visibility: hidden;
+    /* Swiss Design: Smooth entrance and exit animations */
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                background 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                backdrop-filter 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                visibility 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .delete-modal-overlay.active {
     display: flex;
     opacity: 1;
+    visibility: visible;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+/* Closing animation - reverse of opening */
+.delete-modal-overlay.closing {
+    opacity: 0;
+    visibility: hidden;
+    background: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
 }
 
 .delete-modal {
@@ -2865,9 +2884,10 @@ a:focus-visible,
     max-width: 420px;
     background: var(--color-bg-secondary);
     border-radius: var(--radius-lg);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
     overflow: hidden;
-    transform: scale(0.92) translateY(-10px);
+    /* Swiss Design: Elegant scale + fade entrance */
+    transform: scale(0.9) translateY(20px);
     opacity: 0;
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
                 opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -2876,6 +2896,12 @@ a:focus-visible,
 .delete-modal-overlay.active .delete-modal {
     transform: scale(1) translateY(0);
     opacity: 1;
+}
+
+/* Closing animation - reverse of opening */
+.delete-modal-overlay.closing .delete-modal {
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
 }
 
 .delete-modal-header {

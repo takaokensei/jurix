@@ -364,19 +364,19 @@
                 
                 // Setup event listeners
                 document.getElementById('delete-modal-cancel').addEventListener('click', () => {
-                    modalOverlay.classList.remove('active');
+                    closeDeleteModal(modalOverlay);
                 });
                 
                 modalOverlay.addEventListener('click', (e) => {
                     if (e.target === modalOverlay) {
-                        modalOverlay.classList.remove('active');
+                        closeDeleteModal(modalOverlay);
                     }
                 });
                 
                 // ESC key to close
                 document.addEventListener('keydown', function escHandler(e) {
                     if (e.key === 'Escape' && modalOverlay.classList.contains('active')) {
-                        modalOverlay.classList.remove('active');
+                        closeDeleteModal(modalOverlay);
                         document.removeEventListener('keydown', escHandler);
                     }
                 });
@@ -385,12 +385,40 @@
             // Setup confirm button
             const confirmBtn = document.getElementById('delete-modal-confirm');
             confirmBtn.onclick = async () => {
-                modalOverlay.classList.remove('active');
-                await performDeleteSession(sessionId);
+                // Close modal with animation
+                closeDeleteModal(modalOverlay);
+                // Wait for animation before deleting
+                setTimeout(async () => {
+                    await performDeleteSession(sessionId);
+                }, 300);
             };
             
-            // Show modal
-            modalOverlay.classList.add('active');
+            // Show modal with animation
+            showDeleteModalWithAnimation(modalOverlay);
+        }
+        
+        // Show delete modal with smooth animation (Swiss Design)
+        function showDeleteModalWithAnimation(modalOverlay) {
+            // Force reflow to ensure initial state
+            modalOverlay.style.display = 'flex';
+            void modalOverlay.offsetWidth;
+            
+            // Add active class for animation
+            requestAnimationFrame(() => {
+                modalOverlay.classList.add('active');
+            });
+        }
+        
+        // Close delete modal with smooth animation (Swiss Design)
+        function closeDeleteModal(modalOverlay) {
+            modalOverlay.classList.remove('active');
+            modalOverlay.classList.add('closing');
+            
+            // Remove modal after animation completes
+            setTimeout(() => {
+                modalOverlay.classList.remove('closing');
+                modalOverlay.style.display = 'none';
+            }, 300); // Match animation duration
         }
         
         // Perform the actual deletion
@@ -443,7 +471,10 @@
                 if (!response.ok) throw new Error('Failed to load session');
                 
                 const data = await response.json();
-                if (!data.success || !data.messages) return;
+                if (!data.success) return;
+                
+                // Ensure messages is an array (default to empty array if not provided)
+                const messages = data.messages || [];
                 
                 currentSessionId = sessionId;
                 clearMessages();
@@ -456,37 +487,50 @@
                     }
                 });
                 
-                // Hide welcome state (only if there are messages)
+                // Show/hide welcome state based on whether there are messages
                 const welcomeState = document.getElementById('welcome-state');
-                if (welcomeState && data.messages.length > 0) {
-                    welcomeState.style.display = 'none';
-                } else if (welcomeState && data.messages.length === 0) {
-                    welcomeState.style.display = 'flex';
-                }
                 
-                // Load saved text for this session after messages are loaded
-                if (textarea) {
-                    loadSavedText(sessionId);
-                }
-                
-                // Load and render messages
-                const assistantMessages = data.messages.filter(m => m.role === 'assistant');
-                let messageIndex = 0;
-                
-                for (let i = 0; i < data.messages.length; i++) {
-                    const msg = data.messages[i];
-                    if (msg.role === 'user') {
-                        addUserMessage(msg.content);
-                    } else if (msg.role === 'assistant') {
-                        messageIndex++;
-                        // Show regenerate only on the last assistant message
-                        const isLastAssistant = messageIndex === assistantMessages.length;
-                        // Skip streaming when loading old sessions (skipStreaming = true)
-                        addAssistantMessage(msg.content, msg.sources || [], isLastAssistant && currentSessionId ? true : false, true);
+                if (messages.length > 0) {
+                    // Session has messages - hide welcome state and show messages
+                    if (welcomeState) {
+                        welcomeState.style.display = 'none';
+                    }
+                    
+                    // Load and render messages
+                    const assistantMessages = messages.filter(m => m.role === 'assistant');
+                    let messageIndex = 0;
+                    
+                    for (let i = 0; i < messages.length; i++) {
+                        const msg = messages[i];
+                        if (msg.role === 'user') {
+                            addUserMessage(msg.content);
+                        } else if (msg.role === 'assistant') {
+                            messageIndex++;
+                            // Show regenerate only on the last assistant message
+                            const isLastAssistant = messageIndex === assistantMessages.length;
+                            // Skip streaming when loading old sessions (skipStreaming = true)
+                            addAssistantMessage(msg.content, msg.sources || [], isLastAssistant && currentSessionId ? true : false, true);
+                        }
+                    }
+                    
+                    scrollToBottom();
+                } else {
+                    // Session is empty - show welcome state
+                    if (welcomeState) {
+                        welcomeState.style.display = 'flex';
+                        // Re-render suggestions for empty session
+                        if (typeof renderRandomSuggestions === 'function') {
+                            setTimeout(() => {
+                                renderRandomSuggestions();
+                            }, 100);
+                        }
                     }
                 }
                 
-                scrollToBottom();
+                // Load saved text for this session
+                if (textarea) {
+                    loadSavedText(sessionId);
+                }
             } catch (error) {
                 console.error('Error loading session:', error);
             }
@@ -527,40 +571,55 @@
             // Try to render suggestions immediately
             tryRenderSuggestions();
             
+            // Helper function to ensure welcome state is visible
+            function ensureWelcomeStateVisible() {
+                const welcomeState = document.getElementById('welcome-state');
+                if (welcomeState) {
+                    welcomeState.style.display = 'flex';
+                }
+                
+                // Load saved text for current session if exists
+                if (textarea) {
+                    {% if current_session %}
+                    currentSessionId = {{ current_session.id }};
+                    loadSavedText({{ current_session.id }});
+                    {% endif %}
+                }
+                
+                // Re-render suggestions
+                if (typeof renderRandomSuggestions === 'function') {
+                    setTimeout(() => {
+                        renderRandomSuggestions();
+                    }, 100);
+                }
+            }
+            
             if (document.getElementById('chat-sessions-list')) {
                 // Load sessions first
                 loadChatSessions().then(() => {
-                    // After loading sessions, load active session if exists
+                    // After loading sessions, check for active session
                     const activeSessionItem = document.querySelector('.chat-session-item.active');
                     if (activeSessionItem) {
                         const sessionId = parseInt(activeSessionItem.dataset.sessionId);
                         if (sessionId) {
-                            currentSessionId = sessionId;
+                            // Load session - it will handle showing welcome state if empty
                             loadSession(sessionId);
+                        } else {
+                            // Invalid session ID, ensure welcome state
+                            ensureWelcomeStateVisible();
                         }
                     } else {
                         // No active session - ensure welcome state is visible
-                        const welcomeState = document.getElementById('welcome-state');
-                        if (welcomeState) {
-                            welcomeState.style.display = 'flex';
-                        }
-                        
-                        // Load saved text for current session if exists
-                        if (textarea) {
-                            {% if current_session %}
-                            currentSessionId = {{ current_session.id }};
-                            loadSavedText({{ current_session.id }});
-                            {% endif %}
-                        }
-                        
-                        // Re-render suggestions if needed
-                        if (typeof renderRandomSuggestions === 'function') {
-                            setTimeout(() => {
-                                renderRandomSuggestions();
-                            }, 100);
-                        }
+                        ensureWelcomeStateVisible();
                     }
+                }).catch(() => {
+                    // On error, still show welcome state
+                    ensureWelcomeStateVisible();
                 });
+            } else {
+                // No sessions list element, just ensure welcome state is visible
+                ensureWelcomeStateVisible();
+            }
                 
                 // New chat button
                 const newChatBtn = document.getElementById('new-chat-button');
@@ -1603,13 +1662,17 @@
         ];
         
         function openCommandPalette() {
+            if (!commandPaletteOverlay || !commandPaletteInput) return;
+            
             selectedIndex = -1; // Reset selection when opening
             commandPaletteOverlay.classList.remove('closing'); // Remove closing class if present
             commandPaletteOverlay.classList.add('active');
             commandPaletteInput.focus();
             // Load chat sessions when opening palette
             loadChatSessionsForSearch().then(() => {
-                updateCommandPaletteResults('');
+                if (commandPaletteResults) {
+                    updateCommandPaletteResults('');
+                }
             });
         }
         
@@ -1629,6 +1692,8 @@
         let selectedIndex = -1; // Track selected item index
         
         function closeCommandPalette() {
+            if (!commandPaletteOverlay || !commandPaletteInput || !commandPaletteResults) return;
+            
             // Add closing animation class before removing active
             commandPaletteOverlay.classList.add('closing');
             
@@ -1642,6 +1707,8 @@
         }
         
         function updateCommandPaletteResults(query) {
+            if (!commandPaletteResults) return;
+            
             // Combine commands with chat sessions for search
             const allCommands = [...commands, ...(window.chatSessionsForSearch || [])];
             const queryLower = query.toLowerCase();
