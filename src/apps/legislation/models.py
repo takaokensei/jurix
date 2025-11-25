@@ -533,7 +533,23 @@ class ChatSession(TimeStampedModel):
         """Retorna preview da primeira pergunta do usuário da sessão."""
         first_user_msg = self.messages.filter(role='user').order_by('created_at').first()
         if first_user_msg:
-            preview = first_user_msg.content[:50] + ('...' if len(first_user_msg.content) > 50 else '')
+            # Get first line only, strip markdown and extra whitespace
+            import re
+            content = first_user_msg.content
+            
+            # Remove markdown formatting (headers, bold, italic, links, etc.)
+            content = re.sub(r'#+\s*', '', content)  # Remove headers
+            content = re.sub(r'\*\*(.+?)\*\*', r'\1', content)  # Remove bold
+            content = re.sub(r'\*(.+?)\*', r'\1', content)  # Remove italic
+            content = re.sub(r'\[(.+?)\]\(.+?\)', r'\1', content)  # Remove links
+            content = re.sub(r'`(.+?)`', r'\1', content)  # Remove code
+            content = re.sub(r'[*-]\s+', '', content)  # Remove list markers
+            
+            # Get first line only (before first newline)
+            first_line = content.split('\n')[0].strip()
+            
+            # Limit to 50 characters
+            preview = first_line[:50] + ('...' if len(first_line) > 50 else '')
             return preview
         return ''
 

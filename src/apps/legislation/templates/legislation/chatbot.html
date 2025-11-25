@@ -250,8 +250,7 @@
                          onclick="loadSession(${session.id})"
                          onkeydown="if(event.key==='Enter') loadSession(${session.id})">
                         <div style="flex: 1; min-width: 0;">
-                            <div class="chat-session-title">${escapeHtml(session.title)}</div>
-                            ${session.latest_message_preview ? `<div class="chat-session-preview">${escapeHtml(session.latest_message_preview)}</div>` : ''}
+                            ${session.latest_message_preview ? `<div class="chat-session-title">${escapeHtml(session.latest_message_preview)}</div>` : `<div class="chat-session-title">${escapeHtml(session.title)}</div>`}
                         </div>
                         <button 
                             class="delete-session-button" 
@@ -518,11 +517,20 @@
                     // Session is empty - show welcome state
                     if (welcomeState) {
                         welcomeState.style.display = 'flex';
-                        // Re-render suggestions for empty session
-                        if (typeof renderRandomSuggestions === 'function') {
-                            setTimeout(() => {
+                        
+                        // Re-render suggestions for empty session - ensure they appear
+                        const chipsContainer = document.getElementById('suggestion-chips');
+                        if (chipsContainer && (chipsContainer.children.length === 0 || typeof renderRandomSuggestions === 'function')) {
+                            if (typeof renderRandomSuggestions === 'function') {
                                 renderRandomSuggestions();
-                            }, 100);
+                            } else {
+                                // Wait a bit if function not ready yet
+                                setTimeout(() => {
+                                    if (typeof renderRandomSuggestions === 'function') {
+                                        renderRandomSuggestions();
+                                    }
+                                }, 200);
+                            }
                         }
                     }
                 }
@@ -576,6 +584,22 @@
                 const welcomeState = document.getElementById('welcome-state');
                 if (welcomeState) {
                     welcomeState.style.display = 'flex';
+                    
+                    // Ensure suggestions are rendered when welcome state is shown
+                    const chipsContainer = document.getElementById('suggestion-chips');
+                    if (chipsContainer && chipsContainer.children.length === 0) {
+                        // Render suggestions if container is empty
+                        if (typeof renderRandomSuggestions === 'function') {
+                            renderRandomSuggestions();
+                        } else {
+                            // If function not defined yet, wait a bit and try again
+                            setTimeout(() => {
+                                if (typeof renderRandomSuggestions === 'function') {
+                                    renderRandomSuggestions();
+                                }
+                            }, 200);
+                        }
+                    }
                 }
                 
                 // Load saved text for current session if exists
@@ -584,13 +608,6 @@
                     currentSessionId = {{ current_session.id }};
                     loadSavedText({{ current_session.id }});
                     {% endif %}
-                }
-                
-                // Re-render suggestions
-                if (typeof renderRandomSuggestions === 'function') {
-                    setTimeout(() => {
-                        renderRandomSuggestions();
-                    }, 100);
                 }
             }
             
@@ -602,8 +619,23 @@
                     if (activeSessionItem) {
                         const sessionId = parseInt(activeSessionItem.dataset.sessionId);
                         if (sessionId) {
-                            // Load session - it will handle showing welcome state if empty
-                            loadSession(sessionId);
+                            // Check if session has messages before loading
+                            // Only load session if it has messages, otherwise show welcome state
+                            fetch(`/api/v1/chat/sessions/${sessionId}/`)
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success && data.messages && data.messages.length > 0) {
+                                        // Session has messages - load it
+                                        loadSession(sessionId);
+                                    } else {
+                                        // Session is empty - show welcome state
+                                        ensureWelcomeStateVisible();
+                                    }
+                                })
+                                .catch(() => {
+                                    // On error, show welcome state
+                                    ensureWelcomeStateVisible();
+                                });
                         } else {
                             // Invalid session ID, ensure welcome state
                             ensureWelcomeStateVisible();
