@@ -986,15 +986,39 @@
         ];
         
         function openCommandPalette() {
+            selectedIndex = -1; // Reset selection when opening
+            commandPaletteOverlay.classList.remove('closing'); // Remove closing class if present
             commandPaletteOverlay.classList.add('active');
             commandPaletteInput.focus();
             updateCommandPaletteResults('');
         }
         
+        function selectItem(index) {
+            const items = commandPaletteResults.querySelectorAll('.command-palette-item');
+            items.forEach((item, i) => {
+                if (i === index) {
+                    item.classList.add('selected');
+                    item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+            selectedIndex = index;
+        }
+        
+        let selectedIndex = -1; // Track selected item index
+        
         function closeCommandPalette() {
-            commandPaletteOverlay.classList.remove('active');
-            commandPaletteInput.value = '';
-            commandPaletteResults.innerHTML = '';
+            // Add closing animation class before removing active
+            commandPaletteOverlay.classList.add('closing');
+            
+            // Wait for animation to complete before removing
+            setTimeout(() => {
+                commandPaletteOverlay.classList.remove('active', 'closing');
+                commandPaletteInput.value = '';
+                commandPaletteResults.innerHTML = '';
+                selectedIndex = -1; // Reset selection
+            }, 300); // Match animation duration
         }
         
         function updateCommandPaletteResults(query) {
@@ -1003,13 +1027,16 @@
                 cmd.description.toLowerCase().includes(query.toLowerCase())
             );
             
+            // Reset selection when filtering
+            selectedIndex = -1;
+            
             if (filtered.length === 0) {
                 commandPaletteResults.innerHTML = '<div class="command-palette-empty">Nenhum comando encontrado</div>';
                 return;
             }
             
             commandPaletteResults.innerHTML = filtered.map((cmd, index) => `
-                <div class="command-palette-item ${index === 0 ? 'selected' : ''}" data-action="${cmd.id}" data-command-id="${cmd.id}">
+                <div class="command-palette-item" data-action="${cmd.id}" data-command-id="${cmd.id}">
                     <span class="command-palette-item-icon">${cmd.icon}</span>
                     <div class="command-palette-item-content">
                         <div class="command-palette-item-title">${cmd.title}</div>
@@ -1067,6 +1094,20 @@
                             executeCommand(filtered[0].id);
                         }
                     }
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const items = commandPaletteResults.querySelectorAll('.command-palette-item');
+                if (items.length > 0) {
+                    selectedIndex = selectedIndex < items.length - 1 ? selectedIndex + 1 : 0;
+                    selectItem(selectedIndex);
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const items = commandPaletteResults.querySelectorAll('.command-palette-item');
+                if (items.length > 0) {
+                    selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : items.length - 1;
+                    selectItem(selectedIndex);
                 }
             }
         });

@@ -2302,7 +2302,7 @@ a:focus-visible,
     align-items: center;
     justify-content: center;
     opacity: 0;
-    /* Swiss Design: Smooth entrance animation */
+    /* Swiss Design: Smooth entrance and exit animations */
     transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
                 background 0.3s cubic-bezier(0.16, 1, 0.3, 1),
                 backdrop-filter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -2314,6 +2314,14 @@ a:focus-visible,
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+}
+
+/* Closing animation - reverse of opening */
+.command-palette-overlay.closing {
+    opacity: 0;
+    background: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
 }
 
 .command-palette {
@@ -2335,6 +2343,12 @@ a:focus-visible,
     opacity: 1;
 }
 
+/* Closing animation - reverse of opening */
+.command-palette-overlay.closing .command-palette {
+    transform: scale(0.92) translateY(-10px);
+    opacity: 0;
+}
+
 /* Staggered animation for command palette content */
 .command-palette-overlay.active .command-palette-header {
     animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
@@ -2342,6 +2356,15 @@ a:focus-visible,
 
 .command-palette-overlay.active .command-palette-results {
     animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+
+/* Reverse animations for closing */
+.command-palette-overlay.closing .command-palette-header {
+    animation: fadeOutDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.command-palette-overlay.closing .command-palette-results {
+    animation: fadeOutDown 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes fadeInUp {
@@ -2352,6 +2375,17 @@ a:focus-visible,
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+@keyframes fadeOutDown {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(8px);
     }
 }
 
