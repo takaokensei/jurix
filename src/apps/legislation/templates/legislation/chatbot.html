@@ -284,7 +284,16 @@
                         if (emptyNewSessions.length > 0) {
                             // Redirect to existing empty session
                             currentSessionId = emptyNewSessions[0].id;
-                            await loadSession(currentSessionId);
+                            clearMessages();
+                            await loadChatSessions();
+                            
+                            // Show welcome state with streaming greeting
+                            showWelcomeStateWithStreaming();
+                            
+                            // Load any saved text for this session
+                            if (textarea) {
+                                loadSavedText(currentSessionId);
+                            }
                             return;
                         }
                     }
@@ -308,24 +317,14 @@
                     currentSessionId = data.session.id;
                     clearMessages();
                     await loadChatSessions();
-                    const welcomeState = document.getElementById('welcome-state');
-                    if (welcomeState) welcomeState.style.display = 'flex';
                     
-                    // Render suggestions for new session
-                    if (typeof renderRandomSuggestions === 'function') {
-                        setTimeout(() => {
-                            renderRandomSuggestions();
-                        }, 100);
-                    }
-                    
-                    // Clear saved text for this new session
-                    if (textarea) {
-                        localStorage.removeItem(`chat-input-${currentSessionId}`);
-                        textarea.value = '';
-                    }
+                    // Show welcome state with streaming greeting and suggestions
+                    showWelcomeStateWithStreaming();
                 }
             } catch (error) {
                 console.error('Error creating new session:', error);
+                // On error, still show welcome state
+                showWelcomeStateWithStreaming();
             }
         }
         
@@ -555,7 +554,7 @@
         // Initialize: Load sessions on page load
         // Delay initialization to ensure DOM is ready
         function initializeChatbot() {
-            // Ensure welcome state is visible initially
+            // Initially ensure welcome state is visible (will be shown with streaming if needed)
             const welcomeStateInit = document.getElementById('welcome-state');
             if (welcomeStateInit) {
                 welcomeStateInit.style.display = 'flex';
@@ -611,6 +610,74 @@
                 }
             }
             
+            // Show welcome state with streaming greeting effect
+            function showWelcomeStateWithStreaming() {
+                const welcomeState = document.getElementById('welcome-state');
+                if (!welcomeState) return;
+                
+                // Show welcome state
+                welcomeState.style.display = 'flex';
+                
+                // Get user name from greeting element (already rendered in HTML)
+                const greetingNameEl = welcomeState.querySelector('.greeting-name');
+                const greetingTextEl = welcomeState.querySelector('.greeting-text');
+                
+                if (greetingNameEl && greetingTextEl) {
+                    // Get the full name from the element
+                    const fullName = greetingNameEl.textContent || greetingNameEl.innerText;
+                    const greetingText = greetingTextEl.textContent || greetingTextEl.innerText || 'Olá, ';
+                    
+                    // Clear both elements for streaming
+                    greetingTextEl.textContent = '';
+                    greetingNameEl.textContent = '';
+                    
+                    // Stream the greeting token by token (Swiss Design: smooth, elegant)
+                    const fullGreeting = greetingText + fullName;
+                    let charIndex = 0;
+                    
+                    function streamNextChar() {
+                        if (charIndex < fullGreeting.length) {
+                            const char = fullGreeting[charIndex];
+                            if (charIndex < greetingText.length) {
+                                greetingTextEl.textContent += char;
+                            } else {
+                                greetingNameEl.textContent += char;
+                            }
+                            charIndex++;
+                            // Variable speed: faster for text, normal for name
+                            const speed = charIndex <= greetingText.length ? 30 : 50;
+                            setTimeout(streamNextChar, speed);
+                        } else {
+                            // Greeting complete, render suggestions
+                            if (typeof renderRandomSuggestions === 'function') {
+                                renderRandomSuggestions();
+                            } else {
+                                setTimeout(() => {
+                                    if (typeof renderRandomSuggestions === 'function') {
+                                        renderRandomSuggestions();
+                                    }
+                                }, 200);
+                            }
+                        }
+                    }
+                    
+                    // Start streaming after a brief delay
+                    setTimeout(() => {
+                        streamNextChar();
+                    }, 100);
+                } else {
+                    // Fallback: just show welcome state and suggestions
+                    if (typeof renderRandomSuggestions === 'function') {
+                        setTimeout(() => {
+                            renderRandomSuggestions();
+                        }, 100);
+                    }
+                }
+                
+                // Don't clear textarea here - let user continue typing
+                // Text will be saved to currentSessionId when they type
+            }
+            
             if (document.getElementById('chat-sessions-list')) {
                 // Load sessions first
                 loadChatSessions().then(() => {
@@ -628,29 +695,33 @@
                                         // Session has messages - load it
                                         loadSession(sessionId);
                                     } else {
-                                        // Session is empty - show welcome state
-                                        ensureWelcomeStateVisible();
+                                        // Session is empty - show welcome state with streaming
+                                        showWelcomeStateWithStreaming();
+                                        // Load any saved text for this session
+                                        if (textarea) {
+                                            loadSavedText(sessionId);
+                                        }
                                     }
                                 })
                                 .catch(() => {
-                                    // On error, show welcome state
-                                    ensureWelcomeStateVisible();
+                                    // On error, show welcome state with streaming
+                                    showWelcomeStateWithStreaming();
                                 });
                         } else {
-                            // Invalid session ID, ensure welcome state
-                            ensureWelcomeStateVisible();
+                            // Invalid session ID, show welcome state with streaming
+                            showWelcomeStateWithStreaming();
                         }
                     } else {
-                        // No active session - ensure welcome state is visible
-                        ensureWelcomeStateVisible();
+                        // No active session - show welcome state with streaming on initial load
+                        showWelcomeStateWithStreaming();
                     }
                 }).catch(() => {
-                    // On error, still show welcome state
-                    ensureWelcomeStateVisible();
+                    // On error, show welcome state with streaming
+                    showWelcomeStateWithStreaming();
                 });
             } else {
-                // No sessions list element, just ensure welcome state is visible
-                ensureWelcomeStateVisible();
+                // No sessions list element, show welcome state with streaming on initial load
+                showWelcomeStateWithStreaming();
             }
             
             // New chat button
@@ -698,9 +769,12 @@
                 this.style.height = 'auto';
                 this.style.height = Math.min(this.scrollHeight, 200) + 'px';
                 
-                // Save text to localStorage for current session
+                // Save text to localStorage for current session (always save when typing)
                 if (currentSessionId) {
                     localStorage.setItem(`chat-input-${currentSessionId}`, this.value);
+                } else {
+                    // If no session yet, save temporarily and restore when session is created
+                    localStorage.setItem('chat-input-temp', this.value);
                 }
             });
             
