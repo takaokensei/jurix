@@ -412,12 +412,12 @@ celery -A config worker -l info
 </tr>
 </table>
 
-### 🚀 Sprint 2-3: IA e RAG (Em Progresso)
+### 🚀 Sprint 2-3: IA e RAG
 
 <div align="center">
 
-<img src="https://img.shields.io/badge/Status-In_Progress-FFA500?style=for-the-badge"/>
-<img src="https://img.shields.io/badge/Completion-80%25-1e40af?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/Status-Completed-10B981?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/Completion-85%25-1e40af?style=for-the-badge"/>
 
 </div>
 
@@ -435,7 +435,7 @@ celery -A config worker -l info
 <td align="center">✅ Completo</td>
 </tr>
 <tr>
-<td align="center">🔍 Segmentação Hierárquica</td>
+<td align="center">🔍 Segmentação Hierárquica (Multiline Fix)</td>
 <td align="center">✅ Completo</td>
 </tr>
 <tr>
@@ -443,12 +443,20 @@ celery -A config worker -l info
 <td align="center">✅ Completo</td>
 </tr>
 <tr>
-<td align="center">🎨 Interface Web Moderna</td>
+<td align="center">🎨 Swiss Design System UI/UX</td>
 <td align="center">✅ Completo</td>
 </tr>
 <tr>
-<td align="center">🔧 Refinamento de Segmentação</td>
-<td align="center">🔄 Em Progresso</td>
+<td align="center">⌨️ Command Palette (⌘K)</td>
+<td align="center">✅ Completo</td>
+</tr>
+<tr>
+<td align="center">🌓 Dark/Light Theme System</td>
+<td align="center">✅ Completo</td>
+</tr>
+<tr>
+<td align="center">♿ Acessibilidade WCAG 2.1 AA</td>
+<td align="center">✅ Completo</td>
 </tr>
 </table>
 
@@ -456,9 +464,22 @@ celery -A config worker -l info
 
 <div align="center">
 
-**346 Normas** processadas | **4.652 Dispositivos Legais** indexados | **1990-2025**
+**356+ Normas** processadas | **5.463+ Dispositivos Legais** indexados | **1990-2025**
 
 </div>
+
+### 🎨 Release 1.1.0 - Swiss Design UI/UX
+
+**Lançado:** Janeiro 2025  
+**Principais Melhorias:**
+- Sistema de Design completo baseado em Swiss Design
+- Interface chatbot modernizada (workspace layout, input transparente estilo Gemini)
+- Command Palette para navegação rápida
+- Theme system (dark/light mode)
+- Melhorias de acessibilidade (WCAG 2.1 AA)
+- Animações suaves e profissionais
+- Copy response button (Markdown clipboard)
+- Suporte a Markdown em perguntas do usuário
 
 ### Próximos Sprints
 
@@ -884,28 +905,54 @@ docker-compose logs --tail=100 -f web worker
 ## 🏁 Project Status
 
 **Status:** 🚀 **In Active Development**  
-**Version:** 0.8.0  
-**Current Focus:** Refinamento de Segmentação e Consolidação Temporal  
+**Version:** 1.1.0 - Swiss Design UI/UX Release  
+**Current Focus:** Swiss Design System Implementation & UI Polish  
 
 ### 📊 Estatísticas do Sistema
 
-- **346 Normas** processadas e consolidadas (período 1990-2025)
-- **4.652 Dispositivos Legais** indexados com embeddings vetoriais
+- **356+ Normas** processadas e consolidadas (período 1990-2025)
+- **5.463+ Dispositivos Legais** indexados com embeddings vetoriais
 - **Sistema RAG** funcional com modelo Llama3 local
-- **Interface Web** moderna com chatbot interativo
+- **Interface Web Premium** com Swiss Design System
 
 ### 🎯 Funcionalidades Principais Implementadas
 
 ✅ **Ingestão Automatizada** via API SAPL da Câmara Municipal de Natal  
 ✅ **OCR Pipeline** completo com Tesseract  
-✅ **Segmentação Hierárquica** de dispositivos legais (Artigos, Parágrafos, Incisos)  
+✅ **Segmentação Hierárquica** refinada (suporte multiline, captura completa de texto)  
 ✅ **Busca Semântica** com pgvector e embeddings  
 ✅ **Chatbot RAG** com resposta em linguagem natural e citação de fontes  
-✅ **Interface Web Moderna** com design responsivo  
+✅ **Interface Web Premium** com Swiss Design System  
+✅ **Command Palette** (⌘K/Ctrl+K) para navegação rápida  
+✅ **Dark/Light Mode** com persistência e detecção automática  
+✅ **Copy Response** button (Markdown clipboard)  
+✅ **Markdown Support** em perguntas do usuário  
+
+### 🎨 Novidades da Versão 1.1.0 (Swiss Design Release)
+
+Esta versão traz uma **modernização completa da interface** seguindo os princípios do **Swiss Design System**:
+
+- **🎨 Design System Completo**: Design tokens (cores, tipografia, espaçamento 8px grid), tipografia Inter + JetBrains Mono
+- **💬 Chatbot Reimaginado**: Layout workspace, sidebar colapsável, input transparente estilo Gemini, animações suaves
+- **⌨️ Command Palette**: Navegação rápida com ⌘K/Ctrl+K, animações elegantes, ícones SVG profissionais
+- **📋 Copy Response**: Botão icon-only para copiar respostas em Markdown
+- **🌓 Theme System**: Dark/Light mode com transições suaves, detecção automática de preferência do sistema
+- **♿ Acessibilidade**: WCAG 2.1 AA compliance, skip links, focus-visible states, keyboard navigation
+- **📱 Responsividade**: Layout adaptativo para mobile, tablet e desktop
+- **✨ Animações**: Transições suaves com cubic-bezier, typewriter effect, skeleton screens
+
+### 📈 Progresso do Projeto
+
+**Sprint 1 (Fundação):** ✅ **100% Completo**  
+**Sprint 2-3 (IA e RAG):** ✅ **85% Completo**  
+**Sprint 4 (Consolidação):** 🔄 **20% Completo** (Em planejamento)  
+**Sprint 5 (Otimização):** ⏳ **Aguardando**
+
+**Progresso Geral:** ~**70% do MVP concluído**
 
 **PIBIC Report:** Available in `docs/PIBIC_RELATORIO_FINAL_ESBOCO.md`
 
-This project successfully demonstrates the application of NLP and AI techniques to Brazilian legal texts, maintaining full data sovereignty through local processing.
+This project successfully demonstrates the application of NLP and AI techniques to Brazilian legal texts, maintaining full data sovereignty through local processing, with a modern, professional UI following Swiss Design principles.
 
 ---
 
