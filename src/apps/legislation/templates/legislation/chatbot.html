@@ -517,13 +517,8 @@
                         welcomeState.style.display = 'flex';
                     }
                     
-                    // Load saved text for current session if exists
-                    if (textarea) {
-                        {% if current_session %}
-                        currentSessionId = {{ current_session.id }};
-                        loadSavedText({{ current_session.id }});
-                        {% endif %}
-                    }
+                // Don't load saved text on initial load - wait for user to create session
+                // Session will be created when user sends first message
                     
                     // Ensure suggestions are rendered
                     if (typeof renderRandomSuggestions === 'function') {
@@ -1489,36 +1484,6 @@
         const commandPaletteInput = document.getElementById('command-palette-input');
         const commandPaletteResults = document.getElementById('command-palette-results');
         const commandPaletteTrigger = document.getElementById('command-palette-trigger');
-        
-        // Global variable to store chat sessions for command palette search
-        let chatSessionsForSearch = [];
-        
-        // Load chat sessions for search
-        async function loadChatSessionsForSearch() {
-            try {
-                const response = await fetch('/api/v1/chat/sessions/');
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success && data.sessions) {
-                        chatSessionsForSearch = data.sessions.map(session => ({
-                            id: `chat-${session.id}`,
-                            title: session.title || 'Conversa sem título',
-                            description: session.latest_message_preview || 'Sem mensagens',
-                            sessionId: session.id,
-                            icon: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-                            action: () => {
-                                if (session.id) {
-                                    loadSession(session.id);
-                                    closeCommandPalette();
-                                }
-                            }
-                        }));
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading chat sessions for search:', error);
-            }
-        }
         
         // Global variable to store chat sessions for command palette search
         let chatSessionsForSearch = [];

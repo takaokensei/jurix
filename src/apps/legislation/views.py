@@ -205,7 +205,7 @@ def chatbot_view(request: HttpRequest) -> HttpResponse:
         chat_sessions = []
         
         if request.user.is_authenticated:
-            # Get or create active session
+            # Get active session (but don't create one automatically - wait for first message)
             active_session = ChatSession.objects.filter(
                 user=request.user,
                 is_active=True
@@ -216,12 +216,8 @@ def chatbot_view(request: HttpRequest) -> HttpResponse:
                 user=request.user
             ).order_by('-updated_at')[:10]
             
-            # If no active session exists, create one
-            if not active_session:
-                active_session = ChatSession.objects.create(
-                    user=request.user,
-                    title='Nova Conversa'
-                )
+            # Don't create session automatically - only create when user sends first message
+            # This matches Gemini behavior: show welcome state until user actually sends something
         else:
             # For anonymous users, create temporary session in session storage
             session_id = request.session.get('temp_chat_session_id')
