@@ -2,6 +2,7 @@
 Legislation models for Jurix project.
 """
 from django.db import models
+from django.contrib.auth.models import User
 from pgvector.django import VectorField
 from src.apps.core.models import TimeStampedModel
 
@@ -487,3 +488,112 @@ class EventoAlteracao(TimeStampedModel):
         
         return desc
 
+
+class ChatSession(TimeStampedModel):
+    """
+    Model for storing chat conversation sessions.
+    
+    Each session represents a conversation between a user and the chatbot.
+    Sessions are linked to authenticated users for persistence.
+    """
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='chat_sessions',
+        verbose_name='Usuário',
+        help_text='Usuário dono desta sessão de conversa'
+    )
+    
+    title = models.CharField(
+        max_length=200,
+        verbose_name='Título',
+        blank=True,
+        help_text='Título da sessão (gerado a partir da primeira pergunta ou manual)'
+    )
+    
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Ativa',
+        help_text='Se esta sessão está atualmente ativa'
+    )
+    
+    class Meta:
+        verbose_name = 'Sessão de Chat'
+        verbose_name_plural = 'Sessões de Chat'
+        ordering = ['-updated_at']
+        indexes = [
+            models.Index(fields=['user', '-updated_at']),
+            models.Index(fields=['is_active']),
+        ]
+    
+    def __str__(self) -> str:
+        return f"{self.title or 'Conversa sem título'} - {self.user.username}"
+    
+    def get_last_message_preview(self) -> str:
+        """Retorna preview da primeira pergunta do usuário da sessão."""
+        first_user_msg = self.messages.filter(role='user').order_by('created_at').first()
+        if first_user_msg:
+            preview = first_user_msg.content[:50] + ('...' if len(first_user_msg.content) > 50 else '')
+            return preview
+        return ''
+
+
+class ChatMessage(TimeStampedModel):
+    """
+    Model for storing individual chat messages within a session.
+    
+    Stores both user questions and assistant responses with their sources.
+    """
+    ROLE_CHOICES = [
+        ('user', 'Usuário'),
+        ('assistant', 'Assistente'),
+    ]
+    
+    session = models.ForeignKey(
+        ChatSession,
+        on_delete=models.CASCADE,
+        related_name='messages',
+        verbose_name='Sessão',
+        help_text='Sessão de chat à qual esta mensagem pertence'
+    )
+    
+    role = models.CharField(
+        max_length=10,
+        choices=ROLE_CHOICES,
+        verbose_name='Papel',
+        help_text='Papel da mensagem (usuário ou assistente)'
+    )
+    
+    content = models.TextField(
+        verbose_name='Conteúdo',
+        help_text='Conteúdo da mensagem (pergunta do usuário ou resposta do assistente)'
+    )
+    
+    # For assistant messages: store sources as JSON
+    sources_json = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Fontes',
+        help_text='Lista de fontes citadas na resposta (JSON)'
+    )
+    
+    # Metadata for assistant responses
+    metadata_json = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='Metadados',
+        help_text='Metadados da resposta (modelo usado, confidence, etc.)'
+    )
+    
+    class Meta:
+        verbose_name = 'Mensagem de Chat'
+        verbose_name_plural = 'Mensagens de Chat'
+        ordering = ['session', 'created_at']
+        indexes = [
+            models.Index(fields=['session', 'created_at']),
+            models.Index(fields=['role']),
+        ]
+    
+    def __str__(self) -> str:
+        preview = self.content[:50] + ('...' if len(self.content) > 50 else '')
+        return f"{self.get_role_display()}: {preview}"

@@ -59,9 +59,9 @@
        TIPOGRAFIA - INTER + JETBRAINS MONO
        ======================================== */
     
-    /* Font Families */
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --font-mono: 'JetBrains Mono', 'Courier New', Consolas, monospace;
+    /* Font Families - Elegant Typography */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', Consolas, monospace;
     
     /* Font Sizes (Major Third Scale - 1.25 ratio) */
     --font-size-xs: 0.75rem;     /* 12px */
@@ -251,10 +251,19 @@ html {
     text-rendering: optimizeLegibility;
 }
 
+/* Apply elegant typography globally */
+* {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
 body {
     font-family: var(--font-sans);
     font-size: var(--font-size-base);
-    line-height: var(--line-height-normal);
+    line-height: var(--line-height-relaxed);
+    font-weight: var(--font-weight-normal);
+    letter-spacing: var(--letter-spacing-normal);
     color: var(--color-text);
     background-color: var(--color-bg-primary);
     overflow-x: hidden;
@@ -775,6 +784,133 @@ strong, b {
     color: var(--color-text-inverse);
 }
 
+/* Chat Sessions List */
+.chat-sessions-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-top: var(--space-2);
+}
+
+.chat-session-item {
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-size: var(--font-size-sm);
+    color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-bottom: var(--space-1);
+}
+
+.chat-session-item:hover {
+    background: var(--color-gray-800);
+    color: var(--color-text-inverse);
+}
+
+.chat-session-item.active {
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
+}
+
+[data-theme="light"] .chat-session-item {
+    color: var(--color-text);
+}
+
+[data-theme="light"] .chat-session-item:hover {
+    background: var(--color-gray-100);
+    color: var(--color-text);
+}
+
+.chat-session-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: var(--font-weight-medium);
+}
+
+.chat-session-preview {
+    font-size: var(--font-size-xs);
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+[data-theme="light"] .chat-session-preview {
+    color: var(--color-text-secondary);
+}
+
+.delete-session-button {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    opacity: 0;
+    flex-shrink: 0;
+}
+
+.chat-session-item:hover .delete-session-button {
+    opacity: 1;
+}
+
+.delete-session-button:hover {
+    color: var(--color-error);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+[data-theme="light"] .delete-session-button {
+    color: var(--color-text-secondary);
+}
+
+[data-theme="light"] .delete-session-button:hover {
+    color: var(--color-error);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.new-chat-button {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-sm);
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+
+.new-chat-button:hover {
+    background: var(--color-gray-800);
+    border-color: var(--color-primary);
+    color: var(--color-text-inverse);
+}
+
+[data-theme="light"] .new-chat-button {
+    border-color: var(--color-border);
+    color: var(--color-text);
+}
+
+[data-theme="light"] .new-chat-button:hover {
+    background: var(--color-gray-100);
+    border-color: var(--color-primary);
+}
+
 /* Theme Toggle - Premium Design */
 .theme-toggle-container {
     display: flex;
@@ -1050,7 +1186,7 @@ strong, b {
 
 /* Welcome State - Better space distribution */
 .welcome-state {
-    display: flex;
+    display: flex !important; /* Force display to ensure visibility */
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -1309,6 +1445,10 @@ strong, b {
 .message-actions {
     margin-top: var(--space-2);
     margin-bottom: var(--space-2);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
 }
 
 /* Copy Response Button - Before Sources - Swiss Design Minimalist */
@@ -1383,6 +1523,53 @@ strong, b {
 
 .copy-response-button.copied .check-icon {
     display: block;
+}
+
+/* Regenerate Button - Swiss Design */
+.regenerate-button {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    opacity: 0;
+    transform: translateY(-8px);
+    flex-shrink: 0;
+}
+
+.regenerate-button.show {
+    display: inline-flex;
+    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+
+.regenerate-button:hover {
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.regenerate-button:hover svg {
+    transform: rotate(180deg);
+}
+
+.regenerate-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.regenerate-button svg {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 /* Sources Cards */
@@ -1477,6 +1664,15 @@ strong, b {
     height: 100%;
     background: linear-gradient(90deg, var(--color-success) 0%, var(--color-primary-lighter) 100%);
     transition: width 0.3s ease;
+}
+
+/* Dark mode: More saturated green for better visibility */
+[data-theme="dark"] .score-fill {
+    background: linear-gradient(90deg, #22c55e 0%, #60a5fa 100%); /* More saturated green-500 */
+}
+
+[data-theme="dark"] .source-score {
+    color: #22c55e; /* More saturated green for text */
 }
 
 .source-meta {
@@ -2443,11 +2639,14 @@ a:focus-visible,
     padding: var(--space-3);
     border-radius: var(--radius-md);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    /* Spring animation for smooth reordering - Swiss Design */
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     display: flex;
     align-items: center;
     gap: var(--space-3);
     user-select: none;
+    /* Layout animation support */
+    will-change: transform, opacity;
 }
 
 .command-palette-item:active {
@@ -2518,5 +2717,159 @@ a:focus-visible,
     text-align: center;
     color: var(--color-text-secondary);
     font-size: var(--font-size-sm);
+}
+
+/* ============================
+   PAGE TRANSITIONS & SKELETON SCREENS
+   ============================ */
+.page-transition-skeleton {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--color-bg-primary);
+    z-index: var(--z-modal);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+}
+
+.page-transition-skeleton.active {
+    display: flex;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.skeleton-content {
+    width: 100%;
+    max-width: 800px;
+    padding: var(--space-6);
+}
+
+/* ============================
+   DELETE CONFIRMATION MODAL
+   Swiss Design Elegant Modal
+   ============================ */
+.delete-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: calc(var(--z-modal) + 1);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.delete-modal-overlay.active {
+    display: flex;
+    opacity: 1;
+}
+
+.delete-modal {
+    width: 90%;
+    max-width: 420px;
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    transform: scale(0.92) translateY(-10px);
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.delete-modal-overlay.active .delete-modal {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+.delete-modal-header {
+    padding: var(--space-4) var(--space-4) var(--space-3);
+    border-bottom: var(--border-width-thin) solid var(--color-border);
+}
+
+.delete-modal-header h3 {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+    margin: 0;
+}
+
+.delete-modal-body {
+    padding: var(--space-4);
+}
+
+.delete-modal-body p {
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-relaxed);
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.delete-modal-footer {
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    display: flex;
+    gap: var(--space-2);
+    justify-content: flex-end;
+    border-top: var(--border-width-thin) solid var(--color-border);
+}
+
+.delete-modal-cancel,
+.delete-modal-confirm {
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border: 1px solid var(--color-border);
+}
+
+.delete-modal-cancel {
+    background: var(--color-bg-secondary);
+    color: var(--color-text);
+}
+
+.delete-modal-cancel:hover {
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-border-strong);
+}
+
+.delete-modal-confirm {
+    background: var(--color-error);
+    color: var(--color-text-inverse);
+    border-color: var(--color-error);
+}
+
+.delete-modal-confirm:hover {
+    background: #dc2626;
+    border-color: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.delete-modal-confirm:active {
+    transform: translateY(0);
+}
+
+@keyframes skeleton-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
 }
 

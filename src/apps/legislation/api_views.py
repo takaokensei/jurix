@@ -17,7 +17,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
 from django.db.models import Q
 
-from src.apps.legislation.models import Norma, Dispositivo
+from src.apps.legislation.models import Norma, Dispositivo, ChatSession, ChatMessage
 from src.processing.rag_service import RAGService
 
 logger = logging.getLogger(__name__)
@@ -361,4 +361,189 @@ def norma_detail_api(request: HttpRequest, pk: int) -> JsonResponse:
             'success': False,
             'error': str(e)
         }, status=500)
+
+
+@require_http_methods(["GET", "POST"])
+def chat_sessions_api(request: HttpRequest) -> JsonResponse:
+    """
+    API endpoint for chat sessions management.
+    
+    GET /api/v1/chat/sessions/ - List all sessions for authenticated user
+    POST /api/v1/chat/sessions/ - Create new session
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'error': 'Authentication required'
+        }, status=401)
+    
+    try:
+        if request.method == 'GET':
+            limit = min(int(request.GET.get('limit', 20)), 100)
+            sessions = ChatSession.objects.filter(user=request.user).order_by('-updated_at')[:limit]
+            
+            sessions_data = []
+            for session in sessions:
+                sessions_data.append({
+                    'id': session.id,
+                    'title': session.title or 'Conversa sem título',
+                    'is_active': session.is_active,
+                    'created_at': session.created_at.isoformat(),
+                    'updated_at': session.updated_at.isoformat(),
+                    'message_count': session.messages.count(),
+                    'latest_message_preview': session.get_last_message_preview()  # Get first user question instead of last message
+                })
+            
+            return JsonResponse({'success': True, 'sessions': sessions_data, 'count': len(sessions_data)})
+        
+        elif request.method == 'POST':
+            data = json.loads(request.body) if request.body else {}
+            title = data.get('title', 'Nova Conversa')
+            
+            ChatSession.objects.filter(user=request.user, is_active=True).update(is_active=False)
+            session = ChatSession.objects.create(user=request.user, title=title[:200], is_active=True)
+            
+            return JsonResponse({
+                'success': True,
+                'session': {
+                    'id': session.id,
+                    'title': session.title,
+                    'is_active': session.is_active,
+                    'created_at': session.created_at.isoformat()
+                }
+            }, status=201)
+    
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        logger.error(f"Error in chat sessions API: {e}", exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@require_http_methods(["GET", "DELETE"])
+def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonResponse:
+    """API endpoint for single chat session operations."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+    
+    try:
+        session = ChatSession.objects.get(id=session_id, user=request.user)
+    except ChatSession.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
+    
+    try:
+        if request.method == 'GET':
+            messages = session.messages.order_by('created_at')
+            messages_data = []
+            for msg in messages:
+                messages_data.append({
+                    'id': msg.id,
+                    'role': msg.role,
+                    'content': msg.content,
+                    'sources': msg.sources_json if msg.role == 'assistant' else [],
+                    'metadata': msg.metadata_json if msg.role == 'assistant' else {},
+                    'created_at': msg.created_at.isoformat()
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'session': {
+                    'id': session.id,
+                    'title': session.title,
+                    'is_active': session.is_active,
+                    'created_at': session.created_at.isoformat(),
+                    'updated_at': session.updated_at.isoformat(),
+                },
+                'messages': messages_data,
+                'count': len(messages_data)
+            })
+        
+        elif request.method == 'DELETE':
+            session.delete()
+            return JsonResponse({'success': True, 'message': 'Session deleted'})
+    
+    except Exception as e:
+        logger.error(f"Error in chat session detail API: {e}", exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@require_http_methods(["POST"])
+def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonResponse:
+    """API endpoint to regenerate the last assistant response."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+    
+    try:
+        session = ChatSession.objects.get(id=session_id, user=request.user)
+    except ChatSession.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
+    
+    try:
+        last_user_msg = session.messages.filter(role='user').order_by('-created_at').first()
+        if not last_user_msg:
+            return JsonResponse({'success': False, 'error': 'No user message found to regenerate'}, status=400)
+        
+        last_assistant = session.messages.filter(role='assistant').order_by('-created_at').first()
+        if last_assistant:
+            last_assistant.delete()
+        
+        data = json.loads(request.body) if request.body else {}
+        k = data.get('k', 5)
+        model = data.get('model', 'llama3')
+        
+        rag_service = RAGService()
+        response = rag_service.answer_question(question=last_user_msg.content, k=k, model=model)
+        
+        sources = []
+        for source in response.get('sources', []):
+            disp = source['dispositivo']
+            similarity = source.get('similarity_score', 0.0)
+            similarity_score = max(0.0, min(1.0, float(similarity) if similarity is not None else 0.0))
+            norma = disp.norma
+            
+            sources.append({
+                'id': disp.id,
+                'text': disp.texto[:200] + ('...' if len(disp.texto) > 200 else ''),
+                'full_text': disp.texto,
+                'similarity_score': similarity_score,
+                'distance': float(source.get('distance', 1.0)),
+                'norma_ref': f"{norma.tipo} {norma.numero}/{norma.ano}",
+                'norma_id': norma.id,
+                'dispositivo_ref': disp.get_full_identifier(),
+                'hierarchy': source.get('context', {}).get('hierarchy', ''),
+                'pdf_url': norma.pdf_url if norma.pdf_url else None,
+                'sapl_url': norma.sapl_url if norma.sapl_url else None,
+                'dispositivo_id': disp.id
+            })
+        
+        ChatMessage.objects.create(
+            session=session,
+            role='assistant',
+            content=response['answer'],
+            sources_json=sources,
+            metadata_json={
+                'model': response.get('model', model),
+                'confidence': response.get('confidence', 0.0),
+                'context_length': response.get('context_length', 0),
+                'sources_count': len(sources)
+            }
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'answer': response['answer'],
+            'sources': sources,
+            'confidence': response['confidence'],
+            'metadata': {
+                'model': response.get('model', model),
+                'context_length': response.get('context_length', 0),
+                'sources_count': len(sources)
+            }
+        })
+    
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        logger.error(f"Error in chat session regenerate API: {e}", exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 

@@ -40,5 +40,22 @@ urlpatterns = [
         api_views.norma_detail_api,
         name='norma_detail'
     ),
+    
+    # Chat sessions endpoints
+    path(
+        'chat/sessions/',
+        api_views.chat_sessions_api,
+        name='chat_sessions'
+    ),
+    path(
+        'chat/sessions/<int:session_id>/',
+        api_views.chat_session_detail_api,
+        name='chat_session_detail'
+    ),
+    path(
+        'chat/sessions/<int:session_id>/regenerate/',
+        api_views.chat_session_regenerate_api,
+        name='chat_session_regenerate'
+    ),
 ]
 

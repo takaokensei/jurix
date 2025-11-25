@@ -16,7 +16,7 @@ from django.db.models import Q
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import Norma, Dispositivo, EventoAlteracao
+from .models import Norma, Dispositivo, EventoAlteracao, ChatSession, ChatMessage
 from src.processing.rag_service import RAGService
 
 logger = logging.getLogger(__name__)
@@ -200,11 +200,43 @@ def chatbot_view(request: HttpRequest) -> HttpResponse:
     POST: Processes questions and returns AI-generated answers
     """
     if request.method == 'GET':
+        # Get or create active session for authenticated user
+        active_session = None
+        chat_sessions = []
+        
+        if request.user.is_authenticated:
+            # Get or create active session
+            active_session = ChatSession.objects.filter(
+                user=request.user,
+                is_active=True
+            ).order_by('-updated_at').first()
+            
+            # Get recent sessions for sidebar (last 10)
+            chat_sessions = ChatSession.objects.filter(
+                user=request.user
+            ).order_by('-updated_at')[:10]
+            
+            # If no active session exists, create one
+            if not active_session:
+                active_session = ChatSession.objects.create(
+                    user=request.user,
+                    title='Nova Conversa'
+                )
+        else:
+            # For anonymous users, create temporary session in session storage
+            session_id = request.session.get('temp_chat_session_id')
+            if not session_id:
+                # Create a temporary session object (not persisted)
+                session_id = f"temp_{request.session.session_key}"
+                request.session['temp_chat_session_id'] = session_id
+        
         # Render chat interface
         context = {
             'page_title': 'Assistente Jurídico - Jurix',
             'total_dispositivos': Dispositivo.objects.filter(embedding__isnull=False).count(),
             'total_normas': Norma.objects.filter(status='consolidated').count(),
+            'chat_sessions': chat_sessions,
+            'active_session': active_session,
         }
         return render(request, 'legislation/chatbot.html', context)
     
@@ -271,11 +303,76 @@ def chatbot_view(request: HttpRequest) -> HttpResponse:
                     'dispositivo_id': disp.id
                 })
             
+            # Get session_id from request if regenerating
+            session_id = data.get('session_id')
+            regenerate = data.get('regenerate', False)
+            
+            # Persist chat history (if user is authenticated)
+            if request.user.is_authenticated:
+                # Get or create active session
+                chat_session = None
+                
+                if session_id:
+                    try:
+                        chat_session = ChatSession.objects.get(id=session_id, user=request.user)
+                    except ChatSession.DoesNotExist:
+                        pass
+                
+                if not chat_session:
+                    chat_session = ChatSession.objects.filter(
+                        user=request.user,
+                        is_active=True
+                    ).order_by('-updated_at').first()
+                
+                if not chat_session:
+                    # Create new session with title from first question
+                    title = question[:50] + ('...' if len(question) > 50 else '')
+                    chat_session = ChatSession.objects.create(
+                        user=request.user,
+                        title=title,
+                        is_active=True
+                    )
+                else:
+                    # Update session title if it's still the default
+                    if chat_session.title == 'Nova Conversa' and not chat_session.messages.exists():
+                        chat_session.title = question[:50] + ('...' if len(question) > 50 else '')
+                        chat_session.save()
+                
+                session_id = chat_session.id
+                
+                # If regenerating, delete last assistant message
+                if regenerate:
+                    last_assistant = chat_session.messages.filter(role='assistant').order_by('-created_at').first()
+                    if last_assistant:
+                        last_assistant.delete()
+                else:
+                    # Save user message (only if not regenerating)
+                    ChatMessage.objects.create(
+                        session=chat_session,
+                        role='user',
+                        content=question
+                    )
+                
+                # Save assistant message
+                ChatMessage.objects.create(
+                    session=chat_session,
+                    role='assistant',
+                    content=response['answer'],
+                    sources_json=sources,
+                    metadata_json={
+                        'model': response.get('model', model),
+                        'confidence': response.get('confidence', 0.0),
+                        'context_length': response.get('context_length', 0),
+                        'sources_count': len(sources)
+                    }
+                )
+            
             return JsonResponse({
                 'success': True,
                 'answer': response['answer'],
                 'sources': sources,
                 'confidence': response['confidence'],
+                'session_id': session_id,
                 'metadata': {
                     'model': response.get('model', model),
                     'context_length': response.get('context_length', 0),
