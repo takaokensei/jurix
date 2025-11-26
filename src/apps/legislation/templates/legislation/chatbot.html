@@ -32,9 +32,14 @@
     <div class="workspace">
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar" role="complementary" aria-label="Barra lateral de navegação">
+            <!-- Persistent Jurix Logo - Swiss Design -->
+            <a href="{% url 'legislation:chatbot' %}" class="sidebar-logo-link" aria-label="Ir para Nova Conversa">
+                <img src="{% static 'img/logo-icon.svg' %}" alt="Logo Jurix" class="sidebar-logo-icon">
+                <span class="sidebar-logo-text">Jurix</span>
+            </a>
+            
             <div class="sidebar-header">
-                <img src="{% static 'img/logo-icon.svg' %}" alt="Logo Jurix">
-                <h1>Jurix</h1>
+                <!-- Empty header for spacing, logo moved above -->
             </div>
             
             <div class="sidebar-content">
@@ -47,7 +52,7 @@
                             aria-label="Nova Conversa"
                             title="Nova Conversa"
                         >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="new-chat-icon">
                                 <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                             </svg>
                         </button>
@@ -241,93 +246,266 @@
                     return;
                 }
                 
-                sessionsList.innerHTML = data.sessions.map(session => `
-                    <div class="chat-session-item ${session.is_active ? 'active' : ''}" 
-                         data-session-id="${session.id}" 
-                         role="button" 
-                         tabindex="0"
-                         onclick="loadSession(${session.id})"
-                         onkeydown="if(event.key==='Enter') loadSession(${session.id})">
+                // Store temp session cards to preserve them
+                const tempCards = Array.from(sessionsList.querySelectorAll('.chat-session-item[data-session-id^="temp-"]'));
+                
+                // Clear existing non-temp sessions
+                const existingItems = sessionsList.querySelectorAll('.chat-session-item:not([data-session-id^="temp-"])');
+                existingItems.forEach(item => item.remove());
+                
+                // Clear empty state message if exists
+                const emptyState = sessionsList.querySelector('div:not(.chat-session-item)');
+                if (emptyState && !emptyState.classList.contains('chat-session-item')) {
+                    emptyState.remove();
+                }
+                
+                // Add new sessions with animation
+                data.sessions.forEach((session, index) => {
+                    // Check if this session already exists (to avoid duplicates)
+                    const existing = sessionsList.querySelector(`[data-session-id="${session.id}"]`);
+                    if (existing) {
+                        // Update existing card
+                        existing.className = `chat-session-item ${session.is_active ? 'active' : ''}`;
+                        const titleEl = existing.querySelector('.chat-session-title');
+                        if (titleEl) {
+                            titleEl.textContent = session.latest_message_preview || session.title;
+                        }
+                        return;
+                    }
+                    
+                    const sessionItem = document.createElement('div');
+                    sessionItem.className = `chat-session-item ${session.is_active ? 'active' : ''}`;
+                    sessionItem.dataset.sessionId = session.id;
+                    sessionItem.setAttribute('role', 'button');
+                    sessionItem.setAttribute('tabindex', '0');
+                    sessionItem.onclick = () => loadSession(session.id);
+                    sessionItem.onkeydown = (e) => {
+                        if (e.key === 'Enter') loadSession(session.id);
+                    };
+                    
+                    sessionItem.innerHTML = `
                         <div style="flex: 1; min-width: 0;">
                             ${session.latest_message_preview ? `<div class="chat-session-title">${escapeHtml(session.latest_message_preview)}</div>` : `<div class="chat-session-title">${escapeHtml(session.title)}</div>`}
                         </div>
                         <button 
                             class="delete-session-button" 
-                            onclick="event.stopPropagation(); deleteSession(${session.id})"
+                            onclick="event.stopPropagation(); deleteSession(${session.id}, event)"
                             aria-label="Deletar conversa"
                             title="Deletar conversa">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="delete-icon">
                                 <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </button>
-                    </div>
-                `).join('');
+                    `;
+                    
+                    // Insert at the top (after temp cards if any)
+                    // Fix: Check if parentNode exists before using contains
+                    if (tempCards.length > 0 && tempCards[0].parentNode && tempCards[0].parentNode === sessionsList) {
+                        sessionsList.insertBefore(sessionItem, tempCards[0]);
+                    } else if (sessionsList.firstChild && sessionsList.firstChild.classList && sessionsList.firstChild.classList.contains('chat-session-item')) {
+                        sessionsList.insertBefore(sessionItem, sessionsList.firstChild);
+                    } else {
+                        sessionsList.appendChild(sessionItem);
+                    }
+                    
+                    // Animate entrance
+                    sessionItem.style.opacity = '0';
+                    sessionItem.style.transform = 'translateY(-5px)';
+                    setTimeout(() => {
+                        sessionItem.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                        sessionItem.style.opacity = '1';
+                        sessionItem.style.transform = 'translateY(0)';
+                    }, index * 30);
+                });
+                
+                // If no sessions and no temp cards, show empty state
+                if (data.sessions.length === 0 && tempCards.length === 0) {
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.style.cssText = 'padding: var(--space-2); color: var(--color-text-secondary); font-size: var(--font-size-xs); text-align: center;';
+                    emptyDiv.textContent = 'Nenhuma conversa ainda';
+                    sessionsList.appendChild(emptyDiv);
+                }
             } catch (error) {
                 console.error('Error loading chat sessions:', error);
             }
         }
         
         // Create new chat session
+        // IMPORTANT: This function navigates to base URL (new conversation)
+        // It should only clear the current state and show welcome screen
+        // Session will be created when user sends first message
         async function createNewSession() {
             try {
-                // Check if there's already an empty "Nova Conversa" session
-                const sessionsResponse = await fetch('/api/v1/chat/sessions/');
-                if (sessionsResponse.ok) {
-                    const sessionsData = await sessionsResponse.json();
-                    if (sessionsData.success && sessionsData.sessions) {
-                        // Find empty "Nova Conversa" sessions (no messages)
-                        const emptyNewSessions = sessionsData.sessions.filter(session => 
-                            session.title === 'Nova Conversa' && session.message_count === 0
-                        );
-                        
-                        if (emptyNewSessions.length > 0) {
-                            // Redirect to existing empty session
-                            currentSessionId = emptyNewSessions[0].id;
-                            clearMessages();
-                            await loadChatSessions();
-                            
-                            // Show welcome state with streaming greeting
-                            showWelcomeStateWithStreaming();
-                            
-                            // Load any saved text for this session
-                            if (textarea) {
-                                loadSavedText(currentSessionId);
-                            }
-                            return;
+                // Navigate to base chatbot URL (new conversation)
+                const baseUrl = '{% url "legislation:chatbot" %}';
+                window.history.pushState({}, '', baseUrl);
+                
+                // Clear current session ID (no session until user sends message)
+                currentSessionId = null;
+                
+                // Clear messages
+                clearMessages();
+                
+                // Ensure welcome state is visible
+                const welcomeState = document.getElementById('welcome-state');
+                if (welcomeState) {
+                    welcomeState.style.display = 'flex';
+                }
+                
+                // Show welcome state with streaming
+                showWelcomeStateWithStreaming();
+                
+                // Clear any saved text
+                if (textarea) {
+                    textarea.value = '';
+                    textarea.style.height = 'auto';
+                    // Clear all saved text from localStorage
+                    Object.keys(localStorage).forEach(key => {
+                        if (key.startsWith('chat-input-')) {
+                            localStorage.removeItem(key);
                         }
-                    }
+                    });
                 }
                 
-                // Create new session if no empty one exists
-                const csrfToken = getCookie('csrftoken');
-                const response = await fetch('/api/v1/chat/sessions/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({ title: 'Nova Conversa' })
-                });
+                // Reload sessions list to update active state
+                await loadChatSessions();
                 
-                if (!response.ok) throw new Error('Failed to create session');
-                
-                const data = await response.json();
-                if (data.success && data.session) {
-                    currentSessionId = data.session.id;
-                    clearMessages();
-                    await loadChatSessions();
-                    
-                    // Show welcome state with streaming greeting
-                    showWelcomeStateWithStreaming();
-                }
+                // Update button state (will be enabled since we're in new conversation)
+                updateNewChatButtonState();
             } catch (error) {
                 console.error('Error creating new session:', error);
             }
         }
         
+        // Update new chat button state
+        // NEW LOGIC: Button is disabled only when in a named conversation (has slug in URL)
+        // Button enables when in new conversation (no slug) or when user is in welcome state
+        function updateNewChatButtonState() {
+            const newChatBtn = document.getElementById('new-chat-button');
+            if (!newChatBtn) return;
+            
+            // Check if we're in a named conversation (has slug in URL)
+            const currentPath = window.location.pathname;
+            const isInNamedConversation = currentPath.includes('/chatbot/') && 
+                                         currentPath !== '/normas/chatbot/' && 
+                                         currentPath.split('/chatbot/').length > 1 &&
+                                         currentPath.split('/chatbot/')[1] !== '';
+            
+            // Disable if we're in a named conversation (user should use logo to go back)
+            if (isInNamedConversation) {
+                newChatBtn.disabled = true;
+                newChatBtn.classList.add('disabled');
+                newChatBtn.style.opacity = '0.5';
+                newChatBtn.style.cursor = 'not-allowed';
+            } else {
+                // Enable if we're in new conversation or welcome state
+                newChatBtn.disabled = false;
+                newChatBtn.classList.remove('disabled');
+                newChatBtn.style.opacity = '1';
+                newChatBtn.style.cursor = 'pointer';
+            }
+        }
+        
+        // Create session card immediately in sidebar (before AI responds)
+        // This provides instant feedback that the conversation was created
+        async function createSessionCardImmediately(question) {
+            const sessionsList = document.getElementById('chat-sessions-list');
+            if (!sessionsList) return;
+            
+            // Create temporary session card with animation
+            const tempSessionId = 'temp-' + Date.now();
+            const sessionTitle = question.length > 50 ? question.substring(0, 50) + '...' : question;
+            
+            const sessionCard = document.createElement('div');
+            sessionCard.className = 'chat-session-item active session-card-new';
+            sessionCard.dataset.sessionId = tempSessionId;
+            sessionCard.setAttribute('role', 'button');
+            sessionCard.setAttribute('tabindex', '0');
+            sessionCard.innerHTML = `
+                <div style="flex: 1; min-width: 0;">
+                    <div class="chat-session-title">${escapeHtml(sessionTitle)}</div>
+                </div>
+                <button 
+                    class="delete-session-button" 
+                    onclick="event.stopPropagation(); deleteSession('${tempSessionId}')"
+                    aria-label="Deletar conversa"
+                    title="Deletar conversa">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="delete-icon">
+                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            `;
+            
+            // Insert at the top of the list
+            // Fix: Check if firstChild exists and has classList before using contains
+            if (sessionsList.firstChild && sessionsList.firstChild.classList && sessionsList.firstChild.classList.contains('chat-session-item')) {
+                sessionsList.insertBefore(sessionCard, sessionsList.firstChild);
+            } else {
+                // Clear "Nenhuma conversa ainda" message if exists
+                const emptyState = sessionsList.querySelector('div:not(.chat-session-item)');
+                if (emptyState) {
+                    emptyState.remove();
+                }
+                sessionsList.insertBefore(sessionCard, sessionsList.firstChild);
+            }
+            
+            // Animate card entrance (slide in from top + fade)
+            sessionCard.style.opacity = '0';
+            sessionCard.style.transform = 'translateY(-10px)';
+            requestAnimationFrame(() => {
+                sessionCard.style.transition = 'opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+                sessionCard.style.opacity = '1';
+                sessionCard.style.transform = 'translateY(0)';
+            });
+            
+            // Store reference to update later with real session ID
+            window.tempSessionCard = sessionCard;
+        }
+        
+        // Animate when session is officially created (first message sent)
+        function animateSessionCreated() {
+            // Create a subtle notification/toast
+            const toast = document.createElement('div');
+            toast.className = 'session-created-toast';
+            toast.innerHTML = `
+                <div class="session-created-content">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Conversa registrada no histórico</span>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            
+            // Trigger animation
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+            
+            // Remove after animation
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 2500);
+        }
+        
         // Delete a chat session
-        async function deleteSession(sessionId) {
+        async function deleteSession(sessionId, event) {
             if (!sessionId) return;
+            
+            // Animate delete button click
+            if (event) {
+                const deleteBtn = event.target.closest('.delete-session-button');
+                if (deleteBtn) {
+                    deleteBtn.style.transform = 'scale(0.9)';
+                    deleteBtn.style.transition = 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1)';
+                    setTimeout(() => {
+                        deleteBtn.style.transform = '';
+                    }, 150);
+                }
+            }
             
             // Show elegant modal instead of confirm()
             showDeleteModal(sessionId);
@@ -384,8 +562,13 @@
                 await performDeleteSession(sessionId);
             };
             
-            // Show modal
-            modalOverlay.classList.add('active');
+            // Show modal with animation - ensure it's visible
+            modalOverlay.style.display = 'flex';
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    modalOverlay.classList.add('active');
+                });
+            });
         }
         
         // Perform the actual deletion
@@ -430,15 +613,24 @@
         }
         
         // Load a specific session and display its messages
+        // NEW: Navigates to URL with slug (like Gemini)
         async function loadSession(sessionId) {
             if (!sessionId) return;
             
             try {
-                const response = await fetch(`/api/v1/chat/sessions/${sessionId}/`);
-                if (!response.ok) throw new Error('Failed to load session');
+                // First, get session slug from API
+                const sessionResponse = await fetch(`/api/v1/chat/sessions/${sessionId}/`);
+                if (!sessionResponse.ok) throw new Error('Failed to load session');
                 
-                const data = await response.json();
-                if (!data.success || !data.messages) return;
+                const sessionData = await sessionResponse.json();
+                if (!sessionData.success || !sessionData.session) return;
+                
+                const sessionSlug = sessionData.session.slug || sessionData.session.id;
+                
+                // Navigate to URL with slug (like Gemini: /chatbot/abc123def456)
+                const baseUrl = '{% url "legislation:chatbot" %}';
+                const sessionUrl = `${baseUrl}${sessionSlug}/`;
+                window.history.pushState({}, '', sessionUrl);
                 
                 currentSessionId = sessionId;
                 clearMessages();
@@ -453,21 +645,75 @@
                 
                 // Hide welcome state (only if there are messages)
                 const welcomeState = document.getElementById('welcome-state');
-                if (welcomeState && data.messages.length > 0) {
+                if (welcomeState && sessionData.messages && sessionData.messages.length > 0) {
                     welcomeState.style.display = 'none';
-                } else if (welcomeState && data.messages.length === 0) {
+                } else if (welcomeState && (!sessionData.messages || sessionData.messages.length === 0)) {
                     welcomeState.style.display = 'flex';
                 }
+                
+                // Load and render messages
+                if (sessionData.messages && sessionData.messages.length > 0) {
+                    const assistantMessages = sessionData.messages.filter(m => m.role === 'assistant');
+                    let messageIndex = 0;
+                    
+                    // Show indicator if there are more messages
+                    if (sessionData.has_more && sessionData.total_count > sessionData.count) {
+                        const moreIndicator = document.createElement('div');
+                        moreIndicator.className = 'messages-load-more-indicator';
+                        moreIndicator.innerHTML = `
+                            <div class="messages-load-more-content">
+                                <span>Mostrando últimas ${sessionData.count} de ${sessionData.total_count} mensagens</span>
+                            </div>
+                        `;
+                        const messagesWrapper = document.getElementById('messages-wrapper');
+                        if (messagesWrapper) {
+                            messagesWrapper.insertBefore(moreIndicator, messagesWrapper.firstChild);
+                        }
+                    }
+                    
+                    for (let i = 0; i < sessionData.messages.length; i++) {
+                        const msg = sessionData.messages[i];
+                        if (msg.role === 'user') {
+                            addUserMessage(msg.content);
+                        } else if (msg.role === 'assistant') {
+                            messageIndex++;
+                            const isLastAssistant = messageIndex === assistantMessages.length;
+                            addAssistantMessage(msg.content, msg.sources || [], isLastAssistant && currentSessionId ? true : false, true);
+                        }
+                    }
+                }
+                
+                scrollToBottom();
                 
                 // Load saved text for this session after messages are loaded
                 if (textarea) {
                     loadSavedText(sessionId);
                 }
                 
-                // Load and render messages
+                // Update new chat button state (we're loading an existing session)
+                updateNewChatButtonState();
+                
+                // Load and render messages (optimized: only last 25 messages)
+                // No need to animate all messages - just render them quickly
                 const assistantMessages = data.messages.filter(m => m.role === 'assistant');
                 let messageIndex = 0;
                 
+                // Show indicator if there are more messages
+                if (data.has_more && data.total_count > data.count) {
+                    const moreIndicator = document.createElement('div');
+                    moreIndicator.className = 'messages-load-more-indicator';
+                    moreIndicator.innerHTML = `
+                        <div class="messages-load-more-content">
+                            <span>Mostrando últimas ${data.count} de ${data.total_count} mensagens</span>
+                        </div>
+                    `;
+                    const messagesWrapper = document.getElementById('messages-wrapper');
+                    if (messagesWrapper) {
+                        messagesWrapper.insertBefore(moreIndicator, messagesWrapper.firstChild);
+                    }
+                }
+                
+                // Render messages without animation for better performance
                 for (let i = 0; i < data.messages.length; i++) {
                     const msg = data.messages[i];
                     if (msg.role === 'user') {
@@ -496,37 +742,44 @@
         }
         
         // Initialize: Load sessions on page load
+        // NEW: Check if we're in a named conversation (has slug in URL)
         function initializeChatbot() {
-            // Show welcome state with streaming on initial load
-            showWelcomeStateWithStreaming();
+            // Check if we're in a named conversation (has slug in URL)
+            const currentPath = window.location.pathname;
+            const pathParts = currentPath.split('/chatbot/');
+            const sessionSlug = pathParts.length > 1 && pathParts[1] ? pathParts[1].replace('/', '') : null;
             
-            // Load chat sessions
-            if (document.getElementById('chat-sessions-list')) {
-                loadChatSessions().then(() => {
-                    // After loading sessions, check for active session
-                    const activeSessionItem = document.querySelector('.chat-session-item.active');
-                    if (activeSessionItem) {
-                        const sessionId = parseInt(activeSessionItem.dataset.sessionId);
-                        if (sessionId) {
-                            // Check if session has messages before loading
-                            fetch(`/api/v1/chat/sessions/${sessionId}/`)
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data.success && data.messages && data.messages.length > 0) {
-                                        // Session has messages - load it
-                                        loadSession(sessionId);
-                                    } else {
-                                        // Session is empty - show welcome state with streaming
-                                        showWelcomeStateWithStreaming();
-                                    }
-                                })
-                                .catch(() => {
-                                    // On error, show welcome state with streaming
-                                    showWelcomeStateWithStreaming();
-                                });
+            if (sessionSlug) {
+                // We're in a named conversation - load it
+                // Fetch sessions to find the one with matching slug
+                fetch(`/api/v1/chat/sessions/`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success && data.sessions) {
+                            const session = data.sessions.find(s => s.slug === sessionSlug);
+                            if (session) {
+                                loadSession(session.id);
+                            } else {
+                                // Slug not found, redirect to new chat
+                                window.location.href = '{% url "legislation:chatbot" %}';
+                            }
                         }
-                    }
-                });
+                    })
+                    .catch(err => {
+                        console.error('Error loading session by slug:', err);
+                        // On error, show welcome state
+                        currentSessionId = null;
+                        showWelcomeStateWithStreaming();
+                    });
+            } else {
+                // We're in new conversation - show welcome state
+                currentSessionId = null;
+                showWelcomeStateWithStreaming();
+            }
+            
+            // Load chat sessions (for sidebar display only)
+            if (document.getElementById('chat-sessions-list')) {
+                loadChatSessions();
             }
             
             // New chat button
@@ -534,6 +787,9 @@
             if (newChatBtn) {
                 newChatBtn.addEventListener('click', createNewSession);
             }
+            
+            // Update new chat button state
+            updateNewChatButtonState();
         }
         
         // Initialize when DOM is ready
@@ -604,9 +860,12 @@
             const question = textarea.value.trim();
             if (!question) return;
             
-            // Hide welcome state
+                // Hide welcome state
             const welcomeStateEl = document.getElementById('welcome-state');
             if (welcomeStateEl) welcomeStateEl.style.display = 'none';
+            
+            // Update new chat button state (we're starting a conversation)
+            updateNewChatButtonState();
             
             // Add user message
             addUserMessage(question);
@@ -618,6 +877,14 @@
             // Clear saved text after sending
             if (currentSessionId) {
                 localStorage.removeItem(`chat-input-${currentSessionId}`);
+            }
+            
+            // IMPORTANT: If this is a new session (first message), create card in sidebar IMMEDIATELY
+            // This happens BEFORE the AI responds, with beautiful animation
+            const wasNewSession = !currentSessionId;
+            if (wasNewSession) {
+                // Create session card immediately with animation
+                await createSessionCardImmediately(question);
             }
             
             // Show loading
@@ -669,8 +936,45 @@
                     // Update current session ID if returned
                     if (data.session_id) {
                         currentSessionId = data.session_id;
-                        // Reload sessions to update active state
-                        loadChatSessions();
+                        
+                        // If this was a new session, update the card we created
+                        if (wasNewSession) {
+                            // Remove temporary card and reload with real session
+                            if (window.tempSessionCard) {
+                                window.tempSessionCard.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+                                window.tempSessionCard.style.opacity = '0';
+                                window.tempSessionCard.style.transform = 'translateY(-5px)';
+                                setTimeout(() => {
+                                    if (window.tempSessionCard && window.tempSessionCard.parentNode) {
+                                        window.tempSessionCard.remove();
+                                    }
+                                    window.tempSessionCard = null;
+                                }, 200);
+                            }
+                            
+                            // Reload sessions to show real session card
+                            await loadChatSessions();
+                            
+                            // Highlight the new session card
+                            const newSessionCard = document.querySelector(`[data-session-id="${data.session_id}"]`);
+                            if (newSessionCard) {
+                                newSessionCard.classList.add('session-card-new');
+                                setTimeout(() => {
+                                    newSessionCard.classList.remove('session-card-new');
+                                }, 1000);
+                            }
+                            
+                            // Show animation toast
+                            setTimeout(() => {
+                                animateSessionCreated();
+                            }, 100);
+                        } else {
+                            // Just reload to update active state
+                            await loadChatSessions();
+                        }
+                        
+                        // Update new chat button state (now we have a session)
+                        updateNewChatButtonState();
                     }
                     
                     // Backend returns: { success: true, answer: "...", sources: [...], confidence, metadata }
@@ -1751,13 +2055,34 @@
                 // Attach click handlers to items
                 commandPaletteResults.querySelectorAll('.command-palette-item').forEach(item => {
                     item.addEventListener('click', () => {
-                        executeCommand(item.dataset.commandId || item.dataset.action);
+                        const commandId = item.dataset.commandId || item.dataset.action;
+                        // Check if it's a chat session (starts with "chat-")
+                        if (commandId && commandId.startsWith('chat-')) {
+                            const sessionId = parseInt(commandId.replace('chat-', ''));
+                            if (sessionId) {
+                                closeCommandPalette();
+                                loadSession(sessionId);
+                                return;
+                            }
+                        }
+                        executeCommand(commandId);
                     });
                 });
             }, existingItems.length * 20 + 50);
         }
         
         function executeCommand(commandId) {
+            // First check if it's a chat session (starts with "chat-")
+            if (commandId && commandId.startsWith('chat-')) {
+                const sessionId = parseInt(commandId.replace('chat-', ''));
+                if (sessionId) {
+                    closeCommandPalette();
+                    loadSession(sessionId);
+                    return;
+                }
+            }
+            
+            // Otherwise, check regular commands
             const cmd = commands.find(c => c.id === commandId);
             if (cmd) {
                 closeCommandPalette();

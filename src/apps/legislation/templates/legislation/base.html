@@ -119,10 +119,10 @@
     
     <header class="navbar">
         <div class="navbar-container">
-            <div class="navbar-brand">
+            <a href="{% url 'legislation:chatbot' %}" class="navbar-brand" aria-label="Ir para Nova Conversa">
                 <img src="{% static 'img/logo-icon.svg' %}" alt="Jurix" class="navbar-logo">
                 <span class="navbar-title">Jurix</span>
-            </div>
+            </a>
             <nav class="navbar-menu" role="navigation" aria-label="Navegação principal">
                 <a href="{% url 'legislation:norma_list' %}" class="nav-link">Normas</a>
                 <a href="{% url 'legislation:chatbot' %}" class="nav-link">Assistente IA</a>

@@ -482,6 +482,11 @@ strong, b {
     align-items: center;
     gap: var(--space-2);
     text-decoration: none;
+    transition: opacity var(--transition-fast);
+}
+
+.navbar-brand:hover {
+    opacity: 0.8;
 }
 
 .navbar-logo {
@@ -690,13 +695,111 @@ strong, b {
     /* No translateX - let width do the work for proper reflow */
 }
 
-.sidebar-header {
+/* Persistent Jurix Logo in Sidebar - Swiss Design */
+.sidebar-logo-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
     padding: var(--space-3) var(--space-3);
+    text-decoration: none;
+    border-bottom: var(--border-width-thin) solid rgba(255, 255, 255, 0.1);
+    transition: all var(--transition-fast);
+    position: relative;
+    z-index: 10;
+}
+
+.sidebar-logo-link:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-logo-icon {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    transition: transform var(--transition-fast);
+}
+
+.sidebar-logo-link:hover .sidebar-logo-icon {
+    transform: scale(1.1);
+}
+
+.sidebar-logo-text {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: var(--letter-spacing-tight);
+    color: var(--color-text-inverse);
+    transition: color var(--transition-fast);
+}
+
+.sidebar-logo-link:hover .sidebar-logo-text {
+    color: var(--color-primary-lighter);
+}
+
+/* Light mode adjustments */
+[data-theme="light"] .sidebar-logo-link {
+    border-bottom-color: var(--color-border);
+}
+
+[data-theme="light"] .sidebar-logo-text {
+    color: var(--color-text);
+}
+
+[data-theme="light"] .sidebar-logo-link:hover {
+    background: var(--color-gray-100);
+}
+
+[data-theme="light"] .sidebar-logo-link:hover .sidebar-logo-text {
+    color: var(--color-primary);
+}
+
+/* When sidebar is collapsed, show only icon + text (compact) - Swiss Design */
+.sidebar.collapsed .sidebar-logo-link {
+    padding: var(--space-2);
+    justify-content: center;
+    flex-direction: column;
+    gap: var(--space-1);
+    border-bottom: var(--border-width-thin) solid rgba(255, 255, 255, 0.1);
+    min-height: 64px; /* Ensure it stays visible */
+    position: relative;
+    z-index: 20; /* Higher z-index to stay on top */
+}
+
+.sidebar.collapsed .sidebar-logo-icon {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+}
+
+.sidebar.collapsed .sidebar-logo-text {
+    font-size: var(--font-size-xs);
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    letter-spacing: 0.1em;
+    font-weight: var(--font-weight-bold);
+    white-space: nowrap;
+}
+
+[data-theme="light"] .sidebar.collapsed .sidebar-logo-link {
+    border-bottom-color: var(--color-border);
+}
+
+/* Ensure logo persists even when sidebar content is hidden */
+.sidebar.collapsed .sidebar-content {
+    display: none; /* Hide content when collapsed */
+}
+
+.sidebar.collapsed .sidebar-logo-link {
+    display: flex !important; /* Force display of logo */
+}
+
+.sidebar-header {
+    padding: var(--space-2) var(--space-3);
     border-bottom: var(--border-width-thin) solid rgba(255, 255, 255, 0.1);
     display: flex;
     align-items: center;
     gap: var(--space-2);
     transition: border-color var(--transition-base);
+    min-height: 0;
 }
 
 /* Light mode adjustments */
@@ -860,6 +963,7 @@ strong, b {
     transition: all var(--transition-fast);
     opacity: 0;
     flex-shrink: 0;
+    position: relative;
 }
 
 .chat-session-item:hover .delete-session-button {
@@ -869,6 +973,24 @@ strong, b {
 .delete-session-button:hover {
     color: var(--color-error);
     background: rgba(239, 68, 68, 0.1);
+    transform: scale(1.1);
+}
+
+.delete-session-button:active {
+    transform: scale(0.95);
+}
+
+/* Icon animation */
+.delete-session-button .delete-icon {
+    transition: transform var(--transition-fast);
+}
+
+.delete-session-button:hover .delete-icon {
+    transform: rotate(15deg) scale(1.1);
+}
+
+.delete-session-button:active .delete-icon {
+    transform: rotate(0deg) scale(0.9);
 }
 
 [data-theme="light"] .delete-session-button {
@@ -893,12 +1015,44 @@ strong, b {
     align-items: center;
     justify-content: center;
     transition: all var(--transition-fast);
+    position: relative;
 }
 
-.new-chat-button:hover {
+.new-chat-button:hover:not(.disabled):not(:disabled) {
     background: var(--color-gray-800);
     border-color: var(--color-primary);
     color: var(--color-text-inverse);
+    transform: scale(1.05);
+}
+
+.new-chat-button:active:not(.disabled):not(:disabled) {
+    transform: scale(0.95);
+}
+
+/* Disabled state - Gemini style (grayed out when already in empty conversation) */
+.new-chat-button.disabled,
+.new-chat-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.new-chat-button.disabled:hover,
+.new-chat-button:disabled:hover {
+    transform: none;
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Icon animation */
+.new-chat-button .new-chat-icon {
+    transition: transform var(--transition-fast);
+}
+
+.new-chat-button:hover:not(.disabled):not(:disabled) .new-chat-icon {
+    transform: rotate(90deg);
 }
 
 [data-theme="light"] .new-chat-button {
@@ -906,9 +1060,15 @@ strong, b {
     color: var(--color-text);
 }
 
-[data-theme="light"] .new-chat-button:hover {
+[data-theme="light"] .new-chat-button:hover:not(.disabled):not(:disabled) {
     background: var(--color-gray-100);
     border-color: var(--color-primary);
+}
+
+[data-theme="light"] .new-chat-button.disabled,
+[data-theme="light"] .new-chat-button:disabled {
+    border-color: var(--color-gray-300);
+    color: var(--color-text-tertiary);
 }
 
 /* Theme Toggle - Premium Design */
@@ -1158,6 +1318,7 @@ strong, b {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
 }
+
 
 .top-bar-title {
     flex: 1;
@@ -2698,6 +2859,34 @@ a:focus-visible,
     padding: var(--space-2);
 }
 
+/* Custom scrollbar for command palette - Swiss Design */
+.command-palette-results::-webkit-scrollbar {
+    width: 8px;
+}
+
+.command-palette-results::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.command-palette-results::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 4px;
+    transition: background var(--transition-fast);
+}
+
+.command-palette-results::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-tertiary);
+}
+
+/* Dark mode scrollbar */
+[data-theme="dark"] .command-palette-results::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .command-palette-results::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
 .command-palette-item {
     padding: var(--space-3);
     border-radius: var(--radius-md);
@@ -2823,20 +3012,28 @@ a:focus-visible,
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
     z-index: calc(var(--z-modal) + 1);
     display: none;
     align-items: center;
     justify-content: center;
     opacity: 0;
-    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    visibility: hidden;
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                background 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                backdrop-filter 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                visibility 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .delete-modal-overlay.active {
     display: flex;
     opacity: 1;
+    visibility: visible;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 .delete-modal {
@@ -2846,15 +3043,31 @@ a:focus-visible,
     border-radius: var(--radius-lg);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     overflow: hidden;
-    transform: scale(0.92) translateY(-10px);
+    transform: scale(0.9) translateY(20px);
     opacity: 0;
-    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-                opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .delete-modal-overlay.active .delete-modal {
     transform: scale(1) translateY(0);
     opacity: 1;
+    animation: modalBounceIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalBounceIn {
+    0% {
+        transform: scale(0.9) translateY(20px);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(1.02) translateY(-2px);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
 }
 
 .delete-modal-header {
@@ -2925,6 +3138,88 @@ a:focus-visible,
 
 .delete-modal-confirm:active {
     transform: translateY(0);
+}
+
+/* Session Created Toast Animation */
+.session-created-toast {
+    position: fixed;
+    bottom: var(--space-6);
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    z-index: calc(var(--z-modal) + 10);
+    opacity: 0;
+    visibility: hidden;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                visibility 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+}
+
+.session-created-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.session-created-content {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+}
+
+.session-created-content svg {
+    width: 16px;
+    height: 16px;
+    color: var(--color-success);
+    flex-shrink: 0;
+}
+
+/* New Session Card Animation */
+.chat-session-item.session-card-new {
+    animation: sessionCardSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
+}
+
+@keyframes sessionCardSlideIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.95);
+    }
+    50% {
+        transform: translateY(2px) scale(1.02);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Messages Load More Indicator */
+.messages-load-more-indicator {
+    margin-bottom: var(--space-4);
+    text-align: center;
+}
+
+.messages-load-more-content {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
 }
 
 @keyframes skeleton-shimmer {

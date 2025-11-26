@@ -192,24 +192,41 @@ def norma_dispositivos_tree_view(request: HttpRequest, pk: int) -> HttpResponse:
     return render(request, 'legislation/norma_tree.html', context)
 
 
-def chatbot_view(request: HttpRequest) -> HttpResponse:
+def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse:
     """
     Chatbot interface for RAG-based legal question answering.
     
     GET: Renders the chat interface
+    - /chatbot/ - Nova conversa (welcome state)
+    - /chatbot/<slug>/ - Conversa específica (ex: /chatbot/abc123def456)
+    
     POST: Processes questions and returns AI-generated answers
     """
     if request.method == 'GET':
         # Get or create active session for authenticated user
         active_session = None
         chat_sessions = []
+        current_session_id = None
         
         if request.user.is_authenticated:
-            # Get active session (but don't create one automatically - wait for first message)
-            active_session = ChatSession.objects.filter(
-                user=request.user,
-                is_active=True
-            ).order_by('-updated_at').first()
+            # If session_slug provided, load that specific session
+            if session_slug:
+                try:
+                    active_session = ChatSession.objects.get(slug=session_slug, user=request.user)
+                    current_session_id = active_session.id
+                    # Mark as active
+                    ChatSession.objects.filter(user=request.user, is_active=True).update(is_active=False)
+                    active_session.is_active = True
+                    active_session.save(update_fields=['is_active'])
+                except ChatSession.DoesNotExist:
+                    # Invalid slug, redirect to new chat
+                    from django.shortcuts import redirect
+                    return redirect('legislation:chatbot')
+            else:
+                # No slug - this is a new conversation
+                # Don't load any active session - show welcome state
+                active_session = None
+                current_session_id = None
             
             # Get recent sessions for sidebar (last 10)
             chat_sessions = ChatSession.objects.filter(
@@ -233,6 +250,8 @@ def chatbot_view(request: HttpRequest) -> HttpResponse:
             'total_normas': Norma.objects.filter(status='consolidated').count(),
             'chat_sessions': chat_sessions,
             'active_session': active_session,
+            'current_session_id': current_session_id,
+            'current_session_slug': session_slug,
         }
         return render(request, 'legislation/chatbot.html', context)
     
@@ -254,6 +273,61 @@ def chatbot_view(request: HttpRequest) -> HttpResponse:
             model = data.get('model', 'llama3')
             
             logger.info(f"Chatbot question received: '{question[:100]}...'")
+            
+            # Get session_id from request if regenerating
+            session_id = data.get('session_id')
+            regenerate = data.get('regenerate', False)
+            
+            # IMPORTANT: Create session IMMEDIATELY when user sends first message (before processing)
+            # This ensures the session appears in history right away
+            chat_session = None
+            
+            if request.user.is_authenticated:
+                # Try to get existing session if session_id provided
+                if session_id:
+                    try:
+                        chat_session = ChatSession.objects.get(id=session_id, user=request.user)
+                    except ChatSession.DoesNotExist:
+                        session_id = None  # Reset if session doesn't exist
+                        pass
+                
+                if not chat_session:
+                    chat_session = ChatSession.objects.filter(
+                        user=request.user,
+                        is_active=True
+                    ).order_by('-updated_at').first()
+                
+                if not chat_session:
+                    # Create new session with title from first question IMMEDIATELY
+                    title = question[:50] + ('...' if len(question) > 50 else '')
+                    chat_session = ChatSession.objects.create(
+                        user=request.user,
+                        title=title,
+                        is_active=True
+                    )
+                    # Slug is auto-generated in save() method
+                    session_id = chat_session.id
+                    session_slug = chat_session.slug
+                    # Save user message immediately so session appears in history
+                    ChatMessage.objects.create(
+                        session=chat_session,
+                        role='user',
+                        content=question
+                    )
+                    logger.info(f"Created new chat session {session_id} (slug: {session_slug}) for user {request.user.username}")
+                else:
+                    session_id = chat_session.id
+                    # Update session title if it's still the default
+                    if chat_session.title == 'Nova Conversa' and not chat_session.messages.exists():
+                        chat_session.title = question[:50] + ('...' if len(question) > 50 else '')
+                        chat_session.save()
+                    # Save user message if not regenerating
+                    if not regenerate:
+                        ChatMessage.objects.create(
+                            session=chat_session,
+                            role='user',
+                            content=question
+                        )
             
             # Initialize RAG service
             rag_service = RAGService()
@@ -299,55 +373,13 @@ def chatbot_view(request: HttpRequest) -> HttpResponse:
                     'dispositivo_id': disp.id
                 })
             
-            # Get session_id from request if regenerating
-            session_id = data.get('session_id')
-            regenerate = data.get('regenerate', False)
-            
-            # Persist chat history (if user is authenticated)
-            if request.user.is_authenticated:
-                # Get or create active session
-                chat_session = None
-                
-                if session_id:
-                    try:
-                        chat_session = ChatSession.objects.get(id=session_id, user=request.user)
-                    except ChatSession.DoesNotExist:
-                        pass
-                
-                if not chat_session:
-                    chat_session = ChatSession.objects.filter(
-                        user=request.user,
-                        is_active=True
-                    ).order_by('-updated_at').first()
-                
-                if not chat_session:
-                    # Create new session with title from first question
-                    title = question[:50] + ('...' if len(question) > 50 else '')
-                    chat_session = ChatSession.objects.create(
-                        user=request.user,
-                        title=title,
-                        is_active=True
-                    )
-                else:
-                    # Update session title if it's still the default
-                    if chat_session.title == 'Nova Conversa' and not chat_session.messages.exists():
-                        chat_session.title = question[:50] + ('...' if len(question) > 50 else '')
-                        chat_session.save()
-                
-                session_id = chat_session.id
-                
+            # Persist assistant message (user message already saved above)
+            if request.user.is_authenticated and chat_session:
                 # If regenerating, delete last assistant message
                 if regenerate:
                     last_assistant = chat_session.messages.filter(role='assistant').order_by('-created_at').first()
                     if last_assistant:
                         last_assistant.delete()
-                else:
-                    # Save user message (only if not regenerating)
-                    ChatMessage.objects.create(
-                        session=chat_session,
-                        role='user',
-                        content=question
-                    )
                 
                 # Save assistant message
                 ChatMessage.objects.create(
@@ -363,12 +395,21 @@ def chatbot_view(request: HttpRequest) -> HttpResponse:
                     }
                 )
             
+            # Get session slug if session exists (safely handle if migration not run)
+            session_slug = None
+            if chat_session:
+                try:
+                    session_slug = getattr(chat_session, 'slug', None)
+                except AttributeError:
+                    pass
+            
             return JsonResponse({
                 'success': True,
                 'answer': response['answer'],
                 'sources': sources,
                 'confidence': response['confidence'],
                 'session_id': session_id,
+                'session_slug': session_slug,  # Include slug for URL update
                 'metadata': {
                     'model': response.get('model', model),
                     'context_length': response.get('context_length', 0),
