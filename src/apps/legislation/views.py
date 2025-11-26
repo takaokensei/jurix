@@ -255,6 +255,55 @@ def chatbot_view(request: HttpRequest) -> HttpResponse:
             
             logger.info(f"Chatbot question received: '{question[:100]}...'")
             
+            # Get session_id from request if regenerating
+            session_id = data.get('session_id')
+            regenerate = data.get('regenerate', False)
+            
+            # IMPORTANT: Create session IMMEDIATELY when user sends first message (before processing)
+            # This ensures the session appears in history right away
+            chat_session = None
+            if request.user.is_authenticated:
+                if session_id:
+                    try:
+                        chat_session = ChatSession.objects.get(id=session_id, user=request.user)
+                    except ChatSession.DoesNotExist:
+                        pass
+                
+                if not chat_session:
+                    chat_session = ChatSession.objects.filter(
+                        user=request.user,
+                        is_active=True
+                    ).order_by('-updated_at').first()
+                
+                if not chat_session:
+                    # Create new session with title from first question IMMEDIATELY
+                    title = question[:50] + ('...' if len(question) > 50 else '')
+                    chat_session = ChatSession.objects.create(
+                        user=request.user,
+                        title=title,
+                        is_active=True
+                    )
+                    session_id = chat_session.id
+                    # Save user message immediately so session appears in history
+                    ChatMessage.objects.create(
+                        session=chat_session,
+                        role='user',
+                        content=question
+                    )
+                else:
+                    session_id = chat_session.id
+                    # Update session title if it's still the default
+                    if chat_session.title == 'Nova Conversa' and not chat_session.messages.exists():
+                        chat_session.title = question[:50] + ('...' if len(question) > 50 else '')
+                        chat_session.save()
+                    # Save user message if not regenerating
+                    if not regenerate:
+                        ChatMessage.objects.create(
+                            session=chat_session,
+                            role='user',
+                            content=question
+                        )
+            
             # Initialize RAG service
             rag_service = RAGService()
             
@@ -299,55 +348,13 @@ def chatbot_view(request: HttpRequest) -> HttpResponse:
                     'dispositivo_id': disp.id
                 })
             
-            # Get session_id from request if regenerating
-            session_id = data.get('session_id')
-            regenerate = data.get('regenerate', False)
-            
-            # Persist chat history (if user is authenticated)
-            if request.user.is_authenticated:
-                # Get or create active session
-                chat_session = None
-                
-                if session_id:
-                    try:
-                        chat_session = ChatSession.objects.get(id=session_id, user=request.user)
-                    except ChatSession.DoesNotExist:
-                        pass
-                
-                if not chat_session:
-                    chat_session = ChatSession.objects.filter(
-                        user=request.user,
-                        is_active=True
-                    ).order_by('-updated_at').first()
-                
-                if not chat_session:
-                    # Create new session with title from first question
-                    title = question[:50] + ('...' if len(question) > 50 else '')
-                    chat_session = ChatSession.objects.create(
-                        user=request.user,
-                        title=title,
-                        is_active=True
-                    )
-                else:
-                    # Update session title if it's still the default
-                    if chat_session.title == 'Nova Conversa' and not chat_session.messages.exists():
-                        chat_session.title = question[:50] + ('...' if len(question) > 50 else '')
-                        chat_session.save()
-                
-                session_id = chat_session.id
-                
+            # Persist assistant message (user message already saved above)
+            if request.user.is_authenticated and chat_session:
                 # If regenerating, delete last assistant message
                 if regenerate:
                     last_assistant = chat_session.messages.filter(role='assistant').order_by('-created_at').first()
                     if last_assistant:
                         last_assistant.delete()
-                else:
-                    # Save user message (only if not regenerating)
-                    ChatMessage.objects.create(
-                        session=chat_session,
-                        role='user',
-                        content=question
-                    )
                 
                 # Save assistant message
                 ChatMessage.objects.create(

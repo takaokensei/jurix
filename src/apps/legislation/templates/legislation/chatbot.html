@@ -32,9 +32,14 @@
     <div class="workspace">
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar" role="complementary" aria-label="Barra lateral de navegação">
+            <!-- Persistent Jurix Logo - Swiss Design -->
+            <a href="{% url 'legislation:chatbot' %}" class="sidebar-logo-link" aria-label="Ir para Nova Conversa">
+                <img src="{% static 'img/logo-icon.svg' %}" alt="Logo Jurix" class="sidebar-logo-icon">
+                <span class="sidebar-logo-text">Jurix</span>
+            </a>
+            
             <div class="sidebar-header">
-                <img src="{% static 'img/logo-icon.svg' %}" alt="Logo Jurix">
-                <h1>Jurix</h1>
+                <!-- Empty header for spacing, logo moved above -->
             </div>
             
             <div class="sidebar-content">
@@ -47,7 +52,7 @@
                             aria-label="Nova Conversa"
                             title="Nova Conversa"
                         >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="new-chat-icon">
                                 <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                             </svg>
                         </button>
@@ -256,7 +261,7 @@
                             onclick="event.stopPropagation(); deleteSession(${session.id})"
                             aria-label="Deletar conversa"
                             title="Deletar conversa">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="delete-icon">
                                 <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </button>
@@ -276,8 +281,16 @@
                 // Clear current session ID (no session until user sends message)
                 currentSessionId = null;
                 
-                // Clear messages and show welcome state
+                // Clear messages
                 clearMessages();
+                
+                // Ensure welcome state is visible
+                const welcomeState = document.getElementById('welcome-state');
+                if (welcomeState) {
+                    welcomeState.style.display = 'flex';
+                }
+                
+                // Show welcome state with streaming
                 showWelcomeStateWithStreaming();
                 
                 // Clear any saved text
@@ -294,14 +307,78 @@
                 
                 // Reload sessions list to update active state
                 await loadChatSessions();
+                
+                // Update button state (will be disabled since we're in empty conversation)
+                updateNewChatButtonState();
             } catch (error) {
                 console.error('Error creating new session:', error);
             }
         }
         
+        // Update new chat button state (disable when already in empty conversation)
+        function updateNewChatButtonState() {
+            const newChatBtn = document.getElementById('new-chat-button');
+            if (!newChatBtn) return;
+            
+            // Disable if we're already in a new/empty conversation (no session ID)
+            const isInEmptyConversation = !currentSessionId;
+            const welcomeState = document.getElementById('welcome-state');
+            const isWelcomeVisible = welcomeState && welcomeState.style.display !== 'none';
+            
+            if (isInEmptyConversation && isWelcomeVisible) {
+                newChatBtn.disabled = true;
+                newChatBtn.classList.add('disabled');
+                newChatBtn.style.opacity = '0.5';
+                newChatBtn.style.cursor = 'not-allowed';
+            } else {
+                newChatBtn.disabled = false;
+                newChatBtn.classList.remove('disabled');
+                newChatBtn.style.opacity = '1';
+                newChatBtn.style.cursor = 'pointer';
+            }
+        }
+        
+        // Animate when session is officially created (first message sent)
+        function animateSessionCreated() {
+            // Create a subtle notification/toast
+            const toast = document.createElement('div');
+            toast.className = 'session-created-toast';
+            toast.innerHTML = `
+                <div class="session-created-content">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Conversa registrada no histórico</span>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            
+            // Trigger animation
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+            
+            // Remove after animation
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 2500);
+        }
+        
         // Delete a chat session
         async function deleteSession(sessionId) {
             if (!sessionId) return;
+            
+            // Animate delete button click
+            const deleteBtn = event?.target?.closest('.delete-session-button');
+            if (deleteBtn) {
+                deleteBtn.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    deleteBtn.style.transform = '';
+                }, 150);
+            }
             
             // Show elegant modal instead of confirm()
             showDeleteModal(sessionId);
@@ -358,8 +435,13 @@
                 await performDeleteSession(sessionId);
             };
             
-            // Show modal
-            modalOverlay.classList.add('active');
+            // Show modal with animation - ensure it's visible
+            modalOverlay.style.display = 'flex';
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    modalOverlay.classList.add('active');
+                });
+            });
         }
         
         // Perform the actual deletion
@@ -438,6 +520,9 @@
                     loadSavedText(sessionId);
                 }
                 
+                // Update new chat button state (we're loading an existing session)
+                updateNewChatButtonState();
+                
                 // Load and render messages
                 const assistantMessages = data.messages.filter(m => m.role === 'assistant');
                 let messageIndex = 0;
@@ -470,42 +555,16 @@
         }
         
         // Initialize: Load sessions on page load
+        // IMPORTANT: Always show welcome state on initial load (Nova Conversa)
         function initializeChatbot() {
-            // Show welcome state with streaming on initial load
-            // IMPORTANT: Do NOT create a session automatically - only show welcome state
+            // Always show welcome state with streaming on initial load
+            // Never load last conversation automatically - always start with Nova Conversa
+            currentSessionId = null;
             showWelcomeStateWithStreaming();
             
             // Load chat sessions (for sidebar display only)
             if (document.getElementById('chat-sessions-list')) {
-                loadChatSessions().then(() => {
-                    // After loading sessions, check for active session WITH MESSAGES
-                    // Only load if session has actual messages (not empty)
-                    const activeSessionItem = document.querySelector('.chat-session-item.active');
-                    if (activeSessionItem) {
-                        const sessionId = parseInt(activeSessionItem.dataset.sessionId);
-                        if (sessionId) {
-                            // Check if session has messages before loading
-                            fetch(`/api/v1/chat/sessions/${sessionId}/`)
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data.success && data.messages && data.messages.length > 0) {
-                                        // Session has messages - load it
-                                        loadSession(sessionId);
-                                    } else {
-                                        // Session is empty - show welcome state (don't create new session)
-                                        // Clear currentSessionId to ensure no empty session is used
-                                        currentSessionId = null;
-                                        showWelcomeStateWithStreaming();
-                                    }
-                                })
-                                .catch(() => {
-                                    // On error, show welcome state with streaming
-                                    currentSessionId = null;
-                                    showWelcomeStateWithStreaming();
-                                });
-                        }
-                    }
-                });
+                loadChatSessions();
             }
             
             // New chat button
@@ -513,6 +572,9 @@
             if (newChatBtn) {
                 newChatBtn.addEventListener('click', createNewSession);
             }
+            
+            // Update new chat button state
+            updateNewChatButtonState();
         }
         
         // Initialize when DOM is ready
@@ -583,9 +645,12 @@
             const question = textarea.value.trim();
             if (!question) return;
             
-            // Hide welcome state
+                // Hide welcome state
             const welcomeStateEl = document.getElementById('welcome-state');
             if (welcomeStateEl) welcomeStateEl.style.display = 'none';
+            
+            // Update new chat button state (we're starting a conversation)
+            updateNewChatButtonState();
             
             // Add user message
             addUserMessage(question);
@@ -646,10 +711,23 @@
                 
                 if (data.success) {
                     // Update current session ID if returned
+                    const wasNewSession = !currentSessionId && data.session_id;
                     if (data.session_id) {
                         currentSessionId = data.session_id;
-                        // Reload sessions to update active state
-                        loadChatSessions();
+                        
+                        // Reload sessions IMMEDIATELY to show new session in history
+                        await loadChatSessions();
+                        
+                        // If this is a new session being created, show animation
+                        if (wasNewSession) {
+                            // Small delay to ensure DOM is updated
+                            setTimeout(() => {
+                                animateSessionCreated();
+                            }, 100);
+                        }
+                        
+                        // Update new chat button state (now we have a session)
+                        updateNewChatButtonState();
                     }
                     
                     // Backend returns: { success: true, answer: "...", sources: [...], confidence, metadata }
