@@ -458,6 +458,7 @@ def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonRespon
                 'session': {
                     'id': session.id,
                     'title': session.title,
+                    'slug': session.slug if hasattr(session, 'slug') else None,
                     'is_active': session.is_active,
                     'created_at': session.created_at.isoformat(),
                     'updated_at': session.updated_at.isoformat(),

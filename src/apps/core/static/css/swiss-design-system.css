@@ -752,18 +752,22 @@ strong, b {
     color: var(--color-primary);
 }
 
-/* When sidebar is collapsed, show only icon + text (compact) */
+/* When sidebar is collapsed, show only icon + text (compact) - Swiss Design */
 .sidebar.collapsed .sidebar-logo-link {
     padding: var(--space-2);
     justify-content: center;
     flex-direction: column;
     gap: var(--space-1);
     border-bottom: var(--border-width-thin) solid rgba(255, 255, 255, 0.1);
+    min-height: 64px; /* Ensure it stays visible */
+    position: relative;
+    z-index: 20; /* Higher z-index to stay on top */
 }
 
 .sidebar.collapsed .sidebar-logo-icon {
     width: 28px;
     height: 28px;
+    flex-shrink: 0;
 }
 
 .sidebar.collapsed .sidebar-logo-text {
@@ -771,10 +775,21 @@ strong, b {
     writing-mode: vertical-rl;
     text-orientation: mixed;
     letter-spacing: 0.1em;
+    font-weight: var(--font-weight-bold);
+    white-space: nowrap;
 }
 
 [data-theme="light"] .sidebar.collapsed .sidebar-logo-link {
     border-bottom-color: var(--color-border);
+}
+
+/* Ensure logo persists even when sidebar content is hidden */
+.sidebar.collapsed .sidebar-content {
+    display: none; /* Hide content when collapsed */
+}
+
+.sidebar.collapsed .sidebar-logo-link {
+    display: flex !important; /* Force display of logo */
 }
 
 .sidebar-header {

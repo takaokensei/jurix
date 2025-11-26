@@ -511,6 +511,16 @@ class ChatSession(TimeStampedModel):
         help_text='Título da sessão (gerado a partir da primeira pergunta ou manual)'
     )
     
+    slug = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        verbose_name='Slug',
+        help_text='Identificador único da sessão para URL (ex: abc123def456)',
+        blank=True,
+        null=True
+    )
+    
     is_active = models.BooleanField(
         default=True,
         verbose_name='Ativa',
@@ -536,6 +546,27 @@ class ChatSession(TimeStampedModel):
             preview = first_user_msg.content[:50] + ('...' if len(first_user_msg.content) > 50 else '')
             return preview
         return ''
+    
+    def generate_slug(self) -> str:
+        """Gera um slug único para a sessão (estilo Gemini: caracteres aleatórios)."""
+        import secrets
+        import string
+        
+        # Generate 12-character random slug (like Gemini: de2a906759f920b3)
+        alphabet = string.ascii_lowercase + string.digits
+        slug = ''.join(secrets.choice(alphabet) for _ in range(12))
+        
+        # Ensure uniqueness
+        while ChatSession.objects.filter(slug=slug).exists():
+            slug = ''.join(secrets.choice(alphabet) for _ in range(12))
+        
+        return slug
+    
+    def save(self, *args, **kwargs):
+        """Auto-generate slug if not provided."""
+        if not self.slug:
+            self.slug = self.generate_slug()
+        super().save(*args, **kwargs)
 
 
 class ChatMessage(TimeStampedModel):

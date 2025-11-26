@@ -299,9 +299,10 @@
                     `;
                     
                     // Insert at the top (after temp cards if any)
-                    if (tempCards.length > 0 && tempCards[0].parentNode === sessionsList) {
+                    // Fix: Check if parentNode exists before using contains
+                    if (tempCards.length > 0 && tempCards[0].parentNode && tempCards[0].parentNode === sessionsList) {
                         sessionsList.insertBefore(sessionItem, tempCards[0]);
-                    } else if (sessionsList.firstChild && sessionsList.firstChild.classList.contains('chat-session-item')) {
+                    } else if (sessionsList.firstChild && sessionsList.firstChild.classList && sessionsList.firstChild.classList.contains('chat-session-item')) {
                         sessionsList.insertBefore(sessionItem, sessionsList.firstChild);
                     } else {
                         sessionsList.appendChild(sessionItem);
@@ -330,11 +331,15 @@
         }
         
         // Create new chat session
-        // IMPORTANT: This function should NOT create a session automatically
+        // IMPORTANT: This function navigates to base URL (new conversation)
         // It should only clear the current state and show welcome screen
         // Session will be created when user sends first message
         async function createNewSession() {
             try {
+                // Navigate to base chatbot URL (new conversation)
+                const baseUrl = '{% url "legislation:chatbot" %}';
+                window.history.pushState({}, '', baseUrl);
+                
                 // Clear current session ID (no session until user sends message)
                 currentSessionId = null;
                 
@@ -365,29 +370,35 @@
                 // Reload sessions list to update active state
                 await loadChatSessions();
                 
-                // Update button state (will be disabled since we're in empty conversation)
+                // Update button state (will be enabled since we're in new conversation)
                 updateNewChatButtonState();
             } catch (error) {
                 console.error('Error creating new session:', error);
             }
         }
         
-        // Update new chat button state (disable when already in empty conversation)
+        // Update new chat button state
+        // NEW LOGIC: Button is disabled only when in a named conversation (has slug in URL)
+        // Button enables when in new conversation (no slug) or when user is in welcome state
         function updateNewChatButtonState() {
             const newChatBtn = document.getElementById('new-chat-button');
             if (!newChatBtn) return;
             
-            // Disable if we're already in a new/empty conversation (no session ID)
-            const isInEmptyConversation = !currentSessionId;
-            const welcomeState = document.getElementById('welcome-state');
-            const isWelcomeVisible = welcomeState && welcomeState.style.display !== 'none';
+            // Check if we're in a named conversation (has slug in URL)
+            const currentPath = window.location.pathname;
+            const isInNamedConversation = currentPath.includes('/chatbot/') && 
+                                         currentPath !== '/normas/chatbot/' && 
+                                         currentPath.split('/chatbot/').length > 1 &&
+                                         currentPath.split('/chatbot/')[1] !== '';
             
-            if (isInEmptyConversation && isWelcomeVisible) {
+            // Disable if we're in a named conversation (user should use logo to go back)
+            if (isInNamedConversation) {
                 newChatBtn.disabled = true;
                 newChatBtn.classList.add('disabled');
                 newChatBtn.style.opacity = '0.5';
                 newChatBtn.style.cursor = 'not-allowed';
             } else {
+                // Enable if we're in new conversation or welcome state
                 newChatBtn.disabled = false;
                 newChatBtn.classList.remove('disabled');
                 newChatBtn.style.opacity = '1';
@@ -426,12 +437,16 @@
             `;
             
             // Insert at the top of the list
-            if (sessionsList.firstChild && sessionsList.firstChild.classList.contains('chat-session-item')) {
+            // Fix: Check if firstChild exists and has classList before using contains
+            if (sessionsList.firstChild && sessionsList.firstChild.classList && sessionsList.firstChild.classList.contains('chat-session-item')) {
                 sessionsList.insertBefore(sessionCard, sessionsList.firstChild);
             } else {
                 // Clear "Nenhuma conversa ainda" message if exists
-                sessionsList.innerHTML = '';
-                sessionsList.appendChild(sessionCard);
+                const emptyState = sessionsList.querySelector('div:not(.chat-session-item)');
+                if (emptyState) {
+                    emptyState.remove();
+                }
+                sessionsList.insertBefore(sessionCard, sessionsList.firstChild);
             }
             
             // Animate card entrance (slide in from top + fade)
@@ -598,15 +613,24 @@
         }
         
         // Load a specific session and display its messages
+        // NEW: Navigates to URL with slug (like Gemini)
         async function loadSession(sessionId) {
             if (!sessionId) return;
             
             try {
-                const response = await fetch(`/api/v1/chat/sessions/${sessionId}/`);
-                if (!response.ok) throw new Error('Failed to load session');
+                // First, get session slug from API
+                const sessionResponse = await fetch(`/api/v1/chat/sessions/${sessionId}/`);
+                if (!sessionResponse.ok) throw new Error('Failed to load session');
                 
-                const data = await response.json();
-                if (!data.success || !data.messages) return;
+                const sessionData = await sessionResponse.json();
+                if (!sessionData.success || !sessionData.session) return;
+                
+                const sessionSlug = sessionData.session.slug || sessionData.session.id;
+                
+                // Navigate to URL with slug (like Gemini: /chatbot/abc123def456)
+                const baseUrl = '{% url "legislation:chatbot" %}';
+                const sessionUrl = `${baseUrl}${sessionSlug}/`;
+                window.history.pushState({}, '', sessionUrl);
                 
                 currentSessionId = sessionId;
                 clearMessages();
@@ -621,11 +645,45 @@
                 
                 // Hide welcome state (only if there are messages)
                 const welcomeState = document.getElementById('welcome-state');
-                if (welcomeState && data.messages.length > 0) {
+                if (welcomeState && sessionData.messages && sessionData.messages.length > 0) {
                     welcomeState.style.display = 'none';
-                } else if (welcomeState && data.messages.length === 0) {
+                } else if (welcomeState && (!sessionData.messages || sessionData.messages.length === 0)) {
                     welcomeState.style.display = 'flex';
                 }
+                
+                // Load and render messages
+                if (sessionData.messages && sessionData.messages.length > 0) {
+                    const assistantMessages = sessionData.messages.filter(m => m.role === 'assistant');
+                    let messageIndex = 0;
+                    
+                    // Show indicator if there are more messages
+                    if (sessionData.has_more && sessionData.total_count > sessionData.count) {
+                        const moreIndicator = document.createElement('div');
+                        moreIndicator.className = 'messages-load-more-indicator';
+                        moreIndicator.innerHTML = `
+                            <div class="messages-load-more-content">
+                                <span>Mostrando últimas ${sessionData.count} de ${sessionData.total_count} mensagens</span>
+                            </div>
+                        `;
+                        const messagesWrapper = document.getElementById('messages-wrapper');
+                        if (messagesWrapper) {
+                            messagesWrapper.insertBefore(moreIndicator, messagesWrapper.firstChild);
+                        }
+                    }
+                    
+                    for (let i = 0; i < sessionData.messages.length; i++) {
+                        const msg = sessionData.messages[i];
+                        if (msg.role === 'user') {
+                            addUserMessage(msg.content);
+                        } else if (msg.role === 'assistant') {
+                            messageIndex++;
+                            const isLastAssistant = messageIndex === assistantMessages.length;
+                            addAssistantMessage(msg.content, msg.sources || [], isLastAssistant && currentSessionId ? true : false, true);
+                        }
+                    }
+                }
+                
+                scrollToBottom();
                 
                 // Load saved text for this session after messages are loaded
                 if (textarea) {
@@ -684,12 +742,40 @@
         }
         
         // Initialize: Load sessions on page load
-        // IMPORTANT: Always show welcome state on initial load (Nova Conversa)
+        // NEW: Check if we're in a named conversation (has slug in URL)
         function initializeChatbot() {
-            // Always show welcome state with streaming on initial load
-            // Never load last conversation automatically - always start with Nova Conversa
-            currentSessionId = null;
-            showWelcomeStateWithStreaming();
+            // Check if we're in a named conversation (has slug in URL)
+            const currentPath = window.location.pathname;
+            const pathParts = currentPath.split('/chatbot/');
+            const sessionSlug = pathParts.length > 1 && pathParts[1] ? pathParts[1].replace('/', '') : null;
+            
+            if (sessionSlug) {
+                // We're in a named conversation - load it
+                // Fetch sessions to find the one with matching slug
+                fetch(`/api/v1/chat/sessions/`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success && data.sessions) {
+                            const session = data.sessions.find(s => s.slug === sessionSlug);
+                            if (session) {
+                                loadSession(session.id);
+                            } else {
+                                // Slug not found, redirect to new chat
+                                window.location.href = '{% url "legislation:chatbot" %}';
+                            }
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error loading session by slug:', err);
+                        // On error, show welcome state
+                        currentSessionId = null;
+                        showWelcomeStateWithStreaming();
+                    });
+            } else {
+                // We're in new conversation - show welcome state
+                currentSessionId = null;
+                showWelcomeStateWithStreaming();
+            }
             
             // Load chat sessions (for sidebar display only)
             if (document.getElementById('chat-sessions-list')) {

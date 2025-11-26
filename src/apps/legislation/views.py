@@ -192,24 +192,41 @@ def norma_dispositivos_tree_view(request: HttpRequest, pk: int) -> HttpResponse:
     return render(request, 'legislation/norma_tree.html', context)
 
 
-def chatbot_view(request: HttpRequest) -> HttpResponse:
+def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse:
     """
     Chatbot interface for RAG-based legal question answering.
     
     GET: Renders the chat interface
+    - /chatbot/ - Nova conversa (welcome state)
+    - /chatbot/<slug>/ - Conversa específica (ex: /chatbot/abc123def456)
+    
     POST: Processes questions and returns AI-generated answers
     """
     if request.method == 'GET':
         # Get or create active session for authenticated user
         active_session = None
         chat_sessions = []
+        current_session_id = None
         
         if request.user.is_authenticated:
-            # Get active session (but don't create one automatically - wait for first message)
-            active_session = ChatSession.objects.filter(
-                user=request.user,
-                is_active=True
-            ).order_by('-updated_at').first()
+            # If session_slug provided, load that specific session
+            if session_slug:
+                try:
+                    active_session = ChatSession.objects.get(slug=session_slug, user=request.user)
+                    current_session_id = active_session.id
+                    # Mark as active
+                    ChatSession.objects.filter(user=request.user, is_active=True).update(is_active=False)
+                    active_session.is_active = True
+                    active_session.save(update_fields=['is_active'])
+                except ChatSession.DoesNotExist:
+                    # Invalid slug, redirect to new chat
+                    from django.shortcuts import redirect
+                    return redirect('legislation:chatbot')
+            else:
+                # No slug - this is a new conversation
+                # Don't load any active session - show welcome state
+                active_session = None
+                current_session_id = None
             
             # Get recent sessions for sidebar (last 10)
             chat_sessions = ChatSession.objects.filter(
@@ -233,6 +250,8 @@ def chatbot_view(request: HttpRequest) -> HttpResponse:
             'total_normas': Norma.objects.filter(status='consolidated').count(),
             'chat_sessions': chat_sessions,
             'active_session': active_session,
+            'current_session_id': current_session_id,
+            'current_session_slug': session_slug,
         }
         return render(request, 'legislation/chatbot.html', context)
     
@@ -286,14 +305,16 @@ def chatbot_view(request: HttpRequest) -> HttpResponse:
                         title=title,
                         is_active=True
                     )
+                    # Slug is auto-generated in save() method
                     session_id = chat_session.id
+                    session_slug = chat_session.slug
                     # Save user message immediately so session appears in history
                     ChatMessage.objects.create(
                         session=chat_session,
                         role='user',
                         content=question
                     )
-                    logger.info(f"Created new chat session {session_id} for user {request.user.username}")
+                    logger.info(f"Created new chat session {session_id} (slug: {session_slug}) for user {request.user.username}")
                 else:
                     session_id = chat_session.id
                     # Update session title if it's still the default
@@ -374,12 +395,18 @@ def chatbot_view(request: HttpRequest) -> HttpResponse:
                     }
                 )
             
+            # Get session slug if session exists
+            session_slug = None
+            if chat_session and hasattr(chat_session, 'slug'):
+                session_slug = chat_session.slug
+            
             return JsonResponse({
                 'success': True,
                 'answer': response['answer'],
                 'sources': sources,
                 'confidence': response['confidence'],
                 'session_id': session_id,
+                'session_slug': session_slug,  # Include slug for URL update
                 'metadata': {
                     'model': response.get('model', model),
                     'context_length': response.get('context_length', 0),
