@@ -302,18 +302,28 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                 if not chat_session:
                     # Create new session with title from first question IMMEDIATELY
                     title = question[:50] + ('...' if len(question) > 50 else '')
+                    # Create session WITHOUT slug first to avoid any database errors
                     chat_session = ChatSession.objects.create(
                         user=request.user,
                         title=title,
                         is_active=True
                     )
-                    # Slug is auto-generated in save() method
                     session_id = chat_session.id
-                    # Safely get slug (may not exist if migration not run yet)
+                    
+                    # Try to generate and set slug AFTER creation (if field exists)
+                    session_slug = None
                     try:
-                        session_slug = getattr(chat_session, 'slug', None)
-                    except AttributeError:
-                        session_slug = None
+                        if not getattr(chat_session, 'slug', None):
+                            slug_value = chat_session.generate_slug()
+                            ChatSession.objects.filter(pk=session_id).update(slug=slug_value)
+                            chat_session.refresh_from_db()
+                            session_slug = chat_session.slug
+                        else:
+                            session_slug = chat_session.slug
+                    except Exception as e:
+                        # Slug field doesn't exist or generation failed - ignore
+                        logger.debug(f"Could not generate slug for session {session_id}: {e}")
+                        pass
                     # Save user message immediately so session appears in history
                     ChatMessage.objects.create(
                         session=chat_session,

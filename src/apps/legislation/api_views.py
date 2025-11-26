@@ -396,6 +396,13 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
             sessions_data = []
             for session in sessions:
                 try:
+                    # Get basic fields first (these should always exist)
+                    session_id = session.id
+                    session_title = getattr(session, 'title', None) or 'Conversa sem título'
+                    session_is_active = getattr(session, 'is_active', False)
+                    session_created = session.created_at.isoformat() if hasattr(session, 'created_at') else None
+                    session_updated = session.updated_at.isoformat() if hasattr(session, 'updated_at') else None
+                    
                     # Safely get slug (may not exist if migration not run yet)
                     session_slug = None
                     try:
@@ -403,33 +410,43 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
                     except (AttributeError, Exception):
                         pass
                     
-                    # Safely get message preview
+                    # Safely get message preview - wrap in try/except
                     latest_preview = ''
                     try:
-                        latest_preview = session.get_last_message_preview()
-                    except (AttributeError, Exception):
+                        # Use direct query instead of method to avoid any issues
+                        from .models import ChatMessage
+                        first_msg = ChatMessage.objects.filter(
+                            session_id=session_id,
+                            role='user'
+                        ).order_by('created_at').first()
+                        if first_msg:
+                            latest_preview = first_msg.content[:50] + ('...' if len(first_msg.content) > 50 else '')
+                    except Exception as e:
+                        logger.debug(f"Could not get message preview for session {session_id}: {e}")
                         pass
                     
                     # Safely get message count
                     message_count = 0
                     try:
-                        message_count = session.messages.count()
-                    except (AttributeError, Exception):
+                        from .models import ChatMessage
+                        message_count = ChatMessage.objects.filter(session_id=session_id).count()
+                    except Exception as e:
+                        logger.debug(f"Could not get message count for session {session_id}: {e}")
                         pass
                     
                     sessions_data.append({
-                        'id': session.id,
-                        'title': session.title or 'Conversa sem título',
+                        'id': session_id,
+                        'title': session_title,
                         'slug': session_slug,  # May be None if migration not run
-                        'is_active': session.is_active,
-                        'created_at': session.created_at.isoformat(),
-                        'updated_at': session.updated_at.isoformat(),
+                        'is_active': session_is_active,
+                        'created_at': session_created,
+                        'updated_at': session_updated,
                         'message_count': message_count,
                         'latest_message_preview': latest_preview
                     })
                 except Exception as e:
                     # Skip this session if there's an error, log and continue
-                    logger.warning(f"Error processing session {session.id}: {e}")
+                    logger.error(f"Error processing session {getattr(session, 'id', 'unknown')}: {e}", exc_info=True)
                     continue
             
             return JsonResponse({'success': True, 'sessions': sessions_data, 'count': len(sessions_data)})

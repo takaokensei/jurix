@@ -587,46 +587,30 @@ class ChatSession(TimeStampedModel):
     
     def save(self, *args, **kwargs):
         """Auto-generate slug if not provided."""
-        # Only generate slug if field exists in database (migration has been run)
-        # Use try/except to handle case where field doesn't exist
-        try:
-            # Try to get current slug value - if this fails, field doesn't exist
-            current_slug = getattr(self, 'slug', None)
-            
-            # If slug is None or empty, try to generate one
-            if not current_slug:
-                try:
-                    # Check if slug field exists by trying to access it
-                    # If field doesn't exist, this will raise an exception
-                    self.slug = self.generate_slug()
-                except (AttributeError, ValueError, Exception):
-                    # Field doesn't exist or generation failed - skip
-                    pass
-        except (AttributeError, Exception):
-            # Field doesn't exist in database - skip slug generation
-            # This is safe because the field is optional (blank=True, null=True)
-            pass
+        # COMPLETELY DISABLE slug generation in save() to avoid any database errors
+        # Slug will be generated manually after save if needed
+        # This ensures save() never fails due to slug field issues
+        super().save(*args, **kwargs)
         
-        # Always call super().save() - this will work even if slug field doesn't exist
-        try:
-            super().save(*args, **kwargs)
-        except Exception as e:
-            # If save fails due to slug field, try saving without slug
-            # This handles the case where migration hasn't been run
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning(f"Save failed, retrying without slug: {e}")
-            # Remove slug from kwargs if it exists
-            if 'slug' in kwargs:
-                del kwargs['slug']
-            # Try to remove slug attribute if it exists
-            if hasattr(self, 'slug'):
-                try:
-                    delattr(self, 'slug')
-                except:
-                    pass
-            # Retry save
-            super().save(*args, **kwargs)
+        # After successful save, try to generate slug if field exists
+        # This is done AFTER save to avoid any issues
+        if self.pk:  # Only if object was saved successfully
+            try:
+                # Check if slug field exists by trying to set it
+                # If field doesn't exist, this will silently fail
+                if not getattr(self, 'slug', None):
+                    try:
+                        slug_value = self.generate_slug()
+                        # Use update() to avoid triggering save() again
+                        ChatSession.objects.filter(pk=self.pk).update(slug=slug_value)
+                        # Refresh from database
+                        self.refresh_from_db()
+                    except Exception:
+                        # Field doesn't exist or update failed - ignore
+                        pass
+            except Exception:
+                # Any error - ignore completely
+                pass
 
 
 class ChatMessage(TimeStampedModel):
