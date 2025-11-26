@@ -528,23 +528,46 @@ def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonRespon
         if request.method == 'GET':
             # Optimize: Load only last 25 messages for better UX (avoid loading hundreds of messages)
             # This is a good balance between showing context and performance
-            total_messages = session.messages.count()
             limit = 25  # Last 25 messages is optimal for UX (shows recent context without lag)
             
-            # Get last N messages (most recent first, then reverse for chronological order)
-            messages = session.messages.order_by('-created_at')[:limit]
-            messages = list(reversed(messages))  # Reverse to show chronologically
+            # Use direct query instead of related manager to avoid errors
+            total_messages = 0
+            messages = []
+            try:
+                total_messages = ChatMessage.objects.filter(session_id=session.id).count()
+                # Get last N messages (most recent first, then reverse for chronological order)
+                messages_queryset = ChatMessage.objects.filter(session_id=session.id).order_by('-created_at')[:limit]
+                # Force evaluation and reverse
+                messages = list(reversed(list(messages_queryset)))  # Reverse to show chronologically
+            except Exception as e:
+                logger.error(f"Error querying messages for session {session.id}: {e}", exc_info=True)
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                total_messages = 0
+                messages = []
             
             messages_data = []
             for msg in messages:
-                messages_data.append({
-                    'id': msg.id,
-                    'role': msg.role,
-                    'content': msg.content,
-                    'sources': msg.sources_json if msg.role == 'assistant' else [],
-                    'metadata': msg.metadata_json if msg.role == 'assistant' else {},
-                    'created_at': msg.created_at.isoformat()
-                })
+                try:
+                    # Safely get created_at
+                    msg_created = None
+                    try:
+                        if hasattr(msg, 'created_at') and msg.created_at:
+                            msg_created = msg.created_at.isoformat()
+                    except Exception:
+                        pass
+                    
+                    messages_data.append({
+                        'id': msg.id,
+                        'role': msg.role,
+                        'content': msg.content,
+                        'sources': msg.sources_json if msg.role == 'assistant' else [],
+                        'metadata': msg.metadata_json if msg.role == 'assistant' else {},
+                        'created_at': msg_created
+                    })
+                except Exception as e:
+                    logger.warning(f"Error processing message {getattr(msg, 'id', 'unknown')}: {e}")
+                    continue
             
             # Safely get slug (may not exist if migration not run yet)
             session_slug = None
@@ -553,18 +576,24 @@ def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonRespon
             except AttributeError:
                 pass
             
-            # Safely get timestamps
+            # Safely get timestamps with proper error handling
             session_created = None
             session_updated = None
             try:
-                if hasattr(session, 'created_at') and session.created_at:
-                    session_created = session.created_at.isoformat()
-            except Exception:
+                if hasattr(session, 'created_at'):
+                    created_at_value = getattr(session, 'created_at', None)
+                    if created_at_value:
+                        session_created = created_at_value.isoformat()
+            except (AttributeError, Exception) as e:
+                logger.debug(f"Could not get created_at for session {session.id}: {e}")
                 pass
             try:
-                if hasattr(session, 'updated_at') and session.updated_at:
-                    session_updated = session.updated_at.isoformat()
-            except Exception:
+                if hasattr(session, 'updated_at'):
+                    updated_at_value = getattr(session, 'updated_at', None)
+                    if updated_at_value:
+                        session_updated = updated_at_value.isoformat()
+            except (AttributeError, Exception) as e:
+                logger.debug(f"Could not get updated_at for session {session.id}: {e}")
                 pass
             
             return JsonResponse({
