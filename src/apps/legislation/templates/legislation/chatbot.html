@@ -825,35 +825,102 @@
         // Initialize: Load sessions on page load
         // NEW: Check if we're in a named conversation (has slug in URL)
         // IMPORTANT: Never auto-load last session - always show welcome state on /chatbot/
-        function initializeChatbot() {
+        async function initializeChatbot() {
             // Check if we're in a named conversation (has slug in URL)
             const currentPath = window.location.pathname;
             const pathParts = currentPath.split('/chatbot/');
             const sessionSlug = pathParts.length > 1 && pathParts[1] ? pathParts[1].replace('/', '') : null;
             
+            // Setup new chat button first (always needed)
+            const newChatBtn = document.getElementById('new-chat-button');
+            if (newChatBtn) {
+                newChatBtn.addEventListener('click', createNewSession);
+            }
+            
             if (sessionSlug) {
-                // We're in a named conversation - load it directly by slug
-                fetch(`/api/v1/chat/sessions/slug/${sessionSlug}/`)
-                    .then(r => {
-                        if (!r.ok) {
-                            throw new Error(`HTTP ${r.status}`);
+                // We're in a named conversation - load it
+                console.log('Session slug:', sessionSlug);
+                
+                try {
+                    // IMPORTANT: Load sessions FIRST to populate chatSessionsForSearch
+                    await loadChatSessions();
+                    await loadChatSessionsForSearch();
+                    
+                    // Try to find session in loaded sessions
+                    // First, fetch all sessions to check slugs
+                    let session = null;
+                    try {
+                        const allSessionsResponse = await fetch('/api/v1/chat/sessions/');
+                        if (allSessionsResponse.ok) {
+                            const allSessionsData = await allSessionsResponse.json();
+                            if (allSessionsData.success && allSessionsData.sessions) {
+                                const sessionWithSlug = allSessionsData.sessions.find(s => s.slug === sessionSlug);
+                                if (sessionWithSlug) {
+                                    session = { sessionId: sessionWithSlug.id };
+                                    console.log('Session found in all sessions by slug:', sessionWithSlug.id);
+                                }
+                            }
                         }
-                        return r.json();
-                    })
-                    .then(sessionData => {
-                        if (sessionData.success && sessionData.session) {
-                            // Load the session using the session ID
-                            loadSession(sessionData.session.id);
-                        } else {
-                            // Slug not found, redirect to new chat
-                            window.location.href = '{% url "legislation:chatbot" %}';
+                    } catch (err) {
+                        console.warn('Could not search in all sessions:', err);
+                    }
+                    
+                    console.log('Session found in loaded sessions:', !!session);
+                    
+                    if (session && session.sessionId) {
+                        // Found in loaded sessions - load it
+                        await loadSession(session.sessionId);
+                    } else {
+                        // Fallback: try to fetch directly from API by slug
+                        try {
+                            const response = await fetch(`/api/v1/chat/sessions/slug/${sessionSlug}/`);
+                            if (!response.ok) {
+                                throw new Error(`HTTP ${response.status}`);
+                            }
+                            
+                            const sessionData = await response.json();
+                            if (sessionData.success && sessionData.session) {
+                                console.log('Session found via API slug endpoint:', sessionData.session.id);
+                                // Load the session using the session ID
+                                await loadSession(sessionData.session.id);
+                            } else {
+                                // Slug not found, redirect to new chat
+                                console.warn('Session slug not found, redirecting to new chat');
+                                window.location.href = '{% url "legislation:chatbot" %}';
+                            }
+                        } catch (apiError) {
+                            console.error('Error loading session by slug from API:', apiError);
+                            // Try one more fallback: search in all sessions from API
+                            try {
+                                const allSessionsResponse = await fetch('/api/v1/chat/sessions/');
+                                if (allSessionsResponse.ok) {
+                                    const allSessionsData = await allSessionsResponse.json();
+                                    if (allSessionsData.success && allSessionsData.sessions) {
+                                        const sessionFromApi = allSessionsData.sessions.find(s => s.slug === sessionSlug);
+                                        if (sessionFromApi) {
+                                            console.log('Session found in all sessions API:', sessionFromApi.id);
+                                            await loadSession(sessionFromApi.id);
+                                        } else {
+                                            console.warn('Session not found in any API, redirecting');
+                                            window.location.href = '{% url "legislation:chatbot" %}';
+                                        }
+                                    } else {
+                                        window.location.href = '{% url "legislation:chatbot" %}';
+                                    }
+                                } else {
+                                    window.location.href = '{% url "legislation:chatbot" %}';
+                                }
+                            } catch (fallbackError) {
+                                console.error('All fallbacks failed:', fallbackError);
+                                window.location.href = '{% url "legislation:chatbot" %}';
+                            }
                         }
-                    })
-                    .catch(err => {
-                        console.error('Error loading session by slug:', err);
-                        // On error, redirect to new chat
-                        window.location.href = '{% url "legislation:chatbot" %}';
-                    });
+                    }
+                } catch (error) {
+                    console.error('Error in initializeChatbot with slug:', error);
+                    // On error, redirect to new chat
+                    window.location.href = '{% url "legislation:chatbot" %}';
+                }
             } else {
                 // We're in new conversation - ALWAYS show welcome state
                 // Never auto-load last session (Gemini behavior)
@@ -879,25 +946,20 @@
                 
                 // Show welcome state with streaming and suggestions
                 showWelcomeStateWithStreaming();
-            }
-            
-            // New chat button (setup first)
-            const newChatBtn = document.getElementById('new-chat-button');
-            if (newChatBtn) {
-                newChatBtn.addEventListener('click', createNewSession);
+                
+                // Load chat sessions (for sidebar display only) - AFTER welcome state is shown
+                // IMPORTANT: Don't mark any session as active when in new conversation
+                // Delay slightly to ensure welcome state is rendered first
+                setTimeout(async () => {
+                    if (document.getElementById('chat-sessions-list')) {
+                        await loadChatSessions();
+                        await loadChatSessionsForSearch();
+                    }
+                }, 100);
             }
             
             // Update new chat button state
             updateNewChatButtonState();
-            
-            // Load chat sessions (for sidebar display only) - AFTER welcome state is shown
-            // IMPORTANT: Don't mark any session as active when in new conversation
-            // Delay slightly to ensure welcome state is rendered first
-            setTimeout(() => {
-                if (document.getElementById('chat-sessions-list')) {
-                    loadChatSessions();
-                }
-            }, 100);
         }
         
         // Initialize when DOM is ready
