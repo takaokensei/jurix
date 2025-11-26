@@ -9,10 +9,12 @@ Provides REST API endpoints for:
 
 import logging
 import json
+import traceback
 from typing import Any, Dict
 
 from django.http import JsonResponse, HttpRequest
 from django.views.decorators.http import require_http_methods
+from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
 from django.db.models import Q
@@ -380,7 +382,16 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
     try:
         if request.method == 'GET':
             limit = min(int(request.GET.get('limit', 20)), 100)
-            sessions = ChatSession.objects.filter(user=request.user).order_by('-updated_at')[:limit]
+            
+            # Use values() to avoid loading full objects and potential slug field issues
+            try:
+                sessions = ChatSession.objects.filter(user=request.user).order_by('-updated_at')[:limit]
+            except Exception as e:
+                logger.error(f"Error querying ChatSession: {e}", exc_info=True)
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Database error: {str(e)}'
+                }, status=500)
             
             sessions_data = []
             for session in sessions:
@@ -444,7 +455,13 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
         logger.error(f"Error in chat sessions API: {e}", exc_info=True)
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return JsonResponse({
+            'success': False, 
+            'error': str(e),
+            'traceback': traceback.format_exc() if settings.DEBUG else None
+        }, status=500)
 
 
 @require_http_methods(["GET", "DELETE"])

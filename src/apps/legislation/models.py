@@ -587,18 +587,35 @@ class ChatSession(TimeStampedModel):
     
     def save(self, *args, **kwargs):
         """Auto-generate slug if not provided."""
-        # Only generate slug if field exists (migration has been run)
-        # Check if model has slug field by checking _meta
-        has_slug_field = 'slug' in [f.name for f in self._meta.get_fields()]
-        
-        if has_slug_field:
-            try:
-                current_slug = getattr(self, 'slug', None)
-                if not current_slug:
-                    self.slug = self.generate_slug()
-            except (AttributeError, ValueError, Exception):
-                # Generation failed - skip
-                pass
+        # Only generate slug if field exists in database (migration has been run)
+        # Check if column exists in database before trying to use it
+        try:
+            from django.db import connection
+            table_name = self._meta.db_table
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name = %s AND column_name = 'slug'
+                """, [table_name])
+                has_slug_column = cursor.fetchone() is not None
+            
+            if has_slug_column:
+                try:
+                    current_slug = getattr(self, 'slug', None)
+                    if not current_slug:
+                        self.slug = self.generate_slug()
+                except (AttributeError, ValueError, Exception) as e:
+                    # Generation failed - skip silently
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.debug(f"Could not generate slug: {e}")
+        except Exception as e:
+            # If we can't check or generate slug, just continue with save
+            # This allows the model to work even if slug field doesn't exist
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(f"Slug generation skipped: {e}")
         
         super().save(*args, **kwargs)
 

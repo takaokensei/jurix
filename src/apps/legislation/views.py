@@ -427,10 +427,13 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                 'error': 'JSON inválido'
             }, status=400)
         except Exception as e:
-            logger.error(f"Error in chatbot: {e}", exc_info=True)
+            logger.error(f"Error in chatbot POST: {e}", exc_info=True)
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return JsonResponse({
                 'success': False,
-                'error': f'Erro ao processar pergunta: {str(e)}'
+                'error': f'Erro ao processar pergunta: {str(e)}',
+                'traceback': traceback.format_exc() if settings.DEBUG else None
             }, status=500)
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
