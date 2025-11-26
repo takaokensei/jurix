@@ -391,39 +391,75 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                     'error': 'Erro ao gerar resposta. Tente novamente.'
                 }, status=500)
             
-            # Format sources for frontend
+            # Format sources for frontend with error handling
             sources = []
-            for source in response.get('sources', []):
-                disp = source['dispositivo']
-                similarity = source.get('similarity_score', 0.0)
-                distance = source.get('distance', 1.0)
-                
-                # Debug logging
-                logger.debug(f"Source similarity: {similarity}, distance: {distance}")
-                
-                # Ensure similarity is a float and within valid range
-                similarity_score = float(similarity) if similarity is not None else 0.0
-                similarity_score = max(0.0, min(1.0, similarity_score))
-                
-                # Get PDF and SAPL URLs from norma
-                norma = disp.norma
-                pdf_url = norma.pdf_url if norma.pdf_url else None
-                sapl_url = norma.sapl_url if norma.sapl_url else None
-                
-                sources.append({
-                    'id': disp.id,
-                    'text': disp.texto[:200] + ('...' if len(disp.texto) > 200 else ''),
-                    'full_text': disp.texto,
-                    'similarity_score': similarity_score,
-                    'distance': float(distance) if distance is not None else 1.0,
-                    'norma_ref': f"{norma.tipo} {norma.numero}/{norma.ano}",
-                    'norma_id': norma.id,
-                    'dispositivo_ref': disp.get_full_identifier(),
-                    'hierarchy': source.get('context', {}).get('hierarchy', ''),
-                    'pdf_url': pdf_url,
-                    'sapl_url': sapl_url,
-                    'dispositivo_id': disp.id
-                })
+            try:
+                for source in response.get('sources', []):
+                    try:
+                        disp = source.get('dispositivo')
+                        if not disp:
+                            logger.warning("Source missing dispositivo, skipping")
+                            continue
+                        
+                        similarity = source.get('similarity_score', 0.0)
+                        distance = source.get('distance', 1.0)
+                        
+                        # Debug logging
+                        logger.debug(f"Source similarity: {similarity}, distance: {distance}")
+                        
+                        # Ensure similarity is a float and within valid range
+                        similarity_score = float(similarity) if similarity is not None else 0.0
+                        similarity_score = max(0.0, min(1.0, similarity_score))
+                        
+                        # Get PDF and SAPL URLs from norma with error handling
+                        try:
+                            norma = disp.norma
+                            pdf_url = getattr(norma, 'pdf_url', None) or None
+                            sapl_url = getattr(norma, 'sapl_url', None) or None
+                            norma_tipo = getattr(norma, 'tipo', 'Norma')
+                            norma_numero = getattr(norma, 'numero', '')
+                            norma_ano = getattr(norma, 'ano', '')
+                            norma_id = getattr(norma, 'id', None)
+                        except (AttributeError, Exception) as e:
+                            logger.warning(f"Error accessing norma attributes: {e}")
+                            pdf_url = None
+                            sapl_url = None
+                            norma_tipo = 'Norma'
+                            norma_numero = ''
+                            norma_ano = ''
+                            norma_id = None
+                        
+                        # Get dispositivo attributes safely
+                        try:
+                            disp_id = getattr(disp, 'id', None)
+                            disp_texto = getattr(disp, 'texto', '')
+                            disp_identifier = disp.get_full_identifier() if hasattr(disp, 'get_full_identifier') else ''
+                        except (AttributeError, Exception) as e:
+                            logger.warning(f"Error accessing dispositivo attributes: {e}")
+                            disp_id = None
+                            disp_texto = ''
+                            disp_identifier = ''
+                        
+                        sources.append({
+                            'id': disp_id,
+                            'text': disp_texto[:200] + ('...' if len(disp_texto) > 200 else ''),
+                            'full_text': disp_texto,
+                            'similarity_score': similarity_score,
+                            'distance': float(distance) if distance is not None else 1.0,
+                            'norma_ref': f"{norma_tipo} {norma_numero}/{norma_ano}".strip(),
+                            'norma_id': norma_id,
+                            'dispositivo_ref': disp_identifier,
+                            'hierarchy': source.get('context', {}).get('hierarchy', ''),
+                            'pdf_url': pdf_url,
+                            'sapl_url': sapl_url,
+                            'dispositivo_id': disp_id
+                        })
+                    except Exception as e:
+                        logger.warning(f"Error processing source: {e}")
+                        continue
+            except Exception as e:
+                logger.error(f"Error formatting sources: {e}", exc_info=True)
+                # Continue with empty sources list
             
             # Persist assistant message (user message already saved above)
             if request.user.is_authenticated and chat_session:
@@ -471,19 +507,27 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                 except AttributeError:
                     pass
             
-            return JsonResponse({
-                'success': True,
-                'answer': response['answer'],
-                'sources': sources,
-                'confidence': response['confidence'],
-                'session_id': session_id,
-                'session_slug': session_slug,  # Include slug for URL update
-                'metadata': {
-                    'model': response.get('model', model),
-                    'context_length': response.get('context_length', 0),
-                    'sources_count': len(sources)
-                }
-            })
+            # Build response with error handling
+            try:
+                return JsonResponse({
+                    'success': True,
+                    'answer': response.get('answer', ''),
+                    'sources': sources,
+                    'confidence': response.get('confidence', 0.0),
+                    'session_id': session_id,
+                    'session_slug': session_slug,  # Include slug for URL update
+                    'metadata': {
+                        'model': response.get('model', model),
+                        'context_length': response.get('context_length', 0),
+                        'sources_count': len(sources)
+                    }
+                })
+            except Exception as e:
+                logger.error(f"Error building JSON response: {e}", exc_info=True)
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Erro ao construir resposta'
+                }, status=500)
             
         except json.JSONDecodeError:
             return JsonResponse({
