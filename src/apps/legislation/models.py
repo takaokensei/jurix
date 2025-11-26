@@ -556,16 +556,31 @@ class ChatSession(TimeStampedModel):
         alphabet = string.ascii_lowercase + string.digits
         slug = ''.join(secrets.choice(alphabet) for _ in range(12))
         
-        # Ensure uniqueness
-        while ChatSession.objects.filter(slug=slug).exists():
-            slug = ''.join(secrets.choice(alphabet) for _ in range(12))
+        # Ensure uniqueness (only if slug field exists)
+        try:
+            while ChatSession.objects.filter(slug=slug).exists():
+                slug = ''.join(secrets.choice(alphabet) for _ in range(12))
+        except (AttributeError, ValueError, Exception):
+            # Field doesn't exist yet - just return generated slug
+            pass
         
         return slug
     
     def save(self, *args, **kwargs):
         """Auto-generate slug if not provided."""
-        if not self.slug:
-            self.slug = self.generate_slug()
+        # Only generate slug if field exists (migration has been run)
+        # Check if model has slug field by checking _meta
+        has_slug_field = 'slug' in [f.name for f in self._meta.get_fields()]
+        
+        if has_slug_field:
+            try:
+                current_slug = getattr(self, 'slug', None)
+                if not current_slug:
+                    self.slug = self.generate_slug()
+            except (AttributeError, ValueError, Exception):
+                # Generation failed - skip
+                pass
+        
         super().save(*args, **kwargs)
 
 

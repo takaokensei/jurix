@@ -307,7 +307,11 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                     )
                     # Slug is auto-generated in save() method
                     session_id = chat_session.id
-                    session_slug = chat_session.slug
+                    # Safely get slug (may not exist if migration not run yet)
+                    try:
+                        session_slug = getattr(chat_session, 'slug', None)
+                    except AttributeError:
+                        session_slug = None
                     # Save user message immediately so session appears in history
                     ChatMessage.objects.create(
                         session=chat_session,

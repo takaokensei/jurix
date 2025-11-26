@@ -384,23 +384,42 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
             
             sessions_data = []
             for session in sessions:
-                # Safely get slug (may not exist if migration not run yet)
-                session_slug = None
                 try:
-                    session_slug = getattr(session, 'slug', None)
-                except AttributeError:
-                    pass
-                
-                sessions_data.append({
-                    'id': session.id,
-                    'title': session.title or 'Conversa sem título',
-                    'slug': session_slug,  # May be None if migration not run
-                    'is_active': session.is_active,
-                    'created_at': session.created_at.isoformat(),
-                    'updated_at': session.updated_at.isoformat(),
-                    'message_count': session.messages.count(),
-                    'latest_message_preview': session.get_last_message_preview()  # Get first user question instead of last message
-                })
+                    # Safely get slug (may not exist if migration not run yet)
+                    session_slug = None
+                    try:
+                        session_slug = getattr(session, 'slug', None)
+                    except (AttributeError, Exception):
+                        pass
+                    
+                    # Safely get message preview
+                    latest_preview = ''
+                    try:
+                        latest_preview = session.get_last_message_preview()
+                    except (AttributeError, Exception):
+                        pass
+                    
+                    # Safely get message count
+                    message_count = 0
+                    try:
+                        message_count = session.messages.count()
+                    except (AttributeError, Exception):
+                        pass
+                    
+                    sessions_data.append({
+                        'id': session.id,
+                        'title': session.title or 'Conversa sem título',
+                        'slug': session_slug,  # May be None if migration not run
+                        'is_active': session.is_active,
+                        'created_at': session.created_at.isoformat(),
+                        'updated_at': session.updated_at.isoformat(),
+                        'message_count': message_count,
+                        'latest_message_preview': latest_preview
+                    })
+                except Exception as e:
+                    # Skip this session if there's an error, log and continue
+                    logger.warning(f"Error processing session {session.id}: {e}")
+                    continue
             
             return JsonResponse({'success': True, 'sessions': sessions_data, 'count': len(sessions_data)})
         
