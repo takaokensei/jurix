@@ -334,9 +334,15 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                 else:
                     session_id = chat_session.id
                     # Update session title if it's still the default
-                    if chat_session.title == 'Nova Conversa' and not chat_session.messages.exists():
-                        chat_session.title = question[:50] + ('...' if len(question) > 50 else '')
-                        chat_session.save()
+                    # Use direct query instead of related manager to avoid errors
+                    try:
+                        from .models import ChatMessage
+                        has_messages = ChatMessage.objects.filter(session_id=session_id).exists()
+                        if chat_session.title == 'Nova Conversa' and not has_messages:
+                            chat_session.title = question[:50] + ('...' if len(question) > 50 else '')
+                            chat_session.save()
+                    except Exception as e:
+                        logger.debug(f"Could not check messages for session {session_id}: {e}")
                     # Save user message if not regenerating
                     if not regenerate:
                         ChatMessage.objects.create(
@@ -392,10 +398,18 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
             # Persist assistant message (user message already saved above)
             if request.user.is_authenticated and chat_session:
                 # If regenerating, delete last assistant message
+                # Use direct query instead of related manager
                 if regenerate:
-                    last_assistant = chat_session.messages.filter(role='assistant').order_by('-created_at').first()
-                    if last_assistant:
-                        last_assistant.delete()
+                    try:
+                        from .models import ChatMessage
+                        last_assistant = ChatMessage.objects.filter(
+                            session_id=chat_session.id,
+                            role='assistant'
+                        ).order_by('-created_at').first()
+                        if last_assistant:
+                            last_assistant.delete()
+                    except Exception as e:
+                        logger.debug(f"Could not delete last assistant message: {e}")
                 
                 # Save assistant message
                 ChatMessage.objects.create(
