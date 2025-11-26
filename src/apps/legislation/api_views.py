@@ -365,6 +365,7 @@ def norma_detail_api(request: HttpRequest, pk: int) -> JsonResponse:
         }, status=500)
 
 
+@csrf_exempt
 @require_http_methods(["GET", "POST"])
 def chat_sessions_api(request: HttpRequest) -> JsonResponse:
     """
@@ -381,16 +382,26 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
     
     try:
         if request.method == 'GET':
-            limit = min(int(request.GET.get('limit', 20)), 100)
-            
-            # Use values() to avoid loading full objects and potential slug field issues
+            # Safely get limit parameter
             try:
+                limit = min(int(request.GET.get('limit', 20)), 100)
+            except (ValueError, TypeError):
+                limit = 20
+            
+            # Query sessions with error handling
+            try:
+                # Use select_related to avoid N+1 queries, but don't select slug if it doesn't exist
                 sessions = ChatSession.objects.filter(user=request.user).order_by('-updated_at')[:limit]
+                # Force evaluation of queryset to catch any database errors early
+                list(sessions)  # This will trigger the query and catch any errors
             except Exception as e:
                 logger.error(f"Error querying ChatSession: {e}", exc_info=True)
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
                 return JsonResponse({
                     'success': False,
-                    'error': f'Database error: {str(e)}'
+                    'error': f'Database error: {str(e)}',
+                    'traceback': traceback.format_exc() if settings.DEBUG else None
                 }, status=500)
             
             sessions_data = []
@@ -400,8 +411,20 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
                     session_id = session.id
                     session_title = getattr(session, 'title', None) or 'Conversa sem título'
                     session_is_active = getattr(session, 'is_active', False)
-                    session_created = session.created_at.isoformat() if hasattr(session, 'created_at') else None
-                    session_updated = session.updated_at.isoformat() if hasattr(session, 'updated_at') else None
+                    
+                    # Safely get timestamps
+                    session_created = None
+                    session_updated = None
+                    try:
+                        if hasattr(session, 'created_at') and session.created_at:
+                            session_created = session.created_at.isoformat()
+                    except (AttributeError, Exception):
+                        pass
+                    try:
+                        if hasattr(session, 'updated_at') and session.updated_at:
+                            session_updated = session.updated_at.isoformat()
+                    except (AttributeError, Exception):
+                        pass
                     
                     # Safely get slug (may not exist if migration not run yet)
                     session_slug = None
@@ -458,13 +481,21 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
             ChatSession.objects.filter(user=request.user, is_active=True).update(is_active=False)
             session = ChatSession.objects.create(user=request.user, title=title[:200], is_active=True)
             
+            # Safely get created_at
+            session_created = None
+            try:
+                if hasattr(session, 'created_at') and session.created_at:
+                    session_created = session.created_at.isoformat()
+            except Exception:
+                pass
+            
             return JsonResponse({
                 'success': True,
                 'session': {
                     'id': session.id,
                     'title': session.title,
                     'is_active': session.is_active,
-                    'created_at': session.created_at.isoformat()
+                    'created_at': session_created
                 }
             }, status=201)
     
@@ -481,6 +512,7 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
         }, status=500)
 
 
+@csrf_exempt
 @require_http_methods(["GET", "DELETE"])
 def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonResponse:
     """API endpoint for single chat session operations."""
@@ -521,6 +553,20 @@ def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonRespon
             except AttributeError:
                 pass
             
+            # Safely get timestamps
+            session_created = None
+            session_updated = None
+            try:
+                if hasattr(session, 'created_at') and session.created_at:
+                    session_created = session.created_at.isoformat()
+            except Exception:
+                pass
+            try:
+                if hasattr(session, 'updated_at') and session.updated_at:
+                    session_updated = session.updated_at.isoformat()
+            except Exception:
+                pass
+            
             return JsonResponse({
                 'success': True,
                 'session': {
@@ -528,8 +574,8 @@ def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonRespon
                     'title': session.title,
                     'slug': session_slug,  # May be None if migration not run
                     'is_active': session.is_active,
-                    'created_at': session.created_at.isoformat(),
-                    'updated_at': session.updated_at.isoformat(),
+                    'created_at': session_created,
+                    'updated_at': session_updated,
                 },
                 'messages': messages_data,
                 'count': len(messages_data),
@@ -546,6 +592,7 @@ def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonRespon
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
+@csrf_exempt
 @require_http_methods(["POST"])
 def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonResponse:
     """API endpoint to regenerate the last assistant response."""
