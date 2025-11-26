@@ -556,12 +556,31 @@ class ChatSession(TimeStampedModel):
         alphabet = string.ascii_lowercase + string.digits
         slug = ''.join(secrets.choice(alphabet) for _ in range(12))
         
-        # Ensure uniqueness (only if slug field exists)
+        # Ensure uniqueness (only if slug field exists in database)
+        # Check if field exists by trying to query it
         try:
-            while ChatSession.objects.filter(slug=slug).exists():
-                slug = ''.join(secrets.choice(alphabet) for _ in range(12))
-        except (AttributeError, ValueError, Exception):
-            # Field doesn't exist yet - just return generated slug
+            # Try to check if slug field exists by attempting a query
+            # If field doesn't exist, this will raise an exception
+            from django.db import connection
+            table_name = self._meta.db_table
+            with connection.cursor() as cursor:
+                cursor.execute(f"""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name = %s AND column_name = 'slug'
+                """, [table_name])
+                has_slug_column = cursor.fetchone() is not None
+            
+            if has_slug_column:
+                # Field exists, check uniqueness
+                max_attempts = 10
+                attempts = 0
+                while ChatSession.objects.filter(slug=slug).exists() and attempts < max_attempts:
+                    slug = ''.join(secrets.choice(alphabet) for _ in range(12))
+                    attempts += 1
+        except (AttributeError, ValueError, Exception) as e:
+            # Field doesn't exist yet or query failed - just return generated slug
+            # This is safe because if field doesn't exist, we can't check uniqueness anyway
             pass
         
         return slug
