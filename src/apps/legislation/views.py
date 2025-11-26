@@ -327,11 +327,17 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                         logger.debug(f"Could not generate slug for session {session_id}: {e}")
                         pass
                     # Save user message immediately so session appears in history
-                    ChatMessage.objects.create(
-                        session=chat_session,
-                        role='user',
-                        content=question
-                    )
+                    try:
+                        user_message = ChatMessage.objects.create(
+                            session=chat_session,
+                            role='user',
+                            content=question
+                        )
+                        logger.info(f"Created user message {user_message.id} for session {session_id}")
+                    except Exception as e:
+                        logger.error(f"Error creating user message for session {session_id}: {e}", exc_info=True)
+                        import traceback
+                        logger.error(f"Traceback: {traceback.format_exc()}")
                     logger.info(f"Created new chat session {session_id} (slug: {session_slug}) for user {request.user.username}")
                 else:
                     session_id = chat_session.id
@@ -481,7 +487,7 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                     
                     # Save assistant message with error handling
                     try:
-                        ChatMessage.objects.create(
+                        assistant_message = ChatMessage.objects.create(
                             session=chat_session,
                             role='assistant',
                             content=response.get('answer', ''),
@@ -493,6 +499,11 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                                 'sources_count': len(sources)
                             }
                         )
+                        logger.info(f"Created assistant message {assistant_message.id} for session {chat_session.id}")
+                        
+                        # Verify message was saved
+                        message_count = ChatMessage.objects.filter(session_id=chat_session.id).count()
+                        logger.info(f"Session {chat_session.id} now has {message_count} messages")
                         
                         # Generate title using AI if this is a new session with temporary title
                         if chat_session.title == 'Nova Conversa':
