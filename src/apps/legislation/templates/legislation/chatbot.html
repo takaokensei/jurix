@@ -803,7 +803,26 @@
                 // We're in new conversation - ALWAYS show welcome state
                 // Never auto-load last session (Gemini behavior)
                 currentSessionId = null;
-                clearMessages();
+                
+                // Clear messages but preserve welcome-state
+                const messagesWrapper = document.getElementById('messages-wrapper');
+                if (messagesWrapper) {
+                    // Remove all message elements but keep welcome-state
+                    const welcomeState = document.getElementById('welcome-state');
+                    const messages = messagesWrapper.querySelectorAll('.message');
+                    messages.forEach(msg => msg.remove());
+                    
+                    // Ensure welcome-state is visible and in the right place
+                    if (welcomeState) {
+                        welcomeState.style.display = 'flex';
+                        // Make sure welcome-state is in messages-wrapper
+                        if (welcomeState.parentNode !== messagesWrapper) {
+                            messagesWrapper.insertBefore(welcomeState, messagesWrapper.firstChild);
+                        }
+                    }
+                }
+                
+                // Show welcome state with streaming and suggestions
                 showWelcomeStateWithStreaming();
             }
             
