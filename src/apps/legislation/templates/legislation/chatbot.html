@@ -655,16 +655,35 @@
         // Load a specific session and display its messages
         // NEW: Navigates to URL with slug (like Gemini)
         async function loadSession(sessionId) {
-            if (!sessionId) return;
+            if (!sessionId) {
+                console.warn('loadSession called without sessionId');
+                return;
+            }
             
             try {
-                // First, get session slug from API
-                const sessionResponse = await fetch(`/api/v1/chat/sessions/${sessionId}/`);
-                if (!sessionResponse.ok) throw new Error('Failed to load session');
+                // SINGLE fetch call - get session data with messages
+                const response = await fetch(`/api/v1/chat/sessions/${sessionId}/`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: Failed to load session`);
+                }
                 
-                const sessionData = await sessionResponse.json();
-                if (!sessionData.success || !sessionData.session) return;
+                const sessionData = await response.json();
                 
+                // Validate response
+                if (!sessionData.success) {
+                    console.error('API returned success=false:', sessionData);
+                    return;
+                }
+                
+                if (!sessionData.session) {
+                    console.error('No session data in response:', sessionData);
+                    return;
+                }
+                
+                // Debug log
+                console.log('Messages loaded:', sessionData.count || 0, 'of', sessionData.total_count || 0);
+                
+                // Get session slug for URL navigation
                 const sessionSlug = sessionData.session.slug || sessionData.session.id;
                 
                 // Navigate to URL with slug (like Gemini: /chatbot/abc123def456)
@@ -672,16 +691,23 @@
                 const sessionUrl = `${baseUrl}${sessionSlug}/`;
                 window.history.pushState({}, '', sessionUrl);
                 
+                // Update current session ID
                 currentSessionId = sessionId;
                 
-                // Clear messages but preserve welcome-state (will be hidden if there are messages)
+                // Clear messages but preserve welcome-state
                 const messagesWrapper = document.getElementById('messages-wrapper');
                 if (messagesWrapper) {
                     const welcomeState = document.getElementById('welcome-state');
                     const messages = messagesWrapper.querySelectorAll('.message');
                     messages.forEach(msg => msg.remove());
                     
-                    // Hide welcome state when loading a session with messages
+                    // Remove any existing "load more" indicator
+                    const existingIndicator = messagesWrapper.querySelector('.messages-load-more-indicator');
+                    if (existingIndicator) {
+                        existingIndicator.remove();
+                    }
+                    
+                    // Handle welcome state visibility
                     if (welcomeState) {
                         if (sessionData.messages && sessionData.messages.length > 0) {
                             welcomeState.style.display = 'none';
@@ -698,9 +724,9 @@
                     if (parseInt(item.dataset.sessionId) === sessionId) {
                         item.classList.add('active');
                     }
-                })
+                });
                 
-                // Load and render messages
+                // Load and render messages from sessionData.messages
                 if (sessionData.messages && sessionData.messages.length > 0) {
                     const assistantMessages = sessionData.messages.filter(m => m.role === 'assistant');
                     let messageIndex = 0;
@@ -714,12 +740,12 @@
                                 <span>Mostrando últimas ${sessionData.count} de ${sessionData.total_count} mensagens</span>
                             </div>
                         `;
-                        const messagesWrapper = document.getElementById('messages-wrapper');
                         if (messagesWrapper) {
                             messagesWrapper.insertBefore(moreIndicator, messagesWrapper.firstChild);
                         }
                     }
                     
+                    // Render all messages from sessionData.messages
                     for (let i = 0; i < sessionData.messages.length; i++) {
                         const msg = sessionData.messages[i];
                         if (msg.role === 'user') {
@@ -727,8 +753,19 @@
                         } else if (msg.role === 'assistant') {
                             messageIndex++;
                             const isLastAssistant = messageIndex === assistantMessages.length;
-                            addAssistantMessage(msg.content, msg.sources || [], isLastAssistant && currentSessionId ? true : false, true);
+                            addAssistantMessage(
+                                msg.content, 
+                                msg.sources || [], 
+                                isLastAssistant && currentSessionId ? true : false, 
+                                true
+                            );
                         }
+                    }
+                } else {
+                    // No messages - ensure welcome state is visible
+                    const welcomeState = document.getElementById('welcome-state');
+                    if (welcomeState) {
+                        welcomeState.style.display = 'flex';
                     }
                 }
                 
@@ -743,6 +780,14 @@
                 updateNewChatButtonState();
             } catch (error) {
                 console.error('Error loading session:', error);
+                // Show error to user
+                const messagesWrapper = document.getElementById('messages-wrapper');
+                if (messagesWrapper) {
+                    const errorMsg = document.createElement('div');
+                    errorMsg.className = 'message error-message';
+                    errorMsg.textContent = 'Erro ao carregar conversa. Tente novamente.';
+                    messagesWrapper.appendChild(errorMsg);
+                }
             }
         }
         
