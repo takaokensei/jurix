@@ -262,6 +262,8 @@ def chatbot_view(request: HttpRequest) -> HttpResponse:
             # IMPORTANT: Create session IMMEDIATELY when user sends first message (before processing)
             # This ensures the session appears in history right away
             chat_session = None
+            session_id = None  # Initialize to ensure it's always defined
+            
             if request.user.is_authenticated:
                 if session_id:
                     try:
@@ -290,6 +292,7 @@ def chatbot_view(request: HttpRequest) -> HttpResponse:
                         role='user',
                         content=question
                     )
+                    logger.info(f"Created new chat session {session_id} for user {request.user.username}")
                 else:
                     session_id = chat_session.id
                     # Update session title if it's still the default

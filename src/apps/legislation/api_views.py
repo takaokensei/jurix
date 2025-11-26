@@ -433,7 +433,15 @@ def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonRespon
     
     try:
         if request.method == 'GET':
-            messages = session.messages.order_by('created_at')
+            # Optimize: Load only last 25 messages for better UX (avoid loading hundreds of messages)
+            # This is a good balance between showing context and performance
+            total_messages = session.messages.count()
+            limit = 25  # Last 25 messages is optimal for UX (shows recent context without lag)
+            
+            # Get last N messages (most recent first, then reverse for chronological order)
+            messages = session.messages.order_by('-created_at')[:limit]
+            messages = list(reversed(messages))  # Reverse to show chronologically
+            
             messages_data = []
             for msg in messages:
                 messages_data.append({
@@ -455,7 +463,9 @@ def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonRespon
                     'updated_at': session.updated_at.isoformat(),
                 },
                 'messages': messages_data,
-                'count': len(messages_data)
+                'count': len(messages_data),
+                'total_count': total_messages,  # Total messages in session
+                'has_more': total_messages > limit  # Indicates if there are older messages
             })
         
         elif request.method == 'DELETE':

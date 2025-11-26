@@ -246,27 +246,58 @@
                     return;
                 }
                 
-                sessionsList.innerHTML = data.sessions.map(session => `
-                    <div class="chat-session-item ${session.is_active ? 'active' : ''}" 
-                         data-session-id="${session.id}" 
-                         role="button" 
-                         tabindex="0"
-                         onclick="loadSession(${session.id})"
-                         onkeydown="if(event.key==='Enter') loadSession(${session.id})">
+                // Clear existing sessions (except temp ones)
+                const existingItems = sessionsList.querySelectorAll('.chat-session-item:not([data-session-id^="temp-"])');
+                existingItems.forEach(item => item.remove());
+                
+                // Add new sessions with animation
+                data.sessions.forEach((session, index) => {
+                    const sessionItem = document.createElement('div');
+                    sessionItem.className = `chat-session-item ${session.is_active ? 'active' : ''}`;
+                    sessionItem.dataset.sessionId = session.id;
+                    sessionItem.setAttribute('role', 'button');
+                    sessionItem.setAttribute('tabindex', '0');
+                    sessionItem.onclick = () => loadSession(session.id);
+                    sessionItem.onkeydown = (e) => {
+                        if (e.key === 'Enter') loadSession(session.id);
+                    };
+                    
+                    sessionItem.innerHTML = `
                         <div style="flex: 1; min-width: 0;">
                             ${session.latest_message_preview ? `<div class="chat-session-title">${escapeHtml(session.latest_message_preview)}</div>` : `<div class="chat-session-title">${escapeHtml(session.title)}</div>`}
                         </div>
                         <button 
                             class="delete-session-button" 
-                            onclick="event.stopPropagation(); deleteSession(${session.id})"
+                            onclick="event.stopPropagation(); deleteSession(${session.id}, event)"
                             aria-label="Deletar conversa"
                             title="Deletar conversa">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="delete-icon">
                                 <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </button>
-                    </div>
-                `).join('');
+                    `;
+                    
+                    // Insert at the top
+                    if (sessionsList.firstChild && sessionsList.firstChild.classList.contains('chat-session-item')) {
+                        sessionsList.insertBefore(sessionItem, sessionsList.firstChild);
+                    } else {
+                        sessionsList.appendChild(sessionItem);
+                    }
+                    
+                    // Animate entrance
+                    sessionItem.style.opacity = '0';
+                    sessionItem.style.transform = 'translateY(-5px)';
+                    setTimeout(() => {
+                        sessionItem.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                        sessionItem.style.opacity = '1';
+                        sessionItem.style.transform = 'translateY(0)';
+                    }, index * 30);
+                });
+                
+                // If no sessions, show empty state
+                if (data.sessions.length === 0 && !sessionsList.querySelector('.chat-session-item[data-session-id^="temp-"]')) {
+                    sessionsList.innerHTML = '<div style="padding: var(--space-2); color: var(--color-text-secondary); font-size: var(--font-size-xs); text-align: center;">Nenhuma conversa ainda</div>';
+                }
             } catch (error) {
                 console.error('Error loading chat sessions:', error);
             }
@@ -338,6 +369,58 @@
             }
         }
         
+        // Create session card immediately in sidebar (before AI responds)
+        // This provides instant feedback that the conversation was created
+        async function createSessionCardImmediately(question) {
+            const sessionsList = document.getElementById('chat-sessions-list');
+            if (!sessionsList) return;
+            
+            // Create temporary session card with animation
+            const tempSessionId = 'temp-' + Date.now();
+            const sessionTitle = question.length > 50 ? question.substring(0, 50) + '...' : question;
+            
+            const sessionCard = document.createElement('div');
+            sessionCard.className = 'chat-session-item active session-card-new';
+            sessionCard.dataset.sessionId = tempSessionId;
+            sessionCard.setAttribute('role', 'button');
+            sessionCard.setAttribute('tabindex', '0');
+            sessionCard.innerHTML = `
+                <div style="flex: 1; min-width: 0;">
+                    <div class="chat-session-title">${escapeHtml(sessionTitle)}</div>
+                </div>
+                <button 
+                    class="delete-session-button" 
+                    onclick="event.stopPropagation(); deleteSession('${tempSessionId}')"
+                    aria-label="Deletar conversa"
+                    title="Deletar conversa">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="delete-icon">
+                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            `;
+            
+            // Insert at the top of the list
+            if (sessionsList.firstChild && sessionsList.firstChild.classList.contains('chat-session-item')) {
+                sessionsList.insertBefore(sessionCard, sessionsList.firstChild);
+            } else {
+                // Clear "Nenhuma conversa ainda" message if exists
+                sessionsList.innerHTML = '';
+                sessionsList.appendChild(sessionCard);
+            }
+            
+            // Animate card entrance (slide in from top + fade)
+            sessionCard.style.opacity = '0';
+            sessionCard.style.transform = 'translateY(-10px)';
+            requestAnimationFrame(() => {
+                sessionCard.style.transition = 'opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+                sessionCard.style.opacity = '1';
+                sessionCard.style.transform = 'translateY(0)';
+            });
+            
+            // Store reference to update later with real session ID
+            window.tempSessionCard = sessionCard;
+        }
+        
         // Animate when session is officially created (first message sent)
         function animateSessionCreated() {
             // Create a subtle notification/toast
@@ -368,16 +451,19 @@
         }
         
         // Delete a chat session
-        async function deleteSession(sessionId) {
+        async function deleteSession(sessionId, event) {
             if (!sessionId) return;
             
             // Animate delete button click
-            const deleteBtn = event?.target?.closest('.delete-session-button');
-            if (deleteBtn) {
-                deleteBtn.style.transform = 'scale(0.9)';
-                setTimeout(() => {
-                    deleteBtn.style.transform = '';
-                }, 150);
+            if (event) {
+                const deleteBtn = event.target.closest('.delete-session-button');
+                if (deleteBtn) {
+                    deleteBtn.style.transform = 'scale(0.9)';
+                    deleteBtn.style.transition = 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1)';
+                    setTimeout(() => {
+                        deleteBtn.style.transform = '';
+                    }, 150);
+                }
             }
             
             // Show elegant modal instead of confirm()
@@ -523,10 +609,27 @@
                 // Update new chat button state (we're loading an existing session)
                 updateNewChatButtonState();
                 
-                // Load and render messages
+                // Load and render messages (optimized: only last 25 messages)
+                // No need to animate all messages - just render them quickly
                 const assistantMessages = data.messages.filter(m => m.role === 'assistant');
                 let messageIndex = 0;
                 
+                // Show indicator if there are more messages
+                if (data.has_more && data.total_count > data.count) {
+                    const moreIndicator = document.createElement('div');
+                    moreIndicator.className = 'messages-load-more-indicator';
+                    moreIndicator.innerHTML = `
+                        <div class="messages-load-more-content">
+                            <span>Mostrando últimas ${data.count} de ${data.total_count} mensagens</span>
+                        </div>
+                    `;
+                    const messagesWrapper = document.getElementById('messages-wrapper');
+                    if (messagesWrapper) {
+                        messagesWrapper.insertBefore(moreIndicator, messagesWrapper.firstChild);
+                    }
+                }
+                
+                // Render messages without animation for better performance
                 for (let i = 0; i < data.messages.length; i++) {
                     const msg = data.messages[i];
                     if (msg.role === 'user') {
@@ -664,6 +767,14 @@
                 localStorage.removeItem(`chat-input-${currentSessionId}`);
             }
             
+            // IMPORTANT: If this is a new session (first message), create card in sidebar IMMEDIATELY
+            // This happens BEFORE the AI responds, with beautiful animation
+            const wasNewSession = !currentSessionId;
+            if (wasNewSession) {
+                // Create session card immediately with animation
+                await createSessionCardImmediately(question);
+            }
+            
             // Show loading
             const loadingId = addLoadingMessage();
             
@@ -711,19 +822,43 @@
                 
                 if (data.success) {
                     // Update current session ID if returned
-                    const wasNewSession = !currentSessionId && data.session_id;
                     if (data.session_id) {
                         currentSessionId = data.session_id;
                         
-                        // Reload sessions IMMEDIATELY to show new session in history
-                        await loadChatSessions();
-                        
-                        // If this is a new session being created, show animation
+                        // If this was a new session, update the card we created
                         if (wasNewSession) {
-                            // Small delay to ensure DOM is updated
+                            // Remove temporary card and reload with real session
+                            if (window.tempSessionCard) {
+                                window.tempSessionCard.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+                                window.tempSessionCard.style.opacity = '0';
+                                window.tempSessionCard.style.transform = 'translateY(-5px)';
+                                setTimeout(() => {
+                                    if (window.tempSessionCard && window.tempSessionCard.parentNode) {
+                                        window.tempSessionCard.remove();
+                                    }
+                                    window.tempSessionCard = null;
+                                }, 200);
+                            }
+                            
+                            // Reload sessions to show real session card
+                            await loadChatSessions();
+                            
+                            // Highlight the new session card
+                            const newSessionCard = document.querySelector(`[data-session-id="${data.session_id}"]`);
+                            if (newSessionCard) {
+                                newSessionCard.classList.add('session-card-new');
+                                setTimeout(() => {
+                                    newSessionCard.classList.remove('session-card-new');
+                                }, 1000);
+                            }
+                            
+                            // Show animation toast
                             setTimeout(() => {
                                 animateSessionCreated();
                             }, 100);
+                        } else {
+                            // Just reload to update active state
+                            await loadChatSessions();
                         }
                         
                         // Update new chat button state (now we have a session)
