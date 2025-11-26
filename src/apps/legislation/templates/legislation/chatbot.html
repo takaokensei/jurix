@@ -64,7 +64,7 @@
                 
                 <nav class="sidebar-section" role="navigation" aria-label="Menu principal">
                     <h3>Navegação</h3>
-                    <div class="sidebar-item" role="button" tabindex="0" onclick="window.location.href='{% url 'legislation:norma_list' %}'" onkeydown="if(event.key==='Enter')window.location.href='{% url 'legislation:norma_list' %}'">
+                    <div class="sidebar-item" role="button" tabindex="0" onclick="window.location.href='{% url "legislation:norma_list" %}'" onkeydown="if(event.key==='Enter')window.location.href='{% url "legislation:norma_list" %}'">
                         <span>Normas Consolidadas</span>
                     </div>
                     <div class="sidebar-item" role="button" tabindex="0" onclick="window.location.href='/admin/'" onkeydown="if(event.key==='Enter')window.location.href='/admin/'">
@@ -669,6 +669,9 @@
                 
                 const sessionData = await response.json();
                 
+                // Debug: Log full response to understand structure
+                console.log('Full sessionData response:', sessionData);
+                
                 // Validate response
                 if (!sessionData.success) {
                     console.error('API returned success=false:', sessionData);
@@ -680,8 +683,18 @@
                     return;
                 }
                 
-                // Debug log
-                console.log('Messages loaded:', sessionData.count || 0, 'of', sessionData.total_count || 0);
+                // Debug log - check messages array
+                console.log('Full sessionData keys:', Object.keys(sessionData));
+                console.log('Messages array:', sessionData.messages);
+                console.log('Messages count (sessionData.count):', sessionData.count);
+                console.log('Total count (sessionData.total_count):', sessionData.total_count);
+                console.log('Has messages array?', Array.isArray(sessionData.messages));
+                console.log('Messages length:', sessionData.messages ? sessionData.messages.length : 'null/undefined');
+                
+                // If messages are missing, log the full response structure
+                if (!sessionData.messages || !Array.isArray(sessionData.messages)) {
+                    console.warn('WARNING: sessionData.messages is not an array!', sessionData);
+                }
                 
                 // Get session slug for URL navigation
                 const sessionSlug = sessionData.session.slug || sessionData.session.id;

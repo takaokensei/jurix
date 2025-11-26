@@ -641,10 +641,13 @@ def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonRespon
             messages = []
             try:
                 total_messages = ChatMessage.objects.filter(session_id=session.id).count()
+                logger.info(f"Session {session.id}: Found {total_messages} total messages")
+                
                 # Get last N messages (most recent first, then reverse for chronological order)
                 messages_queryset = ChatMessage.objects.filter(session_id=session.id).order_by('-created_at')[:limit]
                 # Force evaluation and reverse
                 messages = list(reversed(list(messages_queryset)))  # Reverse to show chronologically
+                logger.info(f"Session {session.id}: Returning {len(messages)} messages (limit: {limit})")
             except Exception as e:
                 logger.error(f"Error querying messages for session {session.id}: {e}", exc_info=True)
                 import traceback
