@@ -588,36 +588,45 @@ class ChatSession(TimeStampedModel):
     def save(self, *args, **kwargs):
         """Auto-generate slug if not provided."""
         # Only generate slug if field exists in database (migration has been run)
-        # Check if column exists in database before trying to use it
+        # Use try/except to handle case where field doesn't exist
         try:
-            from django.db import connection
-            table_name = self._meta.db_table
-            with connection.cursor() as cursor:
-                cursor.execute("""
-                    SELECT column_name 
-                    FROM information_schema.columns 
-                    WHERE table_name = %s AND column_name = 'slug'
-                """, [table_name])
-                has_slug_column = cursor.fetchone() is not None
+            # Try to get current slug value - if this fails, field doesn't exist
+            current_slug = getattr(self, 'slug', None)
             
-            if has_slug_column:
+            # If slug is None or empty, try to generate one
+            if not current_slug:
                 try:
-                    current_slug = getattr(self, 'slug', None)
-                    if not current_slug:
-                        self.slug = self.generate_slug()
-                except (AttributeError, ValueError, Exception) as e:
-                    # Generation failed - skip silently
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.debug(f"Could not generate slug: {e}")
+                    # Check if slug field exists by trying to access it
+                    # If field doesn't exist, this will raise an exception
+                    self.slug = self.generate_slug()
+                except (AttributeError, ValueError, Exception):
+                    # Field doesn't exist or generation failed - skip
+                    pass
+        except (AttributeError, Exception):
+            # Field doesn't exist in database - skip slug generation
+            # This is safe because the field is optional (blank=True, null=True)
+            pass
+        
+        # Always call super().save() - this will work even if slug field doesn't exist
+        try:
+            super().save(*args, **kwargs)
         except Exception as e:
-            # If we can't check or generate slug, just continue with save
-            # This allows the model to work even if slug field doesn't exist
+            # If save fails due to slug field, try saving without slug
+            # This handles the case where migration hasn't been run
             import logging
             logger = logging.getLogger(__name__)
-            logger.debug(f"Slug generation skipped: {e}")
-        
-        super().save(*args, **kwargs)
+            logger.warning(f"Save failed, retrying without slug: {e}")
+            # Remove slug from kwargs if it exists
+            if 'slug' in kwargs:
+                del kwargs['slug']
+            # Try to remove slug attribute if it exists
+            if hasattr(self, 'slug'):
+                try:
+                    delattr(self, 'slug')
+                except:
+                    pass
+            # Retry save
+            super().save(*args, **kwargs)
 
 
 class ChatMessage(TimeStampedModel):

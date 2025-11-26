@@ -6,6 +6,7 @@ comparing versions.
 """
 
 import logging
+import traceback
 from typing import Any, Dict
 import json
 
@@ -15,6 +16,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.db.models import Q
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
 
 from .models import Norma, Dispositivo, EventoAlteracao, ChatSession, ChatMessage
 from src.processing.rag_service import RAGService
