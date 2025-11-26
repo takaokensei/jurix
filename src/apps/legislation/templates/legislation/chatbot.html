@@ -673,7 +673,19 @@
                 window.history.pushState({}, '', sessionUrl);
                 
                 currentSessionId = sessionId;
-                clearMessages();
+                
+                // Clear messages but preserve welcome-state (will be hidden if there are messages)
+                const messagesWrapper = document.getElementById('messages-wrapper');
+                if (messagesWrapper) {
+                    const welcomeState = document.getElementById('welcome-state');
+                    const messages = messagesWrapper.querySelectorAll('.message');
+                    messages.forEach(msg => msg.remove());
+                    
+                    // Hide welcome state when loading a session with messages
+                    if (welcomeState && sessionData.messages && sessionData.messages.length > 0) {
+                        welcomeState.style.display = 'none';
+                    }
+                }
                 
                 // Update active state in sidebar
                 document.querySelectorAll('.chat-session-item').forEach(item => {
@@ -685,10 +697,13 @@
                 
                 // Hide welcome state (only if there are messages)
                 const welcomeState = document.getElementById('welcome-state');
-                if (welcomeState && sessionData.messages && sessionData.messages.length > 0) {
-                    welcomeState.style.display = 'none';
-                } else if (welcomeState && (!sessionData.messages || sessionData.messages.length === 0)) {
-                    welcomeState.style.display = 'flex';
+                if (welcomeState) {
+                    if (sessionData.messages && sessionData.messages.length > 0) {
+                        welcomeState.style.display = 'none';
+                    } else {
+                        // No messages - show welcome state
+                        welcomeState.style.display = 'flex';
+                    }
                 }
                 
                 // Load and render messages
