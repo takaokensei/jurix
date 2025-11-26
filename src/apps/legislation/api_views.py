@@ -384,9 +384,17 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
             
             sessions_data = []
             for session in sessions:
+                # Safely get slug (may not exist if migration not run yet)
+                session_slug = None
+                try:
+                    session_slug = getattr(session, 'slug', None)
+                except AttributeError:
+                    pass
+                
                 sessions_data.append({
                     'id': session.id,
                     'title': session.title or 'Conversa sem título',
+                    'slug': session_slug,  # May be None if migration not run
                     'is_active': session.is_active,
                     'created_at': session.created_at.isoformat(),
                     'updated_at': session.updated_at.isoformat(),
@@ -453,12 +461,19 @@ def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonRespon
                     'created_at': msg.created_at.isoformat()
                 })
             
+            # Safely get slug (may not exist if migration not run yet)
+            session_slug = None
+            try:
+                session_slug = getattr(session, 'slug', None)
+            except AttributeError:
+                pass
+            
             return JsonResponse({
                 'success': True,
                 'session': {
                     'id': session.id,
                     'title': session.title,
-                    'slug': session.slug if hasattr(session, 'slug') else None,
+                    'slug': session_slug,  # May be None if migration not run
                     'is_active': session.is_active,
                     'created_at': session.created_at.isoformat(),
                     'updated_at': session.updated_at.isoformat(),

@@ -395,10 +395,13 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                     }
                 )
             
-            # Get session slug if session exists
+            # Get session slug if session exists (safely handle if migration not run)
             session_slug = None
-            if chat_session and hasattr(chat_session, 'slug'):
-                session_slug = chat_session.slug
+            if chat_session:
+                try:
+                    session_slug = getattr(chat_session, 'slug', None)
+                except AttributeError:
+                    pass
             
             return JsonResponse({
                 'success': True,
