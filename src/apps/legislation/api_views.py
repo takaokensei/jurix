@@ -517,6 +517,108 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
 
 
 @csrf_exempt
+@require_http_methods(["GET"])
+def chat_session_by_slug_api(request: HttpRequest, slug: str) -> JsonResponse:
+    """
+    API endpoint to get chat session by slug.
+    
+    GET /api/v1/chat/sessions/slug/<slug>/
+    
+    Returns the same format as chat_session_detail_api but accepts slug instead of ID.
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+    
+    try:
+        # Try to find session by slug
+        try:
+            session = ChatSession.objects.get(slug=slug, user=request.user)
+        except ChatSession.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
+        except AttributeError:
+            # Slug field doesn't exist (migration not run)
+            return JsonResponse({'success': False, 'error': 'Slug feature not available'}, status=404)
+        
+        # Use the same logic as chat_session_detail_api
+        limit = 25
+        total_messages = 0
+        messages = []
+        try:
+            total_messages = ChatMessage.objects.filter(session_id=session.id).count()
+            messages_queryset = ChatMessage.objects.filter(session_id=session.id).order_by('-created_at')[:limit]
+            messages = list(reversed(list(messages_queryset)))
+        except Exception as e:
+            logger.error(f"Error querying messages for session {session.id}: {e}", exc_info=True)
+            total_messages = 0
+            messages = []
+        
+        messages_data = []
+        for msg in messages:
+            try:
+                msg_created = None
+                try:
+                    if hasattr(msg, 'created_at') and msg.created_at:
+                        msg_created = msg.created_at.isoformat()
+                except Exception:
+                    pass
+                
+                messages_data.append({
+                    'id': msg.id,
+                    'role': msg.role,
+                    'content': msg.content,
+                    'sources': msg.sources_json if msg.role == 'assistant' else [],
+                    'metadata': msg.metadata_json if msg.role == 'assistant' else {},
+                    'created_at': msg_created
+                })
+            except Exception as e:
+                logger.warning(f"Error processing message {getattr(msg, 'id', 'unknown')}: {e}")
+                continue
+        
+        session_slug = None
+        try:
+            session_slug = getattr(session, 'slug', None)
+        except AttributeError:
+            pass
+        
+        session_created = None
+        session_updated = None
+        try:
+            if hasattr(session, 'created_at'):
+                created_at_value = getattr(session, 'created_at', None)
+                if created_at_value:
+                    session_created = created_at_value.isoformat()
+        except (AttributeError, Exception):
+            pass
+        try:
+            if hasattr(session, 'updated_at'):
+                updated_at_value = getattr(session, 'updated_at', None)
+                if updated_at_value:
+                    session_updated = updated_at_value.isoformat()
+        except (AttributeError, Exception):
+            pass
+        
+        return JsonResponse({
+            'success': True,
+            'session': {
+                'id': session.id,
+                'title': session.title,
+                'slug': session_slug,
+                'is_active': session.is_active,
+                'created_at': session_created,
+                'updated_at': session_updated,
+            },
+            'messages': messages_data,
+            'count': len(messages_data),
+            'total_count': total_messages,
+            'has_more': total_messages > limit
+        })
+    
+    except Exception as e:
+        logger.error(f"Error in chat session by slug API: {e}", exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
 @require_http_methods(["GET", "DELETE"])
 def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonResponse:
     """API endpoint for single chat session operations."""

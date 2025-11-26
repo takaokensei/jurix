@@ -774,30 +774,27 @@
             const sessionSlug = pathParts.length > 1 && pathParts[1] ? pathParts[1].replace('/', '') : null;
             
             if (sessionSlug) {
-                // We're in a named conversation - load it
-                // Fetch sessions to find the one with matching slug
-                fetch(`/api/v1/chat/sessions/`)
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.success && data.sessions) {
-                            const session = data.sessions.find(s => s.slug === sessionSlug);
-                            if (session) {
-                                loadSession(session.id);
-                            } else {
-                                // Slug not found, redirect to new chat
-                                window.location.href = '{% url "legislation:chatbot" %}';
-                            }
+                // We're in a named conversation - load it directly by slug
+                fetch(`/api/v1/chat/sessions/slug/${sessionSlug}/`)
+                    .then(r => {
+                        if (!r.ok) {
+                            throw new Error(`HTTP ${r.status}`);
+                        }
+                        return r.json();
+                    })
+                    .then(sessionData => {
+                        if (sessionData.success && sessionData.session) {
+                            // Load the session using the session ID
+                            loadSession(sessionData.session.id);
                         } else {
-                            // No sessions or error - show welcome state
-                            currentSessionId = null;
-                            showWelcomeStateWithStreaming();
+                            // Slug not found, redirect to new chat
+                            window.location.href = '{% url "legislation:chatbot" %}';
                         }
                     })
                     .catch(err => {
                         console.error('Error loading session by slug:', err);
-                        // On error, show welcome state
-                        currentSessionId = null;
-                        showWelcomeStateWithStreaming();
+                        // On error, redirect to new chat
+                        window.location.href = '{% url "legislation:chatbot" %}';
                     });
             } else {
                 // We're in new conversation - ALWAYS show welcome state

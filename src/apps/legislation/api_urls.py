@@ -53,6 +53,11 @@ urlpatterns = [
         name='chat_session_detail'
     ),
     path(
+        'chat/sessions/slug/<str:slug>/',
+        api_views.chat_session_by_slug_api,
+        name='chat_session_by_slug'
+    ),
+    path(
         'chat/sessions/<int:session_id>/regenerate/',
         api_views.chat_session_regenerate_api,
         name='chat_session_regenerate'
