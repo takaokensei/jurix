@@ -333,7 +333,17 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                             role='user',
                             content=question
                         )
+                        # Force save and refresh to ensure it's committed
+                        user_message.save()
                         logger.info(f"Created user message {user_message.id} for session {session_id}")
+                        
+                        # Verify message was saved
+                        from django.db import transaction
+                        transaction.on_commit(lambda: logger.info(f"User message {user_message.id} committed to database"))
+                        
+                        # Immediate verification
+                        verify_count = ChatMessage.objects.filter(session_id=session_id).count()
+                        logger.info(f"Session {session_id} has {verify_count} messages after creating user message")
                     except Exception as e:
                         logger.error(f"Error creating user message for session {session_id}: {e}", exc_info=True)
                         import traceback
@@ -501,9 +511,21 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                         )
                         logger.info(f"Created assistant message {assistant_message.id} for session {chat_session.id}")
                         
-                        # Verify message was saved
-                        message_count = ChatMessage.objects.filter(session_id=chat_session.id).count()
-                        logger.info(f"Session {chat_session.id} now has {message_count} messages")
+                        # Force save to ensure it's committed
+                        assistant_message.save()
+                        
+                        # Verify message was saved - try both session_id and session object
+                        message_count_by_id = ChatMessage.objects.filter(session_id=chat_session.id).count()
+                        message_count_by_obj = ChatMessage.objects.filter(session=chat_session).count()
+                        logger.info(f"Session {chat_session.id} now has {message_count_by_id} messages (by session_id) or {message_count_by_obj} messages (by session object)")
+                        
+                        # If counts don't match, log warning
+                        if message_count_by_id != message_count_by_obj:
+                            logger.warning(f"Session {chat_session.id}: Message count mismatch! session_id={message_count_by_id}, session={message_count_by_obj}")
+                        
+                        # List all message IDs for debugging
+                        all_message_ids = list(ChatMessage.objects.filter(session_id=chat_session.id).values_list('id', flat=True))
+                        logger.info(f"Session {chat_session.id} message IDs: {all_message_ids}")
                         
                         # Generate title using AI if this is a new session with temporary title
                         if chat_session.title == 'Nova Conversa':

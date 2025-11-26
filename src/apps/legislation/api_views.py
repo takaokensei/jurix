@@ -640,14 +640,30 @@ def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonRespon
             total_messages = 0
             messages = []
             try:
+                # Try both session_id and session to ensure we find messages
+                # Django creates session_id automatically for ForeignKey fields
                 total_messages = ChatMessage.objects.filter(session_id=session.id).count()
-                logger.info(f"Session {session.id}: Found {total_messages} total messages")
+                logger.info(f"Session {session.id}: Found {total_messages} total messages using session_id")
+                
+                # Also try using the session object directly as fallback
+                if total_messages == 0:
+                    total_messages_alt = ChatMessage.objects.filter(session=session).count()
+                    logger.info(f"Session {session.id}: Found {total_messages_alt} total messages using session object")
+                    if total_messages_alt > 0:
+                        total_messages = total_messages_alt
                 
                 # Get last N messages (most recent first, then reverse for chronological order)
-                messages_queryset = ChatMessage.objects.filter(session_id=session.id).order_by('-created_at')[:limit]
-                # Force evaluation and reverse
-                messages = list(reversed(list(messages_queryset)))  # Reverse to show chronologically
-                logger.info(f"Session {session.id}: Returning {len(messages)} messages (limit: {limit})")
+                if total_messages > 0:
+                    messages_queryset = ChatMessage.objects.filter(session_id=session.id).order_by('-created_at')[:limit]
+                    # Force evaluation and reverse
+                    messages = list(reversed(list(messages_queryset)))  # Reverse to show chronologically
+                    logger.info(f"Session {session.id}: Returning {len(messages)} messages (limit: {limit})")
+                    
+                    # Debug: log first and last message IDs if any
+                    if messages:
+                        logger.info(f"Session {session.id}: First message ID: {messages[0].id}, Last message ID: {messages[-1].id}")
+                else:
+                    logger.warning(f"Session {session.id}: No messages found in database")
             except Exception as e:
                 logger.error(f"Error querying messages for session {session.id}: {e}", exc_info=True)
                 import traceback
