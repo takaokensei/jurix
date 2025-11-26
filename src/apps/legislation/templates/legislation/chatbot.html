@@ -246,12 +246,33 @@
                     return;
                 }
                 
-                // Clear existing sessions (except temp ones)
+                // Store temp session cards to preserve them
+                const tempCards = Array.from(sessionsList.querySelectorAll('.chat-session-item[data-session-id^="temp-"]'));
+                
+                // Clear existing non-temp sessions
                 const existingItems = sessionsList.querySelectorAll('.chat-session-item:not([data-session-id^="temp-"])');
                 existingItems.forEach(item => item.remove());
                 
+                // Clear empty state message if exists
+                const emptyState = sessionsList.querySelector('div:not(.chat-session-item)');
+                if (emptyState && !emptyState.classList.contains('chat-session-item')) {
+                    emptyState.remove();
+                }
+                
                 // Add new sessions with animation
                 data.sessions.forEach((session, index) => {
+                    // Check if this session already exists (to avoid duplicates)
+                    const existing = sessionsList.querySelector(`[data-session-id="${session.id}"]`);
+                    if (existing) {
+                        // Update existing card
+                        existing.className = `chat-session-item ${session.is_active ? 'active' : ''}`;
+                        const titleEl = existing.querySelector('.chat-session-title');
+                        if (titleEl) {
+                            titleEl.textContent = session.latest_message_preview || session.title;
+                        }
+                        return;
+                    }
+                    
                     const sessionItem = document.createElement('div');
                     sessionItem.className = `chat-session-item ${session.is_active ? 'active' : ''}`;
                     sessionItem.dataset.sessionId = session.id;
@@ -277,8 +298,10 @@
                         </button>
                     `;
                     
-                    // Insert at the top
-                    if (sessionsList.firstChild && sessionsList.firstChild.classList.contains('chat-session-item')) {
+                    // Insert at the top (after temp cards if any)
+                    if (tempCards.length > 0 && tempCards[0].parentNode === sessionsList) {
+                        sessionsList.insertBefore(sessionItem, tempCards[0]);
+                    } else if (sessionsList.firstChild && sessionsList.firstChild.classList.contains('chat-session-item')) {
                         sessionsList.insertBefore(sessionItem, sessionsList.firstChild);
                     } else {
                         sessionsList.appendChild(sessionItem);
@@ -294,9 +317,12 @@
                     }, index * 30);
                 });
                 
-                // If no sessions, show empty state
-                if (data.sessions.length === 0 && !sessionsList.querySelector('.chat-session-item[data-session-id^="temp-"]')) {
-                    sessionsList.innerHTML = '<div style="padding: var(--space-2); color: var(--color-text-secondary); font-size: var(--font-size-xs); text-align: center;">Nenhuma conversa ainda</div>';
+                // If no sessions and no temp cards, show empty state
+                if (data.sessions.length === 0 && tempCards.length === 0) {
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.style.cssText = 'padding: var(--space-2); color: var(--color-text-secondary); font-size: var(--font-size-xs); text-align: center;';
+                    emptyDiv.textContent = 'Nenhuma conversa ainda';
+                    sessionsList.appendChild(emptyDiv);
                 }
             } catch (error) {
                 console.error('Error loading chat sessions:', error);

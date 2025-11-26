@@ -262,13 +262,14 @@ def chatbot_view(request: HttpRequest) -> HttpResponse:
             # IMPORTANT: Create session IMMEDIATELY when user sends first message (before processing)
             # This ensures the session appears in history right away
             chat_session = None
-            session_id = None  # Initialize to ensure it's always defined
             
             if request.user.is_authenticated:
+                # Try to get existing session if session_id provided
                 if session_id:
                     try:
                         chat_session = ChatSession.objects.get(id=session_id, user=request.user)
                     except ChatSession.DoesNotExist:
+                        session_id = None  # Reset if session doesn't exist
                         pass
                 
                 if not chat_session:
