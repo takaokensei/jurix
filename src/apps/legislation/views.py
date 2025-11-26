@@ -284,7 +284,8 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
             # This ensures the session appears in history right away
             chat_session = None
             
-            if request.user.is_authenticated:
+            try:
+                if request.user.is_authenticated:
                 # Try to get existing session if session_id provided
                 if session_id:
                     try:
@@ -345,21 +346,50 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                         logger.debug(f"Could not check messages for session {session_id}: {e}")
                     # Save user message if not regenerating
                     if not regenerate:
-                        ChatMessage.objects.create(
-                            session=chat_session,
-                            role='user',
-                            content=question
-                        )
+                        try:
+                            ChatMessage.objects.create(
+                                session=chat_session,
+                                role='user',
+                                content=question
+                            )
+                        except Exception as e:
+                            logger.error(f"Error creating user message: {e}", exc_info=True)
+                            # Continue even if message creation fails
+            except Exception as e:
+                logger.error(f"Error in session management: {e}", exc_info=True)
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                # Continue with RAG processing even if session creation fails
             
-            # Initialize RAG service
-            rag_service = RAGService()
+            # Initialize RAG service with error handling
+            try:
+                rag_service = RAGService()
+            except Exception as e:
+                logger.error(f"Error initializing RAG service: {e}", exc_info=True)
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Erro ao inicializar serviço de IA. Tente novamente.'
+                }, status=500)
             
-            # Generate answer
-            response = rag_service.answer_question(
-                question=question,
-                k=k,
-                model=model
-            )
+            # Generate answer with error handling
+            try:
+                response = rag_service.answer_question(
+                    question=question,
+                    k=k,
+                    model=model
+                )
+                if not response or 'answer' not in response:
+                    raise ValueError("Invalid response from RAG service")
+            except Exception as e:
+                logger.error(f"Error generating answer: {e}", exc_info=True)
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Erro ao gerar resposta. Tente novamente.'
+                }, status=500)
             
             # Format sources for frontend
             sources = []
@@ -397,33 +427,41 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
             
             # Persist assistant message (user message already saved above)
             if request.user.is_authenticated and chat_session:
-                # If regenerating, delete last assistant message
-                # Use direct query instead of related manager
-                if regenerate:
+                try:
+                    # If regenerating, delete last assistant message
+                    # Use direct query instead of related manager
+                    if regenerate:
+                        try:
+                            from .models import ChatMessage
+                            last_assistant = ChatMessage.objects.filter(
+                                session_id=chat_session.id,
+                                role='assistant'
+                            ).order_by('-created_at').first()
+                            if last_assistant:
+                                last_assistant.delete()
+                        except Exception as e:
+                            logger.debug(f"Could not delete last assistant message: {e}")
+                    
+                    # Save assistant message with error handling
                     try:
-                        from .models import ChatMessage
-                        last_assistant = ChatMessage.objects.filter(
-                            session_id=chat_session.id,
-                            role='assistant'
-                        ).order_by('-created_at').first()
-                        if last_assistant:
-                            last_assistant.delete()
+                        ChatMessage.objects.create(
+                            session=chat_session,
+                            role='assistant',
+                            content=response.get('answer', ''),
+                            sources_json=sources,
+                            metadata_json={
+                                'model': response.get('model', model),
+                                'confidence': response.get('confidence', 0.0),
+                                'context_length': response.get('context_length', 0),
+                                'sources_count': len(sources)
+                            }
+                        )
                     except Exception as e:
-                        logger.debug(f"Could not delete last assistant message: {e}")
-                
-                # Save assistant message
-                ChatMessage.objects.create(
-                    session=chat_session,
-                    role='assistant',
-                    content=response['answer'],
-                    sources_json=sources,
-                    metadata_json={
-                        'model': response.get('model', model),
-                        'confidence': response.get('confidence', 0.0),
-                        'context_length': response.get('context_length', 0),
-                        'sources_count': len(sources)
-                    }
-                )
+                        logger.error(f"Error creating assistant message: {e}", exc_info=True)
+                        # Continue even if message saving fails
+                except Exception as e:
+                    logger.error(f"Error in message persistence: {e}", exc_info=True)
+                    # Continue even if persistence fails
             
             # Get session slug if session exists (safely handle if migration not run)
             session_slug = None

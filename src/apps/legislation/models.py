@@ -548,7 +548,12 @@ class ChatSession(TimeStampedModel):
         return ''
     
     def generate_slug(self) -> str:
-        """Gera um slug único para a sessão (estilo Gemini: caracteres aleatórios)."""
+        """
+        Gera um slug único para a sessão (estilo Gemini: caracteres aleatórios).
+        
+        Returns a random 12-character slug. Uniqueness is checked externally
+        when updating the database to avoid errors if slug field doesn't exist.
+        """
         import secrets
         import string
         
@@ -556,61 +561,30 @@ class ChatSession(TimeStampedModel):
         alphabet = string.ascii_lowercase + string.digits
         slug = ''.join(secrets.choice(alphabet) for _ in range(12))
         
-        # Ensure uniqueness (only if slug field exists in database)
-        # Check if field exists by trying to query it
+        # Try to ensure uniqueness (only if slug field exists)
+        # Use try/except to handle case where field doesn't exist
         try:
-            # Try to check if slug field exists by attempting a query
-            # If field doesn't exist, this will raise an exception
-            from django.db import connection
-            table_name = self._meta.db_table
-            with connection.cursor() as cursor:
-                cursor.execute(f"""
-                    SELECT column_name 
-                    FROM information_schema.columns 
-                    WHERE table_name = %s AND column_name = 'slug'
-                """, [table_name])
-                has_slug_column = cursor.fetchone() is not None
-            
-            if has_slug_column:
-                # Field exists, check uniqueness
-                max_attempts = 10
-                attempts = 0
-                while ChatSession.objects.filter(slug=slug).exists() and attempts < max_attempts:
-                    slug = ''.join(secrets.choice(alphabet) for _ in range(12))
-                    attempts += 1
-        except (AttributeError, ValueError, Exception) as e:
-            # Field doesn't exist yet or query failed - just return generated slug
+            max_attempts = 10
+            attempts = 0
+            while ChatSession.objects.filter(slug=slug).exists() and attempts < max_attempts:
+                slug = ''.join(secrets.choice(alphabet) for _ in range(12))
+                attempts += 1
+        except (AttributeError, ValueError, Exception):
+            # Field doesn't exist or query failed - just return generated slug
             # This is safe because if field doesn't exist, we can't check uniqueness anyway
             pass
         
         return slug
     
     def save(self, *args, **kwargs):
-        """Auto-generate slug if not provided."""
-        # COMPLETELY DISABLE slug generation in save() to avoid any database errors
-        # Slug will be generated manually after save if needed
-        # This ensures save() never fails due to slug field issues
-        super().save(*args, **kwargs)
+        """
+        Save the session without any slug generation.
         
-        # After successful save, try to generate slug if field exists
-        # This is done AFTER save to avoid any issues
-        if self.pk:  # Only if object was saved successfully
-            try:
-                # Check if slug field exists by trying to set it
-                # If field doesn't exist, this will silently fail
-                if not getattr(self, 'slug', None):
-                    try:
-                        slug_value = self.generate_slug()
-                        # Use update() to avoid triggering save() again
-                        ChatSession.objects.filter(pk=self.pk).update(slug=slug_value)
-                        # Refresh from database
-                        self.refresh_from_db()
-                    except Exception:
-                        # Field doesn't exist or update failed - ignore
-                        pass
-            except Exception:
-                # Any error - ignore completely
-                pass
+        Slug generation is handled externally after save() to avoid recursion
+        and database errors if the slug field doesn't exist yet.
+        """
+        # Simply save - no slug generation here
+        super().save(*args, **kwargs)
 
 
 class ChatMessage(TimeStampedModel):
