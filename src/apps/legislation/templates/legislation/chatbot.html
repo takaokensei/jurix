@@ -359,13 +359,36 @@
                 // Clear current session ID (no session until user sends message)
                 currentSessionId = null;
                 
-                // Clear messages
-                clearMessages();
-                
-                // Ensure welcome state is visible
-                const welcomeState = document.getElementById('welcome-state');
-                if (welcomeState) {
-                    welcomeState.style.display = 'flex';
+                // Clear messages but preserve welcome-state
+                const messagesWrapper = document.getElementById('messages-wrapper');
+                if (messagesWrapper) {
+                    // Remove all message elements but keep welcome-state
+                    const welcomeState = document.getElementById('welcome-state');
+                    const messages = messagesWrapper.querySelectorAll('.message');
+                    messages.forEach(msg => msg.remove());
+                    
+                    // Ensure welcome-state is visible and in the right place
+                    if (welcomeState) {
+                        welcomeState.style.display = 'flex';
+                        // Make sure welcome-state is in messages-wrapper
+                        if (welcomeState.parentNode !== messagesWrapper) {
+                            messagesWrapper.insertBefore(welcomeState, messagesWrapper.firstChild);
+                        }
+                    } else {
+                        // If welcome-state doesn't exist, recreate it
+                        const newWelcomeState = document.createElement('div');
+                        newWelcomeState.id = 'welcome-state';
+                        newWelcomeState.className = 'welcome-state';
+                        newWelcomeState.style.display = 'flex';
+                        newWelcomeState.innerHTML = `
+                            <h1 class="welcome-greeting">
+                                <span class="greeting-text">Olá, </span>
+                                <span class="greeting-name" data-user-name="{{ request.user.first_name|default:request.user.username|title }}">{{ request.user.first_name|default:request.user.username|title }}</span>
+                            </h1>
+                            <div class="suggestion-chips" id="suggestion-chips" role="list" aria-label="Sugestões de perguntas"></div>
+                        `;
+                        messagesWrapper.insertBefore(newWelcomeState, messagesWrapper.firstChild);
+                    }
                 }
                 
                 // Show welcome state with streaming and suggestions
@@ -396,6 +419,7 @@
         // Update new chat button state
         // NEW LOGIC: Button is disabled when already in a new conversation (no slug, no currentSessionId)
         // Button is enabled when in a named conversation (has slug in URL) - allows creating new chat
+        // Button is also enabled after a session is created and has messages (user can start new chat)
         function updateNewChatButtonState() {
             const newChatBtn = document.getElementById('new-chat-button');
             if (!newChatBtn) return;
@@ -413,7 +437,8 @@
                 newChatBtn.style.opacity = '0.5';
                 newChatBtn.style.cursor = 'not-allowed';
             } else {
-                // Enable if we're in a named conversation (allows creating new chat)
+                // Enable if we're in a named conversation OR have an active session
+                // This allows creating new chat after interacting with AI
                 newChatBtn.disabled = false;
                 newChatBtn.classList.remove('disabled');
                 newChatBtn.style.opacity = '1';
@@ -713,10 +738,20 @@
         }
         
         // Clear all messages from chat
+        // IMPORTANT: Preserve welcome-state when clearing messages
         function clearMessages() {
             const messagesWrapper = document.getElementById('messages-wrapper');
-            if (messagesWrapper) {
-                messagesWrapper.innerHTML = '';
+            if (!messagesWrapper) return;
+            
+            // Get welcome-state before clearing
+            const welcomeState = document.getElementById('welcome-state');
+            
+            // Clear all content
+            messagesWrapper.innerHTML = '';
+            
+            // Restore welcome-state if it existed (it will be shown/hidden by other functions)
+            if (welcomeState) {
+                messagesWrapper.appendChild(welcomeState);
             }
         }
         
