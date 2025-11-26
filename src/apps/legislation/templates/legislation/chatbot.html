@@ -268,58 +268,32 @@
         }
         
         // Create new chat session
+        // IMPORTANT: This function should NOT create a session automatically
+        // It should only clear the current state and show welcome screen
+        // Session will be created when user sends first message
         async function createNewSession() {
             try {
-                // Check if there's already an empty "Nova Conversa" session
-                const sessionsResponse = await fetch('/api/v1/chat/sessions/');
-                if (sessionsResponse.ok) {
-                    const sessionsData = await sessionsResponse.json();
-                    if (sessionsData.success && sessionsData.sessions) {
-                        // Find empty "Nova Conversa" sessions (no messages)
-                        const emptyNewSessions = sessionsData.sessions.filter(session => 
-                            session.title === 'Nova Conversa' && session.message_count === 0
-                        );
-                        
-                        if (emptyNewSessions.length > 0) {
-                            // Redirect to existing empty session
-                            currentSessionId = emptyNewSessions[0].id;
-                            clearMessages();
-                            await loadChatSessions();
-                            
-                            // Show welcome state with streaming greeting
-                            showWelcomeStateWithStreaming();
-                            
-                            // Load any saved text for this session
-                            if (textarea) {
-                                loadSavedText(currentSessionId);
-                            }
-                            return;
+                // Clear current session ID (no session until user sends message)
+                currentSessionId = null;
+                
+                // Clear messages and show welcome state
+                clearMessages();
+                showWelcomeStateWithStreaming();
+                
+                // Clear any saved text
+                if (textarea) {
+                    textarea.value = '';
+                    textarea.style.height = 'auto';
+                    // Clear all saved text from localStorage
+                    Object.keys(localStorage).forEach(key => {
+                        if (key.startsWith('chat-input-')) {
+                            localStorage.removeItem(key);
                         }
-                    }
+                    });
                 }
                 
-                // Create new session if no empty one exists
-                const csrfToken = getCookie('csrftoken');
-                const response = await fetch('/api/v1/chat/sessions/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({ title: 'Nova Conversa' })
-                });
-                
-                if (!response.ok) throw new Error('Failed to create session');
-                
-                const data = await response.json();
-                if (data.success && data.session) {
-                    currentSessionId = data.session.id;
-                    clearMessages();
-                    await loadChatSessions();
-                    
-                    // Show welcome state with streaming greeting
-                    showWelcomeStateWithStreaming();
-                }
+                // Reload sessions list to update active state
+                await loadChatSessions();
             } catch (error) {
                 console.error('Error creating new session:', error);
             }
@@ -498,12 +472,14 @@
         // Initialize: Load sessions on page load
         function initializeChatbot() {
             // Show welcome state with streaming on initial load
+            // IMPORTANT: Do NOT create a session automatically - only show welcome state
             showWelcomeStateWithStreaming();
             
-            // Load chat sessions
+            // Load chat sessions (for sidebar display only)
             if (document.getElementById('chat-sessions-list')) {
                 loadChatSessions().then(() => {
-                    // After loading sessions, check for active session
+                    // After loading sessions, check for active session WITH MESSAGES
+                    // Only load if session has actual messages (not empty)
                     const activeSessionItem = document.querySelector('.chat-session-item.active');
                     if (activeSessionItem) {
                         const sessionId = parseInt(activeSessionItem.dataset.sessionId);
@@ -516,12 +492,15 @@
                                         // Session has messages - load it
                                         loadSession(sessionId);
                                     } else {
-                                        // Session is empty - show welcome state with streaming
+                                        // Session is empty - show welcome state (don't create new session)
+                                        // Clear currentSessionId to ensure no empty session is used
+                                        currentSessionId = null;
                                         showWelcomeStateWithStreaming();
                                     }
                                 })
                                 .catch(() => {
                                     // On error, show welcome state with streaming
+                                    currentSessionId = null;
                                     showWelcomeStateWithStreaming();
                                 });
                         }
@@ -1751,13 +1730,34 @@
                 // Attach click handlers to items
                 commandPaletteResults.querySelectorAll('.command-palette-item').forEach(item => {
                     item.addEventListener('click', () => {
-                        executeCommand(item.dataset.commandId || item.dataset.action);
+                        const commandId = item.dataset.commandId || item.dataset.action;
+                        // Check if it's a chat session (starts with "chat-")
+                        if (commandId && commandId.startsWith('chat-')) {
+                            const sessionId = parseInt(commandId.replace('chat-', ''));
+                            if (sessionId) {
+                                closeCommandPalette();
+                                loadSession(sessionId);
+                                return;
+                            }
+                        }
+                        executeCommand(commandId);
                     });
                 });
             }, existingItems.length * 20 + 50);
         }
         
         function executeCommand(commandId) {
+            // First check if it's a chat session (starts with "chat-")
+            if (commandId && commandId.startsWith('chat-')) {
+                const sessionId = parseInt(commandId.replace('chat-', ''));
+                if (sessionId) {
+                    closeCommandPalette();
+                    loadSession(sessionId);
+                    return;
+                }
+            }
+            
+            // Otherwise, check regular commands
             const cmd = commands.find(c => c.id === commandId);
             if (cmd) {
                 closeCommandPalette();
