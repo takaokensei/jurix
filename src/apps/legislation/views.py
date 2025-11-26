@@ -286,23 +286,23 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
             
             try:
                 if request.user.is_authenticated:
-                # Try to get existing session if session_id provided
-                if session_id:
-                    try:
-                        chat_session = ChatSession.objects.get(id=session_id, user=request.user)
-                    except ChatSession.DoesNotExist:
-                        session_id = None  # Reset if session doesn't exist
-                        pass
-                
-                if not chat_session:
-                    chat_session = ChatSession.objects.filter(
-                        user=request.user,
-                        is_active=True
-                    ).order_by('-updated_at').first()
-                
-                if not chat_session:
-                    # Create new session with title from first question IMMEDIATELY
-                    title = question[:50] + ('...' if len(question) > 50 else '')
+                    # Try to get existing session if session_id provided
+                    if session_id:
+                        try:
+                            chat_session = ChatSession.objects.get(id=session_id, user=request.user)
+                        except ChatSession.DoesNotExist:
+                            session_id = None  # Reset if session doesn't exist
+                            pass
+                    
+                    if not chat_session:
+                        chat_session = ChatSession.objects.filter(
+                            user=request.user,
+                            is_active=True
+                        ).order_by('-updated_at').first()
+                    
+                    if not chat_session:
+                        # Create new session with title from first question IMMEDIATELY
+                        title = question[:50] + ('...' if len(question) > 50 else '')
                     # Create session WITHOUT slug first to avoid any database errors
                     chat_session = ChatSession.objects.create(
                         user=request.user,
