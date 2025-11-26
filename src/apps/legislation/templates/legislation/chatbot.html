@@ -682,8 +682,13 @@
                     messages.forEach(msg => msg.remove());
                     
                     // Hide welcome state when loading a session with messages
-                    if (welcomeState && sessionData.messages && sessionData.messages.length > 0) {
-                        welcomeState.style.display = 'none';
+                    if (welcomeState) {
+                        if (sessionData.messages && sessionData.messages.length > 0) {
+                            welcomeState.style.display = 'none';
+                        } else {
+                            // No messages - show welcome state
+                            welcomeState.style.display = 'flex';
+                        }
                     }
                 }
                 
@@ -693,18 +698,7 @@
                     if (parseInt(item.dataset.sessionId) === sessionId) {
                         item.classList.add('active');
                     }
-                });
-                
-                // Hide welcome state (only if there are messages)
-                const welcomeState = document.getElementById('welcome-state');
-                if (welcomeState) {
-                    if (sessionData.messages && sessionData.messages.length > 0) {
-                        welcomeState.style.display = 'none';
-                    } else {
-                        // No messages - show welcome state
-                        welcomeState.style.display = 'flex';
-                    }
-                }
+                })
                 
                 // Load and render messages
                 if (sessionData.messages && sessionData.messages.length > 0) {
@@ -813,13 +807,7 @@
                 showWelcomeStateWithStreaming();
             }
             
-            // Load chat sessions (for sidebar display only)
-            // IMPORTANT: Don't mark any session as active when in new conversation
-            if (document.getElementById('chat-sessions-list')) {
-                loadChatSessions();
-            }
-            
-            // New chat button
+            // New chat button (setup first)
             const newChatBtn = document.getElementById('new-chat-button');
             if (newChatBtn) {
                 newChatBtn.addEventListener('click', createNewSession);
@@ -827,6 +815,15 @@
             
             // Update new chat button state
             updateNewChatButtonState();
+            
+            // Load chat sessions (for sidebar display only) - AFTER welcome state is shown
+            // IMPORTANT: Don't mark any session as active when in new conversation
+            // Delay slightly to ensure welcome state is rendered first
+            setTimeout(() => {
+                if (document.getElementById('chat-sessions-list')) {
+                    loadChatSessions();
+                }
+            }, 100);
         }
         
         // Initialize when DOM is ready
@@ -1767,8 +1764,30 @@
         
         // Show welcome state with streaming greeting effect
         function showWelcomeStateWithStreaming() {
-            const welcomeState = document.getElementById('welcome-state');
-            if (!welcomeState) return;
+            let welcomeState = document.getElementById('welcome-state');
+            
+            // If welcome-state doesn't exist, create it
+            if (!welcomeState) {
+                const messagesWrapper = document.getElementById('messages-wrapper');
+                if (messagesWrapper) {
+                    const newWelcomeState = document.createElement('div');
+                    newWelcomeState.id = 'welcome-state';
+                    newWelcomeState.className = 'welcome-state';
+                    newWelcomeState.style.display = 'flex';
+                    newWelcomeState.innerHTML = `
+                        <h1 class="welcome-greeting">
+                            <span class="greeting-text">Olá, </span>
+                            <span class="greeting-name" data-user-name="{{ request.user.first_name|default:request.user.username|title }}">{{ request.user.first_name|default:request.user.username|title }}</span>
+                        </h1>
+                        <div class="suggestion-chips" id="suggestion-chips" role="list" aria-label="Sugestões de perguntas"></div>
+                    `;
+                    messagesWrapper.insertBefore(newWelcomeState, messagesWrapper.firstChild);
+                    welcomeState = document.getElementById('welcome-state');
+                    if (!welcomeState) return; // Still can't find it, abort
+                } else {
+                    return; // Can't create without messages-wrapper
+                }
+            }
             
             // Prevent multiple simultaneous executions
             if (isStreamingGreeting) {
