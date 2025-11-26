@@ -634,11 +634,18 @@ def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonRe
         return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
     
     try:
-        last_user_msg = session.messages.filter(role='user').order_by('-created_at').first()
+        # Use direct query instead of related manager
+        last_user_msg = ChatMessage.objects.filter(
+            session_id=session.id,
+            role='user'
+        ).order_by('-created_at').first()
         if not last_user_msg:
             return JsonResponse({'success': False, 'error': 'No user message found to regenerate'}, status=400)
         
-        last_assistant = session.messages.filter(role='assistant').order_by('-created_at').first()
+        last_assistant = ChatMessage.objects.filter(
+            session_id=session.id,
+            role='assistant'
+        ).order_by('-created_at').first()
         if last_assistant:
             last_assistant.delete()
         
