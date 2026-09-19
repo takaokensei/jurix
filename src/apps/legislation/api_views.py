@@ -204,14 +204,23 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
         # Format sources for JSON
         formatted_sources = []
         for source in response.get('sources', []):
-            disp = source['dispositivo']
-            formatted_sources.append({
-                'id': disp.id,
-                'text': disp.texto,
-                'similarity_score': source['similarity_score'],
-                'norma': f"{disp.norma.tipo} {disp.norma.numero}/{disp.norma.ano}",
-                'hierarchy': source['context']['hierarchy']
-            })
+            disp = source.get('dispositivo')
+            if disp:
+                formatted_sources.append({
+                    'id': disp.id,
+                    'text': disp.texto,
+                    'similarity_score': source.get('similarity_score', 0.0),
+                    'norma': f"{disp.norma.tipo} {disp.norma.numero}/{disp.norma.ano}",
+                    'hierarchy': source.get('context', {}).get('hierarchy', '') if isinstance(source.get('context'), dict) else ''
+                })
+            elif 'dispositivo_id' in source:
+                formatted_sources.append({
+                    'id': source.get('dispositivo_id'),
+                    'text': source.get('texto', ''),
+                    'similarity_score': source.get('similarity_score', 0.0),
+                    'norma': source.get('identifier', ''),
+                    'hierarchy': ''
+                })
         
         return JsonResponse({
             'success': True,
@@ -222,7 +231,8 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
             'metadata': {
                 'k': k,
                 'model': response.get('model', model),
-                'context_length': response.get('context_length', 0)
+                'context_length': response.get('context_length', 0),
+                'cached': response.get('cached', False)
             }
         })
         
@@ -807,9 +817,14 @@ def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonRe
         k = data.get('k', 5)
         model = data.get('model', 'llama3')
         
-        # Generate new answer FIRST before touching database state
+        # Generate new answer FIRST before touching database state (force refresh cache)
         rag_service = RAGService()
-        response = rag_service.answer_question(question=last_user_msg.content, k=k, model=model)
+        response = rag_service.answer_question(
+            question=last_user_msg.content,
+            k=k,
+            model=model,
+            force_refresh=True
+        )
         
         # Only after generation succeeds, delete previous assistant response
         if last_assistant:

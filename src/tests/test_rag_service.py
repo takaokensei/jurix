@@ -277,3 +277,63 @@ class TestRAGService:
         assert context != ""
         assert len(results) >= 0  # May be empty if no dispositivos match
 
+    @patch('src.processing.rag_service.OllamaService')
+    def test_answer_question_with_cache_hit(self, mock_ollama_class):
+        """Test answer_question returns cached answer without invoking Ollama."""
+        mock_ollama = Mock()
+        mock_ollama_class.return_value = mock_ollama
+
+        service = RAGService(use_cache=True)
+        service.cache = Mock()
+        service.cache.get_answer.return_value = {
+            'answer': 'Resposta em cache.',
+            'sources': [],
+            'confidence': 0.95,
+            'model': 'llama3',
+            'cached': True,
+        }
+
+        result = service.answer_question('Qual o prazo de obras?', k=5, model='llama3')
+
+        assert result['cached'] is True
+        assert result['answer'] == 'Resposta em cache.'
+        mock_ollama.generate_text.assert_not_called()
+        service.cache.get_answer.assert_called_once_with('Qual o prazo de obras?', k=5, model='llama3')
+
+    @patch('src.processing.rag_service.OllamaService')
+    def test_answer_question_cache_miss_and_store(self, mock_ollama_class):
+        """Test answer_question invokes LLM on cache miss and caches the result."""
+        mock_ollama = Mock()
+        mock_ollama.generate_text.return_value = 'Resposta gerada pelo Llama 3.'
+        mock_ollama_class.return_value = mock_ollama
+
+        service = RAGService(use_cache=True)
+        service.cache = Mock()
+        service.cache.get_answer.return_value = None  # Cache MISS
+        service.get_relevant_context = Mock(return_value=('Contexto relevante', [{'similarity_score': 0.9}]))
+
+        result = service.answer_question('Pergunta nova', k=5, model='llama3')
+
+        assert result['cached'] is False
+        assert 'Resposta gerada' in result['answer']
+        mock_ollama.generate_text.assert_called_once()
+        service.cache.set_answer.assert_called_once()
+
+    @patch('src.processing.rag_service.OllamaService')
+    def test_answer_question_force_refresh_bypasses_cache(self, mock_ollama_class):
+        """Test answer_question with force_refresh=True ignores cached answer."""
+        mock_ollama = Mock()
+        mock_ollama.generate_text.return_value = 'Nova resposta atualizada.'
+        mock_ollama_class.return_value = mock_ollama
+
+        service = RAGService(use_cache=True)
+        service.cache = Mock()
+        service.get_relevant_context = Mock(return_value=('Contexto', [{'similarity_score': 0.88}]))
+
+        result = service.answer_question('Pergunta para regenerar', k=5, model='llama3', force_refresh=True)
+
+        service.cache.get_answer.assert_not_called()
+        assert result['answer'] == 'Nova resposta atualizada.'
+        mock_ollama.generate_text.assert_called_once()
+
+

@@ -51,7 +51,7 @@ class RAGService:
         
         This method:
         1. Generates embedding for the query text using Ollama
-        2. Executes cosine similarity search using pgvector (<-> operator)
+        2. Executes cosine similarity search using pgvector (<=> operator)
         3. Returns top-k most similar dispositivos with scores
         
         Args:
@@ -93,7 +93,7 @@ class RAGService:
         logger.debug(f"Query embedding dimension: {len(query_embedding)}")
         
         # Step 2: Execute vector similarity search using raw SQL
-        # Using <-> operator for cosine distance (pgvector)
+        # Using <=> operator for cosine distance (pgvector vector_cosine_ops)
         # Lower distance = more similar
         # Similarity = 1 - distance
         
@@ -106,8 +106,8 @@ class RAGService:
                 texto,
                 ordem,
                 embedding_model,
-                GREATEST(0.0, LEAST(1.0, 1 - (embedding <-> %s::vector))) as similarity_score,
-                (embedding <-> %s::vector) as distance
+                GREATEST(0.0, LEAST(1.0, 1 - (embedding <=> %s::vector))) as similarity_score,
+                (embedding <=> %s::vector) as distance
             FROM legislation_dispositivo
             WHERE embedding IS NOT NULL
         """
@@ -122,7 +122,7 @@ class RAGService:
         # Filter by minimum similarity (convert to distance: distance = 1 - similarity)
         if min_similarity > 0:
             max_distance = 1 - min_similarity
-            sql_query += " AND (embedding <-> %s::vector) < %s"
+            sql_query += " AND (embedding <=> %s::vector) < %s"
             params.extend([query_embedding, max_distance])
         
         # Order by similarity (ascending distance) and limit
@@ -270,32 +270,59 @@ class RAGService:
         self,
         question: str,
         k: int = 5,
-        model: str = "llama3"
+        model: str = "llama3",
+        force_refresh: bool = False
     ) -> Dict[str, Any]:
         """
         Answer a legal question using RAG (Retrieval + Generation).
         
         Combines semantic search with LLM generation to provide
-        context-aware answers.
+        context-aware answers. Leverages Redis caching for sub-second responses.
         
         Args:
             question: The legal question to answer
             k: Number of relevant dispositivos to retrieve
             model: LLM model to use for generation
+            force_refresh: If True, bypasses cache and re-generates
             
         Returns:
             Dictionary with answer, sources, and metadata
         """
-        logger.info(f"Answering question with RAG: '{question[:100]}...'")
+        clean_question = question.strip()
+        logger.info(f"Answering question with RAG: '{clean_question[:100]}...'")
+        
+        # Step 0: Check cache if enabled and not forced to refresh
+        if not force_refresh and self.use_cache and self.cache:
+            cached_result = self.cache.get_answer(clean_question, k=k, model=model)
+            if cached_result:
+                logger.info(f"Cache HIT for RAG answer: '{clean_question[:50]}...'")
+                # Rehydrate Dispositivo instances for sources if available
+                cached_sources = cached_result.get('sources', [])
+                disp_ids = [
+                    s['dispositivo_id'] for s in cached_sources
+                    if isinstance(s, dict) and s.get('dispositivo_id')
+                ]
+                if disp_ids:
+                    disps = {
+                        d.id: d for d in Dispositivo.objects.filter(id__in=disp_ids).select_related('norma', 'dispositivo_pai')
+                    }
+                    for s in cached_sources:
+                        did = s.get('dispositivo_id')
+                        if did in disps:
+                            s['dispositivo'] = disps[did]
+                cached_result['sources'] = cached_sources
+                cached_result['cached'] = True
+                return cached_result
         
         # Step 1: Retrieve relevant context
-        context, results = self.get_relevant_context(question, k=k)
+        context, results = self.get_relevant_context(clean_question, k=k)
         
         if not results:
             return {
                 'answer': "Não encontrei informações relevantes para responder esta pergunta.",
                 'sources': [],
-                'confidence': 0.0
+                'confidence': 0.0,
+                'cached': False
             }
         
         # Step 2: Build prompt for LLM with Markdown formatting instructions
@@ -322,7 +349,7 @@ CONTEXTO LEGAL:
 {context}
 
 PERGUNTA DO USUÁRIO:
-{question}
+{clean_question}
 
 INSTRUÇÕES:
 - Responda em português claro e objetivo
@@ -344,7 +371,8 @@ RESPOSTA:"""
             return {
                 'answer': "Erro ao gerar resposta. Por favor, tente novamente.",
                 'sources': results,
-                'confidence': 0.0
+                'confidence': 0.0,
+                'cached': False
             }
         
         # Step 4: Post-process markdown to fix formatting issues
@@ -353,13 +381,20 @@ RESPOSTA:"""
         # Calculate average confidence from similarity scores
         avg_confidence = sum(r['similarity_score'] for r in results) / len(results)
         
-        return {
+        result_payload = {
             'answer': answer.strip(),
             'sources': results,
             'confidence': avg_confidence,
             'model': model,
-            'context_length': len(context)
+            'context_length': len(context),
+            'cached': False
         }
+        
+        # Step 5: Save to cache if enabled
+        if self.use_cache and self.cache:
+            self.cache.set_answer(clean_question, k=k, model=model, answer_data=result_payload)
+        
+        return result_payload
     
     def _fix_markdown_formatting(self, text: str) -> str:
         """

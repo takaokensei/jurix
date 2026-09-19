@@ -242,12 +242,30 @@ class CacheService:
         key = self._generate_key(self.ANSWER_PREFIX, cache_input)
         
         try:
-            # Serialize answer (remove non-serializable objects)
+            # Serialize answer and sources (remove non-serializable objects)
+            serializable_sources = []
+            for src in answer_data.get('sources', []):
+                if isinstance(src, dict):
+                    disp = src.get('dispositivo')
+                    if disp and hasattr(disp, 'id'):
+                        serializable_sources.append({
+                            'dispositivo_id': disp.id,
+                            'similarity_score': float(src.get('similarity_score', 0.0)),
+                            'distance': float(src.get('distance', 0.0)),
+                            'context': src.get('context', ''),
+                            'embedding_model': src.get('embedding_model', ''),
+                            'identifier': disp.get_full_identifier() if hasattr(disp, 'get_full_identifier') else '',
+                            'texto': disp.texto if hasattr(disp, 'texto') else ''
+                        })
+                    else:
+                        serializable_sources.append(src)
+
             serializable_answer = {
                 'answer': answer_data['answer'],
-                'confidence': answer_data['confidence'],
+                'confidence': float(answer_data.get('confidence', 0.0)),
                 'model': answer_data.get('model', model),
                 'context_length': answer_data.get('context_length', 0),
+                'sources': serializable_sources,
                 'cached': True
             }
             
