@@ -67,9 +67,11 @@
                     <div class="sidebar-item" role="button" tabindex="0" onclick="window.location.href='{% url "legislation:norma_list" %}'" onkeydown="if(event.key==='Enter')window.location.href='{% url "legislation:norma_list" %}'">
                         <span>Normas Consolidadas</span>
                     </div>
+                    {% if user.is_authenticated and user.is_staff %}
                     <div class="sidebar-item" role="button" tabindex="0" onclick="window.location.href='/admin/'" onkeydown="if(event.key==='Enter')window.location.href='/admin/'">
                         <span>Admin</span>
                     </div>
+                    {% endif %}
                 </nav>
                 
                 <!-- Dark Mode Toggle -->
@@ -138,6 +140,17 @@
                     </svg>
                 </button>
             </div>
+            
+            {% if not request.user.is_authenticated %}
+            <div class="anonymous-banner" role="status" style="background: var(--color-bg-tertiary); border-bottom: 1px solid var(--color-border); padding: 0.5rem 1rem; font-size: 0.8125rem; color: var(--color-text-secondary); display: flex; align-items: center; gap: 0.5rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                <span><strong>Sessão Temporária:</strong> O histórico desta conversa não será sincronizado na sua conta.</span>
+            </div>
+            {% endif %}
             
             <!-- Messages Container -->
             <div class="messages-container" id="messages-container" role="log" aria-live="polite" aria-atomic="false" aria-label="Histórico da conversa">
@@ -210,9 +223,9 @@
         </div>
     </div>
     
-    <!-- Markdown & Sanitization Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- Markdown & Sanitization Libraries (100% Local-First Vendorized) -->
+    <script src="{% static 'js/vendor/marked.min.js' %}"></script>
+    <script src="{% static 'js/vendor/purify.min.js' %}"></script>
     
     <!-- Jurix Config & Modular Static Scripts -->
     <script>

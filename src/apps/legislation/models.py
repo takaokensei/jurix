@@ -90,25 +90,26 @@ class Norma(TimeStampedModel):
     )
     
     # Controle de Processamento (Pipeline Status)
-    STATUS_CHOICES = [
-        ('pending', 'Pendente'),
-        ('pdf_downloaded', 'PDF Baixado'),
-        ('ocr_processing', 'OCR em Processamento'),
-        ('ocr_completed', 'OCR Completo'),
-        ('segmentation_processing', 'Segmentação em Processamento'),
-        ('segmented', 'Texto Segmentado'),
-        ('entity_extraction', 'Extração de Entidades'),
-        ('entities_extracted', 'Entidades Extraídas'),
-        ('consolidation', 'Consolidação em Processamento'),
-        ('consolidated', 'Consolidado'),
-        ('nlp_processing', 'NLP em Processamento'),
-        ('ready', 'Pronto para Consolidação'),
-        ('failed', 'Falha no Processamento'),
-    ]
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pendente'
+        PDF_DOWNLOADED = 'pdf_downloaded', 'PDF Baixado'
+        OCR_PROCESSING = 'ocr_processing', 'OCR em Processamento'
+        OCR_COMPLETED = 'ocr_completed', 'OCR Completo'
+        SEGMENTATION_PROCESSING = 'segmentation_processing', 'Segmentação em Processamento'
+        SEGMENTED = 'segmented', 'Texto Segmentado'
+        ENTITY_EXTRACTION = 'entity_extraction', 'Extração de Entidades'
+        ENTITIES_EXTRACTED = 'entities_extracted', 'Entidades Extraídas'
+        CONSOLIDATION = 'consolidation', 'Consolidação em Processamento'
+        CONSOLIDATED = 'consolidated', 'Consolidado'
+        NLP_PROCESSING = 'nlp_processing', 'NLP em Processamento'
+        READY = 'ready', 'Pronto para Consolidação'
+        FAILED = 'failed', 'Falha no Processamento'
+
+    STATUS_CHOICES = Status.choices
     status = models.CharField(
         max_length=30,
-        choices=STATUS_CHOICES,
-        default='pending',
+        choices=Status.choices,
+        default=Status.PENDING,
         verbose_name='Status',
         db_index=True
     )
@@ -247,6 +248,21 @@ class Dispositivo(TimeStampedModel):
         help_text='Texto original antes da limpeza (para auditoria)'
     )
     
+    # Hierarquia Materializada (O(1) lookups sem queries recursivas)
+    caminho = models.CharField(
+        max_length=500,
+        blank=True,
+        db_index=True,
+        verbose_name='Caminho Hierárquico',
+        help_text='Caminho materializado na hierarquia (ex: "Art. 1º > § 2º > Inciso III")'
+    )
+    nivel = models.IntegerField(
+        default=0,
+        db_index=True,
+        verbose_name='Nível Hierárquico',
+        help_text='Nível na árvore hierárquica (0 = raiz)'
+    )
+
     # Embedding for semantic search (pgvector)
     embedding = VectorField(
         dimensions=768,  # BERTimbau embedding size (or llama3 embedding size)
@@ -278,6 +294,7 @@ class Dispositivo(TimeStampedModel):
             models.Index(fields=['norma', 'tipo']),
             models.Index(fields=['norma', 'ordem']),
             models.Index(fields=['dispositivo_pai']),
+            models.Index(fields=['norma', 'nivel']),
         ]
         constraints = [
             models.UniqueConstraint(
@@ -302,8 +319,13 @@ class Dispositivo(TimeStampedModel):
         """
         Retorna o caminho hierárquico completo do dispositivo.
         
+        Utiliza o campo materializado `caminho` quando disponível (O(1)),
+        com fallback para computação dinâmica caso ainda não preenchido.
         Exemplo: "Art. 1º > § 2º > Inciso III > Alínea b"
         """
+        if self.caminho:
+            return self.caminho
+            
         caminho = [str(self)]
         pai = self.dispositivo_pai
         
@@ -316,7 +338,13 @@ class Dispositivo(TimeStampedModel):
     def get_nivel(self) -> int:
         """
         Retorna o nível hierárquico do dispositivo (0 = raiz).
+        
+        Utiliza o campo materializado `nivel` quando disponível,
+        com fallback para computação dinâmica.
         """
+        if self.nivel is not None and self.nivel > 0:
+            return self.nivel
+            
         nivel = 0
         pai = self.dispositivo_pai
         

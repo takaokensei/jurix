@@ -171,6 +171,9 @@ CACHES = {
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://host.docker.internal:11434')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3')
 
+# SAPL Configuration
+SAPL_BASE_URL = os.getenv('SAPL_BASE_URL', 'https://sapl.natal.rn.leg.br/api')
+
 
 # Logging Configuration
 LOGGING = {

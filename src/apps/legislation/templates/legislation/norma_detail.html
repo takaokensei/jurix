@@ -33,7 +33,9 @@
     <div style="margin: 20px 0;">
         <a href="{% url 'legislation:norma_compare' norma.pk %}" class="btn">Comparar Versões</a>
         <a href="{% url 'legislation:norma_tree' norma.pk %}" class="btn btn-secondary">Visualizar Árvore</a>
+        {% if user.is_authenticated and user.is_staff %}
         <a href="/admin/legislation/norma/{{ norma.pk }}/change/" class="btn btn-secondary">Editar no Admin</a>
+        {% endif %}
     </div>
 </div>
 

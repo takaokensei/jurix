@@ -8,6 +8,7 @@ API Base URL: https://sapl.natal.rn.leg.br/api/
 Documentação: https://sapl.natal.rn.leg.br/api/docs/
 """
 
+import os
 import logging
 import time
 from typing import Dict, List, Optional, Any
@@ -16,22 +17,29 @@ from datetime import datetime
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
 
 class SaplAPIClient:
     """
-    Cliente para consumo da API REST do SAPL Natal.
+    Cliente para consumo da API REST do SAPL.
     
     Features:
     - Retry automático com backoff exponencial
     - Rotação de User-Agents
     - Logging estruturado
     - Tratamento robusto de erros
+    - Configurabilidade de Base URL via env/settings
     """
     
-    BASE_URL = "https://sapl.natal.rn.leg.br/api"
+    DEFAULT_BASE_URL = getattr(
+        settings,
+        'SAPL_BASE_URL',
+        os.getenv('SAPL_BASE_URL', "https://sapl.natal.rn.leg.br/api")
+    )
+    BASE_URL = DEFAULT_BASE_URL
     NORMA_ENDPOINT = "/norma/normajuridica/"
     
     USER_AGENTS = [
@@ -42,7 +50,7 @@ class SaplAPIClient:
     
     def __init__(
         self,
-        base_url: str = BASE_URL,
+        base_url: Optional[str] = None,
         timeout: int = 30,
         max_retries: int = 3
     ):
@@ -50,11 +58,12 @@ class SaplAPIClient:
         Inicializa o cliente SAPL.
         
         Args:
-            base_url: URL base da API SAPL
+            base_url: URL base da API SAPL (defaults to settings.SAPL_BASE_URL)
             timeout: Timeout em segundos para requisições HTTP
             max_retries: Número máximo de tentativas em caso de falha
         """
-        self.base_url = base_url.rstrip('/')
+        resolved_url = base_url or getattr(settings, 'SAPL_BASE_URL', self.BASE_URL)
+        self.base_url = str(resolved_url).rstrip('/')
         self.timeout = timeout
         self.session = self._create_session(max_retries)
         self._request_count = 0

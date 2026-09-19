@@ -13,6 +13,13 @@ from . import api_views
 app_name = 'legislation_api'
 
 urlpatterns = [
+    # Health check endpoint
+    path(
+        'health/',
+        api_views.health_check_api,
+        name='health_check'
+    ),
+    
     # Semantic search endpoint
     path(
         'search/semantic/',
@@ -25,6 +32,11 @@ urlpatterns = [
         'search/answer/',
         api_views.rag_answer_api,
         name='rag_answer'
+    ),
+    path(
+        'search/answer/stream/',
+        api_views.chatbot_stream_api,
+        name='rag_answer_stream'
     ),
     
     # Norma listing

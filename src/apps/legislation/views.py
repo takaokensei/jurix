@@ -10,15 +10,18 @@ import traceback
 from typing import Any, Dict
 import json
 
+from collections import defaultdict
 from django.shortcuts import render, get_object_or_404
 from django.views.generic import ListView, DetailView
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.db.models import Q
+from django.core.paginator import Paginator
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 
 from .models import Norma, Dispositivo, EventoAlteracao, ChatSession, ChatMessage
+from .serializers import serialize_dispositivo_source, serialize_chat_session, serialize_chat_message
 from src.processing.rag_service import RAGService
 
 logger = logging.getLogger(__name__)
@@ -171,26 +174,28 @@ def norma_dispositivos_tree_view(request: HttpRequest, pk: int) -> HttpResponse:
         norma=norma
     ).select_related('dispositivo_pai').order_by('ordem')
     
-    # Build tree structure
-    def build_tree(parent_id=None):
-        """Recursively build tree structure."""
-        children = [d for d in dispositivos if d.dispositivo_pai_id == parent_id]
-        tree = []
-        for child in children:
-            tree.append({
+    # Build tree structure in O(N) using in-memory parent-children map
+    children_map = defaultdict(list)
+    for d in dispositivos:
+        children_map[d.dispositivo_pai_id].append(d)
+
+    def build_tree_nodes(parent_id=None):
+        return [
+            {
                 'dispositivo': child,
-                'children': build_tree(child.id)
-            })
-        return tree
-    
-    tree = build_tree(None)
-    
+                'children': build_tree_nodes(child.id)
+            }
+            for child in children_map.get(parent_id, [])
+        ]
+
+    tree = build_tree_nodes(None)
+
     context = {
         'norma': norma,
         'tree': tree,
         'total_dispositivos': dispositivos.count(),
     }
-    
+
     return render(request, 'legislation/norma_tree.html', context)
 
 
@@ -407,75 +412,11 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                     'error': 'Erro ao gerar resposta. Tente novamente.'
                 }, status=500)
             
-            # Format sources for frontend with error handling
-            sources = []
-            try:
-                for source in response.get('sources', []):
-                    try:
-                        disp = source.get('dispositivo')
-                        if not disp:
-                            logger.warning("Source missing dispositivo, skipping")
-                            continue
-                        
-                        similarity = source.get('similarity_score', 0.0)
-                        distance = source.get('distance', 1.0)
-                        
-                        # Debug logging
-                        logger.debug(f"Source similarity: {similarity}, distance: {distance}")
-                        
-                        # Ensure similarity is a float and within valid range
-                        similarity_score = float(similarity) if similarity is not None else 0.0
-                        similarity_score = max(0.0, min(1.0, similarity_score))
-                        
-                        # Get PDF and SAPL URLs from norma with error handling
-                        try:
-                            norma = disp.norma
-                            pdf_url = getattr(norma, 'pdf_url', None) or None
-                            sapl_url = getattr(norma, 'sapl_url', None) or None
-                            norma_tipo = getattr(norma, 'tipo', 'Norma')
-                            norma_numero = getattr(norma, 'numero', '')
-                            norma_ano = getattr(norma, 'ano', '')
-                            norma_id = getattr(norma, 'id', None)
-                        except (AttributeError, Exception) as e:
-                            logger.warning(f"Error accessing norma attributes: {e}")
-                            pdf_url = None
-                            sapl_url = None
-                            norma_tipo = 'Norma'
-                            norma_numero = ''
-                            norma_ano = ''
-                            norma_id = None
-                        
-                        # Get dispositivo attributes safely
-                        try:
-                            disp_id = getattr(disp, 'id', None)
-                            disp_texto = getattr(disp, 'texto', '')
-                            disp_identifier = disp.get_full_identifier() if hasattr(disp, 'get_full_identifier') else ''
-                        except (AttributeError, Exception) as e:
-                            logger.warning(f"Error accessing dispositivo attributes: {e}")
-                            disp_id = None
-                            disp_texto = ''
-                            disp_identifier = ''
-                        
-                        sources.append({
-                            'id': disp_id,
-                            'text': disp_texto[:200] + ('...' if len(disp_texto) > 200 else ''),
-                            'full_text': disp_texto,
-                            'similarity_score': similarity_score,
-                            'distance': float(distance) if distance is not None else 1.0,
-                            'norma_ref': f"{norma_tipo} {norma_numero}/{norma_ano}".strip(),
-                            'norma_id': norma_id,
-                            'dispositivo_ref': disp_identifier,
-                            'hierarchy': source.get('context', {}).get('hierarchy', ''),
-                            'pdf_url': pdf_url,
-                            'sapl_url': sapl_url,
-                            'dispositivo_id': disp_id
-                        })
-                    except Exception as e:
-                        logger.warning(f"Error processing source: {e}")
-                        continue
-            except Exception as e:
-                logger.error(f"Error formatting sources: {e}", exc_info=True)
-                # Continue with empty sources list
+            # Format sources for frontend with centralized serializer
+            sources = [
+                serialize_dispositivo_source(source)
+                for source in response.get('sources', [])
+            ]
             
             # Persist assistant message (user message already saved above)
             if request.user.is_authenticated and chat_session:

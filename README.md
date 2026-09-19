@@ -146,70 +146,65 @@ graph TD
 jurix/
 │
 ├── 🐳 docker/
-│   ├── web.Dockerfile              # Django + dependencies
-│   ├── worker.Dockerfile           # Celery worker image
-│   └── docker-compose.yml          # Orquestração completa
+│   └── Dockerfile                  # Multi-stage build (Python 3.12, OCR, Poppler, Curl)
 │
 ├── ⚙️ config/
-│   ├── settings/
-│   │   ├── base.py                 # Configurações compartilhadas
-│   │   ├── development.py          # Dev com DEBUG=True
-│   │   └── production.py           # Prod otimizado
-│   ├── urls.py                     # Roteamento global
-│   └── celery.py                   # Task queue config
+│   ├── settings.py                 # Configurações Django unificadas (Database, Redis, Ollama, Celery)
+│   ├── urls.py                     # Roteamento global de URLs
+│   ├── wsgi.py                     # Entrypoint WSGI Gunicorn
+│   └── celery.py                   # Configuração do Celery worker/broker
 │
 ├── 📦 src/
 │   ├── apps/
-│   │   ├── core/                   # Modelos base abstratos
-│   │   │   ├── models.py           # TimeStampedModel, etc.
-│   │   │   └── mixins.py           # Behavior mixins
+│   │   ├── core/                   # Utilitários, modelos base e assets estáticos
+│   │   │   ├── static/             # Swiss Design CSS, vendor local JS (marked, DOMPurify) e chat.js
+│   │   │   └── models.py           # TimeStampedModel base
 │   │   │
-│   │   ├── legislation/            # Domínio principal
-│   │   │   ├── models.py           # Law, Article, Amendment
-│   │   │   ├── admin.py            # Django Admin customizado
-│   │   │   └── serializers.py     # API serialization
+│   │   ├── legislation/            # Domínio jurídico e RAG
+│   │   │   ├── models.py           # Norma, Dispositivo, ChatSession, ChatMessage
+│   │   │   ├── views.py            # NormaListView, NormaDetailView, ChatbotView
+│   │   │   ├── serializers.py      # Serialização desacoplada de dispositivos e sessões
+│   │   │   ├── api_views.py        # Endpoints REST (Busca, RAG SSE Streaming, Health)
+│   │   │   ├── api_urls.py         # Rotas /api/v1/
+│   │   │   └── admin.py            # Django Admin customizado
 │   │   │
-│   │   └── ingestion/              # Controle de ingestão
-│   │       ├── models.py           # IngestionRun, Document
-│   │       ├── tasks.py            # Celery tasks
-│   │       └── sapl_client.py     # SAPL API integration
+│   │   └── ingestion/              # Ingestão e pipeline assíncrono
+│   │       ├── models.py           # IngestionTask, RawDocument
+│   │       └── tasks.py            # Tarefas Celery atômicas (download, OCR, segmentação)
 │   │
 │   ├── clients/
-│   │   └── sapl.py                 # Cliente HTTP SAPL
+│   │   └── sapl/
+│   │       └── sapl_client.py      # Cliente HTTP SAPL com URL configurável
 │   │
 │   ├── processing/
-│   │   ├── ocr/                    # Tesseract wrappers
-│   │   ├── nlp/                    # spaCy pipelines
-│   │   └── parsers/                # PDF structure parsing
+│   │   ├── legal_parser.py         # Segmentação hierárquica (Artigos, Parágrafos, Macro-divisões)
+│   │   ├── ner_extractor.py        # Extração de referências jurídicas e entidades
+│   │   ├── consolidation_engine.py # Motor de rastreamento de vigência e revogações
+│   │   └── rag_service.py          # RAG Service, pgvector Cosine similarity e streaming
 │   │
-│   └── llm_engine/
-│       ├── ollama_client.py        # HTTP client para Ollama
-│       ├── prompts.py              # Templates de prompts
-│       └── embeddings.py           # Geração de vetores
+│   ├── llm_engine/
+│   │   ├── ollama_service.py       # Ollama Service (Connection Pooling, Embeddings, SSE Stream)
+│   │   └── prompts.py              # Templates de prompts para assistente jurídico
+│   │
+│   └── tests/                      # Suite de testes unitários e de integração
+│       ├── conftest.py
+│       ├── test_legal_parser.py
+│       ├── test_models.py
+│       ├── test_views.py
+│       ├── test_api.py
+│       └── ...
 │
-├── 📊 data/                        # Não versionado (.gitignore)
-│   ├── pdfs/                       # PDFs baixados
-│   ├── cache/                      # Resultados intermediários
-│   └── logs/                       # Logs de processamento
+├── 📊 data/                        # Dados locais (não versionados)
+│   ├── pdfs/                       # PDFs baixados do SAPL
+│   └── media/                      # Uploads de documentos
 │
-├── 📄 docs/
-│   ├── architecture.md             # Diagramas de arquitetura
-│   ├── api.md                      # Documentação da API
-│   └── deployment.md               # Guia de deploy
-│
-├── 🧪 tests/
-│   ├── unit/                       # Testes unitários
-│   ├── integration/                # Testes de integração
-│   └── fixtures/                   # Dados de teste
-│
-├── 📦 requirements/
-│   ├── base.txt                    # Core dependencies
-│   ├── development.txt             # Dev tools
-│   └── production.txt              # Prod optimization
-│
-├── 🔐 .env.example                 # Template de variáveis
-├── 🐳 docker-compose.yml           # Stack completo
+├── 🔐 .env.example                 # Variáveis de ambiente de referência
+├── 🐳 docker-compose.yml           # Stack: jurix_web, jurix_worker, jurix_db, jurix_redis
+├── 📜 pyproject.toml               # Configuração do Ruff (Python 3.12) e metadados
+├── 🧪 pytest.ini                   # Configurações do Pytest (Django, coverage)
+├── 📦 requirements.txt             # Dependências de produção e qualidade
 ├── 📝 manage.py                    # Django CLI
+├── 📄 LICENSE                      # Licença MIT
 └── 📖 README.md
 ```
 
@@ -587,19 +582,32 @@ Acesse o chatbot em: `http://localhost:8000/normas/chatbot/`
 ### 🔧 API Endpoints
 
 ```bash
-# Busca semântica
+# Healthcheck do serviço
+GET /api/v1/health/
+
+# Busca semântica vetorial (pgvector)
 POST /api/v1/search/
+Content-Type: application/json
 {
   "query": "zoneamento urbano",
   "k": 5
 }
 
-# Resposta RAG
-POST /api/v1/rag/answer/
+# Resposta RAG (Batch / JSON)
+POST /api/v1/search/answer/
+Content-Type: application/json
 {
   "question": "Como funciona o zoneamento?",
   "k": 5,
   "model": "llama3"
+}
+
+# Resposta RAG em Tempo Real (Server-Sent Events Streaming)
+POST /api/v1/search/answer/stream/
+Content-Type: application/json
+{
+  "session_id": "opcional-uuid-sessao",
+  "message": "Quais os requisitos para licença de construção?"
 }
 ```
 
@@ -608,15 +616,15 @@ POST /api/v1/rag/answer/
 ```
 Usuário faz pergunta
     ↓
-Busca Semântica (pgvector)
+Busca Semântica (pgvector Cosine Distance 1-d)
     ↓
-Top-K dispositivos relevantes
+Top-K dispositivos relevantes com hierarquia materializada
     ↓
-Contexto formatado + Prompt
+Contexto jurídico formatado + Prompt restrito
     ↓
-Ollama (Llama3) - Geração
+Ollama (Llama3 via Connection Pool HTTP)
     ↓
-Resposta + Fontes citadas
+Streaming SSE em tempo real (token-a-token) + Fontes citadas
 ```
 
 <br/>
@@ -629,49 +637,50 @@ Resposta + Fontes citadas
 # Django Core
 SECRET_KEY=your-secret-key-here
 DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
+ALLOWED_HOSTS=localhost,127.0.0.1,jurix_web
 
-# Database
-POSTGRES_DB=jurix_db
-POSTGRES_USER=jurix
-POSTGRES_PASSWORD=your-secure-password
-POSTGRES_HOST=db
-POSTGRES_PORT=5432
+# Database (PostgreSQL 16 + pgvector)
+DATABASE_URL=postgresql://jurix_user:jurix_pass_dev@db:5432/jurix
+POSTGRES_DB=jurix
+POSTGRES_USER=jurix_user
+POSTGRES_PASSWORD=jurix_pass_dev
 
-# Ollama
-OLLAMA_HOST=http://host.docker.internal:11434
+# Cache & Celery Broker (Redis)
+REDIS_URL=redis://redis:6379/0
+# Nota: Para scripts executados diretamente no host Windows (fora do Docker), use:
+# REDIS_URL=redis://localhost:16379/0
+
+# Ollama Local LLM
+OLLAMA_BASE_URL=http://host.docker.internal:11434
 OLLAMA_MODEL=llama3
 
-# Celery
-CELERY_BROKER_URL=redis://redis:6379/0
-CELERY_RESULT_BACKEND=redis://redis:6379/0
-
-# SAPL API
-SAPL_API_URL=https://camaranatal.rn.gov.br/sapl/api/
-SAPL_API_TOKEN=  # Opcional, se houver autenticação
+# SAPL API (Câmara Municipal de Natal/RN)
+SAPL_BASE_URL=https://sapl.natal.rn.leg.br/
 
 # Storage
 MEDIA_ROOT=/app/data/media
 STATIC_ROOT=/app/staticfiles
 ```
 
-### Configuração Ollama (Windows)
+### Configuração Ollama (Host)
 
 ```powershell
-# 1. Instale Ollama
+# 1. Instale Ollama (se ainda não tiver)
 winget install Ollama.Ollama
 
 # 2. Baixe modelo llama3
 ollama pull llama3
 
-# 3. Habilite acesso via rede
-# Settings → Expose Ollama to the network (ON)
+# 3. Inicie o serviço permitindo conexões de rede
+# No Windows PowerShell:
+$env:OLLAMA_HOST = "0.0.0.0"
+ollama serve
 
 # 4. Teste conectividade
 curl http://localhost:11434/api/version
 
-# 5. No Docker Compose, use host.docker.internal
-# OLLAMA_HOST=http://host.docker.internal:11434
+# 5. No Docker Compose, os containers acessam via host.docker.internal
+# OLLAMA_BASE_URL=http://host.docker.internal:11434
 ```
 
 <br/>
@@ -682,48 +691,67 @@ curl http://localhost:11434/api/version
 
 ```yaml
 services:
-  # 🗄️ PostgreSQL com pgvector
+  # 🗄️ PostgreSQL 16 com pgvector
   db:
     image: pgvector/pgvector:pg16
+    container_name: jurix_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-jurix}
+      POSTGRES_USER: ${POSTGRES_USER:-jurix_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jurix_pass_dev}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_DB: jurix_db
-      POSTGRES_USER: jurix
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-  
-  # 🔴 Redis (Celery broker)
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jurix_user}"]
+
+  # 🔴 Redis (Broker de Tarefas e Cache)
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes
-  
-  # 🌐 Django Web Server
+    container_name: jurix_redis
+    ports:
+      - "16379:6379"  # Mapeamento 16379 no host para evitar conflito no Windows
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+
+  # 🌐 Django Web Application
   web:
     build:
       context: .
-      dockerfile: docker/web.Dockerfile
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000
+      dockerfile: docker/Dockerfile
+    container_name: jurix_web
+    command: python manage.py runserver 0.0.0.0:8000
     volumes:
-      - ./src:/app/src
+      - .:/app
       - ./data:/app/data
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/')"]
     depends_on:
-      - db
-      - redis
-  
-  # ⚙️ Celery Worker
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ⚙️ Celery Ingestion Worker
   worker:
     build:
       context: .
-      dockerfile: docker/worker.Dockerfile
-    command: celery -A config worker -l info
+      dockerfile: docker/Dockerfile
+    container_name: jurix_worker
+    command: celery -A config worker -l info --pool=solo
     volumes:
-      - ./src:/app/src
+      - .:/app
       - ./data:/app/data
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 ```
 
 <br/>

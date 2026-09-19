@@ -25,57 +25,69 @@ class LegalTextParser:
     # These patterns match the START of a device, not capture its text
     MARKER_PATTERNS = {
         'artigo': re.compile(
-            r'^Art\.?\s+(\d+[ºª°]?(?:-[A-Z])?)\s*[\.–-]?\s*',
+            r'^\s*Art\.?\s+(\d+[ºª°]?(?:-[A-Z])?)\s*[\.–-]?\s*',
             re.MULTILINE | re.IGNORECASE
         ),
         'paragrafo': re.compile(
-            r'^§\s*(\d+[ºª°]?(?:-[A-Z])?)\s*[\.–-]?\s*',
+            r'^\s*§\s*(\d+[ºª°]?(?:-[A-Z])?)\s*[\.–-]?\s*',
             re.MULTILINE
         ),
         'paragrafo_unico': re.compile(
-            r'^Parágrafo\s+único\.?\s*[\.–-]?\s*',
+            r'^\s*Parágrafo\s+único\.?\s*[\.–-]?\s*',
             re.MULTILINE | re.IGNORECASE
         ),
         'inciso': re.compile(
-            r'^([IVX]+)\s*[\.–-]?\s*',
+            r'^\s*([IVX]+)\s*[\.–-]?\s*',
             re.MULTILINE
         ),
         'alinea': re.compile(
-            r'^([a-z])\)\s+',
+            r'^\s*([a-z])\)\s+',
             re.MULTILINE
         ),
         'item': re.compile(
-            r'^(\d+)\.\s+',
+            r'^\s*(\d+)\.\s+',
             re.MULTILINE
         ),
     }
     
     # Combined pattern to find ANY marker (for text extraction between markers)
     ALL_MARKERS_PATTERN = re.compile(
-        r'^(?:Art\.?\s+\d+|§\s*\d+|Parágrafo\s+único|([IVX]+)\s*[\.–-]|([a-z])\)\s+|\d+\.\s+)',
+        r'^\s*(?:Art\.?\s+\d+|§\s*\d+|Parágrafo\s+único|([IVX]+)\s*[\.–-]|([a-z])\)\s+|\d+\.\s+)',
         re.MULTILINE | re.IGNORECASE
     )
     
-    # Patterns for structural divisions
+    # Patterns for structural divisions (Parte, Livro, Título, Capítulo, Seção, Subseção)
     DIVISION_PATTERNS = {
-        'capitulo': re.compile(
-            r'^CAP[IÍ]TULO\s+([IVX]+|[0-9]+)\s*[–-]?\s*(.*?)$',
-            re.MULTILINE | re.IGNORECASE
+        'parte': re.compile(
+            r'^\s*(?:PARTE|Parte)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$',
+            re.MULTILINE
         ),
-        'secao': re.compile(
-            r'^SE[ÇC][ÃA]O\s+([IVX]+|[0-9]+)\s*[–-]?\s*(.*?)$',
-            re.MULTILINE | re.IGNORECASE
+        'livro': re.compile(
+            r'^\s*(?:LIVRO|Livro)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$',
+            re.MULTILINE
         ),
         'titulo': re.compile(
-            r'^T[IÍ]TULO\s+([IVX]+|[0-9]+)\s*[–-]?\s*(.*?)$',
-            re.MULTILINE | re.IGNORECASE
+            r'^\s*(?:T[IÍ]TULO|T[ií]tulo)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$',
+            re.MULTILINE
+        ),
+        'capitulo': re.compile(
+            r'^\s*(?:CAP[IÍ]TULO|Cap[ií]tulo)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$',
+            re.MULTILINE
+        ),
+        'secao': re.compile(
+            r'^\s*(?:SE[ÇC][ÃA]O|Se[çc][ãa]o)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$',
+            re.MULTILINE
+        ),
+        'subsecao': re.compile(
+            r'^\s*(?:SUBSE[ÇC][ÃA]O|Subse[çc][ãa]o)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$',
+            re.MULTILINE
         ),
     }
     
     @staticmethod
     def _find_all_markers(text: str) -> List[Tuple[int, str, Any]]:
         """
-        Find all device markers in text and return sorted list.
+        Find all device and division markers in text and return sorted list.
         
         Returns:
             List of tuples: (position, tipo, match_object)
@@ -83,8 +95,13 @@ class LegalTextParser:
         """
         markers = []
         
-        # Find all marker types
+        # Find all device marker types
         for tipo, pattern in LegalTextParser.MARKER_PATTERNS.items():
+            for match in pattern.finditer(text):
+                markers.append((match.start(), tipo, match))
+        
+        # Find all structural division types
+        for tipo, pattern in LegalTextParser.DIVISION_PATTERNS.items():
             for match in pattern.finditer(text):
                 markers.append((match.start(), tipo, match))
         
@@ -313,11 +330,47 @@ class LegalTextParser:
         return alineas
     
     @staticmethod
+    def extract_divisions(text: str, all_markers: Optional[List[Tuple[int, str, Any]]] = None) -> List[Dict[str, Any]]:
+        """
+        Extract structural divisions (Parte, Livro, Título, Capítulo, Seção, Subseção).
+        
+        Args:
+            text: Full legal text
+            all_markers: Optional pre-computed list of all markers
+            
+        Returns:
+            List of dicts with division information
+        """
+        if all_markers is None:
+            all_markers = LegalTextParser._find_all_markers(text)
+        
+        divisions = []
+        for tipo, pattern in LegalTextParser.DIVISION_PATTERNS.items():
+            for match in pattern.finditer(text):
+                marker_start = match.start()
+                marker_end = match.end()
+                texto = LegalTextParser._extract_text_until_next_marker(
+                    text, marker_start, marker_end, all_markers
+                )
+                numero = match.group(1).strip()
+                inline_heading = match.group(2).strip() if match.lastindex and match.lastindex >= 2 and match.group(2) else ""
+                full_text = (inline_heading + "\n" + texto).strip() if inline_heading else texto
+                
+                divisions.append({
+                    'tipo': tipo,
+                    'numero': numero,
+                    'texto': full_text,
+                    'start_pos': marker_start,
+                    'end_pos': marker_end + len(texto),
+                    'full_match': match.group(0)
+                })
+        logger.debug(f"Extracted {len(divisions)} divisions")
+        return divisions
+
+    @staticmethod
     def parse_legal_text(text: str) -> List[Dict[str, Any]]:
         """
         Parse full legal text and extract all structured elements (multiline support).
-        
-        CRITICAL FIX: Now captures full multiline text until next marker.
         
         Returns a list of all elements sorted by position, ready for
         hierarchical organization.
@@ -333,7 +386,8 @@ class LegalTextParser:
         
         all_elements = []
         
-        # Extract all types (pass all_markers to avoid recomputing)
+        # Extract divisions and devices (pass all_markers to avoid recomputing)
+        all_elements.extend(LegalTextParser.extract_divisions(text, all_markers))
         all_elements.extend(LegalTextParser.extract_articles(text, all_markers))
         all_elements.extend(LegalTextParser.extract_paragraphs(text, all_markers))
         all_elements.extend(LegalTextParser.extract_incisos(text, all_markers))
@@ -344,7 +398,7 @@ class LegalTextParser:
         
         logger.info(
             f"Parsed legal text: {len(all_elements)} total elements "
-            f"(articles, paragraphs, incisos, alineas) - FULL MULTILINE TEXT CAPTURED"
+            f"(divisions, articles, paragraphs, incisos, alineas)"
         )
         
         return all_elements
@@ -355,22 +409,43 @@ class LegalTextParser:
         Build hierarchical structure from flat list of elements.
         
         Rules:
-        - Articles are always root level
+        - Structural divisions nest according to legal hierarchy (Parte -> Livro -> Título -> Capítulo -> Seção -> Subseção)
+        - Articles belong to the active division, or are root level if outside divisions
         - Paragraphs belong to the previous article
         - Incisos belong to the previous paragraph or article
         - Alíneas belong to the previous inciso
+        - Every element is annotated with `caminho` and `nivel`
         
         Args:
             elements: Flat list of extracted elements
             
         Returns:
-            List of elements with 'parent_index' field added
+            List of elements with 'parent_index', 'caminho', and 'nivel' fields added
         """
         hierarchy = []
+        
+        division_levels = ['parte', 'livro', 'titulo', 'capitulo', 'secao', 'subsecao']
+        active_divisions: Dict[str, Optional[int]] = {d: None for d in division_levels}
+        
         last_article_idx = None
         last_paragrafo_idx = None
         last_inciso_idx = None
         
+        def _get_active_division_parent(current_div_type: str) -> Optional[int]:
+            """Find closest active parent division above current division type."""
+            curr_idx = division_levels.index(current_div_type)
+            for div in reversed(division_levels[:curr_idx]):
+                if active_divisions[div] is not None:
+                    return active_divisions[div]
+            return None
+
+        def _get_deepest_active_division() -> Optional[int]:
+            """Find deepest active division for articles."""
+            for div in reversed(division_levels):
+                if active_divisions[div] is not None:
+                    return active_divisions[div]
+            return None
+
         for i, elem in enumerate(elements):
             elem_copy = elem.copy()
             elem_copy['index'] = i
@@ -378,8 +453,28 @@ class LegalTextParser:
             
             tipo = elem['tipo']
             
-            if tipo == 'artigo':
-                # Articles are root level
+            if tipo in division_levels:
+                parent_div = _get_active_division_parent(tipo)
+                if parent_div is not None:
+                    elem_copy['parent_index'] = parent_div
+                
+                # Update active divisions: set current and clear deeper divisions
+                div_idx = division_levels.index(tipo)
+                active_divisions[tipo] = i
+                for deeper in division_levels[div_idx + 1:]:
+                    active_divisions[deeper] = None
+                
+                # Reset device pointers
+                last_article_idx = None
+                last_paragrafo_idx = None
+                last_inciso_idx = None
+
+            elif tipo == 'artigo':
+                # Articles belong to enclosing division or are root level
+                deepest_div = _get_deepest_active_division()
+                if deepest_div is not None:
+                    elem_copy['parent_index'] = deepest_div
+                
                 last_article_idx = i
                 last_paragrafo_idx = None
                 last_inciso_idx = None
@@ -409,7 +504,45 @@ class LegalTextParser:
                     elem_copy['parent_index'] = last_article_idx
             
             hierarchy.append(elem_copy)
-        
+
+        def _format_label(item: Dict[str, Any]) -> str:
+            t = item.get('tipo', '')
+            num = str(item.get('numero', '')).strip()
+            if t == 'artigo':
+                return f"Art. {num}"
+            elif t == 'paragrafo':
+                return "Parágrafo único" if num.lower() in ('único', 'unico') else f"§ {num}"
+            elif t == 'inciso':
+                return f"Inciso {num}"
+            elif t == 'alinea':
+                return f"Alínea {num}"
+            elif t == 'item':
+                return f"Item {num}"
+            elif t == 'capitulo':
+                return f"Capítulo {num}"
+            elif t == 'secao':
+                return f"Seção {num}"
+            elif t == 'subsecao':
+                return f"Subseção {num}"
+            elif t == 'titulo':
+                return f"Título {num}"
+            elif t == 'livro':
+                return f"Livro {num}"
+            elif t == 'parte':
+                return f"Parte {num}"
+            return f"{t.title()} {num}".strip()
+
+        # Materialize caminho and nivel for each element
+        for elem in hierarchy:
+            labels = [_format_label(elem)]
+            curr_parent_idx = elem.get('parent_index')
+            while curr_parent_idx is not None and 0 <= curr_parent_idx < len(hierarchy):
+                parent_elem = hierarchy[curr_parent_idx]
+                labels.insert(0, _format_label(parent_elem))
+                curr_parent_idx = parent_elem.get('parent_index')
+            elem['caminho'] = " > ".join(labels)
+            elem['nivel'] = len(labels) - 1
+
         logger.debug(f"Built hierarchy with {len(hierarchy)} elements")
         return hierarchy
     

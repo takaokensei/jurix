@@ -6,7 +6,7 @@ and Ollama embeddings for legal document retrieval.
 """
 
 import logging
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Generator
 from django.db import connection
 
 from src.apps.legislation.models import Dispositivo
@@ -174,28 +174,9 @@ class RAGService:
                     'parent': str(dispositivo.dispositivo_pai) if dispositivo.dispositivo_pai else None,
                 }
                 
-                # Ensure similarity_score is normalized between 0.0 and 1.0
-                raw_score = float(raw_result['similarity_score'])
+                # Cosine similarity mathematically defined as 1 - distance, bounded to [0.0, 1.0]
                 raw_distance = float(raw_result['distance'])
-                
-                # Log for debugging
-                logger.debug(
-                    f"Dispositivo {dispositivo.id}: "
-                    f"raw_score={raw_score:.6f}, distance={raw_distance:.6f}, "
-                    f"calculated_similarity={1-raw_distance:.6f}"
-                )
-                
-                # If similarity is negative or zero, recalculate from distance
-                if raw_score <= 0:
-                    # Cosine distance can be 0-2, similarity should be 1 - distance
-                    # But clamp to ensure valid range
-                    normalized_score = max(0.0, min(1.0, 1.0 - raw_distance))
-                    logger.warning(
-                        f"Dispositivo {dispositivo.id}: "
-                        f"Raw score was {raw_score}, recalculated to {normalized_score:.6f} from distance {raw_distance:.6f}"
-                    )
-                else:
-                    normalized_score = max(0.0, min(1.0, raw_score))
+                normalized_score = max(0.0, min(1.0, 1.0 - raw_distance))
                 
                 results.append({
                     'dispositivo': dispositivo,
@@ -395,6 +376,119 @@ RESPOSTA:"""
             self.cache.set_answer(clean_question, k=k, model=model, answer_data=result_payload)
         
         return result_payload
+
+    def stream_answer_question(
+        self,
+        question: str,
+        k: int = 5,
+        model: str = "llama3"
+    ) -> Generator[Dict[str, Any], None, None]:
+        """
+        Stream answer generation for legal question using RAG.
+        Yields dictionaries with event types:
+        - {'event': 'sources', 'sources': results, 'confidence': float, 'cached': bool}
+        - {'event': 'chunk', 'chunk': str}
+        - {'event': 'done', 'answer': str}
+        """
+        clean_question = question.strip()
+        
+        # Check cache first
+        if self.use_cache and self.cache:
+            cached_result = self.cache.get_answer(clean_question, k=k, model=model)
+            if cached_result:
+                cached_sources = cached_result.get('sources', [])
+                disp_ids = [
+                    s['dispositivo_id'] for s in cached_sources
+                    if isinstance(s, dict) and s.get('dispositivo_id')
+                ]
+                if disp_ids:
+                    disps = {
+                        d.id: d for d in Dispositivo.objects.filter(id__in=disp_ids).select_related('norma', 'dispositivo_pai')
+                    }
+                    for s in cached_sources:
+                        did = s.get('dispositivo_id')
+                        if did in disps:
+                            s['dispositivo'] = disps[did]
+                yield {
+                    'event': 'sources',
+                    'sources': cached_sources,
+                    'confidence': cached_result.get('confidence', 0.0),
+                    'cached': True
+                }
+                cached_ans = cached_result.get('answer', '')
+                yield {'event': 'chunk', 'chunk': cached_ans}
+                yield {'event': 'done', 'answer': cached_ans}
+                return
+
+        # Retrieve relevant context
+        context, results = self.get_relevant_context(clean_question, k=k)
+        if not results:
+            yield {
+                'event': 'sources',
+                'sources': [],
+                'confidence': 0.0,
+                'cached': False
+            }
+            empty_msg = "Não encontrei informações relevantes para responder esta pergunta."
+            yield {'event': 'chunk', 'chunk': empty_msg}
+            yield {'event': 'done', 'answer': empty_msg}
+            return
+
+        avg_confidence = sum(r['similarity_score'] for r in results) / len(results)
+        yield {
+            'event': 'sources',
+            'sources': results,
+            'confidence': avg_confidence,
+            'cached': False
+        }
+
+        # Build prompt
+        prompt = f"""Você é um assistente jurídico especializado em legislação brasileira.
+
+IMPORTANTE: Formate sua resposta em Markdown para melhor legibilidade:
+- Use **negrito** para destacar nomes de leis, artigos e termos jurídicos importantes
+- Use listas com bullet points (- ou •) para enumerar regras, requisitos ou condições
+- **CRÍTICO**: Cada item de lista DEVE estar em uma linha separada. Use quebra de linha ANTES de cada bullet point
+- Separe parágrafos claramente com quebras de linha duplas
+- Use ### para subtítulos quando necessário organizar a resposta
+
+Com base nos seguintes dispositivos legais relevantes, responda a pergunta do usuário de forma clara e objetiva.
+
+CONTEXTO LEGAL:
+{context}
+
+PERGUNTA DO USUÁRIO:
+{clean_question}
+
+INSTRUÇÕES:
+- Responda em português claro e objetivo
+- Cite os dispositivos específicos usando **negrito** para as referências legais
+- Se não houver informação suficiente, seja honesto sobre as limitações
+- NUNCA invente ou alucine informações legais
+
+RESPOSTA:"""
+
+        full_chunks = []
+        for chunk in self.ollama.stream_text(prompt, model=model, temperature=0.3, max_tokens=2048):
+            full_chunks.append(chunk)
+            yield {'event': 'chunk', 'chunk': chunk}
+
+        full_answer = "".join(full_chunks)
+        full_answer = self._fix_markdown_formatting(full_answer).strip()
+
+        # Cache result
+        if self.use_cache and self.cache:
+            result_payload = {
+                'answer': full_answer,
+                'sources': results,
+                'confidence': avg_confidence,
+                'model': model,
+                'context_length': len(context),
+                'cached': False
+            }
+            self.cache.set_answer(clean_question, k=k, model=model, answer_data=result_payload)
+
+        yield {'event': 'done', 'answer': full_answer}
     
     def _fix_markdown_formatting(self, text: str) -> str:
         """

@@ -6,6 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Jurix - Sistema de Consolidação Normativa{% endblock %}</title>
     
+    <!-- Anti-FOUC Theme Initialization (Pre-Paint) -->
+    <script>
+        (function() {
+            try {
+                var stored = localStorage.getItem('jurix-theme');
+                var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                var theme = stored || (systemDark ? 'dark' : 'light');
+                document.documentElement.setAttribute('data-theme', theme);
+            } catch (e) {}
+        })();
+    </script>
+    
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="{% static 'img/logo-icon.svg' %}">
     <link rel="apple-touch-icon" href="{% static 'img/logo-icon.svg' %}">
@@ -126,7 +138,9 @@
             <nav class="navbar-menu" role="navigation" aria-label="Navegação principal">
                 <a href="{% url 'legislation:norma_list' %}" class="nav-link">Normas</a>
                 <a href="{% url 'legislation:chatbot' %}" class="nav-link">Assistente IA</a>
+                {% if user.is_authenticated and user.is_staff %}
                 <a href="/admin/" class="nav-link">Admin</a>
+                {% endif %}
                 <button 
                     type="button" 
                     id="theme-toggle-navbar" 

@@ -13,7 +13,7 @@ import traceback
 from typing import Any, Dict
 
 from django.shortcuts import get_object_or_404
-from django.http import JsonResponse, HttpRequest
+from django.http import JsonResponse, HttpRequest, StreamingHttpResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
@@ -21,6 +21,11 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 
 from src.apps.legislation.models import Norma, Dispositivo, ChatSession, ChatMessage, EventoAlteracao
+from src.apps.legislation.serializers import (
+    serialize_dispositivo_source,
+    serialize_chat_session,
+    serialize_chat_message
+)
 from src.processing.rag_service import RAGService
 
 logger = logging.getLogger(__name__)
@@ -28,9 +33,15 @@ logger = logging.getLogger(__name__)
 
 def _format_error_message(e: Exception) -> str:
     """Format safe error message for API responses."""
-    if getattr(settings, 'DEBUG', False):
+    if settings.DEBUG:
         return str(e)
-    return "Ocorreu um erro interno ao processar a requisição."
+    return 'Ocorreu um erro interno ao processar sua solicitação.'
+
+
+@require_http_methods(["GET"])
+def health_check_api(request: HttpRequest) -> JsonResponse:
+    """Liveness/readiness health check endpoint."""
+    return JsonResponse({'status': 'healthy', 'service': 'jurix_web'})
 
 
 @require_http_methods(["GET"])
@@ -201,26 +212,11 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
             model=model
         )
         
-        # Format sources for JSON
-        formatted_sources = []
-        for source in response.get('sources', []):
-            disp = source.get('dispositivo')
-            if disp:
-                formatted_sources.append({
-                    'id': disp.id,
-                    'text': disp.texto,
-                    'similarity_score': source.get('similarity_score', 0.0),
-                    'norma': f"{disp.norma.tipo} {disp.norma.numero}/{disp.norma.ano}",
-                    'hierarchy': source.get('context', {}).get('hierarchy', '') if isinstance(source.get('context'), dict) else ''
-                })
-            elif 'dispositivo_id' in source:
-                formatted_sources.append({
-                    'id': source.get('dispositivo_id'),
-                    'text': source.get('texto', ''),
-                    'similarity_score': source.get('similarity_score', 0.0),
-                    'norma': source.get('identifier', ''),
-                    'hierarchy': ''
-                })
+        # Format sources with centralized serializer
+        formatted_sources = [
+            serialize_dispositivo_source(source)
+            for source in response.get('sources', [])
+        ]
         
         return JsonResponse({
             'success': True,
@@ -242,6 +238,114 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
             'success': False,
             'error': _format_error_message(e)
         }, status=500)
+
+
+@csrf_exempt
+def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
+    """
+    Streaming SSE endpoint for real-time RAG question answering.
+    
+    POST /api/v1/search/answer/stream/
+    Payload: {"question": "...", "k": 5, "model": "llama3", "session_id": 123}
+    
+    Streams Server-Sent Events (SSE):
+    - data: {"type": "sources", "sources": [...], "confidence": 0.85}
+    - data: {"type": "chunk", "chunk": "..."}
+    - data: {"type": "done", "answer": "...", "session_id": ...}
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        question = data.get('question', '').strip()
+        k = int(data.get('k', 5))
+        model = data.get('model', 'llama3')
+        session_id = data.get('session_id')
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Invalid request body'}, status=400)
+    
+    if not question:
+        return JsonResponse({'success': False, 'error': 'Question is required'}, status=400)
+    
+    # Session management
+    chat_session = None
+    if request.user.is_authenticated:
+        if session_id:
+            chat_session = ChatSession.objects.filter(id=session_id, user=request.user).first()
+        if not chat_session:
+            chat_session = ChatSession.objects.create(
+                user=request.user,
+                title=question[:50] + ('...' if len(question) > 50 else ''),
+                is_active=True
+            )
+        try:
+            ChatMessage.objects.create(
+                session=chat_session,
+                role='user',
+                content=question
+            )
+        except Exception as e:
+            logger.error(f"Error persisting user message: {e}")
+
+    def event_stream():
+        sources_list = []
+        try:
+            rag_service = RAGService()
+            stream_gen = rag_service.stream_answer_question(question, k=k, model=model)
+            
+            for item in stream_gen:
+                ev_type = item.get('event')
+                if ev_type == 'sources':
+                    raw_sources = item.get('sources', [])
+                    sources_list = [serialize_dispositivo_source(s) for s in raw_sources]
+                    payload = {
+                        'type': 'sources',
+                        'sources': sources_list,
+                        'confidence': item.get('confidence', 0.0),
+                        'cached': item.get('cached', False)
+                    }
+                    yield f"data: {json.dumps(payload)}\n\n"
+                elif ev_type == 'chunk':
+                    payload = {
+                        'type': 'chunk',
+                        'chunk': item.get('chunk', '')
+                    }
+                    yield f"data: {json.dumps(payload)}\n\n"
+                elif ev_type == 'done':
+                    final_answer = item.get('answer', '')
+                    if request.user.is_authenticated and chat_session:
+                        try:
+                            ChatMessage.objects.create(
+                                session=chat_session,
+                                role='assistant',
+                                content=final_answer,
+                                sources_json=sources_list,
+                                metadata_json={
+                                    'model': model,
+                                    'sources_count': len(sources_list),
+                                    'streaming': True
+                                }
+                            )
+                        except Exception as msg_err:
+                            logger.error(f"Error persisting streaming assistant message: {msg_err}")
+                    
+                    payload = {
+                        'type': 'done',
+                        'answer': final_answer,
+                        'session_id': chat_session.id if chat_session else None,
+                        'session_slug': getattr(chat_session, 'slug', None) if chat_session else None
+                    }
+                    yield f"data: {json.dumps(payload)}\n\n"
+        except Exception as e:
+            logger.error(f"Error in chatbot_stream_api stream: {e}", exc_info=True)
+            err_payload = {'type': 'error', 'error': _format_error_message(e)}
+            yield f"data: {json.dumps(err_payload)}\n\n"
+
+    response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    return response
 
 
 @require_http_methods(["GET"])

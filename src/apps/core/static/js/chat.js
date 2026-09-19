@@ -490,8 +490,27 @@
             await loadChatSessions();
         } catch (error) {
             console.error('Error deleting session:', error);
-            alert('Erro ao deletar conversa. Tente novamente.');
+            showNotification('Erro ao deletar conversa. Tente novamente.', 'error');
         }
+    }
+
+    function showNotification(message, type = 'error') {
+        let toast = document.getElementById('chat-toast-notification');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'chat-toast-notification';
+            toast.style.cssText = 'position: fixed; bottom: 24px; right: 24px; padding: 12px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; z-index: 9999; transition: opacity 0.3s ease, transform 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
+            document.body.appendChild(toast);
+        }
+        toast.style.background = type === 'error' ? '#ef4444' : '#10b981';
+        toast.style.color = '#ffffff';
+        toast.textContent = message;
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(8px)';
+        }, 3500);
     }
 
     // ===== MESSAGE RENDERING =====
@@ -1064,48 +1083,227 @@
                 const sendButton = document.getElementById('send-button');
                 if (sendButton) sendButton.disabled = true;
 
-                try {
-                    const csrfToken = getCookie('csrftoken');
-                    const response = await fetch(config.chatbotUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': csrfToken,
-                        },
-                        body: JSON.stringify({
-                            question,
-                            session_id: currentSessionId,
-                            regenerate: false,
-                        }),
-                    });
+    function createStreamingAssistantMessage() {
+        const messagesWrapper = document.getElementById('messages-wrapper');
+        if (!messagesWrapper) return null;
 
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const messageId = 'msg-' + Date.now();
+        const sourcesId = 'sources-' + Date.now();
+        const copyButtonId = 'copy-btn-' + Date.now();
 
-                    const data = await response.json();
-                    removeLoadingMessage(loadingId);
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message message-assistant';
+        messageDiv.innerHTML = `
+            <div class="message-avatar">
+                <img src="${escapeHtml(config.logoIconUrl)}" alt="Jurix">
+            </div>
+            <div class="message-content">
+                <div class="message-header">
+                    <span class="message-role">Jurix</span>
+                    <span class="message-time">${timestamp}</span>
+                </div>
+                <div class="message-body" id="${messageId}"></div>
+                <div class="message-actions">
+                    <button class="regenerate-button" id="regenerate-${Date.now()}" aria-label="Tentar novamente" title="Tentar novamente" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M21 3v5h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M3 21v-5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="copy-response-button" id="${copyButtonId}" aria-label="Copiar resposta em Markdown" title="Copiar resposta">
+                        <svg class="copy-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+                            <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <div id="${sourcesId}"></div>
+            </div>
+        `;
 
-                    if (data.success) {
-                        if (data.session_id) {
-                            currentSessionId = data.session_id;
-                            if (wasNewSession && window.tempSessionCard) {
-                                window.tempSessionCard.remove();
-                                window.tempSessionCard = null;
-                                animateSessionCreated();
-                            }
-                            await loadChatSessions();
-                            updateNewChatButtonState();
+        messagesWrapper.appendChild(messageDiv);
+        scrollToBottom();
+
+        const copyButton = document.getElementById(copyButtonId);
+        copyButton.addEventListener('click', () => {
+            copyResponseToClipboard(copyButton.getAttribute('data-markdown') || '', copyButton);
+        });
+
+        return {
+            messageDiv,
+            messageBody: document.getElementById(messageId),
+            sourcesContainer: document.getElementById(sourcesId),
+            copyButton,
+            regenerateBtn: messageDiv.querySelector('.regenerate-button'),
+        };
+    }
+
+    async function streamAssistantResponse(question, sessionId, onChunk, onSources, onDone, onError) {
+        const csrfToken = getCookie('csrftoken');
+        const response = await fetch('/api/v1/search/answer/stream/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                question,
+                session_id: sessionId,
+            }),
+        });
+
+        if (!response.ok || !response.body) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const parts = buffer.split('\n\n');
+            buffer = parts.pop() || '';
+
+            for (const part of parts) {
+                const line = part.trim();
+                if (line.startsWith('data: ')) {
+                    try {
+                        const eventData = JSON.parse(line.substring(6));
+                        if (eventData.type === 'sources' && onSources) {
+                            onSources(eventData.sources, eventData.confidence);
+                        } else if (eventData.type === 'chunk' && onChunk) {
+                            onChunk(eventData.chunk);
+                        } else if (eventData.type === 'done' && onDone) {
+                            onDone(eventData);
+                        } else if (eventData.type === 'error' && onError) {
+                            onError(eventData.error);
                         }
-
-                        const answer = data.answer || 'Desculpe, não consegui gerar uma resposta.';
-                        const sources = data.sources || [];
-                        addAssistantMessage(answer, sources, true);
-                    } else {
-                        addErrorMessage(data.error || 'Erro ao processar pergunta');
+                    } catch (e) {
+                        console.error('Error parsing SSE event:', e);
                     }
-                } catch (error) {
+                }
+            }
+        }
+    }
+
+                let streamElements = null;
+                let accumulatedText = '';
+                let finalSources = [];
+
+                try {
+                    streamElements = createStreamingAssistantMessage();
                     removeLoadingMessage(loadingId);
-                    console.error('Request error:', error);
-                    addErrorMessage('Erro de conexão. Verifique sua conexão e tente novamente.');
+
+                    await streamAssistantResponse(
+                        question,
+                        currentSessionId,
+                        (chunk) => {
+                            accumulatedText += chunk;
+                            if (streamElements && streamElements.messageBody) {
+                                try {
+                                    streamElements.messageBody.innerHTML = DOMPurify.sanitize(marked.parse(accumulatedText));
+                                } catch (e) {
+                                    streamElements.messageBody.textContent = accumulatedText;
+                                }
+                                scrollToBottomIfAtBottom();
+                            }
+                        },
+                        (sources) => {
+                            finalSources = sources || [];
+                            if (streamElements && streamElements.sourcesContainer && finalSources.length > 0) {
+                                showSourcesGradually(streamElements.sourcesContainer, finalSources);
+                            }
+                        },
+                        async (doneData) => {
+                            if (streamElements) {
+                                if (streamElements.copyButton) {
+                                    streamElements.copyButton.setAttribute('data-markdown', doneData.answer || accumulatedText);
+                                    streamElements.copyButton.classList.add('show');
+                                }
+                                if (streamElements.regenerateBtn && currentSessionId) {
+                                    streamElements.regenerateBtn.style.display = 'inline-flex';
+                                    streamElements.regenerateBtn.classList.add('show');
+                                    streamElements.regenerateBtn.addEventListener('click', async () => {
+                                        await regenerateLastResponse(currentSessionId, streamElements.messageDiv, streamElements.sourcesContainer);
+                                    });
+                                }
+                            }
+                            if (doneData.session_id) {
+                                currentSessionId = doneData.session_id;
+                                if (wasNewSession && window.tempSessionCard) {
+                                    window.tempSessionCard.remove();
+                                    window.tempSessionCard = null;
+                                    animateSessionCreated();
+                                }
+                                await loadChatSessions();
+                                updateNewChatButtonState();
+                            }
+                        },
+                        (errorMsg) => {
+                            if (streamElements && streamElements.messageBody) {
+                                streamElements.messageBody.innerHTML += `<p style="color: var(--color-error);">${escapeHtml(errorMsg)}</p>`;
+                            }
+                        }
+                    );
+                } catch (streamError) {
+                    console.warn('Real-time streaming failed, using batch fallback:', streamError);
+                    if (streamElements && streamElements.messageDiv) {
+                        streamElements.messageDiv.remove();
+                    }
+
+                    // Fallback to standard batch POST
+                    try {
+                        const csrfToken = getCookie('csrftoken');
+                        const response = await fetch(config.chatbotUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrfToken,
+                            },
+                            body: JSON.stringify({
+                                question,
+                                session_id: currentSessionId,
+                                regenerate: false,
+                            }),
+                        });
+
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                        const data = await response.json();
+                        removeLoadingMessage(loadingId);
+
+                        if (data.success) {
+                            if (data.session_id) {
+                                currentSessionId = data.session_id;
+                                if (wasNewSession && window.tempSessionCard) {
+                                    window.tempSessionCard.remove();
+                                    window.tempSessionCard = null;
+                                    animateSessionCreated();
+                                }
+                                await loadChatSessions();
+                                updateNewChatButtonState();
+                            }
+
+                            const answer = data.answer || 'Desculpe, não consegui gerar uma resposta.';
+                            const sources = data.sources || [];
+                            addAssistantMessage(answer, sources, true);
+                        } else {
+                            addErrorMessage(data.error || 'Erro ao processar pergunta');
+                        }
+                    } catch (batchError) {
+                        removeLoadingMessage(loadingId);
+                        console.error('Request error:', batchError);
+                        addErrorMessage('Erro de conexão. Verifique sua conexão e tente novamente.');
+                    }
                 } finally {
                     isProcessing = false;
                     if (sendButton) sendButton.disabled = false;

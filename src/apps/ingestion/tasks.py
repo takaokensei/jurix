@@ -183,8 +183,11 @@ def _process_norma_data(norma_data: Dict[str, Any], auto_download: bool = False)
     # URL do PDF (se disponível)
     pdf_url = norma_data.get('texto_integral', '')
     
-    # Montar URL da página no SAPL
-    sapl_url = f"https://sapl.natal.rn.leg.br/norma/normajuridica/{sapl_id}/"
+    # Montar URL da página no SAPL dinamicamente
+    sapl_base_host = getattr(settings, 'SAPL_BASE_URL', 'https://sapl.natal.rn.leg.br/api').rstrip('/')
+    if sapl_base_host.endswith('/api'):
+        sapl_base_host = sapl_base_host[:-4]
+    sapl_url = f"{sapl_base_host}/norma/normajuridica/{sapl_id}/"
     
     # Preservar status caso a norma já tenha sido processada/consolidada
     existing = Norma.objects.filter(sapl_id=sapl_id).only('status').first()
@@ -678,77 +681,81 @@ def segment_text_task(self, norma_id: int) -> Dict[str, Any]:
             f"building hierarchical structure"
         )
         
-        # Delete existing dispositivos (in case of reprocessing)
-        deleted_count = Dispositivo.objects.filter(norma=norma).delete()[0]
-        if deleted_count > 0:
-            logger.info(f"[Task {task_id}] Deleted {deleted_count} existing dispositivos")
-        
-        # Create Dispositivo instances
-        dispositivos_to_create = []
-        dispositivos_map = {}  # index -> Dispositivo instance
-        
-        stats = {
-            'artigo': 0,
-            'paragrafo': 0,
-            'inciso': 0,
-            'alinea': 0
-        }
-        
-        # First pass: create all dispositivos without parent relationships
-        for elem in hierarchy:
-            texto_limpo = parser.clean_text(elem['texto'])
+        # Atomic transaction: delete existing and recreate with relationships
+        with transaction.atomic():
+            # Delete existing dispositivos (in case of reprocessing)
+            deleted_count = Dispositivo.objects.filter(norma=norma).delete()[0]
+            if deleted_count > 0:
+                logger.info(f"[Task {task_id}] Deleted {deleted_count} existing dispositivos")
             
-            dispositivo = Dispositivo(
-                norma=norma,
-                tipo=elem['tipo'],
-                numero=elem['numero'],
-                texto=texto_limpo,
-                texto_bruto=elem['full_match'],
-                ordem=elem['index'],
-                segmentation_confidence=1.0  # High confidence for regex matches
-            )
+            # Create Dispositivo instances
+            dispositivos_to_create = []
+            stats = {
+                'artigo': 0,
+                'paragrafo': 0,
+                'inciso': 0,
+                'alinea': 0,
+                'capitulo': 0,
+                'secao': 0,
+                'titulo': 0,
+            }
             
-            dispositivos_map[elem['index']] = dispositivo
-            dispositivos_to_create.append(dispositivo)
-            
-            # Count by type
-            tipo = elem['tipo']
-            if tipo in stats:
-                stats[tipo] += 1
-        
-        # Bulk create (fast)
-        created_dispositivos = Dispositivo.objects.bulk_create(dispositivos_to_create)
-        
-        logger.info(
-            f"[Task {task_id}] Created {len(created_dispositivos)} dispositivos "
-            f"(bulk insert)"
-        )
-        
-        # Second pass: set parent relationships
-        updates_needed = []
-        for elem in hierarchy:
-            if elem['parent_index'] is not None:
-                child = dispositivos_map[elem['index']]
-                parent = dispositivos_map[elem['parent_index']]
+            # First pass: create all dispositivos with materialized caminho/nivel
+            for elem in hierarchy:
+                texto_limpo = parser.clean_text(elem['texto'])
                 
-                # Find the created instance by ordem
-                child_db = Dispositivo.objects.get(norma=norma, ordem=elem['index'])
-                parent_db = Dispositivo.objects.get(norma=norma, ordem=elem['parent_index'])
+                dispositivo = Dispositivo(
+                    norma=norma,
+                    tipo=elem['tipo'],
+                    numero=elem['numero'],
+                    texto=texto_limpo,
+                    texto_bruto=elem.get('full_match', ''),
+                    ordem=elem['index'],
+                    caminho=elem.get('caminho', ''),
+                    nivel=elem.get('nivel', 0),
+                    segmentation_confidence=1.0  # High confidence for regex matches
+                )
                 
-                child_db.dispositivo_pai = parent_db
-                updates_needed.append(child_db)
-        
-        # Bulk update parents (if any)
-        if updates_needed:
-            Dispositivo.objects.bulk_update(updates_needed, ['dispositivo_pai'])
+                dispositivos_to_create.append(dispositivo)
+                
+                # Count by type
+                tipo = elem['tipo']
+                if tipo in stats:
+                    stats[tipo] += 1
+                else:
+                    stats[tipo] = 1
+            
+            # Bulk create (fast)
+            created_dispositivos = Dispositivo.objects.bulk_create(dispositivos_to_create)
+            
             logger.info(
-                f"[Task {task_id}] Updated {len(updates_needed)} parent relationships"
+                f"[Task {task_id}] Created {len(created_dispositivos)} dispositivos "
+                f"(bulk insert)"
             )
-        
-        # Update norma status
-        norma.status = 'segmented'
-        norma.processing_error = ''
-        norma.save(update_fields=['status', 'processing_error', 'updated_at'])
+            
+            # Second pass: set parent relationships using in-memory mapping O(1)
+            db_by_ordem = {d.ordem: d for d in created_dispositivos}
+            updates_needed = []
+            for elem in hierarchy:
+                if elem.get('parent_index') is not None:
+                    child_db = db_by_ordem.get(elem['index'])
+                    parent_db = db_by_ordem.get(elem['parent_index'])
+                    
+                    if child_db and parent_db:
+                        child_db.dispositivo_pai = parent_db
+                        updates_needed.append(child_db)
+            
+            # Bulk update parents (if any)
+            if updates_needed:
+                Dispositivo.objects.bulk_update(updates_needed, ['dispositivo_pai'])
+                logger.info(
+                    f"[Task {task_id}] Updated {len(updates_needed)} parent relationships in bulk"
+                )
+            
+            # Update norma status
+            norma.status = Norma.Status.SEGMENTED
+            norma.processing_error = ''
+            norma.save(update_fields=['status', 'processing_error', 'updated_at'])
         
         processing_time = time.time() - start_time
         
