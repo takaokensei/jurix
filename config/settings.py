@@ -14,7 +14,10 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-dev-key-change-in-p
 
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+from urllib.parse import urlparse, unquote
+
+allowed_hosts_env = os.getenv('ALLOWED_HOSTS')
+ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(',') if h.strip()] if allowed_hosts_env else ['*'] if DEBUG else ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -71,16 +74,30 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'jurix'),
-        'USER': os.getenv('POSTGRES_USER', 'jurix_user'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'jurix_pass_dev'),
-        'HOST': os.getenv('DB_HOST', 'db'),
-        'PORT': os.getenv('DB_PORT', '5432'),
+database_url = os.getenv('DATABASE_URL')
+if database_url:
+    parsed_db = urlparse(database_url)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': unquote(parsed_db.path.lstrip('/')) or os.getenv('POSTGRES_DB', 'jurix'),
+            'USER': unquote(parsed_db.username or '') or os.getenv('POSTGRES_USER', 'jurix_user'),
+            'PASSWORD': unquote(parsed_db.password or '') or os.getenv('POSTGRES_PASSWORD', 'jurix_pass_dev'),
+            'HOST': parsed_db.hostname or os.getenv('DB_HOST', 'db'),
+            'PORT': str(parsed_db.port or os.getenv('DB_PORT', '5432')),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('POSTGRES_DB', 'jurix'),
+            'USER': os.getenv('POSTGRES_USER', 'jurix_user'),
+            'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'jurix_pass_dev'),
+            'HOST': os.getenv('DB_HOST', 'db'),
+            'PORT': os.getenv('DB_PORT', '5432'),
+        }
+    }
 
 
 # Password validation
@@ -139,6 +156,15 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+
+# Cache Configuration (Redis)
+REDIS_URL = os.getenv('REDIS_URL', 'redis://redis:6379/0')
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': REDIS_URL,
+    }
+}
 
 
 # Ollama Configuration

@@ -1,4 +1,4 @@
-﻿# Git ignore patterns for Jurix project
+# Git ignore patterns for Jurix project
 # Excludes build artifacts, virtual environments, and sensitive data
 
 # Python
@@ -58,3 +58,10 @@ Thumbs.db
 
 # Docker
 docker-compose.override.yml
+
+# Testing & Coverage
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+

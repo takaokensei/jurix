@@ -17,6 +17,7 @@ import io
 
 from celery import shared_task
 from django.conf import settings
+from django.db import transaction
 from django.utils.dateparse import parse_date
 
 from src.clients.sapl.sapl_client import SaplAPIClient
@@ -185,6 +186,12 @@ def _process_norma_data(norma_data: Dict[str, Any], auto_download: bool = False)
     # Montar URL da página no SAPL
     sapl_url = f"https://sapl.natal.rn.leg.br/norma/normajuridica/{sapl_id}/"
     
+    # Preservar status caso a norma já tenha sido processada/consolidada
+    existing = Norma.objects.filter(sapl_id=sapl_id).only('status').first()
+    preserved_status = 'pending'
+    if existing and existing.status in ('consolidated', 'embedded', 'segmented', 'ocr_completed', 'text_extracted'):
+        preserved_status = existing.status
+
     # Criar ou atualizar norma
     norma, created = Norma.objects.update_or_create(
         sapl_id=sapl_id,
@@ -200,7 +207,7 @@ def _process_norma_data(norma_data: Dict[str, Any], auto_download: bool = False)
             'pdf_url': pdf_url,
             'sapl_url': sapl_url,
             'sapl_metadata': norma_data,  # Salvar payload bruto
-            'status': 'pending',  # Pronta para pipeline de processamento
+            'status': preserved_status,  # Não desconsolida normas existentes
         }
     )
     
@@ -254,48 +261,33 @@ def bulk_ingest_normas_task(
     
     consolidated_stats = {
         'task_id': task_id,
-        'total_fetched': 0,
-        'created': 0,
-        'updated': 0,
-        'failed': 0,
+        'dispatched_tasks': [],
+        'total_batches': 0,
         'errors': []
     }
     
     offset = 0
     
     try:
-        while consolidated_stats['total_fetched'] < max_normas:
-            # Chamar subtask para cada página
-            result = ingest_normas_task(
+        while offset < max_normas:
+            # Disparar subtask assíncrona para cada página
+            subtask = ingest_normas_task.delay(
                 limit=page_size,
                 offset=offset,
                 tipo=tipo,
                 ano=ano
             )
-            
-            # Consolidar estatísticas
-            consolidated_stats['total_fetched'] += result['total_fetched']
-            consolidated_stats['created'] += result['created']
-            consolidated_stats['updated'] += result['updated']
-            consolidated_stats['failed'] += result['failed']
-            consolidated_stats['errors'].extend(result['errors'])
-            
-            # Se não retornou resultados, fim da paginação
-            if result['total_fetched'] == 0:
-                break
-            
+            consolidated_stats['dispatched_tasks'].append(subtask.id)
+            consolidated_stats['total_batches'] += 1
             offset += page_size
             
             logger.info(
-                f"[Task {task_id}] Progresso: {consolidated_stats['total_fetched']} "
-                f"normas processadas"
+                f"[Task {task_id}] Disparada subtask assíncrona {subtask.id} (offset={offset})"
             )
         
         logger.info(
-            f"[Task {task_id}] Ingestão em massa concluída: "
-            f"{consolidated_stats['created']} criadas, "
-            f"{consolidated_stats['updated']} atualizadas, "
-            f"{consolidated_stats['failed']} falhas"
+            f"[Task {task_id}] Disparo em massa concluído: "
+            f"{consolidated_stats['total_batches']} tarefas Celery enfileiradas."
         )
         
         return consolidated_stats
@@ -846,17 +838,19 @@ def extract_entities_task(self, norma_id: int) -> Dict[str, Any]:
     try:
         # Fetch Norma
         norma = Norma.objects.get(id=norma_id)
+        original_status = norma.status
         
         # Validate status
-        if norma.status != 'segmented':
+        if norma.status not in ('segmented', 'entities_extracted', 'consolidated'):
             logger.warning(
                 f"[Task {task_id}] Norma {norma} has status '{norma.status}', "
-                f"expected 'segmented'. Proceeding anyway."
+                f"expected 'segmented' or higher. Proceeding anyway."
             )
         
-        # Update status to processing
-        norma.status = 'entity_extraction'
-        norma.save(update_fields=['status', 'updated_at'])
+        # Only update status to entity_extraction if not already consolidated
+        if original_status != 'consolidated':
+            norma.status = 'entity_extraction'
+            norma.save(update_fields=['status', 'updated_at'])
         
         # Initialize NER extractor
         extractor = LegalNERExtractor()
@@ -869,7 +863,7 @@ def extract_entities_task(self, norma_id: int) -> Dict[str, Any]:
                 f"[Task {task_id}] No dispositivos found for Norma {norma}. "
                 f"Cannot extract entities."
             )
-            norma.status = 'segmented'
+            norma.status = original_status if original_status in ('consolidated', 'entities_extracted') else 'segmented'
             norma.save(update_fields=['status', 'updated_at'])
             return {
                 'success': True,
@@ -931,17 +925,16 @@ def extract_entities_task(self, norma_id: int) -> Dict[str, Any]:
                     )
                     events_to_create.append(evento)
         
-        # Bulk create all events
-        if events_to_create:
-            EventoAlteracao.objects.bulk_create(events_to_create, batch_size=500)
-            logger.info(
-                f"[Task {task_id}] Created {len(events_to_create)} EventoAlteracao instances"
-            )
-        
-        # Update norma status
-        norma.status = 'entities_extracted'
-        norma.processing_error = ''
-        norma.save(update_fields=['status', 'processing_error', 'updated_at'])
+        # Atomically clean up prior events for this norma and bulk create the new clean events
+        with transaction.atomic():
+            EventoAlteracao.objects.filter(dispositivo_fonte__norma=norma).delete()
+            if events_to_create:
+                EventoAlteracao.objects.bulk_create(events_to_create, batch_size=500)
+            
+            # Preserve consolidated status if previously consolidated
+            norma.status = original_status if original_status == 'consolidated' else 'entities_extracted'
+            norma.processing_error = ''
+            norma.save(update_fields=['status', 'processing_error', 'updated_at'])
         
         processing_time = time.time() - start_time
         

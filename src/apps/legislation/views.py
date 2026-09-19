@@ -354,7 +354,6 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                     # Update session title if it's still the default
                     # Use direct query instead of related manager to avoid errors
                     try:
-                        from .models import ChatMessage
                         has_messages = ChatMessage.objects.filter(session_id=session_id).exists()
                         if chat_session.title == 'Nova Conversa' and not has_messages:
                             chat_session.title = question[:50] + ('...' if len(question) > 50 else '')
@@ -485,7 +484,6 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                     # Use direct query instead of related manager
                     if regenerate:
                         try:
-                            from .models import ChatMessage
                             last_assistant = ChatMessage.objects.filter(
                                 session_id=chat_session.id,
                                 role='assistant'

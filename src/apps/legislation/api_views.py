@@ -12,6 +12,7 @@ import json
 import traceback
 from typing import Any, Dict
 
+from django.shortcuts import get_object_or_404
 from django.http import JsonResponse, HttpRequest
 from django.views.decorators.http import require_http_methods
 from django.conf import settings
@@ -19,10 +20,17 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
 from django.db.models import Q
 
-from src.apps.legislation.models import Norma, Dispositivo, ChatSession, ChatMessage
+from src.apps.legislation.models import Norma, Dispositivo, ChatSession, ChatMessage, EventoAlteracao
 from src.processing.rag_service import RAGService
 
 logger = logging.getLogger(__name__)
+
+
+def _format_error_message(e: Exception) -> str:
+    """Format safe error message for API responses."""
+    if getattr(settings, 'DEBUG', False):
+        return str(e)
+    return "Ocorreu um erro interno ao processar a requisição."
 
 
 @require_http_methods(["GET"])
@@ -132,7 +140,7 @@ def semantic_search_api(request: HttpRequest) -> JsonResponse:
         logger.error(f"Error in semantic search API: {e}", exc_info=True)
         return JsonResponse({
             'success': False,
-            'error': str(e)
+            'error': _format_error_message(e)
         }, status=500)
 
 
@@ -222,7 +230,7 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
         logger.error(f"Error in RAG answer API: {e}", exc_info=True)
         return JsonResponse({
             'success': False,
-            'error': str(e)
+            'error': _format_error_message(e)
         }, status=500)
 
 
@@ -304,36 +312,56 @@ def norma_list_api(request: HttpRequest) -> JsonResponse:
         logger.error(f"Error in norma list API: {e}", exc_info=True)
         return JsonResponse({
             'success': False,
-            'error': str(e)
+            'error': _format_error_message(e)
         }, status=500)
 
 
 @require_http_methods(["GET"])
 def norma_detail_api(request: HttpRequest, pk: int) -> JsonResponse:
     """
-    API endpoint to get norma details.
+    API endpoint to retrieve single norma with devices and alterations.
     
-    GET /api/v1/normas/<id>/
-    
-    Returns:
-        JSON response with norma details and dispositivos
+    GET /api/v1/normas/<pk>/
     """
     try:
-        norma = Norma.objects.get(pk=pk)
+        norma = get_object_or_404(Norma, pk=pk)
         
         # Get dispositivos
-        dispositivos = Dispositivo.objects.filter(norma=norma).order_by('ordem')
+        dispositivos = Dispositivo.objects.filter(norma=norma).select_related('dispositivo_pai').order_by('ordem')
+        dispositivos_data = [
+            {
+                'id': d.id,
+                'tipo': d.tipo,
+                'numero': d.numero,
+                'texto': d.texto,
+                'ordem': d.ordem,
+                'hierarchy': d.get_full_identifier(),
+                'parent_id': d.dispositivo_pai_id,
+                'has_embedding': d.has_embedding(),
+            }
+            for d in dispositivos
+        ]
         
-        dispositivos_data = []
-        for disp in dispositivos:
-            dispositivos_data.append({
-                'id': disp.id,
-                'tipo': disp.tipo,
-                'numero': disp.numero,
-                'texto': disp.texto,
-                'ordem': disp.ordem,
-                'has_embedding': disp.embedding is not None,
-            })
+        # Get alteration events
+        eventos = EventoAlteracao.objects.filter(norma_alvo=norma).select_related(
+            'dispositivo_fonte',
+            'dispositivo_fonte__norma',
+            'dispositivo_alvo'
+        ).order_by('created_at')
+        
+        eventos_data = [
+            {
+                'id': e.id,
+                'acao': e.acao,
+                'tipo': e.get_acao_display(),
+                'target_text': e.target_text,
+                'source_norma': f"{e.dispositivo_fonte.norma.tipo} {e.dispositivo_fonte.norma.numero}/{e.dispositivo_fonte.norma.ano}" if e.dispositivo_fonte and e.dispositivo_fonte.norma else None,
+                'source_dispositivo': e.dispositivo_fonte.get_full_identifier() if e.dispositivo_fonte else None,
+                'target_dispositivo': e.dispositivo_alvo.get_full_identifier() if e.dispositivo_alvo else None,
+                'confidence': e.extraction_confidence,
+            }
+            for e in eventos
+        ]
         
         return JsonResponse({
             'success': True,
@@ -344,12 +372,17 @@ def norma_detail_api(request: HttpRequest, pk: int) -> JsonResponse:
                 'ano': norma.ano,
                 'ementa': norma.ementa,
                 'status': norma.status,
+                'status_display': norma.get_status_display(),
                 'data_publicacao': norma.data_publicacao.isoformat() if norma.data_publicacao else None,
                 'data_vigencia': norma.data_vigencia.isoformat() if norma.data_vigencia else None,
-                'texto_consolidado': norma.texto_consolidado if norma.texto_consolidado else None,
+                'has_consolidated_text': bool(norma.texto_consolidado),
+                'pdf_url': norma.pdf_url,
+                'sapl_url': norma.sapl_url,
+                'dispositivos_count': len(dispositivos_data),
+                'eventos_count': len(eventos_data),
             },
             'dispositivos': dispositivos_data,
-            'count': len(dispositivos_data)
+            'eventos': eventos_data
         })
         
     except Norma.DoesNotExist:
@@ -361,7 +394,7 @@ def norma_detail_api(request: HttpRequest, pk: int) -> JsonResponse:
         logger.error(f"Error in norma detail API: {e}", exc_info=True)
         return JsonResponse({
             'success': False,
-            'error': str(e)
+            'error': _format_error_message(e)
         }, status=500)
 
 
@@ -441,7 +474,6 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
                     latest_preview = ''
                     try:
                         # Use direct query instead of method to avoid any issues
-                        from .models import ChatMessage
                         first_msg = ChatMessage.objects.filter(
                             session_id=session_id,
                             role='user'
@@ -455,7 +487,6 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
                     # Safely get message count
                     message_count = 0
                     try:
-                        from .models import ChatMessage
                         message_count = ChatMessage.objects.filter(session_id=session_id).count()
                     except Exception as e:
                         logger.debug(f"Could not get message count for session {session_id}: {e}")
@@ -511,7 +542,7 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
         logger.error(f"Traceback: {traceback.format_exc()}")
         return JsonResponse({
             'success': False, 
-            'error': str(e),
+            'error': _format_error_message(e),
             'traceback': traceback.format_exc() if settings.DEBUG else None
         }, status=500)
 
@@ -615,7 +646,7 @@ def chat_session_by_slug_api(request: HttpRequest, slug: str) -> JsonResponse:
     
     except Exception as e:
         logger.error(f"Error in chat session by slug API: {e}", exc_info=True)
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return JsonResponse({'success': False, 'error': _format_error_message(e)}, status=500)
 
 
 @csrf_exempt
@@ -743,7 +774,7 @@ def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonRespon
     
     except Exception as e:
         logger.error(f"Error in chat session detail API: {e}", exc_info=True)
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return JsonResponse({'success': False, 'error': _format_error_message(e)}, status=500)
 
 
 @csrf_exempt
@@ -771,15 +802,18 @@ def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonRe
             session_id=session.id,
             role='assistant'
         ).order_by('-created_at').first()
-        if last_assistant:
-            last_assistant.delete()
         
         data = json.loads(request.body) if request.body else {}
         k = data.get('k', 5)
         model = data.get('model', 'llama3')
         
+        # Generate new answer FIRST before touching database state
         rag_service = RAGService()
         response = rag_service.answer_question(question=last_user_msg.content, k=k, model=model)
+        
+        # Only after generation succeeds, delete previous assistant response
+        if last_assistant:
+            last_assistant.delete()
         
         sources = []
         for source in response.get('sources', []):
@@ -832,5 +866,5 @@ def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonRe
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
         logger.error(f"Error in chat session regenerate API: {e}", exc_info=True)
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return JsonResponse({'success': False, 'error': _format_error_message(e)}, status=500)
 

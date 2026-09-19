@@ -4,14 +4,14 @@ Consolidation Engine for Legal Norms.
 This module implements the core algorithm for applying legal alterations
 (revogações, alterações, adições) to generate consolidated legal texts.
 
-The engine processes EventoAlteracao instances temporally to reconstruct
-the current state of a legal norm.
+The engine processes EventoAlteracao instances temporally based on the
+chronological order of enacting laws to reconstruct the current legal state.
 """
 
 import logging
+import re
+from datetime import date
 from typing import List, Dict, Any, Optional, Set
-from datetime import datetime
-from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +20,11 @@ class ConsolidationEngine:
     """
     Core engine for legal text consolidation.
     
-    Applies alterations (REVOGA, ALTERA, ADICIONA) to dispositivos
+    Applies alterations (REVOGA, ALTERA, ADICIONA, SUBSTITUI) to dispositivos
     to generate the consolidated version of a norma.
     
-    The engine operates on a temporal basis, processing alterations
-    in chronological order based on the norma's publication date.
+    Processes alterations strictly in chronological order based on the modifying
+    norma's publication/enactment date.
     """
     
     def __init__(self, norma):
@@ -37,12 +37,13 @@ class ConsolidationEngine:
         self.norma = norma
         self.dispositivos = []
         self.eventos = []
-        self.revoked_dispositivos = set()
-        self.altered_dispositivos = {}
+        self.revoked_dispositivos = {}  # disp_id -> EventoAlteracao
+        self.altered_dispositivos = {}  # disp_id -> EventoAlteracao
+        self.added_dispositivos = []    # list of EventoAlteracao or synthetic Dispositivo
         
     def consolidate(self) -> str:
         """
-        Execute the consolidation process and return consolidated text.
+        Execute the consolidation process and return deterministic consolidated text.
         
         Returns:
             String containing the consolidated legal text
@@ -80,80 +81,160 @@ class ConsolidationEngine:
         
         self.dispositivos = list(
             Dispositivo.objects.filter(norma=self.norma)
-            .order_by('ordem')
+            .order_by('ordem', 'id')
             .select_related('dispositivo_pai')
         )
         
         logger.debug(f"Loaded {len(self.dispositivos)} dispositivos")
     
+    @staticmethod
+    def _evento_sort_key(evento):
+        """
+        Generate chronological sort key for an alteration event.
+        
+        Orders by:
+        1. Publication / enactment date of the modifying norma
+        2. Year of the modifying norma
+        3. Numeric identifier of the modifying norma
+        4. Order of the modifying dispositivo
+        5. Database ID as deterministic tie-breaker
+        """
+        fonte = getattr(evento, 'dispositivo_fonte', None)
+        norma_fonte = getattr(fonte, 'norma', None) if fonte else None
+        
+        # Prefer publication date, then enactment date
+        data = None
+        if norma_fonte:
+            data = norma_fonte.data_publicacao or norma_fonte.data_vigencia
+            
+        ano = (norma_fonte.ano or 0) if norma_fonte else 0
+        
+        num = 0
+        if norma_fonte and norma_fonte.numero:
+            digits = re.sub(r'\D', '', str(norma_fonte.numero))
+            num = int(digits) if digits else 0
+            
+        ordem = fonte.ordem if (fonte and fonte.ordem is not None) else 0
+        ev_id = evento.id or 0
+        
+        # date.min for null dates to ensure consistent sortable comparison
+        sort_date = data if isinstance(data, date) else date.min
+        
+        return (sort_date, ano, num, ordem, ev_id)
+    
     def _load_eventos(self):
         """
-        Load all alteration events that affect this norma.
+        Load all alteration events that affect this norma with deterministic ordering.
         
-        This includes:
-        - Self-alterations (dispositivos of this norma altering other dispositivos)
-        - External alterations (other normas altering this one)
+        Deduplicates by ID and sorts strictly chronologically according to the
+        enacting statute's legal date.
         """
         from src.apps.legislation.models import EventoAlteracao
         
         # Events where this norma is the target
-        eventos_recebidos = EventoAlteracao.objects.filter(
-            norma_alvo=self.norma
-        ).select_related(
-            'dispositivo_fonte',
-            'dispositivo_fonte__norma',
-            'dispositivo_alvo'
-        ).order_by('created_at')
+        eventos_recebidos = list(
+            EventoAlteracao.objects.filter(norma_alvo=self.norma)
+            .select_related(
+                'dispositivo_fonte',
+                'dispositivo_fonte__norma',
+                'dispositivo_alvo'
+            )
+        )
         
         # Events where dispositivos of this norma reference themselves
-        eventos_internos = EventoAlteracao.objects.filter(
-            dispositivo_fonte__norma=self.norma,
-            norma_alvo=self.norma
-        ).select_related(
-            'dispositivo_fonte',
-            'dispositivo_alvo'
-        ).order_by('created_at')
+        eventos_internos = list(
+            EventoAlteracao.objects.filter(
+                dispositivo_fonte__norma=self.norma,
+                norma_alvo=self.norma
+            ).select_related(
+                'dispositivo_fonte',
+                'dispositivo_alvo'
+            )
+        )
         
-        # Combine and deduplicate
-        self.eventos = list(set(list(eventos_recebidos) + list(eventos_internos)))
+        # Combine and deduplicate preserving deterministic order
+        seen_ids = set()
+        unique_eventos = []
+        for ev in eventos_recebidos + eventos_internos:
+            if ev.id not in seen_ids:
+                seen_ids.add(ev.id)
+                unique_eventos.append(ev)
         
-        logger.debug(f"Loaded {len(self.eventos)} alteration events")
+        # Sort chronologically by enacting law
+        unique_eventos.sort(key=self._evento_sort_key)
+        self.eventos = unique_eventos
+        
+        logger.debug(f"Loaded {len(self.eventos)} alteration events deterministically")
     
     def _process_eventos(self):
         """
-        Process alteration events to identify which dispositivos are affected.
+        Process alteration events chronologically to reconstruct state.
         
-        Builds internal state:
-        - revoked_dispositivos: Set of dispositivo IDs that were revoked
-        - altered_dispositivos: Dict of dispositivo ID -> alteration info
+        Reconstructs:
+        - revoked_dispositivos: disp_id -> EventoAlteracao
+        - altered_dispositivos: disp_id -> {evento, new_text, source_ref}
+        - added_dispositivos: list of EventoAlteracao
         """
+        self.revoked_dispositivos = {}
+        self.altered_dispositivos = {}
+        self.added_dispositivos = []
+        
         for evento in self.eventos:
-            if evento.dispositivo_alvo:
-                # Specific dispositivo target identified
-                if evento.acao == 'REVOGA':
-                    self.revoked_dispositivos.add(evento.dispositivo_alvo.id)
-                    logger.debug(
-                        f"Marked dispositivo {evento.dispositivo_alvo.id} as revoked"
-                    )
-                    
-                elif evento.acao == 'ALTERA':
-                    self.altered_dispositivos[evento.dispositivo_alvo.id] = {
+            acao = (evento.acao or '').upper()
+            target = evento.dispositivo_alvo
+            fonte = evento.dispositivo_fonte
+            norma_fonte = fonte.norma if fonte else None
+            
+            ref_str = ""
+            if norma_fonte:
+                ref_str = f"{norma_fonte.tipo} nº {norma_fonte.numero}/{norma_fonte.ano}"
+            
+            if target:
+                if acao == 'REVOGA':
+                    self.revoked_dispositivos[target.id] = {
                         'evento': evento,
-                        'fonte': evento.dispositivo_fonte,
-                        'target_text': evento.target_text
+                        'norma_ref': ref_str,
                     }
-                    logger.debug(
-                        f"Marked dispositivo {evento.dispositivo_alvo.id} as altered"
-                    )
+                    # If previously altered, revocation overrides it
+                    if target.id in self.altered_dispositivos:
+                        del self.altered_dispositivos[target.id]
+                    logger.debug(f"Dispositivo {target.id} marked as revoked by {ref_str}")
+                    
+                elif acao in ('ALTERA', 'SUBSTITUI'):
+                    # If device is revoked, subsequent alteration might restore or redefine it
+                    if target.id in self.revoked_dispositivos:
+                        del self.revoked_dispositivos[target.id]
+                    
+                    # The new text comes from target_text or the source dispositivo's text
+                    new_text = ""
+                    if evento.target_text and not evento.target_text.lower().startswith('art'):
+                        new_text = evento.target_text.strip()
+                    elif fonte and fonte.texto:
+                        new_text = fonte.texto.strip()
+                        
+                    self.altered_dispositivos[target.id] = {
+                        'evento': evento,
+                        'fonte': fonte,
+                        'new_text': new_text,
+                        'norma_ref': ref_str,
+                    }
+                    logger.debug(f"Dispositivo {target.id} marked as altered by {ref_str}")
             else:
-                # No specific target, log for reference
-                logger.debug(
-                    f"Event {evento.id} ({evento.acao}) has no specific dispositivo target"
-                )
+                if acao == 'ADICIONA':
+                    self.added_dispositivos.append({
+                        'evento': evento,
+                        'norma_ref': ref_str,
+                    })
+                    logger.debug(f"Event {evento.id} recorded as added dispositivo")
     
     def _build_consolidated_text(self) -> str:
         """
-        Build the consolidated text by reconstructing dispositivos hierarchy.
+        Build deterministic consolidated text by reconstructing dispositivos hierarchy.
+        
+        Follows Brazilian legal standards (Decreto nº 9.191/2017):
+        - Revoked devices are explicitly marked with citation.
+        - Altered devices display the active updated text with citation.
+        - Output is 100% deterministic (no runtime timestamps in text).
         
         Returns:
             Formatted consolidated text
@@ -172,12 +253,12 @@ class ConsolidationEngine:
             lines.append("")
         
         # Process dispositivos hierarchically
-        root_dispositivos = [d for d in self.dispositivos if d.dispositivo_pai is None]
+        root_dispositivos = [d for d in self.dispositivos if d.dispositivo_pai_id is None]
         
         for dispositivo in root_dispositivos:
             self._add_dispositivo_to_text(dispositivo, lines, level=0)
         
-        # Footer with metadata
+        # Footer with metadata (strictly deterministic)
         lines.append("")
         lines.append("-" * 80)
         lines.append("INFORMAÇÕES DE CONSOLIDAÇÃO:")
@@ -190,8 +271,7 @@ class ConsolidationEngine:
             lines.append(f"  - Data de publicação: {self.norma.data_publicacao}")
         if self.norma.data_vigencia:
             lines.append(f"  - Data de vigência: {self.norma.data_vigencia}")
-        
-        lines.append(f"  - Consolidado em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+            
         lines.append("=" * 80)
         
         return "\n".join(lines)
@@ -210,39 +290,37 @@ class ConsolidationEngine:
             lines: List of text lines to append to
             level: Current hierarchy level (for indentation)
         """
-        # Check if revoked
-        if dispositivo.id in self.revoked_dispositivos:
-            indent = "  " * level
-            lines.append(
-                f"{indent}{str(dispositivo)} "
-                f"(REVOGADO)"
-            )
+        indent = "  " * level
+        disp_id = dispositivo.id
+        header = str(dispositivo).strip()
+        
+        # Case 1: Device is revoked
+        if disp_id in self.revoked_dispositivos:
+            rev_info = self.revoked_dispositivos[disp_id]
+            ref = rev_info.get('norma_ref')
+            citation = f" (Revogado pela {ref})" if ref else " (Revogado)"
+            lines.append(f"{indent}{header}{citation}")
             return
         
-        # Check if altered
-        if dispositivo.id in self.altered_dispositivos:
-            indent = "  " * level
-            alteration = self.altered_dispositivos[dispositivo.id]
-            fonte_norma = alteration['fonte'].norma
+        # Case 2: Device has been altered
+        if disp_id in self.altered_dispositivos:
+            alt_info = self.altered_dispositivos[disp_id]
+            ref = alt_info.get('norma_ref')
+            new_text = alt_info.get('new_text')
             
-            lines.append(
-                f"{indent}{str(dispositivo)} "
-                f"{dispositivo.texto}"
-            )
-            lines.append(
-                f"{indent}  [ALTERADO pela {fonte_norma.tipo} {fonte_norma.numero}/{fonte_norma.ano}]"
-            )
+            # Use new text if available, otherwise original text
+            effective_text = new_text if new_text else dispositivo.texto
+            citation = f" (Redação dada pela {ref})" if ref else " (Alterado)"
+            
+            lines.append(f"{indent}{header} {effective_text}{citation}")
         else:
-            # Normal dispositivo
-            indent = "  " * level
-            lines.append(
-                f"{indent}{str(dispositivo)} {dispositivo.texto}"
-            )
+            # Case 3: Normal untouched device
+            lines.append(f"{indent}{header} {dispositivo.texto}")
         
         # Add children recursively
         children = [
             d for d in self.dispositivos 
-            if d.dispositivo_pai_id == dispositivo.id
+            if d.dispositivo_pai_id == disp_id
         ]
         
         for child in children:
@@ -262,4 +340,3 @@ class ConsolidationEngine:
             'events_processed': len(self.eventos),
             'norma_str': str(self.norma),
         }
-
