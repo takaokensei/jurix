@@ -41,7 +41,7 @@ def _norm(name):
 
 def _declared():
     names = set()
-    for line in (ROOT / "requirements.txt").read_text().splitlines():
+    for line in (ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines():
         line = line.split("#")[0].strip()
         if line:
             names.add(_norm(re.split(r"[=<>!~\[; ]", line, maxsplit=1)[0]))
@@ -53,7 +53,7 @@ def _imported_third_party():
     for path in list(SRC.rglob("*.py")) + [ROOT / "manage.py"] + list((ROOT / "config").glob("*.py")):
         if "migrations" in path.parts:
             continue
-        for node in ast.walk(ast.parse(path.read_text())):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             mods = []
             if isinstance(node, ast.Import):
                 mods = [a.name for a in node.names]

@@ -126,3 +126,23 @@ jobs:
       run: |
         ruff format --check src/
 
+  frontend-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: npm
+        cache-dependency-path: tests/js/package-lock.json
+
+    - name: Install test dependencies
+      working-directory: tests/js
+      run: npm ci
+
+    - name: XSS tests for the chat frontend
+      working-directory: tests/js
+      run: npm test

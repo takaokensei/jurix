@@ -56,14 +56,17 @@ $$;
 """
 
 
+# params=None is REQUIRED: schema_editor.execute() defaults to params=(), which makes the
+# driver interpolate '%' sequences and the '%I' inside format() below raises
+# 'IndexError: tuple index out of range'. RunSQL passes params=None for the same reason.
 def forward_sql(apps, schema_editor):
     if schema_editor.connection.vendor == 'postgresql':
-        schema_editor.execute(FORWARD)
+        schema_editor.execute(FORWARD, params=None)
 
 
 def reverse_sql(apps, schema_editor):
     if schema_editor.connection.vendor == 'postgresql':
-        schema_editor.execute(REVERSE)
+        schema_editor.execute(REVERSE, params=None)
 
 
 class Migration(migrations.Migration):

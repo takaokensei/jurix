@@ -224,7 +224,8 @@ def test_no_bare_except_in_production_code():
     for path in src.rglob("*.py"):
         if "tests" in path.parts or "migrations" in path.parts:
             continue
-        for node in ast.walk(ast.parse(path.read_text())):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if isinstance(node, ast.ExceptHandler) and node.type is None:
                 offenders.append(f"{path.relative_to(src)}:{node.lineno}")
     assert offenders == []
+

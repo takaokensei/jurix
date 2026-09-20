@@ -51,6 +51,39 @@
         return div.innerHTML;
     }
 
+    // Escape for a double-quoted HTML ATTRIBUTE. escapeHtml() is not enough there: it leaves
+    // quotes untouched, so a value containing " or ' could close the attribute (or a JS string
+    // inside an inline handler) and inject code.
+    function escapeAttr(text) {
+        return String(text ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // Only http(s) URLs may be opened from a source card: javascript:, data:, vbscript: and
+    // friends are dropped. The value comes from ingested SAPL data, i.e. it is not trusted.
+    function safeHttpUrl(value) {
+        if (!value) return null;
+        try {
+            const url = new URL(String(value), window.location.href);
+            return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    // Source cards carry the URL in a data attribute and are opened by ONE delegated listener,
+    // instead of an inline onclick that interpolated the URL into JavaScript.
+    document.addEventListener('click', (event) => {
+        const card = event.target.closest ? event.target.closest('.source-card-clickable[data-url]') : null;
+        if (!card) return;
+        const url = safeHttpUrl(card.dataset.url);   // re-validated at use time
+        if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    });
+
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -824,13 +857,13 @@
         const normaRef = source.norma || source.norma_ref || 'Norma';
         const dispositivoRef = source.dispositivo_ref || '';
         const snippet = source.text || source.full_text || '';
-        const linkUrl = source.pdf_url || source.sapl_url || null;
+        const linkUrl = safeHttpUrl(source.pdf_url) || safeHttpUrl(source.sapl_url);
 
         const cardClasses = linkUrl ? 'source-card source-card-clickable' : 'source-card';
-        const onClickAttr = linkUrl ? `onclick="window.open('${escapeHtml(linkUrl)}', '_blank')"` : '';
+        const dataUrlAttr = linkUrl ? `data-url="${escapeAttr(linkUrl)}"` : '';
 
         return `
-            <div class="${cardClasses}" ${onClickAttr} title="${linkUrl ? 'Clique para abrir no SAPL/PDF' : ''}">
+            <div class="${cardClasses}" ${dataUrlAttr} title="${linkUrl ? 'Clique para abrir no SAPL/PDF' : ''}">
                 <div class="source-card-header">
                     <div class="source-title">${escapeHtml(normaRef)}</div>
                     <div class="source-score">

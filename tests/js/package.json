@@ -1,0 +1,15 @@
+{
+  "name": "jurix-frontend-tests",
+  "private": true,
+  "description": "Security tests for the chat frontend (XSS surface). Dev-only: nothing here ships to production.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  },
+  "engines": {
+    "node": ">=20.11"
+  }
+}

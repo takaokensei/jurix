@@ -67,3 +67,6 @@ docker-compose.override.yml
 htmlcov/
 .pytest_cache/
 
+
+# Frontend test dependencies (tests/js)
+tests/js/node_modules/
