@@ -50,7 +50,7 @@ services:
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - OLLAMA_MODEL=llama3
       - DJANGO_SETTINGS_MODULE=config.settings
-      - DEBUG=True
+      - DEBUG=${DEBUG:-True}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/')"]
       interval: 15s
@@ -80,6 +80,7 @@ services:
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - OLLAMA_MODEL=llama3
       - DJANGO_SETTINGS_MODULE=config.settings
+      - DEBUG=${DEBUG:-True}
     depends_on:
       db:
         condition: service_healthy

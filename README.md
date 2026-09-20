@@ -81,8 +81,7 @@ class Jurix:
 <strong>🤖 AI & Processing</strong><br/><br/>
 <img src="https://img.shields.io/badge/Ollama-llama3-dc2626?style=flat-square"/>
 <img src="https://img.shields.io/badge/Tesseract-OCR-88C0D0?style=flat-square"/>
-<img src="https://img.shields.io/badge/spaCy-NLP-09A3D5?style=flat-square"/>
-<img src="https://img.shields.io/badge/PyPDF2-Parser-E92063?style=flat-square"/>
+<img src="https://img.shields.io/badge/PyMuPDF-Parser-E92063?style=flat-square"/>
 </td>
 <td align="center" width="33%">
 <strong>⚡ Infrastructure</strong><br/><br/>

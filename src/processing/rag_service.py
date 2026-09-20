@@ -6,6 +6,7 @@ and Ollama embeddings for legal document retrieval.
 """
 
 import logging
+import re
 from typing import List, Dict, Any, Optional, Tuple, Generator
 from django.db import connection
 
@@ -26,6 +27,51 @@ class RAGService:
     - Ranked results by relevance
     """
     
+    # Single source of truth for the answer prompt, shared by the batch and streaming
+    # paths (they used to be two hand-copied strings and had drifted apart).
+    # Placeholders are filled with str.replace, never str.format, so braces in legal text
+    # or in a user question cannot break or be interpreted.
+    PROMPT_TEMPLATE = """Você é um assistente jurídico especializado em legislação brasileira.
+
+IMPORTANTE: Formate sua resposta em Markdown para melhor legibilidade:
+- Use **negrito** para destacar nomes de leis, artigos e termos jurídicos importantes
+- Use listas com bullet points (- ou •) para enumerar regras, requisitos ou condições
+- **CRÍTICO**: Cada item de lista DEVE estar em uma linha separada. Use quebra de linha ANTES de cada bullet point
+- Separe parágrafos claramente com quebras de linha duplas
+- Use ### para subtítulos quando necessário organizar a resposta
+
+EXEMPLO CORRETO:
+• Item 1
+• Item 2
+• Item 3
+
+EXEMPLO INCORRETO (NÃO FAÇA ISSO):
+• Item 1; • Item 2; • Item 3
+
+Com base nos seguintes dispositivos legais relevantes, responda a pergunta do usuário de forma clara e objetiva.
+
+CONTEXTO LEGAL:
+@@CONTEXT@@
+
+PERGUNTA DO USUÁRIO:
+@@QUESTION@@
+
+INSTRUÇÕES:
+- Responda em português claro e objetivo
+- Cite os dispositivos específicos usando **negrito** para as referências legais
+- Se não houver informação suficiente, seja honesto sobre as limitações
+- NUNCA invente ou alucine informações legais
+
+RESPOSTA:"""
+
+    @classmethod
+    def build_prompt(cls, context: str, question: str) -> str:
+        """Build the LLM prompt for a question and its retrieved legal context."""
+        values = {"CONTEXT": context, "QUESTION": question}
+        # One pass: text that was already inserted is never scanned again, so a context
+        # that happens to contain '@@QUESTION@@' is not rewritten.
+        return re.sub(r"@@(CONTEXT|QUESTION)@@", lambda m: values[m.group(1)], cls.PROMPT_TEMPLATE)
+
     def __init__(self, model: str = "nomic-embed-text", use_cache: bool = True):
         """
         Initialize RAG service.
@@ -272,9 +318,15 @@ class RAGService:
         clean_question = question.strip()
         logger.info(f"Answering question with RAG: '{clean_question[:100]}...'")
         
+        # Read the corpus version BEFORE the (slow) generation: if the corpus changes
+        # meanwhile, the result is stored under the old version and never served.
+        corpus_version = self.cache.get_corpus_version() if (self.use_cache and self.cache) else 0
+        
         # Step 0: Check cache if enabled and not forced to refresh
         if not force_refresh and self.use_cache and self.cache:
-            cached_result = self.cache.get_answer(clean_question, k=k, model=model)
+            cached_result = self.cache.get_answer(
+                clean_question, k=k, model=model, corpus_version=corpus_version
+            )
             if cached_result:
                 logger.info(f"Cache HIT for RAG answer: '{clean_question[:50]}...'")
                 # Rehydrate Dispositivo instances for sources if available
@@ -307,38 +359,7 @@ class RAGService:
             }
         
         # Step 2: Build prompt for LLM with Markdown formatting instructions
-        prompt = f"""Você é um assistente jurídico especializado em legislação brasileira.
-
-IMPORTANTE: Formate sua resposta em Markdown para melhor legibilidade:
-- Use **negrito** para destacar nomes de leis, artigos e termos jurídicos importantes
-- Use listas com bullet points (- ou •) para enumerar regras, requisitos ou condições
-- **CRÍTICO**: Cada item de lista DEVE estar em uma linha separada. Use quebra de linha ANTES de cada bullet point
-- Separe parágrafos claramente com quebras de linha duplas
-- Use ### para subtítulos quando necessário organizar a resposta
-
-EXEMPLO CORRETO:
-• Item 1
-• Item 2
-• Item 3
-
-EXEMPLO INCORRETO (NÃO FAÇA ISSO):
-• Item 1; • Item 2; • Item 3
-
-Com base nos seguintes dispositivos legais relevantes, responda a pergunta do usuário de forma clara e objetiva.
-
-CONTEXTO LEGAL:
-{context}
-
-PERGUNTA DO USUÁRIO:
-{clean_question}
-
-INSTRUÇÕES:
-- Responda em português claro e objetivo
-- Cite os dispositivos específicos usando **negrito** para as referências legais
-- Se não houver informação suficiente, seja honesto sobre as limitações
-- NUNCA invente ou alucine informações legais
-
-RESPOSTA:"""
+        prompt = self.build_prompt(context, clean_question)
         
         # Step 3: Generate answer using LLM
         answer = self.ollama.generate_text(
@@ -373,7 +394,10 @@ RESPOSTA:"""
         
         # Step 5: Save to cache if enabled
         if self.use_cache and self.cache:
-            self.cache.set_answer(clean_question, k=k, model=model, answer_data=result_payload)
+            self.cache.set_answer(
+                clean_question, k=k, model=model, answer_data=result_payload,
+                corpus_version=corpus_version
+            )
         
         return result_payload
 
@@ -391,10 +415,13 @@ RESPOSTA:"""
         - {'event': 'done', 'answer': str}
         """
         clean_question = question.strip()
+        corpus_version = self.cache.get_corpus_version() if (self.use_cache and self.cache) else 0
         
         # Check cache first
         if self.use_cache and self.cache:
-            cached_result = self.cache.get_answer(clean_question, k=k, model=model)
+            cached_result = self.cache.get_answer(
+                clean_question, k=k, model=model, corpus_version=corpus_version
+            )
             if cached_result:
                 cached_sources = cached_result.get('sources', [])
                 disp_ids = [
@@ -443,30 +470,7 @@ RESPOSTA:"""
         }
 
         # Build prompt
-        prompt = f"""Você é um assistente jurídico especializado em legislação brasileira.
-
-IMPORTANTE: Formate sua resposta em Markdown para melhor legibilidade:
-- Use **negrito** para destacar nomes de leis, artigos e termos jurídicos importantes
-- Use listas com bullet points (- ou •) para enumerar regras, requisitos ou condições
-- **CRÍTICO**: Cada item de lista DEVE estar em uma linha separada. Use quebra de linha ANTES de cada bullet point
-- Separe parágrafos claramente com quebras de linha duplas
-- Use ### para subtítulos quando necessário organizar a resposta
-
-Com base nos seguintes dispositivos legais relevantes, responda a pergunta do usuário de forma clara e objetiva.
-
-CONTEXTO LEGAL:
-{context}
-
-PERGUNTA DO USUÁRIO:
-{clean_question}
-
-INSTRUÇÕES:
-- Responda em português claro e objetivo
-- Cite os dispositivos específicos usando **negrito** para as referências legais
-- Se não houver informação suficiente, seja honesto sobre as limitações
-- NUNCA invente ou alucine informações legais
-
-RESPOSTA:"""
+        prompt = self.build_prompt(context, clean_question)
 
         full_chunks = []
         for chunk in self.ollama.stream_text(prompt, model=model, temperature=0.3, max_tokens=2048):
@@ -486,7 +490,10 @@ RESPOSTA:"""
                 'context_length': len(context),
                 'cached': False
             }
-            self.cache.set_answer(clean_question, k=k, model=model, answer_data=result_payload)
+            self.cache.set_answer(
+                clean_question, k=k, model=model, answer_data=result_payload,
+                corpus_version=corpus_version
+            )
 
         yield {'event': 'done', 'answer': full_answer}
     

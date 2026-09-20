@@ -6,18 +6,54 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+if not os.getenv('DJANGO_SKIP_DOTENV'):
+    load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-dev-key-change-in-production')
 
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+def env_bool(name: str, default: bool = False) -> bool:
+    """Read a boolean from the environment ('1', 'true', 'yes', 'on', any case)."""
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+# Secure by default: DEBUG must be enabled explicitly (docker-compose and
+# .env.example do it for local development). A forgotten variable used to mean
+# DEBUG=True with ALLOWED_HOSTS=['*'] and a publicly known SECRET_KEY.
+DEBUG = env_bool('DEBUG', False)
+
+_DEV_SECRET_KEY = 'django-insecure-dev-key-change-in-production'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY') or (_DEV_SECRET_KEY if DEBUG else None)
+if not SECRET_KEY or (SECRET_KEY == _DEV_SECRET_KEY and not DEBUG):
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY is not set (or is the public development key). "
+        "Set a private DJANGO_SECRET_KEY, or DEBUG=True for local development only."
+    )
 
 from urllib.parse import urlparse, unquote
 
 allowed_hosts_env = os.getenv('ALLOWED_HOSTS')
 ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(',') if h.strip()] if allowed_hosts_env else ['*'] if DEBUG else ['localhost', '127.0.0.1']
+
+
+# HTTPS hardening. Secure cookies default to ON whenever DEBUG is off, and each
+# switch can be overridden for deployments that still serve plain HTTP.
+# CSRF_COOKIE_HTTPONLY must stay False: chat.js reads the csrftoken cookie to send
+# X-CSRFToken. HSTS and the HTTPS redirect are opt-in because both are sticky.
+SESSION_COOKIE_SECURE = env_bool('SESSION_COOKIE_SECURE', not DEBUG)
+CSRF_COOKIE_SECURE = env_bool('CSRF_COOKIE_SECURE', not DEBUG)
+CSRF_COOKIE_HTTPONLY = False  # required: chat.js reads this cookie (do not change)
+SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', False)
+SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '0'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', False)
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
+if env_bool('TRUST_X_FORWARDED_PROTO', False):
+    # Only enable behind a proxy that overwrites X-Forwarded-Proto.
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Application definition
@@ -74,8 +110,17 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-database_url = os.getenv('DATABASE_URL')
-if database_url:
+database_url = os.getenv('DATABASE_URL', '')
+use_sqlite = os.getenv('USE_SQLITE', 'False').lower() in ('1', 'true', 'yes')
+
+if use_sqlite or database_url.startswith('sqlite'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+elif database_url:
     parsed_db = urlparse(database_url)
     DATABASES = {
         'default': {
@@ -170,6 +215,24 @@ CACHES = {
 # Ollama Configuration
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://host.docker.internal:11434')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3')
+
+# Models a client may request. The default (OLLAMA_MODEL) is always allowed;
+# add more with a comma-separated OLLAMA_ALLOWED_MODELS.
+OLLAMA_ALLOWED_MODELS = sorted({
+    OLLAMA_MODEL,
+    *(m.strip() for m in os.getenv('OLLAMA_ALLOWED_MODELS', '').split(',') if m.strip()),
+})
+
+# Limits for LLM-backed endpoints (each request costs an embedding + a generation).
+LLM_MAX_K = int(os.getenv('LLM_MAX_K', '20'))
+LLM_MAX_QUESTION_LENGTH = int(os.getenv('LLM_MAX_QUESTION_LENGTH', '2000'))
+LLM_RATE_LIMIT_REQUESTS = int(os.getenv('LLM_RATE_LIMIT_REQUESTS', '20'))  # 0 disables
+LLM_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv('LLM_RATE_LIMIT_WINDOW_SECONDS', '60'))
+
+# Reverse proxies in front of the app (0 = use REMOTE_ADDR). Behind one nginx/ALB
+# set 1; otherwise every visitor appears to share the proxy's IP and one rate-limit
+# bucket.
+NUM_PROXIES = int(os.getenv('NUM_PROXIES', '0'))
 
 # SAPL Configuration
 SAPL_BASE_URL = os.getenv('SAPL_BASE_URL', 'https://sapl.natal.rn.leg.br/api')

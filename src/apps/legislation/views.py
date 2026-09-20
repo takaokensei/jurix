@@ -17,11 +17,12 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.db.models import Q
 from django.core.paginator import Paginator
 from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.conf import settings
 
 from .models import Norma, Dispositivo, EventoAlteracao, ChatSession, ChatMessage
 from .serializers import serialize_dispositivo_source, serialize_chat_session, serialize_chat_message
+from .api_limits import InvalidLLMParams, parse_llm_request, rate_limit_response
 from src.processing.rag_service import RAGService
 
 logger = logging.getLogger(__name__)
@@ -199,6 +200,7 @@ def norma_dispositivos_tree_view(request: HttpRequest, pk: int) -> HttpResponse:
     return render(request, 'legislation/norma_tree.html', context)
 
 
+@ensure_csrf_cookie  # the frontend reads this cookie to send X-CSRFToken on every POST/DELETE
 def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse:
     """
     Chatbot interface for RAG-based legal question answering.
@@ -263,22 +265,25 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
         return render(request, 'legislation/chatbot.html', context)
     
     elif request.method == 'POST':
+        limited = rate_limit_response(request)
+        if limited:
+            return limited
+        
         # Process question via AJAX
         try:
-            # Parse JSON body
+            # Parse and validate JSON body (k is clamped, model must be allowed)
             data = json.loads(request.body)
-            question = data.get('question', '').strip()
+            try:
+                question, k, model = parse_llm_request(data)
+            except InvalidLLMParams as exc:
+                return JsonResponse({'success': False, 'error': str(exc)}, status=400)
             
             if not question:
                 return JsonResponse({
                     'success': False,
                     'error': 'Pergunta vazia'
                 }, status=400)
-            
-            # Get optional parameters
-            k = data.get('k', 5)
-            model = data.get('model', 'llama3')
-            
+
             logger.info(f"Chatbot question received: '{question[:100]}...'")
             
             # Get session_id from request if regenerating
@@ -316,21 +321,7 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                             is_active=True
                         )
                     session_id = chat_session.id
-                    
-                    # Try to generate and set slug AFTER creation (if field exists)
-                    session_slug = None
-                    try:
-                        if not getattr(chat_session, 'slug', None):
-                            slug_value = chat_session.generate_slug()
-                            ChatSession.objects.filter(pk=session_id).update(slug=slug_value)
-                            chat_session.refresh_from_db()
-                            session_slug = chat_session.slug
-                        else:
-                            session_slug = chat_session.slug
-                    except Exception as e:
-                        # Slug field doesn't exist or generation failed - ignore
-                        logger.debug(f"Could not generate slug for session {session_id}: {e}")
-                        pass
+                    # ChatSession.save() generates the slug, so there is nothing to patch up here.
                     # Save user message immediately so session appears in history
                     try:
                         user_message = ChatMessage.objects.create(
@@ -353,7 +344,7 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                         logger.error(f"Error creating user message for session {session_id}: {e}", exc_info=True)
                         import traceback
                         logger.error(f"Traceback: {traceback.format_exc()}")
-                    logger.info(f"Created new chat session {session_id} (slug: {session_slug}) for user {request.user.username}")
+                    logger.info(f"Created new chat session {session_id} (slug: {chat_session.slug}) for user {request.user.username}")
                 else:
                     session_id = chat_session.id
                     # Update session title if it's still the default
@@ -470,7 +461,7 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                         if chat_session.title == 'Nova Conversa':
                             try:
                                 from src.llm_engine.ollama_service import OllamaService
-                                ollama = OllamaService(model='llama3')
+                                ollama = OllamaService(model=settings.OLLAMA_MODEL)
                                 
                                 # Get first user message for context
                                 first_user_msg = ChatMessage.objects.filter(
@@ -488,8 +479,8 @@ Responda APENAS com o título, sem aspas, sem explicações, sem pontuação fin
                                     
                                     generated_title = ollama.generate_text(
                                         prompt=title_prompt,
-                                        model='llama3',
-                                        temperature=0.3,
+                                        model=settings.OLLAMA_MODEL,
+temperature=0.3,
                                         max_tokens=50
                                     )
                                     
@@ -529,13 +520,7 @@ Responda APENAS com o título, sem aspas, sem explicações, sem pontuação fin
                     logger.error(f"Error in message persistence: {e}", exc_info=True)
                     # Continue even if persistence fails
             
-            # Get session slug if session exists (safely handle if migration not run)
-            session_slug = None
-            if chat_session:
-                try:
-                    session_slug = getattr(chat_session, 'slug', None)
-                except AttributeError:
-                    pass
+            session_slug = chat_session.slug if chat_session else None
             
             # Build response with error handling
             try:
@@ -565,13 +550,11 @@ Responda APENAS com o título, sem aspas, sem explicações, sem pontuação fin
                 'error': 'JSON inválido'
             }, status=400)
         except Exception as e:
+            # Details go to the log only: never echo str(e) or a traceback to the client.
             logger.error(f"Error in chatbot POST: {e}", exc_info=True)
-            import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
             return JsonResponse({
                 'success': False,
-                'error': f'Erro ao processar pergunta: {str(e)}',
-                'traceback': traceback.format_exc() if settings.DEBUG else None
+                'error': 'Erro ao processar pergunta. Tente novamente em instantes.'
             }, status=500)
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)

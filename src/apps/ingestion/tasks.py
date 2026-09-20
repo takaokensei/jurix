@@ -22,12 +22,52 @@ from django.utils.dateparse import parse_date
 
 from src.clients.sapl.sapl_client import SaplAPIClient
 from src.apps.legislation.models import Norma, Dispositivo, EventoAlteracao
+from src.processing.cache_service import get_cache_service
 from src.processing.legal_parser import LegalTextParser
 from src.processing.ner_extractor import LegalNERExtractor
 from src.processing.consolidation_engine import ConsolidationEngine
 from src.llm_engine.ollama_service import OllamaService
 
 logger = logging.getLogger(__name__)
+
+
+def _invalidate_rag_cache() -> None:
+    """
+    Invalidate cached RAG answers/search results after the corpus changed.
+    
+    Best effort: a cache problem must never fail an ingestion/consolidation task.
+    """
+    try:
+        get_cache_service().bump_corpus_version()
+    except Exception:
+        logger.warning("Could not invalidate the RAG cache", exc_info=True)
+
+
+def _mark_norma_failed(
+    norma_id: int, label: str, exc: Exception, *, set_failed_status: bool = True
+) -> None:
+    """
+    Record a task failure on the Norma so it shows up for review.
+    
+    Best effort: a problem while recording must never mask the original error, but it
+    is logged (the old code used a bare `except: pass`, which also swallowed
+    SystemExit/KeyboardInterrupt and left no trace).
+    
+    Args:
+        set_failed_status: False for steps (download) that keep the norma's status.
+    """
+    try:
+        norma = Norma.objects.get(id=norma_id)
+        norma.needs_review = True
+        norma.processing_error = f"{label}: {str(exc)[:200]}"
+        update_fields = ['needs_review', 'processing_error', 'updated_at']
+        if set_failed_status:
+            norma.status = 'failed'
+            update_fields.append('status')
+        norma.save(update_fields=update_fields)
+    except Exception:
+        logger.warning(f"Could not record failure on Norma ID={norma_id}", exc_info=True)
+
 
 
 @shared_task(
@@ -401,13 +441,7 @@ def download_pdf_task(self, norma_id: int) -> Dict[str, Any]:
         logger.error(f"[Task {task_id}] {error_msg}")
         
         # Tentar marcar a norma com erro (graceful degradation)
-        try:
-            norma = Norma.objects.get(id=norma_id)
-            norma.needs_review = True
-            norma.processing_error = f"Erro crítico: {str(e)[:200]}"
-            norma.save(update_fields=['needs_review', 'processing_error', 'updated_at'])
-        except:
-            pass  # Se falhar ao salvar, apenas logar
+        _mark_norma_failed(norma_id, "Erro crítico", e, set_failed_status=False)
         
         # Retry
         if self.request.retries < self.max_retries:
@@ -571,14 +605,7 @@ def ocr_pdf_task(self, norma_id: int) -> Dict[str, Any]:
         logger.error(f"[Task {task_id}] {error_msg}")
         
         # Marcar norma com erro
-        try:
-            norma = Norma.objects.get(id=norma_id)
-            norma.needs_review = True
-            norma.processing_error = f"Erro OCR: {str(e)[:200]}"
-            norma.status = 'failed'
-            norma.save(update_fields=['needs_review', 'processing_error', 'status', 'updated_at'])
-        except:
-            pass
+        _mark_norma_failed(norma_id, "Erro OCR", e)
         
         # Retry se ainda houver tentativas
         if self.request.retries < self.max_retries:
@@ -767,6 +794,7 @@ def segment_text_task(self, norma_id: int) -> Dict[str, Any]:
             f"in {processing_time:.2f}s"
         )
         
+        _invalidate_rag_cache()
         return {
             'success': True,
             'norma_id': norma_id,
@@ -789,14 +817,7 @@ def segment_text_task(self, norma_id: int) -> Dict[str, Any]:
         logger.error(f"[Task {task_id}] {error_msg}")
         
         # Mark norma with error
-        try:
-            norma = Norma.objects.get(id=norma_id)
-            norma.needs_review = True
-            norma.processing_error = f"Segmentation error: {str(e)[:200]}"
-            norma.status = 'failed'
-            norma.save(update_fields=['needs_review', 'processing_error', 'status', 'updated_at'])
-        except:
-            pass
+        _mark_norma_failed(norma_id, "Segmentation error", e)
         
         # Retry if attempts remaining
         if self.request.retries < self.max_retries:
@@ -822,7 +843,7 @@ def extract_entities_task(self, norma_id: int) -> Dict[str, Any]:
     This task:
     1. Loads a Norma with status='segmented'
     2. Iterates through all its Dispositivos
-    3. Uses NER (regex + SpaCy) to detect:
+    3. Uses NER (regex-based) to detect:
        - Action verbs (revoga, altera, adiciona, etc.)
        - Legal references (Art. X, Lei Y/Z)
        - Target entities
@@ -978,14 +999,7 @@ def extract_entities_task(self, norma_id: int) -> Dict[str, Any]:
         logger.error(f"[Task {task_id}] {error_msg}", exc_info=True)
         
         # Mark norma with error
-        try:
-            norma = Norma.objects.get(id=norma_id)
-            norma.needs_review = True
-            norma.processing_error = f"Entity extraction error: {str(e)[:200]}"
-            norma.status = 'failed'
-            norma.save(update_fields=['needs_review', 'processing_error', 'status', 'updated_at'])
-        except:
-            pass
+        _mark_norma_failed(norma_id, "Entity extraction error", e)
         
         # Retry if attempts remaining
         if self.request.retries < self.max_retries:
@@ -1093,7 +1107,13 @@ def consolidate_norma_task(self, norma_id: int) -> Dict[str, Any]:
         norma.texto_consolidado = consolidated_text
         norma.status = 'consolidated'
         norma.processing_error = ''
-        norma.save(update_fields=['texto_consolidado', 'status', 'processing_error', 'updated_at'])
+        update_fields = ['texto_consolidado', 'status', 'processing_error', 'updated_at']
+        if stats['needs_review']:
+            # Unapplied events or heuristically extracted additions: flag for a
+            # human. Never clear the flag here; only a reviewer may do that.
+            norma.needs_review = True
+            update_fields.append('needs_review')
+        norma.save(update_fields=update_fields)
         
         processing_time = time.time() - start_time
         
@@ -1102,10 +1122,14 @@ def consolidate_norma_task(self, norma_id: int) -> Dict[str, Any]:
             f"{stats['total_dispositivos']} dispositivos, "
             f"{stats['revoked_count']} revoked, "
             f"{stats['altered_count']} altered, "
-            f"{stats['events_processed']} events processed "
+            f"{stats['added_count']} added, "
+            f"{stats['events_applied']}/{stats['events_processed']} events applied "
+            f"({stats['events_unresolved']} unresolved, "
+            f"needs_review={stats['needs_review']}) "
             f"in {processing_time:.2f}s"
         )
         
+        _invalidate_rag_cache()
         return {
             'success': True,
             'norma_id': norma_id,
@@ -1113,7 +1137,11 @@ def consolidate_norma_task(self, norma_id: int) -> Dict[str, Any]:
             'total_dispositivos': stats['total_dispositivos'],
             'revoked_count': stats['revoked_count'],
             'altered_count': stats['altered_count'],
+            'added_count': stats['added_count'],
             'events_processed': stats['events_processed'],
+            'events_applied': stats['events_applied'],
+            'events_unresolved': stats['events_unresolved'],
+            'needs_review': stats['needs_review'],
             'consolidated_length': len(consolidated_text),
             'processing_time': processing_time
         }
@@ -1128,14 +1156,7 @@ def consolidate_norma_task(self, norma_id: int) -> Dict[str, Any]:
         logger.error(f"[Task {task_id}] {error_msg}", exc_info=True)
         
         # Mark norma with error
-        try:
-            norma = Norma.objects.get(id=norma_id)
-            norma.needs_review = True
-            norma.processing_error = f"Consolidation error: {str(e)[:200]}"
-            norma.status = 'failed'
-            norma.save(update_fields=['needs_review', 'processing_error', 'status', 'updated_at'])
-        except:
-            pass
+        _mark_norma_failed(norma_id, "Consolidation error", e)
         
         # Retry if attempts remaining
         if self.request.retries < self.max_retries:
@@ -1252,6 +1273,7 @@ def generate_embedding_task(self, dispositivo_id: int, model: str = "nomic-embed
             f"dimension={len(embedding)}, model={model}, time={processing_time:.2f}s"
         )
         
+        _invalidate_rag_cache()
         return {
             'success': True,
             'dispositivo_id': dispositivo_id,

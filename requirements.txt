@@ -8,16 +8,14 @@ redis==5.0.8
 requests==2.32.3
 python-dotenv==1.0.1
 
-spacy==3.7.5
-
+# Pillow is imported directly (tasks.py OCR); do not rely on pytesseract pulling it in
+Pillow==11.0.0
 pytesseract==0.3.13
 PyMuPDF==1.24.10
 
 pgvector==0.3.2
 
 django-htmx==1.19.0
-
-python-dateutil==2.9.0
 
 # Testing & Quality
 pytest==8.3.4

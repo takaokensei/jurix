@@ -18,13 +18,16 @@ from django.views.decorators.http import require_http_methods
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Count, OuterRef, Q, Subquery
 
 from src.apps.legislation.models import Norma, Dispositivo, ChatSession, ChatMessage, EventoAlteracao
 from src.apps.legislation.serializers import (
     serialize_dispositivo_source,
     serialize_chat_session,
     serialize_chat_message
+)
+from src.apps.legislation.api_limits import (
+    InvalidLLMParams, parse_k, parse_llm_request, parse_model, rate_limit_response,
 )
 from src.processing.rag_service import RAGService
 
@@ -65,6 +68,10 @@ def semantic_search_api(request: HttpRequest) -> JsonResponse:
         - count: int
         - metadata: dict with search parameters
     """
+    limited = rate_limit_response(request)
+    if limited:
+        return limited
+
     try:
         # Extract query parameters
         query_text = request.GET.get('query', '').strip()
@@ -156,7 +163,9 @@ def semantic_search_api(request: HttpRequest) -> JsonResponse:
 
 
 @require_http_methods(["GET", "POST"])
-@csrf_exempt
+@csrf_exempt  # Anonymous, session-less and side-effect free: there is no ambient
+# credential for a cross-site request to abuse. Cost/abuse is handled by the
+# rate limiter and input validation below, not by CSRF.
 def rag_answer_api(request: HttpRequest) -> JsonResponse:
     """
     API endpoint for RAG-based question answering.
@@ -177,24 +186,28 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
         - confidence: float (0-1)
         - metadata: dict
     """
+    limited = rate_limit_response(request)
+    if limited:
+        return limited
+
     try:
         # Handle both GET and POST
         if request.method == 'POST':
             try:
                 data = json.loads(request.body)
-                question = data.get('question', '').strip()
-                k = data.get('k', 5)
-                model = data.get('model', 'llama3')
             except json.JSONDecodeError:
                 return JsonResponse({
                     'success': False,
                     'error': 'Invalid JSON in request body'
                 }, status=400)
         else:  # GET
-            question = request.GET.get('question', '').strip()
-            k = int(request.GET.get('k', 5))
-            model = request.GET.get('model', 'llama3')
-        
+            data = request.GET
+
+        try:
+            question, k, model = parse_llm_request(data)
+        except InvalidLLMParams as exc:
+            return JsonResponse({'success': False, 'error': str(exc)}, status=400)
+
         if not question:
             return JsonResponse({
                 'success': False,
@@ -240,7 +253,7 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
         }, status=500)
 
 
-@csrf_exempt
+@require_http_methods(["POST"])
 def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
     """
     Streaming SSE endpoint for real-time RAG question answering.
@@ -253,18 +266,22 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
     - data: {"type": "chunk", "chunk": "..."}
     - data: {"type": "done", "answer": "...", "session_id": ...}
     """
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
-    
+    limited = rate_limit_response(request)
+    if limited:
+        return limited
+
     try:
         data = json.loads(request.body)
-        question = data.get('question', '').strip()
-        k = int(data.get('k', 5))
-        model = data.get('model', 'llama3')
-        session_id = data.get('session_id')
-    except (json.JSONDecodeError, ValueError):
+        question, k, model = parse_llm_request(data)
+    except InvalidLLMParams as exc:
+        return JsonResponse({'success': False, 'error': str(exc)}, status=400)
+    except (json.JSONDecodeError, UnicodeDecodeError):
         return JsonResponse({'success': False, 'error': 'Invalid request body'}, status=400)
-    
+
+    session_id = data.get('session_id')
+    if session_id is not None and (isinstance(session_id, bool) or not isinstance(session_id, int)):
+        return JsonResponse({'success': False, 'error': 'Invalid session_id'}, status=400)
+
     if not question:
         return JsonResponse({'success': False, 'error': 'Question is required'}, status=400)
     
@@ -512,261 +529,123 @@ def norma_detail_api(request: HttpRequest, pk: int) -> JsonResponse:
         }, status=500)
 
 
-@csrf_exempt
+CHAT_SESSIONS_DEFAULT_LIMIT = 20
+CHAT_SESSIONS_MAX_LIMIT = 100
+CHAT_MESSAGES_PAGE_SIZE = 25   # last N messages: recent context without loading hundreds
+SESSION_PREVIEW_LENGTH = 50
+
+
+def _parse_limit(raw: Any) -> int:
+    """Clamp the ?limit= query parameter to [1, CHAT_SESSIONS_MAX_LIMIT]."""
+    try:
+        return max(1, min(int(raw), CHAT_SESSIONS_MAX_LIMIT))
+    except (TypeError, ValueError):
+        return CHAT_SESSIONS_DEFAULT_LIMIT
+
+
+def _preview(content: str | None) -> str:
+    content = content or ''
+    suffix = '...' if len(content) > SESSION_PREVIEW_LENGTH else ''
+    return content[:SESSION_PREVIEW_LENGTH] + suffix
+
+
+def _chat_session_response(session: ChatSession) -> JsonResponse:
+    """Session + its last CHAT_MESSAGES_PAGE_SIZE messages in chronological order."""
+    queryset = ChatMessage.objects.filter(session=session)
+    total = queryset.count()
+    # id breaks ties between messages created in the same instant
+    latest = list(queryset.order_by('-created_at', '-id')[:CHAT_MESSAGES_PAGE_SIZE])
+    messages = [serialize_chat_message(m) for m in reversed(latest)]
+    return JsonResponse({
+        'success': True,
+        'session': serialize_chat_session(session),
+        'messages': messages,
+        'count': len(messages),
+        'total_count': total,
+        'has_more': total > CHAT_MESSAGES_PAGE_SIZE,
+    })
+
+
+def _server_error(context: str, exc: Exception) -> JsonResponse:
+    """Log the failure with its traceback; tell the client nothing internal."""
+    logger.error(f"Error in {context}: {exc}", exc_info=True)
+    return JsonResponse({'success': False, 'error': _format_error_message(exc)}, status=500)
+
+
 @require_http_methods(["GET", "POST"])
 def chat_sessions_api(request: HttpRequest) -> JsonResponse:
     """
     API endpoint for chat sessions management.
     
-    GET /api/v1/chat/sessions/ - List all sessions for authenticated user
+    GET /api/v1/chat/sessions/ - List sessions of the authenticated user
     POST /api/v1/chat/sessions/ - Create new session
-    """
-    if not request.user.is_authenticated:
-        return JsonResponse({
-            'success': False,
-            'error': 'Authentication required'
-        }, status=401)
-    
-    try:
-        if request.method == 'GET':
-            # Safely get limit parameter
-            try:
-                limit = min(int(request.GET.get('limit', 20)), 100)
-            except (ValueError, TypeError):
-                limit = 20
-            
-            # Query sessions with error handling
-            try:
-                # Try to query sessions - handle case where updated_at might not exist
-                try:
-                    sessions = ChatSession.objects.filter(user=request.user).order_by('-updated_at')[:limit]
-                except Exception as order_error:
-                    # If ordering by updated_at fails, try without ordering
-                    logger.warning(f"Could not order by updated_at, trying without order: {order_error}")
-                    sessions = ChatSession.objects.filter(user=request.user)[:limit]
-                
-                # Force evaluation of queryset to catch any database errors early
-                sessions_list = list(sessions)  # This will trigger the query and catch any errors
-                sessions = sessions_list
-            except Exception as e:
-                logger.error(f"Error querying ChatSession: {e}", exc_info=True)
-                import traceback
-                logger.error(f"Traceback: {traceback.format_exc()}")
-                # Return empty list instead of error to allow page to load
-                sessions = []
-            
-            sessions_data = []
-            for session in sessions:
-                try:
-                    # Get basic fields first (these should always exist)
-                    session_id = session.id
-                    session_title = getattr(session, 'title', None) or 'Conversa sem título'
-                    session_is_active = getattr(session, 'is_active', False)
-                    
-                    # Safely get timestamps
-                    session_created = None
-                    session_updated = None
-                    try:
-                        if hasattr(session, 'created_at') and session.created_at:
-                            session_created = session.created_at.isoformat()
-                    except (AttributeError, Exception):
-                        pass
-                    try:
-                        if hasattr(session, 'updated_at') and session.updated_at:
-                            session_updated = session.updated_at.isoformat()
-                    except (AttributeError, Exception):
-                        pass
-                    
-                    # Safely get slug (may not exist if migration not run yet)
-                    session_slug = None
-                    try:
-                        session_slug = getattr(session, 'slug', None)
-                    except (AttributeError, Exception):
-                        pass
-                    
-                    # Safely get message preview - wrap in try/except
-                    latest_preview = ''
-                    try:
-                        # Use direct query instead of method to avoid any issues
-                        first_msg = ChatMessage.objects.filter(
-                            session_id=session_id,
-                            role='user'
-                        ).order_by('created_at').first()
-                        if first_msg:
-                            latest_preview = first_msg.content[:50] + ('...' if len(first_msg.content) > 50 else '')
-                    except Exception as e:
-                        logger.debug(f"Could not get message preview for session {session_id}: {e}")
-                        pass
-                    
-                    # Safely get message count
-                    message_count = 0
-                    try:
-                        message_count = ChatMessage.objects.filter(session_id=session_id).count()
-                    except Exception as e:
-                        logger.debug(f"Could not get message count for session {session_id}: {e}")
-                        pass
-                    
-                    sessions_data.append({
-                        'id': session_id,
-                        'title': session_title,
-                        'slug': session_slug,  # May be None if migration not run
-                        'is_active': session_is_active,
-                        'created_at': session_created,
-                        'updated_at': session_updated,
-                        'message_count': message_count,
-                        'latest_message_preview': latest_preview
-                    })
-                except Exception as e:
-                    # Skip this session if there's an error, log and continue
-                    logger.error(f"Error processing session {getattr(session, 'id', 'unknown')}: {e}", exc_info=True)
-                    continue
-            
-            return JsonResponse({'success': True, 'sessions': sessions_data, 'count': len(sessions_data)})
-        
-        elif request.method == 'POST':
-            data = json.loads(request.body) if request.body else {}
-            title = data.get('title', 'Nova Conversa')
-            
-            ChatSession.objects.filter(user=request.user, is_active=True).update(is_active=False)
-            session = ChatSession.objects.create(user=request.user, title=title[:200], is_active=True)
-            
-            # Safely get created_at
-            session_created = None
-            try:
-                if hasattr(session, 'created_at') and session.created_at:
-                    session_created = session.created_at.isoformat()
-            except Exception:
-                pass
-            
-            return JsonResponse({
-                'success': True,
-                'session': {
-                    'id': session.id,
-                    'title': session.title,
-                    'is_active': session.is_active,
-                    'created_at': session_created
-                }
-            }, status=201)
-    
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
-    except Exception as e:
-        logger.error(f"Error in chat sessions API: {e}", exc_info=True)
-        import traceback
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        return JsonResponse({
-            'success': False, 
-            'error': _format_error_message(e),
-            'traceback': traceback.format_exc() if settings.DEBUG else None
-        }, status=500)
-
-
-@csrf_exempt
-@require_http_methods(["GET"])
-def chat_session_by_slug_api(request: HttpRequest, slug: str) -> JsonResponse:
-    """
-    API endpoint to get chat session by slug.
-    
-    GET /api/v1/chat/sessions/slug/<slug>/
-    
-    Returns the same format as chat_session_detail_api but accepts slug instead of ID.
     """
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
     
     try:
-        # Try to find session by slug
-        try:
-            session = ChatSession.objects.get(slug=slug, user=request.user)
-        except ChatSession.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
-        except AttributeError:
-            # Slug field doesn't exist (migration not run)
-            return JsonResponse({'success': False, 'error': 'Slug feature not available'}, status=404)
+        if request.method == 'GET':
+            first_user_message = (
+                ChatMessage.objects.filter(session=OuterRef('pk'), role='user')
+                .order_by('created_at')
+                .values('content')[:1]
+            )
+            # Count and first-question preview come from the same query: no N+1.
+            sessions = (
+                ChatSession.objects.filter(user=request.user)
+                .annotate(
+                    message_count=Count('messages'),
+                    first_user_content=Subquery(first_user_message),
+                )
+                .order_by('-updated_at', '-id')[:_parse_limit(request.GET.get('limit'))]
+            )
+            sessions_data = []
+            for session in sessions:
+                item = serialize_chat_session(session)
+                item['message_count'] = session.message_count
+                item['latest_message_preview'] = _preview(session.first_user_content)
+                sessions_data.append(item)
+            return JsonResponse({'success': True, 'sessions': sessions_data, 'count': len(sessions_data)})
         
-        # Use the same logic as chat_session_detail_api
-        limit = 25
-        total_messages = 0
-        messages = []
-        try:
-            total_messages = ChatMessage.objects.filter(session_id=session.id).count()
-            messages_queryset = ChatMessage.objects.filter(session_id=session.id).order_by('-created_at')[:limit]
-            messages = list(reversed(list(messages_queryset)))
-        except Exception as e:
-            logger.error(f"Error querying messages for session {session.id}: {e}", exc_info=True)
-            total_messages = 0
-            messages = []
+        # POST
+        data = json.loads(request.body) if request.body else {}
+        title = data.get('title', 'Nova Conversa') if isinstance(data, dict) else None
+        if not isinstance(title, str):
+            return JsonResponse({'success': False, 'error': 'Invalid title'}, status=400)
         
-        messages_data = []
-        for msg in messages:
-            try:
-                msg_created = None
-                try:
-                    if hasattr(msg, 'created_at') and msg.created_at:
-                        msg_created = msg.created_at.isoformat()
-                except Exception:
-                    pass
-                
-                messages_data.append({
-                    'id': msg.id,
-                    'role': msg.role,
-                    'content': msg.content,
-                    'sources': msg.sources_json if msg.role == 'assistant' else [],
-                    'metadata': msg.metadata_json if msg.role == 'assistant' else {},
-                    'created_at': msg_created
-                })
-            except Exception as e:
-                logger.warning(f"Error processing message {getattr(msg, 'id', 'unknown')}: {e}")
-                continue
-        
-        session_slug = None
-        try:
-            session_slug = getattr(session, 'slug', None)
-        except AttributeError:
-            pass
-        
-        session_created = None
-        session_updated = None
-        try:
-            if hasattr(session, 'created_at'):
-                created_at_value = getattr(session, 'created_at', None)
-                if created_at_value:
-                    session_created = created_at_value.isoformat()
-        except (AttributeError, Exception):
-            pass
-        try:
-            if hasattr(session, 'updated_at'):
-                updated_at_value = getattr(session, 'updated_at', None)
-                if updated_at_value:
-                    session_updated = updated_at_value.isoformat()
-        except (AttributeError, Exception):
-            pass
-        
-        return JsonResponse({
-            'success': True,
-            'session': {
-                'id': session.id,
-                'title': session.title,
-                'slug': session_slug,
-                'is_active': session.is_active,
-                'created_at': session_created,
-                'updated_at': session_updated,
-            },
-            'messages': messages_data,
-            'count': len(messages_data),
-            'total_count': total_messages,
-            'has_more': total_messages > limit
-        })
-    
+        ChatSession.objects.filter(user=request.user, is_active=True).update(is_active=False)
+        session = ChatSession.objects.create(user=request.user, title=title[:200], is_active=True)
+        return JsonResponse({'success': True, 'session': serialize_chat_session(session)}, status=201)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
-        logger.error(f"Error in chat session by slug API: {e}", exc_info=True)
-        return JsonResponse({'success': False, 'error': _format_error_message(e)}, status=500)
+        return _server_error("chat sessions API", e)
 
 
-@csrf_exempt
+@require_http_methods(["GET"])
+def chat_session_by_slug_api(request: HttpRequest, slug: str) -> JsonResponse:
+    """
+    API endpoint to get a chat session by slug.
+    GET /api/v1/chat/sessions/slug/<slug>/
+    Same response as chat_session_detail_api, addressed by slug instead of ID.
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+    
+    try:
+        session = ChatSession.objects.get(slug=slug, user=request.user)
+    except ChatSession.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
+    
+    try:
+        return _chat_session_response(session)
+    except Exception as e:
+        return _server_error("chat session by slug API", e)
+
+
 @require_http_methods(["GET", "DELETE"])
 def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonResponse:
-    """API endpoint for single chat session operations."""
+    """API endpoint for single chat session operations (GET detail, DELETE)."""
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
     
@@ -776,132 +655,39 @@ def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonRespon
         return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
     
     try:
-        if request.method == 'GET':
-            # Optimize: Load only last 25 messages for better UX (avoid loading hundreds of messages)
-            # This is a good balance between showing context and performance
-            limit = 25  # Last 25 messages is optimal for UX (shows recent context without lag)
-            
-            # Use direct query instead of related manager to avoid errors
-            total_messages = 0
-            messages = []
-            try:
-                # Try both session_id and session to ensure we find messages
-                # Django creates session_id automatically for ForeignKey fields
-                total_messages = ChatMessage.objects.filter(session_id=session.id).count()
-                logger.info(f"Session {session.id}: Found {total_messages} total messages using session_id")
-                
-                # Also try using the session object directly as fallback
-                if total_messages == 0:
-                    total_messages_alt = ChatMessage.objects.filter(session=session).count()
-                    logger.info(f"Session {session.id}: Found {total_messages_alt} total messages using session object")
-                    if total_messages_alt > 0:
-                        total_messages = total_messages_alt
-                
-                # Get last N messages (most recent first, then reverse for chronological order)
-                if total_messages > 0:
-                    messages_queryset = ChatMessage.objects.filter(session_id=session.id).order_by('-created_at')[:limit]
-                    # Force evaluation and reverse
-                    messages = list(reversed(list(messages_queryset)))  # Reverse to show chronologically
-                    logger.info(f"Session {session.id}: Returning {len(messages)} messages (limit: {limit})")
-                    
-                    # Debug: log first and last message IDs if any
-                    if messages:
-                        logger.info(f"Session {session.id}: First message ID: {messages[0].id}, Last message ID: {messages[-1].id}")
-                else:
-                    logger.warning(f"Session {session.id}: No messages found in database")
-            except Exception as e:
-                logger.error(f"Error querying messages for session {session.id}: {e}", exc_info=True)
-                import traceback
-                logger.error(f"Traceback: {traceback.format_exc()}")
-                total_messages = 0
-                messages = []
-            
-            messages_data = []
-            for msg in messages:
-                try:
-                    # Safely get created_at
-                    msg_created = None
-                    try:
-                        if hasattr(msg, 'created_at') and msg.created_at:
-                            msg_created = msg.created_at.isoformat()
-                    except Exception:
-                        pass
-                    
-                    messages_data.append({
-                        'id': msg.id,
-                        'role': msg.role,
-                        'content': msg.content,
-                        'sources': msg.sources_json if msg.role == 'assistant' else [],
-                        'metadata': msg.metadata_json if msg.role == 'assistant' else {},
-                        'created_at': msg_created
-                    })
-                except Exception as e:
-                    logger.warning(f"Error processing message {getattr(msg, 'id', 'unknown')}: {e}")
-                    continue
-            
-            # Safely get slug (may not exist if migration not run yet)
-            session_slug = None
-            try:
-                session_slug = getattr(session, 'slug', None)
-            except AttributeError:
-                pass
-            
-            # Safely get timestamps with proper error handling
-            session_created = None
-            session_updated = None
-            try:
-                if hasattr(session, 'created_at'):
-                    created_at_value = getattr(session, 'created_at', None)
-                    if created_at_value:
-                        session_created = created_at_value.isoformat()
-            except (AttributeError, Exception) as e:
-                logger.debug(f"Could not get created_at for session {session.id}: {e}")
-                pass
-            try:
-                if hasattr(session, 'updated_at'):
-                    updated_at_value = getattr(session, 'updated_at', None)
-                    if updated_at_value:
-                        session_updated = updated_at_value.isoformat()
-            except (AttributeError, Exception) as e:
-                logger.debug(f"Could not get updated_at for session {session.id}: {e}")
-                pass
-            
-            return JsonResponse({
-                'success': True,
-                'session': {
-                    'id': session.id,
-                    'title': session.title,
-                    'slug': session_slug,  # May be None if migration not run
-                    'is_active': session.is_active,
-                    'created_at': session_created,
-                    'updated_at': session_updated,
-                },
-                'messages': messages_data,
-                'count': len(messages_data),
-                'total_count': total_messages,  # Total messages in session
-                'has_more': total_messages > limit  # Indicates if there are older messages
-            })
-        
-        elif request.method == 'DELETE':
+        if request.method == 'DELETE':
             session.delete()
             return JsonResponse({'success': True, 'message': 'Session deleted'})
-    
+        return _chat_session_response(session)
     except Exception as e:
-        logger.error(f"Error in chat session detail API: {e}", exc_info=True)
-        return JsonResponse({'success': False, 'error': _format_error_message(e)}, status=500)
+        return _server_error("chat session detail API", e)
 
 
-@csrf_exempt
 @require_http_methods(["POST"])
 def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonResponse:
     """API endpoint to regenerate the last assistant response."""
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
     
+    limited = rate_limit_response(request)
+    if limited:
+        return limited
+    
     try:
         session = ChatSession.objects.get(id=session_id, user=request.user)
     except ChatSession.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
+    
+    try:
+        data = json.loads(request.body) if request.body else {}
+        if not isinstance(data, dict):
+            raise InvalidLLMParams("Corpo da requisição inválido.")
+        k = parse_k(data.get('k'))
+        model = parse_model(data.get('model'))
+    except InvalidLLMParams as exc:
+        return JsonResponse({'success': False, 'error': str(exc)}, status=400)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({'success': False, 'error': 'Invalid request body'}, status=400)
     
     try:
         # Use direct query instead of related manager
@@ -916,10 +702,6 @@ def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonRe
             session_id=session.id,
             role='assistant'
         ).order_by('-created_at').first()
-        
-        data = json.loads(request.body) if request.body else {}
-        k = data.get('k', 5)
-        model = data.get('model', 'llama3')
         
         # Generate new answer FIRST before touching database state (force refresh cache)
         rag_service = RAGService()

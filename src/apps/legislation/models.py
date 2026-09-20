@@ -575,43 +575,32 @@ class ChatSession(TimeStampedModel):
             return preview
         return ''
     
+    SLUG_LENGTH = 12
+    SLUG_MAX_ATTEMPTS = 10
+
     def generate_slug(self) -> str:
         """
-        Gera um slug único para a sessão (estilo Gemini: caracteres aleatórios).
-        
-        Returns a random 12-character slug. Uniqueness is checked externally
-        when updating the database to avoid errors if slug field doesn't exist.
+        Random 12-character slug (Gemini style, e.g. 'de2a906759f920b3'), unique among sessions.
+
+        Retries on collision; the unique constraint remains the final guard against a race.
         """
         import secrets
         import string
-        
-        # Generate 12-character random slug (like Gemini: de2a906759f920b3)
+
         alphabet = string.ascii_lowercase + string.digits
-        slug = ''.join(secrets.choice(alphabet) for _ in range(12))
-        
-        # Try to ensure uniqueness (only if slug field exists)
-        # Use try/except to handle case where field doesn't exist
-        try:
-            max_attempts = 10
-            attempts = 0
-            while ChatSession.objects.filter(slug=slug).exists() and attempts < max_attempts:
-                slug = ''.join(secrets.choice(alphabet) for _ in range(12))
-                attempts += 1
-        except (AttributeError, ValueError, Exception):
-            # Field doesn't exist or query failed - just return generated slug
-            # This is safe because if field doesn't exist, we can't check uniqueness anyway
-            pass
-        
-        return slug
-    
+        for _ in range(self.SLUG_MAX_ATTEMPTS):
+            slug = ''.join(secrets.choice(alphabet) for _ in range(self.SLUG_LENGTH))
+            if not ChatSession.objects.filter(slug=slug).exists():
+                return slug
+        raise RuntimeError("Could not generate a unique chat session slug")
+
     def save(self, *args, **kwargs):
-        """
-        Save the session without any slug generation.
-        
-        Slug generation is handled externally after save() to avoid recursion
-        and database errors if the slug field doesn't exist yet.
-        """
-        # Simply save - no slug generation here
+        """Save the session, generating its slug on first save (or if it was cleared)."""
+        if not self.slug:
+            self.slug = self.generate_slug()
+            update_fields = kwargs.get('update_fields')
+            if update_fields is not None and 'slug' not in update_fields:
+                kwargs['update_fields'] = [*update_fields, 'slug']
         super().save(*args, **kwargs)
 
 

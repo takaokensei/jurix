@@ -49,8 +49,11 @@ class LegalNERExtractor:
     }
     
     # Legal element patterns
+    # The optional '-A' suffix (Art. 2º-A) must be captured: it is a different
+    # article from Art. 2º. No spaces are allowed around the hyphen and the letter
+    # must not start a word, so 'art. 5º - A revogação' / 'art. 5º-Aplicam' keep '5º'.
     ARTICLE_PATTERN = re.compile(
-        r'\b(art(?:igo)?\.?\s*(?:n[º°]?\s*)?)([\d]+[º°]?)',
+        r'\b(art(?:igo)?\.?\s*(?:n[º°]?\s*)?)([\d]+[º°]?(?:-[A-Z](?![a-zà-ú]))?)',
         re.IGNORECASE
     )
     

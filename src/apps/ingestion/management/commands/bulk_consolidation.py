@@ -165,7 +165,11 @@ class Command(BaseCommand):
                                 f'{result.get("total_dispositivos", 0)} dispositivos, '
                                 f'{result.get("revoked_count", 0)} revoked, '
                                 f'{result.get("altered_count", 0)} altered, '
-                                f'{result.get("events_processed", 0)} events '
+                                f'{result.get("added_count", 0)} added, '
+                                f'{result.get("events_applied", 0)}/'
+                                f'{result.get("events_processed", 0)} events applied '
+                                f'({result.get("events_unresolved", 0)} unresolved'
+                                f'{", NEEDS REVIEW" if result.get("needs_review") else ""}) '
                                 f'in {result.get("processing_time", 0):.2f}s'
                             )
                         )
@@ -221,7 +225,12 @@ class Command(BaseCommand):
             self.stdout.write(f'  Total dispositivos: {result.get("total_dispositivos", 0)}')
             self.stdout.write(f'  Revoked: {result.get("revoked_count", 0)}')
             self.stdout.write(f'  Altered: {result.get("altered_count", 0)}')
-            self.stdout.write(f'  Events processed: {result.get("events_processed", 0)}')
+            self.stdout.write(f'  Added: {result.get("added_count", 0)}')
+            self.stdout.write(f'  Events considered: {result.get("events_processed", 0)}')
+            self.stdout.write(f'  Events applied: {result.get("events_applied", 0)}')
+            self.stdout.write(f'  Events unresolved: {result.get("events_unresolved", 0)}')
+            if result.get("needs_review"):
+                self.stdout.write(self.style.WARNING('  ⚠ Norma flagged for review'))
             self.stdout.write(f'  Consolidated text length: {result.get("consolidated_length", 0)} chars')
             self.stdout.write(f'  Processing time: {result.get("processing_time", 0):.2f}s')
         else:

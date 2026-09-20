@@ -700,7 +700,7 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken,
                 },
-                body: JSON.stringify({ k: 5, model: 'llama3' }),
+                body: JSON.stringify({}),
             });
 
             if (!response.ok) throw new Error('Failed to regenerate');

@@ -192,3 +192,209 @@ class TestConsolidationEngine:
 
         assert "A alíquota do ISS é fixada em 2%." in consolidated
         assert "(Redação dada pela Lei nº 400/2023)" in consolidated
+
+
+class TestConsolidationAdditionsAndHonestStats:
+    """Regression tests for audit P0.3: ADICIONA used to be silently dropped
+    while the footer still claimed the event had been processed."""
+
+    @pytest.fixture
+    def norma(self):
+        n = Mock()
+        n.id = 100
+        n.tipo = "Lei Ordinária"
+        n.numero = "1000"
+        n.ano = 2020
+        n.data_publicacao = date(2020, 1, 10)
+        n.data_vigencia = None
+        n.ementa = "Institui o Código."
+        n.texto_original = "orig"
+        n.__str__ = Mock(return_value="Lei Ordinária 1000/2020")
+        return n
+
+    @pytest.fixture
+    def arts(self, norma):
+        out = []
+        for i, (num, txt) in enumerate(
+            [("1º", "Primeiro."), ("2º", "Segundo."), ("3º", "Terceiro.")], start=1
+        ):
+            d = Mock()
+            d.id = i
+            d.norma = norma
+            d.tipo = "artigo"
+            d.numero = num
+            d.texto = txt
+            d.ordem = i
+            d.dispositivo_pai_id = None
+            d.__str__ = Mock(return_value=f"Art. {num}")
+            out.append(d)
+        return out
+
+    def _event(self, ev_id, acao, alvo=None, *, ref_tipo="", ref_num="",
+               fonte_texto="Fica acrescido dispositivo.", when=date(2021, 5, 1), num=200):
+        norma_fonte = Mock()
+        norma_fonte.tipo = "Lei"
+        norma_fonte.numero = str(num)
+        norma_fonte.ano = when.year
+        norma_fonte.data_publicacao = when
+        norma_fonte.data_vigencia = when
+        fonte = Mock()
+        fonte.norma = norma_fonte
+        fonte.ordem = 1
+        fonte.texto = fonte_texto
+        ev = Mock()
+        ev.id = ev_id
+        ev.acao = acao
+        ev.dispositivo_alvo = alvo
+        ev.dispositivo_fonte = fonte
+        ev.target_text = f"Art. {ref_num}" if ref_num else ""
+        ev.referencia_tipo = ref_tipo
+        ev.referencia_numero = ref_num
+        return ev
+
+    def _run(self, norma, arts, eventos):
+        engine = ConsolidationEngine(norma)
+        engine.dispositivos = arts
+        engine.eventos = sorted(eventos, key=ConsolidationEngine._evento_sort_key)
+        engine._process_eventos()
+        return engine, engine._build_consolidated_text()
+
+    def test_suffixed_article_is_inserted_right_after_its_base_article(self, norma, arts):
+        ev = self._event(1, "ADICIONA", ref_tipo="artigo", ref_num="2º-A",
+                         fonte_texto="Fica acrescido o Art. 2º-A com nova regra.")
+        engine, text = self._run(norma, arts, [ev])
+
+        assert "Art. 2º-A" in text
+        assert "Incluído pela Lei nº 200/2021" in text
+        # Position: after Art. 2º and before Art. 3º
+        assert text.index("Art. 2º Segundo.") < text.index("Art. 2º-A") < text.index("Art. 3º Terceiro.")
+        assert engine.get_statistics()["added_count"] == 1
+
+    def test_unpositionable_addition_goes_to_explicit_trailing_section(self, norma, arts):
+        ev = self._event(1, "ADICIONA", ref_tipo="paragrafo", ref_num="4º",
+                         fonte_texto="Acrescenta o § 4º com nova regra.")
+        engine, text = self._run(norma, arts, [ev])
+
+        assert "DISPOSITIVOS ADICIONADOS" in text
+        assert "§ 4º" in text
+        assert text.index("Art. 3º Terceiro.") < text.index("DISPOSITIVOS ADICIONADOS")
+        assert engine.get_statistics()["added_count"] == 1
+
+    def test_additions_flag_norma_for_review(self, norma, arts):
+        ev = self._event(1, "ADICIONA", ref_tipo="artigo", ref_num="2º-A")
+        engine, _ = self._run(norma, arts, [ev])
+        assert engine.get_statistics()["needs_review"] is True
+
+    def test_revoga_without_resolved_target_is_reported_not_swallowed(self, norma, arts):
+        ev = self._event(1, "REVOGA", alvo=None, ref_tipo="artigo", ref_num="9º")
+        engine, text = self._run(norma, arts, [ev])
+        stats = engine.get_statistics()
+
+        assert stats["events_processed"] == 1      # considered
+        assert stats["events_applied"] == 0        # but NOT applied
+        assert stats["events_unresolved"] == 1
+        assert stats["needs_review"] is True
+        assert "não resolvidos" in text.lower()
+
+    def test_informational_actions_do_not_require_review(self, norma, arts):
+        ev = self._event(1, "REGULAMENTA")
+        engine, _ = self._run(norma, arts, [ev])
+        stats = engine.get_statistics()
+        assert stats["events_unresolved"] == 0
+        assert stats["needs_review"] is False
+
+    def test_no_events_means_no_review(self, norma, arts):
+        engine, _ = self._run(norma, arts, [])
+        stats = engine.get_statistics()
+        assert stats["needs_review"] is False
+        assert stats["added_count"] == 0
+
+    def test_applied_revocation_is_counted_as_applied(self, norma, arts):
+        ev = self._event(1, "REVOGA", alvo=arts[1])
+        engine, text = self._run(norma, arts, [ev])
+        stats = engine.get_statistics()
+        assert stats["events_applied"] == 1
+        assert stats["events_unresolved"] == 0
+        assert "Art. 2º (Revogado pela Lei nº 200/2021)" in text
+
+    def test_output_with_additions_is_deterministic(self, norma, arts):
+        evs = [
+            self._event(2, "ADICIONA", ref_tipo="artigo", ref_num="2º-B", num=201),
+            self._event(1, "ADICIONA", ref_tipo="artigo", ref_num="2º-A", num=200),
+        ]
+        e1, t1 = self._run(norma, arts, list(evs))
+        e2, t2 = self._run(norma, arts, list(reversed(evs)))
+        assert hashlib.sha256(t1.encode()).hexdigest() == hashlib.sha256(t2.encode()).hexdigest()
+        # 2º-A must precede 2º-B
+        assert t1.index("Art. 2º-A") < t1.index("Art. 2º-B")
+
+
+class TestAddedTextExtraction:
+    """The new wording is taken from the amending law's quoted passage."""
+
+    def test_quoted_wording_replaces_instruction_sentence(self):
+        text, ok = ConsolidationEngine._extract_added_text(
+            "Fica acrescido o Art. 2º-A: “Art. 2º-A O prazo é de 30 dias.”", "artigo", "2º-A"
+        )
+        assert ok is True
+        assert text == "O prazo é de 30 dias."
+
+    def test_nested_quotes_are_not_truncated(self):
+        text, ok = ConsolidationEngine._extract_added_text(
+            "Acrescenta o § 4º: “§ 4º Aplica-se o disposto no “Plano Diretor”.”", "paragrafo", "4º"
+        )
+        assert ok is True
+        assert text == "Aplica-se o disposto no “Plano Diretor”."
+
+    def test_quoted_term_that_is_not_the_new_device_is_ignored(self):
+        text, ok = ConsolidationEngine._extract_added_text(
+            "Fica acrescido o Art. 2º-A, nos termos do “Plano Diretor”, ao Código.",
+            "artigo", "2º-A",
+        )
+        assert ok is False                      # 'Plano Diretor' must never become the text
+        assert text.startswith("Fica acrescido")
+
+    def test_unbalanced_quote_falls_back_instead_of_truncating(self):
+        text, ok = ConsolidationEngine._extract_added_text(
+            "Acrescenta: “Art. 2º-A O prazo é de 30 dias.", "artigo", "2º-A"
+        )
+        assert ok is False
+
+    def test_label_of_2_does_not_match_2_a(self):
+        text, ok = ConsolidationEngine._extract_added_text(
+            "Acrescenta: “Art. 2º-A Texto do 2-A.”", "artigo", "2º"
+        )
+        assert ok is False
+
+    def test_unextracted_wording_is_flagged_in_output(self):
+        entry = {
+            "label": "Art. 2º-A", "texto": "Fica acrescido o Art. 2º-A.", "extracted": False,
+            "norma_ref": "Lei nº 200/2021",
+        }
+        line = ConsolidationEngine._format_addition(entry)
+        assert "redação não extraída" in line
+        assert line.endswith("(Incluído pela Lei nº 200/2021)")
+
+    def test_article_key_parsing(self):
+        k = ConsolidationEngine._article_key
+        assert k("2º") == (2, "") and k("2º-A") == (2, "A") and k("10") == (10, "")
+        assert k("2º") < k("2º-A") < k("3º")
+        assert k("abc") is None
+
+    def test_paragraph_4_does_not_match_paragraph_4_a(self):
+        _, ok = ConsolidationEngine._extract_added_text(
+            "Acrescenta: “§ 4º-A Texto do 4º-A.”", "paragrafo", "4º"
+        )
+        assert ok is False
+        text, ok = ConsolidationEngine._extract_added_text(
+            "Acrescenta: “§ 4º-A Texto do 4º-A.”", "paragrafo", "4º-A"
+        )
+        assert ok is True and text == "Texto do 4º-A."
+
+    def test_paragrafo_unico_inciso_alinea_labels(self):
+        ex = ConsolidationEngine._extract_added_text
+        assert ex("“Parágrafo único. Vale para todos.”", "paragrafo", "único") == ("Vale para todos.", True)
+        assert ex("“IV - quarto requisito;”", "inciso", "IV") == ("quarto requisito;", True)
+        assert ex("“IV - quarto”", "inciso", "V")[1] is False
+        assert ex("“c) terceira alínea;”", "alinea", "c") == ("terceira alínea;", True)
+        assert ex("“c) terceira”", "alinea", "d")[1] is False

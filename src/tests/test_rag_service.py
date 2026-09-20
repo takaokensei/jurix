@@ -298,7 +298,10 @@ class TestRAGService:
         assert result['cached'] is True
         assert result['answer'] == 'Resposta em cache.'
         mock_ollama.generate_text.assert_not_called()
-        service.cache.get_answer.assert_called_once_with('Qual o prazo de obras?', k=5, model='llama3')
+        service.cache.get_answer.assert_called_once_with(
+            'Qual o prazo de obras?', k=5, model='llama3',
+            corpus_version=service.cache.get_corpus_version.return_value,
+        )
 
     @patch('src.processing.rag_service.OllamaService')
     def test_answer_question_cache_miss_and_store(self, mock_ollama_class):
@@ -320,6 +323,27 @@ class TestRAGService:
         service.cache.set_answer.assert_called_once()
 
     @patch('src.processing.rag_service.OllamaService')
+    def test_answer_is_stored_under_the_version_read_before_generation(self, mock_ollama_class):
+        """A corpus change during a slow generation must not make a stale answer look fresh (P1.3)."""
+        mock_ollama = Mock()
+        mock_ollama_class.return_value = mock_ollama
+
+        service = RAGService(use_cache=True)
+        service.cache = Mock()
+        service.cache.get_answer.return_value = None
+        service.cache.get_corpus_version.return_value = 7
+        service.get_relevant_context = Mock(return_value=('Contexto', [{'similarity_score': 0.9}]))
+
+        def generate_while_corpus_changes(*args, **kwargs):
+            service.cache.get_corpus_version.return_value = 8   # bumped mid-generation
+            return 'Resposta gerada com o corpus antigo.'
+        mock_ollama.generate_text.side_effect = generate_while_corpus_changes
+
+        service.answer_question('Pergunta', k=5, model='llama3')
+
+        assert service.cache.set_answer.call_args.kwargs['corpus_version'] == 7
+
+    @patch('src.processing.rag_service.OllamaService')
     def test_answer_question_force_refresh_bypasses_cache(self, mock_ollama_class):
         """Test answer_question with force_refresh=True ignores cached answer."""
         mock_ollama = Mock()
@@ -337,3 +361,45 @@ class TestRAGService:
         mock_ollama.generate_text.assert_called_once()
 
 
+
+
+class TestPromptConstruction:
+    """Audit P2.3: the batch and streaming prompts were two hand-copied strings that had
+    already drifted (only the batch one had the bullet-formatting examples)."""
+
+    def test_prompt_contains_context_question_and_ends_with_the_answer_marker(self):
+        prompt = RAGService.build_prompt("CTX-123", "PERGUNTA-456")
+        assert "CTX-123" in prompt and "PERGUNTA-456" in prompt
+        assert prompt.rstrip().endswith("RESPOSTA:")
+
+    def test_prompt_keeps_the_formatting_examples_that_fix_glued_bullets(self):
+        prompt = RAGService.build_prompt("c", "q")
+        assert "EXEMPLO CORRETO" in prompt and "EXEMPLO INCORRETO" in prompt
+
+    def test_context_and_question_are_inserted_verbatim_even_with_braces(self):
+        """The prompt is an f-string/format target: user text with { } must not break or be re-evaluated."""
+        prompt = RAGService.build_prompt("Art. {1} e {contexto}", "Pergunta {question}?")
+        assert "Art. {1} e {contexto}" in prompt
+        assert "Pergunta {question}?" in prompt
+
+    @patch('src.processing.rag_service.OllamaService')
+    def test_batch_and_streaming_send_the_identical_prompt(self, mock_ollama_class):
+        ollama = Mock()
+        ollama.generate_text.return_value = "resposta"
+        ollama.stream_text.return_value = iter(["resp", "osta"])
+        mock_ollama_class.return_value = ollama
+
+        service = RAGService(use_cache=False)
+        service.get_relevant_context = Mock(return_value=("CONTEXTO", [{'similarity_score': 0.9}]))
+
+        service.answer_question("Pergunta?", k=3, model="llama3")
+        list(service.stream_answer_question("Pergunta?", k=3, model="llama3"))
+
+        batch_prompt = ollama.generate_text.call_args.kwargs["prompt"]
+        stream_prompt = ollama.stream_text.call_args.args[0]
+        assert batch_prompt == stream_prompt == RAGService.build_prompt("CONTEXTO", "Pergunta?")
+
+    def test_placeholder_like_text_inside_the_context_is_not_rewritten(self):
+        prompt = RAGService.build_prompt("texto com @@QUESTION@@ literal", "PERGUNTA-REAL")
+        assert "texto com @@QUESTION@@ literal" in prompt
+        assert prompt.count("PERGUNTA-REAL") == 1

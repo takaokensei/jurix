@@ -74,3 +74,19 @@ class TestLegalNERExtractor:
         assert types_extracted['inciso'] == 'III'
         assert 'artigo' in types_extracted
         assert types_extracted['artigo'] == '8º'
+
+    def test_suffixed_article_number_is_preserved(self, extractor):
+        """'Art. 2º-A' must not collapse into 'Art. 2º' (a different article)."""
+        events = extractor.extract_events("Fica adicionado o art. 2º-A à Lei 100/2020.")
+        artigos = [e for e in events if e['referencia_tipo'] == 'artigo']
+        assert [e['referencia_numero'] for e in artigos] == ['2º-A']
+
+    def test_revocation_of_suffixed_article_does_not_target_base_article(self, extractor):
+        events = extractor.extract_events("Fica revogado o art. 5º-B da Lei 100/2020.")
+        artigos = [e for e in events if e['referencia_tipo'] == 'artigo']
+        assert [e['referencia_numero'] for e in artigos] == ['5º-B']
+
+    def test_plain_article_followed_by_dash_and_word_is_not_suffixed(self, extractor):
+        events = extractor.extract_events("Fica revogado o art. 5º-Aplicam-se demais regras.")
+        artigos = [e for e in events if e['referencia_tipo'] == 'artigo']
+        assert [e['referencia_numero'] for e in artigos] == ['5º']

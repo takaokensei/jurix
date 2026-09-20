@@ -36,16 +36,20 @@ class LegalTextParser:
             r'^\s*Parágrafo\s+único\.?\s*[\.–-]?\s*',
             re.MULTILINE | re.IGNORECASE
         ),
+        # A real inciso needs an explicit separator ('-', '–', '—' or '.') right
+        # after the roman numeral. Anchoring with [ \t]* (never \s*) keeps the
+        # match on its own line. Numeral validity is checked in _is_valid_marker.
         'inciso': re.compile(
-            r'^\s*([IVX]+)\s*[\.–-]?\s*',
+            r'^[ \t]*([IVX]+)[ \t]*[-–—.][ \t]*',
             re.MULTILINE
         ),
         'alinea': re.compile(
             r'^\s*([a-z])\)\s+',
             re.MULTILINE
         ),
+        # Items are 1-2 digit numbers; a year ('2020.') at line start is not one.
         'item': re.compile(
-            r'^\s*(\d+)\.\s+',
+            r'^[ \t]*(\d{1,2})[ \t]*\.[ \t]+',
             re.MULTILINE
         ),
     }
@@ -84,6 +88,39 @@ class LegalTextParser:
         ),
     }
     
+    # Valid roman numerals for incisos (I..XXXIX). Rejects 'IIII', 'VX', 'XIIII'.
+    _ROMAN_INCISO_RE = re.compile(r'^(?=[IVX])X{0,3}(?:IX|IV|V?I{0,3})$')
+
+    @staticmethod
+    def _is_valid_marker(tipo: str, match: 're.Match', text: str) -> bool:
+        """
+        Decide whether a regex match is a real structural marker.
+
+        Regexes only find candidates; prose and citations can look like markers.
+        This is the single source of truth used both to compute text boundaries
+        (_find_all_markers) and to build elements (extract_*), so the two can
+        never disagree.
+
+        - inciso: the numeral must be a valid roman numeral (I..XXXIX).
+        - artigo: a lowercase letter or comma right after the number means the
+          line is a citation broken across lines ('Art. 10 da Lei 123/2020 ...'),
+          not a new article. Real articles start with a capital, quote or '('.
+        """
+        if tipo == 'inciso':
+            return bool(LegalTextParser._ROMAN_INCISO_RE.match(match.group(1)))
+        if tipo == 'artigo':
+            nxt = text[match.end():match.end() + 1]
+            if nxt and (nxt.islower() or nxt == ','):
+                return False
+        return True
+
+    @staticmethod
+    def _iter_valid(tipo: str, text: str):
+        """Yield only the matches of MARKER_PATTERNS[tipo] that are real markers."""
+        for match in LegalTextParser.MARKER_PATTERNS[tipo].finditer(text):
+            if LegalTextParser._is_valid_marker(tipo, match, text):
+                yield match
+
     @staticmethod
     def _find_all_markers(text: str) -> List[Tuple[int, str, Any]]:
         """
@@ -96,8 +133,8 @@ class LegalTextParser:
         markers = []
         
         # Find all device marker types
-        for tipo, pattern in LegalTextParser.MARKER_PATTERNS.items():
-            for match in pattern.finditer(text):
+        for tipo in LegalTextParser.MARKER_PATTERNS:
+            for match in LegalTextParser._iter_valid(tipo, text):
                 markers.append((match.start(), tipo, match))
         
         # Find all structural division types
@@ -178,7 +215,7 @@ class LegalTextParser:
         
         articles = []
         
-        for match in LegalTextParser.MARKER_PATTERNS['artigo'].finditer(text):
+        for match in LegalTextParser._iter_valid('artigo', text):
             marker_start = match.start()
             marker_end = match.end()
             texto = LegalTextParser._extract_text_until_next_marker(
@@ -255,7 +292,7 @@ class LegalTextParser:
         """
         Extract all incisos (I, II, III, etc.) from text (multiline support).
         
-        Validates that the match is actually an inciso (not part of a date).
+        Only lines that start with a valid roman numeral plus an explicit separator count.
         
         Args:
             text: Full legal text
@@ -266,19 +303,12 @@ class LegalTextParser:
         
         incisos = []
         
-        for match in LegalTextParser.MARKER_PATTERNS['inciso'].finditer(text):
+        # The pattern is anchored at line start and requires a separator, and
+        # _iter_valid enforces a valid roman numeral. The former look-behind for
+        # dates ('\\d{4}' in the previous 10 chars) is gone: it silently dropped
+        # legitimate incisos following 'Lei nº 8.666/1993:' or 'em 2020:'.
+        for match in LegalTextParser._iter_valid('inciso', text):
             marker_start = match.start()
-            
-            # Skip if it's part of a date or other context
-            before = text[max(0, marker_start-10):marker_start]
-            if re.search(r'\d{4}|\d{1,2}/\d{1,2}', before):  # Likely part of date
-                continue
-            
-            # Additional validation: inciso should start at line beginning or after article marker
-            if marker_start > 0 and text[marker_start-1] not in ['\n', '.', ':', ';', ')', ']']:
-                # Check if it's actually part of previous text
-                continue
-            
             marker_end = match.end()
             texto = LegalTextParser._extract_text_until_next_marker(
                 text, marker_start, marker_end, all_markers
@@ -328,6 +358,71 @@ class LegalTextParser:
         
         logger.debug(f"Extracted {len(alineas)} alineas")
         return alineas
+    
+    @staticmethod
+    def _drop_repeated_blocks(elements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Drop article blocks that are exact repeats of an earlier block (OCR artifact:
+        a page or line captured twice).
+        
+        A block is an article plus everything up to the next article. It is dropped
+        only when its number AND the normalized text of every element in it match an
+        earlier block, so nothing legitimate is lost: an article that reuses a number
+        with different text, or with a different subtree, is kept for a human to see.
+        Repeated numbering of incisos/paragraphs across different articles is not
+        affected (those live in different blocks with different signatures).
+        """
+        blocks: List[List[Dict[str, Any]]] = [[]]   # blocks[0] = anything before the first article
+        for element in elements:
+            if element['tipo'] == 'artigo':
+                blocks.append([])
+            blocks[-1].append(element)
+        
+        seen = set()
+        kept: List[Dict[str, Any]] = list(blocks[0])
+        for block in blocks[1:]:
+            signature = tuple(
+                (e['tipo'], e['numero'], LegalTextParser.clean_text(e['texto'])) for e in block
+            )
+            if signature in seen:
+                logger.warning(
+                    f"Dropped duplicate block for {block[0]['tipo']} {block[0]['numero']} "
+                    f"(exact repeat, likely OCR); {len(block)} element(s) removed"
+                )
+                continue
+            seen.add(signature)
+            kept.extend(block)
+        return kept
+    
+    @staticmethod
+    def extract_items(text: str, all_markers: Optional[List[Tuple[int, str, Any]]] = None) -> List[Dict[str, Any]]:
+        """
+        Extract numbered items ('1.', '2.', ...) that subdivide an inciso/alínea.
+
+        Item markers were already used as text boundaries, but never extracted,
+        so their text was silently lost. They are now first-class elements.
+        """
+        if all_markers is None:
+            all_markers = LegalTextParser._find_all_markers(text)
+        
+        items = []
+        for match in LegalTextParser._iter_valid('item', text):
+            marker_start = match.start()
+            marker_end = match.end()
+            texto = LegalTextParser._extract_text_until_next_marker(
+                text, marker_start, marker_end, all_markers
+            )
+            items.append({
+                'tipo': 'item',
+                'numero': match.group(1).strip(),
+                'texto': texto,
+                'start_pos': marker_start,
+                'end_pos': marker_end + len(texto),
+                'full_match': match.group(0)
+            })
+        
+        logger.debug(f"Extracted {len(items)} items")
+        return items
     
     @staticmethod
     def extract_divisions(text: str, all_markers: Optional[List[Tuple[int, str, Any]]] = None) -> List[Dict[str, Any]]:
@@ -392,9 +487,12 @@ class LegalTextParser:
         all_elements.extend(LegalTextParser.extract_paragraphs(text, all_markers))
         all_elements.extend(LegalTextParser.extract_incisos(text, all_markers))
         all_elements.extend(LegalTextParser.extract_alineas(text, all_markers))
+        all_elements.extend(LegalTextParser.extract_items(text, all_markers))
         
         # Sort by position in text
         all_elements.sort(key=lambda x: x['start_pos'])
+        
+        all_elements = LegalTextParser._drop_repeated_blocks(all_elements)
         
         logger.info(
             f"Parsed legal text: {len(all_elements)} total elements "
@@ -430,6 +528,7 @@ class LegalTextParser:
         last_article_idx = None
         last_paragrafo_idx = None
         last_inciso_idx = None
+        last_alinea_idx = None
         
         def _get_active_division_parent(current_div_type: str) -> Optional[int]:
             """Find closest active parent division above current division type."""
@@ -468,6 +567,7 @@ class LegalTextParser:
                 last_article_idx = None
                 last_paragrafo_idx = None
                 last_inciso_idx = None
+                last_alinea_idx = None
 
             elif tipo == 'artigo':
                 # Articles belong to enclosing division or are root level
@@ -478,6 +578,7 @@ class LegalTextParser:
                 last_article_idx = i
                 last_paragrafo_idx = None
                 last_inciso_idx = None
+                last_alinea_idx = None
             
             elif tipo == 'paragrafo':
                 # Paragraphs belong to last article
@@ -485,6 +586,7 @@ class LegalTextParser:
                     elem_copy['parent_index'] = last_article_idx
                 last_paragrafo_idx = i
                 last_inciso_idx = None
+                last_alinea_idx = None
             
             elif tipo == 'inciso':
                 # Incisos belong to last paragraph or article
@@ -493,6 +595,7 @@ class LegalTextParser:
                 elif last_article_idx is not None:
                     elem_copy['parent_index'] = last_article_idx
                 last_inciso_idx = i
+                last_alinea_idx = None
             
             elif tipo == 'alinea':
                 # Alíneas belong to last inciso
@@ -502,6 +605,15 @@ class LegalTextParser:
                     elem_copy['parent_index'] = last_paragrafo_idx
                 elif last_article_idx is not None:
                     elem_copy['parent_index'] = last_article_idx
+                last_alinea_idx = i
+            
+            elif tipo == 'item':
+                # Items belong to the closest enclosing device
+                for parent in (last_alinea_idx, last_inciso_idx,
+                               last_paragrafo_idx, last_article_idx):
+                    if parent is not None:
+                        elem_copy['parent_index'] = parent
+                        break
             
             hierarchy.append(elem_copy)
 

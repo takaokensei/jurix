@@ -99,24 +99,30 @@ def serialize_dispositivo_source(source: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def serialize_chat_session(session: Any) -> Dict[str, Any]:
-    """Serialize a ChatSession model instance."""
+    """Serialize a ChatSession model instance (the single JSON shape used by every endpoint)."""
     return {
         'id': session.id,
-        'title': getattr(session, 'title', None) or 'Conversa sem título',
-        'slug': getattr(session, 'slug', None) or '',
-        'is_active': getattr(session, 'is_active', False),
-        'created_at': session.created_at.isoformat() if hasattr(session, 'created_at') and session.created_at else None,
-        'updated_at': session.updated_at.isoformat() if hasattr(session, 'updated_at') and session.updated_at else None,
+        'title': session.title or 'Conversa sem título',
+        'slug': session.slug,
+        'is_active': session.is_active,
+        'created_at': session.created_at.isoformat() if session.created_at else None,
+        'updated_at': session.updated_at.isoformat() if session.updated_at else None,
     }
 
 
 def serialize_chat_message(message: Any) -> Dict[str, Any]:
-    """Serialize a ChatMessage model instance."""
+    """
+    Serialize a ChatMessage model instance.
+
+    Sources and metadata only exist for assistant answers; user messages always
+    report them empty.
+    """
+    is_assistant = message.role == 'assistant'
     return {
         'id': message.id,
         'role': message.role,
         'content': message.content,
-        'sources': message.sources_json if hasattr(message, 'sources_json') else [],
-        'metadata': message.metadata_json if hasattr(message, 'metadata_json') else {},
-        'created_at': message.created_at.isoformat() if hasattr(message, 'created_at') and message.created_at else None,
+        'sources': message.sources_json if is_assistant else [],
+        'metadata': message.metadata_json if is_assistant else {},
+        'created_at': message.created_at.isoformat() if message.created_at else None,
     }

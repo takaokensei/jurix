@@ -49,8 +49,10 @@ db.sqlite3-journal
 # Data
 data/raw/
 data/logs/
-*.pdf
-*.json
+# Downloaded/derived data only. A bare '*.pdf' / '*.json' also hid legitimate files anywhere in
+# the tree (test fixtures, package.json, VS Code settings, docs).
+/data/**/*.pdf
+/data/**/*.json
 
 # OS
 .DS_Store
