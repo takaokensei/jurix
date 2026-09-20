@@ -43,3 +43,12 @@ def test_source_card_url_is_never_interpolated_into_an_inline_handler():
     text = (JS / "chat.js").read_text(encoding="utf-8")
     assert "window.open('${" not in text
     assert "data-url=" in text and "safeHttpUrl(" in text
+
+
+def test_all_markdown_is_rendered_through_the_single_sanitising_helper():
+    """Answers come from an LLM fed with ingested text: every render must use renderMarkdown()."""
+    text = (JS / "chat.js").read_text(encoding="utf-8")
+    assert text.count("marked.parse(") == 1, "marked.parse() must only be called inside renderMarkdown()"
+    assert text.count("DOMPurify.sanitize(") == 1, "DOMPurify.sanitize() must only be called inside renderMarkdown()"
+    for tag in ("img", "style", "svg", "link"):
+        assert f"'{tag}'" in text.split("const SANITIZE_CONFIG")[1].split("};")[0], tag

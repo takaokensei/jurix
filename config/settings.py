@@ -4,6 +4,8 @@ Django settings for Jurix project.
 
 import os
 from pathlib import Path
+from urllib.parse import unquote, urlparse
+
 from dotenv import load_dotenv
 
 if not os.getenv('DJANGO_SKIP_DOTENV'):
@@ -34,7 +36,6 @@ if not SECRET_KEY or (SECRET_KEY == _DEV_SECRET_KEY and not DEBUG):
         "Set a private DJANGO_SECRET_KEY, or DEBUG=True for local development only."
     )
 
-from urllib.parse import urlparse, unquote
 
 allowed_hosts_env = os.getenv('ALLOWED_HOSTS')
 ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(',') if h.strip()] if allowed_hosts_env else ['*'] if DEBUG else ['localhost', '127.0.0.1']
@@ -65,10 +66,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+
     # Third Party
     'django_htmx',
-    
+
     # Local Apps
     'src.apps.core',
     'src.apps.legislation',

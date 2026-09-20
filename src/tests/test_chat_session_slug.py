@@ -39,10 +39,8 @@ def test_slugs_are_unique_across_many_sessions(user):
 
 def test_generation_retries_on_collision(user, monkeypatch):
     ChatSession.objects.create(user=user, title="a", slug="aaaaaaaaaaaa")
-    seq = iter(["a" * 12, "a" * 12, "b" * 12])
-    monkeypatch.setattr(
-        "secrets.choice", lambda alphabet, _it=iter(list("".join(seq))): next(_it)
-    )
+    letters = iter("a" * 12 + "a" * 12 + "b" * 12)      # 1st and 2nd attempts collide, 3rd is free
+    monkeypatch.setattr("secrets.choice", lambda alphabet: next(letters))
     assert ChatSession(user=user, title="t").generate_slug() == "b" * 12
 
 

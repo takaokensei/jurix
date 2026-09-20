@@ -7,16 +7,16 @@ Uso:
     python manage.py ingest_sapl --ano-inicio 2020 --ano-fim 2025 --auto-download
 """
 
-from typing import Optional
 
 from django.core.management.base import BaseCommand, CommandError
-from src.apps.ingestion.tasks import ingest_normas_task, _process_norma_data
+
+from src.apps.ingestion.tasks import _process_norma_data, ingest_normas_task
 from src.clients.sapl.sapl_client import SaplAPIClient
 
 
 class Command(BaseCommand):
     help = 'Ingere normas jurídicas da API SAPL'
-    
+
     def add_arguments(self, parser):
         parser.add_argument(
             '--limit',
@@ -64,7 +64,7 @@ class Command(BaseCommand):
             action='store_true',
             help='Baixar PDFs automaticamente após ingestão (requer worker ativo)'
         )
-    
+
     def handle(self, *args, **options):
         limit = options['limit']
         offset = options['offset']
@@ -74,19 +74,19 @@ class Command(BaseCommand):
         ano_fim = options['ano_fim']
         is_async = options['async']
         auto_download = options['auto_download']
-        
+
         # Validar argumentos de intervalo de ano
         if (ano_inicio is not None) != (ano_fim is not None):
             raise CommandError(
                 '--ano-inicio e --ano-fim devem ser especificados juntos'
             )
-        
+
         if ano_inicio and ano_fim:
             if ano_inicio > ano_fim:
                 raise CommandError(
                     f'--ano-inicio ({ano_inicio}) deve ser menor ou igual a --ano-fim ({ano_fim})'
                 )
-        
+
         # Se intervalo de anos especificado, usar estratégia de busca por ano
         if ano_inicio and ano_fim:
             self._handle_year_range_ingestion(
@@ -97,13 +97,13 @@ class Command(BaseCommand):
                 is_async=is_async
             )
             return
-        
+
         # Caso contrário, usar método tradicional
         self.stdout.write(self.style.NOTICE(
             f'Iniciando ingestão: limit={limit}, offset={offset}, '
             f'tipo={tipo}, ano={ano}, auto_download={auto_download}'
         ))
-        
+
         try:
             if is_async:
                 # Executar via Celery (assíncrono)
@@ -133,7 +133,7 @@ class Command(BaseCommand):
                     ano=ano,
                     auto_download=auto_download
                 )
-                
+
                 self.stdout.write(self.style.SUCCESS(
                     f'\nIngestão concluída:\n'
                     f'  - Total buscadas: {stats["total_fetched"]}\n'
@@ -142,27 +142,27 @@ class Command(BaseCommand):
                     f'  - Falhas: {stats["failed"]}\n'
                     f'  - Downloads disparados: {len(stats.get("download_tasks", []))}'
                 ))
-                
+
                 if stats['errors']:
                     self.stdout.write(self.style.WARNING(
-                        f'\nErros encontrados:'
+                        '\nErros encontrados:'
                     ))
                     for error in stats['errors'][:10]:  # Mostrar até 10 erros
                         self.stdout.write(f'  - {error}')
-                    
+
                     if len(stats['errors']) > 10:
                         self.stdout.write(
                             f'  ... e mais {len(stats["errors"]) - 10} erro(s)'
                         )
-        
+
         except Exception as e:
-            raise CommandError(f'Falha na ingestão: {str(e)}')
-    
+            raise CommandError(f'Falha na ingestão: {str(e)}') from e
+
     def _handle_year_range_ingestion(
         self,
         ano_inicio: int,
         ano_fim: int,
-        tipo: Optional[str],
+        tipo: str | None,
         auto_download: bool,
         is_async: bool
     ):
@@ -175,36 +175,36 @@ class Command(BaseCommand):
         ))
         self.stdout.write(self.style.WARNING('=' * 80))
         self.stdout.write('')
-        
+
         client = None
-        
+
         try:
             # Buscar normas usando estratégia de intervalo de anos
             self.stdout.write(self.style.NOTICE(
                 f'Buscando normas da API SAPL (anos {ano_inicio} a {ano_fim})...'
             ))
             client = SaplAPIClient()
-            
+
             normas_data = client.fetch_normas_by_year_range(
                 ano_inicio=ano_inicio,
                 ano_fim=ano_fim,
                 tipo=tipo,
                 max_normas_por_ano=None
             )
-            
+
             total_encontradas = len(normas_data)
             self.stdout.write(
                 self.style.SUCCESS(f'✓ {total_encontradas} normas encontradas')
             )
-            
+
             if total_encontradas == 0:
                 self.stdout.write(self.style.WARNING('Nenhuma norma encontrada. Abortando.'))
                 return
-            
+
             # Processar cada norma
             self.stdout.write('')
             self.stdout.write(self.style.NOTICE('Processando normas no banco...'))
-            
+
             stats = {
                 'processed': 0,
                 'created': 0,
@@ -213,16 +213,16 @@ class Command(BaseCommand):
                 'download_tasks': [],
                 'errors': []
             }
-            
+
             for idx, norma_data in enumerate(normas_data, 1):
                 try:
                     result = _process_norma_data(norma_data, auto_download=False)
-                    
+
                     if result['created']:
                         stats['created'] += 1
                     else:
                         stats['updated'] += 1
-                    
+
                     # Disparar download se solicitado
                     if auto_download and result.get('norma_id'):
                         norma_id = result['norma_id']
@@ -232,17 +232,17 @@ class Command(BaseCommand):
                             stats['download_tasks'].append(task.id)
                         else:
                             stats['download_tasks'].append(norma_id)
-                    
+
                     stats['processed'] += 1
-                    
+
                     if idx % 50 == 0:
                         self.stdout.write(f'  Progresso: {idx}/{total_encontradas}...')
-                    
+
                 except Exception as e:
                     stats['failed'] += 1
                     error_msg = f"Norma ID {norma_data.get('id')}: {str(e)}"
                     stats['errors'].append(error_msg)
-            
+
             # Resumo
             self.stdout.write('')
             self.stdout.write(self.style.SUCCESS('=' * 80))
@@ -252,22 +252,22 @@ class Command(BaseCommand):
             self.stdout.write(f'  ✓ Novas criadas: {stats["created"]}')
             self.stdout.write(f'  ✓ Atualizadas: {stats["updated"]}')
             self.stdout.write(f'  ✗ Falhas: {stats["failed"]}')
-            
+
             if auto_download:
                 self.stdout.write(f'  📥 Downloads agendados: {len(stats["download_tasks"])}')
-            
+
             if stats['errors']:
                 self.stdout.write(self.style.WARNING(f'\n⚠️  {len(stats["errors"])} erro(s) encontrado(s)'))
                 for error in stats['errors'][:5]:
                     self.stdout.write(f'  - {error}')
-            
+
             self.stdout.write('')
             self.stdout.write(self.style.SUCCESS('✅ Ingestão concluída!'))
-            
+
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'❌ Erro fatal: {str(e)}'))
-            raise CommandError(f'Falha na ingestão por intervalo de anos: {str(e)}')
-            
+            raise CommandError(f'Falha na ingestão por intervalo de anos: {str(e)}') from e
+
         finally:
             if client:
                 client.close()

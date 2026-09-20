@@ -3,9 +3,9 @@ Pytest configuration and fixtures for Jurix tests.
 """
 
 import pytest
-from django.test import RequestFactory
 from django.contrib.auth.models import User
 from django.db import connection
+from django.test import RequestFactory
 
 
 @pytest.fixture(scope='session')

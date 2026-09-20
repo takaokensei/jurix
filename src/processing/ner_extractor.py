@@ -11,9 +11,9 @@ Focuses on detecting:
 without Cartesian product between distinct actions in the same context.
 """
 
-import re
 import logging
-from typing import List, Dict, Any, Optional, Tuple
+import re
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -21,13 +21,13 @@ logger = logging.getLogger(__name__)
 class LegalNERExtractor:
     """
     Extract Named Entities and alteration events from legal dispositivos.
-    
+
     Uses regex patterns with syntactic scoping to identify:
     1. Action verbs (revoga, altera, etc.)
     2. Legal references (Art. 5º, § 2º, Lei 123/2020)
     3. Target elements
     """
-    
+
     # Action verb patterns (Brazilian Portuguese legal language)
     ACTION_PATTERNS = {
         'REVOGA': r'\b(revog[a-z]+|ficam?\s+revogad[oa]s?)\b',
@@ -37,7 +37,7 @@ class LegalNERExtractor:
         'REGULAMENTA': r'\b(regulamenta[a-z]*|disciplina[a-z]*)\b',
         'REFERENCIA': r'\b(conforme|nos\s+termos|de\s+acordo\s+com|previsto|disposto)\b',
     }
-    
+
     # Priority for resolving overlapping matches
     ACTION_PRIORITY = {
         'REVOGA': 1,
@@ -47,7 +47,7 @@ class LegalNERExtractor:
         'REGULAMENTA': 5,
         'REFERENCIA': 6,
     }
-    
+
     # Legal element patterns
     # The optional '-A' suffix (Art. 2º-A) must be captured: it is a different
     # article from Art. 2º. No spaces are allowed around the hyphen and the letter
@@ -56,29 +56,29 @@ class LegalNERExtractor:
         r'\b(art(?:igo)?\.?\s*(?:n[º°]?\s*)?)([\d]+[º°]?(?:-[A-Z](?![a-zà-ú]))?)',
         re.IGNORECASE
     )
-    
+
     PARAGRAPH_PATTERN = re.compile(
         r'(?:\bpar[áa]grafo|[§¶])\s*(?:n[º°]?\s*)?([\d]+[º°]?|[ÚUú]nico)',
         re.IGNORECASE
     )
-    
+
     INCISO_PATTERN = re.compile(
         r'\binciso\s+([IVXLCDM]+|[\d]+)',
         re.IGNORECASE
     )
-    
+
     ALINEA_PATTERN = re.compile(
         r'\bal[íi]nea\s+[\'\"“]?([a-z])[\'\"”]?\)?',
         re.IGNORECASE
     )
-    
+
     # Complex law reference (Lei X/YYYY, LC X/YYYY, Decreto X/YYYY)
     LEI_PATTERN = re.compile(
         r'\b(lei\s+(?:complementar|ordinária|delegada)?|lc|decreto|resolução)\s*'
         r'(?:n[º°]?\s*)?([\d.,]+)\s*[/\-]?\s*(\d{4})?',
         re.IGNORECASE
     )
-    
+
     # Strict "desta Lei" pattern (excludes references with an explicit number like "da Lei nº 123")
     DESTA_LEI_PATTERN = re.compile(
         r'\b(?:d[aeo]st[ae]\s+(?:lei|decreto|resolução|diploma|código)|'
@@ -86,35 +86,35 @@ class LegalNERExtractor:
         r'(?!\s*(?:n[º°]?\s*)?\d)',
         re.IGNORECASE
     )
-    
+
     def __init__(self):
         """Initialize the NER extractor with compiled patterns."""
         self.action_regex = {
             action: re.compile(pattern, re.IGNORECASE)
             for action, pattern in self.ACTION_PATTERNS.items()
         }
-    
+
     def extract_events(
-        self, 
-        texto: str, 
-        dispositivo_id: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+        self,
+        texto: str,
+        dispositivo_id: int | None = None
+    ) -> list[dict[str, Any]]:
         """
         Extract alteration events from dispositivo text using windowed scoping.
-        
+
         Prevents Cartesian product by binding references strictly to the verb
         whose scope they fall into (delimited by the next verb or sentence delimiter).
         """
         events = []
         if not texto or not texto.strip():
             return events
-            
+
         # Step 1: Detect action verbs with deduplicated spans
         detected_actions = self._detect_actions(texto)
         if not detected_actions:
             logger.debug(f"No actions detected in dispositivo {dispositivo_id}")
             return events
-        
+
         # Step 2: Global statute reference in the sentence (fallback if local window lacks it)
         global_norma_info = None
         global_law_matches = list(self.LEI_PATTERN.finditer(texto))
@@ -129,16 +129,16 @@ class LegalNERExtractor:
                 'ano': ano,
                 'text': last_match.group(0),
             }
-        
+
         # Step 3: For each action, extract referenced entities in its exclusive window
         num_actions = len(detected_actions)
         for i, action_data in enumerate(detected_actions):
             action = action_data['action']
             action_span = action_data['span']
-            
+
             # Exclusive context window: from action start to next action or delimiter
             context_start = action_span[0]
-            
+
             if i + 1 < num_actions:
                 context_end = detected_actions[i + 1]['span'][0]
             else:
@@ -152,21 +152,21 @@ class LegalNERExtractor:
                         continue
                     punct_match = m
                     break
-                
+
                 if punct_match:
                     context_end = action_span[1] + punct_match.start() + 1
                 else:
                     context_end = raw_window_end
-                
+
             context = texto[context_start:context_end]
-            
+
             # Extract references solely within this specific scope
             references = self._extract_references(context)
-            
+
             # Separate structural element references from statute references
             elem_refs = [r for r in references if r['tipo'] in ('artigo', 'paragrafo', 'inciso', 'alinea')]
             statute_refs = [r for r in references if r['tipo'] not in ('artigo', 'paragrafo', 'inciso', 'alinea')]
-            
+
             # Determine applicable statute metadata for this window
             local_norma_info = None
             if statute_refs:
@@ -174,7 +174,7 @@ class LegalNERExtractor:
                 local_norma_info = first_statute.get('norma_info')
             if not local_norma_info:
                 local_norma_info = global_norma_info
-                
+
             if elem_refs:
                 for ref in elem_refs:
                     events.append({
@@ -208,13 +208,13 @@ class LegalNERExtractor:
                     'extraction_method': 'regex',
                     'norma_referenciada': local_norma_info,
                 })
-        
+
         return events
-    
-    def _detect_actions(self, texto: str) -> List[Dict[str, Any]]:
+
+    def _detect_actions(self, texto: str) -> list[dict[str, Any]]:
         """
         Detect action verbs in text, deduplicating overlapping spans.
-        
+
         Returns:
             Sorted list of non-overlapping {'action': str, 'span': Tuple[int, int], 'match': str}
         """
@@ -227,13 +227,13 @@ class LegalNERExtractor:
                     'match': match.group(0),
                     'priority': self.ACTION_PRIORITY.get(action, 99)
                 })
-        
+
         if not raw_actions:
             return []
-            
+
         # Sort by start position, then by priority
         raw_actions.sort(key=lambda x: (x['span'][0], x['priority'], -(x['span'][1] - x['span'][0])))
-        
+
         # Deduplicate overlapping matches
         filtered = []
         for act in raw_actions:
@@ -244,26 +244,26 @@ class LegalNERExtractor:
                     break
             if not overlap:
                 filtered.append(act)
-                
+
         filtered.sort(key=lambda x: x['span'][0])
         return filtered
-    
-    def _extract_references(self, texto: str) -> List[Dict[str, Any]]:
+
+    def _extract_references(self, texto: str) -> list[dict[str, Any]]:
         """
         Extract legal references strictly present within given text snippet.
-        
+
         Returns:
             List of reference dictionaries with tipo, numero, text, confidence
         """
         references = []
-        
+
         # 1. External law references (Lei X/YYYY)
         for match in self.LEI_PATTERN.finditer(texto):
             tipo_lei = match.group(1).strip()
             numero = match.group(2).strip()
             ano = match.group(3) if match.group(3) else ''
             ref_text = match.group(0)
-            
+
             references.append({
                 'tipo': tipo_lei.lower(),
                 'numero': f"{numero}/{ano}" if ano else numero,
@@ -275,7 +275,7 @@ class LegalNERExtractor:
                     'ano': ano
                 } if ano else None
             })
-        
+
         # 2. Strict "desta Lei" (self-reference)
         for match in self.DESTA_LEI_PATTERN.finditer(texto):
             references.append({
@@ -285,7 +285,7 @@ class LegalNERExtractor:
                 'confidence': 0.95,
                 'norma_info': None
             })
-        
+
         # 3. Article references
         for match in self.ARTICLE_PATTERN.finditer(texto):
             numero = match.group(2).strip()
@@ -296,7 +296,7 @@ class LegalNERExtractor:
                 'confidence': 0.9,
                 'norma_info': None
             })
-        
+
         # 4. Paragraph references
         for match in self.PARAGRAPH_PATTERN.finditer(texto):
             numero = match.group(1).strip() if match.group(1) else 'único'
@@ -307,7 +307,7 @@ class LegalNERExtractor:
                 'confidence': 0.9,
                 'norma_info': None
             })
-        
+
         # 5. Inciso references
         for match in self.INCISO_PATTERN.finditer(texto):
             numero = match.group(1).strip()
@@ -318,7 +318,7 @@ class LegalNERExtractor:
                 'confidence': 0.9,
                 'norma_info': None
             })
-        
+
         # 6. Alínea references
         for match in self.ALINEA_PATTERN.finditer(texto):
             numero = match.group(1).strip()
@@ -329,5 +329,5 @@ class LegalNERExtractor:
                 'confidence': 0.9,
                 'norma_info': None
             })
-        
+
         return references

@@ -9,15 +9,14 @@ Verifies:
 
 import json
 from unittest.mock import Mock, patch
+
 import pytest
 from django.test import RequestFactory, override_settings
 
 from src.apps.legislation.api_views import (
+    chat_session_regenerate_api,
     semantic_search_api,
-    rag_answer_api,
-    chat_session_regenerate_api
 )
-from src.apps.legislation.models import ChatSession, ChatMessage
 
 
 class TestAPIViews:

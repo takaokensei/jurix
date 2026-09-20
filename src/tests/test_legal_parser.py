@@ -3,7 +3,9 @@ Unit tests for LegalTextParser.
 Covers articles, paragraphs, incisos, alíneas, structural divisions, and hierarchy.
 """
 import textwrap
+
 import pytest
+
 from src.processing.legal_parser import LegalTextParser
 
 
@@ -15,9 +17,9 @@ def parser():
 def test_extract_articles_basic(parser):
     text = textwrap.dedent("""
     Art. 1º Esta Lei institui o Código Tributário Municipal.
-    
+
     Art. 2º O imposto é devido por pessoas físicas e jurídicas.
-    
+
     Art. 15-A Fica criado o regime simplificado.
     """).strip()
     articles = parser.extract_articles(text)
@@ -31,18 +33,18 @@ def test_extract_articles_basic(parser):
 def test_extract_paragraphs_numbered_and_unico(parser):
     text = textwrap.dedent("""
     Art. 5º O tributo incidirá anualmente.
-    
+
     § 1º O lançamento é feito de ofício.
-    
+
     § 2º A base de cálculo considerará o valor venal.
-    
+
     Art. 6º A alíquota é progressiva.
-    
+
     Parágrafo único. Nos imóveis residenciais haverá desconto.
     """).strip()
     paragraphs = parser.extract_paragraphs(text)
     assert len(paragraphs) == 3
-    
+
     nums = [p['numero'] for p in paragraphs]
     assert '1º' in nums
     assert '2º' in nums
@@ -60,11 +62,11 @@ def test_extract_incisos_and_alineas(parser):
     all_markers = parser._find_all_markers(text)
     incisos = parser.extract_incisos(text, all_markers)
     alineas = parser.extract_alineas(text, all_markers)
-    
+
     assert len(incisos) == 2
     assert incisos[0]['numero'] == 'I'
     assert incisos[1]['numero'] == 'II'
-    
+
     assert len(alineas) == 2
     assert alineas[0]['numero'] == 'a'
     assert alineas[1]['numero'] == 'b'
@@ -73,11 +75,11 @@ def test_extract_incisos_and_alineas(parser):
 def test_extract_divisions(parser):
     text = textwrap.dedent("""
     TÍTULO I - DOS PRINCÍPIOS FUNDAMENTAIS
-    
+
     CAPÍTULO I - DA TRIBUTAÇÃO
-    
+
     SEÇÃO I - DAS IMUNIDADES
-    
+
     Art. 1º São imunes aos impostos...
     """).strip()
     divisions = parser.extract_divisions(text)
@@ -91,45 +93,45 @@ def test_extract_divisions(parser):
 def test_parse_and_build_hierarchy_complete(parser):
     text = textwrap.dedent("""
     CAPÍTULO I - DO REGIME JURÍDICO
-    
+
     Art. 1º O IPTU incide sobre a propriedade predial e territorial.
-    
+
     § 1º O fato gerador ocorre no primeiro dia de cada exercício.
-    
+
     I - para terrenos edificados;
     II - para imóveis em construção.
-    
+
     a) com alvará expedido;
     b) sem alvará regular.
-    
+
     Parágrafo único. Aplica-se aos imóveis urbanos.
     """).strip()
     elements = parser.parse_legal_text(text)
     hierarchy = parser.build_hierarchy(elements)
-    
+
     assert len(hierarchy) >= 6
-    
+
     # Check Chapter
     capitulo = hierarchy[0]
     assert capitulo['tipo'] == 'capitulo'
     assert capitulo['parent_index'] is None
     assert capitulo['nivel'] == 0
     assert 'Capítulo I' in capitulo['caminho']
-    
+
     # Check Article (child of Chapter)
     artigo = hierarchy[1]
     assert artigo['tipo'] == 'artigo'
     assert artigo['parent_index'] == 0
     assert artigo['nivel'] == 1
     assert artigo['caminho'] == 'Capítulo I > Art. 1º'
-    
+
     # Check § 1º (child of Article)
     p1 = hierarchy[2]
     assert p1['tipo'] == 'paragrafo'
     assert p1['parent_index'] == 1
     assert p1['nivel'] == 2
     assert p1['caminho'] == 'Capítulo I > Art. 1º > § 1º'
-    
+
     # Check Inciso I (child of § 1º)
     inciso_i = hierarchy[3]
     assert inciso_i['tipo'] == 'inciso'
@@ -364,7 +366,8 @@ def test_full_division_hierarchy_paths_and_levels(parser):
 def test_new_chapter_closes_the_previous_section_and_new_title_closes_the_chapter(parser):
     by = {(e["tipo"], e["numero"]): e for e in parser.build_hierarchy(parser.parse_legal_text(FULL_LAW))}
     hier = parser.build_hierarchy(parser.parse_legal_text(FULL_LAW))
-    parent_of = lambda key: hier[by[key]["parent_index"]]["tipo"] if by[key]["parent_index"] is not None else None
+    def parent_of(key):
+        return hier[by[key]['parent_index']]['tipo'] if by[key]['parent_index'] is not None else None
     assert parent_of(("artigo", "3º")) == "capitulo"          # not the stale Seção I
     assert parent_of(("artigo", "4º")) == "titulo"            # not the stale Capítulo II
     assert by[("titulo", "II")]["parent_index"] is None

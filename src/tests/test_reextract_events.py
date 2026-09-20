@@ -4,6 +4,7 @@ Unit tests for reextract_events management command.
 
 from io import StringIO
 from unittest.mock import Mock, patch
+
 from django.core.management import call_command
 
 

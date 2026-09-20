@@ -8,6 +8,7 @@ Provides RESTful API endpoints for:
 """
 
 from django.urls import path
+
 from . import api_views
 
 app_name = 'legislation_api'
@@ -19,14 +20,14 @@ urlpatterns = [
         api_views.health_check_api,
         name='health_check'
     ),
-    
+
     # Semantic search endpoint
     path(
         'search/semantic/',
         api_views.semantic_search_api,
         name='semantic_search'
     ),
-    
+
     # RAG answer endpoint
     path(
         'search/answer/',
@@ -38,21 +39,21 @@ urlpatterns = [
         api_views.chatbot_stream_api,
         name='rag_answer_stream'
     ),
-    
+
     # Norma listing
     path(
         'normas/',
         api_views.norma_list_api,
         name='norma_list'
     ),
-    
+
     # Norma detail
     path(
         'normas/<int:pk>/',
         api_views.norma_detail_api,
         name='norma_detail'
     ),
-    
+
     # Chat sessions endpoints
     path(
         'chat/sessions/',

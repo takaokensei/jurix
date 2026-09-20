@@ -8,6 +8,7 @@ Verifies:
 """
 
 import pytest
+
 from src.processing.ner_extractor import LegalNERExtractor
 
 

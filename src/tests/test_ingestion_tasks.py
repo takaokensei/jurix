@@ -7,6 +7,7 @@ Verifies:
 """
 
 from unittest.mock import Mock, patch
+
 import pytest
 
 from src.apps.ingestion.tasks import _process_norma_data, bulk_ingest_normas_task
@@ -74,7 +75,7 @@ class TestConsolidationTaskReviewFlag:
     """Audit P0.3: a norma whose events could not be applied must be flagged."""
 
     def _make(self, with_events):
-        from src.apps.legislation.models import Norma, Dispositivo, EventoAlteracao
+        from src.apps.legislation.models import Dispositivo, EventoAlteracao
 
         base = Norma.objects.create(tipo="Lei", numero="1000", ano=2020, status="entities_extracted")
         Dispositivo.objects.create(norma=base, tipo="artigo", numero="1º", texto="Primeiro.", ordem=1)
@@ -162,6 +163,7 @@ class TestRagCacheInvalidation:
     def test_every_corpus_changing_task_invalidates_on_success(self, task_name):
         """Guard: the success path of each of these tasks must call the invalidator."""
         import inspect
+
         from src.apps.ingestion import tasks
 
         source = inspect.getsource(getattr(tasks, task_name))
@@ -173,7 +175,6 @@ class TestMarkNormaFailed:
     """Audit P2.2: five copies of the failure block, each with a bare `except: pass`."""
 
     def _norma(self):
-        from src.apps.legislation.models import Norma
         return Norma.objects.create(tipo="Lei", numero="9", ano=2020, status="consolidation")
 
     def test_marks_failed_flags_review_and_truncates_the_message(self):

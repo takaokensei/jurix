@@ -10,14 +10,12 @@ within an atomic transaction before inserting newly extracted events.
 
 import logging
 import time
-from typing import Optional
 
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
 from django.db.models import Count
 
-from src.apps.legislation.models import Norma, EventoAlteracao
 from src.apps.ingestion.tasks import extract_entities_task
+from src.apps.legislation.models import EventoAlteracao, Norma
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +53,9 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        norma_id: Optional[int] = options.get('norma_id')
+        norma_id: int | None = options.get('norma_id')
         sync_mode: bool = options.get('sync', True)
-        limit: Optional[int] = options.get('limit')
+        limit: int | None = options.get('limit')
 
         self.stdout.write(self.style.NOTICE('=' * 80))
         self.stdout.write(self.style.NOTICE('Re-extract Legal Alteration Events (Clean NER)'))
@@ -71,7 +69,7 @@ class Command(BaseCommand):
                 norma = Norma.objects.get(id=norma_id)
                 queryset = Norma.objects.filter(id=norma_id)
             except Norma.DoesNotExist:
-                raise CommandError(f'Norma with id={norma_id} does not exist.')
+                raise CommandError(f'Norma with id={norma_id} does not exist.') from None
         else:
             # Target all normas that have parsed/segmented dispositivos
             queryset = Norma.objects.filter(dispositivos__isnull=False).distinct().order_by('id')
@@ -114,13 +112,13 @@ class Command(BaseCommand):
         self.stdout.write(f'Successfully processed: {success_count}')
         if failure_count:
             self.stdout.write(self.style.ERROR(f'Failures: {failure_count}'))
-        
+
         if sync_mode:
             self.stdout.write(f'Previous total events: {initial_events_count}')
             self.stdout.write(f'Current total events:  {final_events_count}')
             diff = final_events_count - initial_events_count
             self.stdout.write(f'Net event delta:       {"+" if diff >= 0 else ""}{diff}')
-            
+
             # Action distribution breakdown
             distribution = dict(EventoAlteracao.objects.values_list('acao').annotate(Count('id')))
             self.stdout.write(f'Event actions breakdown: {distribution}')

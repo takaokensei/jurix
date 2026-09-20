@@ -11,11 +11,13 @@ Ollama runs on the host machine and is accessible via host.docker.internal:11434
 
 import json
 import logging
-from typing import List, Dict, Any, Optional, Generator
+from collections.abc import Generator
+from typing import Any
+
 import requests
+from django.conf import settings
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
-from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -23,28 +25,28 @@ logger = logging.getLogger(__name__)
 class OllamaService:
     """
     Service class for interacting with Ollama API.
-    
+
     Provides methods for embedding generation and text generation
     using Ollama models running on the host machine with persistent
     connection pooling.
     """
-    
-    def __init__(self, base_url: Optional[str] = None, model: str = "nomic-embed-text"):
+
+    def __init__(self, base_url: str | None = None, model: str = "nomic-embed-text"):
         """
         Initialize Ollama service with connection pooling.
-        
+
         Args:
             base_url: Base URL for Ollama API (defaults to settings.OLLAMA_BASE_URL)
             model: Default model to use for operations
         """
         self.base_url = (base_url or getattr(
-            settings, 
-            'OLLAMA_BASE_URL', 
+            settings,
+            'OLLAMA_BASE_URL',
             'http://host.docker.internal:11434'
         )).rstrip('/')
         self.model = model
         self.timeout = 60  # Seconds
-        
+
         # Connection pooling
         self.session = requests.Session()
         retries = Retry(
@@ -57,24 +59,24 @@ class OllamaService:
         self.session.mount('http://', adapter)
         self.session.mount('https://', adapter)
 
-    def generate_embedding(self, text: str, model: Optional[str] = None) -> Optional[List[float]]:
+    def generate_embedding(self, text: str, model: str | None = None) -> list[float] | None:
         """
         Generate embedding vector for given text using Ollama.
         Prefers the modern /api/embed endpoint with fallback to legacy /api/embeddings.
-        
+
         Args:
             text: Input text to embed
             model: Model to use (defaults to self.model)
-            
+
         Returns:
             List of floats representing the embedding vector, or None if failed
         """
         model = model or self.model
-        
+
         if not text or not text.strip():
             logger.warning("Empty text provided for embedding generation")
             return None
-            
+
         clean_text = text.strip()
 
         # 1. Attempt modern /api/embed endpoint (Ollama >= 0.1.30)
@@ -113,21 +115,21 @@ class OllamaService:
             return None
 
     def generate_text(
-        self, 
-        prompt: str, 
-        model: Optional[str] = None,
+        self,
+        prompt: str,
+        model: str | None = None,
         temperature: float = 0.7,
         max_tokens: int = 500
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Generate text completion synchronously using Ollama.
-        
+
         Args:
             prompt: Input prompt
             model: Model to use (defaults to llama3)
             temperature: Sampling temperature (0-1)
             max_tokens: Maximum tokens to generate
-            
+
         Returns:
             Generated text, or None if failed
         """
@@ -142,7 +144,7 @@ class OllamaService:
                 "num_predict": max_tokens
             }
         }
-        
+
         try:
             response = self.session.post(
                 url,
@@ -159,19 +161,19 @@ class OllamaService:
     def stream_text(
         self,
         prompt: str,
-        model: Optional[str] = None,
+        model: str | None = None,
         temperature: float = 0.7,
         max_tokens: int = 500
     ) -> Generator[str, None, None]:
         """
         Stream text completion from Ollama yielding chunks as they arrive.
-        
+
         Args:
             prompt: Input prompt
             model: Model to use (defaults to llama3)
             temperature: Sampling temperature (0-1)
             max_tokens: Maximum tokens to generate
-            
+
         Yields:
             Token/text chunks as strings
         """
@@ -186,7 +188,7 @@ class OllamaService:
                 "num_predict": max_tokens
             }
         }
-        
+
         try:
             response = self.session.post(
                 url,
@@ -195,7 +197,7 @@ class OllamaService:
                 timeout=self.timeout * 2
             )
             response.raise_for_status()
-            
+
             for line in response.iter_lines(decode_unicode=True):
                 if line:
                     try:
@@ -214,7 +216,7 @@ class OllamaService:
     def check_health(self) -> bool:
         """
         Check if Ollama service is accessible.
-        
+
         Returns:
             True if service is healthy, False otherwise
         """
@@ -227,10 +229,10 @@ class OllamaService:
             logger.error(f"Ollama service health check failed: {e}")
             return False
 
-    def list_models(self) -> List[Dict[str, Any]]:
+    def list_models(self) -> list[dict[str, Any]]:
         """
         List available models in Ollama.
-        
+
         Returns:
             List of model dictionaries
         """

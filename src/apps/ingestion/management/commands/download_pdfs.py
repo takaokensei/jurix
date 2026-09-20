@@ -7,14 +7,15 @@ Uso:
     python manage.py download_pdfs --status pending
 """
 
-from django.core.management.base import BaseCommand, CommandError
-from src.apps.legislation.models import Norma
+from django.core.management.base import BaseCommand
+
 from src.apps.ingestion.tasks import download_pdf_task
+from src.apps.legislation.models import Norma
 
 
 class Command(BaseCommand):
     help = 'Baixa PDFs de normas do SAPL de forma assíncrona'
-    
+
     def add_arguments(self, parser):
         parser.add_argument(
             '--all',
@@ -43,14 +44,14 @@ class Command(BaseCommand):
             action='store_true',
             help='Reprocessar normas que já têm PDF (sobrescrever)'
         )
-    
+
     def handle(self, *args, **options):
         download_all = options['all']
         limit = options['limit']
         status = options['status']
         is_sync = options['sync']
         force = options['force']
-        
+
         # Construir queryset
         if force:
             # Baixar todas, independente de já terem PDF
@@ -73,7 +74,7 @@ class Command(BaseCommand):
                     pdf_path=''
                 )
                 queryset = queryset.exclude(pdf_url='')
-        
+
         # Aplicar limite se especificado
         if limit:
             queryset = queryset[:limit]
@@ -88,32 +89,32 @@ class Command(BaseCommand):
                 if confirm.lower() != 's':
                     self.stdout.write(self.style.ERROR('Operação cancelada'))
                     return
-        
+
         normas = list(queryset)
         total = len(normas)
-        
+
         if total == 0:
             self.stdout.write(self.style.WARNING(
                 'Nenhuma norma encontrada para download'
             ))
             return
-        
+
         self.stdout.write(self.style.NOTICE(
             f'Iniciando download de {total} PDF(s)...'
         ))
-        
+
         if is_sync:
             self.stdout.write(self.style.WARNING(
                 'Modo SÍNCRONO ativado. Isso pode demorar...'
             ))
-        
+
         success_count = 0
         failed_count = 0
         task_ids = []
-        
+
         for i, norma in enumerate(normas, 1):
             self.stdout.write(f'[{i}/{total}] Processando {norma}...')
-            
+
             try:
                 if is_sync:
                     # Executar síncronamente
@@ -135,13 +136,13 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.NOTICE(
                         f'  → Task disparada: {task.id}'
                     ))
-            
+
             except Exception as e:
                 failed_count += 1
                 self.stdout.write(self.style.ERROR(
                     f'  ✗ Erro crítico: {str(e)}'
                 ))
-        
+
         # Resumo
         self.stdout.write('\n' + '='*50)
         if is_sync:

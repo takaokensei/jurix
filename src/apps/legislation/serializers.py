@@ -7,25 +7,25 @@ Provides centralized and consistent serialization for:
 - ChatMessage objects
 """
 import logging
-from typing import Dict, Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-def serialize_dispositivo_source(source: Dict[str, Any]) -> Dict[str, Any]:
+def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
     """
     Serialize a RAG source into a sanitized, frontend-ready dictionary.
     Handles both live Dispositivo model instances and cached dictionaries.
-    
+
     Args:
         source: Dictionary containing 'dispositivo' (or 'dispositivo_id'),
                 'similarity_score', 'distance', etc.
-                
+
     Returns:
         Structured dictionary with clean source metadata
     """
     disp = source.get('dispositivo')
-    
+
     # Cosine distance and similarity bounded strictly to [0.0, 1.0]
     raw_distance = source.get('distance', 1.0)
     try:
@@ -98,7 +98,7 @@ def serialize_dispositivo_source(source: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def serialize_chat_session(session: Any) -> Dict[str, Any]:
+def serialize_chat_session(session: Any) -> dict[str, Any]:
     """Serialize a ChatSession model instance (the single JSON shape used by every endpoint)."""
     return {
         'id': session.id,
@@ -110,7 +110,7 @@ def serialize_chat_session(session: Any) -> Dict[str, Any]:
     }
 
 
-def serialize_chat_message(message: Any) -> Dict[str, Any]:
+def serialize_chat_message(message: Any) -> dict[str, Any]:
     """
     Serialize a ChatMessage model instance.
 
