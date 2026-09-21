@@ -29,9 +29,17 @@ class LegalNERExtractor:
     """
 
     # Action verb patterns (Brazilian Portuguese legal language)
+    # Verbs that FOLLOW their reference: 'O art. 5º da Lei nº 123/2020 passa a vigorar com a
+    # seguinte redação'. The reference lies before the verb, so its scope is the sentence up to
+    # the verb instead of the text after it. This is the most common amendment wording.
+    TRAILING_ACTION_PATTERNS = {
+        'ALTERA': r'\bpassa(?:m)?\s+a\s+(?:vigorar|ter)\b',
+    }
+
     ACTION_PATTERNS = {
         'REVOGA': r'\b(revog[a-z]+|ficam?\s+revogad[oa]s?)\b',
-        'ALTERA': r'\b(alter[a-z]+|modific[a-z]+|ficam?\s+alterad[oa]s?)\b',
+        # 'dê-se ao art. 5º ...' and 'dá-se/fica dada nova redação ao art. 5º' precede their reference
+        'ALTERA': r'\b(alter[a-z]+|modific[a-z]+|ficam?\s+alterad[oa]s?|d[êe]-se|nova\s+reda[çc][ãa]o)\b',
         'ADICIONA': r'\b(adicion[a-z]+|acrescen[a-z]+|inclui[a-z]*|ficam?\s+adicionad[oa]s?)\b',
         'SUBSTITUI': r'\b(substitu[íi][a-z]*|ficam?\s+substitu[íi]d[oa]s?)\b',
         'REGULAMENTA': r'\b(regulamenta[a-z]*|disciplina[a-z]*)\b',
@@ -93,6 +101,10 @@ class LegalNERExtractor:
             action: re.compile(pattern, re.IGNORECASE)
             for action, pattern in self.ACTION_PATTERNS.items()
         }
+        self.trailing_regex = {
+            action: re.compile(pattern, re.IGNORECASE)
+            for action, pattern in self.TRAILING_ACTION_PATTERNS.items()
+        }
 
     def extract_events(
         self,
@@ -139,7 +151,12 @@ class LegalNERExtractor:
             # Exclusive context window: from action start to next action or delimiter
             context_start = action_span[0]
 
-            if i + 1 < num_actions:
+            if action_data.get('scope') == 'before':
+                # The reference precedes the verb: scope = this sentence, up to the verb
+                lower = detected_actions[i - 1]['span'][1] if i > 0 else 0
+                context_start = self._sentence_start(texto, lower, action_span[0])
+                context_end = action_span[1]
+            elif i + 1 < num_actions:
                 context_end = detected_actions[i + 1]['span'][0]
             else:
                 raw_window_end = len(texto)
@@ -211,6 +228,20 @@ class LegalNERExtractor:
 
         return events
 
+    @staticmethod
+    def _sentence_start(texto: str, lower: int, upper: int) -> int:
+        """Start of the sentence that ends at `upper`, never before `lower`.
+
+        A '.' or ';' ends a sentence unless it belongs to an abbreviation ('art.', 'nº', 'inc.').
+        """
+        start = lower
+        for m in re.finditer(r'[.;]', texto[lower:upper]):
+            prefix = texto[max(0, lower + m.start() - 5):lower + m.start()].lower()
+            if prefix.endswith(('art', 'nº', 'no', 'inc', 'arts')):
+                continue
+            start = lower + m.end()
+        return start
+
     def _detect_actions(self, texto: str) -> list[dict[str, Any]]:
         """
         Detect action verbs in text, deduplicating overlapping spans.
@@ -225,7 +256,17 @@ class LegalNERExtractor:
                     'action': action,
                     'span': match.span(),
                     'match': match.group(0),
-                    'priority': self.ACTION_PRIORITY.get(action, 99)
+                    'priority': self.ACTION_PRIORITY.get(action, 99),
+                    'scope': 'after',
+                })
+        for action, regex in self.trailing_regex.items():
+            for match in regex.finditer(texto):
+                raw_actions.append({
+                    'action': action,
+                    'span': match.span(),
+                    'match': match.group(0),
+                    'priority': self.ACTION_PRIORITY.get(action, 99),
+                    'scope': 'before',
                 })
 
         if not raw_actions:

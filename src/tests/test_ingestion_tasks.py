@@ -230,3 +230,76 @@ def test_no_bare_except_in_production_code():
                 offenders.append(f"{path.relative_to(src)}:{node.lineno}")
     assert offenders == []
 
+
+
+@pytest.mark.django_db
+class TestEndToEndConsolidationFromAmendingSentences:
+    """
+    Real extraction + real database + real engine: an amending law's sentences change the text of
+    the base law. The individual pieces were unit-tested; this proves they fit together, and that
+    the dangerous sentences are reported instead of applied.
+    """
+
+    def _run(self, *sentences):
+        from datetime import date
+
+        from src.apps.ingestion.tasks import consolidate_norma_task
+        from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
+        from src.processing.ner_extractor import LegalNERExtractor
+
+        base = Norma.objects.create(tipo="Lei", numero="123", ano=2020, status="entities_extracted",
+                                    data_publicacao=date(2020, 1, 1))
+        for i, (num, txt) in enumerate([("1º", "Objeto da lei."), ("5º", "Prazo antigo de dez dias."),
+                                        ("9º", "Disposição final antiga.")], start=1):
+            Dispositivo.objects.create(norma=base, tipo="artigo", numero=num, texto=txt, ordem=i)
+        amending = Norma.objects.create(tipo="Lei", numero="200", ano=2021, data_publicacao=date(2021, 5, 1))
+        extractor = LegalNERExtractor()
+        for order, sentence in enumerate(sentences, start=1):
+            fonte = Dispositivo.objects.create(norma=amending, tipo="artigo", numero=f"{order}º", texto=sentence, ordem=order)
+            for ev in extractor.extract_events(sentence):
+                EventoAlteracao.objects.create(
+                    dispositivo_fonte=fonte, acao=ev["acao"], target_text=ev["target_text"][:500], norma_alvo=base,
+                    extraction_confidence=ev["extraction_confidence"], extraction_method=ev["extraction_method"],
+                    referencia_tipo=ev["referencia_tipo"], referencia_numero=ev["referencia_numero"],
+                )
+        result = consolidate_norma_task(base.id)
+        base.refresh_from_db()
+        return result, base
+
+    def test_passa_a_vigorar_replaces_the_article_text(self):
+        result, base = self._run("O art. 5º da Lei nº 123/2020 passa a vigorar com a seguinte redação: “Art. 5º O prazo é de trinta dias.”")
+        assert result["events_applied"] == 1 and result["events_unresolved"] == 0
+        assert "O prazo é de trinta dias. (Redação dada pela Lei nº 200/2021)" in base.texto_consolidado
+        assert "Prazo antigo" not in base.texto_consolidado
+        assert "passa a vigorar" not in base.texto_consolidado       # the instruction is never the text
+        assert "Objeto da lei." in base.texto_consolidado             # neighbours untouched
+
+    def test_revocation_is_applied_and_neighbours_survive(self):
+        result, base = self._run("Fica revogado o art. 9º da Lei nº 123/2020.")
+        assert result["events_applied"] == 1
+        assert "Art. 9º (Revogado pela Lei nº 200/2021)" in base.texto_consolidado
+        assert "Disposição final antiga." not in base.texto_consolidado
+        assert "Prazo antigo de dez dias." in base.texto_consolidado
+
+    def test_revoking_a_paragraph_never_revokes_its_article(self):
+        result, base = self._run("Fica revogado o § 2º do art. 5º da Lei nº 123/2020.")
+        assert result["events_applied"] == 0 and result["needs_review"] is True
+        assert "Prazo antigo de dez dias." in base.texto_consolidado   # Art. 5º is still in force
+        assert "EVENTOS NÃO RESOLVIDOS" in base.texto_consolidado
+        assert "Revogado" not in base.texto_consolidado.split("EVENTOS NÃO RESOLVIDOS")[0]
+
+    def test_this_law_next_to_another_norm_is_reported_not_applied(self):
+        result, base = self._run("Fica revogado o art. 5º da Lei nº 123/2020, e o art. 9º desta Lei.")
+        # The extractor attributes art. 9º to Lei 123; the guard refuses to trust the sentence.
+        assert result["events_applied"] == 0
+        assert "Prazo antigo de dez dias." in base.texto_consolidado
+        assert "Disposição final antiga." in base.texto_consolidado
+
+    def test_mixed_sentences_apply_only_the_safe_ones(self):
+        result, base = self._run(
+            "Fica revogado o art. 9º da Lei nº 123/2020.",
+            "Fica revogado o § 2º do art. 5º da Lei nº 123/2020.",
+        )
+        assert result["events_applied"] == 1 and result["events_unresolved"] == 2
+        assert "Art. 9º (Revogado pela Lei nº 200/2021)" in base.texto_consolidado
+        assert "Prazo antigo de dez dias." in base.texto_consolidado

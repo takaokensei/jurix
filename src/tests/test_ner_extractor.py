@@ -91,3 +91,30 @@ class TestLegalNERExtractor:
         events = extractor.extract_events("Fica revogado o art. 5º-Aplicam-se demais regras.")
         artigos = [e for e in events if e['referencia_tipo'] == 'artigo']
         assert [e['referencia_numero'] for e in artigos] == ['5º']
+
+    # ---- the most common amendment wordings used to produce NO event at all ----
+    @pytest.mark.parametrize("text", [
+        "O art. 5º da Lei nº 123/2020 passa a vigorar com a seguinte redação: “Art. 5º O prazo é de 30 dias.”",
+        "O art. 5º da Lei nº 123/2020 passa a ter a seguinte redação: “Art. 5º Novo texto.”",
+        "Dê-se ao art. 5º da Lei nº 123/2020 a seguinte redação: “Art. 5º Novo texto.”",
+        "Dá-se nova redação ao art. 5º da Lei nº 123/2020.",
+        "Fica dada nova redação ao art. 5º da Lei nº 123/2020.",
+    ])
+    def test_common_amendment_wordings_yield_an_alteration(self, extractor, text):
+        events = extractor.extract_events(text)
+        altera = [e for e in events if e['acao'] == 'ALTERA' and e['referencia_tipo'] == 'artigo']
+        assert altera, f"no ALTERA event for: {text}"
+        assert altera[0]['referencia_numero'] == '5º'
+        assert (altera[0]['norma_referenciada'] or {}).get('numero') == '123'
+
+    def test_entry_into_force_is_not_an_alteration(self, extractor):
+        events = extractor.extract_events("Esta Lei entra em vigor na data de sua publicação.")
+        assert [e for e in events if e['acao'] == 'ALTERA'] == []
+
+    def test_plain_citation_stays_a_reference_not_an_alteration(self, extractor):
+        events = extractor.extract_events("Nos termos do art. 5º da Lei nº 123/2020, o prazo é de 30 dias.")
+        assert {e['acao'] for e in events} == {'REFERENCIA'}
+
+    def test_revocation_wording_is_unchanged(self, extractor):
+        events = extractor.extract_events("Fica revogado o art. 5º da Lei nº 123/2020.")
+        assert [(e['acao'], e['referencia_numero']) for e in events] == [('REVOGA', '5º')]

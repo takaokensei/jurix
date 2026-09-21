@@ -13,6 +13,8 @@ import re
 from datetime import date
 from typing import Any
 
+from src.processing.target_resolver import RESOLVABLE_ACTIONS, article_key, resolve_targets
+
 logger = logging.getLogger(__name__)
 
 
@@ -199,6 +201,11 @@ class ConsolidationEngine:
         self.unresolved_eventos = []
         self.applied_events = 0
         additions: dict[tuple, dict[str, Any]] = {}
+        # Targets are resolved in memory (never persisted) and only when unambiguous.
+        resolutions = resolve_targets(self.eventos, self.dispositivos)
+        # One sentence often yields the same event twice (e.g. ALTERA for the instruction and
+        # for the quoted 'Art. 5º'): count it once.
+        applied_keys: set[tuple] = set()
 
         for evento in self.eventos:
             acao = (evento.acao or '').upper()
@@ -217,9 +224,20 @@ class ConsolidationEngine:
             if acao not in self.APPLYING_ACTIONS:
                 continue  # REGULAMENTA / REFERENCIA: informational only
 
+            resolved_here = False
+            if target is None and acao in RESOLVABLE_ACTIONS:
+                resolution = resolutions.get(evento.id)
+                if resolution is not None and resolution.dispositivo is not None:
+                    target, resolved_here = resolution.dispositivo, True
+                elif resolution is not None:
+                    self._mark_unresolved(evento, ref_str, resolution.reason)
+                    continue
+
             if target is None:
                 self._mark_unresolved(evento, ref_str, 'dispositivo alvo não identificado')
                 continue
+
+            applied_key = (target.id, acao, getattr(evento, 'dispositivo_fonte_id', None))
 
             if acao == 'REVOGA':
                 self.revoked_dispositivos[target.id] = {
@@ -229,20 +247,30 @@ class ConsolidationEngine:
                 # If previously altered, revocation overrides it
                 if target.id in self.altered_dispositivos:
                     del self.altered_dispositivos[target.id]
-                self.applied_events += 1
+                if applied_key not in applied_keys:
+                    applied_keys.add(applied_key)
+                    self.applied_events += 1
                 logger.debug(f"Dispositivo {target.id} marked as revoked by {ref_str}")
 
             elif acao in ('ALTERA', 'SUBSTITUI'):
+                if resolved_here:
+                    # Only the quoted new wording may become the text, never the sentence
+                    # that instructs the change ('Altera o art. 5º ...').
+                    new_text, why = self._new_wording(evento, fonte)
+                    if new_text is None:
+                        self._mark_unresolved(evento, ref_str, why)
+                        continue
+                else:
+                    # The new text comes from target_text or the source dispositivo's text
+                    new_text = ""
+                    if evento.target_text and not evento.target_text.lower().startswith('art'):
+                        new_text = evento.target_text.strip()
+                    elif fonte and fonte.texto:
+                        new_text = fonte.texto.strip()
+
                 # If device is revoked, subsequent alteration might restore or redefine it
                 if target.id in self.revoked_dispositivos:
                     del self.revoked_dispositivos[target.id]
-
-                # The new text comes from target_text or the source dispositivo's text
-                new_text = ""
-                if evento.target_text and not evento.target_text.lower().startswith('art'):
-                    new_text = evento.target_text.strip()
-                elif fonte and fonte.texto:
-                    new_text = fonte.texto.strip()
 
                 self.altered_dispositivos[target.id] = {
                     'evento': evento,
@@ -250,15 +278,42 @@ class ConsolidationEngine:
                     'new_text': new_text,
                     'norma_ref': ref_str,
                 }
-                self.applied_events += 1
+                if applied_key not in applied_keys:
+                    applied_keys.add(applied_key)
+                    self.applied_events += 1
                 logger.debug(f"Dispositivo {target.id} marked as altered by {ref_str}")
 
         self.added_dispositivos = list(additions.values())
         self._place_additions()
 
+    @staticmethod
+    def _new_wording(evento, fonte) -> tuple[str | None, str]:
+        """
+        New wording for an altered ARTICLE, taken from the quoted passage of the amending text.
+
+        Returns (text, '') or (None, reason). Refuses when the wording cannot be extracted, or
+        when it carries paragraphs/incisos: the article already has its own children, so
+        applying it would duplicate them.
+        """
+        text, extracted = ConsolidationEngine._extract_added_text(
+            fonte.texto if fonte else '', 'artigo', evento.referencia_numero
+        )
+        if not extracted:
+            return None, 'nova redação não extraída do texto alterador'
+        if '§' in text or re.search(r'(?:^|\s)(?:IX|IV|V?I{1,3}|VI{0,3}|X)\s*[-–—]\s', text):
+            return None, 'a nova redação inclui subdispositivos (§/incisos)'
+        return text, ''
+
     def _mark_unresolved(self, evento, ref_str: str, reason: str):
-        """Record an applying event that could not be applied to the text."""
+        """Record an applying event that could not be applied to the text (once per sentence)."""
+        key = (
+            getattr(evento, 'dispositivo_fonte_id', None), (evento.acao or '').upper(),
+            evento.referencia_tipo, evento.referencia_numero, reason,
+        )
+        if any(item['key'] == key for item in self.unresolved_eventos):
+            return
         self.unresolved_eventos.append({
+            'key': key,
             'evento': evento,
             'norma_ref': ref_str,
             'reason': reason,
@@ -269,10 +324,7 @@ class ConsolidationEngine:
     @staticmethod
     def _article_key(numero) -> tuple[int, str] | None:
         """'2º' -> (2, ''), '2º-A' -> (2, 'A'). None when not an article number."""
-        m = re.match(r'^\s*(\d+)\s*[ºª°o]?\s*(?:-\s*([A-Za-z]+))?\s*[.,]?\s*$', str(numero or ''))
-        if not m:
-            return None
-        return (int(m.group(1)), (m.group(2) or '').upper())
+        return article_key(numero)
 
     @staticmethod
     def _label(tipo: str, numero: str) -> str:
