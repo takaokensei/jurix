@@ -189,8 +189,10 @@ class TestRAGService:
         query_text = "nova query"
         results = service.semantic_search(query_text, k=5)
 
-        # Verify Ollama was called (without model parameter in current implementation)
-        mock_ollama.generate_embedding.assert_called_once_with(query_text.strip())
+        # Verify Ollama uses the same embedding model as retrieval.
+        mock_ollama.generate_embedding.assert_called_once_with(
+            query_text.strip(), model=service.model
+        )
 
         # Verify embedding was cached
         service.cache.set_embedding.assert_called_once_with(
@@ -358,7 +360,33 @@ class TestRAGService:
         assert result['answer'] == 'Nova resposta atualizada.'
         mock_ollama.generate_text.assert_called_once()
 
+    def test_semantic_search_restricts_results_to_active_embedding_model(self, monkeypatch):
+        from unittest.mock import MagicMock
+        from src.processing.rag_service import RAGService
+        ollama = MagicMock()
+        ollama.generate_embedding.return_value = [0.1] * 768
+        monkeypatch.setattr('src.processing.rag_service.OllamaService', lambda **_: ollama)
+        cursor = MagicMock()
+        cursor.description = []
+        cursor.fetchall.return_value = []
+        connection = MagicMock()
+        connection.vendor = 'postgresql'
+        connection.cursor.return_value.__enter__.return_value = cursor
+        monkeypatch.setattr('src.processing.rag_service.connection', connection)
+        service = RAGService(model='nomic-embed-text', use_cache=False)
+        assert service.semantic_search('zoneamento', k=5) == []
+        sql, params = cursor.execute.call_args.args
+        assert 'embedding_model = %s' in sql
+        assert 'nomic-embed-text' in params
 
+    def test_semantic_search_rejects_unexpected_embedding_dimension(self, monkeypatch):
+        from unittest.mock import MagicMock
+        from src.processing.rag_service import RAGService
+        ollama = MagicMock()
+        ollama.generate_embedding.return_value = [0.1] * 3
+        monkeypatch.setattr('src.processing.rag_service.OllamaService', lambda **_: ollama)
+        service = RAGService(model='nomic-embed-text', use_cache=False)
+        assert service.semantic_search('zoneamento') == []
 
 
 class TestPromptConstruction:

@@ -10,6 +10,7 @@ import re
 from collections.abc import Generator
 from typing import Any
 
+from django.conf import settings
 from django.db import connection
 
 from src.apps.legislation.models import Dispositivo
@@ -39,6 +40,8 @@ IMPORTANTE: Formate sua resposta em Markdown para melhor legibilidade:
 - Use **negrito** para destacar nomes de leis, artigos e termos jurídicos importantes
 - Use listas com bullet points (- ou •) para enumerar regras, requisitos ou condições
 - **CRÍTICO**: Cada item de lista DEVE estar em uma linha separada. Use quebra de linha ANTES de cada bullet point
+- NUNCA coloque múltiplos itens de lista na mesma linha; cada item
+  deve começar em uma linha própria, mesmo que os itens sejam separados por ponto e vírgula
 - Separe parágrafos claramente com quebras de linha duplas
 - Use ### para subtítulos quando necessário organizar a resposta
 
@@ -74,7 +77,7 @@ RESPOSTA:"""
         # that happens to contain '@@QUESTION@@' is not rewritten.
         return re.sub(r"@@(CONTEXT|QUESTION)@@", lambda m: values[m.group(1)], cls.PROMPT_TEMPLATE)
 
-    def __init__(self, model: str = "nomic-embed-text", use_cache: bool = True):
+    def __init__(self, model: str | None = None, use_cache: bool = True):
         """
         Initialize RAG service.
 
@@ -82,8 +85,8 @@ RESPOSTA:"""
             model: Ollama model to use for query embeddings
             use_cache: Enable Redis caching for embeddings and results
         """
-        self.ollama = OllamaService(model=model)
-        self.model = model
+        self.model = model or settings.OLLAMA_EMBEDDING_MODEL
+        self.ollama = OllamaService(model=self.model)
         self.use_cache = use_cache
         self.cache = get_cache_service() if use_cache else None
 
@@ -128,7 +131,7 @@ RESPOSTA:"""
 
         # Step 2: Generate embedding if not cached
         if not query_embedding:
-            query_embedding = self.ollama.generate_embedding(query_text.strip())
+            query_embedding = self.ollama.generate_embedding(query_text.strip(), model=self.model)
 
             if not query_embedding:
                 logger.error("Failed to generate embedding for query")
@@ -139,6 +142,9 @@ RESPOSTA:"""
                 self.cache.set_embedding(query_text.strip(), self.model, query_embedding)
 
         logger.debug(f"Query embedding dimension: {len(query_embedding)}")
+        if len(query_embedding) != 768:
+            logger.error("Embedding model %s returned dimension %s; expected 768", self.model, len(query_embedding))
+            return []
 
         # Step 2: Execute vector similarity search using raw SQL
         if getattr(connection, 'vendor', '') == 'sqlite':
@@ -190,9 +196,10 @@ RESPOSTA:"""
                 (embedding <=> %s::vector) as distance
             FROM legislation_dispositivo
             WHERE embedding IS NOT NULL
+              AND embedding_model = %s
         """
 
-        params = [query_embedding, query_embedding]
+        params = [query_embedding, query_embedding, self.model]
 
         # Add norma filter if specified
         if norma_id:
@@ -539,8 +546,6 @@ RESPOSTA:"""
         - Lists without proper line breaks (e.g., "• Item 1; • Item 2" → "• Item 1\n• Item 2")
         - Multiple bullet points on same line
         """
-        import re
-
         # Fix: Multiple bullet points on same line separated by semicolons
         # Pattern: "• Text1; • Text2" → "• Text1\n• Text2"
         text = re.sub(

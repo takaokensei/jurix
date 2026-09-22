@@ -34,6 +34,10 @@ class InvalidLLMParams(ValueError):
     """The client sent a parameter that is malformed or not allowed (HTTP 400)."""
 
 
+class RateLimitBackendUnavailable(RuntimeError):
+    """The rate-limit cache backend is unavailable."""
+
+
 def parse_k(value: Any) -> int:
     """Return ``k`` clamped to [1, LLM_MAX_K]; reject non-integers."""
     if value is None or value == '':
@@ -127,10 +131,10 @@ def check_rate_limit(request: HttpRequest, scope: str = 'llm') -> int | None:
     try:
         cache.add(key, 0, timeout=window)
         count = cache.incr(key)
-    except Exception:
-        # Fail open: losing the limiter is better than losing the site.
-        logger.warning("Rate limiter unavailable; allowing request", exc_info=True)
-        return None
+    except Exception as exc:
+        # Redis outage must not turn the limiter into unlimited model access.
+        logger.error("Rate limiter backend unavailable", exc_info=True)
+        raise RateLimitBackendUnavailable from exc
 
     if count > limit:
         return max(1, window - (now % window))
@@ -139,7 +143,17 @@ def check_rate_limit(request: HttpRequest, scope: str = 'llm') -> int | None:
 
 def rate_limit_response(request: HttpRequest, scope: str = 'llm') -> JsonResponse | None:
     """Return a 429 response when the client is over the limit, else None."""
-    retry_after = check_rate_limit(request, scope)
+    try:
+        retry_after = check_rate_limit(request, scope)
+    except RateLimitBackendUnavailable:
+        return JsonResponse(
+            {
+                'success': False,
+                'error': 'Serviço temporariamente indisponível. Tente novamente em instantes.',
+            },
+            status=503,
+            headers={'Retry-After': '5'},
+        )
     if retry_after is None:
         return None
     response = JsonResponse({

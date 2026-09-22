@@ -249,7 +249,7 @@ ollama pull llama3
 # 3. Configure variáveis de ambiente
 cp .env.example .env
 # Edite .env com suas configurações:
-# OLLAMA_HOST=http://host.docker.internal:11434
+# OLLAMA_BASE_URL=http://host.docker.internal:11434
 # SAPL_API_URL=https://camaranatal.rn.gov.br/sapl/api/
 # POSTGRES_PASSWORD=seu_password_seguro
 
@@ -312,7 +312,7 @@ docker-compose exec web python manage.py createsuperuser
 docker-compose exec web python manage.py collectstatic --noinput
 
 # 🧪 Testing
-docker-compose exec web pytest tests/
+docker-compose exec web pytest src/tests/
 docker-compose exec web python manage.py test --parallel
 
 # 📊 Monitoring
@@ -329,7 +329,7 @@ source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate     # Windows
 
 # 2. Instale dependências
-pip install -r requirements/development.txt
+pip install -r requirements.txt
 
 # 3. Configure PostgreSQL local + pgvector
 createdb jurix_db
@@ -801,9 +801,9 @@ docker-compose exec db psql -U jurix -d jurix_db
 
 # 🤖 Teste Ollama manualmente
 docker-compose exec web python -c "
-from llm_engine.ollama_client import OllamaClient
-client = OllamaClient()
-print(client.generate('Teste de conexão'))
+from src.llm_engine.ollama_service import OllamaService
+service = OllamaService(model='llama3')
+print(service.generate_text('Teste de conexão'))
 "
 
 # 📝 Logs estruturados

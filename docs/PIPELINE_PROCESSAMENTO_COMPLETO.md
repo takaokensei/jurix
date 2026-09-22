@@ -67,11 +67,11 @@ docker-compose exec web python manage.py bulk_consolidation --all --sync
 ### 5️⃣ Embeddings (Indexação pgvector para RAG)
 
 ```bash
-docker-compose exec web python manage.py bulk_embed --all --sync
+docker-compose exec web python manage.py bulk_embed --all --batch-size 16
 ```
 
 **O que faz:**
-- Gera embeddings vetoriais (768d) para cada dispositivo usando Ollama
+- Gera embeddings vetoriais (768d) em lotes usando o endpoint `/api/embed` do Ollama
 - Indexa no pgvector para busca semântica
 - Habilita o RAG (Retrieval-Augmented Generation)
 

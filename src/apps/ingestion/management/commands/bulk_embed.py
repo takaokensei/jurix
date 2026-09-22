@@ -7,10 +7,8 @@ Dispatches generate_embedding_task for dispositivos without embeddings.
 
 import logging
 
-from django.core.management.base import BaseCommand, CommandError
-
-from src.apps.ingestion.tasks import generate_embedding_task
-from src.apps.legislation.models import Dispositivo
+from django.core.management import call_command
+from django.core.management.base import BaseCommand
 
 logger = logging.getLogger(__name__)
 
@@ -75,174 +73,24 @@ class Command(BaseCommand):
             default=None,
             help='Process only dispositivos from a specific norma'
         )
+        parser.add_argument(
+            '--batch-size',
+            type=int,
+            default=16,
+            help='Items per Ollama /api/embed request; delegates to bulk_embed_batch.',
+        )
 
     def handle(self, *args, **options):
         """Execute the bulk embedding generation."""
-        process_all: bool = options['all']
-        limit: int | None = options['limit']
-        offset: int = options['offset']
-        sync_mode: bool = options['sync']
-        force: bool = options['force']
-        dispositivo_id: int | None = options['dispositivo_id']
-        model: str = options['model']
-        norma_id: int | None = options['norma_id']
-
-        self.stdout.write(self.style.NOTICE('=' * 80))
-        self.stdout.write(self.style.NOTICE('Embedding Generation - Bulk Processing'))
-        self.stdout.write(self.style.NOTICE('=' * 80))
-
-        # Specific dispositivo by ID
-        if dispositivo_id:
-            try:
-                dispositivo = Dispositivo.objects.get(id=dispositivo_id)
-                self.stdout.write(
-                    self.style.WARNING(f'\n🎯 Processing specific Dispositivo: {dispositivo}')
-                )
-
-                if sync_mode:
-                    result = generate_embedding_task(dispositivo.id, model=model)
-                    self._display_result(result)
-                else:
-                    task = generate_embedding_task.delay(dispositivo.id, model=model)
-                    self.stdout.write(
-                        self.style.SUCCESS(f'✓ Task dispatched: {task.id}')
-                    )
-
-                return
-
-            except Dispositivo.DoesNotExist:
-                raise CommandError(f'Dispositivo with ID={dispositivo_id} not found') from None
-
-        # Build queryset based on options
-        if force:
-            queryset = Dispositivo.objects.all()
-            self.stdout.write(
-                self.style.WARNING('\n🔄 Force mode: Re-generating embeddings for all dispositivos')
-            )
-        else:
-            queryset = Dispositivo.objects.filter(embedding__isnull=True)
-
-        # Filter by norma if specified
-        if norma_id:
-            queryset = queryset.filter(norma_id=norma_id)
-            self.stdout.write(
-                self.style.WARNING(f'\n📝 Filtering by Norma ID={norma_id}')
-            )
-
-        # Apply ordering, offset, and limit
-        queryset = queryset.select_related('norma').order_by('id')[offset:]
-
-        # Apply limit if specified, or if --all is not set and no limit, ask for confirmation
-        if limit:
-            queryset = queryset[:limit]
-        elif not process_all:
-            # If not --all and not --limit, ask for confirmation if count > 10
-            count = queryset.count()
-            if count > 10:
-                self.stdout.write(self.style.WARNING(
-                    f'You are about to process embeddings for {count} dispositivos.'
-                ))
-                confirm = input('Continue? (y/N): ')
-                if confirm.lower() != 'y':
-                    self.stdout.write(self.style.ERROR('Operation cancelled'))
-                    return
-
-        total = queryset.count()
-
-        if total == 0:
-            self.stdout.write(
-                self.style.WARNING(
-                    '\n⚠️  No dispositivos found matching criteria. '
-                    'Try --force flag to regenerate embeddings.'
-                )
-            )
-            return
-
-        self.stdout.write(
-            self.style.NOTICE(f'\n📊 Found {total} dispositivo(s) to process')
+        # Compatibility facade: use one operational implementation for bulk embedding.
+        call_command(
+            'bulk_embed_batch',
+            batch_size=options['batch_size'],
+            limit=options.get('limit'),
+            offset=options['offset'],
+            force=options['force'],
+            model=options['model'],
+            dispositivo_id=options.get('dispositivo_id'),
+            norma_id=options.get('norma_id'),
         )
-        self.stdout.write(self.style.NOTICE(f'   Offset: {offset}'))
-        self.stdout.write(self.style.NOTICE(f'   Limit: {limit if limit else "None (all)"}'))
-        self.stdout.write(self.style.NOTICE(f'   Model: {model}'))
-        self.stdout.write(
-            self.style.NOTICE(f'   Mode: {"Synchronous (blocking)" if sync_mode else "Async (Celery)"}')
-        )
-        self.stdout.write(self.style.NOTICE('-' * 80))
-
-        # Process dispositivos
-        success_count = 0
-        failure_count = 0
-
-        for idx, dispositivo in enumerate(queryset, start=1):
-            self.stdout.write(
-                f'\n[{idx}/{total}] Processing: {dispositivo} (ID={dispositivo.id})'
-            )
-
-            try:
-                if sync_mode:
-                    # Synchronous execution (blocking)
-                    result = generate_embedding_task(dispositivo.id, model=model)
-
-                    if result.get('success'):
-                        success_count += 1
-                        self.stdout.write(
-                            self.style.SUCCESS(
-                                f'  ✓ SUCCESS: dimension={result.get("embedding_dimension", 0)}, '
-                                f'text_length={result.get("text_length", 0)}, '
-                                f'time={result.get("processing_time", 0):.2f}s'
-                            )
-                        )
-                    else:
-                        failure_count += 1
-                        self.stdout.write(
-                            self.style.ERROR(
-                                f'  ✗ FAILED: {result.get("error", "Unknown error")}'
-                            )
-                        )
-                else:
-                    # Asynchronous execution via Celery
-                    task = generate_embedding_task.delay(dispositivo.id, model=model)
-                    success_count += 1
-                    self.stdout.write(
-                        self.style.SUCCESS(f'  ✓ Task dispatched: {task.id}')
-                    )
-
-            except Exception as e:
-                failure_count += 1
-                self.stdout.write(
-                    self.style.ERROR(f'  ✗ ERROR: {str(e)}')
-                )
-                logger.error(f'Error processing Dispositivo {dispositivo.id}: {e}', exc_info=True)
-
-        # Summary
-        self.stdout.write(self.style.NOTICE('\n' + '=' * 80))
-        self.stdout.write(self.style.NOTICE('SUMMARY'))
-        self.stdout.write(self.style.NOTICE('=' * 80))
-        self.stdout.write(f'Total processed: {total}')
-        self.stdout.write(self.style.SUCCESS(f'✓ Success: {success_count}'))
-
-        if failure_count > 0:
-            self.stdout.write(self.style.ERROR(f'✗ Failures: {failure_count}'))
-
-        if not sync_mode:
-            self.stdout.write(
-                self.style.WARNING(
-                    '\n💡 Tasks are running asynchronously. '
-                    'Check Celery worker logs for results.'
-                )
-            )
-
-        self.stdout.write(self.style.NOTICE('=' * 80))
-
-    def _display_result(self, result: dict):
-        """Display detailed result for a single task execution."""
-        if result.get('success'):
-            self.stdout.write(self.style.SUCCESS('\n✓ SUCCESS'))
-            self.stdout.write(f'  Embedding dimension: {result.get("embedding_dimension", 0)}')
-            self.stdout.write(f'  Text length: {result.get("text_length", 0)}')
-            self.stdout.write(f'  Model: {result.get("model", "unknown")}')
-            self.stdout.write(f'  Processing time: {result.get("processing_time", 0):.2f}s')
-        else:
-            self.stdout.write(self.style.ERROR('\n✗ FAILED'))
-            self.stdout.write(self.style.ERROR(f'  Error: {result.get("error", "Unknown")}'))
-
+        return

@@ -211,7 +211,7 @@ class OllamaService:
                         continue
         except Exception as e:
             logger.error(f"Error streaming text from Ollama: {e}", exc_info=True)
-            yield f"\n[Erro na geração via streaming: {e}]"
+            yield "\n[Erro ao gerar resposta. Tente novamente.]"
 
     def check_health(self) -> bool:
         """

@@ -80,7 +80,7 @@ class CacheService:
 
     def _generate_key(self, prefix: str, text: str) -> str:
         """
-        Generate cache key from text using MD5 hash.
+        Generate cache key from text using SHA-256 hash.
 
         Args:
             prefix: Cache key prefix
@@ -89,7 +89,7 @@ class CacheService:
         Returns:
             Cache key string
         """
-        text_hash = hashlib.md5(text.encode('utf-8')).hexdigest()
+        text_hash = hashlib.sha256(text.encode('utf-8')).hexdigest()
         return f"{prefix}{text_hash}"
 
     def get_embedding(self, query_text: str, model: str) -> list[float] | None:

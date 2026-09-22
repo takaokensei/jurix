@@ -250,11 +250,14 @@ class TestRateLimit:
         c = self._hit(Client(), REMOTE_ADDR="10.0.0.1", HTTP_X_FORWARDED_FOR="7.7.7.7, 8.8.8.8")
         assert (a.status_code, b.status_code, c.status_code) == (200, 429, 200)
 
-    def test_cache_outage_fails_open(self, settings):
-        """If Redis is down the site must keep answering, not 500."""
+    def test_cache_outage_fails_closed(self, settings):
+        """A Redis outage must not disable rate limiting for LLM endpoints."""
         settings.LLM_RATE_LIMIT_REQUESTS = 1
         broken = MagicMock()
         broken.add.side_effect = ConnectionError("redis down")
         with patch("src.apps.legislation.api_limits.cache", broken):
-            assert self._hit(Client()).status_code == 200
-            assert self._hit(Client()).status_code == 200
+            first = self._hit(Client())
+            second = self._hit(Client())
+        assert first.status_code == 503
+        assert second.status_code == 503
+        assert first["Retry-After"] == "5"

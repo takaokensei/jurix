@@ -92,11 +92,6 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
-    
-    - name: Check code quality
-      run: |
-        # Add linting checks here if needed
-        echo "Code quality checks passed"
 
   lint:
     runs-on: ubuntu-latest

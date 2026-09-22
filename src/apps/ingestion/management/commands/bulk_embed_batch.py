@@ -8,14 +8,42 @@ Processes multiple dispositivos in batches to reduce API calls to Ollama.
 import logging
 import time
 
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Q
+from django.utils import timezone
 
 from src.apps.legislation.models import Dispositivo
 from src.llm_engine.ollama_service import OllamaService
 from src.processing.cache_service import get_cache_service
 
 logger = logging.getLogger(__name__)
+
+
+def generate_embeddings_batch(
+    ollama: OllamaService, texts: list[str], model: str
+) -> list[list[float]] | None:
+    """Use Ollama's batch endpoint, with legacy single-input fallback."""
+    if not texts:
+        return []
+    if any(not text.strip() for text in texts):
+        raise ValueError('Embedding inputs must not be empty')
+    try:
+        response = ollama.session.post(
+            f'{ollama.base_url}/api/embed',
+            json={'model': model, 'input': texts},
+            timeout=ollama.timeout,
+        )
+        if response.status_code == 200:
+            embeddings = response.json().get('embeddings', [])
+            return embeddings if len(embeddings) == len(texts) else None
+        if response.status_code not in (404, 405):
+            logger.error('Ollama /api/embed returned HTTP %s', response.status_code)
+            return None
+    except Exception:
+        logger.warning('Ollama batch embedding request failed', exc_info=True)
+        return None
+    return [ollama.generate_embedding(text, model=model) for text in texts]
 
 
 class Command(BaseCommand):
@@ -56,40 +84,63 @@ class Command(BaseCommand):
         parser.add_argument(
             '--model',
             type=str,
-            default='nomic-embed-text',
-            help='Ollama model to use for embeddings (default: nomic-embed-text)'
+            default=None,
+            help='Ollama embedding model (default: OLLAMA_EMBEDDING_MODEL)',
         )
 
         parser.add_argument(
             '--use-cache',
+            dest='use_cache',
             action='store_true',
             default=True,
             help='Use Redis cache for embeddings (default: True)'
         )
 
+        parser.add_argument(
+            '--no-cache', dest='use_cache', action='store_false',
+            help='Disable Redis embedding cache',
+        )
+
+        parser.add_argument('--dispositivo-id', type=int, default=None)
+        parser.add_argument('--norma-id', type=int, default=None)
+        parser.add_argument(
+            '--sync', action='store_true',
+            help='Compatibility flag; this command is synchronous.',
+        )
+
     def handle(self, *args, **options):
         """Execute the batch embedding generation."""
         batch_size: int = options['batch_size']
-        limit: int = options.get('limit')
+        limit: int | None = options.get('limit')
         offset: int = options['offset']
         force: bool = options['force']
-        model: str = options['model']
+        model: str = options['model'] or settings.OLLAMA_EMBEDDING_MODEL
         use_cache: bool = options['use_cache']
+        dispositivo_id: int | None = options.get('dispositivo_id')
+        norma_id: int | None = options.get('norma_id')
+
+        if batch_size <= 0:
+            raise CommandError('--batch-size must be greater than zero')
 
         self.stdout.write(self.style.NOTICE('=' * 80))
         self.stdout.write(self.style.NOTICE('Batch Embedding Generation - Optimized'))
         self.stdout.write(self.style.NOTICE('=' * 80))
 
         # Build queryset
-        if force:
+        if dispositivo_id is not None:
+            queryset = Dispositivo.objects.filter(id=dispositivo_id)
+        elif force:
             queryset = Dispositivo.objects.all()
             self.stdout.write(
                 self.style.WARNING('\n🔄 Force mode: Re-generating all embeddings')
             )
         else:
             queryset = Dispositivo.objects.filter(
-                Q(embedding__isnull=True) | Q(embedding=[])
+                Q(embedding__isnull=True) | ~Q(embedding_model=model)
             )
+
+        if norma_id:
+            queryset = queryset.filter(norma_id=norma_id)
 
         # Apply ordering, offset, and limit
         queryset = queryset.select_related('norma', 'dispositivo_pai').order_by('id')[offset:]
@@ -138,56 +189,72 @@ class Command(BaseCommand):
             )
 
             batch_start = time.time()
-
-            # Process each dispositivo in the batch
+            pending: list[tuple[Dispositivo, str]] = []
+            embeddings_by_id: dict[int, list[float]] = {}
             for disp in batch:
-                try:
-                    # Prepare text for embedding
-                    norma = disp.norma
-                    context_parts = [
-                        f"{norma.tipo} {norma.numero}/{norma.ano}",
-                        f"{disp.get_full_identifier()}",
-                        disp.texto
-                    ]
+                norma = disp.norma
+                context_parts = [
+                    f"{norma.tipo} {norma.numero}/{norma.ano}",
+                    f"{disp.get_full_identifier()}",
+                    disp.texto,
+                ]
+                if disp.dispositivo_pai:
+                    context_parts.insert(2, f"Contexto: {disp.dispositivo_pai}")
+                embedding_text = " | ".join(context_parts)
+                embedding = cache.get_embedding(embedding_text, model) if cache else None
+                if embedding:
+                    embeddings_by_id[disp.id] = embedding
+                    cache_hits += 1
+                else:
+                    pending.append((disp, embedding_text))
 
-                    if disp.dispositivo_pai:
-                        context_parts.insert(2, f"Contexto: {disp.dispositivo_pai}")
+            if pending:
+                texts = [text for _, text in pending]
+                generated = generate_embeddings_batch(ollama, texts, model)
+                if (
+                    generated is None
+                    or len(generated) != len(pending)
+                    or any(e is None for e in generated)
+                ):
+                    failure_count += len(pending)
+                    logger.error('Unexpected batch embedding result for %s items', len(pending))
+                else:
+                    for (disp, text), embedding in zip(pending, generated, strict=True):
+                        if len(embedding) != 768:
+                            failure_count += 1
+                            logger.error(
+                                'Unexpected embedding dimension for Dispositivo ID=%s: '
+                                'expected=768 got=%s',
+                                disp.id, len(embedding),
+                            )
+                            continue
+                        embeddings_by_id[disp.id] = embedding
+                        if cache:
+                            try:
+                                cache.set_embedding(text, model, embedding)
+                            except Exception:
+                                logger.warning(
+                                    'Embedding cache write failed for Dispositivo ID=%s',
+                                    disp.id, exc_info=True,
+                                )
 
-                    embedding_text = " | ".join(context_parts)
+            to_update = []
+            for disp in batch:
+                embedding = embeddings_by_id.get(disp.id)
+                if embedding is None:
+                    continue
+                disp.embedding = embedding
+                disp.embedding_model = model
+                disp.embedding_generated_at = timezone.now()
+                to_update.append(disp)
 
-                    # Try cache first
-                    embedding = None
-                    if use_cache and cache:
-                        embedding = cache.get_embedding(embedding_text, model)
-                        if embedding:
-                            cache_hits += 1
-
-                    # Generate embedding if not cached
-                    if not embedding:
-                        embedding = ollama.generate_embedding(embedding_text, model=model)
-
-                        if not embedding:
-                            raise Exception("Failed to generate embedding (None returned)")
-
-                        # Cache the generated embedding
-                        if use_cache and cache:
-                            cache.set_embedding(embedding_text, model, embedding)
-
-                    # Store embedding
-                    from datetime import datetime
-                    disp.embedding = embedding
-                    disp.embedding_model = model
-                    disp.embedding_generated_at = datetime.now()
-                    disp.save(update_fields=['embedding', 'embedding_model', 'embedding_generated_at', 'updated_at'])
-
-                    success_count += 1
-
-                except Exception as e:
-                    failure_count += 1
-                    self.stdout.write(
-                        self.style.ERROR(f'  ✗ Failed: {disp} - {str(e)}')
-                    )
-                    logger.error(f'Error processing Dispositivo {disp.id}: {e}', exc_info=True)
+            if to_update:
+                Dispositivo.objects.bulk_update(
+                    to_update,
+                    ['embedding', 'embedding_model', 'embedding_generated_at', 'updated_at'],
+                    batch_size=batch_size,
+                )
+                success_count += len(to_update)
 
             batch_time = time.time() - batch_start
             self.stdout.write(
@@ -217,4 +284,3 @@ class Command(BaseCommand):
         self.stdout.write(f'\n⏱️  Total time: {total_time:.2f}s')
         self.stdout.write(f'   Average: {total/total_time:.1f} items/sec')
         self.stdout.write(self.style.NOTICE('=' * 80))
-
