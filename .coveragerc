@@ -1,0 +1,12 @@
+[run]
+source = src
+# Test files count as 100% covered and used to inflate the total (57% reported vs
+# 43% real); migrations are exercised by the database, not by unit tests.
+omit =
+    src/tests/*
+    */migrations/*
+
+[report]
+# Ratchet, not a target: measured 50.3% on the code under test. Raise it as coverage
+# improves; never lower it. Enforced by CI (pytest-cov reads this file).
+fail_under = 48

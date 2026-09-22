@@ -7,14 +7,15 @@ Usage:
     python manage.py bulk_ocr --status pdf_downloaded --sync
 """
 
-from django.core.management.base import BaseCommand, CommandError
-from src.apps.legislation.models import Norma
+from django.core.management.base import BaseCommand
+
 from src.apps.ingestion.tasks import ocr_pdf_task
+from src.apps.legislation.models import Norma
 
 
 class Command(BaseCommand):
     help = 'Process PDFs with Tesseract OCR to extract text'
-    
+
     def add_arguments(self, parser):
         parser.add_argument(
             '--all',
@@ -43,14 +44,14 @@ class Command(BaseCommand):
             action='store_true',
             help='Reprocess normas that already have OCR completed'
         )
-    
+
     def handle(self, *args, **options):
         process_all = options['all']
         limit = options['limit']
         status = options['status']
         is_sync = options['sync']
         force = options['force']
-        
+
         # Build queryset
         if force:
             # Reprocess all with given status
@@ -58,10 +59,10 @@ class Command(BaseCommand):
         else:
             # Only process pdf_downloaded normas (not yet OCR'd)
             queryset = Norma.objects.filter(status='pdf_downloaded')
-        
+
         # Exclude normas without PDF path
         queryset = queryset.exclude(pdf_path='')
-        
+
         # Apply limit if specified
         if limit:
             queryset = queryset[:limit]
@@ -76,32 +77,32 @@ class Command(BaseCommand):
                 if confirm.lower() != 'y':
                     self.stdout.write(self.style.ERROR('Operation cancelled'))
                     return
-        
+
         normas = list(queryset)
         total = len(normas)
-        
+
         if total == 0:
             self.stdout.write(self.style.WARNING(
                 'No normas found for OCR processing'
             ))
             return
-        
+
         self.stdout.write(self.style.NOTICE(
             f'Starting OCR processing for {total} norma(s)...'
         ))
-        
+
         if is_sync:
             self.stdout.write(self.style.WARNING(
                 'SYNC mode enabled. This may take a while...'
             ))
-        
+
         success_count = 0
         failed_count = 0
         task_ids = []
-        
+
         for i, norma in enumerate(normas, 1):
             self.stdout.write(f'[{i}/{total}] Processing {norma}...')
-            
+
             try:
                 if is_sync:
                     # Execute synchronously
@@ -125,13 +126,13 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.NOTICE(
                         f'  → Task dispatched: {task.id}'
                     ))
-            
+
             except Exception as e:
                 failed_count += 1
                 self.stdout.write(self.style.ERROR(
                     f'  ✗ Critical error: {str(e)}'
                 ))
-        
+
         # Summary
         self.stdout.write('\n' + '='*50)
         if is_sync:

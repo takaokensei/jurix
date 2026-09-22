@@ -39,7 +39,7 @@ jobs:
       DJANGO_SETTINGS_MODULE: config.settings
       DATABASE_URL: postgresql://jurix:testpassword@localhost:5432/jurix_test
       REDIS_URL: redis://localhost:6379/0
-      SECRET_KEY: test-secret-key-for-ci
+      DJANGO_SECRET_KEY: test-secret-key-for-ci
       DEBUG: "False"
     
     steps:
@@ -112,15 +112,37 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 black isort
-    
-    - name: Check code formatting
-      run: |
-        # Check if black would make changes
-        black --check src/ || echo "⚠️ Code formatting issues found (not blocking)"
-    
-    - name: Check import sorting
-      run: |
-        # Check if isort would make changes
-        isort --check-only src/ || echo "⚠️ Import sorting issues found (not blocking)"
+        pip install ruff==0.8.4
 
+    - name: Run Ruff linter
+      run: |
+        ruff check src/
+
+    # Advisory on purpose. The previous `black --check` (default 88 columns) disagreed
+    # with the project's ruff config (100) and had never passed. Promote this to a
+    # blocking step after a one-time `ruff format src/` commit.
+    - name: Check formatting (advisory)
+      continue-on-error: true
+      run: |
+        ruff format --check src/
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: npm
+        cache-dependency-path: tests/js/package-lock.json
+
+    - name: Install test dependencies
+      working-directory: tests/js
+      run: npm ci
+
+    - name: XSS tests for the chat frontend
+      working-directory: tests/js
+      run: npm test

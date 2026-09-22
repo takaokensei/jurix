@@ -1,12 +1,13 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Norma, Dispositivo, EventoAlteracao, ChatSession, ChatMessage
+
+from .models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
 
 
 @admin.register(Norma)
 class NormaAdmin(admin.ModelAdmin):
     list_display = (
-        'tipo', 'numero', 'ano', 'status_badge', 
+        'tipo', 'numero', 'ano', 'status_badge',
         'data_publicacao', 'data_vigencia', 'vacatio_status', 'created_at'
     )
     list_filter = ('tipo', 'ano', 'status', 'needs_review', 'data_publicacao')
@@ -14,7 +15,7 @@ class NormaAdmin(admin.ModelAdmin):
     ordering = ('-ano', '-numero')
     date_hierarchy = 'data_publicacao'
     readonly_fields = ('created_at', 'updated_at', 'sapl_metadata')
-    
+
     fieldsets = (
         ('Identificação', {
             'fields': ('tipo', 'numero', 'ano', 'ementa', 'observacao')
@@ -37,7 +38,7 @@ class NormaAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
+
     def status_badge(self, obj):
         """Exibe badge colorido para o status."""
         colors = {
@@ -53,7 +54,7 @@ class NormaAdmin(admin.ModelAdmin):
             obj.get_status_display()
         )
     status_badge.short_description = 'Status'
-    
+
     def vacatio_status(self, obj):
         """Indica se está em vacatio legis."""
         if obj.is_em_vacatio_legis():
@@ -69,12 +70,12 @@ class DispositivoAdmin(admin.ModelAdmin):
     search_fields = ('texto', 'numero', 'norma__numero', 'norma__tipo')
     ordering = ('norma', 'ordem')
     readonly_fields = ('created_at', 'updated_at', 'embedding_generated_at')
-    
+
     def texto_preview(self, obj):
         """Preview do texto (primeiros 100 caracteres)."""
         return obj.texto[:100] + ('...' if len(obj.texto) > 100 else '')
     texto_preview.short_description = 'Texto'
-    
+
     def has_embedding(self, obj):
         """Indica se tem embedding."""
         return '✅' if obj.embedding else '❌'
@@ -97,7 +98,7 @@ class ChatSessionAdmin(admin.ModelAdmin):
     search_fields = ('title', 'user__username')
     ordering = ('-updated_at',)
     readonly_fields = ('created_at', 'updated_at')
-    
+
     def message_count(self, obj):
         """Conta mensagens na sessão."""
         return obj.messages.count()
@@ -111,7 +112,7 @@ class ChatMessageAdmin(admin.ModelAdmin):
     search_fields = ('content', 'session__title', 'session__user__username')
     ordering = ('-created_at',)
     readonly_fields = ('created_at', 'updated_at')
-    
+
     def content_preview(self, obj):
         """Preview do conteúdo."""
         return obj.content[:100] + ('...' if len(obj.content) > 100 else '')

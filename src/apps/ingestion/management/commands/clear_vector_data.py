@@ -24,11 +24,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         recreate = options['recreate_column']
-        
+
         self.stdout.write(self.style.WARNING('=' * 80))
         self.stdout.write(self.style.WARNING('Vector Data Cleanup'))
         self.stdout.write(self.style.WARNING('=' * 80))
-        
+
         with connection.cursor() as cursor:
             if recreate:
                 self.stdout.write(self.style.NOTICE('Recreating embedding column...'))
@@ -48,7 +48,7 @@ class Command(BaseCommand):
                 self.stdout.write(
                     self.style.SUCCESS(f'✓ Cleared embeddings for {affected} dispositivos')
                 )
-        
+
         self.stdout.write(self.style.SUCCESS('=' * 80))
         self.stdout.write(self.style.SUCCESS('Cleanup completed successfully!'))
 
