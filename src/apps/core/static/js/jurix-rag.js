@@ -1,4 +1,4 @@
-/* Jurix RAG UI — Phase 2 */
+/* Jurix RAG UI — Phase 2, 3 & 4 */
 (function () {
     'use strict';
 
@@ -10,7 +10,7 @@
             'table', 'thead', 'tbody', 'tr', 'th', 'td',
             'a', 'hr', 'span', 'div'
         ],
-        ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'class'],
+        ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'class', 'data-source-index', 'aria-label'],
         FORBID_TAGS: ['style', 'script', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'svg', 'math'],
         FORBID_ATTR: ['style', 'onclick', 'onerror', 'onload', 'src', 'srcset', 'poster', 'action', 'formaction'],
         ALLOW_UNKNOWN_PROTOCOLS: false,
@@ -29,6 +29,9 @@
 
     function renderMarkdown(markdown) {
         const source = String(markdown || '');
+        if (window.JurixMarkdown && typeof window.JurixMarkdown.render === 'function') {
+            return window.JurixMarkdown.render(source);
+        }
         if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
             return `<p>${escapeHtml(source)}</p>`;
         }
@@ -150,15 +153,6 @@
         if (live) live.textContent = message || '';
     }
 
-    window.JurixRagUI = {
-        scheduleRender,
-        flushRender,
-        setStreamingState,
-        renderErrorState,
-        enhanceSources,
-        announce,
-    };
-})();
     function safeHttpUrl(value) {
         if (!value) return null;
         try {
@@ -222,6 +216,7 @@
         return `
             <article
                 class="source-card jurix-rag-source jurix-rag-source--${band}"
+                id="jurix-evidence-${index + 1}"
                 aria-label="${escapeHtml(cardLabel)}"
                 data-evidence-rank="${index + 1}"
                 data-evidence-band="${band}"
@@ -259,4 +254,34 @@
             </article>
         `;
     }
+
+    function focusEvidence(index) {
+        const target = document.getElementById(`jurix-evidence-${Number(index)}`);
+        if (!target) {
+            announce(`Fonte ${Number(index)} não encontrada.`);
+            return;
+        }
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.add('is-citation-target');
+        window.setTimeout(() => target.classList.remove('is-citation-target'), 1400);
+        announce(`Fonte ${Number(index)} destacada.`);
+    }
+
+    document.addEventListener('click', (event) => {
+        const citation = event.target.closest ? event.target.closest('.jurix-citation[data-source-index]') : null;
+        if (!citation) return;
+        event.preventDefault();
+        focusEvidence(citation.dataset.sourceIndex);
+    });
+
+    window.JurixRagUI = {
+        scheduleRender,
+        flushRender,
+        setStreamingState,
+        renderErrorState,
+        enhanceSources,
+        announce,
         renderEvidenceCard,
+        focusEvidence,
+    };
+})();

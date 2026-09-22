@@ -1,0 +1,153 @@
+.jurix-legal-answer {
+    color: var(--figma-text-primary, var(--color-text-primary, #e2e8f0));
+    line-height: 1.72;
+}
+
+.jurix-legal-answer > :first-child { margin-top: 0; }
+.jurix-legal-answer > :last-child { margin-bottom: 0; }
+
+.jurix-legal-answer h1,
+.jurix-legal-answer h2,
+.jurix-legal-answer h3,
+.jurix-legal-answer h4 {
+    font-family: var(--font-serif, Lora, serif);
+    color: var(--figma-text-primary, #f8fafc);
+    letter-spacing: -0.015em;
+    margin: 1.25rem 0 0.55rem;
+}
+
+.jurix-legal-answer h1 { font-size: 1.18rem; }
+.jurix-legal-answer h2 { font-size: 1.08rem; }
+.jurix-legal-answer h3 { font-size: 1rem; }
+.jurix-legal-answer h4 { font-size: 0.94rem; }
+
+.jurix-legal-answer p,
+.jurix-legal-answer ul,
+.jurix-legal-answer ol,
+.jurix-legal-answer blockquote,
+.jurix-legal-answer table,
+.jurix-legal-answer pre { margin-block: 0.7rem; }
+
+.jurix-legal-answer ul,
+.jurix-legal-answer ol { padding-left: 1.35rem; }
+.jurix-legal-answer li + li { margin-top: 0.28rem; }
+
+.jurix-legal-answer blockquote:not(.jurix-callout) {
+    margin-inline: 0;
+    padding: 0.8rem 1rem;
+    border-left: 3px solid rgba(96, 165, 250, 0.55);
+    color: var(--figma-text-secondary, #cbd5e1);
+    background: rgba(15, 23, 42, 0.42);
+    border-radius: 0 10px 10px 0;
+}
+
+.jurix-callout {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.65rem;
+    margin: 0.9rem 0;
+    padding: 0.8rem 0.95rem;
+    border: 1px solid var(--jurix-rag-evidence-border, rgba(96, 165, 250, 0.22));
+    border-radius: 12px;
+    background: var(--jurix-rag-evidence-surface, rgba(15, 23, 42, 0.76));
+}
+
+.jurix-callout > strong {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    align-self: start;
+}
+.jurix-callout > span { color: var(--figma-text-secondary, #cbd5e1); }
+.jurix-callout--vigencia { border-left: 3px solid var(--jurix-rag-success, #34d399); }
+.jurix-callout--atencao { border-left: 3px solid var(--jurix-rag-warning, #fbbf24); }
+.jurix-callout--revogacao { border-left: 3px solid #f87171; }
+.jurix-callout--jurisprudencia { border-left: 3px solid #a78bfa; }
+
+.jurix-citation {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.4em;
+    height: 1.4em;
+    margin-inline: 0.08em;
+    padding-inline: 0.24em;
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    border-radius: 5px;
+    background: rgba(59, 130, 246, 0.12);
+    color: #93c5fd;
+    font-size: 0.76em;
+    line-height: 1;
+    text-decoration: none;
+    vertical-align: 0.12em;
+    transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.jurix-citation:hover,
+.jurix-citation:focus-visible {
+    border-color: rgba(147, 197, 253, 0.7);
+    background: rgba(59, 130, 246, 0.24);
+    color: #dbeafe;
+}
+
+.jurix-rag-source.is-citation-target {
+    border-color: rgba(147, 197, 253, 0.78);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    animation: jurix-evidence-highlight 1.2s ease-out;
+}
+
+.jurix-legal-answer table {
+    width: 100%;
+    border-collapse: collapse;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 10px;
+}
+
+.jurix-legal-answer th,
+.jurix-legal-answer td {
+    padding: 0.58rem 0.7rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    text-align: left;
+    vertical-align: top;
+}
+
+.jurix-legal-answer th {
+    background: rgba(30, 41, 59, 0.72);
+    color: var(--figma-text-primary, #f8fafc);
+    font-size: 0.78rem;
+}
+
+.jurix-legal-answer code {
+    padding: 0.12em 0.32em;
+    border-radius: 4px;
+    background: rgba(15, 23, 42, 0.72);
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.9em;
+}
+
+.jurix-legal-answer pre {
+    overflow-x: auto;
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 10px;
+    background: rgba(2, 6, 23, 0.62);
+}
+
+@keyframes jurix-evidence-highlight {
+    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.25); }
+    100% { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0); }
+}
+
+@media (max-width: 700px) {
+    .jurix-callout { grid-template-columns: 1fr; gap: 0.35rem; }
+    .jurix-legal-answer table { display: block; overflow-x: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .jurix-citation,
+    .jurix-rag-source.is-citation-target {
+        transition: none;
+        animation: none;
+    }
+}

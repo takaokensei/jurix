@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}">
     <link rel="stylesheet" href="{% static 'css/workspace.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-rag.css' %}">
+    <link rel="stylesheet" href="{% static 'css/jurix-markdown.css' %}">
 </head>
 <body class="figma-theme"
       data-chatbot-url="{% url 'workspace:assistant' %}"
@@ -506,6 +507,7 @@
     <!-- Jurix Configuration: read from data-* attributes on <body> by config.js (CSP: no inline script) -->
     <script src="{% static 'js/config.js' %}"></script>
     <script src="{% static 'js/theme.js' %}"></script>
+    <script src="{% static 'js/jurix-markdown.js' %}"></script>
     <script src="{% static 'js/jurix-rag.js' %}"></script>
     <script src="{% static 'js/chat.js' %}"></script>
     <script src="{% static 'js/command_palette.js' %}"></script>

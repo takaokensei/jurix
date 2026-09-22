@@ -80,6 +80,9 @@
     };
 
     function renderMarkdown(text) {
+        if (window.JurixMarkdown && typeof window.JurixMarkdown.render === 'function') {
+            return window.JurixMarkdown.render(text);
+        }
         return DOMPurify.sanitize(marked.parse(text), SANITIZE_CONFIG);
     }
 
@@ -695,7 +698,7 @@
                     <span class="message-role">Jurix</span>
                     <span class="message-time">${timestamp}</span>
                 </div>
-                <div class="message-body" id="${messageId}"></div>
+                <div class="message-body jurix-legal-answer" id="${messageId}"></div>
                 <div class="message-actions">
                     <button class="regenerate-button" id="regenerate-${Date.now()}" aria-label="Tentar novamente" title="Tentar novamente" style="display: none;">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
