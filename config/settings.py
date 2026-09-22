@@ -203,14 +203,25 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
-# Cache Configuration (Redis)
+# Cache Configuration (Redis with LocMem fallback for local development)
 REDIS_URL = os.getenv('REDIS_URL', 'redis://redis:6379/0')
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': REDIS_URL,
+USE_LOCMEM_CACHE = os.getenv('USE_LOCMEM_CACHE', 'False').lower() in ('1', 'true', 'yes')
+
+if USE_LOCMEM_CACHE or use_sqlite or REDIS_URL in ('locmem', 'locmem://', ''):
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'jurix-local-cache',
+        }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+        }
+    }
+
 
 
 # Ollama Configuration
