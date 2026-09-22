@@ -141,6 +141,38 @@ RESPOSTA:"""
         logger.debug(f"Query embedding dimension: {len(query_embedding)}")
 
         # Step 2: Execute vector similarity search using raw SQL
+        if getattr(connection, 'vendor', '') == 'sqlite':
+            # Fallback for SQLite in local development without pgvector extension
+            qs = Dispositivo.objects.all().select_related('norma', 'dispositivo_pai')
+            if norma_id:
+                qs = qs.filter(norma_id=norma_id)
+            query_terms = [t.lower() for t in query_text.split() if len(t) > 2]
+            results = []
+            for d in qs[:50]:
+                text = (d.texto or '').lower()
+                matches = sum(1 for term in query_terms if term in text) if query_terms else 1
+                sim = min(0.95, 0.4 + (matches / max(len(query_terms), 1)) * 0.5) if matches > 0 else 0.3
+                results.append({
+                    'dispositivo': d,
+                    'similarity_score': sim,
+                    'distance': 1.0 - sim,
+                    'context': {
+                        'norma': {
+                            'id': d.norma.id,
+                            'tipo': d.norma.tipo,
+                            'numero': d.norma.numero,
+                            'ano': d.norma.ano,
+                            'ementa': d.norma.ementa[:200] if d.norma.ementa else None,
+                        },
+                        'hierarchy': d.get_caminho_completo(),
+                        'parent': str(d.dispositivo_pai) if d.dispositivo_pai else None,
+                    },
+                    'embedding_model': 'sqlite-fallback',
+                })
+            results.sort(key=lambda r: r['similarity_score'], reverse=True)
+            return results[:k]
+
+
         # Using <=> operator for cosine distance (pgvector vector_cosine_ops)
         # Lower distance = more similar
         # Similarity = 1 - distance
