@@ -9,10 +9,24 @@
 
     // ===== CONFIGURATION =====
     const config = window.JURIX_CONFIG || {
-        chatbotUrl: '/normas/chatbot/',
+        chatbotUrl: '/assistente/',
         logoIconUrl: '/static/img/logo-icon.svg',
         userName: 'Admin',
     };
+
+    function getSessionSlugFromPath() {
+        const pathname = window.location.pathname.replace(/\/+$/, '');
+        const configuredBase = String(config.chatbotUrl || '/assistente/').replace(/\/+$/, '');
+        if (pathname.startsWith(`${configuredBase}/`)) {
+            return pathname.slice(configuredBase.length + 1).split('/')[0] || null;
+        }
+        const legacyMarker = '/chatbot/';
+        const legacyIndex = pathname.indexOf(legacyMarker);
+        if (legacyIndex >= 0) {
+            return pathname.slice(legacyIndex + legacyMarker.length).split('/')[0] || null;
+        }
+        return null;
+    }
 
     // ===== MARKED.JS CONFIGURATION =====
     if (typeof marked !== 'undefined') {
@@ -215,9 +229,7 @@
                 emptyState.remove();
             }
 
-            const currentPath = window.location.pathname;
-            const pathParts = currentPath.split('/chatbot/');
-            const sessionSlug = pathParts.length > 1 && pathParts[1] ? pathParts[1].replace('/', '') : null;
+            const sessionSlug = getSessionSlugFromPath();
             const isInNewConversation = !sessionSlug && !currentSessionId;
 
             data.sessions.forEach((session, index) => {
@@ -294,9 +306,7 @@
         const newChatBtn = document.getElementById('new-chat-button');
         if (!newChatBtn) return;
 
-        const currentPath = window.location.pathname;
-        const pathParts = currentPath.split('/chatbot/');
-        const sessionSlug = pathParts.length > 1 && pathParts[1] ? pathParts[1].replace('/', '') : null;
+        const sessionSlug = getSessionSlugFromPath();
 
         if (!sessionSlug && !currentSessionId) {
             newChatBtn.disabled = true;
@@ -868,6 +878,7 @@
                     </svg>
                     <span>${sortedSources.length} ${sortedSources.length === 1 ? 'Fonte' : 'Fontes'}</span>
                 </div>
+                <div class="jurix-rag-evidence-caption">Evidências recuperadas para esta resposta</div>
                 <div class="sources-grid"></div>
             </div>
         `;
@@ -905,19 +916,19 @@
         let scorePercent = Math.round(normalizedScore * 100);
         scorePercent = Math.max(1, Math.min(100, scorePercent));
 
-        const scoreColor =
+        const scoreClass =
             scorePercent >= 80
-                ? 'var(--color-success)'
+                ? 'score-fill-high'
                 : scorePercent >= 60
-                ? 'var(--color-warning)'
-                : 'var(--color-text-muted)';
+                ? 'score-fill-medium'
+                : 'score-fill-low';
 
         const normaRef = source.norma || source.norma_ref || 'Norma';
         const dispositivoRef = source.dispositivo_ref || '';
         const snippet = source.text || source.full_text || '';
         const linkUrl = safeHttpUrl(source.pdf_url) || safeHttpUrl(source.sapl_url);
 
-        const cardClasses = linkUrl ? 'source-card source-card-clickable' : 'source-card';
+        const cardClasses = linkUrl ? 'source-card source-card-clickable jurix-rag-source' : 'source-card jurix-rag-source';
         const dataUrlAttr = linkUrl ? `data-url="${escapeAttr(linkUrl)}"` : '';
 
         return `
@@ -926,7 +937,7 @@
                     <div class="source-title">${escapeHtml(normaRef)}</div>
                     <div class="source-score">
                         <div class="score-bar">
-                            <div class="score-fill" style="width: ${scorePercent}%; background: ${scoreColor};"></div>
+                            <div class="score-fill ${scoreClass}" data-score="${scorePercent}"></div>
                         </div>
                         <span>${scorePercent}%</span>
                     </div>
@@ -1072,8 +1083,7 @@
 
     // ===== INITIALIZATION =====
     async function initializeChatbot() {
-        const pathParts = window.location.pathname.split('/chatbot/');
-        const sessionSlug = pathParts.length > 1 && pathParts[1] ? pathParts[1].replace('/', '') : null;
+        const sessionSlug = getSessionSlugFromPath();
 
         if (sessionSlug) {
             try {
@@ -1236,7 +1246,7 @@
                     <span class="message-role">Jurix</span>
                     <span class="message-time">${timestamp}</span>
                 </div>
-                <div class="message-body" id="${messageId}"></div>
+                <div class="message-body jurix-rag-answer" id="${messageId}"></div>
                 <div class="message-actions">
                     <button class="regenerate-button" id="regenerate-${Date.now()}" aria-label="Tentar novamente" title="Tentar novamente" style="display: none;">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1292,7 +1302,9 @@
         });
 
         if (!response.ok || !response.body) {
-            throw new Error(`HTTP ${response.status}`);
+            const error = new Error(`HTTP ${response.status}`);
+            error.status = response.status;
+            throw error;
         }
 
         const reader = response.body.getReader();
@@ -1342,10 +1354,12 @@
                         (chunk) => {
                             accumulatedText += chunk;
                             if (streamElements && streamElements.messageBody) {
-                                try {
+                                if (window.JurixRagUI) {
+                                    window.JurixRagUI.setStreamingState(streamElements.messageBody, true);
+                                    window.JurixRagUI.scheduleRender(streamElements.messageBody, accumulatedText);
+                                    window.JurixRagUI.announce('Gerando resposta…');
+                                } else {
                                     streamElements.messageBody.innerHTML = renderMarkdown(accumulatedText);
-                                } catch (e) {
-                                    streamElements.messageBody.textContent = accumulatedText;
                                 }
                                 scrollToBottomIfAtBottom();
                             }
@@ -1354,9 +1368,17 @@
                             finalSources = sources || [];
                             if (streamElements && streamElements.sourcesContainer && finalSources.length > 0) {
                                 showSourcesGradually(streamElements.sourcesContainer, finalSources);
+                                window.requestAnimationFrame(() => {
+                                    if (window.JurixRagUI) window.JurixRagUI.enhanceSources(streamElements.sourcesContainer);
+                                });
                             }
                         },
                         async (doneData) => {
+                            if (streamElements && window.JurixRagUI) {
+                                window.JurixRagUI.flushRender(streamElements.messageBody, doneData.answer || accumulatedText);
+                                window.JurixRagUI.setStreamingState(streamElements.messageBody, false);
+                                window.JurixRagUI.announce('Resposta concluída.');
+                            }
                             if (streamElements) {
                                 if (streamElements.copyButton) {
                                     streamElements.copyButton.setAttribute('data-markdown', doneData.answer || accumulatedText);
@@ -1382,8 +1404,19 @@
                             }
                         },
                         (errorMsg) => {
-                            if (streamElements && streamElements.messageBody) {
-                                streamElements.messageBody.innerHTML += `<p style="color: var(--color-error);">${escapeHtml(errorMsg)}</p>`;
+                            if (streamElements && streamElements.messageBody && window.JurixRagUI) {
+                                window.JurixRagUI.renderErrorState(
+                                    streamElements.messageBody,
+                                    errorMsg,
+                                    () => {
+                                        const retryTextarea = document.getElementById('question-textarea');
+                                        const retryForm = document.getElementById('chat-form');
+                                        if (retryTextarea && retryForm) {
+                                            retryTextarea.value = question;
+                                            retryForm.dispatchEvent(new Event('submit'));
+                                        }
+                                    }
+                                );
                             }
                         }
                     );
@@ -1409,7 +1442,11 @@
                             }),
                         });
 
-                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        if (!response.ok) {
+                            const error = new Error(`HTTP error! status: ${response.status}`);
+                            error.status = response.status;
+                            throw error;
+                        }
 
                         const data = await response.json();
                         removeLoadingMessage(loadingId);
@@ -1435,7 +1472,22 @@
                     } catch (batchError) {
                         removeLoadingMessage(loadingId);
                         console.error('Request error:', batchError);
-                        addErrorMessage('Erro de conexão. Verifique sua conexão e tente novamente.');
+                        if (window.JurixRagUI) {
+                            window.JurixRagUI.renderErrorState(
+                                document.getElementById('messages-wrapper'),
+                                batchError,
+                                () => {
+                                        const retryTextarea = document.getElementById('question-textarea');
+                                        const retryForm = document.getElementById('chat-form');
+                                        if (retryTextarea && retryForm) {
+                                            retryTextarea.value = question;
+                                            retryForm.dispatchEvent(new Event('submit'));
+                                        }
+                                    }
+                            );
+                        } else {
+                            addErrorMessage('Não foi possível concluir a pesquisa.');
+                        }
                     }
                 } finally {
                     isProcessing = false;

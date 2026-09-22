@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="{% static 'css/swiss-design-system.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}">
     <link rel="stylesheet" href="{% static 'css/workspace.css' %}">
+    <link rel="stylesheet" href="{% static 'css/jurix-rag.css' %}">
 </head>
 <body class="figma-theme"
       data-chatbot-url="{% url 'workspace:assistant' %}"
@@ -151,6 +152,7 @@
             
             <!-- Scroll Container (Messages & Welcome Canvas) -->
             <div class="figma-scroll-container" id="messages-container" role="log" aria-live="polite" aria-atomic="false">
+                <div id="rag-stream-status" class="jurix-rag-sr-only" aria-live="polite" aria-atomic="true"></div>
                 <div id="messages-wrapper" class="messages-wrapper">
                     
                     <!-- Welcome State (Figma Canvas Hero + Recent Searches) -->
@@ -445,9 +447,8 @@
                                 placeholder="Pergunte sobre normas, artigos ou jurisprudência..." 
                                 rows="1" 
                                 required
-                                class="figma-hero-search-input"
+                                class="figma-hero-search-input jurix-composer-textarea"
                                 aria-label="Digite sua pergunta sobre legislação"
-                                style="resize: none; min-height: 24px; max-height: 120px;"
                             ></textarea>
                         </div>
                         <button type="submit" class="figma-action-arrow-btn" id="send-button" aria-label="Enviar pergunta">
@@ -457,16 +458,16 @@
                             </svg>
                         </button>
                     </div>
-                    <div class="figma-filters-row" style="justify-content: space-between; align-items: center;">
-                        <div style="display: flex; gap: 8px;">
-                            <div class="figma-search-dropdown" style="height: 26px; font-size: 11px; padding: 4px 8px;">
+                    <div class="figma-filters-row jurix-composer-footer">
+                        <div class="jurix-composer-filters">
+                            <div class="figma-search-dropdown figma-search-dropdown-compact">
                                 <span>Pesquisa normativa</span>
                             </div>
-                            <div class="figma-search-dropdown" style="height: 26px; font-size: 11px; padding: 4px 8px;">
+                            <div class="figma-search-dropdown figma-search-dropdown-compact">
                                 <span>Fontes</span>
                             </div>
                         </div>
-                        <div style="font-size: 11px; color: var(--figma-text-muted);">
+                        <div class="jurix-composer-disclaimer">
                             Jurix pode cometer erros. Verifique fontes oficiais.
                         </div>
                     </div>
@@ -505,6 +506,7 @@
     <!-- Jurix Configuration: read from data-* attributes on <body> by config.js (CSP: no inline script) -->
     <script src="{% static 'js/config.js' %}"></script>
     <script src="{% static 'js/theme.js' %}"></script>
+    <script src="{% static 'js/jurix-rag.js' %}"></script>
     <script src="{% static 'js/chat.js' %}"></script>
     <script src="{% static 'js/command_palette.js' %}"></script>
     

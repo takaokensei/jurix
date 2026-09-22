@@ -1,0 +1,228 @@
+:root {
+    --jurix-rag-evidence-border: rgba(96, 165, 250, 0.22);
+    --jurix-rag-evidence-surface: rgba(15, 23, 42, 0.76);
+    --jurix-rag-error-bg: rgba(127, 29, 29, 0.18);
+    --jurix-rag-warning-bg: rgba(120, 53, 15, 0.18);
+    --jurix-rag-success: #34d399;
+    --jurix-rag-warning: #fbbf24;
+    --jurix-rag-muted: #64748b;
+}
+
+.jurix-rag-sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+.jurix-composer-textarea {
+    resize: none;
+    min-height: 24px;
+    max-height: 120px;
+}
+
+.jurix-composer-footer {
+    justify-content: space-between;
+    align-items: center;
+}
+
+.jurix-composer-filters {
+    display: flex;
+    gap: 8px;
+}
+
+.figma-search-dropdown-compact {
+    height: 26px;
+    font-size: 11px;
+    padding: 4px 8px;
+}
+
+.jurix-composer-disclaimer {
+    font-size: 11px;
+    color: var(--figma-text-muted);
+}
+
+.jurix-rag-answer {
+    position: relative;
+}
+
+.jurix-rag-answer.is-streaming::after {
+    content: '';
+    display: inline-block;
+    width: 0.45rem;
+    height: 1rem;
+    margin-left: 0.25rem;
+    vertical-align: -0.15rem;
+    background: currentColor;
+    opacity: 0.7;
+    animation: jurix-rag-caret 0.9s step-end infinite;
+}
+
+@keyframes jurix-rag-caret {
+    0%, 45% { opacity: 0; }
+    46%, 100% { opacity: 0.7; }
+}
+
+.jurix-rag-evidence-caption {
+    margin: 0.35rem 0 0.75rem 1.75rem;
+    color: var(--figma-text-muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.01em;
+}
+
+.jurix-rag-source {
+    border-color: var(--jurix-rag-evidence-border);
+    background: var(--jurix-rag-evidence-surface);
+}
+
+.jurix-rag-source .source-title {
+    font-family: var(--font-serif, Lora, serif);
+    letter-spacing: -0.01em;
+}
+
+.jurix-rag-source .source-meta {
+    font-size: 0.74rem;
+    opacity: 0.88;
+}
+
+.jurix-rag-source .source-snippet {
+    line-height: 1.55;
+}
+
+.source-score {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.jurix-rag-score-label {
+    color: var(--figma-text-muted);
+    font-size: 0.65rem;
+    white-space: nowrap;
+}
+
+.score-fill-high,
+.score-fill-medium,
+.score-fill-low {
+    height: 100%;
+    border-radius: inherit;
+}
+
+.score-fill-high {
+    width: 100%;
+    background: var(--jurix-rag-success);
+}
+
+.score-fill-medium {
+    width: 70%;
+    background: var(--jurix-rag-warning);
+}
+
+.score-fill-low {
+    width: 35%;
+    background: var(--jurix-rag-muted);
+}
+
+.jurix-rag-error {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    margin: 0.5rem 0;
+    padding: 0.9rem 1rem;
+    border: 1px solid rgba(248, 113, 113, 0.28);
+    border-radius: 12px;
+    background: var(--jurix-rag-error-bg);
+}
+
+.jurix-rag-error--warning {
+    border-color: rgba(251, 191, 36, 0.28);
+    background: var(--jurix-rag-warning-bg);
+}
+
+.jurix-rag-error-icon {
+    display: grid;
+    width: 1.65rem;
+    height: 1.65rem;
+    place-items: center;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: rgba(248, 113, 113, 0.14);
+    color: #fca5a5;
+    font-weight: 700;
+}
+
+.jurix-rag-error-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.jurix-rag-error-content strong {
+    color: var(--figma-text-white);
+}
+
+.jurix-rag-error-content span {
+    color: var(--figma-text-muted);
+    line-height: 1.5;
+}
+
+.jurix-rag-retry {
+    width: fit-content;
+    margin-top: 0.35rem;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid rgba(96, 165, 250, 0.35);
+    border-radius: 8px;
+    background: rgba(96, 165, 250, 0.08);
+    color: var(--figma-text-white);
+    font: inherit;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.jurix-rag-retry:hover {
+    background: rgba(96, 165, 250, 0.14);
+}
+
+.jurix-rag-retry:focus-visible,
+.jurix-composer-textarea:focus-visible {
+    outline: 2px solid rgba(96, 165, 250, 0.65);
+    outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+    .jurix-composer-footer {
+        gap: 0.55rem;
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .jurix-composer-filters {
+        width: 100%;
+    }
+
+    .jurix-composer-disclaimer {
+        width: 100%;
+        font-size: 10px;
+    }
+
+    .jurix-rag-evidence-caption {
+        margin-left: 0;
+    }
+
+    .jurix-rag-score-label {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .jurix-rag-answer.is-streaming::after {
+        animation: none;
+        opacity: 0.7;
+    }
+}
