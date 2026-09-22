@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="{% static 'css/swiss-design-system.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}">
     <link rel="stylesheet" href="{% static 'css/workspace.css' %}">
+    <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
 <body class="figma-theme workspace-page" data-chatbot-url="{% url 'workspace:assistant' %}" data-norma-list-url="{% url 'legislation:norma_list' %}" data-logo-icon-url="{% static 'img/logo-icon.svg' %}" data-user-name="{{ request.user.first_name|default:request.user.username|title }}">

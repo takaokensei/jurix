@@ -1,0 +1,224 @@
+/*
+ * Jurix shared component primitives.
+ *
+ * Phase 9: shared UI contract for assistant and dedicated workspace surfaces.
+ * No framework runtime is required; components remain semantic HTML + CSS.
+ */
+
+:root {
+    --jurix-focus-ring: 2px solid var(--figma-blue-light, #60A5FA);
+    --jurix-focus-offset: 2px;
+    --jurix-space-1: 4px;
+    --jurix-space-2: 8px;
+    --jurix-space-3: 12px;
+    --jurix-space-4: 16px;
+    --jurix-space-5: 24px;
+    --jurix-space-6: 32px;
+}
+
+.jurix-skip-link {
+    position: fixed;
+    top: var(--jurix-space-3);
+    left: var(--jurix-space-3);
+    z-index: 10000;
+    transform: translateY(-150%);
+    padding: 8px 12px;
+    border: 1px solid var(--figma-blue-light, #60A5FA);
+    border-radius: 8px;
+    color: #fff;
+    background: var(--figma-blue-primary, #3B82F6);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    font-size: 12px;
+    font-weight: 700;
+    transition: transform 150ms ease;
+}
+
+.jurix-skip-link:focus {
+    transform: translateY(0);
+}
+
+.jurix-icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    color: var(--figma-text-muted, #94A3B8);
+    background: transparent;
+    cursor: pointer;
+    transition: color 150ms ease, background-color 150ms ease;
+}
+
+.jurix-icon-button:hover {
+    color: var(--figma-text-white, #F8FAFC);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.figma-logo-image {
+    width: 22px;
+    height: 22px;
+    display: block;
+}
+
+.figma-shortcut-badge-push {
+    margin-left: auto;
+}
+
+.jurix-anonymous-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 24px;
+    border-bottom: 1px solid var(--figma-border, #1F2444);
+    color: var(--figma-text-muted, #94A3B8);
+    background: rgba(17, 24, 39, 0.9);
+    font-size: 13px;
+}
+
+.figma-welcome-state {
+    display: flex;
+    flex-direction: column;
+}
+
+.jurix-compat-hidden {
+    display: none !important;
+}
+
+.figma-suggestion-arrow {
+    color: var(--figma-blue-light, #60A5FA);
+    font-size: 13px;
+    line-height: 1;
+}
+
+.jurix-floating-input-initial {
+    display: none;
+}
+
+.figma-theme :is(
+    a,
+    button,
+    input,
+    textarea,
+    select,
+    [tabindex="0"]
+):focus-visible {
+    outline: var(--jurix-focus-ring);
+    outline-offset: var(--jurix-focus-offset);
+}
+
+@media (min-width: 1536px) {
+    .figma-scroll-container {
+        padding-inline: clamp(40px, 5vw, 96px);
+    }
+
+    .figma-hero-section,
+    .figma-recent-searches-section {
+        max-width: 1200px;
+    }
+
+    .figma-middle-hero {
+        width: min(832px, calc(100vw - 480px));
+    }
+}
+
+@media (max-width: 1180px) {
+    .figma-vertical-categories,
+    .figma-vertical-metadata {
+        display: none;
+    }
+
+    .figma-hero-section {
+        max-width: 832px;
+    }
+
+    .figma-middle-hero {
+        width: min(832px, 100%);
+    }
+}
+
+@media (max-width: 860px) {
+    .figma-header-row {
+        padding-inline: 20px;
+    }
+
+    .figma-system-search {
+        width: 210px;
+    }
+
+    .figma-suggestions-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .figma-hero-title {
+        font-size: clamp(32px, 6vw, 42px);
+        line-height: 1.18;
+    }
+
+    .figma-hero-description {
+        max-width: 90%;
+    }
+}
+
+@media (max-width: 640px) {
+    .figma-header-row {
+        padding-inline: 14px;
+    }
+
+    .figma-system-search {
+        min-width: 40px;
+        width: 40px;
+        padding-inline: 10px;
+    }
+
+    .figma-system-search .figma-search-placeholder,
+    .figma-system-search .figma-shortcut-badge {
+        display: none;
+    }
+
+    .figma-scroll-container {
+        padding: 18px 14px 64px;
+    }
+
+    .figma-middle-hero {
+        gap: 20px;
+    }
+
+    .figma-hero-title {
+        font-size: clamp(28px, 8vw, 36px);
+    }
+
+    .figma-hero-description {
+        max-width: 100%;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    .figma-suggestions-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .figma-suggestion-card {
+        padding: 14px;
+    }
+
+    .jurix-anonymous-banner {
+        padding-inline: 14px;
+        font-size: 12px;
+    }
+
+    .jurix-skip-link {
+        left: 8px;
+        top: 8px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .jurix-skip-link,
+    .jurix-icon-button {
+        transition: none;
+    }
+}

@@ -23,6 +23,7 @@
     <link rel="stylesheet" href="{% static 'css/jurix-markdown.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-controller.css' %}">
+    <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}">
 </head>
 <body class="figma-theme"
       data-chatbot-url="{% url 'workspace:assistant' %}"
@@ -30,8 +31,8 @@
       data-logo-icon-url="{% static 'img/logo-icon.svg' %}"
       data-user-name="{{ request.user.first_name|default:request.user.username|title }}">
     <!-- Skip link for keyboard accessibility -->
-    <a href="#messages-container" class="skip-link" style="position: absolute; left: -9999px; z-index: 999; padding: 8px; background: #3B82F6; color: white;">Pular para a pesquisa</a>
-    
+    <a href="#messages-container" class="skip-link jurix-skip-link">Pular para a pesquisa</a>
+
     <div class="figma-workspace">
         <!-- Sidebar (240px) -->
         <aside class="figma-sidebar" id="sidebar" role="complementary" aria-label="Barra lateral de navegação">
@@ -39,7 +40,7 @@
                 <!-- Brand / Logo Group -->
                 <a href="{% url 'workspace:assistant' %}" class="figma-logo-group" aria-label="Jurix Início">
                     <div class="figma-logo-icon">
-                        <img src="{% static 'img/logo-icon.svg' %}" alt="Logo Jurix" style="width: 22px; height: 22px;">
+                        <img class="figma-logo-image" src="{% static 'img/logo-icon.svg' %}" alt="Logo Jurix">
                     </div>
                     <span class="figma-logo-text">Jurix</span>
                 </a>
@@ -125,7 +126,7 @@
             <!-- Top Header Row -->
             <div class="figma-header-row">
                 <div class="figma-left-indicator">
-                    <button class="toggle-sidebar" id="toggle-sidebar" style="background: transparent; border: none; color: #94A3B8; cursor: pointer; display: flex; align-items: center; padding: 4px;" aria-label="Alternar barra lateral">
+                    <button class="toggle-sidebar jurix-icon-button" id="toggle-sidebar" aria-label="Alternar barra lateral">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                     </button>
                     <div class="figma-indicator-dot"></div>
@@ -138,12 +139,12 @@
                         <path d="m21 21-4.35-4.35"></path>
                     </svg>
                     <span class="figma-search-placeholder">Buscar normas ou consultas...</span>
-                    <span class="figma-shortcut-badge" style="margin-left: auto;">⌘K</span>
+                    <span class="figma-shortcut-badge figma-shortcut-badge-push">⌘K</span>
                 </button>
             </div>
             
             {% if not request.user.is_authenticated %}
-            <div class="anonymous-banner" role="status" style="background: rgba(17, 24, 39, 0.9); border-bottom: 1px solid #1F2444; padding: 0.5rem 1.5rem; font-size: 0.8125rem; color: #94A3B8; display: flex; align-items: center; gap: 0.5rem;">
+            <div class="anonymous-banner jurix-anonymous-banner" role="status">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"></circle>
                     <line x1="12" y1="16" x2="12" y2="12"></line>
@@ -159,7 +160,7 @@
                 <div id="messages-wrapper" class="messages-wrapper">
                     
                     <!-- Welcome State (Figma Canvas Hero + Recent Searches) -->
-                    <div class="welcome-state" id="welcome-state" style="display: flex; flex-direction: column;">
+                    <div class="welcome-state figma-welcome-state" id="welcome-state">
                         
                         <!-- Hero Section -->
                         <div class="figma-hero-section">
@@ -230,7 +231,7 @@
                                     <div class="figma-suggestion-card" data-question="Quais normas regulam a regularização de construções e edificações?">
                                         <div class="figma-suggestion-top">
                                             <span class="figma-suggestion-title">Quais normas regulam...</span>
-                                            <span style="color: #60A5FA; font-size: 13px;">➔</span>
+                                            <span class="figma-suggestion-arrow" aria-hidden="true">➔</span>
                                         </div>
                                         <span class="figma-suggestion-desc">a regularização de construções?</span>
                                     </div>
@@ -238,7 +239,7 @@
                                     <div class="figma-suggestion-card" data-question="Compare as principais alterações introduzidas pela Lei nº 14.133/2021.">
                                         <div class="figma-suggestion-top">
                                             <span class="figma-suggestion-title">Compare as alterações</span>
-                                            <span style="color: #60A5FA; font-size: 13px;">➔</span>
+                                            <span class="figma-suggestion-arrow" aria-hidden="true">➔</span>
                                         </div>
                                         <span class="figma-suggestion-desc">da Lei nº 14.133/2021.</span>
                                     </div>
@@ -246,7 +247,7 @@
                                     <div class="figma-suggestion-card" data-question="Quais dispositivos sobre zoneamento urbano estão atualmente vigentes?">
                                         <div class="figma-suggestion-top">
                                             <span class="figma-suggestion-title">Quais dispositivos est...</span>
-                                            <span style="color: #60A5FA; font-size: 13px;">➔</span>
+                                            <span class="figma-suggestion-arrow" aria-hidden="true">➔</span>
                                         </div>
                                         <span class="figma-suggestion-desc">atualmente vigentes?</span>
                                     </div>
@@ -254,7 +255,7 @@
                                     <div class="figma-suggestion-card" data-question="Quais são os entendimentos jurisprudenciais do STF sobre desapropriação?">
                                         <div class="figma-suggestion-top">
                                             <span class="figma-suggestion-title">Quais são os entendi...</span>
-                                            <span style="color: #60A5FA; font-size: 13px;">➔</span>
+                                            <span class="figma-suggestion-arrow" aria-hidden="true">➔</span>
                                         </div>
                                         <span class="figma-suggestion-desc">do STF sobre o tema?</span>
                                     </div>
@@ -434,13 +435,13 @@
                         </div>
                         
                         <!-- Internal fallback container for chat.js compatibility -->
-                        <div id="suggestion-chips" style="display: none;"></div>
+                        <div id="suggestion-chips" class="jurix-compat-hidden"></div>
                     </div>
                 </div>
             </div>
             
             <!-- Floating bottom input bar (active during ongoing chat conversation) -->
-            <div class="figma-floating-input-bar" id="conversation-input-bar" style="display: none;">
+            <div class="figma-floating-input-bar jurix-floating-input-initial" id="conversation-input-bar">
                 <form id="chat-form" class="figma-smart-search-panel" role="search" aria-label="Formulário de pesquisa de legislação">
                     <div class="figma-input-line">
                         <div class="figma-input-left">
