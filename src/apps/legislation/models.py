@@ -296,7 +296,7 @@ class Dispositivo(TimeStampedModel):
             models.Index(fields=['norma', 'ordem']),
             models.Index(fields=['dispositivo_pai']),
             models.Index(fields=['norma', 'nivel']),
-            models.Index(fields=['embedding_model'], name='dispositivo_embedding_model_idx'),
+            models.Index(fields=['embedding_model'], name='disp_embed_model_idx'),
         ]
         constraints = [
             models.UniqueConstraint(

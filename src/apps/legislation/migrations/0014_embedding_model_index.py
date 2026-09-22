@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
             model_name='dispositivo',
             index=models.Index(
                 fields=['embedding_model'],
-                name='dispositivo_embedding_model_idx',
+                name='disp_embed_model_idx',
             ),
         ),
     ]
