@@ -1,0 +1,37 @@
+.chat-session-item {
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.chat-session-item.jurix-session-entering {
+    opacity: 0;
+    transform: translateY(-5px);
+}
+
+.chat-session-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-sessions-empty {
+    padding: var(--space-2, 0.5rem);
+    color: var(--jurix-text-secondary, var(--color-text-secondary));
+    font-size: var(--font-size-xs, 0.75rem);
+    text-align: center;
+}
+
+#new-chat-button.disabled,
+#new-chat-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chat-session-item {
+        transition: none;
+    }
+
+    .chat-session-item.jurix-session-entering {
+        opacity: 1;
+        transform: none;
+    }
+}
