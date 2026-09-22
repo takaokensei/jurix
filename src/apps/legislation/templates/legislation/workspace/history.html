@@ -1,0 +1,25 @@
+{% extends "legislation/workspace/base.html" %}
+
+{% block title %}Histórico — Jurix{% endblock %}
+{% block section_name %}Histórico{% endblock %}
+
+{% block content %}
+<section class="workspace-page-header">
+    <div><span class="workspace-eyebrow">Memória</span><h1>Histórico</h1><p>Conversas e consultas anteriores em um único lugar.</p></div>
+</section>
+
+{% if not request.user.is_authenticated %}
+<section class="workspace-empty-state"><strong>Entre para acessar seu histórico.</strong><p>Conversas associadas a uma conta são listadas aqui automaticamente.</p></section>
+{% elif sessions %}
+<section class="workspace-history-list">
+    {% for session in sessions %}
+    <a class="workspace-history-card" href="{% url 'workspace:assistant_session' session.slug %}">
+        <div class="workspace-history-main"><span class="workspace-eyebrow">Conversa</span><h2>{{ session.title|default:"Conversa sem título" }}</h2><p>{{ session.primary_query|truncatechars:220 }}</p></div>
+        <div class="workspace-history-meta"><span>{{ session.message_count }} mensagens</span><time datetime="{{ session.updated_at|date:'c' }}">{{ session.updated_at|date:'d/m/Y H:i' }}</time></div>
+    </a>
+    {% endfor %}
+</section>
+{% else %}
+<section class="workspace-empty-state workspace-empty-state-large"><div class="workspace-empty-icon" aria-hidden="true">◷</div><span class="workspace-eyebrow">Histórico vazio</span><h2>Suas pesquisas aparecerão aqui</h2><p>Comece uma conversa no Assistente ou faça uma pesquisa jurídica para criar o primeiro registro.</p><a href="{% url 'workspace:assistant' %}" class="workspace-button workspace-button-primary">Abrir Assistente</a></section>
+{% endif %}
+{% endblock %}

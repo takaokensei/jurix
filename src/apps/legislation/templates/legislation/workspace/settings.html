@@ -1,0 +1,68 @@
+{% extends "legislation/workspace/base.html" %}
+
+{% block title %}Configurações — Jurix{% endblock %}
+{% block section_name %}Configurações{% endblock %}
+
+{% block content %}
+<section class="workspace-page-header">
+    <div>
+        <span class="workspace-eyebrow">Workspace</span>
+        <h1>Configurações</h1>
+        <p>Controle como o Jurix pesquisa, responde e apresenta o workspace neste navegador.</p>
+    </div>
+</section>
+
+<form class="workspace-stack" id="jurix-settings-form" data-settings-form novalidate>
+    <section class="workspace-card">
+        <div class="workspace-card-heading">
+            <div><span class="workspace-eyebrow">Assistente</span><h2>Preferências de IA</h2></div>
+            <span class="workspace-badge">{{ norma_count }} normas</span>
+        </div>
+        <div class="workspace-form-grid">
+            <label class="workspace-field workspace-field-wide">
+                <span>Modelo</span>
+                <select name="model">
+                    {% for model in ollama_models %}<option value="{{ model }}">{{ model }}</option>{% endfor %}
+                </select>
+                <small>Somente modelos permitidos pelo servidor aparecem aqui.</small>
+            </label>
+            <label class="workspace-field">
+                <span>Temperatura</span>
+                <input type="number" name="temperature" min="0" max="1" step="0.1" value="0.3">
+                <small>0,0 = determinístico · 1,0 = mais variado</small>
+            </label>
+            <label class="workspace-field">
+                <span>Fontes por resposta</span>
+                <input type="number" name="sources" min="1" max="10" step="1" value="5">
+                <small>Quantidade de evidências exibidas ao final.</small>
+            </label>
+        </div>
+    </section>
+
+    <section class="workspace-card">
+        <div class="workspace-card-heading"><div><span class="workspace-eyebrow">Aparência</span><h2>Tema e densidade</h2></div></div>
+        <div class="workspace-option-grid">
+            <fieldset class="workspace-fieldset"><legend>Tema</legend>
+                <label><input type="radio" name="theme" value="dark"> <span>Escuro</span></label>
+                <label><input type="radio" name="theme" value="light"> <span>Claro</span></label>
+                <label><input type="radio" name="theme" value="system"> <span>Sistema</span></label>
+            </fieldset>
+            <fieldset class="workspace-fieldset"><legend>Densidade</legend>
+                <label><input type="radio" name="density" value="comfortable"> <span>Confortável</span></label>
+                <label><input type="radio" name="density" value="compact"> <span>Compacta</span></label>
+            </fieldset>
+        </div>
+    </section>
+
+    <section class="workspace-card workspace-card-muted">
+        <div class="workspace-card-heading"><div><span class="workspace-eyebrow">Estado</span><h2>Persistência local</h2></div></div>
+        <p>As preferências desta tela são salvas localmente neste navegador nesta fase. A persistência por usuário no servidor pode ser adicionada sem mudar a arquitetura visual.</p>
+    </section>
+
+    <div class="workspace-form-actions">
+        <button type="button" class="workspace-button workspace-button-ghost" data-settings-reset>Restaurar padrão</button>
+        <button type="submit" class="workspace-button workspace-button-primary">Salvar preferências</button>
+        <span class="workspace-save-status" data-settings-status role="status" aria-live="polite"></span>
+    </div>
+</form>
+{% endblock %}

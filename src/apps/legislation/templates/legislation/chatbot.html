@@ -18,9 +18,10 @@
     <!-- Stylesheets -->
     <link rel="stylesheet" href="{% static 'css/swiss-design-system.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}">
+    <link rel="stylesheet" href="{% static 'css/workspace.css' %}">
 </head>
 <body class="figma-theme"
-      data-chatbot-url="{% url 'legislation:chatbot' %}"
+      data-chatbot-url="{% url 'workspace:assistant' %}"
       data-norma-list-url="{% url 'legislation:norma_list' %}"
       data-logo-icon-url="{% static 'img/logo-icon.svg' %}"
       data-user-name="{{ request.user.first_name|default:request.user.username|title }}">
@@ -32,7 +33,7 @@
         <aside class="figma-sidebar" id="sidebar" role="complementary" aria-label="Barra lateral de navegação">
             <div class="figma-sidebar-top">
                 <!-- Brand / Logo Group -->
-                <a href="{% url 'legislation:chatbot' %}" class="figma-logo-group" aria-label="Jurix Início">
+                <a href="{% url 'workspace:assistant' %}" class="figma-logo-group" aria-label="Jurix Início">
                     <div class="figma-logo-icon">
                         <img src="{% static 'img/logo-icon.svg' %}" alt="Logo Jurix" style="width: 22px; height: 22px;">
                     </div>
@@ -55,7 +56,7 @@
                 
                 <!-- Primary Navigation -->
                 <nav class="figma-nav-list" role="navigation" aria-label="Menu principal">
-                    <a href="{% url 'legislation:chatbot' %}" class="figma-sidebar-item active">
+                    <a href="{% url 'workspace:assistant' %}" class="figma-sidebar-item active">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                         </svg>
@@ -70,24 +71,24 @@
                         <span>Normas</span>
                     </a>
                     
-                    <button type="button" class="figma-sidebar-item" data-open-command-palette>
+                    <a href="{% url 'workspace:legal_search' %}" class="figma-sidebar-item">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
                         <span>Pesquisa jurídica</span>
-                    </button>
+                    </a>
                     
-                    <button type="button" class="figma-sidebar-item" data-open-command-palette>
+                    <a href="{% url 'workspace:collections' %}" class="figma-sidebar-item">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
                         </svg>
                         <span>Coleções</span>
-                    </button>
+                    </a>
                     
                     <!-- Histórico / Sessões -->
-                    <div style="margin-top: 12px;">
-                        <div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 12px; display: flex; align-items: center; justify-content: space-between;">
+                    <div class="workspace-sidebar-section">
+                        <div class="workspace-sidebar-section-label">
                             <span>Histórico</span>
                         </div>
                         <div id="chat-sessions-list" class="chat-sessions-list">
@@ -105,13 +106,13 @@
                     <span>Admin</span>
                 </a>
                 {% endif %}
-                <button type="button" class="figma-sidebar-item" id="command-palette-trigger-footer" data-open-command-palette>
+                <a href="{% url 'workspace:settings' %}" class="figma-sidebar-item">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3"></circle>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                     </svg>
                     <span>Configurações</span>
-                </button>
+                </a>
             </div>
         </aside>
         
@@ -273,7 +274,7 @@
                                     </svg>
                                     <span class="figma-header-title">Pesquisa recente</span>
                                 </div>
-                                <a href="#" data-open-command-palette class="figma-header-link">
+                                <a href="{% url 'workspace:history' %}" class="figma-header-link">
                                     <span>Ver todo o histórico</span>
                                     <span>➔</span>
                                 </a>
@@ -475,8 +476,8 @@
     </div>
     
     <!-- Command Palette (⌘K / Ctrl+K) -->
-    <div class="command-palette-overlay" id="command-palette-overlay">
-        <div class="command-palette">
+    <div class="command-palette-overlay" id="command-palette-overlay" role="dialog" aria-modal="true" aria-label="Busca rápida do Jurix">
+        <div class="command-palette" role="document">
             <div class="command-palette-header">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="11" cy="11" r="8"></circle>

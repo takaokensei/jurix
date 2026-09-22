@@ -1,0 +1,51 @@
+{% extends "legislation/workspace/base.html" %}
+
+{% block title %}Pesquisa Jurídica — Jurix{% endblock %}
+{% block section_name %}Pesquisa jurídica{% endblock %}
+
+{% block content %}
+<section class="workspace-page-header">
+    <div><span class="workspace-eyebrow">Pesquisa</span><h1>Pesquisa jurídica</h1><p>Encontre normas e dispositivos por significado, tipo, ano e relevância da recuperação.</p></div>
+</section>
+
+<form class="workspace-search-panel" method="get" role="search" aria-label="Pesquisa jurídica">
+    <label class="workspace-search-input"><span class="sr-only">Consulta</span><input name="q" value="{{ query }}" placeholder="Ex.: regularização de edificações, zoneamento, desapropriação…" autofocus></label>
+    <button class="workspace-button workspace-button-primary" type="submit">Pesquisar</button>
+    <div class="workspace-filter-row">
+        <label>Tipo<select name="tipo"><option value="">Todos os tipos</option>{% for item in types %}<option value="{{ item }}"{% if norma_type == item %} selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
+        <label>Ano<select name="ano"><option value="">Todos os anos</option>{% for item in years %}<option value="{{ item }}"{% if year == item %} selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
+        <label>Relevância mínima<select name="similaridade"><option value="0"{% if min_similarity == 0 %} selected{% endif %}>Sem limiar</option><option value="0.5"{% if min_similarity == 0.5 %} selected{% endif %}>50%</option><option value="0.65"{% if min_similarity == 0.65 %} selected{% endif %}>65%</option><option value="0.8"{% if min_similarity == 0.8 %} selected{% endif %}>80%</option></select></label>
+    </div>
+</form>
+
+{% if search_error %}<div class="workspace-alert">{{ search_error }}</div>{% endif %}
+
+<section class="workspace-results-section" aria-live="polite">
+    <div class="workspace-section-heading"><div><span class="workspace-eyebrow">Resultados</span><h2>{% if query %}{{ result_count }} resultados{% else %}Comece uma pesquisa{% endif %}</h2></div>{% if query %}<span class="workspace-badge">Modo: {{ search_mode }}</span>{% endif %}</div>
+
+    {% if query and results %}
+    <div class="workspace-result-list">
+        {% for result in results %}
+        {% if result.dispositivo %}
+        <a class="workspace-result-card" href="{% url 'legislation:norma_detail' result.dispositivo.norma.id %}">
+            <div class="workspace-result-meta"><span>{{ result.dispositivo.norma.tipo }} {{ result.dispositivo.norma.numero }}/{{ result.dispositivo.norma.ano }}</span>{% if result.similarity_score is not None %}<span class="workspace-score">{{ result.similarity_score|floatformat:0 }}% relevância</span>{% endif %}</div>
+            <h3>{{ result.dispositivo.get_full_identifier }}</h3>
+            <p>{{ result.dispositivo.texto|truncatechars:320 }}</p>
+            <small>{{ result.hierarchy }}</small>
+        </a>
+        {% else %}
+        <a class="workspace-result-card" href="{% url 'legislation:norma_detail' result.norma.id %}">
+            <div class="workspace-result-meta"><span>{{ result.norma.tipo }} {{ result.norma.numero }}/{{ result.norma.ano }}</span><span class="workspace-score workspace-score-neutral">Correspondência textual</span></div>
+            <h3>{{ result.norma.ementa|default:"Norma consolidada"|truncatechars:140 }}</h3>
+            <p>{{ result.texto|truncatechars:320 }}</p>
+        </a>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% elif query %}
+    <div class="workspace-empty-state"><strong>Nenhuma correspondência encontrada.</strong><p>Tente um termo mais amplo ou reduza o limiar de relevância.</p></div>
+    {% else %}
+    <div class="workspace-empty-state"><strong>Pesquise por conceito ou dispositivo.</strong><p>Exemplos: “parcelamento do solo”, “licenciamento ambiental” ou “IPTU progressivo”.</p></div>
+    {% endif %}
+</section>
+{% endblock %}

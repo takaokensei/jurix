@@ -1,0 +1,19 @@
+{% extends "legislation/workspace/base.html" %}
+
+{% block title %}Coleções — Jurix{% endblock %}
+{% block section_name %}Coleções{% endblock %}
+
+{% block content %}
+<section class="workspace-page-header">
+    <div><span class="workspace-eyebrow">Organização</span><h1>Coleções</h1><p>Crie dossiês para reunir normas, pesquisas e evidências de um mesmo assunto jurídico.</p></div>
+    <button type="button" class="workspace-button workspace-button-primary" disabled>Nova coleção</button>
+</section>
+
+<section class="workspace-empty-state workspace-empty-state-large">
+    <div class="workspace-empty-icon" aria-hidden="true">▱</div>
+    <span class="workspace-eyebrow">Sem coleções ainda</span>
+    <h2>A base de coleções está pronta para receber seus dossiês</h2>
+    <p>Nesta primeira fase, a navegação e a tela já estão separadas do Assistente. A persistência de coleções entra como próxima camada de domínio, sem criar dados fictícios agora.</p>
+    <div class="workspace-empty-stats"><span><strong>{{ norma_count }}</strong> normas disponíveis</span><span>Pesquisa semântica integrada</span><span>Histórico de conversas disponível</span></div>
+</section>
+{% endblock %}
