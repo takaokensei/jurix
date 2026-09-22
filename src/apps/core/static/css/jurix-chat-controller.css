@@ -1,0 +1,80 @@
+/* Jurix Chat Controller — state-driven presentation primitives. */
+
+#chat-state-indicator {
+    min-height: 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--jurix-text-secondary, #94a3b8);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    transition: opacity 160ms ease, transform 160ms ease;
+}
+
+#chat-state-indicator[hidden] {
+    display: none;
+}
+
+#chat-state-indicator:not([hidden])::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    flex: 0 0 6px;
+    border-radius: 50%;
+    background: var(--jurix-accent, #60a5fa);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--jurix-accent, #60a5fa) 12%, transparent);
+}
+
+#chat-state-indicator[data-state='streaming']::before,
+#chat-state-indicator[data-state='submitting']::before,
+#chat-state-indicator[data-state='regenerating']::before {
+    animation: jurix-chat-state-pulse 1.4s ease-in-out infinite;
+}
+
+#chat-state-indicator[data-state='error'] {
+    color: var(--jurix-error, #fca5a5);
+}
+
+#chat-state-indicator[data-state='error']::before {
+    background: var(--jurix-error, #f87171);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--jurix-error, #f87171) 12%, transparent);
+}
+
+#send-button.is-busy {
+    cursor: progress;
+}
+
+#send-button:disabled {
+    opacity: 0.58;
+}
+
+.figma-floating-input-bar[data-chat-state='streaming'],
+.figma-floating-input-bar[data-chat-state='submitting'],
+.figma-floating-input-bar[data-chat-state='regenerating'] {
+    --jurix-composer-state-opacity: 1;
+}
+
+@keyframes jurix-chat-state-pulse {
+    0%, 100% { opacity: 0.45; transform: scale(0.92); }
+    50% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #chat-state-indicator,
+    #send-button {
+        transition: none;
+    }
+
+    #chat-state-indicator[data-state='streaming']::before,
+    #chat-state-indicator[data-state='submitting']::before,
+    #chat-state-indicator[data-state='regenerating']::before {
+        animation: none;
+    }
+}
+
+@media (max-width: 720px) {
+    #chat-state-indicator {
+        font-size: 0.625rem;
+    }
+}

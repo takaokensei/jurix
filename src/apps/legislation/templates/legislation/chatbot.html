@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="{% static 'css/jurix-rag.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-markdown.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat.css' %}">
+    <link rel="stylesheet" href="{% static 'css/jurix-chat-controller.css' %}">
 </head>
 <body class="figma-theme"
       data-chatbot-url="{% url 'workspace:assistant' %}"
@@ -469,6 +470,7 @@
                                 <span>Fontes</span>
                             </div>
                         </div>
+                        <div class="jurix-chat-state-indicator" id="chat-state-indicator" role="status" aria-live="polite" hidden></div>
                         <div class="jurix-composer-disclaimer">
                             Jurix pode cometer erros. Verifique fontes oficiais.
                         </div>
@@ -500,11 +502,11 @@
             <div class="command-palette-results" id="command-palette-results"></div>
         </div>
     </div>
-    
+
     <!-- Local-first Vendorized Libraries -->
     <script src="{% static 'js/vendor/marked.min.js' %}"></script>
     <script src="{% static 'js/vendor/purify.min.js' %}"></script>
-    
+
     <!-- Jurix Configuration: read from data-* attributes on <body> by config.js (CSP: no inline script) -->
     <script src="{% static 'js/config.js' %}"></script>
     <script src="{% static 'js/theme.js' %}"></script>
@@ -513,8 +515,9 @@
     <script src="{% static 'js/jurix-chat-api.js' %}"></script>
     <script src="{% static 'js/jurix-chat-state.js' %}"></script>
     <script src="{% static 'js/chat.js' %}"></script>
+    <script src="{% static 'js/jurix-chat-controller.js' %}"></script>
     <script src="{% static 'js/command_palette.js' %}"></script>
-    
+
     <!-- Synchronizer for Floating Bar and Hero Search State (floating-bar-sync.js; CSP: no inline script) -->
     <script src="{% static 'js/floating-bar-sync.js' %}"></script>
     <script src="{% static 'js/jurix-chat-sessions.js' %}"></script>

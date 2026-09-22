@@ -72,6 +72,7 @@ async function bootUnderCsp() {
     'jurix-chat-api.js',
     'jurix-chat-state.js',
     'chat.js',
+    'jurix-chat-controller.js',
     'command_palette.js',
     'floating-bar-sync.js',
     'jurix-chat-sessions.js'
