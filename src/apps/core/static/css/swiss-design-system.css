@@ -3231,3 +3231,22 @@ a:focus-visible,
     }
 }
 
+
+/* ==========================================================================
+   JURIX SEMANTIC DESIGN TOKENS
+   Shared contract between Swiss foundations and application-specific themes.
+   ========================================================================== */
+:root {
+    --jurix-evidence-surface: var(--color-bg-elevated);
+    --jurix-evidence-surface-hover: var(--color-bg-tertiary);
+    --jurix-evidence-border: var(--color-border);
+    --jurix-evidence-accent: var(--color-primary-light);
+    --jurix-evidence-positive: var(--color-success);
+    --jurix-evidence-warning: var(--color-warning);
+    --jurix-evidence-muted: var(--color-gray-500);
+    --jurix-evidence-text: var(--color-text);
+    --jurix-evidence-text-secondary: var(--color-text-secondary);
+    --jurix-evidence-focus: var(--color-border-focus);
+    --jurix-radius-card: var(--radius-md);
+    --jurix-motion-fast: var(--transition-fast);
+}

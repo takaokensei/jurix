@@ -907,6 +907,9 @@
     }
 
     function createSourceCard(source, index) {
+        if (window.JurixRagUI && typeof window.JurixRagUI.renderEvidenceCard === 'function') {
+            return window.JurixRagUI.renderEvidenceCard(source, index);
+        }
         let rawScore = source.similarity_score;
         if (rawScore === undefined || rawScore === null) {
             rawScore = Math.max(0, 1 - parseFloat(source.distance || 1.0));

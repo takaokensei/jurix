@@ -159,3 +159,104 @@
         announce,
     };
 })();
+    function safeHttpUrl(value) {
+        if (!value) return null;
+        try {
+            const url = new URL(String(value), window.location.href);
+            return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function getSourceScore(source) {
+        let rawScore = source?.similarity_score;
+        if (rawScore === undefined || rawScore === null) {
+            rawScore = Math.max(0, 1 - parseFloat(source?.distance || 1));
+        }
+        const normalized = Math.max(0, Math.min(1, Number.parseFloat(rawScore) || 0));
+        return {
+            normalized,
+            percent: Math.max(1, Math.min(100, Math.round(normalized * 100))),
+        };
+    }
+
+    function renderEvidenceCard(source, index = 0) {
+        const safeSource = source || {};
+        const { normalized, percent } = getSourceScore(safeSource);
+        const band = normalized >= 0.8 ? 'high' : normalized >= 0.6 ? 'medium' : 'low';
+        const relevanceLabel = band === 'high'
+            ? 'Alta correspondência'
+            : band === 'medium'
+            ? 'Boa correspondência'
+            : 'Baixa correspondência';
+
+        const normaRef = safeSource.norma || safeSource.norma_ref || 'Norma jurídica';
+        const dispositivoRef = safeSource.dispositivo_ref || '';
+        const sourceType = safeSource.tipo || safeSource.type || '';
+        const status = safeSource.status_label || safeSource.vigencia || safeSource.situacao || '';
+        const snippet = String(safeSource.text || safeSource.full_text || '').trim();
+        const linkUrl = safeHttpUrl(safeSource.sapl_url) || safeHttpUrl(safeSource.pdf_url);
+        const cardLabel = `Fonte jurídica ${index + 1}: ${normaRef}`;
+
+        const meta = [
+            dispositivoRef ? `<span class="jurix-rag-source__meta-item">${escapeHtml(dispositivoRef)}</span>` : '',
+            sourceType ? `<span class="jurix-rag-source__meta-item">${escapeHtml(sourceType)}</span>` : '',
+            status ? `<span class="jurix-rag-source__meta-item jurix-rag-source__meta-item--status">${escapeHtml(status)}</span>` : '',
+        ].join('');
+
+        const openAction = linkUrl
+            ? `
+                <a
+                    class="jurix-rag-source__open"
+                    href="${escapeHtml(linkUrl)}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Abrir fonte
+                    <span aria-hidden="true">↗</span>
+                </a>
+            `
+            : '';
+
+        return `
+            <article
+                class="source-card jurix-rag-source jurix-rag-source--${band}"
+                aria-label="${escapeHtml(cardLabel)}"
+                data-evidence-rank="${index + 1}"
+                data-evidence-band="${band}"
+            >
+                <div class="source-card-header">
+                    <div class="source-title">${escapeHtml(normaRef)}</div>
+                    <div class="source-score" aria-label="Relevância da fonte: ${percent}%">
+                        <span class="jurix-rag-score-label">Relevância</span>
+                        <div class="score-bar" aria-hidden="true">
+                            <div class="score-fill score-fill-${band}"></div>
+                        </div>
+                        <span class="jurix-rag-score-text">${percent}%</span>
+                    </div>
+                </div>
+
+                ${meta ? `<div class="jurix-rag-source__meta-row">${meta}</div>` : ''}
+
+                <div class="source-snippet">${escapeHtml(snippet.substring(0, 280))}${snippet.length > 280 ? '…' : ''}</div>
+
+                ${snippet
+                    ? `
+                        <details class="jurix-rag-source__details">
+                            <summary>Ver trecho completo</summary>
+                            <p>${escapeHtml(snippet)}</p>
+                        </details>
+                    `
+                    : ''
+                }
+
+                <div class="jurix-rag-source__actions">
+                    ${openAction}
+                </div>
+
+                <span class="jurix-rag-sr-only">${escapeHtml(relevanceLabel)}. Similaridade da recuperação: ${percent}%.</span>
+            </article>
+        `;
+    }
+        renderEvidenceCard,

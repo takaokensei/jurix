@@ -1137,3 +1137,20 @@ body.figma-theme {
     padding: 16px;
   }
 }
+
+/* ==========================================================================
+   JURIX SEMANTIC TOKEN OVERRIDES
+   The Figma workspace consumes the same semantic contract as Swiss foundations.
+   ========================================================================== */
+.figma-theme {
+  --jurix-evidence-surface: var(--figma-bg-surface);
+  --jurix-evidence-surface-hover: var(--figma-bg-button);
+  --jurix-evidence-border: var(--figma-border);
+  --jurix-evidence-accent: var(--figma-blue-light);
+  --jurix-evidence-positive: var(--figma-green);
+  --jurix-evidence-warning: var(--figma-amber);
+  --jurix-evidence-muted: var(--figma-text-muted);
+  --jurix-evidence-text: var(--figma-text-white);
+  --jurix-evidence-text-secondary: var(--figma-text-muted);
+  --jurix-evidence-focus: var(--figma-blue-light);
+}

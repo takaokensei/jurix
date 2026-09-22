@@ -226,3 +226,186 @@
         opacity: 0.7;
     }
 }
+
+/* ==========================================================================
+   EVIDENCE UX — Phase 3
+   ========================================================================== */
+.jurix-rag-evidence-caption {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+.jurix-rag-evidence-caption::after {
+    content: "A relevância mede similaridade de recuperação; não é uma probabilidade de correção.";
+    color: var(--jurix-evidence-muted);
+    font-size: 0.66rem;
+    font-weight: 400;
+}
+
+.jurix-rag-source {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    padding: 0.9rem;
+    background: var(--jurix-evidence-surface);
+    border: 1px solid var(--jurix-evidence-border);
+    border-radius: var(--jurix-radius-card);
+    color: var(--jurix-evidence-text);
+    transition:
+        border-color var(--jurix-motion-fast),
+        background-color var(--jurix-motion-fast),
+        transform var(--jurix-motion-fast),
+        box-shadow var(--jurix-motion-fast);
+}
+.jurix-rag-source:hover {
+    border-color: var(--jurix-evidence-accent);
+    background: var(--jurix-evidence-surface-hover);
+    transform: translateY(-1px);
+}
+.jurix-rag-source:focus-within {
+    outline: 2px solid var(--jurix-evidence-focus);
+    outline-offset: 2px;
+}
+.jurix-rag-source .source-card-header {
+    margin: 0;
+}
+.jurix-rag-source .source-title {
+    min-width: 0;
+    color: var(--jurix-evidence-text);
+}
+.jurix-rag-source .source-meta {
+    color: var(--jurix-evidence-text-secondary);
+}
+.jurix-rag-source .source-snippet {
+    display: block;
+    margin: 0;
+    color: var(--jurix-evidence-text-secondary);
+}
+.jurix-rag-source__meta-row,
+.jurix-rag-source__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+.jurix-rag-source__meta-row {
+    font-size: 0.68rem;
+}
+.jurix-rag-source__meta-item {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.35rem;
+    padding: 0.18rem 0.45rem;
+    border: 1px solid var(--jurix-evidence-border);
+    border-radius: 999px;
+    color: var(--jurix-evidence-text-secondary);
+    background: rgba(255, 255, 255, 0.02);
+}
+.jurix-rag-source__meta-item--status {
+    color: var(--jurix-evidence-positive);
+    border-color: color-mix(in srgb, var(--jurix-evidence-positive) 32%, transparent);
+}
+.jurix-rag-source__details {
+    border-top: 1px solid var(--jurix-evidence-border);
+    padding-top: 0.65rem;
+}
+.jurix-rag-source__details summary {
+    width: fit-content;
+    cursor: pointer;
+    color: var(--jurix-evidence-accent);
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+.jurix-rag-source__details summary::marker {
+    color: var(--jurix-evidence-accent);
+}
+.jurix-rag-source__details p {
+    margin: 0.55rem 0 0;
+    max-height: 12rem;
+    overflow: auto;
+    color: var(--jurix-evidence-text-secondary);
+    font-size: 0.76rem;
+    line-height: 1.65;
+    white-space: pre-wrap;
+}
+.jurix-rag-source__actions {
+    justify-content: flex-end;
+}
+.jurix-rag-source__open {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 2rem;
+    padding: 0.35rem 0.65rem;
+    border: 1px solid var(--jurix-evidence-border);
+    border-radius: 0.5rem;
+    color: var(--jurix-evidence-text);
+    background: transparent;
+    text-decoration: none;
+    font-size: 0.72rem;
+    font-weight: 600;
+    transition:
+        border-color var(--jurix-motion-fast),
+        background-color var(--jurix-motion-fast),
+        color var(--jurix-motion-fast);
+}
+.jurix-rag-source__open:hover {
+    border-color: var(--jurix-evidence-accent);
+    background: var(--jurix-evidence-surface-hover);
+    color: var(--jurix-evidence-accent);
+}
+.jurix-rag-source__open:focus-visible,
+.jurix-rag-source__details summary:focus-visible {
+    outline: 2px solid var(--jurix-evidence-focus);
+    outline-offset: 2px;
+}
+.jurix-rag-source--high .source-score {
+    color: var(--jurix-evidence-positive);
+}
+.jurix-rag-source--medium .source-score {
+    color: var(--jurix-evidence-warning);
+}
+.jurix-rag-source--low .source-score {
+    color: var(--jurix-evidence-muted);
+}
+.jurix-rag-source .score-bar {
+    background: color-mix(in srgb, var(--jurix-evidence-muted) 25%, transparent);
+}
+.jurix-rag-source .score-fill-high {
+    width: 100%;
+    background: var(--jurix-evidence-positive);
+}
+.jurix-rag-source .score-fill-medium {
+    width: 70%;
+    background: var(--jurix-evidence-warning);
+}
+.jurix-rag-source .score-fill-low {
+    width: 35%;
+    background: var(--jurix-evidence-muted);
+}
+.jurix-rag-source .jurix-rag-score-label {
+    color: var(--jurix-evidence-text-secondary);
+}
+.jurix-rag-source .jurix-rag-score-text {
+    min-width: 2.4rem;
+    text-align: right;
+    color: currentColor;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 720px) {
+    .jurix-rag-evidence-caption::after {
+        flex-basis: 100%;
+    }
+    .jurix-rag-source {
+        padding: 0.8rem;
+    }
+    .jurix-rag-source__actions {
+        justify-content: stretch;
+    }
+    .jurix-rag-source__open {
+        width: 100%;
+        justify-content: center;
+    }
+}
