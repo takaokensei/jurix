@@ -204,3 +204,66 @@ class TestEngineAppliesResolvedEvents:
         text = "Fica revogado o art. 77º da Lei nº 123/2020."
         eng, out = run_engine([evento(1, "REVOGA", "artigo", "77º", fonte_texto=text), evento(2, "REVOGA", "artigo", "77º", fonte_texto=text)])
         assert eng.get_statistics()["events_unresolved"] == 1
+
+
+# ------------------------------------------------------------------ lists and ranges
+RANGE_DISPS = [art(1, "1º"), art(2, "5º", "cinco"), art(3, "5º-A", "cinco-A"), art(4, "6º", "seis"),
+               art(5, "7º", "sete"), art(6, "8º", "oito"), art(7, "9º", "nove")]
+
+
+class TestArticleRanges:
+    def test_spec_parsing(self):
+        from src.processing.target_resolver import article_spec
+        assert article_spec("5º") == ("single", (5, ""))
+        assert article_spec("5º a 8º") == ("range", 5, 8)
+        assert article_spec("10 a 12") == ("range", 10, 12)
+        assert article_spec("9º a 5º") is None and article_spec("5º-A a 8º") is None
+        assert article_spec("1 a 9999") is None and article_spec("abc") is None
+
+    def test_range_covers_suffixed_articles_between_its_endpoints(self):
+        """'arts. 5º a 8º' includes 5º-A: leaving it in force would be a silent error."""
+        ev = evento(1, "REVOGA", "artigo", "5º a 8º", fonte_texto="Ficam revogados os arts. 5º a 8º da Lei nº 123/2020.")
+        res = resolve_targets([ev], RANGE_DISPS)[1]
+        assert [d.numero for d in res.dispositivos] == ["5º", "5º-A", "6º", "7º", "8º"]
+        assert res.reason == ""
+
+    def test_range_only_supported_for_revocation(self):
+        ev = evento(1, "ALTERA", "artigo", "5º a 8º")
+        res = resolve_targets([ev], RANGE_DISPS)[1]
+        assert not res.dispositivos and "intervalo" in res.reason
+
+    def test_range_with_no_article_in_it_is_unresolved(self):
+        res = resolve_targets([evento(1, "REVOGA", "artigo", "20 a 30")], RANGE_DISPS)[1]
+        assert not res.dispositivos and "não encontrado" in res.reason
+
+    def test_range_touching_duplicated_numbering_is_unresolved(self):
+        dup = RANGE_DISPS + [art(99, "6º", "seis de novo")]
+        res = resolve_targets([evento(1, "REVOGA", "artigo", "5º a 8º")], dup)[1]
+        assert not res.dispositivos and "duplicad" in res.reason
+
+    def test_inverted_range_is_refused(self):
+        res = resolve_targets([evento(1, "REVOGA", "artigo", "9º a 5º")], RANGE_DISPS)[1]
+        assert not res.dispositivos and "inválido" in res.reason
+
+    def test_single_resolution_keeps_the_one_dispositivo_property(self):
+        res = resolve_targets([evento(1, "REVOGA", "artigo", "6º")], RANGE_DISPS)[1]
+        assert res.dispositivo.id == 4 and len(res.dispositivos) == 1
+
+
+class TestEngineWithRanges:
+    def test_range_revocation_hides_every_article_in_it_and_counts_one_event(self):
+        ev = evento(1, "REVOGA", "artigo", "5º a 8º", fonte_texto="Ficam revogados os arts. 5º a 8º da Lei nº 123/2020.")
+        eng, out = run_engine([ev], RANGE_DISPS)
+        st = eng.get_statistics()
+        assert st["revoked_count"] == 5 and st["events_applied"] == 1 and st["events_unresolved"] == 0
+        for gone in ("cinco", "cinco-A", "seis", "sete", "oito"):
+            assert gone not in out.replace("Revogado", "")
+        assert "nove" in out and "Art. 1º" in out          # outside the range: untouched
+        assert out.count("Revogado pela Lei nº 200/2021") == 5
+
+    def test_sentence_with_singular_and_plural_revokes_all_listed_articles(self):
+        text = "Ficam revogados o art. 5º e os arts. 7º e 8º da Lei nº 123/2020."
+        evs = [evento(i, "REVOGA", "artigo", n, fonte_texto=text) for i, n in enumerate(["5º", "7º", "8º"], start=1)]
+        eng, out = run_engine(evs, RANGE_DISPS)
+        assert eng.get_statistics()["revoked_count"] == 3 and eng.get_statistics()["events_applied"] == 3
+        assert "seis" in out and "nove" in out

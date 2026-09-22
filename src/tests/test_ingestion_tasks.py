@@ -303,3 +303,61 @@ class TestEndToEndConsolidationFromAmendingSentences:
         assert result["events_applied"] == 1 and result["events_unresolved"] == 2
         assert "Art. 9º (Revogado pela Lei nº 200/2021)" in base.texto_consolidado
         assert "Prazo antigo de dez dias." in base.texto_consolidado
+
+
+@pytest.mark.django_db
+class TestEndToEndPluralAndRangeRevocations:
+    """
+    The three sentence shapes that used to fail SILENTLY: a partial extraction revoked one article
+    and left the others in force, with no warning. Real extractor + PostgreSQL + real engine.
+    """
+
+    def _run_many(self, sentence, numbers=("1º", "5º", "5º-A", "6º", "7º", "8º", "9º", "10")):
+        from datetime import date
+
+        from src.apps.ingestion.tasks import consolidate_norma_task
+        from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
+        from src.processing.ner_extractor import LegalNERExtractor
+
+        base = Norma.objects.create(tipo="Lei", numero="123", ano=2020, status="entities_extracted",
+                                    data_publicacao=date(2020, 1, 1))
+        for i, num in enumerate(numbers, start=1):
+            Dispositivo.objects.create(norma=base, tipo="artigo", numero=num, texto=f"vigente-{num}", ordem=i)
+        amending = Norma.objects.create(tipo="Lei", numero="200", ano=2021, data_publicacao=date(2021, 5, 1))
+        fonte = Dispositivo.objects.create(norma=amending, tipo="artigo", numero="1º", texto=sentence, ordem=1)
+        for ev in LegalNERExtractor().extract_events(sentence):
+            EventoAlteracao.objects.create(
+                dispositivo_fonte=fonte, acao=ev["acao"], target_text=ev["target_text"][:500], norma_alvo=base,
+                extraction_confidence=ev["extraction_confidence"], extraction_method=ev["extraction_method"],
+                referencia_tipo=ev["referencia_tipo"], referencia_numero=ev["referencia_numero"],
+            )
+        result = consolidate_norma_task(base.id)
+        base.refresh_from_db()
+        return result, base.texto_consolidado
+
+    @pytest.mark.parametrize("sentence,gone,kept", [
+        ("Ficam revogados o art. 5º e os arts. 7º e 8º da Lei nº 123/2020.", {"5º", "7º", "8º"}, {"1º", "5º-A", "6º", "9º", "10"}),
+        ("Revogam-se os arts. 6º, 7º e 9º da Lei nº 123/2020.", {"6º", "7º", "9º"}, {"1º", "5º", "8º", "10"}),
+        ("Ficam revogados o art. 5º, 6º e 7º da Lei nº 123/2020.", {"5º", "6º", "7º"}, {"1º", "8º", "9º"}),
+        ("Fica revogado o art. 5º, bem como os arts. 8º a 9º da Lei nº 123/2020.", {"5º", "8º", "9º"}, {"1º", "6º", "7º", "10"}),
+        ("Ficam revogados os arts. 5º a 7º da Lei nº 123/2020.", {"5º", "5º-A", "6º", "7º"}, {"1º", "8º", "9º", "10"}),
+    ])
+    def test_every_listed_article_is_revoked_and_no_other(self, sentence, gone, kept):
+        result, text = self._run_many(sentence)
+        assert result["events_unresolved"] == 0, text
+        for n in gone:
+            assert f"vigente-{n}\n" not in text + "\n" and f"vigente-{n} " not in text, f"art. {n} still in force"
+            assert f"Art. {n} (Revogado pela Lei nº 200/2021)" in text
+        for n in kept:
+            assert f"vigente-{n}" in text, f"art. {n} wrongly revoked"
+
+    def test_numbers_that_are_not_articles_do_not_revoke_anything_extra(self):
+        result, text = self._run_many("Fica revogado o art. 5º e 10 dias de prazo da Lei nº 123/2020.")
+        assert "vigente-10" in text and "vigente-6º" in text
+        assert "Art. 5º (Revogado pela Lei nº 200/2021)" in text
+        assert "Art. 10 (Revogado" not in text
+
+    def test_an_inverted_range_is_reported_not_guessed(self):
+        result, text = self._run_many("Ficam revogados os arts. 9º a 5º da Lei nº 123/2020.")
+        assert result["events_applied"] == 0 and result["needs_review"] is True
+        assert "Revogado" not in text.split("EVENTOS NÃO RESOLVIDOS")[0]

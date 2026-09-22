@@ -93,6 +93,46 @@
         }
     }
 
+    // The delete-session button and the suggestion chips carry their argument in a data-*
+    // attribute and are wired through this ONE delegated listener, instead of an inline onclick
+    // (a CSP without 'unsafe-inline' blocks every inline handler; this is required for that).
+    document.addEventListener('click', (event) => {
+        const deleteBtn = event.target.closest ? event.target.closest('[data-delete-session-id]') : null;
+        if (deleteBtn) {
+            event.stopPropagation();
+            deleteSession(deleteBtn.dataset.deleteSessionId, event);
+            return;
+        }
+        const chip = event.target.closest ? event.target.closest('.chip[data-question]') : null;
+        if (chip) { askQuestion(chip.dataset.question); return; }
+
+        // Suggestion cards and "recent search" rows carry the question in data-question.
+        const questionEl = event.target.closest ? event.target.closest('[data-question]') : null;
+        if (questionEl) { askQuestion(questionEl.dataset.question); return; }
+
+        // Sidebar/header buttons that open the command palette (data-open-command-palette).
+        const paletteTrigger = event.target.closest ? event.target.closest('[data-open-command-palette]') : null;
+        if (paletteTrigger) {
+            event.preventDefault();
+            const input = document.getElementById('command-palette-trigger');
+            if (input) input.click();
+        }
+    });
+
+    // The hero search form used to run its logic in an inline onsubmit (blocked by CSP without
+    // 'unsafe-inline'); a real submit listener replaces it, same behaviour.
+    const heroSearchForm = document.getElementById('hero-search-form');
+    if (heroSearchForm) {
+        heroSearchForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const input = document.getElementById('hero-search-input');
+            const value = input ? input.value.trim() : '';
+            if (value && window.jurixChat && window.jurixChat.askQuestion) {
+                window.jurixChat.askQuestion(value);
+            }
+        });
+    }
+
     // Source cards carry the URL in a data attribute and are opened by ONE delegated listener,
     // instead of an inline onclick that interpolated the URL into JavaScript.
     document.addEventListener('click', (event) => {
@@ -216,7 +256,7 @@
                     </div>
                     <button 
                         class="delete-session-button" 
-                        onclick="event.stopPropagation(); window.jurixChat.deleteSession(${session.id}, event)"
+                        data-delete-session-id="${session.id}"
                         aria-label="Deletar conversa"
                         title="Deletar conversa">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="delete-icon">
@@ -422,7 +462,7 @@
             </div>
             <button 
                 class="delete-session-button" 
-                onclick="event.stopPropagation(); window.jurixChat.deleteSession('${tempSessionId}', event)"
+                data-delete-session-id="${tempSessionId}"
                 aria-label="Deletar conversa"
                 title="Deletar conversa">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="delete-icon">
@@ -975,7 +1015,7 @@
         chipsContainer.innerHTML = selected
             .map(
                 (question) =>
-                    `<div class="chip" onclick="window.jurixChat.askQuestion('${question.replace(/'/g, "\\'")}')">${escapeHtml(question)}</div>`
+                    `<div class="chip" data-question="${escapeAttr(question)}">${escapeHtml(question)}</div>`
             )
             .join('');
     }

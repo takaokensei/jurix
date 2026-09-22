@@ -37,11 +37,22 @@ _THIS_NORMA = re.compile(
 )
 
 
+MAX_RANGE_SPAN = 200
+
+
 @dataclass(frozen=True)
 class Resolution:
-    """Outcome for one event: the dispositivo, or None plus why it could not be resolved."""
-    dispositivo: Any | None
+    """
+    Outcome for one event: the dispositivos it targets (one, or several for a range), or none
+    plus why it could not be resolved.
+    """
+    dispositivos: tuple = ()
     reason: str = ''
+
+    @property
+    def dispositivo(self) -> Any | None:
+        """The single target, or None (unresolved, or a range with several targets)."""
+        return self.dispositivos[0] if len(self.dispositivos) == 1 else None
 
 
 def article_key(numero: Any) -> tuple[int, str] | None:
@@ -50,6 +61,24 @@ def article_key(numero: Any) -> tuple[int, str] | None:
     if not match:
         return None
     return (int(match.group(1)), (match.group(2) or '').upper())
+
+
+def article_spec(numero: Any) -> tuple | None:
+    """
+    Parse an article reference: ('single', key) for '5º'/'5º-A', ('range', lo, hi) for '5º a 8º'.
+
+    Range endpoints must be plain numbers with lo <= hi and a bounded span; anything else
+    ('9º a 5º', '5º-A a 8º') is refused (None) rather than guessed.
+    """
+    text = str(numero or '')
+    parts = re.split(r'\s+a\s+', text)
+    if len(parts) == 2:
+        lo, hi = article_key(parts[0]), article_key(parts[1])
+        if lo and hi and not lo[1] and not hi[1] and lo[0] <= hi[0] and hi[0] - lo[0] <= MAX_RANGE_SPAN:
+            return ('range', lo[0], hi[0])
+        return None
+    key = article_key(text)
+    return ('single', key) if key else None
 
 
 def _ambiguous_norma_reason(text: str) -> str:
@@ -97,27 +126,40 @@ def resolve_targets(eventos: list, dispositivos: list) -> dict[Any, Resolution]:
     for e in pending:
         group = (getattr(e, 'dispositivo_fonte_id', None), (e.acao or '').upper())
         if types_by_group[group] - {'artigo'}:
-            result[e.id] = Resolution(None, 'referência hierárquica (parágrafo/inciso/alínea) não suportada')
+            result[e.id] = Resolution((), 'referência hierárquica (parágrafo/inciso/alínea) não suportada')
             continue
         if (e.referencia_tipo or '').lower() != 'artigo':
-            result[e.id] = Resolution(None, 'evento sem artigo identificável')
+            result[e.id] = Resolution((), 'evento sem artigo identificável')
             continue
 
         fonte = e.dispositivo_fonte
         reason = _ambiguous_norma_reason(getattr(fonte, 'texto', '') if fonte else '')
         if reason:
-            result[e.id] = Resolution(None, reason)
+            result[e.id] = Resolution((), reason)
             continue
 
-        key = article_key(e.referencia_numero)
-        if key is None:
-            result[e.id] = Resolution(None, 'número de artigo inválido')
+        spec = article_spec(e.referencia_numero)
+        if spec is None:
+            result[e.id] = Resolution((), 'número de artigo inválido')
             continue
-        candidates = articles.get(key, [])
+        if spec[0] == 'range':
+            if (e.acao or '').upper() != 'REVOGA':
+                result[e.id] = Resolution((), 'intervalo de artigos só é suportado para revogação')
+                continue
+            # 'arts. 5º a 8º' includes 5º-A, 5º-B...: every article whose NUMBER lies in the range
+            groups = [ds for (number, _suffix), ds in sorted(articles.items()) if spec[1] <= number <= spec[2]]
+            if not groups:
+                result[e.id] = Resolution((), 'artigo não encontrado na norma alvo')
+            elif any(len(ds) > 1 for ds in groups):
+                result[e.id] = Resolution((), 'numeração de artigo duplicada na norma alvo')
+            else:
+                result[e.id] = Resolution(tuple(ds[0] for ds in groups))
+            continue
+        candidates = articles.get(spec[1], [])
         if not candidates:
-            result[e.id] = Resolution(None, 'artigo não encontrado na norma alvo')
+            result[e.id] = Resolution((), 'artigo não encontrado na norma alvo')
         elif len(candidates) > 1:
-            result[e.id] = Resolution(None, 'numeração de artigo duplicada na norma alvo')
+            result[e.id] = Resolution((), 'numeração de artigo duplicada na norma alvo')
         else:
-            result[e.id] = Resolution(candidates[0])
+            result[e.id] = Resolution((candidates[0],))
     return result

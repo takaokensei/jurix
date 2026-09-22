@@ -57,13 +57,33 @@ class LegalNERExtractor:
     }
 
     # Legal element patterns
-    # The optional '-A' suffix (Art. 2º-A) must be captured: it is a different
-    # article from Art. 2º. No spaces are allowed around the hyphen and the letter
-    # must not start a word, so 'art. 5º - A revogação' / 'art. 5º-Aplicam' keep '5º'.
+    # Article references: singular ('art. 5º'), plural ('arts. 5º e 6º', 'artigos 5º e 6º'),
+    # lists ('art. 5º, 6º e 7º') and ranges ('arts. 5º a 8º', '5º ao 8º').
+    #
+    # A partial extraction is the dangerous case: 'revogados o art. 5º e os arts. 7º e 8º' used to
+    # yield only art. 5º, which the engine applied while 7º and 8º stayed in force with no warning.
+    #
+    # - The optional '-A' suffix (Art. 2º-A) is a different article from Art. 2º. No spaces are
+    #   allowed around the hyphen and the letter must not start a word, so 'art. 5º - A revogação'
+    #   / 'art. 5º-Aplicam' keep '5º'.
+    # - Numbers after the first are at most 3 digits and are not followed by a unit, so 'art. 5º e
+    #   10 dias', 'art. 5º, 2020' or 'art. 5º e 30%' are not swallowed into the list.
+    _ART_NUM = r'\d+[º°ª]?(?:-[A-Z](?![a-zà-ú]))?'
+    _ART_NEXT = (r'\d{1,3}(?!\d)[º°ª]?(?:-[A-Z](?![a-zà-ú]))?'
+                 r'(?!\s*(?:dias?|m[êe]s(?:es)?|anos?|horas?|%|por\s*cento|reais|unidades?|vezes))')
     ARTICLE_PATTERN = re.compile(
-        r'\b(art(?:igo)?\.?\s*(?:n[º°]?\s*)?)([\d]+[º°]?(?:-[A-Z](?![a-zà-ú]))?)',
+        rf'\b(art(?:igo)?s?\.?\s*(?:n[º°]?\s*)?)'
+        rf'({_ART_NUM}(?:(?:\s*,\s*(?:e\s+)?|\s+e\s+|\s+a\s+|\s+ao\s+|\s+at[ée]\s+(?:o\s+)?){_ART_NEXT})*)',
         re.IGNORECASE
     )
+    _ART_TOKEN = re.compile(rf'({_ART_NUM})|\b(?:ao|at[ée]|a)\b', re.IGNORECASE)
+    # A '.' right after one of these is an abbreviation, not the end of a sentence.
+    ABBREVIATIONS = ('arts', 'art', 'nº', 'no', 'incs', 'inc')
+
+    @classmethod
+    def _is_abbreviation(cls, prefix: str) -> bool:
+        return prefix.lower().endswith(cls.ABBREVIATIONS)
+
 
     PARAGRAPH_PATTERN = re.compile(
         r'(?:\bpar[áa]grafo|[§¶])\s*(?:n[º°]?\s*)?([\d]+[º°]?|[ÚUú]nico)',
@@ -165,7 +185,7 @@ class LegalNERExtractor:
                 for m in re.finditer(r'[.;]', sub_after_action):
                     pos = m.start()
                     prefix = sub_after_action[max(0, pos - 5):pos].lower()
-                    if prefix.endswith('art') or prefix.endswith('nº') or prefix.endswith('no') or prefix.endswith('inc'):
+                    if self._is_abbreviation(prefix):
                         continue
                     punct_match = m
                     break
@@ -237,7 +257,7 @@ class LegalNERExtractor:
         start = lower
         for m in re.finditer(r'[.;]', texto[lower:upper]):
             prefix = texto[max(0, lower + m.start() - 5):lower + m.start()].lower()
-            if prefix.endswith(('art', 'nº', 'no', 'inc', 'arts')):
+            if LegalNERExtractor._is_abbreviation(prefix):
                 continue
             start = lower + m.end()
         return start
@@ -289,6 +309,27 @@ class LegalNERExtractor:
         filtered.sort(key=lambda x: x['span'][0])
         return filtered
 
+    def _article_numbers(self, listing: str) -> list[str]:
+        """
+        Expand the number list of one article reference into individual references.
+
+        '5º, 6º e 7º' -> ['5º', '6º', '7º'];  '7º a 9º' -> ['7º a 9º'] (a range stays ONE
+        reference: the consolidation resolves it against the norma, which is the only place that
+        knows about suffixed articles such as 5º-A lying between the endpoints).
+        """
+        tokens = [m.group(1) or 'RANGE' for m in self._ART_TOKEN.finditer(listing)]
+        numbers, i = [], 0
+        while i < len(tokens):
+            if tokens[i] == 'RANGE':
+                i += 1
+            elif i + 2 < len(tokens) + 0 and tokens[i + 1] == 'RANGE' and tokens[i + 2] != 'RANGE':
+                numbers.append(f"{tokens[i]} a {tokens[i + 2]}")
+                i += 3
+            else:
+                numbers.append(tokens[i])
+                i += 1
+        return numbers
+
     def _extract_references(self, texto: str) -> list[dict[str, Any]]:
         """
         Extract legal references strictly present within given text snippet.
@@ -327,16 +368,16 @@ class LegalNERExtractor:
                 'norma_info': None
             })
 
-        # 3. Article references
+        # 3. Article references (singular, plural, lists and ranges)
         for match in self.ARTICLE_PATTERN.finditer(texto):
-            numero = match.group(2).strip()
-            references.append({
-                'tipo': 'artigo',
-                'numero': numero,
-                'text': match.group(0),
-                'confidence': 0.9,
-                'norma_info': None
-            })
+            for numero in self._article_numbers(match.group(2)):
+                references.append({
+                    'tipo': 'artigo',
+                    'numero': numero,
+                    'text': match.group(0),
+                    'confidence': 0.9,
+                    'norma_info': None
+                })
 
         # 4. Paragraph references
         for match in self.PARAGRAPH_PATTERN.finditer(texto):

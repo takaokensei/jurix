@@ -225,10 +225,12 @@ class ConsolidationEngine:
                 continue  # REGULAMENTA / REFERENCIA: informational only
 
             resolved_here = False
+            targets = [target] if target is not None else []
             if target is None and acao in RESOLVABLE_ACTIONS:
                 resolution = resolutions.get(evento.id)
-                if resolution is not None and resolution.dispositivo is not None:
-                    target, resolved_here = resolution.dispositivo, True
+                if resolution is not None and resolution.dispositivos:
+                    targets = list(resolution.dispositivos)
+                    target, resolved_here = targets[0], True
                 elif resolution is not None:
                     self._mark_unresolved(evento, ref_str, resolution.reason)
                     continue
@@ -237,16 +239,17 @@ class ConsolidationEngine:
                 self._mark_unresolved(evento, ref_str, 'dispositivo alvo não identificado')
                 continue
 
-            applied_key = (target.id, acao, getattr(evento, 'dispositivo_fonte_id', None))
+            applied_key = (tuple(t.id for t in targets), acao, getattr(evento, 'dispositivo_fonte_id', None))
 
             if acao == 'REVOGA':
-                self.revoked_dispositivos[target.id] = {
-                    'evento': evento,
-                    'norma_ref': ref_str,
-                }
-                # If previously altered, revocation overrides it
-                if target.id in self.altered_dispositivos:
-                    del self.altered_dispositivos[target.id]
+                for revoked in targets:   # several for a range ('arts. 5º a 8º')
+                    self.revoked_dispositivos[revoked.id] = {
+                        'evento': evento,
+                        'norma_ref': ref_str,
+                    }
+                    # If previously altered, revocation overrides it
+                    if revoked.id in self.altered_dispositivos:
+                        del self.altered_dispositivos[revoked.id]
                 if applied_key not in applied_keys:
                     applied_keys.add(applied_key)
                     self.applied_events += 1

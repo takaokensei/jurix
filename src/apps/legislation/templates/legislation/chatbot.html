@@ -8,7 +8,7 @@
     <title>{{ page_title|default:"Jurix - Inteligência Jurídica" }}</title>
     
     <!-- Content Security Policy -->
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self';">
     
     <!-- Google Fonts: Inter & Lora -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,7 +19,11 @@
     <link rel="stylesheet" href="{% static 'css/swiss-design-system.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}">
 </head>
-<body class="figma-theme">
+<body class="figma-theme"
+      data-chatbot-url="{% url 'legislation:chatbot' %}"
+      data-norma-list-url="{% url 'legislation:norma_list' %}"
+      data-logo-icon-url="{% static 'img/logo-icon.svg' %}"
+      data-user-name="{{ request.user.first_name|default:request.user.username|title }}">
     <!-- Skip link for keyboard accessibility -->
     <a href="#messages-container" class="skip-link" style="position: absolute; left: -9999px; z-index: 999; padding: 8px; background: #3B82F6; color: white;">Pular para a pesquisa</a>
     
@@ -66,7 +70,7 @@
                         <span>Normas</span>
                     </a>
                     
-                    <button type="button" class="figma-sidebar-item" onclick="document.getElementById('command-palette-trigger').click()">
+                    <button type="button" class="figma-sidebar-item" data-open-command-palette>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -74,7 +78,7 @@
                         <span>Pesquisa jurídica</span>
                     </button>
                     
-                    <button type="button" class="figma-sidebar-item" onclick="document.getElementById('command-palette-trigger').click()">
+                    <button type="button" class="figma-sidebar-item" data-open-command-palette>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
                         </svg>
@@ -101,7 +105,7 @@
                     <span>Admin</span>
                 </a>
                 {% endif %}
-                <button type="button" class="figma-sidebar-item" id="command-palette-trigger-footer" onclick="document.getElementById('command-palette-trigger').click()">
+                <button type="button" class="figma-sidebar-item" id="command-palette-trigger-footer" data-open-command-palette>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3"></circle>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -174,7 +178,7 @@
                                 </div>
                                 
                                 <!-- Smart Search Panel (832px x 116px) -->
-                                <form id="hero-search-form" class="figma-smart-search-panel" onsubmit="event.preventDefault(); const val=document.getElementById('hero-search-input').value.trim(); if(val&&window.jurixChat&&window.jurixChat.askQuestion){window.jurixChat.askQuestion(val);}">
+                                <form id="hero-search-form" class="figma-smart-search-panel">
                                     <div class="figma-input-line">
                                         <div class="figma-input-left">
                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2">
@@ -217,7 +221,7 @@
                                 
                                 <!-- Suggestions Row (4 Cards) -->
                                 <div class="figma-suggestions-row" id="figma-suggestions-cards">
-                                    <div class="figma-suggestion-card" onclick="window.jurixChat.askQuestion('Quais normas regulam a regularização de construções e edificações?')">
+                                    <div class="figma-suggestion-card" data-question="Quais normas regulam a regularização de construções e edificações?">
                                         <div class="figma-suggestion-top">
                                             <span class="figma-suggestion-title">Quais normas regulam...</span>
                                             <span style="color: #60A5FA; font-size: 13px;">➔</span>
@@ -225,7 +229,7 @@
                                         <span class="figma-suggestion-desc">a regularização de construções?</span>
                                     </div>
                                     
-                                    <div class="figma-suggestion-card" onclick="window.jurixChat.askQuestion('Compare as principais alterações introduzidas pela Lei nº 14.133/2021.')">
+                                    <div class="figma-suggestion-card" data-question="Compare as principais alterações introduzidas pela Lei nº 14.133/2021.">
                                         <div class="figma-suggestion-top">
                                             <span class="figma-suggestion-title">Compare as alterações</span>
                                             <span style="color: #60A5FA; font-size: 13px;">➔</span>
@@ -233,7 +237,7 @@
                                         <span class="figma-suggestion-desc">da Lei nº 14.133/2021.</span>
                                     </div>
                                     
-                                    <div class="figma-suggestion-card" onclick="window.jurixChat.askQuestion('Quais dispositivos sobre zoneamento urbano estão atualmente vigentes?')">
+                                    <div class="figma-suggestion-card" data-question="Quais dispositivos sobre zoneamento urbano estão atualmente vigentes?">
                                         <div class="figma-suggestion-top">
                                             <span class="figma-suggestion-title">Quais dispositivos est...</span>
                                             <span style="color: #60A5FA; font-size: 13px;">➔</span>
@@ -241,7 +245,7 @@
                                         <span class="figma-suggestion-desc">atualmente vigentes?</span>
                                     </div>
                                     
-                                    <div class="figma-suggestion-card" onclick="window.jurixChat.askQuestion('Quais são os entendimentos jurisprudenciais do STF sobre desapropriação?')">
+                                    <div class="figma-suggestion-card" data-question="Quais são os entendimentos jurisprudenciais do STF sobre desapropriação?">
                                         <div class="figma-suggestion-top">
                                             <span class="figma-suggestion-title">Quais são os entendi...</span>
                                             <span style="color: #60A5FA; font-size: 13px;">➔</span>
@@ -269,7 +273,7 @@
                                     </svg>
                                     <span class="figma-header-title">Pesquisa recente</span>
                                 </div>
-                                <a href="javascript:void(0)" onclick="document.getElementById('command-palette-trigger').click()" class="figma-header-link">
+                                <a href="#" data-open-command-palette class="figma-header-link">
                                     <span>Ver todo o histórico</span>
                                     <span>➔</span>
                                 </a>
@@ -277,7 +281,7 @@
                             
                             <div class="figma-recent-searches-list">
                                 <!-- Row 1 -->
-                                <div class="figma-recent-search-row" onclick="window.jurixChat.askQuestion('Regulamentação de construções e edificações na LC nº 382/2014 e Decreto nº 8.231/2018')">
+                                <div class="figma-recent-search-row" data-question="Regulamentação de construções e edificações na LC nº 382/2014 e Decreto nº 8.231/2018">
                                     <div class="figma-col-query">
                                         <div class="figma-query-title">Regulamentação de construções e edificações</div>
                                         <div class="figma-query-tags">LC nº 382/2014 • Decreto nº 8.231/2018</div>
@@ -306,7 +310,7 @@
                                 </div>
                                 
                                 <!-- Row 2 -->
-                                <div class="figma-recent-search-row" onclick="window.jurixChat.askQuestion('Alterações introduzidas pela Lei nº 14.133/2021 em relação à Lei nº 8.666/1993')">
+                                <div class="figma-recent-search-row" data-question="Alterações introduzidas pela Lei nº 14.133/2021 em relação à Lei nº 8.666/1993">
                                     <div class="figma-col-query">
                                         <div class="figma-query-title">Alterações introduzidas pela Lei nº 14.133/2021</div>
                                         <div class="figma-query-tags">Lei nº 14.133/2021 • Lei nº 8.666/1993</div>
@@ -335,7 +339,7 @@
                                 </div>
                                 
                                 <!-- Row 3 -->
-                                <div class="figma-recent-search-row" onclick="window.jurixChat.askQuestion('Dispositivos vigentes sobre zoneamento urbano na LC nº 382/2014, art. 45 a 89')">
+                                <div class="figma-recent-search-row" data-question="Dispositivos vigentes sobre zoneamento urbano na LC nº 382/2014, art. 45 a 89">
                                     <div class="figma-col-query">
                                         <div class="figma-query-title">Dispositivos vigentes sobre zoneamento urbano</div>
                                         <div class="figma-query-tags">LC nº 382/2014, art. 45 a 89</div>
@@ -364,7 +368,7 @@
                                 </div>
                                 
                                 <!-- Row 4 -->
-                                <div class="figma-recent-search-row" onclick="window.jurixChat.askQuestion('Entendimento jurisprudencial sobre desapropriação no STF Tema 865 RE 922.144')">
+                                <div class="figma-recent-search-row" data-question="Entendimento jurisprudencial sobre desapropriação no STF Tema 865 RE 922.144">
                                     <div class="figma-col-query">
                                         <div class="figma-query-title">Entendimento jurisprudencial sobre desapropriação</div>
                                         <div class="figma-query-tags">STF • Tema 865 • RE 922.144</div>
@@ -393,7 +397,7 @@
                                 </div>
                                 
                                 <!-- Row 5 -->
-                                <div class="figma-recent-search-row" onclick="window.jurixChat.askQuestion('Normas sobre parcelamento e uso do solo Lei nº 6.766/1979 e Dec. Mun. 4.120')">
+                                <div class="figma-recent-search-row" data-question="Normas sobre parcelamento e uso do solo Lei nº 6.766/1979 e Dec. Mun. 4.120">
                                     <div class="figma-col-query">
                                         <div class="figma-query-title">Normas sobre parcelamento e uso do solo</div>
                                         <div class="figma-query-tags">Lei nº 6.766/1979 • Dec. Mun. 4.120</div>
@@ -497,38 +501,13 @@
     <script src="{% static 'js/vendor/marked.min.js' %}"></script>
     <script src="{% static 'js/vendor/purify.min.js' %}"></script>
     
-    <!-- Jurix Configuration -->
-    <script>
-        window.JURIX_CONFIG = {
-            chatbotUrl: "{% url 'legislation:chatbot' %}",
-            normaListUrl: "{% url 'legislation:norma_list' %}",
-            logoIconUrl: "{% static 'img/logo-icon.svg' %}",
-            userName: "{{ request.user.first_name|default:request.user.username|title }}"
-        };
-    </script>
+    <!-- Jurix Configuration: read from data-* attributes on <body> by config.js (CSP: no inline script) -->
+    <script src="{% static 'js/config.js' %}"></script>
     <script src="{% static 'js/theme.js' %}"></script>
     <script src="{% static 'js/chat.js' %}"></script>
     <script src="{% static 'js/command_palette.js' %}"></script>
     
-    <!-- Synchronizer for Floating Bar and Hero Search State -->
-    <script>
-        (function() {
-            const welcomeEl = document.getElementById('welcome-state');
-            const floatingInput = document.getElementById('conversation-input-bar');
-            
-            function updateFloatingBar() {
-                if (!welcomeEl || !floatingInput) return;
-                const isWelcomeHidden = welcomeEl.style.display === 'none' || 
-                                       getComputedStyle(welcomeEl).display === 'none';
-                floatingInput.style.display = isWelcomeHidden ? 'flex' : 'none';
-            }
-            
-            if (welcomeEl) {
-                const observer = new MutationObserver(updateFloatingBar);
-                observer.observe(welcomeEl, { attributes: true, attributeFilter: ['style', 'class'] });
-                updateFloatingBar();
-            }
-        })();
-    </script>
+    <!-- Synchronizer for Floating Bar and Hero Search State (floating-bar-sync.js; CSP: no inline script) -->
+    <script src="{% static 'js/floating-bar-sync.js' %}"></script>
 </body>
 </html>

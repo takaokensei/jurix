@@ -118,3 +118,38 @@ class TestLegalNERExtractor:
     def test_revocation_wording_is_unchanged(self, extractor):
         events = extractor.extract_events("Fica revogado o art. 5º da Lei nº 123/2020.")
         assert [(e['acao'], e['referencia_numero']) for e in events] == [('REVOGA', '5º')]
+
+    # ---- lists and ranges of articles (a partial extraction silently leaves articles in force) ----
+    @staticmethod
+    def _articles(events):
+        return [(e['acao'], e['referencia_numero']) for e in events if e['referencia_tipo'] == 'artigo']
+
+    @pytest.mark.parametrize("text,expected", [
+        ("Ficam revogados os arts. 5º e 6º da Lei nº 123/2020.", ["5º", "6º"]),
+        ("Ficam revogados os artigos 5º e 6º da Lei nº 123/2020.", ["5º", "6º"]),
+        ("Revogam-se os arts. 5º, 6º e 7º da Lei nº 123/2020.", ["5º", "6º", "7º"]),
+        ("Ficam revogados o art. 5º, 6º e 7º da Lei nº 123/2020.", ["5º", "6º", "7º"]),
+        ("Ficam revogados o art. 5º e os arts. 7º e 8º da Lei nº 123/2020.", ["5º", "7º", "8º"]),
+        ("Ficam revogados os arts. 7º e 8º e o art. 5º da Lei nº 123/2020.", ["7º", "8º", "5º"]),
+        ("Fica revogado o art. 5º, bem como os arts. 7º a 9º da Lei nº 123/2020.", ["5º", "7º a 9º"]),
+        ("Ficam revogados os arts. 5º a 8º da Lei nº 123/2020.", ["5º a 8º"]),
+        ("Ficam revogados os arts. 5º ao 8º da Lei nº 123/2020.", ["5º a 8º"]),
+        ("Ficam revogados os arts. 10 a 12 da Lei nº 123/2020.", ["10 a 12"]),
+        ("Ficam revogados os arts. 5º-A e 5º-B da Lei nº 123/2020.", ["5º-A", "5º-B"]),
+    ])
+    def test_lists_and_ranges_of_articles_are_fully_extracted(self, extractor, text, expected):
+        assert [n for _, n in self._articles(extractor.extract_events(text))] == expected
+
+    @pytest.mark.parametrize("text,expected", [
+        ("Fica revogado o art. 5º e 10 dias de prazo.", ["5º"]),
+        ("Fica revogado o art. 5º, 2020 conforme registro.", ["5º"]),
+        ("Fica revogado o art. 5º e 30% do valor.", ["5º"]),
+        ("Fica revogado o art. 5º a Lei nº 123/2020.", ["5º"]),
+        ("Fica revogado o art. 5º, § 1º da Lei nº 123/2020.", ["5º"]),
+    ])
+    def test_numbers_that_are_not_articles_are_not_swallowed_into_the_list(self, extractor, text, expected):
+        assert [n for _, n in self._articles(extractor.extract_events(text))] == expected
+
+    def test_an_inverted_or_huge_range_is_kept_verbatim_for_the_resolver_to_refuse(self, extractor):
+        inverted = self._articles(extractor.extract_events("Ficam revogados os arts. 9º a 5º da Lei nº 123/2020."))
+        assert inverted == [("REVOGA", "9º a 5º")]

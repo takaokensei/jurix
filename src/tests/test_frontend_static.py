@@ -52,3 +52,23 @@ def test_all_markdown_is_rendered_through_the_single_sanitising_helper():
     assert text.count("DOMPurify.sanitize(") == 1, "DOMPurify.sanitize() must only be called inside renderMarkdown()"
     for tag in ("img", "style", "svg", "link"):
         assert f"'{tag}'" in text.split("const SANITIZE_CONFIG")[1].split("};")[0], tag
+
+
+def test_chatbot_template_has_no_inline_handlers_scripts_or_javascript_urls():
+    """Regression guard for the CSP hardening: chatbot.html must stay free of inline execution."""
+    html = (
+        Path(__file__).resolve().parents[1] / "apps" / "legislation" / "templates" / "legislation" / "chatbot.html"
+    ).read_text(encoding="utf-8")
+    assert not re.search(r"\son[a-z]+\s*=", html, re.IGNORECASE), "inline event handler attribute found"
+    assert not re.search(r"<script(?![^>]*\bsrc=)[^>]*>\s*\S", html, re.IGNORECASE), "inline <script> with a body found"
+    assert "javascript:" not in html.lower()
+
+
+def test_chatbot_csp_does_not_allow_unsafe_inline_or_unsafe_eval_scripts():
+    html = (
+        Path(__file__).resolve().parents[1] / "apps" / "legislation" / "templates" / "legislation" / "chatbot.html"
+    ).read_text(encoding="utf-8")
+    match = re.search(r'Content-Security-Policy"\s+content="([^"]+)"', html)
+    assert match, "expected a CSP meta tag"
+    script_src = next(d for d in match.group(1).split(";") if d.strip().startswith("script-src"))
+    assert "unsafe-inline" not in script_src and "unsafe-eval" not in script_src
