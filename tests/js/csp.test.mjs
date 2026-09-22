@@ -62,7 +62,19 @@ async function bootUnderCsp() {
   const dom = new JSDOM(html, { url: 'http://localhost/normas/chatbot/', runScripts: 'dangerously', pretendToBeVisual: true });
   const { window } = dom;
   window.fetch = async () => ({ ok: true, status: 200, json: async () => ({ success: true, sessions: [], count: 0 }) });
-  for (const f of ['vendor/marked.min.js', 'vendor/purify.min.js', 'config.js', 'theme.js', 'chat.js', 'command_palette.js']) {
+  for (const f of [
+    'vendor/marked.min.js',
+    'vendor/purify.min.js',
+    'config.js',
+    'theme.js',
+    'jurix-markdown.js',
+    'jurix-rag.js',
+    'jurix-chat-api.js',
+    'chat.js',
+    'command_palette.js',
+    'floating-bar-sync.js',
+    'jurix-chat-sessions.js'
+  ]) {
     window.eval(read(f));
   }
   await tick();

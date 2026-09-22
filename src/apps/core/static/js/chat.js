@@ -14,6 +14,8 @@
         userName: 'Admin',
     };
 
+    const chatAPI = window.JurixChatAPI;
+
     function getSessionSlugFromPath() {
         const pathname = window.location.pathname.replace(/\/+$/, '');
         const configuredBase = String(config.chatbotUrl || '/assistente/').replace(/\/+$/, '');
@@ -203,10 +205,7 @@
     // ===== CHAT SESSIONS MANAGEMENT =====
     async function loadChatSessions() {
         try {
-            const response = await fetch('/api/v1/chat/sessions/');
-            if (!response.ok) return;
-
-            const data = await response.json();
+            const data = await chatAPI.listSessions();
             if (!data.success || !data.sessions) return;
 
             const sessionsList = document.getElementById('chat-sessions-list');
@@ -380,12 +379,7 @@
         if (!sessionId) return;
 
         try {
-            const response = await fetch(`/api/v1/chat/sessions/${sessionId}/`);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: Failed to load session`);
-            }
-
-            const sessionData = await response.json();
+            const sessionData = await chatAPI.getSession(sessionId);
             if (!sessionData.success || !sessionData.session) return;
 
             const sessionSlug = sessionData.session.slug || sessionData.session.id;
@@ -572,13 +566,7 @@
 
     async function performDeleteSession(sessionId) {
         try {
-            const csrfToken = getCookie('csrftoken');
-            const response = await fetch(`/api/v1/chat/sessions/${sessionId}/`, {
-                method: 'DELETE',
-                headers: { 'X-CSRFToken': csrfToken },
-            });
-
-            if (!response.ok) throw new Error('Failed to delete session');
+            await chatAPI.deleteSession(sessionId);
 
             if (currentSessionId === sessionId) {
                 currentSessionId = null;
@@ -797,19 +785,7 @@
             if (copyButton) copyButton.style.display = 'none';
             if (regenerateBtn) regenerateBtn.style.display = 'none';
 
-            const csrfToken = getCookie('csrftoken');
-            const response = await fetch(`/api/v1/chat/sessions/${sessionId}/regenerate/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken,
-                },
-                body: JSON.stringify({}),
-            });
-
-            if (!response.ok) throw new Error('Failed to regenerate');
-
-            const data = await response.json();
+            const data = await chatAPI.regenerateSession(sessionId);
             if (data.success && messageBody) {
                 messageBody.innerHTML = '';
                 if (copyButton) copyButton.setAttribute('data-markdown', data.answer);
@@ -1093,14 +1069,11 @@
 
         if (sessionSlug) {
             try {
-                const response = await fetch(`/api/v1/chat/sessions/by-slug/${sessionSlug}/`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success && data.session) {
-                        await loadSession(data.session.id);
-                        await loadChatSessions();
-                        return;
-                    }
+                const data = await chatAPI.getSessionBySlug(sessionSlug);
+                if (data.success && data.session) {
+                    await loadSession(data.session.id);
+                    await loadChatSessions();
+                    return;
                 }
                 window.location.href = config.chatbotUrl;
             } catch (error) {
@@ -1294,56 +1267,12 @@
     }
 
     async function streamAssistantResponse(question, sessionId, onChunk, onSources, onDone, onError) {
-        const csrfToken = getCookie('csrftoken');
-        const response = await fetch('/api/v1/search/answer/stream/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken,
-            },
-            body: JSON.stringify({
-                question,
-                session_id: sessionId,
-            }),
+        return chatAPI.streamAnswer(question, sessionId, {
+            onChunk,
+            onSources,
+            onDone,
+            onError,
         });
-
-        if (!response.ok || !response.body) {
-            const error = new Error(`HTTP ${response.status}`);
-            error.status = response.status;
-            throw error;
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let buffer = '';
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const parts = buffer.split('\n\n');
-            buffer = parts.pop() || '';
-
-            for (const part of parts) {
-                const line = part.trim();
-                if (line.startsWith('data: ')) {
-                    try {
-                        const eventData = JSON.parse(line.substring(6));
-                        if (eventData.type === 'sources' && onSources) {
-                            onSources(eventData.sources, eventData.confidence);
-                        } else if (eventData.type === 'chunk' && onChunk) {
-                            onChunk(eventData.chunk);
-                        } else if (eventData.type === 'done' && onDone) {
-                            onDone(eventData);
-                        } else if (eventData.type === 'error' && onError) {
-                            onError(eventData.error);
-                        }
-                    } catch (e) {
-                        console.error('Error parsing SSE event:', e);
-                    }
-                }
-            }
-        }
     }
 
                 let streamElements = null;
@@ -1434,27 +1363,11 @@
 
                     // Fallback to standard batch POST
                     try {
-                        const csrfToken = getCookie('csrftoken');
-                        const response = await fetch(config.chatbotUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': csrfToken,
-                            },
-                            body: JSON.stringify({
-                                question,
-                                session_id: currentSessionId,
-                                regenerate: false,
-                            }),
-                        });
-
-                        if (!response.ok) {
-                            const error = new Error(`HTTP error! status: ${response.status}`);
-                            error.status = response.status;
-                            throw error;
-                        }
-
-                        const data = await response.json();
+                        const data = await chatAPI.answerBatch(
+                            question,
+                            currentSessionId,
+                            config.chatbotUrl
+                        );
                         removeLoadingMessage(loadingId);
 
                         if (data.success) {

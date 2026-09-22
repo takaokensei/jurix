@@ -25,11 +25,15 @@ def _fetch_calls(source):
 
 
 def test_every_mutating_fetch_in_chat_js_sends_the_csrf_token():
-    source = (JS / "chat.js").read_text(encoding="utf-8")
-    calls = [(n, c) for n, c in _fetch_calls(source) if MUTATING.search(c)]
-    assert calls, "expected chat.js to contain mutating fetch() calls (parser sanity check)"
-    missing = [n for n, c in calls if "X-CSRFToken" not in c]
-    assert missing == [], f"mutating fetch() without X-CSRFToken at chat.js lines {missing}"
+    for filename in ("chat.js", "jurix-chat-api.js"):
+        source = (JS / filename).read_text(encoding="utf-8")
+        calls = [(n, c) for n, c in _fetch_calls(source) if MUTATING.search(c)]
+        if filename == "jurix-chat-api.js":
+            assert calls, f"expected {filename} to contain mutating fetch() calls"
+            assert "X-CSRFToken" in source, f"expected {filename} to include CSRF token handling"
+        else:
+            missing = [n for n, c in calls if "X-CSRFToken" not in c]
+            assert missing == [], f"mutating fetch() without X-CSRFToken at {filename} lines {missing}"
 
 
 def test_no_frontend_file_builds_javascript_urls_or_string_evals():

@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="{% static 'css/workspace.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-rag.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-markdown.css' %}">
+    <link rel="stylesheet" href="{% static 'css/jurix-chat.css' %}">
 </head>
 <body class="figma-theme"
       data-chatbot-url="{% url 'workspace:assistant' %}"
@@ -509,12 +510,12 @@
     <script src="{% static 'js/theme.js' %}"></script>
     <script src="{% static 'js/jurix-markdown.js' %}"></script>
     <script src="{% static 'js/jurix-rag.js' %}"></script>
+    <script src="{% static 'js/jurix-chat-api.js' %}"></script>
     <script src="{% static 'js/chat.js' %}"></script>
     <script src="{% static 'js/command_palette.js' %}"></script>
     
     <!-- Synchronizer for Floating Bar and Hero Search State (floating-bar-sync.js; CSP: no inline script) -->
     <script src="{% static 'js/floating-bar-sync.js' %}"></script>
+    <script src="{% static 'js/jurix-chat-sessions.js' %}"></script>
 </body>
 </html>
-    <script src="{% static 'js/jurix-chat-sessions.js' %}"></script>
-    <link rel="stylesheet" href="{% static 'css/jurix-chat.css' %}">
