@@ -1121,8 +1121,50 @@
         }
 
         if (newChatBtn) {
-            newChatBtn.addEventListener('click', createNewSession);
+            newChatBtn.addEventListener('click', () => {
+                createNewSession();
+                const heroInput = document.getElementById('hero-search-input');
+                if (heroInput) heroInput.focus();
+            });
         }
+
+        // Hero Search Form (Tela Inicial)
+        const heroSearchForm = document.getElementById('hero-search-form');
+        const heroSearchInput = document.getElementById('hero-search-input');
+
+        if (heroSearchForm && heroSearchInput) {
+            heroSearchForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const q = heroSearchInput.value.trim();
+                if (q) {
+                    heroSearchInput.value = '';
+                    askQuestion(q);
+                }
+            });
+
+            heroSearchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    heroSearchForm.dispatchEvent(new Event('submit'));
+                }
+            });
+        }
+
+        // Interactive Dropdowns in Hero Panel
+        document.querySelectorAll('.figma-search-dropdown').forEach((dropdown) => {
+            dropdown.addEventListener('click', function (e) {
+                e.stopPropagation();
+                const isActive = this.classList.contains('active');
+                document.querySelectorAll('.figma-search-dropdown').forEach((d) => d.classList.remove('active'));
+                if (!isActive) {
+                    this.classList.add('active');
+                }
+            });
+        });
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.figma-search-dropdown').forEach((d) => d.classList.remove('active'));
+        });
 
         if (textarea) {
             textarea.addEventListener('input', function () {
