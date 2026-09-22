@@ -614,58 +614,13 @@
 
     // ===== MESSAGE RENDERING =====
     function addUserMessage(text) {
-        const messagesWrapper = document.getElementById('messages-wrapper');
-        if (!messagesWrapper) return;
-        const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-        let messageBodyContent;
-        try {
-            messageBodyContent = renderMarkdown(text);
-        } catch (e) {
-            messageBodyContent = escapeHtml(text).replace(/\n/g, '<br>');
-        }
-
-        const messageHtml = `
-            <div class="message message-user">
-                <div class="message-content">
-                    <div class="message-header">
-                        <span class="message-role">Você</span>
-                        <span class="message-time">${timestamp}</span>
-                    </div>
-                    <div class="message-body">${messageBodyContent}</div>
-                </div>
-            </div>
-        `;
-
-        messagesWrapper.insertAdjacentHTML('beforeend', messageHtml);
-        scrollToBottom();
+        if (!window.JurixChatRenderer) return;
+        window.JurixChatRenderer.addUserMessage(text, { scrollToBottom, renderMarkdown, escapeHtml });
     }
 
     function addLoadingMessage() {
-        const messagesWrapper = document.getElementById('messages-wrapper');
-        const loadingId = 'loading-' + Date.now();
-
-        const loadingHtml = `
-            <div class="message message-assistant" id="${loadingId}">
-                <div class="message-avatar">
-                    <img src="${escapeHtml(config.logoIconUrl)}" alt="Jurix">
-                </div>
-                <div class="message-content">
-                    <div class="loading-message">
-                        <div class="loading-dots">
-                            <div class="loading-dot"></div>
-                            <div class="loading-dot"></div>
-                            <div class="loading-dot"></div>
-                        </div>
-                        <span>Pensando...</span>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        messagesWrapper.insertAdjacentHTML('beforeend', loadingHtml);
-        scrollToBottom();
-        return loadingId;
+        if (!window.JurixChatRenderer) return null;
+        return window.JurixChatRenderer.addLoadingMessage({ config, scrollToBottom, esc: escapeHtml });
     }
 
     function removeLoadingMessage(loadingId) {
