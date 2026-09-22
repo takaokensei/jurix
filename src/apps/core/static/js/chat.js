@@ -41,7 +41,7 @@
     }
 
     // ===== APP STATE =====
-    let isProcessing = false;
+    const chatState = window.JurixChatState;
     let currentSessionId = null;
     let isStreamingGreeting = false;
 
@@ -327,6 +327,7 @@
         try {
             window.history.pushState({}, '', config.chatbotUrl);
             currentSessionId = null;
+            chatState.setSessionId(null);
 
             const messagesWrapper = document.getElementById('messages-wrapper');
             if (messagesWrapper) {
@@ -387,6 +388,9 @@
             window.history.pushState({}, '', sessionUrl);
 
             currentSessionId = sessionId;
+            if (chatState && typeof chatState.setSessionId === 'function') {
+                chatState.setSessionId(sessionId);
+            }
 
             const messagesWrapper = document.getElementById('messages-wrapper');
             if (messagesWrapper) {
@@ -570,6 +574,9 @@
 
             if (currentSessionId === sessionId) {
                 currentSessionId = null;
+                if (chatState && typeof chatState.setSessionId === 'function') {
+                    chatState.setSessionId(null);
+                }
                 const messagesWrapper = document.getElementById('messages-wrapper');
                 if (messagesWrapper) {
                     messagesWrapper.querySelectorAll('.message').forEach((m) => m.remove());
@@ -763,10 +770,12 @@
     }
 
     async function regenerateLastResponse(sessionId, messageDiv, sourcesContainer) {
-        if (!sessionId || isProcessing) return;
+        if (!sessionId || (chatState && typeof chatState.isBusy === 'function' && chatState.isBusy())) return;
 
         try {
-            isProcessing = true;
+            if (chatState && typeof chatState.transition === 'function') {
+                chatState.transition('regenerating', { sessionId });
+            }
             const regenerateBtn = messageDiv.querySelector('.regenerate-button');
             const copyButton = messageDiv.querySelector('.copy-response-button');
 
@@ -814,7 +823,7 @@
                     '<p style="color: var(--color-error);">Erro ao regenerar resposta. Tente novamente.</p>';
             }
         } finally {
-            isProcessing = false;
+            chatState.transition('idle');
         }
     }
 
@@ -1017,7 +1026,7 @@
         let welcomeState = document.getElementById('welcome-state');
         if (!welcomeState) return;
 
-        if (isStreamingGreeting) return;
+        if (chatState && typeof chatState.isGreetingStreaming === 'function' && chatState.isGreetingStreaming()) return;
 
         welcomeState.style.display = 'flex';
         const greetingNameEl = welcomeState.querySelector('.greeting-name');
@@ -1027,7 +1036,9 @@
             let fullName = greetingNameEl.getAttribute('data-user-name') || config.userName || 'Admin';
             greetingTextEl.textContent = '';
             greetingNameEl.textContent = '';
-            isStreamingGreeting = true;
+            if (chatState && typeof chatState.beginGreeting === 'function') {
+                chatState.beginGreeting();
+            }
 
             const greetingText = 'Olá, ';
             let charIndex = 0;
@@ -1043,7 +1054,7 @@
                     charIndex++;
                     setTimeout(streamNextChar, 40);
                 } else {
-                    isStreamingGreeting = false;
+                    chatState.endGreeting();
                     renderRandomSuggestions();
                 }
             }
@@ -1167,7 +1178,7 @@
             textarea.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    if (!isProcessing && this.value.trim()) {
+                    if (!chatState.isBusy() && this.value.trim()) {
                         chatForm.dispatchEvent(new Event('submit'));
                     }
                 }
@@ -1177,10 +1188,13 @@
         if (chatForm) {
             chatForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                if (isProcessing || !textarea) return;
+                if ((chatState && typeof chatState.isBusy === 'function' && chatState.isBusy()) || !textarea) return;
 
                 const question = textarea.value.trim();
                 if (!question) return;
+                if (chatState && typeof chatState.setLastQuestion === 'function') {
+                    chatState.setLastQuestion(question);
+                }
 
                 const welcomeStateEl = document.getElementById('welcome-state');
                 if (welcomeStateEl) welcomeStateEl.style.display = 'none';
@@ -1201,7 +1215,9 @@
                 }
 
                 const loadingId = addLoadingMessage();
-                isProcessing = true;
+                if (chatState && typeof chatState.transition === 'function') {
+                    chatState.transition('submitting', { question });
+                }
                 const sendButton = document.getElementById('send-button');
                 if (sendButton) sendButton.disabled = true;
 
@@ -1280,6 +1296,9 @@
                 let finalSources = [];
 
                 try {
+                    if (chatState && typeof chatState.transition === 'function') {
+                        chatState.transition('streaming', { question });
+                    }
                     streamElements = createStreamingAssistantMessage();
                     removeLoadingMessage(loadingId);
 
@@ -1329,6 +1348,7 @@
                             }
                             if (doneData.session_id) {
                                 currentSessionId = doneData.session_id;
+                                chatState.setSessionId(doneData.session_id);
                                 if (wasNewSession && window.tempSessionCard) {
                                     window.tempSessionCard.remove();
                                     window.tempSessionCard = null;
@@ -1339,6 +1359,7 @@
                             }
                         },
                         (errorMsg) => {
+                            chatState.transition('error', { error: errorMsg });
                             if (streamElements && streamElements.messageBody && window.JurixRagUI) {
                                 window.JurixRagUI.renderErrorState(
                                     streamElements.messageBody,
@@ -1373,6 +1394,9 @@
                         if (data.success) {
                             if (data.session_id) {
                                 currentSessionId = data.session_id;
+                                if (chatState && typeof chatState.setSessionId === 'function') {
+                                    chatState.setSessionId(data.session_id);
+                                }
                                 if (wasNewSession && window.tempSessionCard) {
                                     window.tempSessionCard.remove();
                                     window.tempSessionCard = null;
@@ -1390,6 +1414,7 @@
                         }
                     } catch (batchError) {
                         removeLoadingMessage(loadingId);
+                        chatState.transition('error', { error: batchError });
                         console.error('Request error:', batchError);
                         if (window.JurixRagUI) {
                             window.JurixRagUI.renderErrorState(
@@ -1409,7 +1434,7 @@
                         }
                     }
                 } finally {
-                    isProcessing = false;
+                    chatState.transition('idle');
                     if (sendButton) sendButton.disabled = false;
                     if (textarea) textarea.focus();
                 }

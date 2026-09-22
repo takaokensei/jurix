@@ -70,6 +70,7 @@ async function bootUnderCsp() {
     'jurix-markdown.js',
     'jurix-rag.js',
     'jurix-chat-api.js',
+    'jurix-chat-state.js',
     'chat.js',
     'command_palette.js',
     'floating-bar-sync.js',
