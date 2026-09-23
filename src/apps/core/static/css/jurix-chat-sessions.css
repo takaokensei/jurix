@@ -1,0 +1,37 @@
+/**
+ * Jurix Chat Sessions
+ * Presentation primitives used by the session-history module.
+ */
+
+.chat-session-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-sessions-empty {
+    padding: var(--space-2);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    text-align: center;
+}
+
+.jurix-session-entering {
+    animation: jurix-session-enter 220ms ease-out both;
+}
+
+@keyframes jurix-session-enter {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .jurix-session-entering {
+        animation: none;
+    }
+}

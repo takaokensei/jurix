@@ -1,5 +1,5 @@
 Django==5.0.9
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.13
 gunicorn==23.0.0
 
 celery==5.4.0
@@ -9,9 +9,9 @@ requests==2.32.3
 python-dotenv==1.0.1
 
 # Pillow is imported directly (tasks.py OCR); do not rely on pytesseract pulling it in
-Pillow==11.0.0
+Pillow==12.0.0
 pytesseract==0.3.13
-PyMuPDF==1.24.10
+PyMuPDF==1.28.2
 
 pgvector==0.3.2
 

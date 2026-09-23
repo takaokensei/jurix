@@ -212,8 +212,7 @@
             if (!sessionsList) return;
 
             if (data.sessions.length === 0) {
-                sessionsList.innerHTML =
-                    '<div style="padding: var(--space-2); color: var(--color-text-secondary); font-size: var(--font-size-xs); text-align: center;">Nenhuma conversa ainda</div>';
+                sessionsList.innerHTML = '<div class="chat-sessions-empty">Nenhuma conversa ainda</div>';
                 return;
             }
 
@@ -226,8 +225,8 @@
             );
             existingItems.forEach((item) => item.remove());
 
-            const emptyState = sessionsList.querySelector('div:not(.chat-session-item)');
-            if (emptyState && !emptyState.classList.contains('chat-session-item')) {
+            const emptyState = sessionsList.querySelector('.chat-sessions-empty');
+            if (emptyState) {
                 emptyState.remove();
             }
 

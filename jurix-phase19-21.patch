@@ -1,0 +1,126 @@
+diff --git a/src/apps/core/static/js/jurix-chat-sessions.js b/src/apps/core/static/js/jurix-chat-sessions.js
+--- a/src/apps/core/static/js/jurix-chat-sessions.js
++++ b/src/apps/core/static/js/jurix-chat-sessions.js
+@@ -17,15 +17,24 @@
+     }
+ 
+     function normalizeContentWrapper(item) {
+-        const wrapper = Array.from(item.children).find(
+-            (child) => child instanceof HTMLElement && child.classList.contains('chat-session-title') === false
+-        );
++        const wrapper = item.querySelector('.chat-session-main') || Array.from(item.children).find(
++            (child) => child instanceof HTMLElement && !child.classList.contains('delete-session-button')
++        );
+         if (!wrapper) return;
+         wrapper.classList.add('chat-session-main');
+         wrapper.style.removeProperty('flex');
+         wrapper.style.removeProperty('min-width');
+     }
+@@ -40,7 +49,7 @@
+         const sessionId = getSessionId(item);
+         if (sessionId === null) return;
+ 
+         item.dataset.loadSessionId = String(sessionId);
+-        item.setAttribute('role', 'button');
++        item.setAttribute('role', 'button');
+         item.setAttribute('tabindex', '0');
+         syncActiveState(item);
+         normalizeContentWrapper(item);
+@@ -72,6 +81,7 @@
+     }
+     function enhanceNewChatButton() {
+         const button = document.getElementById('new-chat-button');
+         if (!button) return;
++         button.style.removeProperty('opacity');
+         button.style.removeProperty('cursor');
+     }
+*** Update File: src/apps/core/static/js/chat.js
+@@ -192,7 +192,10 @@
+             if (!sessionsList) return;
+ 
+             if (data.sessions.length === 0) {
+-                sessionsList.innerHTML =
+-                    '<div style="padding: var(--space-2); color: var(--color-text-secondary); font-size: var(--font-size-xs); text-align: center;">Nenhuma conversa ainda</div>';
++                sessionsList.innerHTML =
++                    '<div class="chat-sessions-empty">Nenhuma conversa ainda</div>';
+                 return;
+             }
+@@ -205,7 +208,7 @@
+             existingItems.forEach((item) => item.remove());
+-            const emptyState = sessionsList.querySelector('div:not(.chat-session-item)');
+-            if (emptyState && !emptyState.classList.contains('chat-session-item')) {
++            const emptyState = sessionsList.querySelector('.chat-sessions-empty');
++            if (emptyState) {
+                 emptyState.remove();
+             }
+@@ -233,12 +236,10 @@
+                 const sessionItem = document.createElement('div');
+                 sessionItem.className = `chat-session-item ${shouldBeActive ? 'active' : ''}`;
+                 sessionItem.dataset.sessionId = session.id;
+-                sessionItem.setAttribute('role', 'button');
+-                sessionItem.setAttribute('tabindex', '0');
+-                sessionItem.onclick = () => loadSession(session.id);
+-                sessionItem.onkeydown = (e) => {
+-                    if (e.key === 'Enter') loadSession(session.id);
+-                };
+                 sessionItem.innerHTML = `
+-                    <div style="flex: 1; min-width: 0;">
++                    <div class="chat-session-main">
+                         <div class="chat-session-title">${escapeHtml(session.latest_message_preview || session.title)}</div>
+                     </div>
+@@ -254,20 +255,10 @@
+                         </svg>
+                     </button>
+                 `;
+@@ -265,15 +266,6 @@
+                 } else {
+                     sessionsList.appendChild(sessionItem);
+                 }
+-                sessionItem.style.opacity = '0';
+-                sessionItem.style.transform = 'translateY(-5px)';
+-                setTimeout(() => {
+-                    sessionItem.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+-                    sessionItem.style.opacity = '1';
+-                    sessionItem.style.transform = 'translateY(0)';
+-                }, index * 30);
+             });
+         } catch (error) {
+@@ -427,7 +418,7 @@
+         sessionItem.setAttribute('role', 'button');
+         sessionItem.setAttribute('tabindex', '0');
+         sessionItem.innerHTML = `
+-            <div style="flex: 1; min-width: 0;">
++            <div class="chat-session-main">
+                 <div class="chat-session-title">${escapeHtml(sessionTitle)}</div>
+             </div>
+@@ -445,7 +436,7 @@
+             sessionsList.insertBefore(sessionCard, sessionsList.firstChild);
+         } else {
+-            const emptyState = sessionsList.querySelector('div:not(.chat-session-item)');
++            const emptyState = sessionsList.querySelector('.chat-sessions-empty');
+             if (emptyState) emptyState.remove();
+             sessionsList.insertBefore(sessionCard, sessionsList.firstChild);
+         }
+*** Update File: src/apps/legislation/templates/legislation/chatbot.html
+@@ -95,7 +95,7 @@
+                         <div class="workspace-sidebar-section-label">
+                             <span>Histórico</span>
+                         </div>
+                         <div id="chat-sessions-list" class="chat-sessions-list">
+-                            <!-- Inserido dinamicamente via chat.js -->
++                            <!-- Renderizado por chat.js e aprimorado por jurix-chat-sessions.js -->
+                         </div>
+                     </div>
+@@ -508,11 +508,11 @@
+     <script src="{% static 'js/jurix-markdown.js' %}"></script>
+     <script src="{% static 'js/jurix-rag.js' %}"></script>
+     <script src="{% static 'js/jurix-chat-api.js' %}"></script>
++    <script src="{% static 'js/jurix-chat-sessions.js' %}"></script>
+     <script src="{% static 'js/jurix-chat-state.js' %}"></script>
+     <script src="{% static 'js/chat.js' %}"></script>
+     <script src="{% static 'js/jurix-chat-controller.js' %}"></script>
+     <script src="{% static 'js/command_palette.js' %}"></script>
+     <!-- Synchronizer for Floating Bar and Hero Search State (floating-bar-sync.js; CSP: no inline script) -->
+     <script src="{% static 'js/floating-bar-sync.js' %}"></script>
+-    <script src="{% static 'js/jurix-chat-sessions.js' %}"></script>
+ <script src="{% static 'js/jurix-chat-shell.js' %}"></script>
