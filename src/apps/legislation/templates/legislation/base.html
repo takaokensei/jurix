@@ -6,17 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Jurix - Sistema de Consolidação Normativa{% endblock %}</title>
     
-    <!-- Anti-FOUC Theme Initialization (Pre-Paint) -->
-    <script>
-        (function() {
-            try {
-                var stored = localStorage.getItem('jurix-theme');
-                var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-                var theme = stored || (systemDark ? 'dark' : 'light');
-                document.documentElement.setAttribute('data-theme', theme);
-            } catch (e) {}
-        })();
-    </script>
+    <!-- Theme Manager (anti-FOUC + dark mode toggle) -->
+    <script src="{% static 'js/theme.js' %}"></script>
+
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="{% static 'img/logo-icon.svg' %}">
@@ -176,78 +168,7 @@
     
     {% block extra_js %}{% endblock %}
     
-    <!-- Global Dark Mode Toggle Script -->
-    <script>
-        // ===== GLOBAL DARK MODE TOGGLE =====
-        // Works across all pages (base.html)
-        
-        function getSystemThemePreference() {
-            return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-                ? 'dark'
-                : 'light';
-        }
-        
-        function getStoredTheme() {
-            return localStorage.getItem('jurix-theme');
-        }
-        
-        function setTheme(theme) {
-            document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('jurix-theme', theme);
-            
-            // Update navbar toggle
-            const navbarToggle = document.getElementById('theme-toggle-navbar');
-            if (navbarToggle) {
-                navbarToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
-                // Icons are controlled via CSS display rules, no JS needed
-            }
-            
-            // Update sidebar toggle (if exists)
-            const sidebarToggle = document.getElementById('theme-toggle');
-            if (sidebarToggle) {
-                sidebarToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
-                // Icons are controlled via CSS display rules, no JS needed
-            }
-        }
-        
-        function toggleTheme() {
-            const current = document.documentElement.getAttribute('data-theme') || 'light';
-            const newTheme = current === 'dark' ? 'light' : 'dark';
-            setTheme(newTheme);
-        }
-        
-        function initTheme() {
-            const stored = getStoredTheme();
-            const theme = stored || getSystemThemePreference();
-            setTheme(theme);
-            
-            // Listen for system theme changes (if no manual preference)
-            if (!stored && window.matchMedia) {
-                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-                    if (!getStoredTheme()) {
-                        setTheme(e.matches ? 'dark' : 'light');
-                    }
-                });
-            }
-        }
-        
-        // Initialize on page load
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                initTheme();
-                const navbarToggle = document.getElementById('theme-toggle-navbar');
-                if (navbarToggle) {
-                    navbarToggle.addEventListener('click', toggleTheme);
-                }
-            });
-        } else {
-            initTheme();
-            const navbarToggle = document.getElementById('theme-toggle-navbar');
-            if (navbarToggle) {
-                navbarToggle.addEventListener('click', toggleTheme);
-            }
-        }
-    </script>
 </body>
+
 </html>
 
