@@ -11,6 +11,33 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# Page-artifact patterns produced by the OCR pipeline
+# ---------------------------------------------------------------------------
+
+# "--- Página 1 ---"  /  "--- Page 1 ---"  /  "=== Página 2 ==="  etc.
+_PAGE_SEPARATOR_RE = re.compile(
+    r'^[ \t]*[-=]{2,}[ \t]*(?:P[aá]gina|Page)[ \t]+\d+[ \t]*[-=]{2,}[ \t]*$',
+    re.MULTILINE | re.IGNORECASE,
+)
+
+# Recurring Brazilian-legislative page headers (all-caps lines that appear
+# at the top of every physical page in Câmara/Assembleia PDFs).
+# We match only lines that are entirely composed of known header tokens so we
+# don't accidentally strip content that happens to contain these words.
+_PAGE_HEADER_LINE_RE = re.compile(
+    r'^[ \t]*(?:'
+    r'ESTADO\s+DO\s+[A-ZÁÉÍÓÚÂÊÎÔÛÃÕÀÈÌÒÙÇ\s]+'          # "ESTADO DO RIO GRANDE DO NORTE"
+    r'|C[AÂ]MARA\s+MUNICIPAL\s+DE\s+[A-ZÁÉÍÓÚÂÊÎÔÛÃÕ\s]+'  # "CÂMARA MUNICIPAL DE NATAL"
+    r'|ASSEMBLEIA\s+LEGISLATIVA\s+DO\s+[A-Z\s]+'
+    r'|PAL[AÁ]CIO\s+[A-ZÁÉÍÓÚÂÊÎÔÛÃÕ\s]+'                # "PALÁCIO PADRE MIGUELINHO"
+    r'|DIÁRIO\s+OFICIAL\s+(?:DO|DA|DE)\s+[A-ZÁÉÍÓÚÂÊÎÔÛÃÕ\s]+'
+    r'|PODER\s+LEGISLATIVO\s+[A-ZÁÉÍÓÚÂÊÎÔÛÃÕ\s]*'
+    r')[ \t]*$',
+    re.MULTILINE | re.IGNORECASE,
+)
+
+
 class LegalTextParser:
     """
     Parser for Brazilian legal text structure using regex patterns.
@@ -463,6 +490,33 @@ class LegalTextParser:
         return divisions
 
     @staticmethod
+    def strip_page_artifacts(text: str) -> str:
+        """
+        Remove OCR page-boundary artifacts before structural parsing.
+
+        The OCR pipeline inserts "--- Página N ---" separators and the physical
+        page headers that appear on every page of the printed document
+        (e.g. "CÂMARA MUNICIPAL DE NATAL / PALÁCIO PADRE MIGUELINHO") get
+        captured as literal text.  Without this step those strings end up
+        inside inciso / article texts because they fall between two markers.
+
+        Strategy:
+          1. Remove "--- Página N ---" separator lines entirely.
+          2. Remove known institutional header lines (all-caps, line-exact match).
+          3. Collapse runs of blank lines left behind to at most one blank line.
+        """
+        # Step 1: page separators
+        text = _PAGE_SEPARATOR_RE.sub('', text)
+
+        # Step 2: institutional header lines
+        text = _PAGE_HEADER_LINE_RE.sub('', text)
+
+        # Step 3: collapse excessive blank lines (3+ → 1 blank line)
+        text = re.sub(r'\n{3,}', '\n\n', text)
+
+        return text
+
+    @staticmethod
     def parse_legal_text(text: str) -> list[dict[str, Any]]:
         """
         Parse full legal text and extract all structured elements (multiline support).
@@ -476,6 +530,11 @@ class LegalTextParser:
         Returns:
             List of all extracted elements, sorted by position, with full text content
         """
+        # Strip OCR page artifacts FIRST, before any marker detection.
+        # This prevents page separators and institutional headers from bleeding
+        # into the text content of incisos, artigos, etc.
+        text = LegalTextParser.strip_page_artifacts(text)
+
         # Find all markers once for efficiency
         all_markers = LegalTextParser._find_all_markers(text)
 
