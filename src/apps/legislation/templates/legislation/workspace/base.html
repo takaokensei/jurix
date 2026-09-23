@@ -1,11 +1,11 @@
-{% load static %}
+﻿{% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="dark light">
-    <link rel="icon" type="image/svg+xml" href="{% static 'img/logo-icon.svg' %}">
+    <link rel="icon" type="image/png" href="{% static 'img/logo-icon.png' %}">
     <title>{% block title %}Jurix{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,14 +16,14 @@
     <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
-<body class="figma-theme workspace-page" data-chatbot-url="{% url 'workspace:assistant' %}" data-norma-list-url="{% url 'legislation:norma_list' %}" data-logo-icon-url="{% static 'img/logo-icon.svg' %}" data-user-name="{{ request.user.first_name|default:request.user.username|title }}">
+<body class="figma-theme workspace-page" data-chatbot-url="{% url 'workspace:assistant' %}" data-norma-list-url="{% url 'legislation:norma_list' %}" data-logo-icon-url="{% static 'img/logo-icon.png' %}" data-user-name="{{ request.user.first_name|default:request.user.username|title }}">
     <a class="skip-link" href="#main-content">Pular para o conteúdo principal</a>
 
     <div class="workspace-shell">
         <aside class="workspace-sidebar" data-workspace-sidebar aria-label="Navegação principal">
             <div class="workspace-brand-block">
                 <a href="{% url 'workspace:assistant' %}" class="workspace-brand" aria-label="Jurix — Assistente">
-                    <span class="workspace-logo"><img src="{% static 'img/logo-icon.svg' %}" alt=""></span>
+                    <span class="workspace-logo"><img src="{% static 'img/logo-icon.png' %}" alt=""></span>
                     <span>Jurix</span>
                 </a>
                 <a href="{% url 'workspace:assistant' %}" class="workspace-new-action">

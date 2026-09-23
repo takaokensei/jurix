@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Jurix Chatbot Engine
  * Full-featured Swiss Design Legal Assistant Frontend.
  * Modular, decoupled from Django HTML templates.
@@ -10,7 +10,7 @@
     // ===== CONFIGURATION =====
     const config = window.JURIX_CONFIG || {
         chatbotUrl: '/assistente/',
-        logoIconUrl: '/static/img/logo-icon.svg',
+        logoIconUrl: '/static/img/logo-icon.png',
         userName: 'Admin',
     };
 

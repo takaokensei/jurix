@@ -1,4 +1,4 @@
-// Jurix Chat Renderer
+﻿// Jurix Chat Renderer
 // Provides UI primitives for chat messages, loading indicators, and error handling.
 // This file is framework‑free and used by chat.js via window.JurixChatRenderer.
 
@@ -68,7 +68,7 @@
         const wrapper = getMessagesWrapper();
         if (!wrapper) return null;
         const loadingId = nextId('loading');
-        const logo = opts.config && opts.config.logoIconUrl ? opts.config.logoIconUrl : '/static/img/logo-icon.svg';
+        const logo = opts.config && opts.config.logoIconUrl ? opts.config.logoIconUrl : '/static/img/logo-icon.png';
         const message = document.createElement('div');
         message.className = 'message message-assistant jurix-message-enter';
         message.id = loadingId;
