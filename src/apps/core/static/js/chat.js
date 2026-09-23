@@ -1121,24 +1121,7 @@
             document.querySelectorAll('.figma-search-dropdown').forEach((d) => d.classList.remove('active'));
         });
 
-        if (textarea) {
-            textarea.addEventListener('input', function () {
-                this.style.height = 'auto';
-                this.style.height = Math.min(this.scrollHeight, 200) + 'px';
-                if (currentSessionId) {
-                    localStorage.setItem(`chat-input-${currentSessionId}`, this.value);
-                }
-            });
-
-            textarea.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    if (!chatState.isBusy() && this.value.trim()) {
-                        chatForm.dispatchEvent(new Event('submit'));
-                    }
-                }
-            });
-        }
+// Composer input/keyboard ergonomics are owned by JurijChatShell.
 
         if (chatForm) {
             chatForm.addEventListener('submit', async (e) => {

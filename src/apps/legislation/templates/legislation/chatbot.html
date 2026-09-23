@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="{% static 'css/jurix-chat.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-controller.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}">
+<link rel="stylesheet" href="{% static 'css/jurix-chat-shell.css' %}">
 </head>
 <body class="figma-theme"
       data-chatbot-url="{% url 'workspace:assistant' %}"
@@ -522,5 +523,6 @@
     <!-- Synchronizer for Floating Bar and Hero Search State (floating-bar-sync.js; CSP: no inline script) -->
     <script src="{% static 'js/floating-bar-sync.js' %}"></script>
     <script src="{% static 'js/jurix-chat-sessions.js' %}"></script>
+<script src="{% static 'js/jurix-chat-shell.js' %}"></script>
 </body>
 </html>

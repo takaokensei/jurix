@@ -1,0 +1,101 @@
+/*
+ * Jurix Chat Shell — Phase 13–15
+ * Composer, connectivity and accessibility presentation primitives.
+ */
+
+.jurix-network-status {
+    position: fixed;
+    top: 1rem;
+    left: 50%;
+    z-index: 1200;
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    max-width: min(34rem, calc(100vw - 2rem));
+    padding: .55rem .8rem;
+    border: 1px solid var(--color-border, rgba(148, 163, 184, .25));
+    border-radius: 999px;
+    background: var(--color-surface-elevated, rgba(15, 23, 42, .94));
+    color: var(--color-text-primary, #f8fafc);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .22);
+    font-size: .78rem;
+    transform: translate(-50%, -150%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.jurix-network-status.is-visible {
+    transform: translate(-50%, 0);
+    opacity: 1;
+}
+
+.jurix-network-status.is-error {
+    border-color: color-mix(in srgb, var(--color-error, #ef4444) 55%, transparent);
+}
+
+.jurix-network-status.is-offline {
+    border-color: color-mix(in srgb, #f59e0b 55%, transparent);
+}
+
+.jurix-network-status__dot {
+    width: .45rem;
+    height: .45rem;
+    flex: 0 0 .45rem;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.jurix-composer-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    min-height: 1.1rem;
+    margin-top: .35rem;
+    padding-inline: .2rem;
+    color: var(--color-text-tertiary, #94a3b8);
+    font-size: .7rem;
+}
+
+.jurix-composer-counter {
+    font-variant-numeric: tabular-nums;
+}
+
+.jurix-composer-counter.is-near-limit {
+    color: var(--color-warning, #f59e0b);
+}
+
+.jurix-composer-counter.is-at-limit {
+    color: var(--color-error, #ef4444);
+}
+
+.jurix-sr-status {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+@media (max-width: 640px) {
+    .jurix-network-status {
+        top: .65rem;
+        max-width: calc(100vw - 1rem);
+        font-size: .74rem;
+    }
+
+    .jurix-composer-meta {
+        font-size: .66rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .jurix-network-status {
+        transition: none;
+    }
+}
