@@ -27,7 +27,7 @@ from django.http import HttpRequest, JsonResponse
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_K = 5
+DEFAULT_K = 12
 
 
 class InvalidLLMParams(ValueError):
@@ -82,6 +82,52 @@ def parse_llm_request(data: Any) -> tuple[str, int, str]:
     if not isinstance(data, Mapping):
         raise InvalidLLMParams("Corpo da requisição inválido.")
     return (
+
+
+def parse_search_options(data: Any) -> dict[str, Any]:
+    """Validate optional retrieval controls independently of the LLM model."""
+    if not isinstance(data, Mapping):
+        raise InvalidLLMParams("Corpo da requisição inválido.")
+
+    mode = data.get('search_mode', data.get('mode', 'hybrid'))
+    if mode not in {'semantic', 'lexical', 'hybrid'}:
+        raise InvalidLLMParams("Modo de pesquisa inválido.")
+
+    norma_status = data.get('norma_status', 'consolidated')
+    if norma_status not in {'consolidated', 'all'}:
+        raise InvalidLLMParams("Escopo de normas inválido.")
+
+    source_scope = data.get('source_scope', 'municipal')
+    if source_scope not in {'municipal', 'all'}:
+        raise InvalidLLMParams("Escopo de fontes inválido.")
+
+    max_sources = parse_k(data.get('max_sources', data.get('k')))
+    raw_min_similarity = data.get('min_similarity', 0.0)
+    try:
+        min_similarity = float(raw_min_similarity)
+    except (TypeError, ValueError):
+        raise InvalidLLMParams("min_similarity inválido.") from None
+    if not 0.0 <= min_similarity <= 1.0:
+        raise InvalidLLMParams("min_similarity deve estar entre 0 e 1.")
+
+    attachment_ids = data.get('attachment_ids', [])
+    if attachment_ids is None:
+        attachment_ids = []
+    if not isinstance(attachment_ids, list) or any(
+        not isinstance(item, str) or len(item) > 80 for item in attachment_ids
+    ):
+        raise InvalidLLMParams("attachment_ids inválido.")
+    if len(attachment_ids) > 5:
+        raise InvalidLLMParams("No máximo 5 documentos podem ser usados em uma pesquisa.")
+
+    return {
+        'mode': mode,
+        'norma_status': norma_status,
+        'source_scope': source_scope,
+        'max_sources': max_sources,
+        'min_similarity': min_similarity,
+        'attachment_ids': attachment_ids,
+    }
         parse_question(data.get('question')),
         parse_k(data.get('k')),
         parse_model(data.get('model')),

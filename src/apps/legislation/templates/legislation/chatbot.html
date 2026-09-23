@@ -26,6 +26,8 @@
     <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-sessions.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-shell.css' %}">
+<meta name="jurix-authenticated" content="{{ request.user.is_authenticated|yesno:'true,false' }}">
+<link rel="stylesheet" href="{% static 'css/jurix-search-controls.css' %}">
 </head>
 <body class="figma-theme"
       data-chatbot-url="{% url 'workspace:assistant' %}"
@@ -378,7 +380,9 @@
     <script src="{% static 'js/theme.js' %}"></script>
     <script src="{% static 'js/jurix-markdown.js' %}"></script>
     <script src="{% static 'js/jurix-rag.js' %}"></script>
+    <script src="{% static 'js/jurix-anonymous-history.js' %}"></script>
     <script src="{% static 'js/jurix-chat-api.js' %}"></script>
+    <script src="{% static 'js/jurix-api-reliability-overlay.js' %}"></script>
     <script src="{% static 'js/jurix-chat-sessions.js' %}"></script>
     <script src="{% static 'js/jurix-chat-state.js' %}"></script>
     <script src="{% static 'js/chat.js' %}"></script>
@@ -388,5 +392,6 @@
     <!-- Synchronizer for Floating Bar and Hero Search State (floating-bar-sync.js; CSP: no inline script) -->
     <script src="{% static 'js/floating-bar-sync.js' %}"></script>
     <script src="{% static 'js/jurix-chat-shell.js' %}"></script>
+        <script src="{% static 'js/jurix-search-controls.js' %}"></script>
 </body>
 </html>

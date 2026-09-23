@@ -225,7 +225,8 @@ def _process_norma_data(norma_data: dict[str, Any], auto_download: bool = False)
     sapl_base_host = getattr(settings, 'SAPL_BASE_URL', 'https://sapl.natal.rn.leg.br/api').rstrip('/')
     if sapl_base_host.endswith('/api'):
         sapl_base_host = sapl_base_host[:-4]
-    sapl_url = f"{sapl_base_host}/norma/normajuridica/{sapl_id}/"
+    from src.apps.legislation.source_urls import canonical_sapl_url
+    sapl_url = canonical_sapl_url(sapl_id=sapl_id) or f"{sapl_base_host}/norma/{sapl_id}/"
 
     # Preservar status caso a norma já tenha sido processada/consolidada
     existing = Norma.objects.filter(sapl_id=sapl_id).only('status').first()
@@ -312,7 +313,7 @@ def bulk_ingest_normas_task(
     try:
         while offset < max_normas:
             # Disparar subtask assíncrona para cada página
-            subtask = ingest_normas_task.delay(
+            subtask = ingest_normas_task.apply(
                 limit=page_size,
                 offset=offset,
                 tipo=tipo,
@@ -1103,14 +1104,24 @@ def consolidate_norma_task(self, norma_id: int) -> dict[str, Any]:
 
         # Save consolidated text
         norma.texto_consolidado = consolidated_text
-        norma.status = 'consolidated'
-        norma.processing_error = ''
-        update_fields = ['texto_consolidado', 'status', 'processing_error', 'updated_at']
+        update_fields = ['texto_consolidado', 'updated_at']
         if stats['needs_review']:
             # Unapplied events or heuristically extracted additions: flag for a
             # human. Never clear the flag here; only a reviewer may do that.
+            norma.status = 'failed'
             norma.needs_review = True
-            update_fields.append('needs_review')
+            unresolved = stats.get('events_unresolved', 0)
+            norma.processing_error = (
+                'Consolidação requer revisão humana: '
+                f'{unresolved} evento(s) de alteração não resolvido(s).'
+            )
+            update_fields.extend(['status', 'needs_review', 'processing_error'])
+            success = False
+        else:
+            norma.status = 'consolidated'
+            norma.processing_error = ''
+            update_fields.extend(['status', 'processing_error'])
+            success = True
         norma.save(update_fields=update_fields)
 
         processing_time = time.time() - start_time
@@ -1129,7 +1140,7 @@ def consolidate_norma_task(self, norma_id: int) -> dict[str, Any]:
 
         _invalidate_rag_cache()
         return {
-            'success': True,
+            'success': success,
             'norma_id': norma_id,
             'norma_str': str(norma),
             'total_dispositivos': stats['total_dispositivos'],

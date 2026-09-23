@@ -38,7 +38,11 @@ from src.apps.legislation.serializers import (
     serialize_chat_session,
     serialize_dispositivo_source,
 )
-from src.processing.rag_service import RAGService
+from src.processing.adaptive_rag_service import AdaptiveRAGService
+from src.apps.legislation.attachment_service import AttachmentError, delete_attachment, list_attachments, upload_attachment
+from src.apps.legislation.retrieval_api import build_retrieval_options
+
+RAGService = AdaptiveRAGService
 
 logger = logging.getLogger(__name__)
 
@@ -214,6 +218,7 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
 
         try:
             question, k, model = parse_llm_request(data)
+            retrieval_options = build_retrieval_options(request, data, k)
         except InvalidLLMParams as exc:
             return JsonResponse({'success': False, 'error': str(exc)}, status=400)
 
@@ -228,10 +233,16 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
 
         # Generate answer using RAG
         rag_service = RAGService()
+        if retrieval_options.attachment_texts:
+            from src.processing.adaptive_retrieval import attachment_context
+            question_for_rag = question + "\n\n" + attachment_context(retrieval_options.attachment_texts)
+        else:
+            question_for_rag = question
         response = rag_service.answer_question(
-            question=question,
+            question=question_for_rag,
             k=k,
-            model=model
+            model=model,
+            options=retrieval_options,
         )
 
         # Format sources with centralized serializer
@@ -282,6 +293,7 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
     try:
         data = json.loads(request.body)
         question, k, model = parse_llm_request(data)
+        retrieval_options = build_retrieval_options(request, data, k)
     except InvalidLLMParams as exc:
         return JsonResponse({'success': False, 'error': str(exc)}, status=400)
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -338,6 +350,12 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                         'chunk': item.get('chunk', '')
                     }
                     yield f"data: {json.dumps(payload)}\n\n"
+    if retrieval_options.attachment_texts:
+        from src.processing.adaptive_retrieval import attachment_context
+        question_for_rag = question + "\n\n" + attachment_context(retrieval_options.attachment_texts)
+    else:
+        question_for_rag = question
+
                 elif ev_type == 'done':
                     final_answer = item.get('answer', '')
                     if request.user.is_authenticated and chat_session:
@@ -590,7 +608,10 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
     POST /api/v1/chat/sessions/ - Create new session
     """
     if not request.user.is_authenticated:
-        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+        # Guest history is intentionally stored by the browser. Returning an
+        # empty collection prevents every refresh from producing an expected
+        # but noisy 401 while retaining the strict auth boundary for DB data.
+        return JsonResponse({'success': True, 'sessions': []})
 
     try:
         if request.method == 'GET':
@@ -768,6 +789,40 @@ def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonRe
             'metadata': {
                 'model': response.get('model', model),
                 'context_length': response.get('context_length', 0),
+
+@require_http_methods(["GET", "POST"])
+@csrf_exempt
+def chat_attachment_api(request: HttpRequest) -> JsonResponse:
+    """List or upload temporary, session-bound chat documents."""
+    limited = rate_limit_response(request, scope='attachment')
+    if limited:
+        return limited
+    if request.method == 'GET':
+        return JsonResponse({'success': True, 'attachments': list_attachments(request)})
+
+    upload = request.FILES.get('file')
+    if upload is None:
+        return JsonResponse({'success': False, 'error': 'Arquivo não enviado.'}, status=400)
+    try:
+        item = upload_attachment(request, upload)
+    except AttachmentError as exc:
+        return JsonResponse({'success': False, 'error': str(exc)}, status=400)
+    except Exception as exc:
+        logger.error('Attachment upload failed', exc_info=True)
+        return JsonResponse({'success': False, 'error': _format_error_message(exc)}, status=500)
+    return JsonResponse({'success': True, 'attachment': item, 'attachments': list_attachments(request)})
+
+
+@require_http_methods(["DELETE"])
+@csrf_exempt
+def chat_attachment_detail_api(request: HttpRequest, attachment_id: str) -> JsonResponse:
+    """Delete one temporary session-bound chat document."""
+    limited = rate_limit_response(request, scope='attachment')
+    if limited:
+        return limited
+    if not delete_attachment(request, attachment_id):
+        return JsonResponse({'success': False, 'error': 'Documento não encontrado.'}, status=404)
+    return JsonResponse({'success': True, 'attachments': list_attachments(request)})
                 'sources_count': len(sources)
             }
         })

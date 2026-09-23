@@ -70,7 +70,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     container_name: jurix_worker
-    command: celery -A config worker -l info --pool=solo
+    command: celery -A config worker -l info --pool=prefork --concurrency=4 --max-tasks-per-child=100
     volumes:
       - .:/app
       - ./data:/app/data

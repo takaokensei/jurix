@@ -9,6 +9,8 @@ Provides centralized and consistent serialization for:
 import logging
 from typing import Any
 
+from src.apps.legislation.source_urls import canonical_norma_url, public_source_url
+
 logger = logging.getLogger(__name__)
 
 
@@ -51,7 +53,7 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
             norma_ano = getattr(norma, 'ano', '')
             norma_id = getattr(norma, 'id', None)
             pdf_url = getattr(norma, 'pdf_url', None) or None
-            sapl_url = getattr(norma, 'sapl_url', None) or None
+            sapl_url = canonical_norma_url(norma)
         except Exception as e:
             logger.warning(f"Error accessing norma attributes: {e}")
             norma_tipo, norma_numero, norma_ano = 'Norma', '', ''
@@ -74,6 +76,7 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
             'hierarchy': hierarchy,
             'pdf_url': pdf_url,
             'sapl_url': sapl_url,
+            'source_url': public_source_url(norma),
             'dispositivo_id': disp_id
         }
 

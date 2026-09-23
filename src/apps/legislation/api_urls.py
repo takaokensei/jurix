@@ -8,6 +8,8 @@ Provides RESTful API endpoints for:
 """
 
 from django.urls import path
+    chat_attachment_api,
+    chat_attachment_detail_api,
 
 from . import api_views
 
@@ -59,6 +61,8 @@ urlpatterns = [
         'chat/sessions/',
         api_views.chat_sessions_api,
         name='chat_sessions'
+    path('chat/attachments/', chat_attachment_api, name='chat-attachments'),
+    path('chat/attachments/<str:attachment_id>/', chat_attachment_detail_api, name='chat-attachment-detail'),
     ),
     path(
         'chat/sessions/<int:session_id>/',
