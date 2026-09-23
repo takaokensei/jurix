@@ -24,7 +24,8 @@
     <link rel="stylesheet" href="{% static 'css/jurix-chat.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-controller.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}">
-<link rel="stylesheet" href="{% static 'css/jurix-chat-shell.css' %}">
+    <link rel="stylesheet" href="{% static 'css/jurix-chat-sessions.css' %}">
+    <link rel="stylesheet" href="{% static 'css/jurix-chat-shell.css' %}">
 </head>
 <body class="figma-theme"
       data-chatbot-url="{% url 'workspace:assistant' %}"
@@ -98,7 +99,7 @@
                             <span>Histórico</span>
                         </div>
                         <div id="chat-sessions-list" class="chat-sessions-list">
-                            <!-- Inserido dinamicamente via chat.js -->
+                            <!-- Renderizado por chat.js e aprimorado por jurix-chat-sessions.js -->
                         </div>
                     </div>
                 </nav>
@@ -515,6 +516,7 @@
     <script src="{% static 'js/jurix-markdown.js' %}"></script>
     <script src="{% static 'js/jurix-rag.js' %}"></script>
     <script src="{% static 'js/jurix-chat-api.js' %}"></script>
+    <script src="{% static 'js/jurix-chat-sessions.js' %}"></script>
     <script src="{% static 'js/jurix-chat-state.js' %}"></script>
     <script src="{% static 'js/chat.js' %}"></script>
     <script src="{% static 'js/jurix-chat-controller.js' %}"></script>
@@ -522,7 +524,6 @@
 
     <!-- Synchronizer for Floating Bar and Hero Search State (floating-bar-sync.js; CSP: no inline script) -->
     <script src="{% static 'js/floating-bar-sync.js' %}"></script>
-    <script src="{% static 'js/jurix-chat-sessions.js' %}"></script>
-<script src="{% static 'js/jurix-chat-shell.js' %}"></script>
+    <script src="{% static 'js/jurix-chat-shell.js' %}"></script>
 </body>
 </html>

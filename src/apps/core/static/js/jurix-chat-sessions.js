@@ -20,11 +20,10 @@
     }
 
     function normalizeContentWrapper(item) {
-        const wrapper = Array.from(item.children).find(
-            (child) => child instanceof HTMLElement && child.classList.contains('chat-session-title') === false
+        const wrapper = item.querySelector('.chat-session-main') || Array.from(item.children).find(
+            (child) => child instanceof HTMLElement && !child.classList.contains('delete-session-button')
         );
         if (!wrapper) return;
-
         wrapper.classList.add('chat-session-main');
         wrapper.style.removeProperty('flex');
         wrapper.style.removeProperty('min-width');

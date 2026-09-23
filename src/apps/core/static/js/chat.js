@@ -256,15 +256,9 @@
                 const sessionItem = document.createElement('div');
                 sessionItem.className = `chat-session-item ${shouldBeActive ? 'active' : ''}`;
                 sessionItem.dataset.sessionId = session.id;
-                sessionItem.setAttribute('role', 'button');
-                sessionItem.setAttribute('tabindex', '0');
-                sessionItem.onclick = () => loadSession(session.id);
-                sessionItem.onkeydown = (e) => {
-                    if (e.key === 'Enter') loadSession(session.id);
-                };
 
                 sessionItem.innerHTML = `
-                    <div style="flex: 1; min-width: 0;">
+                    <div class="chat-session-main">
                         <div class="chat-session-title">${escapeHtml(session.latest_message_preview || session.title)}</div>
                     </div>
                     <button 
@@ -289,14 +283,6 @@
                 } else {
                     sessionsList.appendChild(sessionItem);
                 }
-
-                sessionItem.style.opacity = '0';
-                sessionItem.style.transform = 'translateY(-5px)';
-                setTimeout(() => {
-                    sessionItem.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                    sessionItem.style.opacity = '1';
-                    sessionItem.style.transform = 'translateY(0)';
-                }, index * 30);
             });
         } catch (error) {
             console.error('Error loading chat sessions:', error);
