@@ -12,15 +12,14 @@ import hashlib
 import os
 import re
 import secrets
-import time
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
 from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
-
 
 SAFE_NAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
 ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md", ".csv", ".json", ".docx"}

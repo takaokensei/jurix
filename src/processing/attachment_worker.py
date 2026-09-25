@@ -53,8 +53,8 @@ def apply_resource_limits(max_memory_bytes: int = 512 * 1024 * 1024, max_cpu_sec
         return True
     try:
         import ctypes
-        from ctypes import wintypes
         import os
+        from ctypes import wintypes
 
         class IO_COUNTERS(ctypes.Structure):
             _fields_ = [

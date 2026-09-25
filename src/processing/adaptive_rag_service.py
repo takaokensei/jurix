@@ -1,7 +1,11 @@
 """Backward-compatible RAGService facade with adaptive retrieval controls."""
 from __future__ import annotations
 
-from src.processing.adaptive_retrieval import AdaptiveRetriever, RetrievalOptions, attachment_context
+from src.processing.adaptive_retrieval import (
+    AdaptiveRetriever,
+    RetrievalOptions,
+    attachment_context,
+)
 from src.processing.rag_service import RAGService
 
 

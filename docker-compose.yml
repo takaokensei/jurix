@@ -12,8 +12,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jurix_pass_dev}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jurix_user}"]
       interval: 10s
@@ -23,8 +21,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: jurix_redis
-    ports:
-      - "16379:6379"  # Porta externa 16379 mapeada para interna 6379 (evita conflito Windows)
     volumes:
       - redis_data:/data
     healthcheck:
@@ -38,10 +34,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     container_name: jurix_web
-    command: python manage.py runserver 0.0.0.0:8000
-    volumes:
-      - .:/app
-      - ./data:/app/data
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
@@ -53,7 +46,7 @@ services:
       - DEBUG=${DEBUG:-False}
       - CACHE_REDIS_URL=redis://redis:6379/1
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/live/')"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -71,10 +64,8 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     container_name: jurix_worker
+    restart: unless-stopped
     command: celery -A config worker -l info --pool=prefork --concurrency=4 --max-tasks-per-child=100
-    volumes:
-      - .:/app
-      - ./data:/app/data
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-jurix_user}:${POSTGRES_PASSWORD:-jurix_pass_dev}@db:5432/${POSTGRES_DB:-jurix}
       - REDIS_URL=redis://redis:6379/0

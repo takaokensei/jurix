@@ -292,18 +292,22 @@ class ConsolidationEngine:
     @staticmethod
     def _new_wording(evento, fonte) -> tuple[str | None, str]:
         """
-        New wording for an altered ARTICLE, taken from the quoted passage of the amending text.
+        New wording for an altered dispositivo, taken from a quoted passage.
 
-        Returns (text, '') or (None, reason). Refuses when the wording cannot be extracted, or
-        when it carries paragraphs/incisos: the article already has its own children, so
-        applying it would duplicate them.
+        Parent articles cannot consume a quoted passage containing their own children,
+        because that would duplicate the already segmented subtree. Leaf/child devices
+        may safely accept their own quoted wording.
         """
+        tipo = (evento.referencia_tipo or 'artigo').lower()
         text, extracted = ConsolidationEngine._extract_added_text(
-            fonte.texto if fonte else '', 'artigo', evento.referencia_numero
+            fonte.texto if fonte else '', tipo, evento.referencia_numero
         )
         if not extracted:
             return None, 'nova redação não extraída do texto alterador'
-        if '§' in text or re.search(r'(?:^|\s)(?:IX|IV|V?I{1,3}|VI{0,3}|X)\s*[-–—]\s', text):
+        if tipo == 'artigo' and (
+            '§' in text
+            or re.search(r'(?:^|\s)(?:IX|IV|V?I{1,3}|VI{0,3}|X)\s*[-–—]\s', text)
+        ):
             return None, 'a nova redação inclui subdispositivos (§/incisos)'
         return text, ''
 
@@ -371,6 +375,9 @@ class ConsolidationEngine:
         if tipo == 'alinea':
             m = re.match(r'^\s*([a-z])\)\s*', candidate)
             return candidate[m.end():] if m and m.group(1) == numero.lower() else None
+        if tipo == 'item':
+            m = re.match(r'^\s*(\d+)\s*[\).\-–—]\s*', candidate)
+            return candidate[m.end():] if m and m.group(1) == re.sub(r'\D', '', numero) else None
         return None
 
     @staticmethod

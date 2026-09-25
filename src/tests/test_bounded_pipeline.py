@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock, patch
+
 import pytest
 
 from src.apps.ingestion.bounded_pipeline import bounded_sapl_ingest_task

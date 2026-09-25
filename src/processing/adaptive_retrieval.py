@@ -11,23 +11,23 @@ breaking the existing fallback path.
 """
 from __future__ import annotations
 
-import math
 import hashlib
+import math
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any, Iterable
+from typing import Any
 
-from django.db.models import Q, Case, When, Value, IntegerField
+from django.db.models import Case, IntegerField, Q, Value, When
 
 from src.apps.legislation.models import Dispositivo
-
 
 _TOKEN_RE = re.compile(r"[\wÀ-ÿ]{3,}", flags=re.UNICODE)
 _STOPWORDS = {
     "para", "como", "sobre", "entre", "essa", "este", "esta", "esse", "isso",
     "que", "uma", "por", "dos", "das", "com", "sem", "nos", "nas", "aos", "pelos",
     "pelas", "qual", "quais", "onde", "quando", "quem", "porque", "são", "ser", "tem",
-    "mais", "menos", "muito", "muita", "muitas", "muitos", "uma", "um", "e", "ou",
+    "mais", "menos", "muito", "muita", "muitas", "muitos", "um", "e", "ou",
 }
 
 
@@ -208,7 +208,7 @@ class AdaptiveRetriever:
         l_low, l_high = min(lexical_scores), max(lexical_scores)
         for row in values:
             s = _normalize(float(row.get("semantic_score", 0.0)), s_low, s_high)
-            l = _normalize(float(row.get("lexical_score", 0.0)), l_low, l_high)
+            lex = _normalize(float(row.get("lexical_score", 0.0)), l_low, l_high)
             if mode == "semantic":
                 score = float(row.get("semantic_score", 0.0))
             elif mode == "lexical":
@@ -217,7 +217,7 @@ class AdaptiveRetriever:
                 # Semantic retrieval carries more weight because it is the
                 # stronger signal for legal paraphrases; lexical overlap keeps
                 # exact article/number queries from disappearing.
-                score = (0.72 * s) + (0.28 * l)
+                score = (0.72 * s) + (0.28 * lex)
             row["retrieval_score"] = score
             row["similarity_score"] = score
         return sorted(values, key=lambda row: row["retrieval_score"], reverse=True)

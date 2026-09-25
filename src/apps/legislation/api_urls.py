@@ -14,11 +14,21 @@ from . import api_views
 app_name = 'legislation_api'
 
 urlpatterns = [
-    # Health check endpoint
+    # Liveness/readiness probes.
+    path(
+        'health/live/',
+        api_views.health_live_api,
+        name='health_live',
+    ),
     path(
         'health/',
-        api_views.health_check_api,
+        api_views.health_ready_api,
         name='health_check'
+    ),
+    path(
+        'health/ready/',
+        api_views.health_ready_api,
+        name='health_ready',
     ),
 
     # Semantic search endpoint

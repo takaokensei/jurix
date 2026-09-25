@@ -4,7 +4,9 @@ Celery tasks for data ingestion from SAPL API.
 Tasks para orquestrar a ingestão assíncrona de normas jurídicas.
 """
 
+import hashlib
 import io
+import json
 import logging
 import os
 import time
@@ -1351,3 +1353,68 @@ def generate_embedding_task(self, dispositivo_id: int, model: str = "nomic-embed
             'error': str(e),
             'dispositivo_id': dispositivo_id
         }
+
+
+def _sapl_payload_hash(payload: dict[str, Any]) -> str:
+    """Stable source fingerprint used to make incremental SAPL sync idempotent."""
+    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+    return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+
+
+@shared_task(
+    bind=True,
+    name='ingestion.incremental_sync_sapl_task',
+    max_retries=2,
+)
+def incremental_sync_sapl_task(
+    self,
+    limit: int = 100,
+    tipo: str | None = None,
+    ano: int | None = None,
+) -> dict[str, Any]:
+    """Bounded, idempotent delta scan of the newest SAPL records.
+
+    SAPL installations do not expose a universally reliable updated-since contract.
+    The task therefore scans a bounded newest page and fingerprints every payload.
+    Unchanged records are skipped completely, while changed/new records enter the
+    existing ingestion pipeline.
+    """
+    limit = max(1, min(int(limit), 500))
+    stats = {'fetched': 0, 'changed': 0, 'unchanged': 0, 'failed': 0, 'errors': []}
+    client = SaplAPIClient()
+    try:
+        payloads = client.fetch_normas(limit=limit, offset=0, tipo=tipo, ano=ano)
+        stats['fetched'] = len(payloads)
+        for payload in payloads:
+            sapl_id = payload.get('id')
+            if not sapl_id:
+                stats['failed'] += 1
+                stats['errors'].append('Norma sem id no payload SAPL')
+                continue
+
+            digest = _sapl_payload_hash(payload)
+            existing = Norma.objects.filter(sapl_id=sapl_id).only('sapl_metadata').first()
+            old_digest = (
+                (existing.sapl_metadata or {}).get('_jurix_source_hash')
+                if existing else None
+            )
+            if old_digest == digest:
+                stats['unchanged'] += 1
+                continue
+
+            payload = dict(payload)
+            payload['_jurix_source_hash'] = digest
+            try:
+                _process_norma_data(payload, auto_download=True)
+                stats['changed'] += 1
+            except Exception as exc:
+                stats['failed'] += 1
+                stats['errors'].append(f'Norma {sapl_id}: {exc}')
+                logger.error('Incremental SAPL sync failed for %s', sapl_id, exc_info=True)
+
+        return stats
+    except Exception as exc:
+        logger.error('Incremental SAPL sync failed', exc_info=True)
+        raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries)) from exc
+    finally:
+        client.close()

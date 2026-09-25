@@ -1,0 +1,22 @@
+services:
+  db:
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+  redis:
+    ports:
+      - "${REDIS_PORT:-16379}:6379"
+
+  web:
+    command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      DEBUG: "True"
+      USE_LOCMEM_CACHE: "False"
+    volumes:
+      - .:/app
+      - ./data:/app/data
+
+  worker:
+    volumes:
+      - .:/app
+      - ./data:/app/data

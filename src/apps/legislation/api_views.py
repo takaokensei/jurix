@@ -12,13 +12,13 @@ import logging
 from typing import Any
 
 from django.conf import settings
-from django.core.paginator import Paginator
-from django.db.models import Count, OuterRef, Q, Subquery
-from django.db import transaction
-from django.utils import timezone
 from django.core import signing
+from django.core.paginator import Paginator
+from django.db import transaction
+from django.db.models import Count, OuterRef, Q, Subquery
 from django.http import HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
@@ -29,6 +29,12 @@ from src.apps.legislation.api_limits import (
     parse_model,
     rate_limit_response,
 )
+from src.apps.legislation.attachment_service import (
+    AttachmentError,
+    delete_attachment,
+    list_attachments,
+    upload_attachment,
+)
 from src.apps.legislation.models import (
     ChatMessage,
     ChatSession,
@@ -36,14 +42,13 @@ from src.apps.legislation.models import (
     EventoAlteracao,
     Norma,
 )
+from src.apps.legislation.retrieval_api import build_retrieval_options
 from src.apps.legislation.serializers import (
     serialize_chat_message,
     serialize_chat_session,
     serialize_dispositivo_source,
 )
 from src.processing.adaptive_rag_service import AdaptiveRAGService
-from src.apps.legislation.attachment_service import AttachmentError, delete_attachment, list_attachments, upload_attachment
-from src.apps.legislation.retrieval_api import build_retrieval_options
 
 RAGService = AdaptiveRAGService
 
@@ -58,9 +63,110 @@ def _format_error_message(e: Exception) -> str:
 
 
 @require_http_methods(["GET"])
+def health_live_api(request: HttpRequest) -> JsonResponse:
+    """Liveness probe: cheap check ensuring process is alive."""
+    return JsonResponse({'status': 'alive'})
+
+
+def _check_database() -> tuple[bool, str]:
+    """Check database connectivity."""
+    try:
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        return True, 'ok'
+    except Exception as exc:
+        return False, str(exc)
+
+
+def _check_pgvector() -> tuple[bool, str]:
+    """Check if pgvector extension is available."""
+    try:
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1 FROM pg_extension WHERE extname = 'vector'")
+            row = cursor.fetchone()
+            if not row:
+                return False, 'pgvector extension not installed'
+        return True, 'ok'
+    except Exception as exc:
+        return False, str(exc)
+
+
+def _check_redis() -> tuple[bool, str]:
+    """Check Redis connectivity."""
+    try:
+        from django.core.cache import cache
+        cache.set('__health_probe__', '1', timeout=5)
+        if cache.get('__health_probe__') != '1':
+            return False, 'redis cache read/write failed'
+        return True, 'ok'
+    except Exception as exc:
+        return False, str(exc)
+
+
+def _check_migrations() -> tuple[bool, str]:
+    """Check for unapplied database migrations."""
+    try:
+        from django.db import connection
+        from django.db.migrations.executor import MigrationExecutor
+        executor = MigrationExecutor(connection)
+        targets = executor.loader.graph.leaf_nodes()
+        plan = executor.migration_plan(targets)
+        if plan:
+            return False, f"Unapplied migrations: {len(plan)}"
+        return True, 'ok'
+    except Exception as exc:
+        return False, str(exc)
+
+
+def _check_ollama() -> tuple[bool, str]:
+    """Check Ollama service connectivity."""
+    if not getattr(settings, 'READINESS_REQUIRE_OLLAMA', True):
+        return True, 'skipped'
+    try:
+        from src.llm_engine.ollama_service import OllamaService
+        service = OllamaService()
+        if not service.check_connection():
+            return False, 'ollama unreachable'
+        return True, 'ok'
+    except Exception as exc:
+        return False, str(exc)
+
+
+@require_http_methods(["GET"])
+def health_ready_api(request: HttpRequest) -> JsonResponse:
+    """Readiness probe: verifies all dependencies required to serve requests."""
+    checks = {
+        'database': _check_database,
+        'pgvector': _check_pgvector,
+        'redis': _check_redis,
+        'migrations': _check_migrations,
+        'ollama': _check_ollama,
+    }
+    dependencies = {}
+    all_ok = True
+    for name, check_fn in checks.items():
+        ok, detail = check_fn()
+        dependencies[name] = detail
+        if not ok:
+            all_ok = False
+
+    status = 'ready' if all_ok else 'not_ready'
+    status_code = 200 if all_ok else 503
+    return JsonResponse(
+        {
+            'status': status,
+            'dependencies': dependencies,
+        },
+        status=status_code,
+    )
+
+
+@require_http_methods(["GET"])
 def health_check_api(request: HttpRequest) -> JsonResponse:
-    """Liveness/readiness health check endpoint."""
-    return JsonResponse({'status': 'healthy', 'service': 'jurix_web'})
+    """Compatibility alias for health check."""
+    return health_ready_api(request)
 
 
 @require_http_methods(["GET"])

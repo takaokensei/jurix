@@ -314,10 +314,14 @@ class CacheService:
 
             serializable_answer = {
                 'answer': answer_data['answer'],
-                'confidence': float(answer_data.get('confidence', 0.0)),
+                'source_relevance': float(
+                    answer_data.get('source_relevance', answer_data.get('confidence', 0.0)) or 0.0
+                ),
+                'confidence': answer_data.get('confidence'),
                 'model': answer_data.get('model', model),
                 'context_length': answer_data.get('context_length', 0),
                 'sources': serializable_sources,
+                'grounded': bool(answer_data.get('grounded', True)),
                 'cached': True
             }
 

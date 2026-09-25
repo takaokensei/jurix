@@ -16,6 +16,7 @@ from django.db import connection
 from src.apps.legislation.models import Dispositivo
 from src.llm_engine.ollama_service import OllamaService
 from src.processing.cache_service import get_cache_service
+from src.processing.grounding import evaluate_grounding
 
 logger = logging.getLogger(__name__)
 
@@ -433,6 +434,11 @@ RESPOSTA:"""
 
         return result_payload
 
+    @staticmethod
+    def _ground_answer(answer: str, results: list[dict[str, Any]]) -> dict[str, Any]:
+        """Evaluate grounding of the answer against retrieved evidence."""
+        return evaluate_grounding(answer, results)
+
     def stream_answer_question(
         self,
         question: str,
@@ -509,16 +515,13 @@ RESPOSTA:"""
         full_chunks = []
         for chunk in self.ollama.stream_text(prompt, model=model, temperature=0.3, max_tokens=2048):
             full_chunks.append(chunk)
+            yield {'event': 'chunk', 'chunk': chunk}
 
         full_answer = "".join(full_chunks)
         full_answer = self._fix_markdown_formatting(full_answer).strip()
-        if not self._answer_uses_only_sources(full_answer, results):
-            full_answer = (
-                "Não encontrei informação suficiente nas fontes recuperadas para responder "
-                "com segurança a essa pergunta."
-            )
 
-        yield {'event': 'chunk', 'chunk': full_answer}
+        grounding_report = self._ground_answer(full_answer, results)
+        is_grounded = bool(grounding_report.get('grounded', True))
 
         # Cache result
         if self.use_cache and self.cache:
@@ -526,6 +529,8 @@ RESPOSTA:"""
                 'answer': full_answer,
                 'sources': results,
                 'confidence': avg_confidence,
+                'source_relevance': avg_confidence,
+                'grounded': is_grounded,
                 'model': model,
                 'context_length': len(context),
                 'cached': False
@@ -536,7 +541,14 @@ RESPOSTA:"""
                 retrieval_fingerprint=retrieval_fingerprint
             )
 
-        yield {'event': 'done', 'answer': full_answer}
+        yield {
+            'event': 'done',
+            'answer': full_answer,
+            'sources': results,
+            'confidence': avg_confidence,
+            'source_relevance': avg_confidence,
+            'grounded': is_grounded,
+        }
 
     def _fix_markdown_formatting(self, text: str) -> str:
         """

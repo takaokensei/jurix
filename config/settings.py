@@ -208,7 +208,19 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'ingestion.cleanup_chat_attachments',
         'schedule': 1800.0,
     },
+    'incremental-sapl-sync': {
+        'task': 'ingestion.incremental_sync_sapl_task',
+        'schedule': float(os.getenv('SAPL_INCREMENTAL_SYNC_SECONDS', '900')),
+        'kwargs': {
+            'limit': int(os.getenv('SAPL_INCREMENTAL_SYNC_LIMIT', '100')),
+        },
+    },
 }
+
+# Readiness probes should normally include Ollama because the RAG API cannot
+# satisfy its primary workload without it. Disable this only for deployments
+# that intentionally separate API liveness from model availability.
+READINESS_REQUIRE_OLLAMA = env_bool('READINESS_REQUIRE_OLLAMA', True)
 
 # Cache Configuration (Redis with LocMem fallback for local development)
 REDIS_URL = os.getenv('REDIS_URL', 'redis://redis:6379/0')

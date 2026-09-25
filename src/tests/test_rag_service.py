@@ -365,6 +365,7 @@ class TestRAGService:
 
     def test_semantic_search_restricts_results_to_active_embedding_model(self, monkeypatch):
         from unittest.mock import MagicMock
+
         from src.processing.rag_service import RAGService
         ollama = MagicMock()
         ollama.generate_embedding.return_value = [0.1] * 768
@@ -384,6 +385,7 @@ class TestRAGService:
 
     def test_semantic_search_rejects_unexpected_embedding_dimension(self, monkeypatch):
         from unittest.mock import MagicMock
+
         from src.processing.rag_service import RAGService
         ollama = MagicMock()
         ollama.generate_embedding.return_value = [0.1] * 3

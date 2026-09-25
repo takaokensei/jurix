@@ -6,14 +6,12 @@ REVOGA/ALTERA can never be applied. The extraction is regex-based and lossy, so 
 deliberately CONSERVATIVE: in a legal text, applying the wrong revocation is worse than
 reporting an unresolved one. An event is resolved only when all of these hold:
 
-1. It targets a top-level ARTICLE. References to paragraphs, incisos and alíneas cannot be
-   resolved because the parent chain is not recovered.
-2. Its source dispositivo produced no hierarchical reference for the same action. 'Fica revogado
-   o § 2º do art. 5º' makes the extractor emit BOTH an 'artigo 5º' and a 'paragrafo 2º' event;
-   resolving the first one would revoke the whole article.
+1. The requested hierarchy must be explicit enough to recover its article ancestor.
+2. When one sentence produces both an article anchor and a more specific reference
+   ('§ 2º do art. 5º'), the specific event wins and the article anchor is not applied.
 3. The amending text does not mix norms. The extractor attributes every reference in a sentence
    to the first norm it finds ('art. 5º da Lei 7/2019, e o art. 9º desta Lei' -> Lei 7).
-4. Exactly one article of the target norma has that number.
+4. Exactly one matching hierarchy path exists in the target norma.
 
 Anything else is returned with a human-readable reason, never silently dropped.
 """
@@ -36,6 +34,13 @@ _THIS_NORMA = re.compile(
     re.IGNORECASE,
 )
 
+
+_ARTICLE_IN_TEXT = re.compile(r'\bart\.?\s*(\d+)\s*[ºª°o]?(?:\s*-\s*([A-Za-z]+))?', re.I)
+_PARAGRAPH_IN_TEXT = re.compile(r'§\s*(único|\d+\s*[ºª°o]?)', re.I)
+_INCISO_IN_TEXT = re.compile(r'\binciso\s+([IVXLCDM]+)\b', re.I)
+_ALINEA_IN_TEXT = re.compile(r'\balínea\s+([a-z])\s*\)?', re.I)
+_ITEM_IN_TEXT = re.compile(r'\bitem\s+(\d+)\s*\)?', re.I)
+_HIERARCHICAL_TYPES = {'paragrafo', 'inciso', 'alinea', 'item'}
 
 MAX_RANGE_SPAN = 200
 
@@ -94,6 +99,117 @@ def _ambiguous_norma_reason(text: str) -> str:
     return ''
 
 
+
+def _normalise_article_token(number: str) -> tuple[int, str] | None:
+    return article_key(number)
+
+
+def _ancestor_chain(dispositivo: Any) -> list[Any]:
+    chain = []
+    seen = set()
+    current = dispositivo
+    while current is not None and getattr(current, 'id', None) not in seen:
+        seen.add(current.id)
+        chain.append(current)
+        current = getattr(current, 'dispositivo_pai', None)
+    return chain
+
+
+def _parse_hierarchy(text: str, reference_type: str, reference_number: str) -> dict[str, Any]:
+    """Extract a conservative parent path from the raw legal reference."""
+    raw = text or ''
+    article_match = _ARTICLE_IN_TEXT.search(raw)
+    path: dict[str, Any] = {
+        'artigo': (
+            _normalise_article_token(
+                f"{article_match.group(1)}-{article_match.group(2)}"
+                if article_match and article_match.group(2)
+                else article_match.group(1)
+            )
+            if article_match else None
+        )
+    }
+    ref_type = (reference_type or '').lower()
+    ref_num = (reference_number or '').strip()
+    path[ref_type] = ref_num
+
+    for pattern, key in (
+        (_PARAGRAPH_IN_TEXT, 'paragrafo'),
+        (_INCISO_IN_TEXT, 'inciso'),
+        (_ALINEA_IN_TEXT, 'alinea'),
+        (_ITEM_IN_TEXT, 'item'),
+    ):
+        match = pattern.search(raw)
+        if match:
+            path[key] = match.group(1).strip()
+    return path
+
+
+def _number_equal(tipo: str, actual: str, expected: str) -> bool:
+    a, b = str(actual or '').strip(), str(expected or '').strip()
+    if tipo == 'paragrafo':
+        return a.rstrip('ºª°o').lower() == b.rstrip('ºª°o').lower()
+    if tipo == 'inciso':
+        return a.upper().replace('.', '') == b.upper().replace('.', '')
+    if tipo == 'alinea':
+        return a.lower().rstrip(')') == b.lower().rstrip(')')
+    if tipo == 'item':
+        return re.sub(r'\D', '', a) == re.sub(r'\D', '', b)
+    return a == b
+
+
+def _resolve_hierarchical(
+    event: Any,
+    dispositivos: list[Any],
+) -> Resolution:
+    """Resolve paragraph/inciso/alínea/item through the materialized parent tree."""
+    ref_type = (getattr(event, 'referencia_tipo', '') or '').lower()
+    if ref_type not in _HIERARCHICAL_TYPES:
+        return Resolution((), '')
+
+    fonte = getattr(event, 'dispositivo_fonte', None)
+    reason = _ambiguous_norma_reason(getattr(fonte, 'texto', '') if fonte else '')
+    if reason:
+        return Resolution((), reason)
+
+    path = _parse_hierarchy(
+        getattr(fonte, 'texto', '') if fonte else getattr(event, 'target_text', ''),
+        ref_type,
+        getattr(event, 'referencia_numero', ''),
+    )
+    article_key_value = path.get('artigo')
+    if article_key_value is None:
+        return Resolution((), 'referência hierárquica sem artigo ancestral identificável')
+
+    candidates = []
+    for dispositivo in dispositivos:
+        if dispositivo.tipo != ref_type or not _number_equal(ref_type, dispositivo.numero, path[ref_type]):
+            continue
+        chain = _ancestor_chain(dispositivo)
+        article_nodes = [node for node in chain if getattr(node, 'tipo', '') == 'artigo']
+        if len(article_nodes) != 1:
+            continue
+        if _normalise_article_token(article_nodes[0].numero) != article_key_value:
+            continue
+
+        matched = True
+        for parent_type in ('paragrafo', 'inciso', 'alinea', 'item'):
+            expected = path.get(parent_type)
+            if not expected or parent_type == ref_type:
+                continue
+            nodes = [node for node in chain if getattr(node, 'tipo', '') == parent_type]
+            if nodes and not any(_number_equal(parent_type, node.numero, expected) for node in nodes):
+                matched = False
+        if matched:
+            candidates.append(dispositivo)
+
+    if not candidates:
+        return Resolution((), 'referência hierárquica não encontrada na norma alvo')
+    if len(candidates) > 1:
+        return Resolution((), 'referência hierárquica duplicada na norma alvo')
+    return Resolution((candidates[0],))
+
+
 def resolve_targets(eventos: list, dispositivos: list) -> dict[Any, Resolution]:
     """
     Resolve the target of every applying event that has none yet.
@@ -125,10 +241,23 @@ def resolve_targets(eventos: list, dispositivos: list) -> dict[Any, Resolution]:
     result: dict[Any, Resolution] = {}
     for e in pending:
         group = (getattr(e, 'dispositivo_fonte_id', None), (e.acao or '').upper())
-        if types_by_group[group] - {'artigo'}:
-            result[e.id] = Resolution((), 'referência hierárquica (parágrafo/inciso/alínea) não suportada')
+        ref_type = (e.referencia_tipo or '').lower()
+        group_types = types_by_group[group]
+
+        # The extractor commonly emits both the article anchor and the specific
+        # child reference. Never revoke/alter the whole article when a child path
+        # exists in the same source sentence.
+        if ref_type == 'artigo' and group_types & _HIERARCHICAL_TYPES:
+            result[e.id] = Resolution((), 'artigo é apenas âncora de referência hierárquica')
             continue
-        if (e.referencia_tipo or '').lower() != 'artigo':
+
+        if ref_type in _HIERARCHICAL_TYPES:
+            resolved = _resolve_hierarchical(e, dispositivos)
+            if resolved.dispositivos or resolved.reason:
+                result[e.id] = resolved
+            continue
+
+        if ref_type != 'artigo':
             result[e.id] = Resolution((), 'evento sem artigo identificável')
             continue
 

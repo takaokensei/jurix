@@ -27,7 +27,7 @@ COPY . .
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=15s \
-    CMD curl -f http://localhost:8000/api/v1/health/ || exit 1
+    CMD curl -fsS http://localhost:8000/api/v1/health/live/ || exit 1
 
 # The chatbot streams answers over SSE, and a generation can take tens of seconds.
 # A sync worker is blocked for the whole stream (3 concurrent chats freeze the site),

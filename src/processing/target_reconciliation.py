@@ -16,7 +16,6 @@ from django.db import transaction
 
 from src.apps.legislation.models import EventoAlteracao, Norma
 
-
 REFERENCE_RE = re.compile(
     r"\b(?P<tipo>lei\s+complementar|lei|decreto|resolu(?:c|ç)ão|portaria|emenda)"
     r"(?:\s+(?:municipal|ordinária|do município))?\s*"

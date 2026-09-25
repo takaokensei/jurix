@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 
-import requests
 import pytest
+import requests
 
 from src.llm_engine.ollama_service import OllamaService
 

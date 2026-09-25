@@ -2,7 +2,11 @@ from types import SimpleNamespace
 
 from django.test import override_settings
 
-from src.apps.legislation.source_urls import canonical_sapl_url, canonical_norma_url, public_source_url
+from src.apps.legislation.source_urls import (
+    canonical_norma_url,
+    canonical_sapl_url,
+    public_source_url,
+)
 
 
 @override_settings(SAPL_BASE_URL="https://sapl.natal.rn.leg.br/api")

@@ -13,7 +13,6 @@ from urllib.parse import urlparse
 
 from django.conf import settings
 
-
 _LEGACY_PATTERN = re.compile(r"/norma/normajuridica/(\d+)/?$")
 _CURRENT_PATTERN = re.compile(r"/norma/(\d+)/?$")
 

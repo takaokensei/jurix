@@ -8,7 +8,6 @@ from django.db import connection
 from django.test import RequestFactory
 
 
-
 @pytest.fixture(scope='session')
 def django_db_setup(django_db_setup, django_db_blocker):
     """

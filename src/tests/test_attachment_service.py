@@ -2,7 +2,13 @@
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from src.apps.legislation.attachment_service import AttachmentError, list_attachments, upload_attachment, delete_attachment, get_attachment_texts
+from src.apps.legislation.attachment_service import (
+    AttachmentError,
+    delete_attachment,
+    get_attachment_texts,
+    list_attachments,
+    upload_attachment,
+)
 
 
 class DummySession(dict):
@@ -46,6 +52,7 @@ def test_empty_file_is_rejected(tmp_path, settings):
 def test_expiration_collects_abandoned_session_only(tmp_path, settings):
     import os
     import time
+
     from src.apps.legislation.attachment_service import cleanup_expired_attachments
     settings.JURIX_ATTACHMENT_ROOT = str(tmp_path)
     directory = tmp_path / ('a' * 64)
@@ -62,6 +69,7 @@ def test_expiration_collects_abandoned_session_only(tmp_path, settings):
 
 def test_pdf_page_limit(tmp_path, settings):
     import fitz
+
     from src.apps.legislation.attachment_service import _extract_text
     path = tmp_path / 'too-many.pdf'
     with fitz.open() as document:
@@ -74,6 +82,7 @@ def test_pdf_page_limit(tmp_path, settings):
 
 def test_pdf_extraction_in_child_process(tmp_path):
     import fitz
+
     from src.apps.legislation.attachment_service import _extract_text
     path = tmp_path / 'law.pdf'
     with fitz.open() as document:
@@ -83,8 +92,9 @@ def test_pdf_extraction_in_child_process(tmp_path):
 
 
 def test_docx_expansion_limit(tmp_path):
-    from zipfile import ZipFile, ZIP_DEFLATED
-    from src.processing.attachment_worker import extract, MAX_EXPANDED
+    from zipfile import ZIP_DEFLATED, ZipFile
+
+    from src.processing.attachment_worker import MAX_EXPANDED, extract
     path = tmp_path / 'large.docx'
     with ZipFile(path, 'w', compression=ZIP_DEFLATED) as archive:
         archive.writestr('word/document.xml', b'x' * (MAX_EXPANDED + 1))
@@ -94,6 +104,7 @@ def test_docx_expansion_limit(tmp_path):
 
 def test_docx_extraction_in_child_process(tmp_path):
     from docx import Document
+
     from src.apps.legislation.attachment_service import _extract_text
     path = tmp_path / 'law.docx'
     document = Document()
@@ -157,6 +168,7 @@ def test_resource_limits_enforced_in_process():
 
     # 3. Verify real attachment_worker.main() entry point aborts if limits fail to apply without calling extract()
     from unittest.mock import patch
+
     from src.processing import attachment_worker
 
     with patch.object(attachment_worker, 'apply_resource_limits', return_value=False):
@@ -170,6 +182,7 @@ def test_resource_limits_enforced_in_process():
 def test_cleanup_skips_symlinks_and_external_paths(tmp_path, settings):
     import os
     import time
+
     from src.apps.legislation.attachment_service import cleanup_expired_attachments
 
     settings.JURIX_ATTACHMENT_ROOT = str(tmp_path)

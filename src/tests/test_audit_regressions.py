@@ -6,11 +6,20 @@ import pytest
 from django.core.cache import cache
 from django.test import RequestFactory
 
-from src.apps.legislation.models import Norma, Dispositivo, EventoAlteracao, ChatSession, ChatMessage
-from src.apps.legislation.api_views import chatbot_stream_api, _chat_session_response
-from src.processing.adaptive_retrieval import AdaptiveRetriever, RetrievalOptions
+from src.apps.legislation.api_views import _chat_session_response, chatbot_stream_api
+from src.apps.legislation.models import (
+    ChatMessage,
+    ChatSession,
+    Dispositivo,
+    EventoAlteracao,
+    Norma,
+)
 from src.processing.adaptive_rag_service import AdaptiveRAGService
-from src.processing.target_reconciliation import parse_target_reference, reconcile_unresolved_event_targets
+from src.processing.adaptive_retrieval import AdaptiveRetriever, RetrievalOptions
+from src.processing.target_reconciliation import (
+    parse_target_reference,
+    reconcile_unresolved_event_targets,
+)
 
 
 def test_minimum_rejects_first_weak_result():
