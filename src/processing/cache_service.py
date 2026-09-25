@@ -302,8 +302,8 @@ class CacheService:
                     if disp and hasattr(disp, 'id'):
                         serializable_sources.append({
                             'dispositivo_id': disp.id,
-                            'similarity_score': float(src.get('similarity_score', 0.0)),
-                            'distance': float(src.get('distance', 0.0)),
+                            'similarity_score': float(src.get('similarity_score') if src.get('similarity_score') is not None else 0.0),
+                            'distance': float(src.get('distance') if src.get('distance') is not None else 0.0),
                             'context': src.get('context', ''),
                             'embedding_model': src.get('embedding_model', ''),
                             'identifier': disp.get_full_identifier() if hasattr(disp, 'get_full_identifier') else '',

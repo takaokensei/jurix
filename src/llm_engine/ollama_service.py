@@ -223,6 +223,9 @@ class OllamaService:
             if response is not None:
                 response.close()
 
+    def check_connection(self) -> bool:
+        return self.check_health()
+
     def check_health(self) -> bool:
         """
         Check if Ollama service is accessible.

@@ -83,6 +83,8 @@ def _check_pgvector() -> tuple[bool, str]:
     """Check if pgvector extension is available."""
     try:
         from django.db import connection
+        if connection.vendor != 'postgresql':
+            return True, 'ok'
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1 FROM pg_extension WHERE extname = 'vector'")
             row = cursor.fetchone()
