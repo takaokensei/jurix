@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     'src.apps.core',
     'src.apps.legislation',
     'src.apps.ingestion',
+    'src.apps.operations',
 ]
 
 MIDDLEWARE = [
@@ -273,6 +274,18 @@ NUM_PROXIES = int(os.getenv('NUM_PROXIES', '0'))
 
 # SAPL Configuration
 SAPL_BASE_URL = os.getenv('SAPL_BASE_URL', 'https://sapl.natal.rn.leg.br/api')
+SAPL_INCREMENTAL_MAX_PAGES = int(os.getenv('SAPL_INCREMENTAL_MAX_PAGES', '20'))
+SAPL_SYNC_LEASE_SECONDS = int(os.getenv('SAPL_SYNC_LEASE_SECONDS', '900'))
+
+# Attachment/object-storage configuration. The current attachment service still
+# uses its local/session implementation; these settings are the stable contract
+# for the storage backend introduced in the next production-hardening patch.
+STORAGE_BACKEND = os.getenv('STORAGE_BACKEND', 'local').strip().lower()
+S3_ENDPOINT = os.getenv('S3_ENDPOINT', '')
+S3_BUCKET = os.getenv('S3_BUCKET', '')
+S3_ACCESS_KEY = os.getenv('S3_ACCESS_KEY', '')
+S3_SECRET_KEY = os.getenv('S3_SECRET_KEY', '')
+S3_REGION = os.getenv('S3_REGION', 'us-east-1')
 
 
 # Logging Configuration

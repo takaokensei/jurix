@@ -25,8 +25,12 @@ def test_incremental_sync_skips_unchanged_payload(db):
     )
 
     from src.apps.ingestion.tasks import incremental_sync_sapl_task
-    with patch('src.apps.ingestion.tasks.SaplAPIClient') as client_cls:
-        client_cls.return_value.fetch_normas.return_value = [payload]
+    with patch('src.apps.ingestion.sapl_sync.SaplAPIClient') as client_cls:
+        client_cls.return_value.fetch_normas_page.return_value = {
+            'count': 1,
+            'next': None,
+            'results': [payload],
+        }
         stats = incremental_sync_sapl_task.run(limit=10)
 
     assert stats['unchanged'] == 1

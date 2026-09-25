@@ -1,0 +1,137 @@
+# Production compose for Jurix.
+#
+# Unlike docker-compose.yml (development-oriented defaults), this file refuses
+# to start with implicit database/Django secrets and never bind-mounts the
+# application source into runtime containers.
+
+x-app-env: &app-env
+  DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:?POSTGRES_DB is required}
+  REDIS_URL: redis://redis:6379/0
+  CACHE_REDIS_URL: redis://redis:6379/1
+  DJANGO_SETTINGS_MODULE: config.settings
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}
+  DEBUG: "False"
+  ALLOWED_HOSTS: ${ALLOWED_HOSTS:?ALLOWED_HOSTS is required}
+  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:?OLLAMA_BASE_URL is required}
+  OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
+  OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
+  READINESS_REQUIRE_OLLAMA: ${READINESS_REQUIRE_OLLAMA:-true}
+  SAPL_INCREMENTAL_MAX_PAGES: ${SAPL_INCREMENTAL_MAX_PAGES:-20}
+  SAPL_FULL_SYNC_MAX_PAGES: ${SAPL_FULL_SYNC_MAX_PAGES:-1000}
+  STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+  S3_ENDPOINT: ${S3_ENDPOINT:-}
+  S3_BUCKET: ${S3_BUCKET:-}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+  S3_REGION: ${S3_REGION:-us-east-1}
+
+x-runtime: &runtime
+  restart: unless-stopped
+  init: true
+
+services:
+  db:
+    <<: *runtime
+    image: pgvector/pgvector:pg16
+    container_name: jurix_prod_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?POSTGRES_USER is required} -d ${POSTGRES_DB:?POSTGRES_DB is required}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  redis:
+    <<: *runtime
+    image: redis:7-alpine
+    container_name: jurix_prod_redis
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1000"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+  web:
+    <<: *runtime
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: jurix_prod_web
+    command:
+      [
+        "gunicorn",
+        "config.wsgi:application",
+        "--bind",
+        "0.0.0.0:8000",
+        "--workers",
+        "${GUNICORN_WORKERS:-3}",
+        "--worker-class",
+        "gthread",
+        "--threads",
+        "${GUNICORN_THREADS:-8}",
+        "--timeout",
+        "${GUNICORN_TIMEOUT:-120}",
+        "--graceful-timeout",
+        "${GUNICORN_GRACEFUL_TIMEOUT:-30}",
+        "--keep-alive",
+        "${GUNICORN_KEEPALIVE:-5}",
+        "--max-requests",
+        "${GUNICORN_MAX_REQUESTS:-1000}",
+        "--max-requests-jitter",
+        "${GUNICORN_MAX_REQUESTS_JITTER:-100}",
+      ]
+    ports:
+      - "${JURIX_BIND_ADDRESS:-127.0.0.1}:${JURIX_HTTP_PORT:-8000}:8000"
+    environment: *app-env
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/live/', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    <<: *runtime
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: jurix_prod_worker
+    command: ["celery", "-A", "config", "worker", "-l", "info", "--pool=prefork", "--concurrency=${CELERY_CONCURRENCY:-4}", "--max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-100}"]
+    environment: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  beat:
+    <<: *runtime
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: jurix_prod_beat
+    command: ["celery", "-A", "config", "beat", "-l", "info", "--schedule=/tmp/jurix-celerybeat"]
+    environment: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:

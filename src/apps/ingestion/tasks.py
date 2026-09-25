@@ -1372,49 +1372,41 @@ def incremental_sync_sapl_task(
     tipo: str | None = None,
     ano: int | None = None,
 ) -> dict[str, Any]:
-    """Bounded, idempotent delta scan of the newest SAPL records.
+    """Persisted, resumable SAPL sync with an explicit safe-stop condition."""
+    from src.apps.ingestion.sapl_sync import run_incremental_sync
 
-    SAPL installations do not expose a universally reliable updated-since contract.
-    The task therefore scans a bounded newest page and fingerprints every payload.
-    Unchanged records are skipped completely, while changed/new records enter the
-    existing ingestion pipeline.
-    """
-    limit = max(1, min(int(limit), 500))
-    stats = {'fetched': 0, 'changed': 0, 'unchanged': 0, 'failed': 0, 'errors': []}
-    client = SaplAPIClient()
     try:
-        payloads = client.fetch_normas(limit=limit, offset=0, tipo=tipo, ano=ano)
-        stats['fetched'] = len(payloads)
-        for payload in payloads:
-            sapl_id = payload.get('id')
-            if not sapl_id:
-                stats['failed'] += 1
-                stats['errors'].append('Norma sem id no payload SAPL')
-                continue
-
-            digest = _sapl_payload_hash(payload)
-            existing = Norma.objects.filter(sapl_id=sapl_id).only('sapl_metadata').first()
-            old_digest = (
-                (existing.sapl_metadata or {}).get('_jurix_source_hash')
-                if existing else None
-            )
-            if old_digest == digest:
-                stats['unchanged'] += 1
-                continue
-
-            payload = dict(payload)
-            payload['_jurix_source_hash'] = digest
-            try:
-                _process_norma_data(payload, auto_download=True)
-                stats['changed'] += 1
-            except Exception as exc:
-                stats['failed'] += 1
-                stats['errors'].append(f'Norma {sapl_id}: {exc}')
-                logger.error('Incremental SAPL sync failed for %s', sapl_id, exc_info=True)
-
-        return stats
+        result = run_incremental_sync(
+            limit=limit,
+            tipo=tipo,
+            ano=ano,
+        )
+        if result.get('error') and not result.get('busy'):
+            raise RuntimeError(result['error'])
+        return result
     except Exception as exc:
-        logger.error('Incremental SAPL sync failed', exc_info=True)
+        logger.error('Incremental SAPL sync task failed', exc_info=True)
         raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries)) from exc
-    finally:
-        client.close()
+
+
+@shared_task(
+    bind=True,
+    name='ingestion.full_sync_sapl_task',
+    max_retries=1,
+    default_retry_delay=120,
+)
+def full_sync_sapl_task(
+    self,
+    limit: int = 100,
+) -> dict[str, Any]:
+    """Run a complete SAPL scan and flag locally retained records that disappeared."""
+    from src.apps.ingestion.sapl_sync import run_full_sync
+
+    try:
+        result = run_full_sync(limit=limit)
+        if result.get('error') and not result.get('busy'):
+            raise RuntimeError(result['error'])
+        return result
+    except Exception as exc:
+        logger.error('Full SAPL sync task failed', exc_info=True)
+        raise self.retry(exc=exc, countdown=120) from exc

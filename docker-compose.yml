@@ -87,8 +87,6 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     command: celery -A config beat -l info --schedule=/tmp/jurix-celerybeat
-    volumes:
-      - .:/app
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-jurix_user}:${POSTGRES_PASSWORD:-jurix_pass_dev}@db:5432/${POSTGRES_DB:-jurix}
       - REDIS_URL=redis://redis:6379/0
