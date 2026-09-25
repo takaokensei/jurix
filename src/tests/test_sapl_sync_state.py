@@ -56,9 +56,11 @@ def test_incremental_sync_stops_on_unchanged_page(monkeypatch, settings):
         sapl_id=10,
         sapl_metadata={"_jurix_source_hash": digest},
     )
-    fake = FakeClient({
-        0: {"count": 2, "next": "x", "results": [p]},
-    })
+    fake = FakeClient(
+        {
+            0: {"count": 2, "next": "x", "results": [p]},
+        }
+    )
     monkeypatch.setattr(sapl_sync, "SaplAPIClient", lambda: fake)
 
     result = sapl_sync.run_incremental_sync(limit=10)
@@ -83,9 +85,11 @@ def test_full_sync_marks_missing_normas(monkeypatch):
         sapl_metadata={},
     )
     present = payload(10)
-    fake = FakeClient({
-        0: {"count": 1, "next": None, "previous": None, "results": [present]},
-    })
+    fake = FakeClient(
+        {
+            0: {"count": 1, "next": None, "previous": None, "results": [present]},
+        }
+    )
     monkeypatch.setattr(sapl_sync, "SaplAPIClient", lambda: fake)
     monkeypatch.setattr(
         sapl_sync,

@@ -15,5 +15,7 @@ CASES = [
 @override_settings(RAG_STRICT_MIN_LEXICAL_OVERLAP=0.55)
 def test_adversarial_claim_matrix():
     for claim, evidence, expected in CASES:
-        report = evaluate_strict_grounding(claim, [{"text": evidence, "norma_ref": "", "identifier": "", "id": 1}])
+        report = evaluate_strict_grounding(
+            claim, [{"text": evidence, "norma_ref": "", "identifier": "", "id": 1}]
+        )
         assert report["grounded"] is expected, claim

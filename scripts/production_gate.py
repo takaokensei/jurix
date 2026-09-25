@@ -4,6 +4,7 @@ The gate is intentionally conservative: it validates the repository shape and,
 when requested, executes the same Django/Ruff/Pytest checks used for release.
 It does not claim legal correctness; that requires the reviewed RAG benchmark.
 """
+
 from __future__ import annotations
 
 import argparse

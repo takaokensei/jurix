@@ -17,6 +17,7 @@ The result is a production guardrail, not a substitute for legal review or a
 semantic entailment model. A future semantic verifier can be layered on top
 without changing the public contract of this module.
 """
+
 from __future__ import annotations
 
 import re
@@ -45,11 +46,48 @@ _CONDITION_RE = re.compile(
 )
 
 _STOPWORDS = {
-    "para", "como", "sobre", "entre", "essa", "este", "esta", "esse", "isso",
-    "que", "uma", "por", "dos", "das", "com", "sem", "nos", "nas", "aos",
-    "pelos", "pelas", "qual", "quais", "onde", "quando", "quem", "porque",
-    "são", "ser", "tem", "mais", "menos", "muito", "muita", "muitas", "muitos",
-    "pelo", "pela", "e", "ou", "uns", "umas",
+    "para",
+    "como",
+    "sobre",
+    "entre",
+    "essa",
+    "este",
+    "esta",
+    "esse",
+    "isso",
+    "que",
+    "uma",
+    "por",
+    "dos",
+    "das",
+    "com",
+    "sem",
+    "nos",
+    "nas",
+    "aos",
+    "pelos",
+    "pelas",
+    "qual",
+    "quais",
+    "onde",
+    "quando",
+    "quem",
+    "porque",
+    "são",
+    "ser",
+    "tem",
+    "mais",
+    "menos",
+    "muito",
+    "muita",
+    "muitas",
+    "muitos",
+    "pelo",
+    "pela",
+    "e",
+    "ou",
+    "uns",
+    "umas",
 }
 
 
@@ -76,9 +114,7 @@ class EvidenceMatch:
 
 def _tokens(text: str) -> set[str]:
     return {
-        token.lower()
-        for token in _WORD_RE.findall(text or "")
-        if token.lower() not in _STOPWORDS
+        token.lower() for token in _WORD_RE.findall(text or "") if token.lower() not in _STOPWORDS
     }
 
 
@@ -108,7 +144,9 @@ def _normalise_citation_text(text: str) -> str:
 def _citation_ok(claim, evidence) -> bool:
     if not claim.citation_refs:
         return True
-    haystack = _normalise_citation_text(f"{evidence.norma_ref} {evidence.identifier} {evidence.text}")
+    haystack = _normalise_citation_text(
+        f"{evidence.norma_ref} {evidence.identifier} {evidence.text}"
+    )
     return all(_normalise_citation_text(ref) in haystack for ref in claim.citation_refs)
 
 
@@ -127,7 +165,9 @@ def _match_claim(claim, evidence) -> EvidenceMatch:
     has_claim_condition = bool(_CONDITION_RE.search(claim.text))
     has_evidence_condition = bool(_CONDITION_RE.search(evidence_text))
     condition_mismatch = has_evidence_condition and not has_claim_condition
-    certainty_ok = (not claim_certainty or bool(claim_certainty & evidence_certainty)) and not condition_mismatch
+    certainty_ok = (
+        not claim_certainty or bool(claim_certainty & evidence_certainty)
+    ) and not condition_mismatch
     return EvidenceMatch(
         evidence_index=-1,
         lexical_overlap=round(overlap, 4),

@@ -1,4 +1,5 @@
 """Diagnose SAPL connectivity and pagination without mutating the corpus."""
+
 from __future__ import annotations
 
 from django.core.management.base import BaseCommand, CommandError
@@ -28,15 +29,25 @@ class Command(BaseCommand):
             except Exception as exc:
                 raise CommandError(f"Falha consultando SAPL na página {page_no}: {exc}") from exc
             if not isinstance(payload, list):
-                raise CommandError(f"Resposta SAPL inesperada na página {page_no}: {type(payload).__name__}")
+                raise CommandError(
+                    f"Resposta SAPL inesperada na página {page_no}: {type(payload).__name__}"
+                )
             results = payload
-            ids = tuple(str(item.get("id")) for item in results if isinstance(item, dict) and item.get("id") is not None)
+            ids = tuple(
+                str(item.get("id"))
+                for item in results
+                if isinstance(item, dict) and item.get("id") is not None
+            )
             unique = len(set(ids))
             self.stdout.write(
                 f"Página {page_no}: {len(results)} registros, {unique} IDs únicos, offset={offset}, total acumulado={total + unique}"
             )
             if ids and ids in seen:
-                self.stdout.write(self.style.WARNING("SAPL repetiu exatamente a mesma página; paginação por offset não é confiável."))
+                self.stdout.write(
+                    self.style.WARNING(
+                        "SAPL repetiu exatamente a mesma página; paginação por offset não é confiável."
+                    )
+                )
                 break
             if ids:
                 seen.add(ids)
@@ -46,6 +57,14 @@ class Command(BaseCommand):
             offset += limit
 
         if total == 0:
-            self.stdout.write(self.style.WARNING("Nenhum registro retornado. Verifique URL, autenticação ou bloqueio do SAPL."))
+            self.stdout.write(
+                self.style.WARNING(
+                    "Nenhum registro retornado. Verifique URL, autenticação ou bloqueio do SAPL."
+                )
+            )
         else:
-            self.stdout.write(self.style.SUCCESS(f"Diagnóstico concluído: {total} registros distintos observados."))
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Diagnóstico concluído: {total} registros distintos observados."
+                )
+            )

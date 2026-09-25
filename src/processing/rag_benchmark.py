@@ -3,6 +3,7 @@
 The benchmark consumes recorded system outputs. It does not invent labels or
 call an LLM, making regressions reproducible once a gold corpus is versioned.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -57,13 +58,27 @@ def citation_recall(expected: set[str], actual: set[str]) -> float:
     return len(expected.intersection(actual)) / len(expected)
 
 
-def evaluate(cases: Iterable[BenchmarkCase], results: Iterable[BenchmarkResult]) -> dict[str, float | int]:
+def evaluate(
+    cases: Iterable[BenchmarkCase], results: Iterable[BenchmarkResult]
+) -> dict[str, float | int]:
     case_map = {item.case_id: item for item in cases}
-    metrics = {name: [] for name in (
-        'recall@1','recall@3','recall@5','recall@10',
-        'precision@1','precision@3','precision@5','precision@10',
-        'mrr','citation_precision','citation_recall','groundedness',
-    )}
+    metrics = {
+        name: []
+        for name in (
+            "recall@1",
+            "recall@3",
+            "recall@5",
+            "recall@10",
+            "precision@1",
+            "precision@3",
+            "precision@5",
+            "precision@10",
+            "mrr",
+            "citation_precision",
+            "citation_recall",
+            "groundedness",
+        )
+    }
     matched = 0
     for result in results:
         case = case_map.get(result.case_id)
@@ -72,15 +87,19 @@ def evaluate(cases: Iterable[BenchmarkCase], results: Iterable[BenchmarkResult])
         matched += 1
         expected = set(case.expected_devices)
         retrieved = result.retrieved_device_ids
-        for k in (1,3,5,10):
-            metrics[f'recall@{k}'].append(recall_at_k(expected, retrieved, k))
-            metrics[f'precision@{k}'].append(precision_at_k(expected, retrieved, k))
-        metrics['mrr'].append(reciprocal_rank(expected, retrieved))
-        metrics['citation_precision'].append(citation_precision(set(case.expected_citations), set(result.citations)))
-        metrics['citation_recall'].append(citation_recall(set(case.expected_citations), set(result.citations)))
-        metrics['groundedness'].append(1.0 if result.grounded else 0.0)
+        for k in (1, 3, 5, 10):
+            metrics[f"recall@{k}"].append(recall_at_k(expected, retrieved, k))
+            metrics[f"precision@{k}"].append(precision_at_k(expected, retrieved, k))
+        metrics["mrr"].append(reciprocal_rank(expected, retrieved))
+        metrics["citation_precision"].append(
+            citation_precision(set(case.expected_citations), set(result.citations))
+        )
+        metrics["citation_recall"].append(
+            citation_recall(set(case.expected_citations), set(result.citations))
+        )
+        metrics["groundedness"].append(1.0 if result.grounded else 0.0)
 
     def avg(values):
         return round(sum(values) / len(values), 6) if values else 0.0
 
-    return {'cases_matched': matched, **{key: avg(value) for key, value in metrics.items()}}
+    return {"cases_matched": matched, **{key: avg(value) for key, value in metrics.items()}}

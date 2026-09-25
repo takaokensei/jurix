@@ -1,4 +1,5 @@
 """Inspect and optionally create the pgvector index used by semantic search."""
+
 from __future__ import annotations
 
 from django.core.management.base import BaseCommand, CommandError

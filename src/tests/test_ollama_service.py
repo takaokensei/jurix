@@ -14,37 +14,35 @@ def test_streaming_error_does_not_leak_internal_exception():
         'HTTPConnectionPool(host="10.20.30.40", port=11434): connection refused'
     )
 
-    with pytest.raises(RuntimeError, match='Erro ao gerar resposta') as exc:
-        list(service.stream_text('teste', model='llama3'))
-    assert '10.20.30.40' not in str(exc.value)
-    assert '11434' not in str(exc.value)
+    with pytest.raises(RuntimeError, match="Erro ao gerar resposta") as exc:
+        list(service.stream_text("teste", model="llama3"))
+    assert "10.20.30.40" not in str(exc.value)
+    assert "11434" not in str(exc.value)
 
 
-@override_settings(OLLAMA_MODEL='qwen2.5:7b')
+@override_settings(OLLAMA_MODEL="qwen2.5:7b")
 def test_generate_text_uses_configured_default_model():
     service = OllamaService()
     service.session = Mock()
     response = Mock()
-    response.json.return_value = {'response': 'ok'}
+    response.json.return_value = {"response": "ok"}
     service.session.post.return_value = response
 
-    assert service.generate_text('teste') == 'ok'
+    assert service.generate_text("teste") == "ok"
 
-    payload = service.session.post.call_args.kwargs['json']
-    assert payload['model'] == 'qwen2.5:7b'
+    payload = service.session.post.call_args.kwargs["json"]
+    assert payload["model"] == "qwen2.5:7b"
 
 
-@override_settings(OLLAMA_MODEL='qwen2.5:7b')
+@override_settings(OLLAMA_MODEL="qwen2.5:7b")
 def test_stream_text_uses_configured_default_model():
     service = OllamaService()
     service.session = Mock()
     response = Mock()
-    response.iter_lines.return_value = [
-        b'{"response":"ok","done":true}'
-    ]
+    response.iter_lines.return_value = [b'{"response":"ok","done":true}']
     service.session.post.return_value = response
 
-    assert list(service.stream_text('teste')) == ['ok']
+    assert list(service.stream_text("teste")) == ["ok"]
 
-    payload = service.session.post.call_args.kwargs['json']
-    assert payload['model'] == 'qwen2.5:7b'
+    payload = service.session.post.call_args.kwargs["json"]
+    assert payload["model"] == "qwen2.5:7b"

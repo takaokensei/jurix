@@ -20,6 +20,7 @@ def legacy_chatbot_redirect(request):
     """Keep /normas/chatbot/ stable: delegate POST (fallback) to chatbot_view, redirect GET."""
     if request.method != "GET":
         from .views import chatbot_view
+
         return chatbot_view(request)
     return redirect("workspace:assistant")
 
@@ -28,6 +29,7 @@ def legacy_chatbot_session_redirect(request, session_slug):
     """Keep bookmarked chat session URLs working after the route migration."""
     if request.method != "GET":
         from .views import chatbot_view
+
         return chatbot_view(request, session_slug=session_slug)
     return redirect("workspace:assistant_session", session_slug=session_slug)
 
@@ -110,8 +112,18 @@ def legal_search_view(request):
                     }
                 )
 
-    types = Norma.objects.filter(status="consolidated").values_list("tipo", flat=True).distinct().order_by("tipo")
-    years = Norma.objects.filter(status="consolidated").values_list("ano", flat=True).distinct().order_by("-ano")
+    types = (
+        Norma.objects.filter(status="consolidated")
+        .values_list("tipo", flat=True)
+        .distinct()
+        .order_by("tipo")
+    )
+    years = (
+        Norma.objects.filter(status="consolidated")
+        .values_list("ano", flat=True)
+        .distinct()
+        .order_by("-ano")
+    )
 
     return render(
         request,

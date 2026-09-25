@@ -8,15 +8,15 @@ from django.db import connection
 from django.test import RequestFactory
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def django_db_setup(django_db_setup, django_db_blocker):
     """
     Enable pgvector extension in test database.
     """
     with django_db_blocker.unblock():
-        if connection.vendor == 'postgresql':
+        if connection.vendor == "postgresql":
             with connection.cursor() as cursor:
-                cursor.execute('CREATE EXTENSION IF NOT EXISTS vector;')
+                cursor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
 
 
 @pytest.fixture
@@ -29,9 +29,7 @@ def factory():
 def user(db):
     """Create a test user."""
     return User.objects.create_user(
-        username='testuser',
-        email='test@example.com',
-        password='testpass123'
+        username="testuser", email="test@example.com", password="testpass123"
     )
 
 
@@ -39,7 +37,6 @@ def user(db):
 def mock_ollama_response():
     """Mock response from Ollama API."""
     return {
-        'embedding': [0.1] * 768,  # Mock embedding vector
-        'response': 'This is a mock response from Ollama',
+        "embedding": [0.1] * 768,  # Mock embedding vector
+        "response": "This is a mock response from Ollama",
     }
-

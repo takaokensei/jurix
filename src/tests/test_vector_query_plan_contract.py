@@ -28,5 +28,8 @@ class VectorQueryPlanContractTests(SimpleTestCase):
         connection.vendor = "postgresql"
         cursor = connection.cursor.return_value.__enter__.return_value
         cursor.fetchone.return_value = (5000,)
-        cursor.fetchall.return_value = [("Limit",), ("Index Scan using dispositivo_embedding_hnsw on legislation_dispositivo",)]
+        cursor.fetchall.return_value = [
+            ("Limit",),
+            ("Index Scan using dispositivo_embedding_hnsw on legislation_dispositivo",),
+        ]
         call_command("verify_vector_query_plan")

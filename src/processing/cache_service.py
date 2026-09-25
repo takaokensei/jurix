@@ -47,7 +47,7 @@ class CacheService:
 
     def __init__(self):
         """Initialize cache service."""
-        self.enabled = getattr(settings, 'CACHES', {}).get('default', {}).get('BACKEND') is not None
+        self.enabled = getattr(settings, "CACHES", {}).get("default", {}).get("BACKEND") is not None
         if not self.enabled:
             logger.warning("Redis cache not configured, caching disabled")
 
@@ -89,7 +89,7 @@ class CacheService:
         Returns:
             Cache key string
         """
-        text_hash = hashlib.sha256(text.encode('utf-8')).hexdigest()
+        text_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
         return f"{prefix}{text_hash}"
 
     def get_embedding(self, query_text: str, model: str) -> list[float] | None:
@@ -145,7 +145,9 @@ class CacheService:
             logger.error(f"Error caching embedding: {e}")
             return False
 
-    def get_search_results(self, query_text: str, k: int, filters: dict[str, Any]) -> list[dict] | None:
+    def get_search_results(
+        self, query_text: str, k: int, filters: dict[str, Any]
+    ) -> list[dict] | None:
         """
         Get cached search results.
 
@@ -177,11 +179,7 @@ class CacheService:
             return None
 
     def set_search_results(
-        self,
-        query_text: str,
-        k: int,
-        filters: dict[str, Any],
-        results: list[dict]
+        self, query_text: str, k: int, filters: dict[str, Any], results: list[dict]
     ) -> bool:
         """
         Cache search results.
@@ -206,13 +204,15 @@ class CacheService:
             # Serialize results (remove non-serializable objects)
             serializable_results = []
             for result in results:
-                serializable_results.append({
-                    'dispositivo_id': result['dispositivo'].id,
-                    'similarity_score': result['similarity_score'],
-                    'distance': result['distance'],
-                    'context': result['context'],
-                    'embedding_model': result['embedding_model']
-                })
+                serializable_results.append(
+                    {
+                        "dispositivo_id": result["dispositivo"].id,
+                        "similarity_score": result["similarity_score"],
+                        "distance": result["distance"],
+                        "context": result["context"],
+                        "embedding_model": result["embedding_model"],
+                    }
+                )
 
             cache.set(key, json.dumps(serializable_results), timeout=self.SEARCH_TTL)
             logger.debug(f"Cached search results for: {query_text[:50]}...")
@@ -227,7 +227,7 @@ class CacheService:
         k: int,
         model: str,
         corpus_version: int | None = None,
-        retrieval_fingerprint: str = ""
+        retrieval_fingerprint: str = "",
     ) -> dict[str, Any] | None:
         """
         Get cached RAG answer.
@@ -246,7 +246,9 @@ class CacheService:
 
         if corpus_version is None:
             corpus_version = self.get_corpus_version()
-        cache_input = f"v{corpus_version}:{question}:k={k}:model={model}:retrieval={retrieval_fingerprint}"
+        cache_input = (
+            f"v{corpus_version}:{question}:k={k}:model={model}:retrieval={retrieval_fingerprint}"
+        )
         key = self._generate_key(self.ANSWER_PREFIX, cache_input)
 
         try:
@@ -268,7 +270,7 @@ class CacheService:
         model: str,
         answer_data: dict[str, Any],
         corpus_version: int | None = None,
-        retrieval_fingerprint: str = ""
+        retrieval_fingerprint: str = "",
     ) -> bool:
         """
         Cache RAG answer.
@@ -290,39 +292,51 @@ class CacheService:
 
         if corpus_version is None:
             corpus_version = self.get_corpus_version()
-        cache_input = f"v{corpus_version}:{question}:k={k}:model={model}:retrieval={retrieval_fingerprint}"
+        cache_input = (
+            f"v{corpus_version}:{question}:k={k}:model={model}:retrieval={retrieval_fingerprint}"
+        )
         key = self._generate_key(self.ANSWER_PREFIX, cache_input)
 
         try:
             # Serialize answer and sources (remove non-serializable objects)
             serializable_sources = []
-            for src in answer_data.get('sources', []):
+            for src in answer_data.get("sources", []):
                 if isinstance(src, dict):
-                    disp = src.get('dispositivo')
-                    if disp and hasattr(disp, 'id'):
-                        serializable_sources.append({
-                            'dispositivo_id': disp.id,
-                            'similarity_score': float(src.get('similarity_score') if src.get('similarity_score') is not None else 0.0),
-                            'distance': float(src.get('distance') if src.get('distance') is not None else 0.0),
-                            'context': src.get('context', ''),
-                            'embedding_model': src.get('embedding_model', ''),
-                            'identifier': disp.get_full_identifier() if hasattr(disp, 'get_full_identifier') else '',
-                            'texto': disp.texto if hasattr(disp, 'texto') else ''
-                        })
+                    disp = src.get("dispositivo")
+                    if disp and hasattr(disp, "id"):
+                        serializable_sources.append(
+                            {
+                                "dispositivo_id": disp.id,
+                                "similarity_score": float(
+                                    src.get("similarity_score")
+                                    if src.get("similarity_score") is not None
+                                    else 0.0
+                                ),
+                                "distance": float(
+                                    src.get("distance") if src.get("distance") is not None else 0.0
+                                ),
+                                "context": src.get("context", ""),
+                                "embedding_model": src.get("embedding_model", ""),
+                                "identifier": disp.get_full_identifier()
+                                if hasattr(disp, "get_full_identifier")
+                                else "",
+                                "texto": disp.texto if hasattr(disp, "texto") else "",
+                            }
+                        )
                     else:
                         serializable_sources.append(src)
 
             serializable_answer = {
-                'answer': answer_data['answer'],
-                'source_relevance': float(answer_data.get('source_relevance', 0.0) or 0.0),
-                'confidence': answer_data.get('confidence'),
-                'confidence_calibrated': bool(answer_data.get('confidence_calibrated', False)),
-                'model': answer_data.get('model', model),
-                'context_length': answer_data.get('context_length', 0),
-                'sources': serializable_sources,
-                'grounded': bool(answer_data.get('grounded', False)),
-                'grounding': answer_data.get('grounding', {}),
-                'cached': True
+                "answer": answer_data["answer"],
+                "source_relevance": float(answer_data.get("source_relevance", 0.0) or 0.0),
+                "confidence": answer_data.get("confidence"),
+                "confidence_calibrated": bool(answer_data.get("confidence_calibrated", False)),
+                "model": answer_data.get("model", model),
+                "context_length": answer_data.get("context_length", 0),
+                "sources": serializable_sources,
+                "grounded": bool(answer_data.get("grounded", False)),
+                "grounding": answer_data.get("grounding", {}),
+                "cached": True,
             }
 
             cache.set(key, json.dumps(serializable_answer), timeout=self.ANSWER_TTL)
@@ -362,18 +376,21 @@ class CacheService:
             Dictionary with cache stats
         """
         return {
-            'enabled': self.enabled,
-            'backend': getattr(settings, 'CACHES', {}).get('default', {}).get('BACKEND', 'Not configured'),
-            'ttl': {
-                'embedding': self.EMBEDDING_TTL,
-                'search': self.SEARCH_TTL,
-                'answer': self.ANSWER_TTL
-            }
+            "enabled": self.enabled,
+            "backend": getattr(settings, "CACHES", {})
+            .get("default", {})
+            .get("BACKEND", "Not configured"),
+            "ttl": {
+                "embedding": self.EMBEDDING_TTL,
+                "search": self.SEARCH_TTL,
+                "answer": self.ANSWER_TTL,
+            },
         }
 
 
 # Singleton instance
 _cache_service = None
+
 
 def get_cache_service() -> CacheService:
     """
@@ -386,4 +403,3 @@ def get_cache_service() -> CacheService:
     if _cache_service is None:
         _cache_service = CacheService()
     return _cache_service
-

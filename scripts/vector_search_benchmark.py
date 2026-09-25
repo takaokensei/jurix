@@ -8,6 +8,7 @@ The script deliberately does not fabricate production data. It measures the
 existing ``Dispositivo.embedding`` query shape and reports EXPLAIN ANALYZE
 output, row counts, and latency distribution against a supplied threshold.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -48,17 +49,22 @@ def main() -> int:
         with conn.cursor() as cur:
             for _ in range(args.runs):
                 start = time.perf_counter()
-                cur.execute(SQL, {
-                    "embedding_model": args.embedding_model,
-                    "embedding": args.vector,
-                    "limit": args.limit,
-                })
+                cur.execute(
+                    SQL,
+                    {
+                        "embedding_model": args.embedding_model,
+                        "embedding": args.vector,
+                        "limit": args.limit,
+                    },
+                )
                 cur.fetchone()
                 timings.append((time.perf_counter() - start) * 1000)
 
     p95 = sorted(timings)[max(0, int(len(timings) * 0.95) - 1)]
-    print(f"runs={len(timings)} mean_ms={statistics.mean(timings):.2f} "
-          f"p95_ms={p95:.2f} max_ms={max(timings):.2f}")
+    print(
+        f"runs={len(timings)} mean_ms={statistics.mean(timings):.2f} "
+        f"p95_ms={p95:.2f} max_ms={max(timings):.2f}"
+    )
     print(f"threshold_ms={args.threshold_ms:.2f}")
     return 0 if p95 <= args.threshold_ms else 2
 

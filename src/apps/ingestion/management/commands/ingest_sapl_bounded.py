@@ -18,11 +18,13 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         filters = {
-            key: value for key, value in {
+            key: value
+            for key, value in {
                 "tipo": options.get("tipo"),
                 "ano_inicio": options.get("ano_inicio"),
                 "ano_fim": options.get("ano_fim"),
-            }.items() if value is not None
+            }.items()
+            if value is not None
         }
         result = bounded_sapl_ingest_task.apply(
             kwargs={

@@ -4,6 +4,7 @@ Keeping production policy outside the monolithic RAG service makes it easier to
 review and test the safety boundary independently from prompt construction or
 Ollama transport details.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

@@ -5,6 +5,7 @@ Answers/searches used to survive for 12h/24h after a reindex or consolidation, a
 the only "invalidation" (clear_cache) was never called and would have flushed the
 whole Redis DB, which Celery shares as its broker.
 """
+
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -17,7 +18,10 @@ from src.processing.cache_service import CacheService
 @pytest.fixture(autouse=True)
 def locmem(settings):
     settings.CACHES = {
-        "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "cache-svc"}
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "cache-svc",
+        }
     }
     cache.clear()
     yield
@@ -43,8 +47,11 @@ def test_answer_is_served_until_the_corpus_changes(svc):
 
 def test_search_results_are_invalidated_too(svc):
     result = {
-        "dispositivo": SimpleNamespace(id=1), "similarity_score": 0.9,
-        "distance": 0.1, "context": "ctx", "embedding_model": "m",
+        "dispositivo": SimpleNamespace(id=1),
+        "similarity_score": 0.9,
+        "distance": 0.1,
+        "context": "ctx",
+        "embedding_model": "m",
     }
     svc.set_search_results("q", k=3, filters={}, results=[result])
     assert svc.get_search_results("q", k=3, filters={}) is not None
@@ -69,9 +76,9 @@ def test_version_is_monotonic_and_starts_at_zero(svc):
 def test_answer_generated_before_a_bump_is_never_served_after_it(svc):
     """A slow generation must not be stored under the NEW version."""
     version_at_start = svc.get_corpus_version()
-    svc.bump_corpus_version()                                   # corpus changes mid-generation
+    svc.bump_corpus_version()  # corpus changes mid-generation
     svc.set_answer("q?", k=5, model="m", answer_data=ANSWER, corpus_version=version_at_start)
-    assert svc.get_answer("q?", k=5, model="m") is None         # not served as fresh
+    assert svc.get_answer("q?", k=5, model="m") is None  # not served as fresh
     assert svc.get_answer("q?", k=5, model="m", corpus_version=version_at_start) is not None
 
 

@@ -1,4 +1,5 @@
 """Single command for the operational pre-release validation contract."""
+
 from __future__ import annotations
 
 import json
@@ -42,7 +43,8 @@ class Command(BaseCommand):
         results["python"] = shutil.which("python") or "missing"
 
         strict_failures = [
-            key for key, value in results.items()
+            key
+            for key, value in results.items()
             if isinstance(value, str) and value.startswith("failed:")
         ]
         payload = {"ok": not strict_failures, "results": results, "failures": strict_failures}

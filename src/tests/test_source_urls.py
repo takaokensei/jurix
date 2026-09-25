@@ -29,6 +29,8 @@ def test_non_sapl_url_is_not_destroyed():
 
 @override_settings(SAPL_BASE_URL="https://sapl.natal.rn.leg.br/api")
 def test_norma_object_uses_canonical_source():
-    norma = SimpleNamespace(sapl_id=9386, sapl_url="https://sapl.natal.rn.leg.br/norma/normajuridica/9386/", pdf_url="")
+    norma = SimpleNamespace(
+        sapl_id=9386, sapl_url="https://sapl.natal.rn.leg.br/norma/normajuridica/9386/", pdf_url=""
+    )
     assert canonical_norma_url(norma).endswith("/norma/9386/")
     assert public_source_url(norma).endswith("/norma/9386/")

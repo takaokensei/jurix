@@ -4,6 +4,7 @@ This command is intentionally separate from ``audit_attachment_storage``. The
 audit command remains read-only; pruning requires ``--execute`` and prints a
 machine-readable summary so scheduled jobs can be monitored safely.
 """
+
 from __future__ import annotations
 
 import json
@@ -54,7 +55,12 @@ class Command(BaseCommand):
                 }
             )
 
-        summary = {"matched": len(planned), "deleted": 0, "failed": 0, "dry_run": not options["execute"]}
+        summary = {
+            "matched": len(planned),
+            "deleted": 0,
+            "failed": 0,
+            "dry_run": not options["execute"],
+        }
         if options["execute"]:
             with transaction.atomic():
                 for item in planned:
@@ -68,7 +74,9 @@ class Command(BaseCommand):
                         self.stderr.write(f"Falha ao excluir {item['id']}: {exc}")
 
         if options["json"]:
-            self.stdout.write(json.dumps({"summary": summary, "records": planned}, ensure_ascii=False))
+            self.stdout.write(
+                json.dumps({"summary": summary, "records": planned}, ensure_ascii=False)
+            )
         else:
             mode = "DRY-RUN" if summary["dry_run"] else "EXECUÇÃO"
             self.stdout.write(f"{mode}: {summary['matched']} registros expirados.")

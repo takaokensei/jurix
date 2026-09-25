@@ -1,4 +1,5 @@
 """Regression tests for deterministic legal-answer grounding policy."""
+
 from __future__ import annotations
 
 from django.test import override_settings

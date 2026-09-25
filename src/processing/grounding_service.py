@@ -3,6 +3,7 @@
 The service maps individual claims to the specific evidence items retrieved for
 the answer. It does not expose similarity as calibrated answer confidence.
 """
+
 from __future__ import annotations
 
 import re
@@ -20,18 +21,82 @@ _NUMBER_RE = re.compile(r"\b\d+(?:[.,]\d+)?\b")
 _WORD_RE = re.compile(r"[A-Za-zÀ-ÿ]{4,}", re.UNICODE)
 
 _STOPWORDS = {
-    "para", "como", "sobre", "entre", "essa", "este", "esta", "esse", "isso",
-    "que", "uma", "por", "dos", "das", "com", "sem", "nos", "nas", "aos",
-    "pelos", "pelas", "qual", "quais", "onde", "quando", "quem", "porque",
-    "são", "ser", "tem", "mais", "menos", "muito", "muita", "muitas", "muitos",
-    "pelo", "pela", "e", "ou",
+    "para",
+    "como",
+    "sobre",
+    "entre",
+    "essa",
+    "este",
+    "esta",
+    "esse",
+    "isso",
+    "que",
+    "uma",
+    "por",
+    "dos",
+    "das",
+    "com",
+    "sem",
+    "nos",
+    "nas",
+    "aos",
+    "pelos",
+    "pelas",
+    "qual",
+    "quais",
+    "onde",
+    "quando",
+    "quem",
+    "porque",
+    "são",
+    "ser",
+    "tem",
+    "mais",
+    "menos",
+    "muito",
+    "muita",
+    "muitas",
+    "muitos",
+    "pelo",
+    "pela",
+    "e",
+    "ou",
 }
 _NUMBER_WORDS = {
-    "zero", "um", "uma", "dois", "duas", "três", "quatro", "cinco", "seis",
-    "sete", "oito", "nove", "dez", "onze", "doze", "treze", "quatorze",
-    "catorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove",
-    "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta",
-    "oitenta", "noventa", "cem", "cento", "mil",
+    "zero",
+    "um",
+    "uma",
+    "dois",
+    "duas",
+    "três",
+    "quatro",
+    "cinco",
+    "seis",
+    "sete",
+    "oito",
+    "nove",
+    "dez",
+    "onze",
+    "doze",
+    "treze",
+    "quatorze",
+    "catorze",
+    "quinze",
+    "dezesseis",
+    "dezessete",
+    "dezoito",
+    "dezenove",
+    "vinte",
+    "trinta",
+    "quarenta",
+    "cinquenta",
+    "sessenta",
+    "setenta",
+    "oitenta",
+    "noventa",
+    "cem",
+    "cento",
+    "mil",
 }
 
 
@@ -86,11 +151,7 @@ def _normalise(text: str) -> str:
 
 
 def _tokens(text: str) -> set[str]:
-    return {
-        token
-        for token in _WORD_RE.findall((text or "").lower())
-        if token not in _STOPWORDS
-    }
+    return {token for token in _WORD_RE.findall((text or "").lower()) if token not in _STOPWORDS}
 
 
 def extract_claims(answer: str) -> tuple[Claim, ...]:
@@ -114,9 +175,7 @@ def _norma_ref_from_source(source: dict[str, Any]) -> str:
         tipo = value.get("tipo") or ""
         numero = value.get("numero") or ""
         ano = value.get("ano") or ""
-        return " ".join(
-            part for part in (tipo, f"{numero}/{ano}".strip("/")) if part
-        ).strip()
+        return " ".join(part for part in (tipo, f"{numero}/{ano}".strip("/")) if part).strip()
     if value:
         return str(value)
 
@@ -126,9 +185,7 @@ def _norma_ref_from_source(source: dict[str, Any]) -> str:
         tipo = getattr(norma, "tipo", "") or ""
         numero = getattr(norma, "numero", "") or ""
         ano = getattr(norma, "ano", "") or ""
-        return " ".join(
-            part for part in (tipo, f"{numero}/{ano}".strip("/")) if part
-        ).strip()
+        return " ".join(part for part in (tipo, f"{numero}/{ano}".strip("/")) if part).strip()
     return ""
 
 
@@ -148,10 +205,7 @@ def build_evidence(sources: Iterable[dict[str, Any]]) -> tuple[Evidence, ...]:
     for source in sources:
         dispositivo = source.get("dispositivo")
         text = str(
-            source.get("text")
-            or source.get("full_text")
-            or getattr(dispositivo, "texto", "")
-            or ""
+            source.get("text") or source.get("full_text") or getattr(dispositivo, "texto", "") or ""
         )
         if not text:
             continue
@@ -218,9 +272,7 @@ def evaluate_grounding(
     supported_count = 0
 
     for claim in claims:
-        claim_evidence = tuple(
-            item for item in evidence if _supports_claim(claim, item)
-        )
+        claim_evidence = tuple(item for item in evidence if _supports_claim(claim, item))
         supported = bool(claim_evidence)
         if supported:
             supported_count += 1

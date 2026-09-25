@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Fail release validation when application modules exceed maintainability budgets."""
+
 from __future__ import annotations
 
 import argparse
@@ -23,7 +24,12 @@ def inspect(path: Path) -> dict[str, object]:
     text = path.read_text(encoding="utf-8")
     tree = ast.parse(text)
     fn, fn_lines = longest_function(tree)
-    return {"path": str(path), "lines": len(text.splitlines()), "largest_function": fn, "largest_function_lines": fn_lines}
+    return {
+        "path": str(path),
+        "lines": len(text.splitlines()),
+        "largest_function": fn,
+        "largest_function_lines": fn_lines,
+    }
 
 
 def main() -> int:
@@ -36,10 +42,17 @@ def main() -> int:
     violations = [row for row in rows if row["lines"] > args.limit]
     if args.json:
         import json
-        print(json.dumps({"violations": violations, "count": len(violations)}, ensure_ascii=False, indent=2))
+
+        print(
+            json.dumps(
+                {"violations": violations, "count": len(violations)}, ensure_ascii=False, indent=2
+            )
+        )
     else:
         for row in sorted(rows, key=lambda item: int(item["lines"]), reverse=True)[:20]:
-            print(f"{row['lines']:4} {row['path']} | largest function: {row['largest_function']} ({row['largest_function_lines']} lines)")
+            print(
+                f"{row['lines']:4} {row['path']} | largest function: {row['largest_function']} ({row['largest_function_lines']} lines)"
+            )
     return 2 if violations else 0
 
 

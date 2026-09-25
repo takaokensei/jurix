@@ -1,4 +1,5 @@
 """Verify that pgvector retrieval has a usable ANN execution path."""
+
 from __future__ import annotations
 
 import re
@@ -23,7 +24,9 @@ class Command(BaseCommand):
             "ORDER BY embedding <=> %s::vector LIMIT 5"
         )
         with connection.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM legislation_dispositivo WHERE embedding IS NOT NULL")
+            cursor.execute(
+                "SELECT COUNT(*) FROM legislation_dispositivo WHERE embedding IS NOT NULL"
+            )
             row_count = int(cursor.fetchone()[0] or 0)
             cursor.execute(query, ["nomic-embed-text", vector])
             plan = "\n".join(str(row[0]) for row in cursor.fetchall())
@@ -47,7 +50,9 @@ class Command(BaseCommand):
             forced_plan = "\n".join(str(row[0]) for row in cursor.fetchall())
 
         if not _INDEX_SCAN.search(forced_plan):
-            raise CommandError("Mesmo com seqscan desativado, pgvector não encontrou caminho indexado.")
+            raise CommandError(
+                "Mesmo com seqscan desativado, pgvector não encontrou caminho indexado."
+            )
         raise CommandError(
             "O planner escolheu seq scan para um corpus acima do limiar. "
             "Execute EXPLAIN ANALYZE e ajuste estatísticas/custos antes da promoção."

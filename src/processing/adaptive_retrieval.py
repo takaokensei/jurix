@@ -9,6 +9,7 @@ The module deliberately sits above ``RAGService.semantic_search``. It can
 therefore be introduced without duplicating the pgvector SQL and without
 breaking the existing fallback path.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -24,10 +25,45 @@ from src.apps.legislation.models import Dispositivo
 
 _TOKEN_RE = re.compile(r"[\wÀ-ÿ]{3,}", flags=re.UNICODE)
 _STOPWORDS = {
-    "para", "como", "sobre", "entre", "essa", "este", "esta", "esse", "isso",
-    "que", "uma", "por", "dos", "das", "com", "sem", "nos", "nas", "aos", "pelos",
-    "pelas", "qual", "quais", "onde", "quando", "quem", "porque", "são", "ser", "tem",
-    "mais", "menos", "muito", "muita", "muitas", "muitos", "um", "e", "ou",
+    "para",
+    "como",
+    "sobre",
+    "entre",
+    "essa",
+    "este",
+    "esta",
+    "esse",
+    "isso",
+    "que",
+    "uma",
+    "por",
+    "dos",
+    "das",
+    "com",
+    "sem",
+    "nos",
+    "nas",
+    "aos",
+    "pelos",
+    "pelas",
+    "qual",
+    "quais",
+    "onde",
+    "quando",
+    "quem",
+    "porque",
+    "são",
+    "ser",
+    "tem",
+    "mais",
+    "menos",
+    "muito",
+    "muita",
+    "muitas",
+    "muitos",
+    "um",
+    "e",
+    "ou",
 }
 
 
@@ -43,9 +79,11 @@ class RetrievalOptions:
     attachment_texts: tuple[str, ...] = field(default_factory=tuple)
 
     def fingerprint(self) -> str:
-        attachment_digest = hashlib.sha256(
-            "\x1f".join(self.attachment_texts).encode("utf-8")
-        ).hexdigest()[:16] if self.attachment_texts else "none"
+        attachment_digest = (
+            hashlib.sha256("\x1f".join(self.attachment_texts).encode("utf-8")).hexdigest()[:16]
+            if self.attachment_texts
+            else "none"
+        )
         return (
             f"retrieval=v2;mode={self.mode};status={self.norma_status};scope={self.source_scope};"
             f"max={self.max_sources};min={self.min_similarity:.3f};attachments={attachment_digest}"
@@ -53,7 +91,9 @@ class RetrievalOptions:
 
 
 def _tokens(value: str) -> set[str]:
-    return {token.lower() for token in _TOKEN_RE.findall(value or "") if token.lower() not in _STOPWORDS}
+    return {
+        token.lower() for token in _TOKEN_RE.findall(value or "") if token.lower() not in _STOPWORDS
+    }
 
 
 def _lexical_score(question_tokens: set[str], text: str) -> float:
@@ -103,7 +143,9 @@ class AdaptiveRetriever:
         # future external sources without pretending they are municipal law.
         return "sapl.natal.rn.leg.br" in url or not url
 
-    def _semantic(self, question: str, candidate_k: int, options: RetrievalOptions) -> list[dict[str, Any]]:
+    def _semantic(
+        self, question: str, candidate_k: int, options: RetrievalOptions
+    ) -> list[dict[str, Any]]:
         rows = self.rag_service.semantic_search(
             query_text=question,
             k=candidate_k,
@@ -115,7 +157,10 @@ class AdaptiveRetriever:
             norma = getattr(dispositivo, "norma", None)
             if not dispositivo or not norma:
                 continue
-            if options.norma_status != "all" and getattr(norma, "status", None) != options.norma_status:
+            if (
+                options.norma_status != "all"
+                and getattr(norma, "status", None) != options.norma_status
+            ):
                 continue
             if not self._in_scope(norma, options):
                 continue
@@ -126,7 +171,9 @@ class AdaptiveRetriever:
             result.append(copy)
         return result
 
-    def _lexical(self, question: str, candidate_k: int, options: RetrievalOptions, norma_id=None) -> list[dict[str, Any]]:
+    def _lexical(
+        self, question: str, candidate_k: int, options: RetrievalOptions, norma_id=None
+    ) -> list[dict[str, Any]]:
         tokens = _tokens(question)
         if not tokens:
             return []
@@ -136,10 +183,7 @@ class AdaptiveRetriever:
         for token in selected_tokens:
             query |= Q(texto__icontains=token)
 
-        queryset = (
-            Dispositivo.objects.select_related("norma", "dispositivo_pai")
-            .filter(query)
-        )
+        queryset = Dispositivo.objects.select_related("norma", "dispositivo_pai").filter(query)
         if options.norma_status != "all":
             queryset = queryset.filter(norma__status=options.norma_status)
         if norma_id is not None:
@@ -149,17 +193,27 @@ class AdaptiveRetriever:
                 Q(norma__sapl_url__icontains="sapl.natal.rn.leg.br") | Q(norma__sapl_url="")
             )
         coverage = sum(
-            (Case(When(texto__icontains=token, then=Value(1)), default=Value(0),
-                  output_field=IntegerField()) for token in selected_tokens), Value(0)
+            (
+                Case(
+                    When(texto__icontains=token, then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                )
+                for token in selected_tokens
+            ),
+            Value(0),
         )
-        queryset = queryset.annotate(term_coverage=coverage).order_by(
-            "-term_coverage", "id"
-        )[:max(100, candidate_k * 8)]
+        queryset = queryset.annotate(term_coverage=coverage).order_by("-term_coverage", "id")[
+            : max(100, candidate_k * 8)
+        ]
 
         rows = []
         for dispositivo in queryset:
             norma = dispositivo.norma
-            if options.norma_status != "all" and getattr(norma, "status", None) != options.norma_status:
+            if (
+                options.norma_status != "all"
+                and getattr(norma, "status", None) != options.norma_status
+            ):
                 continue
             if not self._in_scope(norma, options):
                 continue
@@ -177,7 +231,9 @@ class AdaptiveRetriever:
                     "embedding_model": getattr(dispositivo, "embedding_model", None),
                     "context": {
                         "hierarchy": "",
-                        "parent": getattr(getattr(dispositivo, "dispositivo_pai", None), "texto", None),
+                        "parent": getattr(
+                            getattr(dispositivo, "dispositivo_pai", None), "texto", None
+                        ),
                     },
                 }
             )
@@ -185,7 +241,9 @@ class AdaptiveRetriever:
         return rows[:candidate_k]
 
     @staticmethod
-    def _merge(semantic: list[dict[str, Any]], lexical: list[dict[str, Any]], mode: str) -> list[dict[str, Any]]:
+    def _merge(
+        semantic: list[dict[str, Any]], lexical: list[dict[str, Any]], mode: str
+    ) -> list[dict[str, Any]]:
         by_id: dict[int, dict[str, Any]] = {}
         for row in semantic + lexical:
             dispositivo = row["dispositivo"]
@@ -194,8 +252,12 @@ class AdaptiveRetriever:
             if existing is None:
                 by_id[key] = dict(row)
                 continue
-            existing["semantic_score"] = max(existing.get("semantic_score", 0.0), row.get("semantic_score", 0.0))
-            existing["lexical_score"] = max(existing.get("lexical_score", 0.0), row.get("lexical_score", 0.0))
+            existing["semantic_score"] = max(
+                existing.get("semantic_score", 0.0), row.get("semantic_score", 0.0)
+            )
+            existing["lexical_score"] = max(
+                existing.get("lexical_score", 0.0), row.get("lexical_score", 0.0)
+            )
             if not existing.get("context") and row.get("context"):
                 existing["context"] = row["context"]
 
@@ -223,7 +285,9 @@ class AdaptiveRetriever:
         return sorted(values, key=lambda row: row["retrieval_score"], reverse=True)
 
     @staticmethod
-    def _select(rows: Iterable[dict[str, Any]], max_sources: int, min_similarity: float) -> list[dict[str, Any]]:
+    def _select(
+        rows: Iterable[dict[str, Any]], max_sources: int, min_similarity: float
+    ) -> list[dict[str, Any]]:
         ranked = list(rows)
         if not ranked:
             return []
@@ -251,7 +315,11 @@ class AdaptiveRetriever:
         # Preserve a single strong source even when its score is low in an
         # absolute sense. The purpose of min_similarity is to *filter* weak
         # hits, not to manufacture a minimum source count.
-        if not selected and ranked and float(ranked[0].get("retrieval_score", 0.0)) >= min_similarity:
+        if (
+            not selected
+            and ranked
+            and float(ranked[0].get("retrieval_score", 0.0)) >= min_similarity
+        ):
             selected.append(ranked[0])
         return selected
 

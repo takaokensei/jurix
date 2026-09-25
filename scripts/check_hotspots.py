@@ -1,4 +1,5 @@
 """Report unusually large Python modules without blocking normal development."""
+
 from __future__ import annotations
 
 import argparse

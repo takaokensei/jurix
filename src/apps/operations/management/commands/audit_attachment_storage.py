@@ -1,4 +1,5 @@
 """Audit persistent attachment metadata against the configured object store."""
+
 from __future__ import annotations
 
 import hashlib
@@ -37,9 +38,7 @@ class Command(BaseCommand):
                 storage.read_bytes(record.text_storage_key)
             except Exception:
                 missing += 1
-                self.stdout.write(
-                    self.style.ERROR(f"MISSING {record.id} {record.storage_key}")
-                )
+                self.stdout.write(self.style.ERROR(f"MISSING {record.id} {record.storage_key}"))
                 continue
 
             if options["verify_hash"]:

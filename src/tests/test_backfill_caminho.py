@@ -3,6 +3,7 @@ Migration 0011 backfills Dispositivo.caminho / nivel for rows created before 001
 (audit P1.4). Rows without a materialized path forced get_caminho_completo() to
 walk the parent chain with one query per level.
 """
+
 import importlib
 
 import pytest
@@ -14,7 +15,9 @@ from src.apps.legislation.models import Dispositivo, Norma
 
 pytestmark = pytest.mark.django_db
 
-migration = importlib.import_module("src.apps.legislation.migrations.0011_backfill_dispositivo_caminho")
+migration = importlib.import_module(
+    "src.apps.legislation.migrations.0011_backfill_dispositivo_caminho"
+)
 
 
 @pytest.fixture
@@ -56,9 +59,11 @@ def test_backfill_matches_what_the_parser_materializes(norma):
     """Same labels as LegalTextParser.build_hierarchy, so old and new rows are consistent."""
     from src.processing.legal_parser import LegalTextParser
 
-    hier = LegalTextParser.build_hierarchy(LegalTextParser.parse_legal_text(
-        "Art. 1º Requisitos:\nI - docs:\na) pessoais:\n1. identidade;\nParágrafo único. Vale."
-    ))
+    hier = LegalTextParser.build_hierarchy(
+        LegalTextParser.parse_legal_text(
+            "Art. 1º Requisitos:\nI - docs:\na) pessoais:\n1. identidade;\nParágrafo único. Vale."
+        )
+    )
     by_key = {(e["tipo"], e["numero"]): e for e in hier}
 
     art = _mk(norma, "artigo", "1º", 1)
@@ -91,8 +96,8 @@ def test_backfill_does_not_touch_updated_at(norma):
 def test_backfill_survives_a_parent_cycle(norma):
     a = _mk(norma, "artigo", "1º", 1)
     b = _mk(norma, "paragrafo", "1º", 2, a)
-    Dispositivo.objects.filter(pk=a.pk).update(dispositivo_pai=b)   # corrupt data: a <-> b
-    migration.backfill_caminho_nivel(global_apps, None)             # must terminate
+    Dispositivo.objects.filter(pk=a.pk).update(dispositivo_pai=b)  # corrupt data: a <-> b
+    migration.backfill_caminho_nivel(global_apps, None)  # must terminate
     a.refresh_from_db()
     assert a.caminho
 
@@ -101,7 +106,7 @@ def test_backfill_query_count_does_not_grow_with_tree_size():
     def run(n_nodes):
         n = Norma.objects.create(tipo="Lei", numero=f"q{n_nodes}", ano=2020)
         parent = None
-        for i in range(n_nodes):                       # a deep chain: worst case for per-level queries
+        for i in range(n_nodes):  # a deep chain: worst case for per-level queries
             tipo = "artigo" if parent is None else "inciso"
             parent = _mk(n, tipo, str(i + 1), i + 1, parent)
         with CaptureQueriesContext(connection) as ctx:
@@ -116,12 +121,12 @@ def test_backfilled_path_removes_the_per_level_queries():
     norma = Norma.objects.create(tipo="Lei", numero="2", ano=2020)
     *_, itm = _legacy_tree(norma)
 
-    itm = Dispositivo.objects.get(pk=itm.pk)               # legacy row: no path
+    itm = Dispositivo.objects.get(pk=itm.pk)  # legacy row: no path
     with CaptureQueriesContext(connection) as before:
         itm.get_caminho_completo()
     migration.backfill_caminho_nivel(global_apps, None)
 
-    itm = Dispositivo.objects.get(pk=itm.pk)               # migrated row
+    itm = Dispositivo.objects.get(pk=itm.pk)  # migrated row
     with CaptureQueriesContext(connection) as after:
         assert itm.get_caminho_completo().endswith("Item 1")
     assert len(before) >= 4 and len(after) == 0

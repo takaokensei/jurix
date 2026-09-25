@@ -1,4 +1,5 @@
 """Run the deterministic RAG evidence-contract benchmark."""
+
 from __future__ import annotations
 
 import argparse
@@ -37,9 +38,21 @@ def main() -> int:
         if actual == expected:
             passed += 1
         else:
-            failures.append({"line": line_no, "id": case.get("id"), "expected": expected, "actual": actual, "reason": report.get("policy", {}).get("reason")})
+            failures.append(
+                {
+                    "line": line_no,
+                    "id": case.get("id"),
+                    "expected": expected,
+                    "actual": actual,
+                    "reason": report.get("policy", {}).get("reason"),
+                }
+            )
     result = {"total": total, "passed": passed, "failed": total - passed, "failures": failures}
-    print(json.dumps(result, ensure_ascii=False, indent=2) if args.json else f"RAG contract benchmark: {passed}/{total} passed")
+    print(
+        json.dumps(result, ensure_ascii=False, indent=2)
+        if args.json
+        else f"RAG contract benchmark: {passed}/{total} passed"
+    )
     return 0 if total and not failures else 1
 
 

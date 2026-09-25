@@ -3,6 +3,7 @@
 Metadata is persisted in the operational database while original bytes and
 extracted text are stored behind a pluggable local/S3-compatible backend.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -45,18 +46,20 @@ def _safe_filename(name: str) -> str:
 
 
 def _extract_text(path: Path, suffix: str) -> str:
-    worker = Path(__file__).resolve().parents[2] / 'processing' / 'attachment_worker.py'
+    worker = Path(__file__).resolve().parents[2] / "processing" / "attachment_worker.py"
     try:
         result = subprocess.run(
             [sys.executable, str(worker), str(path.resolve())],
             capture_output=True,
             timeout=20,
             check=True,
-            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
         )
     except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as exc:
-        raise AttachmentError('Não foi possível processar o documento dentro dos limites permitidos.') from exc
-    return result.stdout.decode('utf-8')[:60_000]
+        raise AttachmentError(
+            "Não foi possível processar o documento dentro dos limites permitidos."
+        ) from exc
+    return result.stdout.decode("utf-8")[:60_000]
 
 
 def _validate_file_signature(path: Path, suffix: str) -> None:
@@ -108,9 +111,9 @@ def list_attachments(request) -> list[dict[str, object]]:
             "content_type": item.content_type,
             "created_at": item.created_at.timestamp(),
         }
-        for item in AttachmentRecord.objects.filter(
-            session_hash=_session_hash(request)
-        ).order_by("created_at")
+        for item in AttachmentRecord.objects.filter(session_hash=_session_hash(request)).order_by(
+            "created_at"
+        )
     ]
 
 
@@ -127,9 +130,7 @@ def upload_attachment(request, upload: UploadedFile) -> dict[str, object]:
         raise AttachmentError("Formato não suportado. Use PDF, TXT, MD, CSV, JSON ou DOCX.")
     size = int(getattr(upload, "size", 0) or 0)
     if size <= 0 or size > max_bytes:
-        raise AttachmentError(
-            f"Arquivo inválido ou maior que {max_bytes // (1024 * 1024)} MB."
-        )
+        raise AttachmentError(f"Arquivo inválido ou maior que {max_bytes // (1024 * 1024)} MB.")
 
     staging_dir = Path(
         getattr(
@@ -183,10 +184,12 @@ def upload_attachment(request, upload: UploadedFile) -> dict[str, object]:
             )
     except AttachmentError:
         from src.observability.metrics import ATTACHMENT_PROCESSING_FAILURES
+
         ATTACHMENT_PROCESSING_FAILURES.inc()
         raise
     except Exception as exc:
         from src.observability.metrics import ATTACHMENT_PROCESSING_FAILURES
+
         ATTACHMENT_PROCESSING_FAILURES.inc()
         if stored:
             try:
@@ -234,7 +237,9 @@ def get_attachment_texts(request, attachment_ids: list[str]) -> list[str]:
     texts = []
     for item in records:
         try:
-            text = storage.read_bytes(item.text_storage_key).decode("utf-8", errors="replace").strip()
+            text = (
+                storage.read_bytes(item.text_storage_key).decode("utf-8", errors="replace").strip()
+            )
         except Exception:
             continue
         if text:

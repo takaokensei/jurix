@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "jurix-legal-production-v1",
+  "jurisdiction": "BR",
+  "language": "pt-BR",
+  "snapshot_date": "2026-09-25",
+  "source_policy": "official_federal_sources_only",
+  "review_status": "engineering_ready_requires_legal_reviewer_signoff",
+  "minimum_case_pass_rate": 0.9,
+  "minimum_source_match_rate": 0.95,
+  "cases_file": "cases.jsonl"
+}

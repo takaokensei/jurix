@@ -1,4 +1,5 @@
 """Session-history helpers extracted from the legislation API view module."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -24,8 +25,8 @@ def _parse_limit(raw: Any) -> int:
 
 
 def _preview(content: str | None) -> str:
-    content = content or ''
-    suffix = '...' if len(content) > SESSION_PREVIEW_LENGTH else ''
+    content = content or ""
+    suffix = "..." if len(content) > SESSION_PREVIEW_LENGTH else ""
     return content[:SESSION_PREVIEW_LENGTH] + suffix
 
 
@@ -34,32 +35,33 @@ def _chat_session_response(session: ChatSession, before: str | None = None) -> J
     total = queryset.count()
     if before:
         try:
-            cursor = signing.loads(before, salt='chat-history')
-            if cursor['session'] != session.pk:
-                raise ValueError('Wrong session')
+            cursor = signing.loads(before, salt="chat-history")
+            if cursor["session"] != session.pk:
+                raise ValueError("Wrong session")
             queryset = queryset.filter(
-                Q(created_at__lt=cursor['date']) |
-                Q(created_at=cursor['date'], id__lt=cursor['id'])
+                Q(created_at__lt=cursor["date"]) | Q(created_at=cursor["date"], id__lt=cursor["id"])
             )
         except (signing.BadSignature, ValueError, KeyError, TypeError):
-            return JsonResponse({'success': False, 'error': 'Invalid cursor'}, status=400)
-    latest = list(queryset.order_by('-created_at', '-id')[:CHAT_MESSAGES_PAGE_SIZE + 1])
+            return JsonResponse({"success": False, "error": "Invalid cursor"}, status=400)
+    latest = list(queryset.order_by("-created_at", "-id")[: CHAT_MESSAGES_PAGE_SIZE + 1])
     has_more = len(latest) > CHAT_MESSAGES_PAGE_SIZE
     latest = latest[:CHAT_MESSAGES_PAGE_SIZE]
     next_cursor = None
     if has_more:
         last = latest[-1]
         next_cursor = signing.dumps(
-            {'session': session.pk, 'date': last.created_at.isoformat(), 'id': last.pk},
-            salt='chat-history',
+            {"session": session.pk, "date": last.created_at.isoformat(), "id": last.pk},
+            salt="chat-history",
         )
     messages = [serialize_chat_message(message) for message in reversed(latest)]
-    return JsonResponse({
-        'success': True,
-        'session': serialize_chat_session(session),
-        'messages': messages,
-        'count': len(messages),
-        'total_count': total,
-        'has_more': has_more,
-        'next_cursor': next_cursor,
-    })
+    return JsonResponse(
+        {
+            "success": True,
+            "session": serialize_chat_session(session),
+            "messages": messages,
+            "count": len(messages),
+            "total_count": total,
+            "has_more": has_more,
+            "next_cursor": next_cursor,
+        }
+    )

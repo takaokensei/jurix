@@ -6,6 +6,7 @@ makes failures difficult to diagnose. This task processes pages sequentially
 inside one Celery execution while retaining the existing page task as the
 single implementation of page processing.
 """
+
 from __future__ import annotations
 
 import logging
@@ -61,6 +62,7 @@ def bounded_sapl_ingest_task(
             break
 
     from src.processing.target_reconciliation import reconcile_unresolved_event_targets
+
     reconciliation = reconcile_unresolved_event_targets(limit=max_normas * 10)
 
     return {

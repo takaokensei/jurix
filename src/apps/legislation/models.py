@@ -1,6 +1,7 @@
 """
 Legislation models for Jurix project.
 """
+
 from django.contrib.auth.models import User
 from django.db import models
 from pgvector.django import VectorField
@@ -25,122 +26,121 @@ class Norma(TimeStampedModel):
     """
 
     # Identificação (Fonte: API SAPL)
-    tipo = models.CharField(max_length=100, verbose_name='Tipo', db_index=True)
-    numero = models.CharField(max_length=50, verbose_name='Número')
-    ano = models.IntegerField(verbose_name='Ano', db_index=True)
-    ementa = models.TextField(verbose_name='Ementa', blank=True)
+    tipo = models.CharField(max_length=100, verbose_name="Tipo", db_index=True)
+    numero = models.CharField(max_length=50, verbose_name="Número")
+    ano = models.IntegerField(verbose_name="Ano", db_index=True)
+    ementa = models.TextField(verbose_name="Ementa", blank=True)
 
     # Datas (Seção 6.E - Complexidade Temporal)
     data_publicacao = models.DateField(
-        verbose_name='Data de Publicação',
+        verbose_name="Data de Publicação",
         null=True,
         blank=True,
         db_index=True,
-        help_text='Data de publicação oficial da norma'
+        help_text="Data de publicação oficial da norma",
     )
     data_vigencia = models.DateField(
-        verbose_name='Data de Vigência',
+        verbose_name="Data de Vigência",
         null=True,
         blank=True,
         db_index=True,
-        help_text='Data de início de vigência (pode diferir da publicação devido à vacatio legis)'
+        help_text="Data de início de vigência (pode diferir da publicação devido à vacatio legis)",
     )
 
     # Conteúdo
-    texto_original = models.TextField(verbose_name='Texto Original', blank=True)
+    texto_original = models.TextField(verbose_name="Texto Original", blank=True)
     texto_consolidado = models.TextField(
-        verbose_name='Texto Consolidado',
+        verbose_name="Texto Consolidado",
         blank=True,
-        help_text='Texto legal consolidado após aplicação de todas as alterações'
+        help_text="Texto legal consolidado após aplicação de todas as alterações",
     )
-    observacao = models.TextField(verbose_name='Observação', blank=True)
+    observacao = models.TextField(verbose_name="Observação", blank=True)
 
     # Recursos (PDF)
     pdf_url = models.URLField(
-        verbose_name='URL do PDF',
+        verbose_name="URL do PDF",
         max_length=500,
         blank=True,
-        help_text='URL original do PDF no SAPL'
+        help_text="URL original do PDF no SAPL",
     )
     pdf_path = models.CharField(
         max_length=500,
-        verbose_name='Caminho do PDF',
+        verbose_name="Caminho do PDF",
         blank=True,
-        help_text='Caminho local do PDF baixado (data/raw/...)'
+        help_text="Caminho local do PDF baixado (data/raw/...)",
     )
 
     # Integração SAPL
     sapl_id = models.IntegerField(
-        verbose_name='ID no SAPL',
+        verbose_name="ID no SAPL",
         unique=True,
         null=True,
         blank=True,
-        help_text='ID primário da norma no sistema SAPL'
+        help_text="ID primário da norma no sistema SAPL",
     )
     sapl_url = models.URLField(
-        verbose_name='URL SAPL',
+        verbose_name="URL SAPL",
         max_length=500,
         blank=True,
-        help_text='URL da página da norma no SAPL'
+        help_text="URL da página da norma no SAPL",
     )
     sapl_metadata = models.JSONField(
-        verbose_name='Metadados SAPL',
+        verbose_name="Metadados SAPL",
         default=dict,
         blank=True,
-        help_text='Payload JSON bruto retornado pela API SAPL'
+        help_text="Payload JSON bruto retornado pela API SAPL",
     )
 
     # Controle de Processamento (Pipeline Status)
     class Status(models.TextChoices):
-        PENDING = 'pending', 'Pendente'
-        PDF_DOWNLOADED = 'pdf_downloaded', 'PDF Baixado'
-        OCR_PROCESSING = 'ocr_processing', 'OCR em Processamento'
-        OCR_COMPLETED = 'ocr_completed', 'OCR Completo'
-        SEGMENTATION_PROCESSING = 'segmentation_processing', 'Segmentação em Processamento'
-        SEGMENTED = 'segmented', 'Texto Segmentado'
-        ENTITY_EXTRACTION = 'entity_extraction', 'Extração de Entidades'
-        ENTITIES_EXTRACTED = 'entities_extracted', 'Entidades Extraídas'
-        CONSOLIDATION = 'consolidation', 'Consolidação em Processamento'
-        CONSOLIDATED = 'consolidated', 'Consolidado'
-        NLP_PROCESSING = 'nlp_processing', 'NLP em Processamento'
-        READY = 'ready', 'Pronto para Consolidação'
-        FAILED = 'failed', 'Falha no Processamento'
+        PENDING = "pending", "Pendente"
+        PDF_DOWNLOADED = "pdf_downloaded", "PDF Baixado"
+        OCR_PROCESSING = "ocr_processing", "OCR em Processamento"
+        OCR_COMPLETED = "ocr_completed", "OCR Completo"
+        SEGMENTATION_PROCESSING = "segmentation_processing", "Segmentação em Processamento"
+        SEGMENTED = "segmented", "Texto Segmentado"
+        ENTITY_EXTRACTION = "entity_extraction", "Extração de Entidades"
+        ENTITIES_EXTRACTED = "entities_extracted", "Entidades Extraídas"
+        CONSOLIDATION = "consolidation", "Consolidação em Processamento"
+        CONSOLIDATED = "consolidated", "Consolidado"
+        NLP_PROCESSING = "nlp_processing", "NLP em Processamento"
+        READY = "ready", "Pronto para Consolidação"
+        FAILED = "failed", "Falha no Processamento"
 
     STATUS_CHOICES = Status.choices
     status = models.CharField(
         max_length=30,
         choices=Status.choices,
         default=Status.PENDING,
-        verbose_name='Status',
-        db_index=True
+        verbose_name="Status",
+        db_index=True,
     )
 
     needs_review = models.BooleanField(
         default=False,
-        verbose_name='Requer Revisão',
-        help_text='Marcado se OCR teve baixa confiança ou erro de parsing'
+        verbose_name="Requer Revisão",
+        help_text="Marcado se OCR teve baixa confiança ou erro de parsing",
     )
 
     processing_error = models.TextField(
-        verbose_name='Erro de Processamento',
+        verbose_name="Erro de Processamento",
         blank=True,
-        help_text='Mensagem de erro caso o processamento falhe'
+        help_text="Mensagem de erro caso o processamento falhe",
     )
 
     class Meta:
-        verbose_name = 'Norma'
-        verbose_name_plural = 'Normas'
-        ordering = ['-ano', '-numero']
+        verbose_name = "Norma"
+        verbose_name_plural = "Normas"
+        ordering = ["-ano", "-numero"]
         indexes = [
-            models.Index(fields=['tipo', 'numero', 'ano']),
-            models.Index(fields=['sapl_id']),
-            models.Index(fields=['status']),
-            models.Index(fields=['data_publicacao']),
+            models.Index(fields=["tipo", "numero", "ano"]),
+            models.Index(fields=["sapl_id"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["data_publicacao"]),
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=['tipo', 'numero', 'ano'],
-                name='unique_norma_identifier'
+                fields=["tipo", "numero", "ano"], name="unique_norma_identifier"
             )
         ]
 
@@ -177,76 +177,73 @@ class Dispositivo(TimeStampedModel):
 
     # Tipos de dispositivos legais
     TIPO_CHOICES = [
-        ('artigo', 'Artigo'),
-        ('paragrafo', 'Parágrafo'),
-        ('inciso', 'Inciso'),
-        ('alinea', 'Alínea'),
-        ('item', 'Item'),
-        ('capitulo', 'Capítulo'),
-        ('secao', 'Seção'),
-        ('titulo', 'Título'),
-        ('livro', 'Livro'),
-        ('parte', 'Parte'),
+        ("artigo", "Artigo"),
+        ("paragrafo", "Parágrafo"),
+        ("inciso", "Inciso"),
+        ("alinea", "Alínea"),
+        ("item", "Item"),
+        ("capitulo", "Capítulo"),
+        ("secao", "Seção"),
+        ("titulo", "Título"),
+        ("livro", "Livro"),
+        ("parte", "Parte"),
     ]
 
     # Relacionamentos
     norma = models.ForeignKey(
         Norma,
         on_delete=models.CASCADE,
-        related_name='dispositivos',
-        verbose_name='Norma',
-        help_text='Norma à qual este dispositivo pertence'
+        related_name="dispositivos",
+        verbose_name="Norma",
+        help_text="Norma à qual este dispositivo pertence",
     )
 
     dispositivo_pai = models.ForeignKey(
-        'self',
+        "self",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name='filhos',
-        verbose_name='Dispositivo Pai',
-        help_text='Dispositivo pai na hierarquia (null para elementos raiz)'
+        related_name="filhos",
+        verbose_name="Dispositivo Pai",
+        help_text="Dispositivo pai na hierarquia (null para elementos raiz)",
     )
 
     # Identificação
     tipo = models.CharField(
         max_length=20,
         choices=TIPO_CHOICES,
-        verbose_name='Tipo',
+        verbose_name="Tipo",
         db_index=True,
-        help_text='Tipo do dispositivo (artigo, parágrafo, etc.)'
+        help_text="Tipo do dispositivo (artigo, parágrafo, etc.)",
     )
 
     numero = models.CharField(
         max_length=50,
-        verbose_name='Número',
-        help_text='Número ou identificador do dispositivo (ex: "1º", "I", "a")'
+        verbose_name="Número",
+        help_text='Número ou identificador do dispositivo (ex: "1º", "I", "a")',
     )
 
     # Conteúdo
-    texto = models.TextField(
-        verbose_name='Texto',
-        help_text='Conteúdo textual do dispositivo'
-    )
+    texto = models.TextField(verbose_name="Texto", help_text="Conteúdo textual do dispositivo")
 
     # Ordenação
     ordem = models.IntegerField(
-        verbose_name='Ordem',
-        help_text='Ordem sequencial do dispositivo na norma (para preservar sequência original)',
-        db_index=True
+        verbose_name="Ordem",
+        help_text="Ordem sequencial do dispositivo na norma (para preservar sequência original)",
+        db_index=True,
     )
 
     # Metadados de segmentação
     segmentation_confidence = models.FloatField(
-        verbose_name='Confiança da Segmentação',
+        verbose_name="Confiança da Segmentação",
         default=1.0,
-        help_text='Confiança do regex na identificação deste dispositivo (0-1)'
+        help_text="Confiança do regex na identificação deste dispositivo (0-1)",
     )
 
     texto_bruto = models.TextField(
-        verbose_name='Texto Bruto',
+        verbose_name="Texto Bruto",
         blank=True,
-        help_text='Texto original antes da limpeza (para auditoria)'
+        help_text="Texto original antes da limpeza (para auditoria)",
     )
 
     # Hierarquia Materializada (O(1) lookups sem queries recursivas)
@@ -254,14 +251,14 @@ class Dispositivo(TimeStampedModel):
         max_length=500,
         blank=True,
         db_index=True,
-        verbose_name='Caminho Hierárquico',
-        help_text='Caminho materializado na hierarquia (ex: "Art. 1º > § 2º > Inciso III")'
+        verbose_name="Caminho Hierárquico",
+        help_text='Caminho materializado na hierarquia (ex: "Art. 1º > § 2º > Inciso III")',
     )
     nivel = models.IntegerField(
         default=0,
         db_index=True,
-        verbose_name='Nível Hierárquico',
-        help_text='Nível na árvore hierárquica (0 = raiz)'
+        verbose_name="Nível Hierárquico",
+        help_text="Nível na árvore hierárquica (0 = raiz)",
     )
 
     # Embedding for semantic search (pgvector)
@@ -269,50 +266,47 @@ class Dispositivo(TimeStampedModel):
         dimensions=768,  # BERTimbau embedding size (or llama3 embedding size)
         null=True,
         blank=True,
-        verbose_name='Embedding Vetorial',
-        help_text='Vetor de embedding para busca semântica (gerado via Ollama/BERTimbau)'
+        verbose_name="Embedding Vetorial",
+        help_text="Vetor de embedding para busca semântica (gerado via Ollama/BERTimbau)",
     )
 
     embedding_model = models.CharField(
         max_length=100,
         blank=True,
-        verbose_name='Modelo de Embedding',
-        help_text='Nome do modelo usado para gerar o embedding (ex: "nomic-embed-text")'
+        verbose_name="Modelo de Embedding",
+        help_text='Nome do modelo usado para gerar o embedding (ex: "nomic-embed-text")',
     )
 
     embedding_generated_at = models.DateTimeField(
         null=True,
         blank=True,
-        verbose_name='Data de Geração do Embedding',
-        help_text='Timestamp de quando o embedding foi gerado'
+        verbose_name="Data de Geração do Embedding",
+        help_text="Timestamp de quando o embedding foi gerado",
     )
 
     class Meta:
-        verbose_name = 'Dispositivo'
-        verbose_name_plural = 'Dispositivos'
-        ordering = ['norma', 'ordem']
+        verbose_name = "Dispositivo"
+        verbose_name_plural = "Dispositivos"
+        ordering = ["norma", "ordem"]
         indexes = [
-            models.Index(fields=['norma', 'tipo']),
-            models.Index(fields=['norma', 'ordem']),
-            models.Index(fields=['dispositivo_pai']),
-            models.Index(fields=['norma', 'nivel']),
-            models.Index(fields=['embedding_model'], name='disp_embed_model_idx'),
+            models.Index(fields=["norma", "tipo"]),
+            models.Index(fields=["norma", "ordem"]),
+            models.Index(fields=["dispositivo_pai"]),
+            models.Index(fields=["norma", "nivel"]),
+            models.Index(fields=["embedding_model"], name="disp_embed_model_idx"),
         ]
         constraints = [
-            models.UniqueConstraint(
-                fields=['norma', 'ordem'],
-                name='unique_dispositivo_ordem'
-            )
+            models.UniqueConstraint(fields=["norma", "ordem"], name="unique_dispositivo_ordem")
         ]
 
     def __str__(self) -> str:
-        if self.tipo == 'artigo':
+        if self.tipo == "artigo":
             return f"Art. {self.numero}"
-        elif self.tipo == 'paragrafo':
+        elif self.tipo == "paragrafo":
             return f"§ {self.numero}"
-        elif self.tipo == 'inciso':
+        elif self.tipo == "inciso":
             return f"Inciso {self.numero}"
-        elif self.tipo == 'alinea':
+        elif self.tipo == "alinea":
             return f"Alínea {self.numero}"
         else:
             return f"{self.get_tipo_display()} {self.numero}"
@@ -385,37 +379,37 @@ class EventoAlteracao(TimeStampedModel):
 
     # Action types for legal modifications
     ACAO_CHOICES = [
-        ('REVOGA', 'Revogação'),          # Revokes/annuls
-        ('ALTERA', 'Alteração'),          # Modifies/changes
-        ('ADICIONA', 'Adição'),           # Adds new content
-        ('SUBSTITUI', 'Substituição'),    # Replaces
-        ('REGULAMENTA', 'Regulamentação'), # Regulates
-        ('REFERENCIA', 'Referência'),     # Generic reference
+        ("REVOGA", "Revogação"),  # Revokes/annuls
+        ("ALTERA", "Alteração"),  # Modifies/changes
+        ("ADICIONA", "Adição"),  # Adds new content
+        ("SUBSTITUI", "Substituição"),  # Replaces
+        ("REGULAMENTA", "Regulamentação"),  # Regulates
+        ("REFERENCIA", "Referência"),  # Generic reference
     ]
 
     # Source: the dispositivo that causes the change
     dispositivo_fonte = models.ForeignKey(
         Dispositivo,
         on_delete=models.CASCADE,
-        related_name='alteracoes_causadas',
-        verbose_name='Dispositivo Fonte',
-        help_text='Dispositivo que origina a alteração'
+        related_name="alteracoes_causadas",
+        verbose_name="Dispositivo Fonte",
+        help_text="Dispositivo que origina a alteração",
     )
 
     # Action type
     acao = models.CharField(
         max_length=20,
         choices=ACAO_CHOICES,
-        verbose_name='Ação',
+        verbose_name="Ação",
         db_index=True,
-        help_text='Tipo de ação legal (revoga, altera, etc.)'
+        help_text="Tipo de ação legal (revoga, altera, etc.)",
     )
 
     # Raw text of the reference (for auditing)
     target_text = models.CharField(
         max_length=500,
-        verbose_name='Texto da Referência',
-        help_text='Texto bruto da referência extraída (ex: "o Art. 5º da Lei 123/2020")'
+        verbose_name="Texto da Referência",
+        help_text='Texto bruto da referência extraída (ex: "o Art. 5º da Lei 123/2020")',
     )
 
     # Target norma (if identified)
@@ -424,9 +418,9 @@ class EventoAlteracao(TimeStampedModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='alteracoes_recebidas',
-        verbose_name='Norma Alvo',
-        help_text='Norma que é alvo da alteração (se identificada)'
+        related_name="alteracoes_recebidas",
+        verbose_name="Norma Alvo",
+        help_text="Norma que é alvo da alteração (se identificada)",
     )
 
     # Target dispositivo (if identified within same norma or linked norma)
@@ -435,56 +429,56 @@ class EventoAlteracao(TimeStampedModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='alteracoes_recebidas',
-        verbose_name='Dispositivo Alvo',
-        help_text='Dispositivo específico que é alvo da alteração'
+        related_name="alteracoes_recebidas",
+        verbose_name="Dispositivo Alvo",
+        help_text="Dispositivo específico que é alvo da alteração",
     )
 
     # Extraction metadata
     extraction_confidence = models.FloatField(
-        verbose_name='Confiança da Extração',
+        verbose_name="Confiança da Extração",
         default=0.0,
-        help_text='Confiança do NER na extração (0-1)'
+        help_text="Confiança do NER na extração (0-1)",
     )
 
     extraction_method = models.CharField(
         max_length=50,
-        verbose_name='Método de Extração',
-        default='regex',
-        help_text='Método usado para extração (regex, spacy, bert, etc.)'
+        verbose_name="Método de Extração",
+        default="regex",
+        help_text="Método usado para extração (regex, spacy, bert, etc.)",
     )
 
     # Parsed components (for complex references)
     referencia_tipo = models.CharField(
         max_length=50,
-        verbose_name='Tipo Referenciado',
+        verbose_name="Tipo Referenciado",
         blank=True,
-        help_text='Tipo do elemento referenciado (artigo, parágrafo, lei, etc.)'
+        help_text="Tipo do elemento referenciado (artigo, parágrafo, lei, etc.)",
     )
 
     referencia_numero = models.CharField(
         max_length=50,
-        verbose_name='Número Referenciado',
+        verbose_name="Número Referenciado",
         blank=True,
-        help_text='Número do elemento referenciado (ex: "5º", "123/2020")'
+        help_text='Número do elemento referenciado (ex: "5º", "123/2020")',
     )
 
     # Status tracking
     validado = models.BooleanField(
         default=False,
-        verbose_name='Validado',
-        help_text='Se a referência foi validada/confirmada manualmente'
+        verbose_name="Validado",
+        help_text="Se a referência foi validada/confirmada manualmente",
     )
 
     class Meta:
-        verbose_name = 'Evento de Alteração'
-        verbose_name_plural = 'Eventos de Alteração'
-        ordering = ['dispositivo_fonte__norma', 'dispositivo_fonte__ordem']
+        verbose_name = "Evento de Alteração"
+        verbose_name_plural = "Eventos de Alteração"
+        ordering = ["dispositivo_fonte__norma", "dispositivo_fonte__ordem"]
         indexes = [
-            models.Index(fields=['dispositivo_fonte', 'acao']),
-            models.Index(fields=['norma_alvo']),
-            models.Index(fields=['dispositivo_alvo']),
-            models.Index(fields=['acao']),
+            models.Index(fields=["dispositivo_fonte", "acao"]),
+            models.Index(fields=["norma_alvo"]),
+            models.Index(fields=["dispositivo_alvo"]),
+            models.Index(fields=["acao"]),
         ]
 
     def __str__(self) -> str:
@@ -526,44 +520,43 @@ class ChatSession(TimeStampedModel):
     Each session represents a conversation between a user and the chatbot.
     Sessions are linked to authenticated users for persistence.
     """
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='chat_sessions',
-        verbose_name='Usuário',
-        help_text='Usuário dono desta sessão de conversa'
+        related_name="chat_sessions",
+        verbose_name="Usuário",
+        help_text="Usuário dono desta sessão de conversa",
     )
 
     title = models.CharField(
         max_length=200,
-        verbose_name='Título',
+        verbose_name="Título",
         blank=True,
-        help_text='Título da sessão (gerado a partir da primeira pergunta ou manual)'
+        help_text="Título da sessão (gerado a partir da primeira pergunta ou manual)",
     )
 
     slug = models.CharField(
         max_length=50,
         unique=True,
         db_index=True,
-        verbose_name='Slug',
-        help_text='Identificador único da sessão para URL (ex: abc123def456)',
+        verbose_name="Slug",
+        help_text="Identificador único da sessão para URL (ex: abc123def456)",
         blank=True,
-        null=True
+        null=True,
     )
 
     is_active = models.BooleanField(
-        default=True,
-        verbose_name='Ativa',
-        help_text='Se esta sessão está atualmente ativa'
+        default=True, verbose_name="Ativa", help_text="Se esta sessão está atualmente ativa"
     )
 
     class Meta:
-        verbose_name = 'Sessão de Chat'
-        verbose_name_plural = 'Sessões de Chat'
-        ordering = ['-updated_at']
+        verbose_name = "Sessão de Chat"
+        verbose_name_plural = "Sessões de Chat"
+        ordering = ["-updated_at"]
         indexes = [
-            models.Index(fields=['user', '-updated_at']),
-            models.Index(fields=['is_active']),
+            models.Index(fields=["user", "-updated_at"]),
+            models.Index(fields=["is_active"]),
         ]
 
     def __str__(self) -> str:
@@ -571,11 +564,13 @@ class ChatSession(TimeStampedModel):
 
     def get_last_message_preview(self) -> str:
         """Retorna preview da primeira pergunta do usuário da sessão."""
-        first_user_msg = self.messages.filter(role='user').order_by('created_at').first()
+        first_user_msg = self.messages.filter(role="user").order_by("created_at").first()
         if first_user_msg:
-            preview = first_user_msg.content[:50] + ('...' if len(first_user_msg.content) > 50 else '')
+            preview = first_user_msg.content[:50] + (
+                "..." if len(first_user_msg.content) > 50 else ""
+            )
             return preview
-        return ''
+        return ""
 
     SLUG_LENGTH = 12
     SLUG_MAX_ATTEMPTS = 10
@@ -591,7 +586,7 @@ class ChatSession(TimeStampedModel):
 
         alphabet = string.ascii_lowercase + string.digits
         for _ in range(self.SLUG_MAX_ATTEMPTS):
-            slug = ''.join(secrets.choice(alphabet) for _ in range(self.SLUG_LENGTH))
+            slug = "".join(secrets.choice(alphabet) for _ in range(self.SLUG_LENGTH))
             if not ChatSession.objects.filter(slug=slug).exists():
                 return slug
         raise RuntimeError("Could not generate a unique chat session slug")
@@ -600,9 +595,9 @@ class ChatSession(TimeStampedModel):
         """Save the session, generating its slug on first save (or if it was cleared)."""
         if not self.slug:
             self.slug = self.generate_slug()
-            update_fields = kwargs.get('update_fields')
-            if update_fields is not None and 'slug' not in update_fields:
-                kwargs['update_fields'] = [*update_fields, 'slug']
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None and "slug" not in update_fields:
+                kwargs["update_fields"] = [*update_fields, "slug"]
         super().save(*args, **kwargs)
 
 
@@ -612,56 +607,57 @@ class ChatMessage(TimeStampedModel):
 
     Stores both user questions and assistant responses with their sources.
     """
+
     ROLE_CHOICES = [
-        ('user', 'Usuário'),
-        ('assistant', 'Assistente'),
+        ("user", "Usuário"),
+        ("assistant", "Assistente"),
     ]
 
     session = models.ForeignKey(
         ChatSession,
         on_delete=models.CASCADE,
-        related_name='messages',
-        verbose_name='Sessão',
-        help_text='Sessão de chat à qual esta mensagem pertence'
+        related_name="messages",
+        verbose_name="Sessão",
+        help_text="Sessão de chat à qual esta mensagem pertence",
     )
 
     role = models.CharField(
         max_length=10,
         choices=ROLE_CHOICES,
-        verbose_name='Papel',
-        help_text='Papel da mensagem (usuário ou assistente)'
+        verbose_name="Papel",
+        help_text="Papel da mensagem (usuário ou assistente)",
     )
 
     content = models.TextField(
-        verbose_name='Conteúdo',
-        help_text='Conteúdo da mensagem (pergunta do usuário ou resposta do assistente)'
+        verbose_name="Conteúdo",
+        help_text="Conteúdo da mensagem (pergunta do usuário ou resposta do assistente)",
     )
 
     # For assistant messages: store sources as JSON
     sources_json = models.JSONField(
         default=list,
         blank=True,
-        verbose_name='Fontes',
-        help_text='Lista de fontes citadas na resposta (JSON)'
+        verbose_name="Fontes",
+        help_text="Lista de fontes citadas na resposta (JSON)",
     )
 
     # Metadata for assistant responses
     metadata_json = models.JSONField(
         default=dict,
         blank=True,
-        verbose_name='Metadados',
-        help_text='Metadados da resposta (modelo usado, confidence, etc.)'
+        verbose_name="Metadados",
+        help_text="Metadados da resposta (modelo usado, confidence, etc.)",
     )
 
     class Meta:
-        verbose_name = 'Mensagem de Chat'
-        verbose_name_plural = 'Mensagens de Chat'
-        ordering = ['session', 'created_at']
+        verbose_name = "Mensagem de Chat"
+        verbose_name_plural = "Mensagens de Chat"
+        ordering = ["session", "created_at"]
         indexes = [
-            models.Index(fields=['session', 'created_at']),
-            models.Index(fields=['role']),
+            models.Index(fields=["session", "created_at"]),
+            models.Index(fields=["role"]),
         ]
 
     def __str__(self) -> str:
-        preview = self.content[:50] + ('...' if len(self.content) > 50 else '')
+        preview = self.content[:50] + ("..." if len(self.content) > 50 else "")
         return f"{self.get_role_display()}: {preview}"

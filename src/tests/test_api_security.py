@@ -4,6 +4,7 @@ Security tests for the JSON/SSE API (audit P0.1 / P0.4).
 CSRF is exercised with ``Client(enforce_csrf_checks=True)``: Django's default test
 client silently disables CSRF, which is how this hole went unnoticed.
 """
+
 import json
 from unittest.mock import MagicMock, patch
 
@@ -61,11 +62,12 @@ def _post_json(client, path, payload, **extra):
 
 def _fake_rag(events=None):
     rag = MagicMock()
-    rag.stream_answer_question.return_value = iter(
-        events or [{"event": "done", "answer": "ok"}]
-    )
+    rag.stream_answer_question.return_value = iter(events or [{"event": "done", "answer": "ok"}])
     rag.answer_question.return_value = {
-        "answer": "ok", "sources": [], "confidence": 0.5, "model": "llama3",
+        "answer": "ok",
+        "sources": [],
+        "confidence": 0.5,
+        "model": "llama3",
     }
     return rag
 
@@ -151,7 +153,9 @@ class TestLlmInputValidation:
         r, rag = self._stream(csrf_client, {"question": "oi"})
         assert rag.stream_answer_question.call_args.kwargs["model"] == "modelo-padrao"
 
-    def test_model_outside_the_allowlist_is_rejected_before_reaching_ollama(self, csrf_client, settings):
+    def test_model_outside_the_allowlist_is_rejected_before_reaching_ollama(
+        self, csrf_client, settings
+    ):
         settings.OLLAMA_ALLOWED_MODELS = ["llama3"]
         r, rag = self._stream(csrf_client, {"question": "oi", "model": "modelo-gigante:405b"})
         assert r.status_code == 400
@@ -238,8 +242,14 @@ class TestRateLimit:
         """A client must not dodge the limit by inventing X-Forwarded-For."""
         settings.LLM_RATE_LIMIT_REQUESTS = 1
         settings.NUM_PROXIES = 0
-        assert self._hit(Client(), REMOTE_ADDR="10.0.0.1", HTTP_X_FORWARDED_FOR="1.1.1.1").status_code == 200
-        assert self._hit(Client(), REMOTE_ADDR="10.0.0.1", HTTP_X_FORWARDED_FOR="2.2.2.2").status_code == 429
+        assert (
+            self._hit(Client(), REMOTE_ADDR="10.0.0.1", HTTP_X_FORWARDED_FOR="1.1.1.1").status_code
+            == 200
+        )
+        assert (
+            self._hit(Client(), REMOTE_ADDR="10.0.0.1", HTTP_X_FORWARDED_FOR="2.2.2.2").status_code
+            == 429
+        )
 
     def test_trusted_proxy_entry_is_used_and_client_supplied_prefix_ignored(self, settings):
         settings.LLM_RATE_LIMIT_REQUESTS = 1

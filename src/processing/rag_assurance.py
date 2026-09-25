@@ -1,4 +1,5 @@
 """Single deterministic assurance boundary for generated legal answers."""
+
 from __future__ import annotations
 
 import re
@@ -10,10 +11,10 @@ from src.processing.rag_policy import decide_grounding, response_metadata
 from src.processing.strict_grounding import evaluate_strict_grounding
 
 _CITATION_PATTERN = re.compile(
-    r"\b(?:Lei|Decreto|Resolução|Portaria|Emenda Constitucional)\s*"
-    r"(?:n[ºo.]?\s*)?\d[\d./-]+",
+    r"\b(?:Lei|Decreto|Resolução|Portaria|Emenda Constitucional)\s*" r"(?:n[ºo.]?\s*)?\d[\d./-]+",
     re.IGNORECASE,
 )
+
 
 def answer_contains_legal_citation(answer: str) -> bool:
     return bool(_CITATION_PATTERN.search(answer or ""))

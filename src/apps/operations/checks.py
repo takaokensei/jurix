@@ -4,6 +4,7 @@ The checks intentionally focus on invariants that can be validated without
 knowing deployment-specific infrastructure details. They complement Django's
 built-in ``check --deploy`` checks and are surfaced by the production gate.
 """
+
 from __future__ import annotations
 
 from django.conf import settings

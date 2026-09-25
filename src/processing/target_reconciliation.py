@@ -7,6 +7,7 @@ only fills ``EventoAlteracao.norma_alvo`` when a deterministic type/number/year
 match exists. Unresolved events remain explicitly unresolved and can be
 retried after subsequent ingestion batches.
 """
+
 from __future__ import annotations
 
 import re
@@ -52,14 +53,19 @@ def parse_target_reference(event: EventoAlteracao) -> TargetReference | None:
     tipo = getattr(event, "referencia_tipo", None)
     numero = getattr(event, "referencia_numero", None)
     ano = None
-    if tipo and numero and _normalize_type(tipo) in {
-        "lei", "lei complementar", "decreto", "resolucao", "portaria", "emenda"
-    }:
-        match_year = re.search(r"\b(19\d{2}|20\d{2})\b", str(getattr(event, "target_text", "") or ""))
+    if (
+        tipo
+        and numero
+        and _normalize_type(tipo)
+        in {"lei", "lei complementar", "decreto", "resolucao", "portaria", "emenda"}
+    ):
+        match_year = re.search(
+            r"\b(19\d{2}|20\d{2})\b", str(getattr(event, "target_text", "") or "")
+        )
         if match_year:
             ano = int(match_year.group(1))
-        parts = str(numero).split('/')
-        if len(parts) == 2 and re.fullmatch(r'(19|20)\d{2}', parts[1]):
+        parts = str(numero).split("/")
+        if len(parts) == 2 and re.fullmatch(r"(19|20)\d{2}", parts[1]):
             numero, ano = parts[0], int(parts[1])
         return TargetReference(str(tipo), str(numero), ano)
 
@@ -110,7 +116,9 @@ def resolve_event_target(event: EventoAlteracao) -> bool:
     if getattr(event, "norma_alvo_id", None) == target.id:
         return True
     with transaction.atomic():
-        changed = EventoAlteracao.objects.filter(pk=event.pk, norma_alvo__isnull=True).update(norma_alvo_id=target.id)
+        changed = EventoAlteracao.objects.filter(pk=event.pk, norma_alvo__isnull=True).update(
+            norma_alvo_id=target.id
+        )
     return bool(changed)
 
 

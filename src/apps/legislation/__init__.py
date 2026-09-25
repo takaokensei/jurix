@@ -1,2 +1,1 @@
-default_app_config = 'src.apps.legislation.apps.LegislationConfig'
-
+default_app_config = "src.apps.legislation.apps.LegislationConfig"

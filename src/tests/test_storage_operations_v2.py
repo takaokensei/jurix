@@ -1,4 +1,5 @@
 """Operational tests for attachment lifecycle commands."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -26,7 +27,9 @@ class AttachmentPruneCommandTests(TestCase):
             expires_at=expires_at,
         )
 
-    @patch("src.apps.operations.management.commands.prune_attachment_storage.get_attachment_storage")
+    @patch(
+        "src.apps.operations.management.commands.prune_attachment_storage.get_attachment_storage"
+    )
     def test_dry_run_does_not_delete(self, get_storage):
         record = self.make_record(timezone.now() - timedelta(days=1))
         out = StringIO()
@@ -34,7 +37,9 @@ class AttachmentPruneCommandTests(TestCase):
         assert AttachmentRecord.objects.filter(pk=record.pk).exists()
         get_storage.return_value.delete.assert_not_called()
 
-    @patch("src.apps.operations.management.commands.prune_attachment_storage.get_attachment_storage")
+    @patch(
+        "src.apps.operations.management.commands.prune_attachment_storage.get_attachment_storage"
+    )
     def test_execute_removes_storage_and_metadata(self, get_storage):
         record = self.make_record(timezone.now() - timedelta(days=1))
         storage = get_storage.return_value

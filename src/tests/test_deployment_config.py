@@ -1,4 +1,5 @@
 """Deployment guards (audit P1.1 / P1.2): cheap tests that keep infra regressions out."""
+
 import json
 import re
 from pathlib import Path
@@ -8,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def _dockerfile_cmd():
     text = (ROOT / "docker" / "Dockerfile").read_text()
-    text = re.sub(r"\\\s*\n\s*", " ", text)                       # join continuation lines
+    text = re.sub(r"\\\s*\n\s*", " ", text)  # join continuation lines
     return json.loads(re.search(r"^CMD (\[.*\])\s*$", text, re.M).group(1))
 
 
@@ -30,14 +31,16 @@ def test_gunicorn_timeout_is_explicit_and_covers_a_slow_generation():
 def test_coverage_gate_is_configured_and_ignores_test_files():
     rc = (ROOT / ".coveragerc").read_text()
     assert re.search(r"^fail_under\s*=\s*\d+", rc, re.M)
-    assert "src/tests/*" in rc          # tests must not inflate the number they are judged by
+    assert "src/tests/*" in rc  # tests must not inflate the number they are judged by
 
 
 def _git_ignored(path):
     import shutil
     import subprocess
+
     if shutil.which("git") is None or not (ROOT / ".git").exists():
         import pytest
+
         pytest.skip("not a git checkout")
     return subprocess.run(["git", "check-ignore", "-q", path], cwd=ROOT).returncode == 0
 

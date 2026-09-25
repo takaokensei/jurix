@@ -1,2 +1,1 @@
-default_app_config = 'src.apps.ingestion.apps.IngestionConfig'
-
+default_app_config = "src.apps.ingestion.apps.IngestionConfig"

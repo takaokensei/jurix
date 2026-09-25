@@ -1,4 +1,5 @@
 """Translate public API search options into the internal retrieval contract."""
+
 from __future__ import annotations
 
 from typing import Any

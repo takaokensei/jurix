@@ -5,6 +5,7 @@ It checks that the repository contains the operational artifacts required for a
 production candidate. It intentionally validates presence and structure rather
 than inventing benchmark scores or infrastructure state.
 """
+
 from __future__ import annotations
 
 import argparse

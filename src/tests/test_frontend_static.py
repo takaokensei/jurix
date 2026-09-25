@@ -5,6 +5,7 @@ The server enforces CSRF on every session endpoint (audit P0.1), so a single fet
 forgets X-CSRFToken silently breaks that feature for every user. This is cheap to check
 statically, without a browser.
 """
+
 import re
 from pathlib import Path
 
@@ -21,7 +22,7 @@ def _fetch_calls(source):
             if depth == 0:
                 break
             i += 1
-        yield source[: m.start()].count("\n") + 1, source[m.start(): i + 1]
+        yield source[: m.start()].count("\n") + 1, source[m.start() : i + 1]
 
 
 def test_every_mutating_fetch_in_chat_js_sends_the_csrf_token():
@@ -33,7 +34,9 @@ def test_every_mutating_fetch_in_chat_js_sends_the_csrf_token():
             assert "X-CSRFToken" in source, f"expected {filename} to include CSRF token handling"
         else:
             missing = [n for n, c in calls if "X-CSRFToken" not in c]
-            assert missing == [], f"mutating fetch() without X-CSRFToken at {filename} lines {missing}"
+            assert (
+                missing == []
+            ), f"mutating fetch() without X-CSRFToken at {filename} lines {missing}"
 
 
 def test_no_frontend_file_builds_javascript_urls_or_string_evals():
@@ -52,8 +55,12 @@ def test_source_card_url_is_never_interpolated_into_an_inline_handler():
 def test_all_markdown_is_rendered_through_the_single_sanitising_helper():
     """Answers come from an LLM fed with ingested text: every render must use renderMarkdown()."""
     text = (JS / "chat.js").read_text(encoding="utf-8")
-    assert text.count("marked.parse(") == 1, "marked.parse() must only be called inside renderMarkdown()"
-    assert text.count("DOMPurify.sanitize(") == 1, "DOMPurify.sanitize() must only be called inside renderMarkdown()"
+    assert (
+        text.count("marked.parse(") == 1
+    ), "marked.parse() must only be called inside renderMarkdown()"
+    assert (
+        text.count("DOMPurify.sanitize(") == 1
+    ), "DOMPurify.sanitize() must only be called inside renderMarkdown()"
     for tag in ("img", "style", "svg", "link"):
         assert f"'{tag}'" in text.split("const SANITIZE_CONFIG")[1].split("};")[0], tag
 
@@ -61,14 +68,26 @@ def test_all_markdown_is_rendered_through_the_single_sanitising_helper():
 def test_chatbot_template_has_no_inline_handlers_scripts_or_javascript_urls():
     """Regression guard for the CSP hardening: chatbot.html must stay free of inline execution."""
     html = (
-        Path(__file__).resolve().parents[1] / "apps" / "legislation" / "templates" / "legislation" / "chatbot.html"
+        Path(__file__).resolve().parents[1]
+        / "apps"
+        / "legislation"
+        / "templates"
+        / "legislation"
+        / "chatbot.html"
     ).read_text(encoding="utf-8")
-    assert not re.search(r"\son[a-z]+\s*=", html, re.IGNORECASE), "inline event handler attribute found"
-    assert not re.search(r"<script(?![^>]*\bsrc=)[^>]*>\s*\S", html, re.IGNORECASE), "inline <script> with a body found"
+    assert not re.search(
+        r"\son[a-z]+\s*=", html, re.IGNORECASE
+    ), "inline event handler attribute found"
+    assert not re.search(
+        r"<script(?![^>]*\bsrc=)[^>]*>\s*\S", html, re.IGNORECASE
+    ), "inline <script> with a body found"
     assert "javascript:" not in html.lower()
 
 
 def test_chatbot_csp_does_not_allow_unsafe_inline_or_unsafe_eval_scripts():
     from config.middleware import CONTENT_SECURITY_POLICY
-    script_src = next(d for d in CONTENT_SECURITY_POLICY.split(";") if d.strip().startswith("script-src"))
+
+    script_src = next(
+        d for d in CONTENT_SECURITY_POLICY.split(";") if d.strip().startswith("script-src")
+    )
     assert "unsafe-inline" not in script_src and "unsafe-eval" not in script_src

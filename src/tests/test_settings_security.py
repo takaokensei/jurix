@@ -2,6 +2,7 @@
 Settings are evaluated at import time, so each scenario runs in a fresh
 interpreter with a controlled environment (audit P1.5).
 """
+
 import json
 import os
 import subprocess
@@ -30,7 +31,13 @@ def load_settings(**env):
     }
     clean.update({k: v for k, v in env.items() if v is not None})
     proc = subprocess.run(
-        [sys.executable, "-c", PROBE], cwd=ROOT, env=clean, capture_output=True, text=True, encoding="utf-8", errors="replace"
+        [sys.executable, "-c", PROBE],
+        cwd=ROOT,
+        env=clean,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     if proc.returncode != 0:
         return proc.returncode, proc.stderr
@@ -60,7 +67,7 @@ def test_production_defaults_are_secure():
     code, cfg = load_settings(DJANGO_SECRET_KEY="a-private-key-of-reasonable-length-1234567890")
     assert code == 0
     assert cfg["DEBUG"] is False
-    assert cfg["ALLOWED_HOSTS"] == ["localhost", "127.0.0.1"]   # never ['*']
+    assert cfg["ALLOWED_HOSTS"] == ["localhost", "127.0.0.1"]  # never ['*']
     assert cfg["SESSION_COOKIE_SECURE"] is True
     assert cfg["CSRF_COOKIE_SECURE"] is True
 
@@ -80,7 +87,8 @@ def test_hsts_and_ssl_redirect_are_opt_in():
 def test_secure_cookies_can_be_disabled_for_plain_http_deployments():
     code, cfg = load_settings(
         DJANGO_SECRET_KEY="a-private-key-of-reasonable-length-1234567890",
-        SESSION_COOKIE_SECURE="False", CSRF_COOKIE_SECURE="false",
+        SESSION_COOKIE_SECURE="False",
+        CSRF_COOKIE_SECURE="false",
     )
     assert cfg["SESSION_COOKIE_SECURE"] is False and cfg["CSRF_COOKIE_SECURE"] is False
 
@@ -94,7 +102,10 @@ def test_proxy_ssl_header_and_trusted_origins_are_opt_in():
     base = {"DJANGO_SECRET_KEY": "a-private-key-of-reasonable-length-1234567890"}
     _, off = load_settings(**base)
     assert off["SECURE_PROXY_SSL_HEADER"] is None and off["CSRF_TRUSTED_ORIGINS"] == []
-    _, on = load_settings(**base, TRUST_X_FORWARDED_PROTO="1",
-                          CSRF_TRUSTED_ORIGINS="https://a.example, https://b.example")
+    _, on = load_settings(
+        **base,
+        TRUST_X_FORWARDED_PROTO="1",
+        CSRF_TRUSTED_ORIGINS="https://a.example, https://b.example",
+    )
     assert on["SECURE_PROXY_SSL_HEADER"] == ["HTTP_X_FORWARDED_PROTO", "https"]
     assert on["CSRF_TRUSTED_ORIGINS"] == ["https://a.example", "https://b.example"]

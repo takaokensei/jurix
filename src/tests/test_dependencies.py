@@ -4,6 +4,7 @@ requirements.txt (Pillow was imported by tasks.py but only present by accident, 
 pytesseract) and every declared runtime dependency must be used (spaCy was installed
 -- a very heavy dependency -- with no import anywhere).
 """
+
 import ast
 import re
 import sys
@@ -24,17 +25,33 @@ IMPORT_TO_DIST = {
     "yaml": "pyyaml",
     "opentelemetry": "opentelemetry-api",
 }
-FIRST_PARTY = {"src", "config", "manage", "legislation", "ingestion", "core", "processing",
-               "llm_engine", "clients", "scripts"}
+FIRST_PARTY = {
+    "src",
+    "config",
+    "manage",
+    "legislation",
+    "ingestion",
+    "core",
+    "processing",
+    "llm_engine",
+    "clients",
+    "scripts",
+}
 
 # Declared but never imported by our code, on purpose.
 USED_WITHOUT_IMPORT = {
-    "gunicorn",            # process server, started by the Dockerfile CMD
-    "psycopg2-binary",     # loaded by Django's postgresql backend
-    "django-htmx",         # enabled through INSTALLED_APPS / MIDDLEWARE strings
-    "redis",               # Celery broker + Django's RedisCache backend, via URLs/settings
-    "ruff", "pytest", "pytest-django", "pytest-cov", "pytest-mock", "boto3",   # tooling
-    "opentelemetry-sdk", "opentelemetry-exporter-otlp-proto-http",  # tracing exporters/sdk
+    "gunicorn",  # process server, started by the Dockerfile CMD
+    "psycopg2-binary",  # loaded by Django's postgresql backend
+    "django-htmx",  # enabled through INSTALLED_APPS / MIDDLEWARE strings
+    "redis",  # Celery broker + Django's RedisCache backend, via URLs/settings
+    "ruff",
+    "pytest",
+    "pytest-django",
+    "pytest-cov",
+    "pytest-mock",
+    "boto3",  # tooling
+    "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp-proto-http",  # tracing exporters/sdk
 }
 
 
@@ -53,7 +70,9 @@ def _declared():
 
 def _imported_third_party():
     found = {}
-    for path in list(SRC.rglob("*.py")) + [ROOT / "manage.py"] + list((ROOT / "config").glob("*.py")):
+    for path in (
+        list(SRC.rglob("*.py")) + [ROOT / "manage.py"] + list((ROOT / "config").glob("*.py"))
+    ):
         if "migrations" in path.parts:
             continue
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
@@ -71,8 +90,11 @@ def _imported_third_party():
 
 
 def test_every_third_party_import_is_declared():
-    missing = {dist: str(where) for dist, where in _imported_third_party().items()
-               if dist not in _declared() and dist not in {"pytest"}}
+    missing = {
+        dist: str(where)
+        for dist, where in _imported_third_party().items()
+        if dist not in _declared() and dist not in {"pytest"}
+    }
     assert missing == {}, f"imported but not in requirements.txt: {missing}"
 
 

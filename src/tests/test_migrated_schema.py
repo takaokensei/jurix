@@ -9,6 +9,7 @@ expression index is recomputed on every write.
 
 This test builds a throwaway database with ``manage.py migrate`` and writes an embedding.
 """
+
 import os
 import subprocess
 import sys
@@ -43,8 +44,11 @@ def migrated_db_url():
     name = f"jurix_migtest_{os.getpid()}"
     try:
         admin = psycopg2.connect(
-            dbname=cfg["NAME"], user=cfg["USER"], password=cfg["PASSWORD"],
-            host=cfg["HOST"], port=cfg["PORT"],
+            dbname=cfg["NAME"],
+            user=cfg["USER"],
+            password=cfg["PASSWORD"],
+            host=cfg["HOST"],
+            port=cfg["PORT"],
         )
     except psycopg2.OperationalError as exc:  # pragma: no cover
         pytest.skip(f"cannot connect to PostgreSQL: {exc}")
@@ -57,7 +61,11 @@ def migrated_db_url():
         pytest.skip(f"cannot create a scratch database: {exc}")
     try:
         scratch = psycopg2.connect(
-            dbname=name, user=cfg["USER"], password=cfg["PASSWORD"], host=cfg["HOST"], port=cfg["PORT"]
+            dbname=name,
+            user=cfg["USER"],
+            password=cfg["PASSWORD"],
+            host=cfg["HOST"],
+            port=cfg["PORT"],
         )
         scratch.autocommit = True
         scratch.cursor().execute("CREATE EXTENSION IF NOT EXISTS vector")
@@ -74,7 +82,12 @@ def migrated_db_url():
 def _manage(url, *args):
     env = {**os.environ, "DATABASE_URL": url, "PYTHONPATH": str(ROOT), "PYTHONUTF8": "1"}
     return subprocess.run(
-        [sys.executable, "manage.py", *args], cwd=ROOT, env=env, capture_output=True, text=True, timeout=300
+        [sys.executable, "manage.py", *args],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=300,
     )
 
 
@@ -106,11 +119,16 @@ def _psql(url, sql):
 
 def test_embedding_indexes_are_the_intended_ones(migrated_db_url):
     _manage(migrated_db_url, "migrate", "-v0")
-    rows = _psql(migrated_db_url, "select indexname, indexdef from pg_indexes "
-                                  "where tablename = 'legislation_dispositivo' and indexdef ilike '%embedding%'")
+    rows = _psql(
+        migrated_db_url,
+        "select indexname, indexdef from pg_indexes "
+        "where tablename = 'legislation_dispositivo' and indexdef ilike '%embedding%'",
+    )
     defs = {name: definition for name, definition in rows}
 
-    assert "dispositivo_embedding_cosine_idx" not in defs, "the broken 3-dimension expression index is back"
+    assert (
+        "dispositivo_embedding_cosine_idx" not in defs
+    ), "the broken 3-dimension expression index is back"
     assert "dispositivo_embedding_ivfflat_idx" not in defs, "untrained IVFFlat index is back"
     assert "hnsw" in defs["dispositivo_embedding_hnsw_idx"].lower()
     assert "vector_cosine_ops" in defs["dispositivo_embedding_hnsw_idx"]
@@ -135,9 +153,12 @@ print("SEEDED")
     conn = psycopg2.connect(migrated_db_url)
     try:
         cur = conn.cursor()
-        cur.execute("set enable_seqscan = off")          # force the HNSW index
-        cur.execute("select count(*) from (select id from legislation_dispositivo "
-                    "order by embedding <=> %s::vector limit 50) t", ("[" + ",".join(["0.3"] * 768) + "]",))
+        cur.execute("set enable_seqscan = off")  # force the HNSW index
+        cur.execute(
+            "select count(*) from (select id from legislation_dispositivo "
+            "order by embedding <=> %s::vector limit 50) t",
+            ("[" + ",".join(["0.3"] * 768) + "]",),
+        )
         assert cur.fetchone()[0] == 50
     finally:
         conn.close()
@@ -148,7 +169,13 @@ def test_migration_0013_is_reversible_without_reintroducing_the_bug(migrated_db_
     back = _manage(migrated_db_url, "migrate", "legislation", "0012", "-v0")
     assert back.returncode == 0, back.stderr[-800:]
 
-    names = {r[0] for r in _psql(migrated_db_url, "select indexname from pg_indexes where tablename='legislation_dispositivo'")}
+    names = {
+        r[0]
+        for r in _psql(
+            migrated_db_url,
+            "select indexname from pg_indexes where tablename='legislation_dispositivo'",
+        )
+    }
     assert "dispositivo_embedding_ivfflat_idx" in names
-    assert "dispositivo_embedding_cosine_idx" not in names          # never recreated
+    assert "dispositivo_embedding_cosine_idx" not in names  # never recreated
     assert "EMBEDDINGS-OK" in _manage(migrated_db_url, "shell", "-c", probe("reverse")).stdout

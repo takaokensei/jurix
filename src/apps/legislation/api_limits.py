@@ -15,6 +15,7 @@ applies exactly the same limits.
   cache (Redis in production). If the cache is unavailable the limiter fails
   OPEN: an outage of Redis must not take the whole site down.
 """
+
 import hashlib
 import logging
 import time
@@ -40,7 +41,7 @@ class RateLimitBackendUnavailable(RuntimeError):
 
 def parse_k(value: Any) -> int:
     """Return ``k`` clamped to [1, LLM_MAX_K]; reject non-integers."""
-    if value is None or value == '':
+    if value is None or value == "":
         return DEFAULT_K
     if isinstance(value, bool):
         raise InvalidLLMParams("Parâmetro 'k' deve ser um número inteiro.")
@@ -53,7 +54,7 @@ def parse_k(value: Any) -> int:
 
 def parse_model(value: Any) -> str:
     """Return the requested model if allowed, else the configured default."""
-    if value is None or value == '':
+    if value is None or value == "":
         return settings.OLLAMA_MODEL
     if not isinstance(value, str) or value not in settings.OLLAMA_ALLOWED_MODELS:
         raise InvalidLLMParams("Modelo não permitido.")
@@ -66,7 +67,7 @@ def parse_question(value: Any) -> str:
     An empty result is returned as ``''`` so each caller keeps its own message.
     """
     if value is None:
-        return ''
+        return ""
     if not isinstance(value, str):
         raise InvalidLLMParams("Pergunta inválida.")
     question = value.strip()
@@ -82,9 +83,9 @@ def parse_llm_request(data: Any) -> tuple[str, int, str]:
     if not isinstance(data, Mapping):
         raise InvalidLLMParams("Corpo da requisição inválido.")
     return (
-        parse_question(data.get('question')),
-        parse_k(data.get('k')),
-        parse_model(data.get('model')),
+        parse_question(data.get("question")),
+        parse_k(data.get("k")),
+        parse_model(data.get("model")),
     )
 
 
@@ -93,20 +94,20 @@ def parse_search_options(data: Any) -> dict[str, Any]:
     if not isinstance(data, Mapping):
         raise InvalidLLMParams("Corpo da requisição inválido.")
 
-    mode = data.get('search_mode', data.get('mode', 'hybrid'))
-    if mode not in {'semantic', 'lexical', 'hybrid'}:
+    mode = data.get("search_mode", data.get("mode", "hybrid"))
+    if mode not in {"semantic", "lexical", "hybrid"}:
         raise InvalidLLMParams("Modo de pesquisa inválido.")
 
-    norma_status = data.get('norma_status', 'consolidated')
-    if norma_status not in {'consolidated', 'all'}:
+    norma_status = data.get("norma_status", "consolidated")
+    if norma_status not in {"consolidated", "all"}:
         raise InvalidLLMParams("Escopo de normas inválido.")
 
-    source_scope = data.get('source_scope', 'municipal')
-    if source_scope not in {'municipal', 'all'}:
+    source_scope = data.get("source_scope", "municipal")
+    if source_scope not in {"municipal", "all"}:
         raise InvalidLLMParams("Escopo de fontes inválido.")
 
-    max_sources = parse_k(data.get('max_sources', data.get('k')))
-    raw_min_similarity = data.get('min_similarity', 0.0)
+    max_sources = parse_k(data.get("max_sources", data.get("k")))
+    raw_min_similarity = data.get("min_similarity", 0.0)
     try:
         min_similarity = float(raw_min_similarity)
     except (TypeError, ValueError):
@@ -114,7 +115,7 @@ def parse_search_options(data: Any) -> dict[str, Any]:
     if not 0.0 <= min_similarity <= 1.0:
         raise InvalidLLMParams("min_similarity deve estar entre 0 e 1.")
 
-    attachment_ids = data.get('attachment_ids', [])
+    attachment_ids = data.get("attachment_ids", [])
     if attachment_ids is None:
         attachment_ids = []
     if not isinstance(attachment_ids, list) or any(
@@ -125,13 +126,15 @@ def parse_search_options(data: Any) -> dict[str, Any]:
         raise InvalidLLMParams("No máximo 5 documentos podem ser usados em uma pesquisa.")
 
     return {
-        'mode': mode,
-        'norma_status': norma_status,
-        'source_scope': source_scope,
-        'max_sources': max_sources,
-        'min_similarity': min_similarity,
-        'attachment_ids': attachment_ids,
+        "mode": mode,
+        "norma_status": norma_status,
+        "source_scope": source_scope,
+        "max_sources": max_sources,
+        "min_similarity": min_similarity,
+        "attachment_ids": attachment_ids,
     }
+
+
 def client_ip(request: HttpRequest) -> str:
     """
     Best-effort client IP that a client cannot forge.
@@ -141,23 +144,25 @@ def client_ip(request: HttpRequest) -> str:
     anything a client put before it is ignored. With 0 (default) the header is
     ignored entirely and ``REMOTE_ADDR`` is used.
     """
-    remote = request.META.get('REMOTE_ADDR', '') or 'unknown'
-    proxies = getattr(settings, 'NUM_PROXIES', 0)
+    remote = request.META.get("REMOTE_ADDR", "") or "unknown"
+    proxies = getattr(settings, "NUM_PROXIES", 0)
     if proxies > 0:
-        forwarded = [p.strip() for p in request.META.get('HTTP_X_FORWARDED_FOR', '').split(',') if p.strip()]
+        forwarded = [
+            p.strip() for p in request.META.get("HTTP_X_FORWARDED_FOR", "").split(",") if p.strip()
+        ]
         if len(forwarded) >= proxies:
             return forwarded[-proxies]
     return remote
 
 
 def client_identity(request: HttpRequest) -> str:
-    user = getattr(request, 'user', None)
+    user = getattr(request, "user", None)
     if user is not None and user.is_authenticated:
         return f"user:{user.pk}"
     return f"ip:{client_ip(request)}"
 
 
-def check_rate_limit(request: HttpRequest, scope: str = 'llm') -> int | None:
+def check_rate_limit(request: HttpRequest, scope: str = "llm") -> int | None:
     """
     Count this request and return the seconds to wait if the client is over the
     limit, or None if it may proceed. A limit <= 0 disables throttling.
@@ -170,7 +175,7 @@ def check_rate_limit(request: HttpRequest, scope: str = 'llm') -> int | None:
     now = int(time.time())
     # Hash the identity: keeps the key short and free of characters that some
     # cache backends reject (IPv6 colons, spaces, non-ASCII).
-    identity = hashlib.sha256(client_identity(request).encode('utf-8')).hexdigest()[:32]
+    identity = hashlib.sha256(client_identity(request).encode("utf-8")).hexdigest()[:32]
     key = f"ratelimit:{scope}:{identity}:{now // window}"
     try:
         cache.add(key, 0, timeout=window)
@@ -185,25 +190,28 @@ def check_rate_limit(request: HttpRequest, scope: str = 'llm') -> int | None:
     return None
 
 
-def rate_limit_response(request: HttpRequest, scope: str = 'llm') -> JsonResponse | None:
+def rate_limit_response(request: HttpRequest, scope: str = "llm") -> JsonResponse | None:
     """Return a 429 response when the client is over the limit, else None."""
     try:
         retry_after = check_rate_limit(request, scope)
     except RateLimitBackendUnavailable:
         return JsonResponse(
             {
-                'success': False,
-                'error': 'Serviço temporariamente indisponível. Tente novamente em instantes.',
+                "success": False,
+                "error": "Serviço temporariamente indisponível. Tente novamente em instantes.",
             },
             status=503,
-            headers={'Retry-After': '5'},
+            headers={"Retry-After": "5"},
         )
     if retry_after is None:
         return None
-    response = JsonResponse({
-        'success': False,
-        'error': 'Muitas requisições. Aguarde alguns instantes e tente novamente.',
-        'retry_after': retry_after,
-    }, status=429)
-    response['Retry-After'] = str(retry_after)
+    response = JsonResponse(
+        {
+            "success": False,
+            "error": "Muitas requisições. Aguarde alguns instantes e tente novamente.",
+            "retry_after": retry_after,
+        },
+        status=429,
+    )
+    response["Retry-After"] = str(retry_after)
     return response

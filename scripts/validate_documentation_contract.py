@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Check that production documentation has one current status source."""
+
 from __future__ import annotations
 
 import re

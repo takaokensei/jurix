@@ -1,0 +1,61 @@
+name: Final Production Assurance v5
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+jobs:
+  final-assurance:
+    runs-on: ubuntu-latest
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings
+      DJANGO_SECRET_KEY: ${{ secrets.JURIX_DJANGO_SECRET_KEY }}
+      DEBUG: 'False'
+      ALLOWED_HOSTS: 'localhost,127.0.0.1'
+      POSTGRES_DB: jurix
+      POSTGRES_USER: jurix
+      POSTGRES_PASSWORD: ${{ secrets.JURIX_POSTGRES_PASSWORD }}
+      DATABASE_URL: postgres://jurix:${{ secrets.JURIX_POSTGRES_PASSWORD }}@127.0.0.1:5432/jurix
+      REDIS_URL: redis://127.0.0.1:6379/0
+      STORAGE_BACKEND: local
+      JURIX_ALLOW_LOCAL_STORAGE: 'true'
+      JURIX_SINGLE_HOST: 'true'
+      JURIX_BENCHMARK_URL: ${{ secrets.JURIX_BENCHMARK_URL }}
+      JURIX_BENCHMARK_HEADERS_JSON: ${{ secrets.JURIX_BENCHMARK_HEADERS_JSON }}
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: jurix
+          POSTGRES_USER: jurix
+          POSTGRES_PASSWORD: ${{ secrets.JURIX_POSTGRES_PASSWORD }}
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U jurix -d jurix"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Prepare database
+        run: |
+          python manage.py migrate --noinput
+          python manage.py ensure_vector_index
+      - name: Ingestion facade
+        run: python scripts/verify_ingestion_refactor_v5.py
+      - name: Blocking vector gate
+        run: python scripts/vector_production_gate_v5.py --strict --json
+      - name: Real legal benchmark
+        run: python scripts/run_legal_benchmark_v1.py --strict
+      - name: Release contracts
+        run: |
+          python scripts/validate_release_contract.py
+          python scripts/validate_documentation_contract.py

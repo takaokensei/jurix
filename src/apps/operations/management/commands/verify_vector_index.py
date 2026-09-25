@@ -1,4 +1,5 @@
 """Verify a pgvector ANN index compatible with cosine retrieval."""
+
 from __future__ import annotations
 
 from django.core.management import BaseCommand, CommandError
@@ -27,6 +28,6 @@ class Command(BaseCommand):
                 "Nenhum índice ANN pgvector com vector_cosine_ops foi encontrado "
                 "em legislation_dispositivo."
             )
-        self.stdout.write(self.style.SUCCESS(
-            "Índice vetorial válido: " + ", ".join(row[0] for row in indexes)
-        ))
+        self.stdout.write(
+            self.style.SUCCESS("Índice vetorial válido: " + ", ".join(row[0] for row in indexes))
+        )

@@ -1,4 +1,5 @@
 """Prometheus metrics used by the Jurix runtime."""
+
 from __future__ import annotations
 
 from django.http import HttpResponse

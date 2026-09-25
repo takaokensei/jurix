@@ -18,14 +18,14 @@ from src.apps.legislation.models import Norma
 class TestIngestionTasks:
     """Test suite for Ingestion tasks."""
 
-    @patch('src.apps.ingestion.tasks.Norma.objects.update_or_create')
-    @patch('src.apps.ingestion.tasks.Norma.objects.select_for_update')
+    @patch("src.apps.ingestion.tasks.Norma.objects.update_or_create")
+    @patch("src.apps.ingestion.tasks.Norma.objects.select_for_update")
     def test_reingest_preserves_consolidated_status(self, mock_filter, mock_update_or_create):
         """Test that re-ingesting a norma preserves its consolidated status."""
         # Setup existing norma in database with consolidated status
         existing_norma = Mock()
-        existing_norma.status = 'consolidated'
-        existing_norma.pdf_url = ''
+        existing_norma.status = "consolidated"
+        existing_norma.pdf_url = ""
         mock_qs = Mock()
         mock_qs.only.return_value.first.return_value = existing_norma
         mock_filter.return_value.filter.return_value = mock_qs
@@ -35,41 +35,36 @@ class TestIngestionTasks:
         mock_update_or_create.return_value = (mock_updated_norma, False)
 
         payload = {
-            'id': 12345,
-            'tipo': {'descricao': 'Lei Complementar'},
-            'numero': '50',
-            'ano': 2021,
-            'ementa': 'Ementa de teste',
+            "id": 12345,
+            "tipo": {"descricao": "Lei Complementar"},
+            "numero": "50",
+            "ano": 2021,
+            "ementa": "Ementa de teste",
         }
 
         result = _process_norma_data(payload, auto_download=False)
 
-        assert result['created'] is False
-        assert result['norma_id'] == 42
+        assert result["created"] is False
+        assert result["norma_id"] == 42
 
         # Verify update_or_create was called with preserved status 'consolidated'
         call_kwargs = mock_update_or_create.call_args[1]
-        assert call_kwargs['defaults']['status'] == 'consolidated'
+        assert call_kwargs["defaults"]["status"] == "consolidated"
 
-    @patch('src.apps.ingestion.tasks.ingest_normas_task.apply_async')
+    @patch("src.apps.ingestion.tasks.ingest_normas_task.apply_async")
     def test_bulk_ingest_dispatches_async_tasks(self, mock_delay):
         """Test that bulk_ingest_normas_task dispatches tasks asynchronously with .delay()."""
         mock_subtask = Mock()
         mock_subtask.id = "task-async-uuid-123"
         mock_delay.return_value = mock_subtask
 
-        result = bulk_ingest_normas_task(
-            max_normas=100,
-            tipo=None,
-            ano=2024,
-            page_size=50
-        )
+        result = bulk_ingest_normas_task(max_normas=100, tipo=None, ano=2024, page_size=50)
 
         # Should have dispatched 2 batches of 50
         assert mock_delay.call_count == 2
-        assert len(result['dispatched_tasks']) == 2
-        assert result['total_batches'] == 2
-        assert result['dispatched_tasks'][0] == "task-async-uuid-123"
+        assert len(result["dispatched_tasks"]) == 2
+        assert result["total_batches"] == 2
+        assert result["dispatched_tasks"][0] == "task-async-uuid-123"
 
 
 @pytest.mark.django_db
@@ -79,16 +74,24 @@ class TestConsolidationTaskReviewFlag:
     def _make(self, with_events):
         from src.apps.legislation.models import Dispositivo, EventoAlteracao
 
-        base = Norma.objects.create(tipo="Lei", numero="1000", ano=2020, status="entities_extracted")
-        Dispositivo.objects.create(norma=base, tipo="artigo", numero="1º", texto="Primeiro.", ordem=1)
+        base = Norma.objects.create(
+            tipo="Lei", numero="1000", ano=2020, status="entities_extracted"
+        )
+        Dispositivo.objects.create(
+            norma=base, tipo="artigo", numero="1º", texto="Primeiro.", ordem=1
+        )
         if with_events:
             amending = Norma.objects.create(tipo="Lei", numero="2000", ano=2021)
             fonte = Dispositivo.objects.create(
                 norma=amending, tipo="artigo", numero="1º", texto="Revoga-se o art. 9º.", ordem=1
             )
             EventoAlteracao.objects.create(
-                dispositivo_fonte=fonte, acao="REVOGA", target_text="art. 9º",
-                norma_alvo=base, referencia_tipo="artigo", referencia_numero="9º",
+                dispositivo_fonte=fonte,
+                acao="REVOGA",
+                target_text="art. 9º",
+                norma_alvo=base,
+                referencia_tipo="artigo",
+                referencia_numero="9º",
             )
         return base
 
@@ -100,7 +103,7 @@ class TestConsolidationTaskReviewFlag:
         base.refresh_from_db()
 
         assert result["success"] is False
-        assert base.status == 'failed'
+        assert base.status == "failed"
         assert result["events_unresolved"] == 1
         assert result["events_applied"] == 0
         assert result["needs_review"] is True
@@ -136,7 +139,10 @@ class TestRagCacheInvalidation:
     @pytest.fixture(autouse=True)
     def locmem(self, settings):
         settings.CACHES = {
-            "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "inval"}
+            "default": {
+                "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+                "LOCATION": "inval",
+            }
         }
 
     def test_successful_consolidation_bumps_the_corpus_version(self):
@@ -153,16 +159,18 @@ class TestRagCacheInvalidation:
         from src.processing.cache_service import get_cache_service
 
         before = get_cache_service().get_corpus_version()
-        assert consolidate_norma_task(999999)["success"] is False   # unknown norma
+        assert consolidate_norma_task(999999)["success"] is False  # unknown norma
         assert get_cache_service().get_corpus_version() == before
 
     def test_a_cache_outage_never_fails_the_task(self):
         from src.apps.ingestion.tasks import _invalidate_rag_cache
 
         with patch("src.apps.ingestion.tasks.get_cache_service", side_effect=RuntimeError("boom")):
-            _invalidate_rag_cache()   # must not raise
+            _invalidate_rag_cache()  # must not raise
 
-    @pytest.mark.parametrize("task_name", ["segment_text_task", "consolidate_norma_task", "generate_embedding_task"])
+    @pytest.mark.parametrize(
+        "task_name", ["segment_text_task", "consolidate_norma_task", "generate_embedding_task"]
+    )
     def test_every_corpus_changing_task_invalidates_on_success(self, task_name):
         """Guard: the success path of each of these tasks must call the invalidator."""
         import inspect
@@ -205,7 +213,7 @@ class TestMarkNormaFailed:
 
         # (patching the logger: the project's LOGGING config stops propagation to caplog)
         with patch("src.apps.ingestion.tasks.logger") as log:
-            _mark_norma_failed(999999, "x", RuntimeError("boom"))   # must not raise
+            _mark_norma_failed(999999, "x", RuntimeError("boom"))  # must not raise
         assert "Could not record failure on Norma ID=999999" in log.warning.call_args.args[0]
         assert log.warning.call_args.kwargs["exc_info"] is True
 
@@ -234,7 +242,6 @@ def test_no_bare_except_in_production_code():
     assert offenders == []
 
 
-
 @pytest.mark.django_db
 class TestEndToEndConsolidationFromAmendingSentences:
     """
@@ -250,32 +257,57 @@ class TestEndToEndConsolidationFromAmendingSentences:
         from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
         from src.processing.ner_extractor import LegalNERExtractor
 
-        base = Norma.objects.create(tipo="Lei", numero="123", ano=2020, status="entities_extracted",
-                                    data_publicacao=date(2020, 1, 1))
-        for i, (num, txt) in enumerate([("1º", "Objeto da lei."), ("5º", "Prazo antigo de dez dias."),
-                                        ("9º", "Disposição final antiga.")], start=1):
+        base = Norma.objects.create(
+            tipo="Lei",
+            numero="123",
+            ano=2020,
+            status="entities_extracted",
+            data_publicacao=date(2020, 1, 1),
+        )
+        for i, (num, txt) in enumerate(
+            [
+                ("1º", "Objeto da lei."),
+                ("5º", "Prazo antigo de dez dias."),
+                ("9º", "Disposição final antiga."),
+            ],
+            start=1,
+        ):
             Dispositivo.objects.create(norma=base, tipo="artigo", numero=num, texto=txt, ordem=i)
-        amending = Norma.objects.create(tipo="Lei", numero="200", ano=2021, data_publicacao=date(2021, 5, 1))
+        amending = Norma.objects.create(
+            tipo="Lei", numero="200", ano=2021, data_publicacao=date(2021, 5, 1)
+        )
         extractor = LegalNERExtractor()
         for order, sentence in enumerate(sentences, start=1):
-            fonte = Dispositivo.objects.create(norma=amending, tipo="artigo", numero=f"{order}º", texto=sentence, ordem=order)
+            fonte = Dispositivo.objects.create(
+                norma=amending, tipo="artigo", numero=f"{order}º", texto=sentence, ordem=order
+            )
             for ev in extractor.extract_events(sentence):
                 EventoAlteracao.objects.create(
-                    dispositivo_fonte=fonte, acao=ev["acao"], target_text=ev["target_text"][:500], norma_alvo=base,
-                    extraction_confidence=ev["extraction_confidence"], extraction_method=ev["extraction_method"],
-                    referencia_tipo=ev["referencia_tipo"], referencia_numero=ev["referencia_numero"],
+                    dispositivo_fonte=fonte,
+                    acao=ev["acao"],
+                    target_text=ev["target_text"][:500],
+                    norma_alvo=base,
+                    extraction_confidence=ev["extraction_confidence"],
+                    extraction_method=ev["extraction_method"],
+                    referencia_tipo=ev["referencia_tipo"],
+                    referencia_numero=ev["referencia_numero"],
                 )
         result = consolidate_norma_task(base.id)
         base.refresh_from_db()
         return result, base
 
     def test_passa_a_vigorar_replaces_the_article_text(self):
-        result, base = self._run("O art. 5º da Lei nº 123/2020 passa a vigorar com a seguinte redação: “Art. 5º O prazo é de trinta dias.”")
+        result, base = self._run(
+            "O art. 5º da Lei nº 123/2020 passa a vigorar com a seguinte redação: “Art. 5º O prazo é de trinta dias.”"
+        )
         assert result["events_applied"] == 1 and result["events_unresolved"] == 0
-        assert "O prazo é de trinta dias. (Redação dada pela Lei nº 200/2021)" in base.texto_consolidado
+        assert (
+            "O prazo é de trinta dias. (Redação dada pela Lei nº 200/2021)"
+            in base.texto_consolidado
+        )
         assert "Prazo antigo" not in base.texto_consolidado
-        assert "passa a vigorar" not in base.texto_consolidado       # the instruction is never the text
-        assert "Objeto da lei." in base.texto_consolidado             # neighbours untouched
+        assert "passa a vigorar" not in base.texto_consolidado  # the instruction is never the text
+        assert "Objeto da lei." in base.texto_consolidado  # neighbours untouched
 
     def test_revocation_is_applied_and_neighbours_survive(self):
         result, base = self._run("Fica revogado o art. 9º da Lei nº 123/2020.")
@@ -287,12 +319,14 @@ class TestEndToEndConsolidationFromAmendingSentences:
     def test_revoking_a_paragraph_never_revokes_its_article(self):
         result, base = self._run("Fica revogado o § 2º do art. 5º da Lei nº 123/2020.")
         assert result["events_applied"] == 0 and result["needs_review"] is True
-        assert "Prazo antigo de dez dias." in base.texto_consolidado   # Art. 5º is still in force
+        assert "Prazo antigo de dez dias." in base.texto_consolidado  # Art. 5º is still in force
         assert "EVENTOS NÃO RESOLVIDOS" in base.texto_consolidado
         assert "Revogado" not in base.texto_consolidado.split("EVENTOS NÃO RESOLVIDOS")[0]
 
     def test_this_law_next_to_another_norm_is_reported_not_applied(self):
-        result, base = self._run("Fica revogado o art. 5º da Lei nº 123/2020, e o art. 9º desta Lei.")
+        result, base = self._run(
+            "Fica revogado o art. 5º da Lei nº 123/2020, e o art. 9º desta Lei."
+        )
         # The extractor attributes art. 9º to Lei 123; the guard refuses to trust the sentence.
         assert result["events_applied"] == 0
         assert "Prazo antigo de dez dias." in base.texto_consolidado
@@ -322,40 +356,83 @@ class TestEndToEndPluralAndRangeRevocations:
         from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
         from src.processing.ner_extractor import LegalNERExtractor
 
-        base = Norma.objects.create(tipo="Lei", numero="123", ano=2020, status="entities_extracted",
-                                    data_publicacao=date(2020, 1, 1))
+        base = Norma.objects.create(
+            tipo="Lei",
+            numero="123",
+            ano=2020,
+            status="entities_extracted",
+            data_publicacao=date(2020, 1, 1),
+        )
         for i, num in enumerate(numbers, start=1):
-            Dispositivo.objects.create(norma=base, tipo="artigo", numero=num, texto=f"vigente-{num}", ordem=i)
-        amending = Norma.objects.create(tipo="Lei", numero="200", ano=2021, data_publicacao=date(2021, 5, 1))
-        fonte = Dispositivo.objects.create(norma=amending, tipo="artigo", numero="1º", texto=sentence, ordem=1)
+            Dispositivo.objects.create(
+                norma=base, tipo="artigo", numero=num, texto=f"vigente-{num}", ordem=i
+            )
+        amending = Norma.objects.create(
+            tipo="Lei", numero="200", ano=2021, data_publicacao=date(2021, 5, 1)
+        )
+        fonte = Dispositivo.objects.create(
+            norma=amending, tipo="artigo", numero="1º", texto=sentence, ordem=1
+        )
         for ev in LegalNERExtractor().extract_events(sentence):
             EventoAlteracao.objects.create(
-                dispositivo_fonte=fonte, acao=ev["acao"], target_text=ev["target_text"][:500], norma_alvo=base,
-                extraction_confidence=ev["extraction_confidence"], extraction_method=ev["extraction_method"],
-                referencia_tipo=ev["referencia_tipo"], referencia_numero=ev["referencia_numero"],
+                dispositivo_fonte=fonte,
+                acao=ev["acao"],
+                target_text=ev["target_text"][:500],
+                norma_alvo=base,
+                extraction_confidence=ev["extraction_confidence"],
+                extraction_method=ev["extraction_method"],
+                referencia_tipo=ev["referencia_tipo"],
+                referencia_numero=ev["referencia_numero"],
             )
         result = consolidate_norma_task(base.id)
         base.refresh_from_db()
         return result, base.texto_consolidado
 
-    @pytest.mark.parametrize("sentence,gone,kept", [
-        ("Ficam revogados o art. 5º e os arts. 7º e 8º da Lei nº 123/2020.", {"5º", "7º", "8º"}, {"1º", "5º-A", "6º", "9º", "10"}),
-        ("Revogam-se os arts. 6º, 7º e 9º da Lei nº 123/2020.", {"6º", "7º", "9º"}, {"1º", "5º", "8º", "10"}),
-        ("Ficam revogados o art. 5º, 6º e 7º da Lei nº 123/2020.", {"5º", "6º", "7º"}, {"1º", "8º", "9º"}),
-        ("Fica revogado o art. 5º, bem como os arts. 8º a 9º da Lei nº 123/2020.", {"5º", "8º", "9º"}, {"1º", "6º", "7º", "10"}),
-        ("Ficam revogados os arts. 5º a 7º da Lei nº 123/2020.", {"5º", "5º-A", "6º", "7º"}, {"1º", "8º", "9º", "10"}),
-    ])
+    @pytest.mark.parametrize(
+        "sentence,gone,kept",
+        [
+            (
+                "Ficam revogados o art. 5º e os arts. 7º e 8º da Lei nº 123/2020.",
+                {"5º", "7º", "8º"},
+                {"1º", "5º-A", "6º", "9º", "10"},
+            ),
+            (
+                "Revogam-se os arts. 6º, 7º e 9º da Lei nº 123/2020.",
+                {"6º", "7º", "9º"},
+                {"1º", "5º", "8º", "10"},
+            ),
+            (
+                "Ficam revogados o art. 5º, 6º e 7º da Lei nº 123/2020.",
+                {"5º", "6º", "7º"},
+                {"1º", "8º", "9º"},
+            ),
+            (
+                "Fica revogado o art. 5º, bem como os arts. 8º a 9º da Lei nº 123/2020.",
+                {"5º", "8º", "9º"},
+                {"1º", "6º", "7º", "10"},
+            ),
+            (
+                "Ficam revogados os arts. 5º a 7º da Lei nº 123/2020.",
+                {"5º", "5º-A", "6º", "7º"},
+                {"1º", "8º", "9º", "10"},
+            ),
+        ],
+    )
     def test_every_listed_article_is_revoked_and_no_other(self, sentence, gone, kept):
         result, text = self._run_many(sentence)
         assert result["events_unresolved"] == 0, text
         for n in gone:
-            assert f"vigente-{n}\n" not in text + "\n" and f"vigente-{n} " not in text, f"art. {n} still in force"
+            assert (
+                f"vigente-{n}\n" not in text + "\n" and f"vigente-{n} " not in text
+            ), f"art. {n} still in force"
             assert f"Art. {n} (Revogado pela Lei nº 200/2021)" in text
         for n in kept:
             assert f"vigente-{n}" in text, f"art. {n} wrongly revoked"
 
     def test_numbers_that_are_not_articles_do_not_revoke_anything_extra(self):
-        result, text = self._run_many("Fica revogado o art. 5º e 10 dias de prazo da Lei nº 123/2020.")
+        result, text = self._run_many(
+            "Fica revogado o art. 5º e 10 dias de prazo da Lei nº 123/2020."
+        )
         assert "vigente-10" in text and "vigente-6º" in text
         assert "Art. 5º (Revogado pela Lei nº 200/2021)" in text
         assert "Art. 10 (Revogado" not in text

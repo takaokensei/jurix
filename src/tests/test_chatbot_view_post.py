@@ -5,6 +5,7 @@ views.py had 0% coverage, so a change to how sessions get their slug could not b
 (audit P2.1). These tests exercise the real view against the real database with only the
 LLM stubbed.
 """
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -34,19 +35,28 @@ def fake_llm(settings):
     settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
     rag = MagicMock()
     rag.answer_question.return_value = {
-        "answer": "Resposta.", "sources": [], "confidence": 0.8, "model": "llama3", "context_length": 5,
+        "answer": "Resposta.",
+        "sources": [],
+        "confidence": 0.8,
+        "model": "llama3",
+        "context_length": 5,
     }
     ollama = MagicMock()
     ollama.generate_text.return_value = "Título gerado"
-    with patch("src.apps.legislation.views.RAGService", return_value=rag), \
-         patch("src.llm_engine.ollama_service.OllamaService", return_value=ollama), \
-         patch("src.apps.legislation.views.OllamaService", return_value=ollama, create=True):
+    with (
+        patch("src.apps.legislation.views.RAGService", return_value=rag),
+        patch("src.llm_engine.ollama_service.OllamaService", return_value=ollama),
+        patch("src.apps.legislation.views.OllamaService", return_value=ollama, create=True),
+    ):
         yield rag
 
 
 def post(client, payload):
     import json
-    return client.post(reverse("legislation:chatbot"), data=json.dumps(payload), content_type="application/json")
+
+    return client.post(
+        reverse("legislation:chatbot"), data=json.dumps(payload), content_type="application/json"
+    )
 
 
 def test_first_question_creates_session_with_slug_and_both_messages(client, user):
@@ -57,7 +67,9 @@ def test_first_question_creates_session_with_slug_and_both_messages(client, user
     session = ChatSession.objects.get(user=user)
     assert session.slug and body["session_slug"] == session.slug
     assert body["session_id"] == session.id
-    assert list(ChatMessage.objects.filter(session=session).order_by("id").values_list("role", flat=True)) == ["user", "assistant"]
+    assert list(
+        ChatMessage.objects.filter(session=session).order_by("id").values_list("role", flat=True)
+    ) == ["user", "assistant"]
 
 
 def test_follow_up_reuses_the_session_and_its_slug(client, user):
@@ -88,4 +100,7 @@ def test_server_error_does_not_leak_details(client, fake_llm):
     fake_llm.answer_question.side_effect = RuntimeError("segredo-interno")
     r = post(client, {"question": "Oi?"})
     assert r.status_code == 500
-    assert "segredo-interno" not in r.content.decode() and "traceback" not in r.content.decode().lower()
+    assert (
+        "segredo-interno" not in r.content.decode()
+        and "traceback" not in r.content.decode().lower()
+    )

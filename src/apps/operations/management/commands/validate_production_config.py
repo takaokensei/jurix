@@ -1,4 +1,5 @@
 """Validate the complete production configuration contract."""
+
 from __future__ import annotations
 
 from django.conf import settings
@@ -36,17 +37,11 @@ class Command(BaseCommand):
                 "ALLOWED_HOSTS": settings.ALLOWED_HOSTS,
                 "STORAGE_BACKEND": getattr(settings, "STORAGE_BACKEND", ""),
                 "OLLAMA_MODEL": getattr(settings, "OLLAMA_MODEL", ""),
-                "OLLAMA_EMBEDDING_MODEL": getattr(
-                    settings, "OLLAMA_EMBEDDING_MODEL", ""
-                ),
+                "OLLAMA_EMBEDDING_MODEL": getattr(settings, "OLLAMA_EMBEDDING_MODEL", ""),
                 "SAPL_OCR_MAX_PAGES": getattr(settings, "SAPL_OCR_MAX_PAGES", 0),
                 "LLM_MAX_K": getattr(settings, "LLM_MAX_K", 0),
-                "LLM_MAX_QUESTION_LENGTH": getattr(
-                    settings, "LLM_MAX_QUESTION_LENGTH", 0
-                ),
-                "LLM_RATE_LIMIT_REQUESTS": getattr(
-                    settings, "LLM_RATE_LIMIT_REQUESTS", 0
-                ),
+                "LLM_MAX_QUESTION_LENGTH": getattr(settings, "LLM_MAX_QUESTION_LENGTH", 0),
+                "LLM_RATE_LIMIT_REQUESTS": getattr(settings, "LLM_RATE_LIMIT_REQUESTS", 0),
             }
             for key, value in safe.items():
                 self.stdout.write(f"{key}={value}")

@@ -1,4 +1,5 @@
 """Protect the public Celery task contract while ingestion is being refactored."""
+
 from __future__ import annotations
 
 import ast
@@ -18,7 +19,18 @@ REQUIRED = {
 
 def main() -> int:
     tree = ast.parse(TASKS.read_text(encoding="utf-8"))
-    found = {node.name for node in tree.body if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)}
+    found = set()
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            found.add(node.name)
+        elif isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                found.add(alias.asname or alias.name)
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    found.add(target.id)
+
     missing = sorted(REQUIRED - found)
     if missing:
         print("[FAIL] missing public ingestion tasks:", ", ".join(missing))

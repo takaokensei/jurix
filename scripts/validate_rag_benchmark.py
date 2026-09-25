@@ -1,4 +1,5 @@
 """Validate the integrity of a reviewed RAG benchmark dataset."""
+
 from __future__ import annotations
 
 import argparse
@@ -97,9 +98,7 @@ def validate(manifest_path: Path) -> list[str]:
     expected_hash = str(manifest["dataset_sha256"]).lower()
     actual_hash = sha256(dataset)
     if expected_hash != actual_hash:
-        errors.append(
-            f"dataset sha256 mismatch: expected={expected_hash} actual={actual_hash}"
-        )
+        errors.append(f"dataset sha256 mismatch: expected={expected_hash} actual={actual_hash}")
 
     cases = load_jsonl(dataset)
     min_cases = int(manifest["min_cases"])

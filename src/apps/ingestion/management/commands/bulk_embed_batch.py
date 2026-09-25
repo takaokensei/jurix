@@ -27,113 +27,114 @@ def generate_embeddings_batch(
     if not texts:
         return []
     if any(not text.strip() for text in texts):
-        raise ValueError('Embedding inputs must not be empty')
+        raise ValueError("Embedding inputs must not be empty")
     try:
         response = ollama.session.post(
-            f'{ollama.base_url}/api/embed',
-            json={'model': model, 'input': texts},
+            f"{ollama.base_url}/api/embed",
+            json={"model": model, "input": texts},
             timeout=ollama.timeout,
         )
         if response.status_code == 200:
-            embeddings = response.json().get('embeddings', [])
+            embeddings = response.json().get("embeddings", [])
             return embeddings if len(embeddings) == len(texts) else None
         if response.status_code not in (404, 405):
-            logger.error('Ollama /api/embed returned HTTP %s', response.status_code)
+            logger.error("Ollama /api/embed returned HTTP %s", response.status_code)
             return None
     except Exception:
-        logger.warning('Ollama batch embedding request failed', exc_info=True)
+        logger.warning("Ollama batch embedding request failed", exc_info=True)
         return None
     return [ollama.generate_embedding(text, model=model) for text in texts]
 
 
 class Command(BaseCommand):
     help = (
-        'Generate embeddings for dispositivos using batch processing. '
-        'Optimized version that processes multiple items per API call.'
+        "Generate embeddings for dispositivos using batch processing. "
+        "Optimized version that processes multiple items per API call."
     )
 
     def add_arguments(self, parser):
         """Define command arguments."""
         parser.add_argument(
-            '--batch-size',
+            "--batch-size",
             type=int,
             default=10,
-            help='Number of dispositivos to process per batch (default: 10)'
+            help="Number of dispositivos to process per batch (default: 10)",
         )
 
         parser.add_argument(
-            '--limit',
+            "--limit",
             type=int,
             default=None,
-            help='Maximum number of dispositivos to process (default: all)'
+            help="Maximum number of dispositivos to process (default: all)",
         )
 
         parser.add_argument(
-            '--offset',
+            "--offset",
             type=int,
             default=0,
-            help='Skip this many dispositivos before starting (default: 0)'
+            help="Skip this many dispositivos before starting (default: 0)",
         )
 
         parser.add_argument(
-            '--force',
-            action='store_true',
-            help='Force re-generation of embeddings for dispositivos that already have them'
+            "--force",
+            action="store_true",
+            help="Force re-generation of embeddings for dispositivos that already have them",
         )
 
         parser.add_argument(
-            '--model',
+            "--model",
             type=str,
             default=None,
-            help='Ollama embedding model (default: OLLAMA_EMBEDDING_MODEL)',
+            help="Ollama embedding model (default: OLLAMA_EMBEDDING_MODEL)",
         )
 
         parser.add_argument(
-            '--use-cache',
-            dest='use_cache',
-            action='store_true',
+            "--use-cache",
+            dest="use_cache",
+            action="store_true",
             default=True,
-            help='Use Redis cache for embeddings (default: True)'
+            help="Use Redis cache for embeddings (default: True)",
         )
 
         parser.add_argument(
-            '--no-cache', dest='use_cache', action='store_false',
-            help='Disable Redis embedding cache',
+            "--no-cache",
+            dest="use_cache",
+            action="store_false",
+            help="Disable Redis embedding cache",
         )
 
-        parser.add_argument('--dispositivo-id', type=int, default=None)
-        parser.add_argument('--norma-id', type=int, default=None)
+        parser.add_argument("--dispositivo-id", type=int, default=None)
+        parser.add_argument("--norma-id", type=int, default=None)
         parser.add_argument(
-            '--sync', action='store_true',
-            help='Compatibility flag; this command is synchronous.',
+            "--sync",
+            action="store_true",
+            help="Compatibility flag; this command is synchronous.",
         )
 
     def handle(self, *args, **options):
         """Execute the batch embedding generation."""
-        batch_size: int = options['batch_size']
-        limit: int | None = options.get('limit')
-        offset: int = options['offset']
-        force: bool = options['force']
-        model: str = options['model'] or settings.OLLAMA_EMBEDDING_MODEL
-        use_cache: bool = options['use_cache']
-        dispositivo_id: int | None = options.get('dispositivo_id')
-        norma_id: int | None = options.get('norma_id')
+        batch_size: int = options["batch_size"]
+        limit: int | None = options.get("limit")
+        offset: int = options["offset"]
+        force: bool = options["force"]
+        model: str = options["model"] or settings.OLLAMA_EMBEDDING_MODEL
+        use_cache: bool = options["use_cache"]
+        dispositivo_id: int | None = options.get("dispositivo_id")
+        norma_id: int | None = options.get("norma_id")
 
         if batch_size <= 0:
-            raise CommandError('--batch-size must be greater than zero')
+            raise CommandError("--batch-size must be greater than zero")
 
-        self.stdout.write(self.style.NOTICE('=' * 80))
-        self.stdout.write(self.style.NOTICE('Batch Embedding Generation - Optimized'))
-        self.stdout.write(self.style.NOTICE('=' * 80))
+        self.stdout.write(self.style.NOTICE("=" * 80))
+        self.stdout.write(self.style.NOTICE("Batch Embedding Generation - Optimized"))
+        self.stdout.write(self.style.NOTICE("=" * 80))
 
         # Build queryset
         if dispositivo_id is not None:
             queryset = Dispositivo.objects.filter(id=dispositivo_id)
         elif force:
             queryset = Dispositivo.objects.all()
-            self.stdout.write(
-                self.style.WARNING('\n🔄 Force mode: Re-generating all embeddings')
-            )
+            self.stdout.write(self.style.WARNING("\n🔄 Force mode: Re-generating all embeddings"))
         else:
             queryset = Dispositivo.objects.filter(
                 Q(embedding__isnull=True) | ~Q(embedding_model=model)
@@ -143,7 +144,7 @@ class Command(BaseCommand):
             queryset = queryset.filter(norma_id=norma_id)
 
         # Apply ordering, offset, and limit
-        queryset = queryset.select_related('norma', 'dispositivo_pai').order_by('id')[offset:]
+        queryset = queryset.select_related("norma", "dispositivo_pai").order_by("id")[offset:]
         if limit:
             queryset = queryset[:limit]
 
@@ -152,19 +153,17 @@ class Command(BaseCommand):
         if total == 0:
             self.stdout.write(
                 self.style.WARNING(
-                    '\n⚠️  No dispositivos found matching criteria. '
-                    'Try --force flag to regenerate embeddings.'
+                    "\n⚠️  No dispositivos found matching criteria. "
+                    "Try --force flag to regenerate embeddings."
                 )
             )
             return
 
-        self.stdout.write(
-            self.style.NOTICE(f'\n📊 Found {total} dispositivo(s) to process')
-        )
-        self.stdout.write(self.style.NOTICE(f'   Batch size: {batch_size}'))
-        self.stdout.write(self.style.NOTICE(f'   Model: {model}'))
+        self.stdout.write(self.style.NOTICE(f"\n📊 Found {total} dispositivo(s) to process"))
+        self.stdout.write(self.style.NOTICE(f"   Batch size: {batch_size}"))
+        self.stdout.write(self.style.NOTICE(f"   Model: {model}"))
         self.stdout.write(self.style.NOTICE(f'   Cache: {"Enabled" if use_cache else "Disabled"}'))
-        self.stdout.write(self.style.NOTICE('-' * 80))
+        self.stdout.write(self.style.NOTICE("-" * 80))
 
         # Initialize services
         ollama = OllamaService(model=model)
@@ -172,7 +171,7 @@ class Command(BaseCommand):
 
         # Check Ollama health
         if not ollama.check_health():
-            raise CommandError('Ollama service is not accessible at configured URL')
+            raise CommandError("Ollama service is not accessible at configured URL")
 
         # Process in batches
         success_count = 0
@@ -181,11 +180,13 @@ class Command(BaseCommand):
         start_time = time.time()
 
         dispositivos = list(queryset)
-        batches = [dispositivos[i:i + batch_size] for i in range(0, len(dispositivos), batch_size)]
+        batches = [
+            dispositivos[i : i + batch_size] for i in range(0, len(dispositivos), batch_size)
+        ]
 
         for batch_idx, batch in enumerate(batches, 1):
             self.stdout.write(
-                f'\n[Batch {batch_idx}/{len(batches)}] Processing {len(batch)} dispositivos...'
+                f"\n[Batch {batch_idx}/{len(batches)}] Processing {len(batch)} dispositivos..."
             )
 
             batch_start = time.time()
@@ -217,15 +218,16 @@ class Command(BaseCommand):
                     or any(e is None for e in generated)
                 ):
                     failure_count += len(pending)
-                    logger.error('Unexpected batch embedding result for %s items', len(pending))
+                    logger.error("Unexpected batch embedding result for %s items", len(pending))
                 else:
                     for (disp, text), embedding in zip(pending, generated, strict=True):
                         if len(embedding) != 768:
                             failure_count += 1
                             logger.error(
-                                'Unexpected embedding dimension for Dispositivo ID=%s: '
-                                'expected=768 got=%s',
-                                disp.id, len(embedding),
+                                "Unexpected embedding dimension for Dispositivo ID=%s: "
+                                "expected=768 got=%s",
+                                disp.id,
+                                len(embedding),
                             )
                             continue
                         embeddings_by_id[disp.id] = embedding
@@ -234,8 +236,9 @@ class Command(BaseCommand):
                                 cache.set_embedding(text, model, embedding)
                             except Exception:
                                 logger.warning(
-                                    'Embedding cache write failed for Dispositivo ID=%s',
-                                    disp.id, exc_info=True,
+                                    "Embedding cache write failed for Dispositivo ID=%s",
+                                    disp.id,
+                                    exc_info=True,
                                 )
 
             to_update = []
@@ -251,7 +254,7 @@ class Command(BaseCommand):
             if to_update:
                 Dispositivo.objects.bulk_update(
                     to_update,
-                    ['embedding', 'embedding_model', 'embedding_generated_at', 'updated_at'],
+                    ["embedding", "embedding_model", "embedding_generated_at", "updated_at"],
                     batch_size=batch_size,
                 )
                 success_count += len(to_update)
@@ -259,28 +262,28 @@ class Command(BaseCommand):
             batch_time = time.time() - batch_start
             self.stdout.write(
                 self.style.SUCCESS(
-                    f'  ✓ Batch completed in {batch_time:.2f}s '
-                    f'({len(batch)/batch_time:.1f} items/sec)'
+                    f"  ✓ Batch completed in {batch_time:.2f}s "
+                    f"({len(batch)/batch_time:.1f} items/sec)"
                 )
             )
 
         # Summary
         total_time = time.time() - start_time
 
-        self.stdout.write(self.style.NOTICE('\n' + '=' * 80))
-        self.stdout.write(self.style.NOTICE('SUMMARY'))
-        self.stdout.write(self.style.NOTICE('=' * 80))
-        self.stdout.write(f'Total processed: {total}')
-        self.stdout.write(self.style.SUCCESS(f'✓ Success: {success_count}'))
+        self.stdout.write(self.style.NOTICE("\n" + "=" * 80))
+        self.stdout.write(self.style.NOTICE("SUMMARY"))
+        self.stdout.write(self.style.NOTICE("=" * 80))
+        self.stdout.write(f"Total processed: {total}")
+        self.stdout.write(self.style.SUCCESS(f"✓ Success: {success_count}"))
 
         if failure_count > 0:
-            self.stdout.write(self.style.ERROR(f'✗ Failures: {failure_count}'))
+            self.stdout.write(self.style.ERROR(f"✗ Failures: {failure_count}"))
 
         if use_cache:
-            self.stdout.write(self.style.WARNING(f'🔥 Cache hits: {cache_hits}'))
+            self.stdout.write(self.style.WARNING(f"🔥 Cache hits: {cache_hits}"))
             cache_hit_rate = (cache_hits / total * 100) if total > 0 else 0
-            self.stdout.write(f'   Cache hit rate: {cache_hit_rate:.1f}%')
+            self.stdout.write(f"   Cache hit rate: {cache_hit_rate:.1f}%")
 
-        self.stdout.write(f'\n⏱️  Total time: {total_time:.2f}s')
-        self.stdout.write(f'   Average: {total/total_time:.1f} items/sec')
-        self.stdout.write(self.style.NOTICE('=' * 80))
+        self.stdout.write(f"\n⏱️  Total time: {total_time:.2f}s")
+        self.stdout.write(f"   Average: {total/total_time:.1f} items/sec")
+        self.stdout.write(self.style.NOTICE("=" * 80))

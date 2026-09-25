@@ -28,34 +28,36 @@ class TestAPIViews:
 
     def test_semantic_search_requires_query(self, factory):
         """Verify semantic search returns 400 when query parameter is missing."""
-        request = factory.get('/api/v1/search/semantic/')
+        request = factory.get("/api/v1/search/semantic/")
         response = semantic_search_api(request)
 
         assert response.status_code == 400
         data = json.loads(response.content)
-        assert data['success'] is False
-        assert 'Query parameter is required' in data['error']
+        assert data["success"] is False
+        assert "Query parameter is required" in data["error"]
 
     @override_settings(DEBUG=False)
-    @patch('src.apps.legislation.api_views.RAGService')
+    @patch("src.apps.legislation.api_views.RAGService")
     def test_semantic_search_sanitizes_500_error(self, mock_rag_class, factory):
         """Verify internal exception details are not leaked in 500 responses when DEBUG=False."""
         mock_rag = Mock()
-        mock_rag.semantic_search.side_effect = RuntimeError("FATAL: Secret database connection password leaked!")
+        mock_rag.semantic_search.side_effect = RuntimeError(
+            "FATAL: Secret database connection password leaked!"
+        )
         mock_rag_class.return_value = mock_rag
 
-        request = factory.get('/api/v1/search/semantic/?query=zoneamento')
+        request = factory.get("/api/v1/search/semantic/?query=zoneamento")
         response = semantic_search_api(request)
 
         assert response.status_code == 500
         data = json.loads(response.content)
-        assert data['success'] is False
-        assert "FATAL: Secret" not in data['error']
-        assert "Ocorreu um erro interno" in data['error']
+        assert data["success"] is False
+        assert "FATAL: Secret" not in data["error"]
+        assert "Ocorreu um erro interno" in data["error"]
 
-    @patch('src.apps.legislation.api_views.ChatMessage.objects.filter')
-    @patch('src.apps.legislation.api_views.ChatSession.objects.get')
-    @patch('src.apps.legislation.api_views.RAGService')
+    @patch("src.apps.legislation.api_views.ChatMessage.objects.filter")
+    @patch("src.apps.legislation.api_views.ChatSession.objects.get")
+    @patch("src.apps.legislation.api_views.RAGService")
     def test_regenerate_does_not_delete_on_generation_failure(
         self, mock_rag_class, mock_session_get, mock_msg_filter, factory
     ):
@@ -74,9 +76,9 @@ class TestAPIViews:
 
         def filter_side_effect(session_id, role):
             mock_qs = Mock()
-            if role == 'user':
+            if role == "user":
                 mock_qs.order_by.return_value.first.return_value = last_user_msg
-            elif role == 'assistant':
+            elif role == "assistant":
                 mock_qs.order_by.return_value.first.return_value = last_assistant_msg
             return mock_qs
 
@@ -88,9 +90,9 @@ class TestAPIViews:
         mock_rag_class.return_value = mock_rag
 
         request = factory.post(
-            '/api/v1/chat/sessions/10/regenerate/',
+            "/api/v1/chat/sessions/10/regenerate/",
             data=json.dumps({}),
-            content_type='application/json'
+            content_type="application/json",
         )
         request.user = user
 

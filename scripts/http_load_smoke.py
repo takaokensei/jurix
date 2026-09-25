@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Dependency-free concurrent HTTP smoke/load probe."""
+
 from __future__ import annotations
 
 import argparse

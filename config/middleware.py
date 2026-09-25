@@ -76,8 +76,8 @@ def _build_content_security_policy() -> str:
     if settings.CSP_ALLOW_INLINE_STYLES:
         style_sources.append("'unsafe-inline'")
     if settings.CSP_ALLOW_GOOGLE_FONTS:
-        style_sources.append('https://fonts.googleapis.com')
-        font_sources.append('https://fonts.gstatic.com')
+        style_sources.append("https://fonts.googleapis.com")
+        font_sources.append("https://fonts.gstatic.com")
     return (
         "default-src 'self'; "
         "script-src 'self'; "
@@ -106,11 +106,13 @@ class ContentSecurityPolicyMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        content_type = response.headers.get('Content-Type', '')
-        if content_type.lower().startswith('text/html') and not request.path.startswith('/admin/'):
-            response['Content-Security-Policy'] = _build_content_security_policy()
-        response['X-Content-Type-Options'] = 'nosniff'
-        response['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-        response['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
-        response['Cross-Origin-Opener-Policy'] = 'same-origin'
+        content_type = response.headers.get("Content-Type", "")
+        if content_type.lower().startswith("text/html") and not request.path.startswith("/admin/"):
+            response["Content-Security-Policy"] = _build_content_security_policy()
+        response["X-Content-Type-Options"] = "nosniff"
+        response["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+        )
+        response["Cross-Origin-Opener-Policy"] = "same-origin"
         return response

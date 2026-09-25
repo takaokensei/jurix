@@ -1,4 +1,5 @@
 """Fail when protected RAG quality metrics regress beyond a tolerance."""
+
 from __future__ import annotations
 
 import argparse
@@ -36,14 +37,10 @@ def compare(
             raise KeyError(f"Métrica ausente: {metric}")
         drop = before - after
         print(
-            f"{metric}: baseline={before:.6f} "
-            f"current={after:.6f} delta={after - before:+.6f}"
+            f"{metric}: baseline={before:.6f} " f"current={after:.6f} delta={after - before:+.6f}"
         )
         if drop > max_regression:
-            failures.append(
-                f"{metric}: regression={drop:.6f} "
-                f"> allowed={max_regression:.6f}"
-            )
+            failures.append(f"{metric}: regression={drop:.6f} " f"> allowed={max_regression:.6f}")
     return failures
 
 

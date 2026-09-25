@@ -34,25 +34,18 @@ class SaplAPIClient:
     """
 
     DEFAULT_BASE_URL = getattr(
-        settings,
-        'SAPL_BASE_URL',
-        os.getenv('SAPL_BASE_URL', "https://sapl.natal.rn.leg.br/api")
+        settings, "SAPL_BASE_URL", os.getenv("SAPL_BASE_URL", "https://sapl.natal.rn.leg.br/api")
     )
     BASE_URL = DEFAULT_BASE_URL
     NORMA_ENDPOINT = "/norma/normajuridica/"
 
     USER_AGENTS = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
     ]
 
-    def __init__(
-        self,
-        base_url: str | None = None,
-        timeout: int = 30,
-        max_retries: int = 3
-    ):
+    def __init__(self, base_url: str | None = None, timeout: int = 30, max_retries: int = 3):
         """
         Inicializa o cliente SAPL.
 
@@ -61,8 +54,8 @@ class SaplAPIClient:
             timeout: Timeout em segundos para requisições HTTP
             max_retries: Número máximo de tentativas em caso de falha
         """
-        resolved_url = base_url or getattr(settings, 'SAPL_BASE_URL', self.BASE_URL)
-        self.base_url = str(resolved_url).rstrip('/')
+        resolved_url = base_url or getattr(settings, "SAPL_BASE_URL", self.BASE_URL)
+        self.base_url = str(resolved_url).rstrip("/")
         self.timeout = timeout
         self.session = self._create_session(max_retries)
         self._request_count = 0
@@ -88,7 +81,7 @@ class SaplAPIClient:
             total=max_retries,
             backoff_factor=1,  # 1s, 2s, 4s, 8s...
             status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["GET", "POST"]
+            allowed_methods=["GET", "POST"],
         )
 
         adapter = HTTPAdapter(max_retries=retry_strategy)
@@ -108,23 +101,19 @@ class SaplAPIClient:
         self._request_count += 1
 
         return {
-            'User-Agent': user_agent,
-            'Accept': 'application/json',
-            'Accept-Language': 'pt-BR,pt;q=0.9',
+            "User-Agent": user_agent,
+            "Accept": "application/json",
+            "Accept-Language": "pt-BR,pt;q=0.9",
         }
 
     def get_public_norma_url(self, sapl_id: int | str) -> str:
         """Return the current public SAPL URL, never the API route."""
-        base = self.base_url.rstrip('/')
-        if base.endswith('/api'):
+        base = self.base_url.rstrip("/")
+        if base.endswith("/api"):
             base = base[:-4]
         return f"{base}/norma/{int(sapl_id)}/"
 
-    def _make_request(
-        self,
-        endpoint: str,
-        params: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def _make_request(self, endpoint: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Executa uma requisição GET na API SAPL.
 
@@ -144,12 +133,7 @@ class SaplAPIClient:
         logger.debug(f"Requisitando: {url} com params={params}")
 
         try:
-            response = self.session.get(
-                url,
-                headers=headers,
-                params=params,
-                timeout=self.timeout
-            )
+            response = self.session.get(url, headers=headers, params=params, timeout=self.timeout)
             response.raise_for_status()
 
             data = response.json()
@@ -171,11 +155,7 @@ class SaplAPIClient:
             raise
 
     def fetch_normas(
-        self,
-        limit: int = 50,
-        offset: int = 0,
-        tipo: str | None = None,
-        ano: int | None = None
+        self, limit: int = 50, offset: int = 0, tipo: str | None = None, ano: int | None = None
     ) -> list[dict[str, Any]]:
         """
         Busca normas jurídicas na API SAPL.
@@ -201,27 +181,26 @@ class SaplAPIClient:
             requests.RequestException: Em caso de falha na API
         """
         logger.info(
-            f"Iniciando fetch de normas: limit={limit}, offset={offset}, "
-            f"tipo={tipo}, ano={ano}"
+            f"Iniciando fetch de normas: limit={limit}, offset={offset}, " f"tipo={tipo}, ano={ano}"
         )
 
         params = {
-            'limit': limit,
-            'offset': offset,
+            "limit": limit,
+            "offset": offset,
         }
 
         if tipo:
-            params['tipo'] = tipo
+            params["tipo"] = tipo
         if ano:
-            params['ano'] = ano
+            params["ano"] = ano
 
         try:
             start_time = time.time()
             data = self._make_request(self.NORMA_ENDPOINT, params)
             elapsed = time.time() - start_time
 
-            results = data.get('results', [])
-            total_count = data.get('count', 0)
+            results = data.get("results", [])
+            total_count = data.get("count", 0)
 
             logger.info(
                 f"Fetch concluído: {len(results)} normas recuperadas de {total_count} "
@@ -265,7 +244,7 @@ class SaplAPIClient:
         ano_inicio: int,
         ano_fim: int,
         tipo: str | None = None,
-        max_normas_por_ano: int | None = None
+        max_normas_por_ano: int | None = None,
     ) -> list[dict[str, Any]]:
         """
         Busca normas por intervalo de anos (workaround para limitação de paginação da API).
@@ -296,16 +275,13 @@ class SaplAPIClient:
 
                 # Buscar todas as normas deste ano
                 normas_do_ano = self.fetch_all_normas(
-                    max_normas=max_normas_por_ano,
-                    tipo=tipo,
-                    ano=ano,
-                    page_size=50
+                    max_normas=max_normas_por_ano, tipo=tipo, ano=ano, page_size=50
                 )
 
                 # Remover duplicatas por sapl_id
                 normas_unicas = {}
                 for norma in normas_do_ano:
-                    sapl_id = norma.get('id')
+                    sapl_id = norma.get("id")
                     if sapl_id and sapl_id not in normas_unicas:
                         normas_unicas[sapl_id] = norma
 
@@ -327,7 +303,7 @@ class SaplAPIClient:
         # Remover duplicatas finais (caso alguma norma apareça em múltiplos anos)
         normas_finais_unicas = {}
         for norma in all_normas:
-            sapl_id = norma.get('id')
+            sapl_id = norma.get("id")
             if sapl_id and sapl_id not in normas_finais_unicas:
                 normas_finais_unicas[sapl_id] = norma
 
@@ -345,7 +321,7 @@ class SaplAPIClient:
         max_normas: int | None = None,
         tipo: str | None = None,
         ano: int | None = None,
-        page_size: int = 50
+        page_size: int = 50,
     ) -> list[dict[str, Any]]:
         """
         Busca todas as normas com paginação automática.
@@ -373,12 +349,7 @@ class SaplAPIClient:
 
         while True:
             try:
-                normas = self.fetch_normas(
-                    limit=page_size,
-                    offset=offset,
-                    tipo=tipo,
-                    ano=ano
-                )
+                normas = self.fetch_normas(limit=page_size, offset=offset, tipo=tipo, ano=ano)
 
                 if not normas:
                     logger.info("Nenhuma norma adicional encontrada. Fetch completo.")
@@ -387,7 +358,7 @@ class SaplAPIClient:
                 # Filtrar duplicatas
                 novas_normas = []
                 for norma in normas:
-                    sapl_id = norma.get('id')
+                    sapl_id = norma.get("id")
                     if sapl_id and sapl_id not in seen_ids:
                         seen_ids.add(sapl_id)
                         novas_normas.append(norma)
@@ -429,27 +400,22 @@ class SaplAPIClient:
         """
         logger.info(f"Baixando PDF: {pdf_url} -> {output_path}")
 
-        max_bytes = int(getattr(settings, 'SAPL_DOWNLOAD_MAX_BYTES', 80 * 1024 * 1024))
-        timeout = int(getattr(settings, 'SAPL_DOWNLOAD_TIMEOUT_SECONDS', self.timeout))
+        max_bytes = int(getattr(settings, "SAPL_DOWNLOAD_MAX_BYTES", 80 * 1024 * 1024))
+        timeout = int(getattr(settings, "SAPL_DOWNLOAD_TIMEOUT_SECONDS", self.timeout))
         target = os.path.abspath(output_path)
         os.makedirs(os.path.dirname(target), exist_ok=True)
-        temporary = target + '.part'
+        temporary = target + ".part"
         try:
             headers = self._get_headers()
-            response = self.session.get(
-                pdf_url,
-                headers=headers,
-                timeout=timeout,
-                stream=True
-            )
+            response = self.session.get(pdf_url, headers=headers, timeout=timeout, stream=True)
             response.raise_for_status()
-            content_length = response.headers.get('Content-Length')
+            content_length = response.headers.get("Content-Length")
             if content_length and int(content_length) > max_bytes:
                 logger.warning("PDF exceeds configured download limit: %s bytes", content_length)
                 return False
 
             total = 0
-            with open(temporary, 'wb') as f:
+            with open(temporary, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     if not chunk:
                         continue
@@ -478,4 +444,3 @@ class SaplAPIClient:
         """Fecha a sessão HTTP."""
         self.session.close()
         logger.info("Sessão HTTP fechada")
-

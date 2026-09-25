@@ -97,11 +97,7 @@ RESPOSTA:"""
         self.cache = get_cache_service() if use_cache else None
 
     def semantic_search(
-        self,
-        query_text: str,
-        k: int = 10,
-        norma_id: int | None = None,
-        min_similarity: float = 0.0
+        self, query_text: str, k: int = 10, norma_id: int | None = None, min_similarity: float = 0.0
     ) -> list[dict[str, Any]]:
         """
         Perform semantic search on Dispositivos using pgvector similarity.
@@ -130,13 +126,21 @@ RESPOSTA:"""
 
         logger.info(f"Performing semantic search for query: '{query_text[:100]}...'")
 
-        if getattr(connection, 'vendor', '') == 'sqlite':
+        if getattr(connection, "vendor", "") == "sqlite":
             from src.processing.adaptive_retrieval import AdaptiveRetriever, RetrievalOptions
+
             rows = AdaptiveRetriever(self)._lexical(
-                query_text, max(1, k), RetrievalOptions(norma_status='all', source_scope='all'), norma_id=norma_id
+                query_text,
+                max(1, k),
+                RetrievalOptions(norma_status="all", source_scope="all"),
+                norma_id=norma_id,
             )
-            return [row for row in rows if row['similarity_score'] >= min_similarity
-                    and (norma_id is None or row['dispositivo'].norma_id == norma_id)][:k]
+            return [
+                row
+                for row in rows
+                if row["similarity_score"] >= min_similarity
+                and (norma_id is None or row["dispositivo"].norma_id == norma_id)
+            ][:k]
 
         # Step 1: Try to get cached embedding
         query_embedding = None
@@ -157,10 +161,12 @@ RESPOSTA:"""
 
         logger.debug(f"Query embedding dimension: {len(query_embedding)}")
         if len(query_embedding) != 768:
-            logger.error("Embedding model %s returned dimension %s; expected 768", self.model, len(query_embedding))
+            logger.error(
+                "Embedding model %s returned dimension %s; expected 768",
+                self.model,
+                len(query_embedding),
+            )
             return []
-
-
 
         # Using <=> operator for cosine distance (pgvector vector_cosine_ops)
         # Lower distance = more similar
@@ -207,25 +213,24 @@ RESPOSTA:"""
             with connection.cursor() as cursor:
                 cursor.execute(sql_query, params)
                 columns = [col[0] for col in cursor.description]
-                raw_results = [
-                    dict(zip(columns, row, strict=False))
-                    for row in cursor.fetchall()
-                ]
+                raw_results = [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
 
             logger.info(f"Found {len(raw_results)} results for semantic search")
 
             # Step 3: Enrich results with Dispositivo instances
             results = []
-            dispositivo_ids = [r['id'] for r in raw_results]
+            dispositivo_ids = [r["id"] for r in raw_results]
 
             # Fetch all dispositivos in one query (optimization)
             dispositivos_map = {
                 d.id: d
-                for d in Dispositivo.objects.filter(id__in=dispositivo_ids).select_related('norma', 'dispositivo_pai')
+                for d in Dispositivo.objects.filter(id__in=dispositivo_ids).select_related(
+                    "norma", "dispositivo_pai"
+                )
             }
 
             for raw_result in raw_results:
-                dispositivo_id = raw_result['id']
+                dispositivo_id = raw_result["id"]
                 dispositivo = dispositivos_map.get(dispositivo_id)
 
                 if not dispositivo:
@@ -233,28 +238,34 @@ RESPOSTA:"""
 
                 # Build context
                 context = {
-                    'norma': {
-                        'id': dispositivo.norma.id,
-                        'tipo': dispositivo.norma.tipo,
-                        'numero': dispositivo.norma.numero,
-                        'ano': dispositivo.norma.ano,
-                        'ementa': dispositivo.norma.ementa[:200] if dispositivo.norma.ementa else None,
+                    "norma": {
+                        "id": dispositivo.norma.id,
+                        "tipo": dispositivo.norma.tipo,
+                        "numero": dispositivo.norma.numero,
+                        "ano": dispositivo.norma.ano,
+                        "ementa": dispositivo.norma.ementa[:200]
+                        if dispositivo.norma.ementa
+                        else None,
                     },
-                    'hierarchy': dispositivo.get_caminho_completo(),
-                    'parent': str(dispositivo.dispositivo_pai) if dispositivo.dispositivo_pai else None,
+                    "hierarchy": dispositivo.get_caminho_completo(),
+                    "parent": str(dispositivo.dispositivo_pai)
+                    if dispositivo.dispositivo_pai
+                    else None,
                 }
 
                 # Cosine similarity mathematically defined as 1 - distance, bounded to [0.0, 1.0]
-                raw_distance = float(raw_result['distance'])
+                raw_distance = float(raw_result["distance"])
                 normalized_score = max(0.0, min(1.0, 1.0 - raw_distance))
 
-                results.append({
-                    'dispositivo': dispositivo,
-                    'similarity_score': normalized_score,
-                    'distance': raw_distance,
-                    'context': context,
-                    'embedding_model': raw_result['embedding_model'],
-                })
+                results.append(
+                    {
+                        "dispositivo": dispositivo,
+                        "similarity_score": normalized_score,
+                        "distance": raw_distance,
+                        "context": context,
+                        "embedding_model": raw_result["embedding_model"],
+                    }
+                )
 
             return results
 
@@ -263,10 +274,7 @@ RESPOSTA:"""
             return []
 
     def get_relevant_context(
-        self,
-        query_text: str,
-        k: int = 5,
-        max_tokens: int = 2000
+        self, query_text: str, k: int = 5, max_tokens: int = 2000
     ) -> tuple[str, list[dict[str, Any]]]:
         """
         Retrieve relevant context for RAG prompting.
@@ -283,7 +291,8 @@ RESPOSTA:"""
             Tuple of (formatted_context_string, results_list)
         """
         from src.observability.tracing import span
-        with span('rag.retrieval', {'rag.k': k, 'rag.query_length': len(query_text)}):
+
+        with span("rag.retrieval", {"rag.k": k, "rag.query_length": len(query_text)}):
             results = self.semantic_search(query_text, k=k)
 
         if not results:
@@ -293,11 +302,13 @@ RESPOSTA:"""
         context_parts = []
         used_results = []
         total_chars = 0
-        max_chars = min(max_tokens * 4, int(getattr(settings, 'RAG_MAX_CONTEXT_CHARS', max_tokens * 4)))
+        max_chars = min(
+            max_tokens * 4, int(getattr(settings, "RAG_MAX_CONTEXT_CHARS", max_tokens * 4))
+        )
 
         for idx, result in enumerate(results, 1):
-            disp = result['dispositivo']
-            score = result['similarity_score']
+            disp = result["dispositivo"]
+            score = result["similarity_score"]
 
             # Format: [Score] Norma | Dispositivo: Texto
             part = (
@@ -328,7 +339,7 @@ RESPOSTA:"""
         k: int = 5,
         model: str | None = None,
         force_refresh: bool = False,
-        retrieval_fingerprint: str = ""
+        retrieval_fingerprint: str = "",
     ) -> dict[str, Any]:
         """
         Answer a legal question using RAG (Retrieval + Generation).
@@ -358,36 +369,44 @@ RESPOSTA:"""
         # Step 0: Check cache if enabled and not forced to refresh
         if not force_refresh and self.use_cache and self.cache:
             cached_result = self.cache.get_answer(
-                clean_question, k=k, model=model, corpus_version=corpus_version,
-                retrieval_fingerprint=retrieval_fingerprint
+                clean_question,
+                k=k,
+                model=model,
+                corpus_version=corpus_version,
+                retrieval_fingerprint=retrieval_fingerprint,
             )
             if cached_result:
                 logger.info(f"Cache HIT for RAG answer: '{clean_question[:50]}...'")
                 RAG_CACHE_HITS.inc()
-                cached_sources = cached_result.get('sources', [])
+                cached_sources = cached_result.get("sources", [])
                 disp_ids = [
-                    s['dispositivo_id'] for s in cached_sources
-                    if isinstance(s, dict) and s.get('dispositivo_id')
+                    s["dispositivo_id"]
+                    for s in cached_sources
+                    if isinstance(s, dict) and s.get("dispositivo_id")
                 ]
                 if disp_ids:
                     disps = {
-                        d.id: d for d in Dispositivo.objects.filter(id__in=disp_ids).select_related('norma', 'dispositivo_pai')
+                        d.id: d
+                        for d in Dispositivo.objects.filter(id__in=disp_ids).select_related(
+                            "norma", "dispositivo_pai"
+                        )
                     }
                     for s in cached_sources:
-                        did = s.get('dispositivo_id')
+                        did = s.get("dispositivo_id")
                         if did in disps:
-                            s['dispositivo'] = disps[did]
-                cached_result['sources'] = cached_sources
-                cached_result['source_relevance'] = float(
+                            s["dispositivo"] = disps[did]
+                cached_result["sources"] = cached_sources
+                cached_result["source_relevance"] = float(
                     cached_result.get(
-                        'source_relevance',
+                        "source_relevance",
                         self._source_relevance(cached_sources),
-                    ) or 0.0
+                    )
+                    or 0.0
                 )
-                cached_result['confidence'] = None
-                cached_result['confidence_calibrated'] = False
-                cached_result.setdefault('grounding', {})
-                cached_result['cached'] = True
+                cached_result["confidence"] = None
+                cached_result["confidence_calibrated"] = False
+                cached_result.setdefault("grounding", {})
+                cached_result["cached"] = True
                 return cached_result
             RAG_CACHE_MISSES.inc()
 
@@ -417,26 +436,29 @@ RESPOSTA:"""
 
         # Step 3: Generate answer using LLM
         from src.observability.tracing import span
-        with span('rag.generation', {'llm.model': model, 'rag.context_sources': len(results)}):
+
+        with span("rag.generation", {"llm.model": model, "rag.context_sources": len(results)}):
             answer = self.ollama.generate_text(
                 prompt=prompt,
                 model=model,
                 temperature=0.3,  # Lower temperature for factual answers
-                max_tokens=2048  # Increased for longer, complete answers
+                max_tokens=2048,  # Increased for longer, complete answers
             )
 
         if not answer:
             return {
-                'answer': "Erro ao gerar resposta. Por favor, tente novamente.",
-                'sources': results,
-                'confidence': 0.0,
-                'cached': False
+                "answer": "Erro ao gerar resposta. Por favor, tente novamente.",
+                "sources": results,
+                "confidence": 0.0,
+                "cached": False,
             }
 
         # Step 4: Post-process markdown to fix formatting issues
         answer = self._fix_markdown_formatting(answer).strip()
-        if len(answer) > int(getattr(settings, 'RAG_MAX_ANSWER_CHARS', 24000)):
-            logger.warning('RAG answer exceeds the configured output limit; strict assurance will reject it')
+        if len(answer) > int(getattr(settings, "RAG_MAX_ANSWER_CHARS", 24000)):
+            logger.warning(
+                "RAG answer exceeds the configured output limit; strict assurance will reject it"
+            )
 
         from src.observability.metrics import (
             RAG_GROUNDING_FAILURES,
@@ -475,14 +497,17 @@ RESPOSTA:"""
             grounding=grounding_report,
             model=model,
         )
-        result_payload['context_length'] = len(context)
+        result_payload["context_length"] = len(context)
 
         # Only grounded answers are eligible for the durable answer cache.
         if grounded and self.use_cache and self.cache:
             self.cache.set_answer(
-                clean_question, k=k, model=model, answer_data=result_payload,
+                clean_question,
+                k=k,
+                model=model,
+                answer_data=result_payload,
                 corpus_version=corpus_version,
-                retrieval_fingerprint=retrieval_fingerprint
+                retrieval_fingerprint=retrieval_fingerprint,
             )
 
         return result_payload
@@ -493,26 +518,25 @@ RESPOSTA:"""
         from src.processing.strict_grounding import evaluate_strict_grounding
 
         from .grounding_service import evaluate_grounding
+
         baseline = evaluate_grounding(answer, results)
-        if not getattr(settings, 'RAG_STRICT_GROUNDING', True):
+        if not getattr(settings, "RAG_STRICT_GROUNDING", True):
             return baseline
         strict = evaluate_strict_grounding(answer, results)
         from src.processing.rag_policy import decide_grounding, response_metadata
+
         policy = decide_grounding(strict, True)
-        strict['grounded'] = policy.accepted
-        strict['policy'] = response_metadata(policy)
-        strict['baseline_score'] = baseline.get('score', 0.0)
-        strict['baseline_grounded'] = baseline.get('grounded', False)
+        strict["grounded"] = policy.accepted
+        strict["policy"] = response_metadata(policy)
+        strict["baseline_score"] = baseline.get("score", 0.0)
+        strict["baseline_grounded"] = baseline.get("grounded", False)
         return strict
 
     @staticmethod
     def _source_relevance(results: list[dict[str, Any]]) -> float:
         if not results:
             return 0.0
-        scores = [
-            float(item.get("similarity_score", 0.0) or 0.0)
-            for item in results
-        ]
+        scores = [float(item.get("similarity_score", 0.0) or 0.0) for item in results]
         return round(sum(scores) / len(scores), 4)
 
     @staticmethod
@@ -546,11 +570,7 @@ RESPOSTA:"""
         )
 
     def stream_answer_question(
-        self,
-        question: str,
-        k: int = 5,
-        model: str | None = None,
-        retrieval_fingerprint: str = ""
+        self, question: str, k: int = 5, model: str | None = None, retrieval_fingerprint: str = ""
     ) -> Generator[dict[str, Any], None, None]:
         """
         Stream answer generation for legal question using RAG.
@@ -568,47 +588,55 @@ RESPOSTA:"""
         # Check cache first
         if self.use_cache and self.cache:
             cached_result = self.cache.get_answer(
-                clean_question, k=k, model=model, corpus_version=corpus_version,
-                retrieval_fingerprint=retrieval_fingerprint
+                clean_question,
+                k=k,
+                model=model,
+                corpus_version=corpus_version,
+                retrieval_fingerprint=retrieval_fingerprint,
             )
             if cached_result:
                 RAG_CACHE_HITS.inc()
-                cached_sources = cached_result.get('sources', [])
+                cached_sources = cached_result.get("sources", [])
                 disp_ids = [
-                    s['dispositivo_id'] for s in cached_sources
-                    if isinstance(s, dict) and s.get('dispositivo_id')
+                    s["dispositivo_id"]
+                    for s in cached_sources
+                    if isinstance(s, dict) and s.get("dispositivo_id")
                 ]
                 if disp_ids:
                     disps = {
-                        d.id: d for d in Dispositivo.objects.filter(id__in=disp_ids).select_related('norma', 'dispositivo_pai')
+                        d.id: d
+                        for d in Dispositivo.objects.filter(id__in=disp_ids).select_related(
+                            "norma", "dispositivo_pai"
+                        )
                     }
                     for s in cached_sources:
-                        did = s.get('dispositivo_id')
+                        did = s.get("dispositivo_id")
                         if did in disps:
-                            s['dispositivo'] = disps[did]
+                            s["dispositivo"] = disps[did]
                 cached_source_relevance = float(
                     cached_result.get(
-                        'source_relevance',
+                        "source_relevance",
                         self._source_relevance(cached_sources),
-                    ) or 0.0
+                    )
+                    or 0.0
                 )
                 yield {
-                    'event': 'sources',
-                    'sources': cached_sources,
-                    'source_relevance': cached_source_relevance,
-                    'cached': True
+                    "event": "sources",
+                    "sources": cached_sources,
+                    "source_relevance": cached_source_relevance,
+                    "cached": True,
                 }
-                cached_ans = cached_result.get('answer', '')
-                yield {'event': 'chunk', 'chunk': cached_ans, 'provisional': False}
+                cached_ans = cached_result.get("answer", "")
+                yield {"event": "chunk", "chunk": cached_ans, "provisional": False}
                 yield {
-                    'event': 'done',
-                    'answer': cached_ans,
-                    'sources': cached_sources,
-                    'source_relevance': cached_source_relevance,
-                    'confidence': None,
-                    'confidence_calibrated': False,
-                    'grounded': bool(cached_result.get('grounded', False)),
-                    'grounding': cached_result.get('grounding', {}),
+                    "event": "done",
+                    "answer": cached_ans,
+                    "sources": cached_sources,
+                    "source_relevance": cached_source_relevance,
+                    "confidence": None,
+                    "confidence_calibrated": False,
+                    "grounded": bool(cached_result.get("grounded", False)),
+                    "grounding": cached_result.get("grounding", {}),
                 }
                 return
             RAG_CACHE_MISSES.inc()
@@ -619,36 +647,31 @@ RESPOSTA:"""
             from src.observability.metrics import RAG_REQUESTS
 
             RAG_REQUESTS.labels("no_retrieval").inc()
-            yield {
-                'event': 'sources',
-                'sources': [],
-                'source_relevance': 0.0,
-                'cached': False
-            }
+            yield {"event": "sources", "sources": [], "source_relevance": 0.0, "cached": False}
             empty_msg = "Não encontrei informações relevantes para responder esta pergunta."
-            yield {'event': 'chunk', 'chunk': empty_msg, 'provisional': False}
+            yield {"event": "chunk", "chunk": empty_msg, "provisional": False}
             yield {
-                'event': 'done',
-                'answer': empty_msg,
-                'sources': [],
-                'source_relevance': 0.0,
-                'confidence': None,
-                'confidence_calibrated': False,
-                'grounded': False,
-                'grounding': {
-                    'grounded': False,
-                    'score': 0.0,
-                    'claims': [],
-                    'failed_claims': [],
+                "event": "done",
+                "answer": empty_msg,
+                "sources": [],
+                "source_relevance": 0.0,
+                "confidence": None,
+                "confidence_calibrated": False,
+                "grounded": False,
+                "grounding": {
+                    "grounded": False,
+                    "score": 0.0,
+                    "claims": [],
+                    "failed_claims": [],
                 },
             }
             return
         source_relevance = self._source_relevance(results)
         yield {
-            'event': 'sources',
-            'sources': results,
-            'source_relevance': source_relevance,
-            'cached': False
+            "event": "sources",
+            "sources": results,
+            "source_relevance": source_relevance,
+            "cached": False,
         }
 
         # Build prompt
@@ -660,11 +683,11 @@ RESPOSTA:"""
         )
 
         full_chunks = []
-        stream_provisional = bool(getattr(settings, 'RAG_STREAM_PROVISIONAL_OUTPUT', False))
+        stream_provisional = bool(getattr(settings, "RAG_STREAM_PROVISIONAL_OUTPUT", False))
         for chunk in self.ollama.stream_text(prompt, model=model, temperature=0.3, max_tokens=2048):
             full_chunks.append(chunk)
             if stream_provisional:
-                yield {'event': 'chunk', 'chunk': chunk, 'provisional': True}
+                yield {"event": "chunk", "chunk": chunk, "provisional": True}
 
         full_answer = "".join(full_chunks)
         full_answer = self._fix_markdown_formatting(full_answer).strip()
@@ -682,7 +705,7 @@ RESPOSTA:"""
                 ],
             }
         )
-        is_grounded = bool(grounding_report.get('grounded')) and source_only
+        is_grounded = bool(grounding_report.get("grounded")) and source_only
         if not is_grounded:
             RAG_GROUNDING_FAILURES.inc()
             RAG_REQUESTS.labels("grounding_rejected").inc()
@@ -692,7 +715,7 @@ RESPOSTA:"""
             final_answer = full_answer
 
         if not stream_provisional:
-            yield {'event': 'chunk', 'chunk': final_answer, 'provisional': False}
+            yield {"event": "chunk", "chunk": final_answer, "provisional": False}
 
         if is_grounded and self.use_cache and self.cache:
             result_payload = self._contract(
@@ -703,21 +726,24 @@ RESPOSTA:"""
                 grounding=grounding_report,
                 model=model,
             )
-            result_payload['context_length'] = len(context)
+            result_payload["context_length"] = len(context)
             self.cache.set_answer(
-                clean_question, k=k, model=model, answer_data=result_payload,
+                clean_question,
+                k=k,
+                model=model,
+                answer_data=result_payload,
                 corpus_version=corpus_version,
-                retrieval_fingerprint=retrieval_fingerprint
+                retrieval_fingerprint=retrieval_fingerprint,
             )
         yield {
-            'event': 'done',
-            'answer': final_answer,
-            'sources': results,
-            'confidence': None,
-            'confidence_calibrated': False,
-            'source_relevance': source_relevance,
-            'grounded': is_grounded,
-            'grounding': grounding_report,
+            "event": "done",
+            "answer": final_answer,
+            "sources": results,
+            "confidence": None,
+            "confidence_calibrated": False,
+            "source_relevance": source_relevance,
+            "grounded": is_grounded,
+            "grounding": grounding_report,
         }
 
     def _fix_markdown_formatting(self, text: str) -> str:
@@ -730,44 +756,42 @@ RESPOSTA:"""
         """
         # Fix: Multiple bullet points on same line separated by semicolons
         # Pattern: "• Text1; • Text2" → "• Text1\n• Text2"
-        text = re.sub(
-            r'([•\-])\s+([^•\n]+?);\s+([•\-])',
-            r'\1 \2\n\3',
-            text
-        )
+        text = re.sub(r"([•\-])\s+([^•\n]+?);\s+([•\-])", r"\1 \2\n\3", text)
 
         # Fix: Multiple bullet points on same line (no semicolon, just space)
         # Pattern: "• Text1 • Text2" → "• Text1\n• Text2"
-        text = re.sub(
-            r'([•\-])\s+([^•\n]+?)\s+([•\-])\s+',
-            r'\1 \2\n\3 ',
-            text
-        )
+        text = re.sub(r"([•\-])\s+([^•\n]+?)\s+([•\-])\s+", r"\1 \2\n\3 ", text)
 
         # Fix: Ensure bullet points are on separate lines
         # Replace "; •" or "; -" with newline + bullet
-        text = re.sub(r';\s+([•\-])', r'\n\1', text)
+        text = re.sub(r";\s+([•\-])", r"\n\1", text)
 
         # Fix: Ensure proper spacing before bullet points
         # Add newline before bullet if not already there
-        text = re.sub(r'([^\n])([•\-])\s+', r'\1\n\2 ', text)
+        text = re.sub(r"([^\n])([•\-])\s+", r"\1\n\2 ", text)
 
         # Clean up: Remove multiple consecutive newlines (max 2)
-        text = re.sub(r'\n{3,}', '\n\n', text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
 
         return text
 
     @staticmethod
     def _answer_uses_only_sources(answer: str, results: list[dict[str, Any]]) -> bool:
         """Reject legal citations that were not present in retrieved sources."""
-        if any(result.get('attachment') for result in results):
+        if any(result.get("attachment") for result in results):
             return True
         allowed = {
             f"{result['dispositivo'].norma.numero}/{result['dispositivo'].norma.ano}"
             for result in results
-            if result.get('dispositivo') and getattr(result['dispositivo'], 'norma', None)
+            if result.get("dispositivo") and getattr(result["dispositivo"], "norma", None)
         }
-        cited = set(re.findall(r"\b(?:Lei|Decreto|Resolução|Portaria)\s*(?:n[ºo.]?\s*)?(\d[\d.]*/\d{4})", answer, re.IGNORECASE))
+        cited = set(
+            re.findall(
+                r"\b(?:Lei|Decreto|Resolução|Portaria)\s*(?:n[ºo.]?\s*)?(\d[\d.]*/\d{4})",
+                answer,
+                re.IGNORECASE,
+            )
+        )
         return cited.issubset(allowed)
 
 
@@ -786,4 +810,3 @@ def semantic_search(query_text: str, k: int = 10, **kwargs) -> list[dict[str, An
     """
     service = RAGService()
     return service.semantic_search(query_text, k=k, **kwargs)
-

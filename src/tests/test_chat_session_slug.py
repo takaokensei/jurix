@@ -5,6 +5,7 @@ save() used to skip slug generation on purpose, so a session created through
 POST /api/v1/chat/sessions/ had slug=None until its first message, and the rest of the
 code defended itself with hasattr/try/except ("migration may not have run").
 """
+
 import importlib
 
 import pytest
@@ -15,7 +16,9 @@ from src.apps.legislation.models import ChatSession
 
 pytestmark = pytest.mark.django_db
 
-migration = importlib.import_module("src.apps.legislation.migrations.0012_backfill_chatsession_slug")
+migration = importlib.import_module(
+    "src.apps.legislation.migrations.0012_backfill_chatsession_slug"
+)
 
 
 @pytest.fixture
@@ -39,7 +42,7 @@ def test_slugs_are_unique_across_many_sessions(user):
 
 def test_generation_retries_on_collision(user, monkeypatch):
     ChatSession.objects.create(user=user, title="a", slug="aaaaaaaaaaaa")
-    letters = iter("a" * 12 + "a" * 12 + "b" * 12)      # 1st and 2nd attempts collide, 3rd is free
+    letters = iter("a" * 12 + "a" * 12 + "b" * 12)  # 1st and 2nd attempts collide, 3rd is free
     monkeypatch.setattr("secrets.choice", lambda alphabet: next(letters))
     assert ChatSession(user=user, title="t").generate_slug() == "b" * 12
 
@@ -50,7 +53,7 @@ def test_slug_is_persisted_even_with_update_fields(user):
     fresh = ChatSession(user=user, title="u")
     fresh.save()
     fresh.slug = None
-    fresh.save(update_fields=["title"])          # regenerates AND must persist the slug
+    fresh.save(update_fields=["title"])  # regenerates AND must persist the slug
     assert ChatSession.objects.get(pk=fresh.pk).slug
 
 

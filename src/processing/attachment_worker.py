@@ -1,4 +1,5 @@
 """Document parsing in a killable process with bounded output and resources."""
+
 import sys
 import zipfile
 from pathlib import Path
@@ -9,28 +10,30 @@ MAX_EXPANDED = 32 * 1024 * 1024
 
 
 def extract(path: Path) -> str:
-    if path.suffix.lower() == '.pdf':
+    if path.suffix.lower() == ".pdf":
         import fitz
+
         parts = []
         remaining = MAX_TEXT
         with fitz.open(path) as document:
             if document.page_count > MAX_PAGES:
-                raise ValueError('Documento excede 200 páginas.')
+                raise ValueError("Documento excede 200 páginas.")
             for page in document:
-                part = page.get_text('text')[:remaining]
+                part = page.get_text("text")[:remaining]
                 parts.append(part)
                 remaining -= len(part) + 1
                 if remaining <= 0:
                     break
-        return '\n'.join(parts)[:MAX_TEXT]
-    if path.suffix.lower() == '.docx':
+        return "\n".join(parts)[:MAX_TEXT]
+    if path.suffix.lower() == ".docx":
         with zipfile.ZipFile(path) as archive:
             infos = archive.infolist()
             if len(infos) > 2000 or sum(item.file_size for item in infos) > MAX_EXPANDED:
-                raise ValueError('DOCX excede o limite descompactado.')
-            if 'word/document.xml' not in archive.namelist():
-                raise ValueError('DOCX inválido.')
+                raise ValueError("DOCX excede o limite descompactado.")
+            if "word/document.xml" not in archive.namelist():
+                raise ValueError("DOCX inválido.")
         from docx import Document
+
         parts = []
         remaining = MAX_TEXT
         for paragraph in Document(path).paragraphs:
@@ -39,15 +42,18 @@ def extract(path: Path) -> str:
             remaining -= len(part) + 1
             if remaining <= 0:
                 break
-        return '\n'.join(parts)[:MAX_TEXT]
-    with path.open(encoding='utf-8', errors='replace') as source:
+        return "\n".join(parts)[:MAX_TEXT]
+    with path.open(encoding="utf-8", errors="replace") as source:
         return source.read(MAX_TEXT)
 
 
-def apply_resource_limits(max_memory_bytes: int = 512 * 1024 * 1024, max_cpu_seconds: int = 15) -> bool:
+def apply_resource_limits(
+    max_memory_bytes: int = 512 * 1024 * 1024, max_cpu_seconds: int = 15
+) -> bool:
     """Apply strict process memory and CPU limits on both Unix and Windows."""
-    if sys.platform != 'win32':
+    if sys.platform != "win32":
         import resource
+
         resource.setrlimit(resource.RLIMIT_AS, (max_memory_bytes, max_memory_bytes))
         resource.setrlimit(resource.RLIMIT_CPU, (max_cpu_seconds, max_cpu_seconds))
         return True
@@ -58,35 +64,35 @@ def apply_resource_limits(max_memory_bytes: int = 512 * 1024 * 1024, max_cpu_sec
 
         class IO_COUNTERS(ctypes.Structure):
             _fields_ = [
-                ('ReadOperationCount', ctypes.c_uint64),
-                ('WriteOperationCount', ctypes.c_uint64),
-                ('OtherOperationCount', ctypes.c_uint64),
-                ('ReadTransferCount', ctypes.c_uint64),
-                ('WriteTransferCount', ctypes.c_uint64),
-                ('OtherTransferCount', ctypes.c_uint64),
+                ("ReadOperationCount", ctypes.c_uint64),
+                ("WriteOperationCount", ctypes.c_uint64),
+                ("OtherOperationCount", ctypes.c_uint64),
+                ("ReadTransferCount", ctypes.c_uint64),
+                ("WriteTransferCount", ctypes.c_uint64),
+                ("OtherTransferCount", ctypes.c_uint64),
             ]
 
         class JOBOBJECT_BASIC_LIMIT_INFORMATION(ctypes.Structure):
             _fields_ = [
-                ('PerProcessUserTimeLimit', ctypes.c_int64),
-                ('PerJobUserTimeLimit', ctypes.c_int64),
-                ('LimitFlags', ctypes.c_uint32),
-                ('MinimumWorkingSetSize', ctypes.c_size_t),
-                ('MaximumWorkingSetSize', ctypes.c_size_t),
-                ('ActiveProcessLimit', ctypes.c_uint32),
-                ('Affinity', ctypes.c_size_t),
-                ('PriorityClass', ctypes.c_uint32),
-                ('SchedulingClass', ctypes.c_uint32),
+                ("PerProcessUserTimeLimit", ctypes.c_int64),
+                ("PerJobUserTimeLimit", ctypes.c_int64),
+                ("LimitFlags", ctypes.c_uint32),
+                ("MinimumWorkingSetSize", ctypes.c_size_t),
+                ("MaximumWorkingSetSize", ctypes.c_size_t),
+                ("ActiveProcessLimit", ctypes.c_uint32),
+                ("Affinity", ctypes.c_size_t),
+                ("PriorityClass", ctypes.c_uint32),
+                ("SchedulingClass", ctypes.c_uint32),
             ]
 
         class JOBOBJECT_EXTENDED_LIMIT_INFORMATION(ctypes.Structure):
             _fields_ = [
-                ('BasicLimitInformation', JOBOBJECT_BASIC_LIMIT_INFORMATION),
-                ('IoInfo', IO_COUNTERS),
-                ('ProcessMemoryLimit', ctypes.c_size_t),
-                ('JobMemoryLimit', ctypes.c_size_t),
-                ('PeakProcessMemoryUsed', ctypes.c_size_t),
-                ('PeakJobMemoryUsed', ctypes.c_size_t),
+                ("BasicLimitInformation", JOBOBJECT_BASIC_LIMIT_INFORMATION),
+                ("IoInfo", IO_COUNTERS),
+                ("ProcessMemoryLimit", ctypes.c_size_t),
+                ("JobMemoryLimit", ctypes.c_size_t),
+                ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                ("PeakJobMemoryUsed", ctypes.c_size_t),
             ]
 
         JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000
@@ -118,10 +124,10 @@ def apply_resource_limits(max_memory_bytes: int = 512 * 1024 * 1024, max_cpu_sec
 
         info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
         info.BasicLimitInformation.LimitFlags = (
-            JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE |
-            JOB_OBJECT_LIMIT_PROCESS_MEMORY |
-            JOB_OBJECT_LIMIT_JOB_MEMORY |
-            JOB_OBJECT_LIMIT_PROCESS_TIME
+            JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+            | JOB_OBJECT_LIMIT_PROCESS_MEMORY
+            | JOB_OBJECT_LIMIT_JOB_MEMORY
+            | JOB_OBJECT_LIMIT_PROCESS_TIME
         )
         info.BasicLimitInformation.PerProcessUserTimeLimit = int(max_cpu_seconds * 10_000_000)
         info.ProcessMemoryLimit = max_memory_bytes
@@ -156,18 +162,18 @@ def main(argv: list[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv
     if not apply_resource_limits():
-        sys.stderr.write('Falha ao aplicar limites de isolamento de processo.')
+        sys.stderr.write("Falha ao aplicar limites de isolamento de processo.")
         return 1
     if len(argv) < 2:
-        sys.stderr.write('Uso: python -m src.processing.attachment_worker <caminho_arquivo>')
+        sys.stderr.write("Uso: python -m src.processing.attachment_worker <caminho_arquivo>")
         return 1
     try:
-        sys.stdout.buffer.write(extract(Path(argv[1])).encode('utf-8'))
+        sys.stdout.buffer.write(extract(Path(argv[1])).encode("utf-8"))
         return 0
     except Exception:
-        sys.stderr.write('Não foi possível processar o documento dentro dos limites permitidos.')
+        sys.stderr.write("Não foi possível processar o documento dentro dos limites permitidos.")
         return 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

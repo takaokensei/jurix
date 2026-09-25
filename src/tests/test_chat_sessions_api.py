@@ -6,6 +6,7 @@ api_views (removing ~300 lines of defensive code) can be proven behaviour-preser
 The second group covers what the old code got wrong: N+1 queries in the list, a database
 failure reported as an empty successful list, and a non-string title causing a 500.
 """
+
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -42,7 +43,8 @@ def add_messages(session, n, *, first_user_text="Pergunta"):
     for i in range(n):
         role = "user" if i % 2 == 0 else "assistant"
         m = ChatMessage.objects.create(
-            session=session, role=role,
+            session=session,
+            role=role,
             content=first_user_text if i == 0 else f"msg {i}",
             sources_json=[{"n": i}] if role == "assistant" else [],
             metadata_json={"m": i} if role == "assistant" else {},
@@ -60,7 +62,7 @@ class TestListContract:
     def test_guest_list_exposes_no_database_sessions(self):
         response = Client().get(SESSIONS)
         assert response.status_code == 200
-        assert response.json()['sessions'] == []
+        assert response.json()["sessions"] == []
 
     def test_shape_order_preview_and_count(self, client, user):
         old = ChatSession.objects.create(user=user, title="Antiga")
@@ -72,7 +74,7 @@ class TestListContract:
         body = client.get(SESSIONS).json()
 
         assert body["success"] is True and body["count"] == 2
-        assert [s["title"] for s in body["sessions"]] == ["Nova", "Antiga"]      # -updated_at
+        assert [s["title"] for s in body["sessions"]] == ["Nova", "Antiga"]  # -updated_at
         first = body["sessions"][0]
         assert set(first) == SESSION_KEYS | {"message_count", "latest_message_preview"}
         assert first["message_count"] == 3
@@ -98,7 +100,9 @@ class TestListContract:
 class TestCreateContract:
     def test_creates_active_session_and_deactivates_previous(self, client, user):
         prev = ChatSession.objects.create(user=user, title="prev", is_active=True)
-        r = client.post(SESSIONS, data='{"title": "Minha conversa"}', content_type="application/json")
+        r = client.post(
+            SESSIONS, data='{"title": "Minha conversa"}', content_type="application/json"
+        )
         assert r.status_code == 201
         s = r.json()["session"]
         assert {"id", "title", "is_active", "created_at"} <= set(s)
@@ -107,21 +111,34 @@ class TestCreateContract:
         assert prev.is_active is False
 
     def test_default_title_and_truncation(self, client):
-        assert client.post(SESSIONS, data="{}", content_type="application/json").json()["session"]["title"] == "Nova Conversa"
-        long = client.post(SESSIONS, data='{"title": "%s"}' % ("y" * 500), content_type="application/json")
+        assert (
+            client.post(SESSIONS, data="{}", content_type="application/json").json()["session"][
+                "title"
+            ]
+            == "Nova Conversa"
+        )
+        long = client.post(
+            SESSIONS, data='{"title": "%s"}' % ("y" * 500), content_type="application/json"
+        )
         assert len(long.json()["session"]["title"]) == 200
 
     def test_invalid_json_is_400(self, client):
-        assert client.post(SESSIONS, data="{oops", content_type="application/json").status_code == 400
+        assert (
+            client.post(SESSIONS, data="{oops", content_type="application/json").status_code == 400
+        )
 
 
 # ------------------------------------------------- contract: detail & by slug
 @pytest.fixture(params=["detail", "slug"])
 def fetch(request, client):
     def _fetch(session, **kw):
-        url = (f"{SESSIONS}{session.id}/" if request.param == "detail"
-               else f"{SESSIONS}slug/{session.slug}/")
+        url = (
+            f"{SESSIONS}{session.id}/"
+            if request.param == "detail"
+            else f"{SESSIONS}slug/{session.slug}/"
+        )
         return client.get(url, **kw)
+
     return _fetch
 
 
@@ -195,7 +212,10 @@ class TestFixedBehaviour:
     @pytest.mark.parametrize("bad_title", [123, ["a"], {"a": 1}, True])
     def test_non_string_title_is_a_400_not_a_500(self, client, bad_title):
         import json
-        r = client.post(SESSIONS, data=json.dumps({"title": bad_title}), content_type="application/json")
+
+        r = client.post(
+            SESSIONS, data=json.dumps({"title": bad_title}), content_type="application/json"
+        )
         assert r.status_code == 400
 
     def test_500_body_never_contains_a_traceback_or_exception_text(self, client):

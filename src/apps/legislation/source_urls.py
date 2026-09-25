@@ -6,6 +6,7 @@ with the former application's legacy UI route (``/norma/normajuridica``),
 which now returns HTTP 404. Keeping URL normalization here prevents that
 legacy value from leaking into the API, templates and cached responses.
 """
+
 from __future__ import annotations
 
 import re

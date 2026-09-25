@@ -18,5 +18,7 @@ class VerifyVectorIndexTests(SimpleTestCase):
     def test_accepts_hnsw_cosine_index(self, connection):
         connection.vendor = "postgresql"
         cursor = connection.cursor.return_value.__enter__.return_value
-        cursor.fetchall.return_value = [("dispositivo_embedding_hnsw", "USING hnsw (embedding vector_cosine_ops)")]
+        cursor.fetchall.return_value = [
+            ("dispositivo_embedding_hnsw", "USING hnsw (embedding vector_cosine_ops)")
+        ]
         call_command("verify_vector_index")

@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # "--- Página 1 ---"  /  "--- Page 1 ---"  /  "=== Página 2 ==="  etc.
 _PAGE_SEPARATOR_RE = re.compile(
-    r'^[ \t]*[-=]{2,}[ \t]*(?:P[aá]gina|Page)[ \t]+\d+[ \t]*[-=]{2,}[ \t]*$',
+    r"^[ \t]*[-=]{2,}[ \t]*(?:P[aá]gina|Page)[ \t]+\d+[ \t]*[-=]{2,}[ \t]*$",
     re.MULTILINE | re.IGNORECASE,
 )
 
@@ -26,14 +26,14 @@ _PAGE_SEPARATOR_RE = re.compile(
 # We match only lines that are entirely composed of known header tokens so we
 # don't accidentally strip content that happens to contain these words.
 _PAGE_HEADER_LINE_RE = re.compile(
-    r'^[ \t]*(?:'
-    r'ESTADO\s+DO\s+[A-ZÁÉÍÓÚÂÊÎÔÛÃÕÀÈÌÒÙÇ\s]+'          # "ESTADO DO RIO GRANDE DO NORTE"
-    r'|C[AÂ]MARA\s+MUNICIPAL\s+DE\s+[A-ZÁÉÍÓÚÂÊÎÔÛÃÕ\s]+'  # "CÂMARA MUNICIPAL DE NATAL"
-    r'|ASSEMBLEIA\s+LEGISLATIVA\s+DO\s+[A-Z\s]+'
-    r'|PAL[AÁ]CIO\s+[A-ZÁÉÍÓÚÂÊÎÔÛÃÕ\s]+'                # "PALÁCIO PADRE MIGUELINHO"
-    r'|DIÁRIO\s+OFICIAL\s+(?:DO|DA|DE)\s+[A-ZÁÉÍÓÚÂÊÎÔÛÃÕ\s]+'
-    r'|PODER\s+LEGISLATIVO\s+[A-ZÁÉÍÓÚÂÊÎÔÛÃÕ\s]*'
-    r')[ \t]*$',
+    r"^[ \t]*(?:"
+    r"ESTADO\s+DO\s+[A-ZÁÉÍÓÚÂÊÎÔÛÃÕÀÈÌÒÙÇ\s]+"  # "ESTADO DO RIO GRANDE DO NORTE"
+    r"|C[AÂ]MARA\s+MUNICIPAL\s+DE\s+[A-ZÁÉÍÓÚÂÊÎÔÛÃÕ\s]+"  # "CÂMARA MUNICIPAL DE NATAL"
+    r"|ASSEMBLEIA\s+LEGISLATIVA\s+DO\s+[A-Z\s]+"
+    r"|PAL[AÁ]CIO\s+[A-ZÁÉÍÓÚÂÊÎÔÛÃÕ\s]+"  # "PALÁCIO PADRE MIGUELINHO"
+    r"|DIÁRIO\s+OFICIAL\s+(?:DO|DA|DE)\s+[A-ZÁÉÍÓÚÂÊÎÔÛÃÕ\s]+"
+    r"|PODER\s+LEGISLATIVO\s+[A-ZÁÉÍÓÚÂÊÎÔÛÃÕ\s]*"
+    r")[ \t]*$",
     re.MULTILINE | re.IGNORECASE,
 )
 
@@ -51,75 +51,58 @@ class LegalTextParser:
     # Regex patterns for legal structure markers (start of devices only)
     # These patterns match the START of a device, not capture its text
     MARKER_PATTERNS = {
-        'artigo': re.compile(
-            r'^\s*Art\.?\s+(\d+[ºª°]?(?:-[A-Z])?)\s*[\.–-]?\s*',
-            re.MULTILINE | re.IGNORECASE
+        "artigo": re.compile(
+            r"^\s*Art\.?\s+(\d+[ºª°]?(?:-[A-Z])?)\s*[\.–-]?\s*", re.MULTILINE | re.IGNORECASE
         ),
-        'paragrafo': re.compile(
-            r'^\s*§\s*(\d+[ºª°]?(?:-[A-Z])?)\s*[\.–-]?\s*',
-            re.MULTILINE
-        ),
-        'paragrafo_unico': re.compile(
-            r'^\s*Parágrafo\s+único\.?\s*[\.–-]?\s*',
-            re.MULTILINE | re.IGNORECASE
+        "paragrafo": re.compile(r"^\s*§\s*(\d+[ºª°]?(?:-[A-Z])?)\s*[\.–-]?\s*", re.MULTILINE),
+        "paragrafo_unico": re.compile(
+            r"^\s*Parágrafo\s+único\.?\s*[\.–-]?\s*", re.MULTILINE | re.IGNORECASE
         ),
         # A real inciso needs an explicit separator ('-', '–', '—' or '.') right
         # after the roman numeral. Anchoring with [ \t]* (never \s*) keeps the
         # match on its own line. Numeral validity is checked in _is_valid_marker.
-        'inciso': re.compile(
-            r'^[ \t]*([IVX]+)[ \t]*[-–—.][ \t]*',
-            re.MULTILINE
-        ),
-        'alinea': re.compile(
-            r'^\s*([a-z])\)\s+',
-            re.MULTILINE
-        ),
+        "inciso": re.compile(r"^[ \t]*([IVX]+)[ \t]*[-–—.][ \t]*", re.MULTILINE),
+        "alinea": re.compile(r"^\s*([a-z])\)\s+", re.MULTILINE),
         # Items are 1-2 digit numbers; a year ('2020.') at line start is not one.
-        'item': re.compile(
-            r'^[ \t]*(\d{1,2})[ \t]*\.[ \t]+',
-            re.MULTILINE
-        ),
+        "item": re.compile(r"^[ \t]*(\d{1,2})[ \t]*\.[ \t]+", re.MULTILINE),
     }
 
     # Combined pattern to find ANY marker (for text extraction between markers)
     ALL_MARKERS_PATTERN = re.compile(
-        r'^\s*(?:Art\.?\s+\d+|§\s*\d+|Parágrafo\s+único|([IVX]+)\s*[\.–-]|([a-z])\)\s+|\d+\.\s+)',
-        re.MULTILINE | re.IGNORECASE
+        r"^\s*(?:Art\.?\s+\d+|§\s*\d+|Parágrafo\s+único|([IVX]+)\s*[\.–-]|([a-z])\)\s+|\d+\.\s+)",
+        re.MULTILINE | re.IGNORECASE,
     )
 
     # Patterns for structural divisions (Parte, Livro, Título, Capítulo, Seção, Subseção)
     DIVISION_PATTERNS = {
-        'parte': re.compile(
-            r'^\s*(?:PARTE|Parte)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$',
-            re.MULTILINE
+        "parte": re.compile(
+            r"^\s*(?:PARTE|Parte)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$", re.MULTILINE
         ),
-        'livro': re.compile(
-            r'^\s*(?:LIVRO|Livro)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$',
-            re.MULTILINE
+        "livro": re.compile(
+            r"^\s*(?:LIVRO|Livro)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$", re.MULTILINE
         ),
-        'titulo': re.compile(
-            r'^\s*(?:T[IÍ]TULO|T[ií]tulo)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$',
-            re.MULTILINE
+        "titulo": re.compile(
+            r"^\s*(?:T[IÍ]TULO|T[ií]tulo)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$", re.MULTILINE
         ),
-        'capitulo': re.compile(
-            r'^\s*(?:CAP[IÍ]TULO|Cap[ií]tulo)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$',
-            re.MULTILINE
+        "capitulo": re.compile(
+            r"^\s*(?:CAP[IÍ]TULO|Cap[ií]tulo)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$",
+            re.MULTILINE,
         ),
-        'secao': re.compile(
-            r'^\s*(?:SE[ÇC][ÃA]O|Se[çc][ãa]o)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$',
-            re.MULTILINE
+        "secao": re.compile(
+            r"^\s*(?:SE[ÇC][ÃA]O|Se[çc][ãa]o)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$",
+            re.MULTILINE,
         ),
-        'subsecao': re.compile(
-            r'^\s*(?:SUBSE[ÇC][ÃA]O|Subse[çc][ãa]o)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$',
-            re.MULTILINE
+        "subsecao": re.compile(
+            r"^\s*(?:SUBSE[ÇC][ÃA]O|Subse[çc][ãa]o)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$",
+            re.MULTILINE,
         ),
     }
 
     # Valid roman numerals for incisos (I..XXXIX). Rejects 'IIII', 'VX', 'XIIII'.
-    _ROMAN_INCISO_RE = re.compile(r'^(?=[IVX])X{0,3}(?:IX|IV|V?I{0,3})$')
+    _ROMAN_INCISO_RE = re.compile(r"^(?=[IVX])X{0,3}(?:IX|IV|V?I{0,3})$")
 
     @staticmethod
-    def _is_valid_marker(tipo: str, match: 're.Match', text: str) -> bool:
+    def _is_valid_marker(tipo: str, match: "re.Match", text: str) -> bool:
         """
         Decide whether a regex match is a real structural marker.
 
@@ -133,11 +116,11 @@ class LegalTextParser:
           line is a citation broken across lines ('Art. 10 da Lei 123/2020 ...'),
           not a new article. Real articles start with a capital, quote or '('.
         """
-        if tipo == 'inciso':
+        if tipo == "inciso":
             return bool(LegalTextParser._ROMAN_INCISO_RE.match(match.group(1)))
-        if tipo == 'artigo':
-            nxt = text[match.end():match.end() + 1]
-            if nxt and (nxt.islower() or nxt == ','):
+        if tipo == "artigo":
+            nxt = text[match.end() : match.end() + 1]
+            if nxt and (nxt.islower() or nxt == ","):
                 return False
         return True
 
@@ -176,10 +159,7 @@ class LegalTextParser:
 
     @staticmethod
     def _extract_text_until_next_marker(
-        text: str,
-        marker_start: int,
-        marker_end: int,
-        all_markers: list[tuple[int, str, Any]]
+        text: str, marker_start: int, marker_end: int, all_markers: list[tuple[int, str, Any]]
     ) -> str:
         """
         Extract text from a device marker until the next marker (multiline).
@@ -209,17 +189,19 @@ class LegalTextParser:
         # Clean text: preserve structure but normalize whitespace
         extracted_text = extracted_text.rstrip()  # Remove trailing whitespace
         # Normalize multiple consecutive newlines to max 2 (paragraph break)
-        extracted_text = re.sub(r'\n{3,}', '\n\n', extracted_text)
+        extracted_text = re.sub(r"\n{3,}", "\n\n", extracted_text)
         # Normalize multiple spaces within lines (but keep newlines)
-        lines = extracted_text.split('\n')
-        lines = [re.sub(r'[ \t]+', ' ', line).strip() for line in lines]
-        extracted_text = '\n'.join(lines)
+        lines = extracted_text.split("\n")
+        lines = [re.sub(r"[ \t]+", " ", line).strip() for line in lines]
+        extracted_text = "\n".join(lines)
         extracted_text = extracted_text.strip()
 
         return extracted_text
 
     @staticmethod
-    def extract_articles(text: str, all_markers: list[tuple[int, str, Any]] | None = None) -> list[dict[str, Any]]:
+    def extract_articles(
+        text: str, all_markers: list[tuple[int, str, Any]] | None = None
+    ) -> list[dict[str, Any]]:
         """
         Extract all articles from legal text (multiline support).
 
@@ -242,27 +224,31 @@ class LegalTextParser:
 
         articles = []
 
-        for match in LegalTextParser._iter_valid('artigo', text):
+        for match in LegalTextParser._iter_valid("artigo", text):
             marker_start = match.start()
             marker_end = match.end()
             texto = LegalTextParser._extract_text_until_next_marker(
                 text, marker_start, marker_end, all_markers
             )
 
-            articles.append({
-                'tipo': 'artigo',
-                'numero': match.group(1).strip(),
-                'texto': texto,
-                'start_pos': marker_start,
-                'end_pos': marker_end + len(texto),
-                'full_match': match.group(0)
-            })
+            articles.append(
+                {
+                    "tipo": "artigo",
+                    "numero": match.group(1).strip(),
+                    "texto": texto,
+                    "start_pos": marker_start,
+                    "end_pos": marker_end + len(texto),
+                    "full_match": match.group(0),
+                }
+            )
 
         logger.debug(f"Extracted {len(articles)} articles")
         return articles
 
     @staticmethod
-    def extract_paragraphs(text: str, all_markers: list[tuple[int, str, Any]] | None = None) -> list[dict[str, Any]]:
+    def extract_paragraphs(
+        text: str, all_markers: list[tuple[int, str, Any]] | None = None
+    ) -> list[dict[str, Any]]:
         """
         Extract all paragraphs (§) and "Parágrafo único" from text (multiline support).
 
@@ -278,44 +264,50 @@ class LegalTextParser:
         paragraphs = []
 
         # Extract numbered paragraphs (§ 1º, § 2º, etc.)
-        for match in LegalTextParser.MARKER_PATTERNS['paragrafo'].finditer(text):
+        for match in LegalTextParser.MARKER_PATTERNS["paragrafo"].finditer(text):
             marker_start = match.start()
             marker_end = match.end()
             texto = LegalTextParser._extract_text_until_next_marker(
                 text, marker_start, marker_end, all_markers
             )
 
-            paragraphs.append({
-                'tipo': 'paragrafo',
-                'numero': match.group(1).strip(),
-                'texto': texto,
-                'start_pos': marker_start,
-                'end_pos': marker_end + len(texto),
-                'full_match': match.group(0)
-            })
+            paragraphs.append(
+                {
+                    "tipo": "paragrafo",
+                    "numero": match.group(1).strip(),
+                    "texto": texto,
+                    "start_pos": marker_start,
+                    "end_pos": marker_end + len(texto),
+                    "full_match": match.group(0),
+                }
+            )
 
         # Extract "Parágrafo único"
-        for match in LegalTextParser.MARKER_PATTERNS['paragrafo_unico'].finditer(text):
+        for match in LegalTextParser.MARKER_PATTERNS["paragrafo_unico"].finditer(text):
             marker_start = match.start()
             marker_end = match.end()
             texto = LegalTextParser._extract_text_until_next_marker(
                 text, marker_start, marker_end, all_markers
             )
 
-            paragraphs.append({
-                'tipo': 'paragrafo',
-                'numero': 'único',
-                'texto': texto,
-                'start_pos': marker_start,
-                'end_pos': marker_end + len(texto),
-                'full_match': match.group(0)
-            })
+            paragraphs.append(
+                {
+                    "tipo": "paragrafo",
+                    "numero": "único",
+                    "texto": texto,
+                    "start_pos": marker_start,
+                    "end_pos": marker_end + len(texto),
+                    "full_match": match.group(0),
+                }
+            )
 
         logger.debug(f"Extracted {len(paragraphs)} paragraphs")
         return paragraphs
 
     @staticmethod
-    def extract_incisos(text: str, all_markers: list[tuple[int, str, Any]] | None = None) -> list[dict[str, Any]]:
+    def extract_incisos(
+        text: str, all_markers: list[tuple[int, str, Any]] | None = None
+    ) -> list[dict[str, Any]]:
         """
         Extract all incisos (I, II, III, etc.) from text (multiline support).
 
@@ -334,27 +326,31 @@ class LegalTextParser:
         # _iter_valid enforces a valid roman numeral. The former look-behind for
         # dates ('\\d{4}' in the previous 10 chars) is gone: it silently dropped
         # legitimate incisos following 'Lei nº 8.666/1993:' or 'em 2020:'.
-        for match in LegalTextParser._iter_valid('inciso', text):
+        for match in LegalTextParser._iter_valid("inciso", text):
             marker_start = match.start()
             marker_end = match.end()
             texto = LegalTextParser._extract_text_until_next_marker(
                 text, marker_start, marker_end, all_markers
             )
 
-            incisos.append({
-                'tipo': 'inciso',
-                'numero': match.group(1).strip(),
-                'texto': texto,
-                'start_pos': marker_start,
-                'end_pos': marker_end + len(texto),
-                'full_match': match.group(0)
-            })
+            incisos.append(
+                {
+                    "tipo": "inciso",
+                    "numero": match.group(1).strip(),
+                    "texto": texto,
+                    "start_pos": marker_start,
+                    "end_pos": marker_end + len(texto),
+                    "full_match": match.group(0),
+                }
+            )
 
         logger.debug(f"Extracted {len(incisos)} incisos")
         return incisos
 
     @staticmethod
-    def extract_alineas(text: str, all_markers: list[tuple[int, str, Any]] | None = None) -> list[dict[str, Any]]:
+    def extract_alineas(
+        text: str, all_markers: list[tuple[int, str, Any]] | None = None
+    ) -> list[dict[str, Any]]:
         """
         Extract all alíneas (a), b), c), etc.) from text (multiline support).
 
@@ -367,21 +363,23 @@ class LegalTextParser:
 
         alineas = []
 
-        for match in LegalTextParser.MARKER_PATTERNS['alinea'].finditer(text):
+        for match in LegalTextParser.MARKER_PATTERNS["alinea"].finditer(text):
             marker_start = match.start()
             marker_end = match.end()
             texto = LegalTextParser._extract_text_until_next_marker(
                 text, marker_start, marker_end, all_markers
             )
 
-            alineas.append({
-                'tipo': 'alinea',
-                'numero': match.group(1).strip(),
-                'texto': texto,
-                'start_pos': marker_start,
-                'end_pos': marker_end + len(texto),
-                'full_match': match.group(0)
-            })
+            alineas.append(
+                {
+                    "tipo": "alinea",
+                    "numero": match.group(1).strip(),
+                    "texto": texto,
+                    "start_pos": marker_start,
+                    "end_pos": marker_end + len(texto),
+                    "full_match": match.group(0),
+                }
+            )
 
         logger.debug(f"Extracted {len(alineas)} alineas")
         return alineas
@@ -399,9 +397,9 @@ class LegalTextParser:
         Repeated numbering of incisos/paragraphs across different articles is not
         affected (those live in different blocks with different signatures).
         """
-        blocks: list[list[dict[str, Any]]] = [[]]   # blocks[0] = anything before the first article
+        blocks: list[list[dict[str, Any]]] = [[]]  # blocks[0] = anything before the first article
         for element in elements:
-            if element['tipo'] == 'artigo':
+            if element["tipo"] == "artigo":
                 blocks.append([])
             blocks[-1].append(element)
 
@@ -409,7 +407,7 @@ class LegalTextParser:
         kept: list[dict[str, Any]] = list(blocks[0])
         for block in blocks[1:]:
             signature = tuple(
-                (e['tipo'], e['numero'], LegalTextParser.clean_text(e['texto'])) for e in block
+                (e["tipo"], e["numero"], LegalTextParser.clean_text(e["texto"])) for e in block
             )
             if signature in seen:
                 logger.warning(
@@ -422,7 +420,9 @@ class LegalTextParser:
         return kept
 
     @staticmethod
-    def extract_items(text: str, all_markers: list[tuple[int, str, Any]] | None = None) -> list[dict[str, Any]]:
+    def extract_items(
+        text: str, all_markers: list[tuple[int, str, Any]] | None = None
+    ) -> list[dict[str, Any]]:
         """
         Extract numbered items ('1.', '2.', ...) that subdivide an inciso/alínea.
 
@@ -433,26 +433,30 @@ class LegalTextParser:
             all_markers = LegalTextParser._find_all_markers(text)
 
         items = []
-        for match in LegalTextParser._iter_valid('item', text):
+        for match in LegalTextParser._iter_valid("item", text):
             marker_start = match.start()
             marker_end = match.end()
             texto = LegalTextParser._extract_text_until_next_marker(
                 text, marker_start, marker_end, all_markers
             )
-            items.append({
-                'tipo': 'item',
-                'numero': match.group(1).strip(),
-                'texto': texto,
-                'start_pos': marker_start,
-                'end_pos': marker_end + len(texto),
-                'full_match': match.group(0)
-            })
+            items.append(
+                {
+                    "tipo": "item",
+                    "numero": match.group(1).strip(),
+                    "texto": texto,
+                    "start_pos": marker_start,
+                    "end_pos": marker_end + len(texto),
+                    "full_match": match.group(0),
+                }
+            )
 
         logger.debug(f"Extracted {len(items)} items")
         return items
 
     @staticmethod
-    def extract_divisions(text: str, all_markers: list[tuple[int, str, Any]] | None = None) -> list[dict[str, Any]]:
+    def extract_divisions(
+        text: str, all_markers: list[tuple[int, str, Any]] | None = None
+    ) -> list[dict[str, Any]]:
         """
         Extract structural divisions (Parte, Livro, Título, Capítulo, Seção, Subseção).
 
@@ -475,17 +479,23 @@ class LegalTextParser:
                     text, marker_start, marker_end, all_markers
                 )
                 numero = match.group(1).strip()
-                inline_heading = match.group(2).strip() if match.lastindex and match.lastindex >= 2 and match.group(2) else ""
+                inline_heading = (
+                    match.group(2).strip()
+                    if match.lastindex and match.lastindex >= 2 and match.group(2)
+                    else ""
+                )
                 full_text = (inline_heading + "\n" + texto).strip() if inline_heading else texto
 
-                divisions.append({
-                    'tipo': tipo,
-                    'numero': numero,
-                    'texto': full_text,
-                    'start_pos': marker_start,
-                    'end_pos': marker_end + len(texto),
-                    'full_match': match.group(0)
-                })
+                divisions.append(
+                    {
+                        "tipo": tipo,
+                        "numero": numero,
+                        "texto": full_text,
+                        "start_pos": marker_start,
+                        "end_pos": marker_end + len(texto),
+                        "full_match": match.group(0),
+                    }
+                )
         logger.debug(f"Extracted {len(divisions)} divisions")
         return divisions
 
@@ -506,13 +516,13 @@ class LegalTextParser:
           3. Collapse runs of blank lines left behind to at most one blank line.
         """
         # Step 1: page separators
-        text = _PAGE_SEPARATOR_RE.sub('', text)
+        text = _PAGE_SEPARATOR_RE.sub("", text)
 
         # Step 2: institutional header lines
-        text = _PAGE_HEADER_LINE_RE.sub('', text)
+        text = _PAGE_HEADER_LINE_RE.sub("", text)
 
         # Step 3: collapse excessive blank lines (3+ → 1 blank line)
-        text = re.sub(r'\n{3,}', '\n\n', text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
 
         return text
 
@@ -549,7 +559,7 @@ class LegalTextParser:
         all_elements.extend(LegalTextParser.extract_items(text, all_markers))
 
         # Sort by position in text
-        all_elements.sort(key=lambda x: x['start_pos'])
+        all_elements.sort(key=lambda x: x["start_pos"])
 
         all_elements = LegalTextParser._drop_repeated_blocks(all_elements)
 
@@ -581,7 +591,7 @@ class LegalTextParser:
         """
         hierarchy = []
 
-        division_levels = ['parte', 'livro', 'titulo', 'capitulo', 'secao', 'subsecao']
+        division_levels = ["parte", "livro", "titulo", "capitulo", "secao", "subsecao"]
         active_divisions: dict[str, int | None] = {d: None for d in division_levels}
 
         last_article_idx = None
@@ -606,20 +616,20 @@ class LegalTextParser:
 
         for i, elem in enumerate(elements):
             elem_copy = elem.copy()
-            elem_copy['index'] = i
-            elem_copy['parent_index'] = None
+            elem_copy["index"] = i
+            elem_copy["parent_index"] = None
 
-            tipo = elem['tipo']
+            tipo = elem["tipo"]
 
             if tipo in division_levels:
                 parent_div = _get_active_division_parent(tipo)
                 if parent_div is not None:
-                    elem_copy['parent_index'] = parent_div
+                    elem_copy["parent_index"] = parent_div
 
                 # Update active divisions: set current and clear deeper divisions
                 div_idx = division_levels.index(tipo)
                 active_divisions[tipo] = i
-                for deeper in division_levels[div_idx + 1:]:
+                for deeper in division_levels[div_idx + 1 :]:
                     active_divisions[deeper] = None
 
                 # Reset device pointers
@@ -628,91 +638,95 @@ class LegalTextParser:
                 last_inciso_idx = None
                 last_alinea_idx = None
 
-            elif tipo == 'artigo':
+            elif tipo == "artigo":
                 # Articles belong to enclosing division or are root level
                 deepest_div = _get_deepest_active_division()
                 if deepest_div is not None:
-                    elem_copy['parent_index'] = deepest_div
+                    elem_copy["parent_index"] = deepest_div
 
                 last_article_idx = i
                 last_paragrafo_idx = None
                 last_inciso_idx = None
                 last_alinea_idx = None
 
-            elif tipo == 'paragrafo':
+            elif tipo == "paragrafo":
                 # Paragraphs belong to last article
                 if last_article_idx is not None:
-                    elem_copy['parent_index'] = last_article_idx
+                    elem_copy["parent_index"] = last_article_idx
                 last_paragrafo_idx = i
                 last_inciso_idx = None
                 last_alinea_idx = None
 
-            elif tipo == 'inciso':
+            elif tipo == "inciso":
                 # Incisos belong to last paragraph or article
                 if last_paragrafo_idx is not None:
-                    elem_copy['parent_index'] = last_paragrafo_idx
+                    elem_copy["parent_index"] = last_paragrafo_idx
                 elif last_article_idx is not None:
-                    elem_copy['parent_index'] = last_article_idx
+                    elem_copy["parent_index"] = last_article_idx
                 last_inciso_idx = i
                 last_alinea_idx = None
 
-            elif tipo == 'alinea':
+            elif tipo == "alinea":
                 # Alíneas belong to last inciso
                 if last_inciso_idx is not None:
-                    elem_copy['parent_index'] = last_inciso_idx
+                    elem_copy["parent_index"] = last_inciso_idx
                 elif last_paragrafo_idx is not None:
-                    elem_copy['parent_index'] = last_paragrafo_idx
+                    elem_copy["parent_index"] = last_paragrafo_idx
                 elif last_article_idx is not None:
-                    elem_copy['parent_index'] = last_article_idx
+                    elem_copy["parent_index"] = last_article_idx
                 last_alinea_idx = i
 
-            elif tipo == 'item':
+            elif tipo == "item":
                 # Items belong to the closest enclosing device
-                for parent in (last_alinea_idx, last_inciso_idx,
-                               last_paragrafo_idx, last_article_idx):
+                for parent in (
+                    last_alinea_idx,
+                    last_inciso_idx,
+                    last_paragrafo_idx,
+                    last_article_idx,
+                ):
                     if parent is not None:
-                        elem_copy['parent_index'] = parent
+                        elem_copy["parent_index"] = parent
                         break
 
             hierarchy.append(elem_copy)
 
         def _format_label(item: dict[str, Any]) -> str:
-            t = item.get('tipo', '')
-            num = str(item.get('numero', '')).strip()
-            if t == 'artigo':
+            t = item.get("tipo", "")
+            num = str(item.get("numero", "")).strip()
+            if t == "artigo":
                 return f"Art. {num}"
-            elif t == 'paragrafo':
-                return "Parágrafo único" if num.lower() in ('único', 'unico') else f"§ {num}"
-            elif t == 'inciso':
+            elif t == "paragrafo":
+                return "Parágrafo único" if num.lower() in ("único", "unico") else f"§ {num}"
+            elif t == "inciso":
                 return f"Inciso {num}"
-            elif t == 'alinea':
+            elif t == "alinea":
                 return f"Alínea {num}"
-            elif t == 'item':
+            elif t == "item":
                 return f"Item {num}"
-            elif t == 'capitulo':
+            elif t == "capitulo":
                 return f"Capítulo {num}"
-            elif t == 'secao':
+            elif t == "secao":
                 return f"Seção {num}"
-            elif t == 'subsecao':
+            elif t == "subsecao":
                 return f"Subseção {num}"
-            elif t == 'titulo':
+            elif t == "titulo":
                 return f"Título {num}"
-            elif t == 'livro':
+            elif t == "livro":
                 return f"Livro {num}"
-            elif t == 'parte':
+            elif t == "parte":
                 return f"Parte {num}"
             return f"{t.title()} {num}".strip()
 
         # Materialize caminho and nivel for each element
         for elem in hierarchy:
             labels = [_format_label(elem)]
-            curr_parent_idx = elem.get('parent_index')
+            curr_parent_idx = elem.get("parent_index")
             while curr_parent_idx is not None and 0 <= curr_parent_idx < len(hierarchy):
                 parent_elem = hierarchy[curr_parent_idx]
                 labels.insert(0, _format_label(parent_elem))
-                curr_parent_idx = parent_elem.get('parent_index')
-            elem['caminho'] = " > ".join(labels)
-            elem['nivel'] = len(labels) - 1
+                curr_parent_idx = parent_elem.get("parent_index")
+            elem["caminho"] = " > ".join(labels)
+            elem["nivel"] = len(labels) - 1
 
         logger.debug(f"Built hierarchy with {len(hierarchy)} elements")
         return hierarchy
@@ -729,14 +743,13 @@ class LegalTextParser:
             Cleaned text
         """
         # Remove extra whitespace
-        text = re.sub(r'\s+', ' ', text)
+        text = re.sub(r"\s+", " ", text)
 
         # Remove leading/trailing whitespace
         text = text.strip()
 
         # Normalize common characters
-        text = text.replace('–', '-')  # En-dash to hyphen
-        text = text.replace('—', '-')  # Em-dash to hyphen
+        text = text.replace("–", "-")  # En-dash to hyphen
+        text = text.replace("—", "-")  # Em-dash to hyphen
 
         return text
-
