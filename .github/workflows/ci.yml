@@ -113,11 +113,9 @@ jobs:
       run: |
         ruff check src/
 
-    # Advisory on purpose. The previous `black --check` (default 88 columns) disagreed
-    # with the project's ruff config (100) and had never passed. Promote this to a
-    # blocking step after a one-time `ruff format src/` commit.
-    - name: Check formatting (advisory)
-      continue-on-error: true
+    - name: Ruff format
+      run: |
+        ruff format --check src/
       run: |
         ruff format --check src/
 

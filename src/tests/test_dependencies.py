@@ -32,7 +32,7 @@ USED_WITHOUT_IMPORT = {
     "psycopg2-binary",     # loaded by Django's postgresql backend
     "django-htmx",         # enabled through INSTALLED_APPS / MIDDLEWARE strings
     "redis",               # Celery broker + Django's RedisCache backend, via URLs/settings
-    "ruff", "pytest", "pytest-django", "pytest-cov", "pytest-mock",   # tooling
+    "ruff", "pytest", "pytest-django", "pytest-cov", "pytest-mock", "boto3",   # tooling
 }
 
 

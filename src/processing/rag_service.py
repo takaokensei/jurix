@@ -16,7 +16,6 @@ from django.db import connection
 from src.apps.legislation.models import Dispositivo
 from src.llm_engine.ollama_service import OllamaService
 from src.processing.cache_service import get_cache_service
-from src.processing.grounding import evaluate_grounding
 
 logger = logging.getLogger(__name__)
 
@@ -348,6 +347,8 @@ RESPOSTA:"""
         # meanwhile, the result is stored under the old version and never served.
         corpus_version = self.cache.get_corpus_version() if (self.use_cache and self.cache) else 0
 
+        from src.observability.metrics import RAG_CACHE_HITS, RAG_CACHE_MISSES
+
         # Step 0: Check cache if enabled and not forced to refresh
         if not force_refresh and self.use_cache and self.cache:
             cached_result = self.cache.get_answer(
@@ -356,7 +357,7 @@ RESPOSTA:"""
             )
             if cached_result:
                 logger.info(f"Cache HIT for RAG answer: '{clean_question[:50]}...'")
-                # Rehydrate Dispositivo instances for sources if available
+                RAG_CACHE_HITS.inc()
                 cached_sources = cached_result.get('sources', [])
                 disp_ids = [
                     s['dispositivo_id'] for s in cached_sources
@@ -371,19 +372,39 @@ RESPOSTA:"""
                         if did in disps:
                             s['dispositivo'] = disps[did]
                 cached_result['sources'] = cached_sources
+                cached_result['source_relevance'] = float(
+                    cached_result.get(
+                        'source_relevance',
+                        self._source_relevance(cached_sources),
+                    ) or 0.0
+                )
+                cached_result['confidence'] = None
+                cached_result['confidence_calibrated'] = False
+                cached_result.setdefault('grounding', {})
                 cached_result['cached'] = True
                 return cached_result
+            RAG_CACHE_MISSES.inc()
 
         # Step 1: Retrieve relevant context
         context, results = self.get_relevant_context(clean_question, k=k)
 
         if not results:
-            return {
-                'answer': "Não encontrei informações relevantes para responder esta pergunta.",
-                'sources': [],
-                'confidence': 0.0,
-                'cached': False
-            }
+            from src.observability.metrics import RAG_REQUESTS
+
+            RAG_REQUESTS.labels("no_retrieval").inc()
+            return self._contract(
+                answer="Não encontrei informações relevantes para responder esta pergunta.",
+                sources=[],
+                source_relevance=0.0,
+                grounded=False,
+                grounding={
+                    "grounded": False,
+                    "score": 0.0,
+                    "claims": [],
+                    "failed_claims": [],
+                },
+                model=model,
+            )
 
         # Step 2: Build prompt for LLM with Markdown formatting instructions
         prompt = self.build_prompt(context, clean_question)
@@ -406,26 +427,48 @@ RESPOSTA:"""
 
         # Step 4: Post-process markdown to fix formatting issues
         answer = self._fix_markdown_formatting(answer)
-        if not self._answer_uses_only_sources(answer, results):
-            answer = (
-                "Não encontrei informação suficiente nas fontes recuperadas para responder "
-                "com segurança a essa pergunta."
-            )
 
-        # Calculate average confidence from similarity scores
-        avg_confidence = sum(r['similarity_score'] for r in results) / len(results)
+        from src.observability.metrics import (
+            RAG_GROUNDING_FAILURES,
+            RAG_REQUESTS,
+        )
 
-        result_payload = {
-            'answer': answer.strip(),
-            'sources': results,
-            'confidence': avg_confidence,
-            'model': model,
-            'context_length': len(context),
-            'cached': False
-        }
+        source_relevance = self._source_relevance(results)
+        source_only = self._answer_uses_only_sources(answer, results)
+        grounding_report = (
+            self._ground_answer(answer, results)
+            if source_only
+            else {
+                "grounded": False,
+                "score": 0.0,
+                "claims": [],
+                "failed_claims": [
+                    "A resposta contém referências ou afirmações que não foram encontradas nas fontes recuperadas."
+                ],
+            }
+        )
+        grounded = bool(grounding_report.get("grounded")) and source_only
 
-        # Step 5: Save to cache if enabled
-        if self.use_cache and self.cache:
+        if not grounded:
+            RAG_GROUNDING_FAILURES.inc()
+            RAG_REQUESTS.labels("grounding_rejected").inc()
+            final_answer = self._grounding_fallback()
+        else:
+            RAG_REQUESTS.labels("grounded").inc()
+            final_answer = answer.strip()
+
+        result_payload = self._contract(
+            answer=final_answer,
+            sources=results,
+            source_relevance=source_relevance,
+            grounded=grounded,
+            grounding=grounding_report,
+            model=model,
+        )
+        result_payload['context_length'] = len(context)
+
+        # Only grounded answers are eligible for the durable answer cache.
+        if grounded and self.use_cache and self.cache:
             self.cache.set_answer(
                 clean_question, k=k, model=model, answer_data=result_payload,
                 corpus_version=corpus_version,
@@ -437,7 +480,49 @@ RESPOSTA:"""
     @staticmethod
     def _ground_answer(answer: str, results: list[dict[str, Any]]) -> dict[str, Any]:
         """Evaluate grounding of the answer against retrieved evidence."""
+        from .grounding_service import evaluate_grounding
+
         return evaluate_grounding(answer, results)
+
+    @staticmethod
+    def _source_relevance(results: list[dict[str, Any]]) -> float:
+        if not results:
+            return 0.0
+        scores = [
+            float(item.get("similarity_score", 0.0) or 0.0)
+            for item in results
+        ]
+        return round(sum(scores) / len(scores), 4)
+
+    @staticmethod
+    def _contract(
+        *,
+        answer: str,
+        sources: list[dict[str, Any]],
+        source_relevance: float,
+        grounded: bool,
+        grounding: dict[str, Any],
+        model: str,
+        cached: bool = False,
+    ) -> dict[str, Any]:
+        return {
+            "answer": answer,
+            "sources": sources,
+            "source_relevance": source_relevance,
+            "confidence": None,
+            "confidence_calibrated": False,
+            "grounded": bool(grounded),
+            "grounding": grounding,
+            "model": model,
+            "cached": cached,
+        }
+
+    @staticmethod
+    def _grounding_fallback() -> str:
+        return (
+            "Não encontrei evidências suficientes nas fontes recuperadas para "
+            "sustentar essa resposta com segurança."
+        )
 
     def stream_answer_question(
         self,
@@ -456,6 +541,8 @@ RESPOSTA:"""
         clean_question = question.strip()
         corpus_version = self.cache.get_corpus_version() if (self.use_cache and self.cache) else 0
 
+        from src.observability.metrics import RAG_CACHE_HITS, RAG_CACHE_MISSES
+
         # Check cache first
         if self.use_cache and self.cache:
             cached_result = self.cache.get_answer(
@@ -463,6 +550,7 @@ RESPOSTA:"""
                 retrieval_fingerprint=retrieval_fingerprint
             )
             if cached_result:
+                RAG_CACHE_HITS.inc()
                 cached_sources = cached_result.get('sources', [])
                 disp_ids = [
                     s['dispositivo_id'] for s in cached_sources
@@ -476,78 +564,133 @@ RESPOSTA:"""
                         did = s.get('dispositivo_id')
                         if did in disps:
                             s['dispositivo'] = disps[did]
+                cached_source_relevance = float(
+                    cached_result.get(
+                        'source_relevance',
+                        self._source_relevance(cached_sources),
+                    ) or 0.0
+                )
                 yield {
                     'event': 'sources',
                     'sources': cached_sources,
-                    'confidence': cached_result.get('confidence', 0.0),
+                    'source_relevance': cached_source_relevance,
                     'cached': True
                 }
                 cached_ans = cached_result.get('answer', '')
-                yield {'event': 'chunk', 'chunk': cached_ans}
-                yield {'event': 'done', 'answer': cached_ans}
+                yield {'event': 'chunk', 'chunk': cached_ans, 'provisional': False}
+                yield {
+                    'event': 'done',
+                    'answer': cached_ans,
+                    'sources': cached_sources,
+                    'source_relevance': cached_source_relevance,
+                    'confidence': None,
+                    'confidence_calibrated': False,
+                    'grounded': bool(cached_result.get('grounded', False)),
+                    'grounding': cached_result.get('grounding', {}),
+                }
                 return
+            RAG_CACHE_MISSES.inc()
 
         # Retrieve relevant context
         context, results = self.get_relevant_context(clean_question, k=k)
         if not results:
+            from src.observability.metrics import RAG_REQUESTS
+
+            RAG_REQUESTS.labels("no_retrieval").inc()
             yield {
                 'event': 'sources',
                 'sources': [],
-                'confidence': 0.0,
+                'source_relevance': 0.0,
                 'cached': False
             }
             empty_msg = "Não encontrei informações relevantes para responder esta pergunta."
-            yield {'event': 'chunk', 'chunk': empty_msg}
-            yield {'event': 'done', 'answer': empty_msg}
+            yield {'event': 'chunk', 'chunk': empty_msg, 'provisional': False}
+            yield {
+                'event': 'done',
+                'answer': empty_msg,
+                'sources': [],
+                'source_relevance': 0.0,
+                'confidence': None,
+                'confidence_calibrated': False,
+                'grounded': False,
+                'grounding': {
+                    'grounded': False,
+                    'score': 0.0,
+                    'claims': [],
+                    'failed_claims': [],
+                },
+            }
             return
-
-        avg_confidence = sum(r['similarity_score'] for r in results) / len(results)
+        source_relevance = self._source_relevance(results)
         yield {
             'event': 'sources',
             'sources': results,
-            'confidence': avg_confidence,
+            'source_relevance': source_relevance,
             'cached': False
         }
 
         # Build prompt
         prompt = self.build_prompt(context, clean_question)
 
+        from src.observability.metrics import (
+            RAG_GROUNDING_FAILURES,
+            RAG_REQUESTS,
+        )
+
         full_chunks = []
         for chunk in self.ollama.stream_text(prompt, model=model, temperature=0.3, max_tokens=2048):
             full_chunks.append(chunk)
-            yield {'event': 'chunk', 'chunk': chunk}
+            yield {'event': 'chunk', 'chunk': chunk, 'provisional': True}
 
         full_answer = "".join(full_chunks)
         full_answer = self._fix_markdown_formatting(full_answer).strip()
 
-        grounding_report = self._ground_answer(full_answer, results)
-        is_grounded = bool(grounding_report.get('grounded', True))
-
-        # Cache result
-        if self.use_cache and self.cache:
-            result_payload = {
-                'answer': full_answer,
-                'sources': results,
-                'confidence': avg_confidence,
-                'source_relevance': avg_confidence,
-                'grounded': is_grounded,
-                'model': model,
-                'context_length': len(context),
-                'cached': False
+        source_only = self._answer_uses_only_sources(full_answer, results)
+        grounding_report = (
+            self._ground_answer(full_answer, results)
+            if source_only
+            else {
+                "grounded": False,
+                "score": 0.0,
+                "claims": [],
+                "failed_claims": [
+                    "A resposta contém referências ou afirmações que não foram encontradas nas fontes recuperadas."
+                ],
             }
+        )
+        is_grounded = bool(grounding_report.get('grounded')) and source_only
+        if not is_grounded:
+            RAG_GROUNDING_FAILURES.inc()
+            RAG_REQUESTS.labels("grounding_rejected").inc()
+            final_answer = self._grounding_fallback()
+        else:
+            RAG_REQUESTS.labels("grounded").inc()
+            final_answer = full_answer
+
+        if is_grounded and self.use_cache and self.cache:
+            result_payload = self._contract(
+                answer=final_answer,
+                sources=results,
+                source_relevance=source_relevance,
+                grounded=True,
+                grounding=grounding_report,
+                model=model,
+            )
+            result_payload['context_length'] = len(context)
             self.cache.set_answer(
                 clean_question, k=k, model=model, answer_data=result_payload,
                 corpus_version=corpus_version,
                 retrieval_fingerprint=retrieval_fingerprint
             )
-
         yield {
             'event': 'done',
-            'answer': full_answer,
+            'answer': final_answer,
             'sources': results,
-            'confidence': avg_confidence,
-            'source_relevance': avg_confidence,
+            'confidence': None,
+            'confidence_calibrated': False,
+            'source_relevance': source_relevance,
             'grounded': is_grounded,
+            'grounding': grounding_report,
         }
 
     def _fix_markdown_formatting(self, text: str) -> str:

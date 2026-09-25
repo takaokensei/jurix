@@ -1,4 +1,71 @@
-"""Security middleware used by the Django application."""
+"""Security and operational middleware used by the Django application."""
+
+import json
+import logging
+import time
+import uuid
+
+from src.observability.metrics import HTTP_LATENCY, HTTP_REQUESTS
+
+logger = logging.getLogger("jurix.request")
+
+
+class RequestObservabilityMiddleware:
+    """Attach a correlation ID and emit bounded HTTP metrics/logs."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex
+        request.jurix_request_id = request_id
+        started = time.perf_counter()
+
+        try:
+            response = self.get_response(request)
+        except Exception:
+            resolver_match = getattr(request, "resolver_match", None)
+            route = getattr(resolver_match, "route", None) or "unresolved"
+            elapsed = time.perf_counter() - started
+            HTTP_REQUESTS.labels(request.method, route, "500").inc()
+            HTTP_LATENCY.labels(request.method, route).observe(elapsed)
+            logger.exception(
+                json.dumps(
+                    {
+                        "event": "http_request",
+                        "request_id": request_id,
+                        "method": request.method,
+                        "route": route,
+                        "status": 500,
+                        "latency_ms": round(elapsed * 1000, 2),
+                    },
+                    ensure_ascii=False,
+                )
+            )
+            raise
+
+        resolver_match = getattr(request, "resolver_match", None)
+        route = getattr(resolver_match, "route", None) or "unresolved"
+        elapsed = time.perf_counter() - started
+        status = str(getattr(response, "status_code", 500))
+        HTTP_REQUESTS.labels(request.method, route, status).inc()
+        HTTP_LATENCY.labels(request.method, route).observe(elapsed)
+        response["X-Request-ID"] = request_id
+        logger.info(
+            json.dumps(
+                {
+                    "event": "http_request",
+                    "request_id": request_id,
+                    "method": request.method,
+                    "route": route,
+                    "status": response.status_code,
+                    "latency_ms": round(elapsed * 1000, 2),
+                },
+                ensure_ascii=False,
+            )
+        )
+        return response
+
 
 CONTENT_SECURITY_POLICY = (
     "default-src 'self'; "

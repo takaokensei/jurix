@@ -316,7 +316,7 @@ class TestRAGService:
         service = RAGService(use_cache=True)
         service.cache = Mock()
         service.cache.get_answer.return_value = None  # Cache MISS
-        service.get_relevant_context = Mock(return_value=('Contexto relevante', [{'similarity_score': 0.9}]))
+        service.get_relevant_context = Mock(return_value=('Contexto relevante', [{'similarity_score': 0.9, 'text': 'Resposta gerada pelo Llama 3.'}]))
 
         result = service.answer_question('Pergunta nova', k=5, model='llama3')
 
@@ -335,7 +335,7 @@ class TestRAGService:
         service.cache = Mock()
         service.cache.get_answer.return_value = None
         service.cache.get_corpus_version.return_value = 7
-        service.get_relevant_context = Mock(return_value=('Contexto', [{'similarity_score': 0.9}]))
+        service.get_relevant_context = Mock(return_value=('Contexto', [{'similarity_score': 0.9, 'text': 'Resposta gerada com o corpus antigo.'}]))
 
         def generate_while_corpus_changes(*args, **kwargs):
             service.cache.get_corpus_version.return_value = 8   # bumped mid-generation
@@ -355,7 +355,7 @@ class TestRAGService:
 
         service = RAGService(use_cache=True)
         service.cache = Mock()
-        service.get_relevant_context = Mock(return_value=('Contexto', [{'similarity_score': 0.88}]))
+        service.get_relevant_context = Mock(return_value=('Contexto', [{'similarity_score': 0.88, 'text': 'Nova resposta atualizada.'}]))
 
         result = service.answer_question('Pergunta para regenerar', k=5, model='llama3', force_refresh=True)
 

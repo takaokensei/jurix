@@ -96,12 +96,24 @@ def _check_pgvector() -> tuple[bool, str]:
 
 
 def _check_redis() -> tuple[bool, str]:
-    """Check Redis connectivity."""
+    """Check direct Redis connectivity and the configured Django cache separately."""
     try:
+        import redis
+
+        client = redis.Redis.from_url(
+            settings.REDIS_URL,
+            socket_connect_timeout=1,
+            socket_timeout=1,
+        )
+        client.ping()
+
         from django.core.cache import cache
-        cache.set('__health_probe__', '1', timeout=5)
-        if cache.get('__health_probe__') != '1':
+
+        probe_key = '__health_probe__:jurix'
+        cache.set(probe_key, '1', timeout=5)
+        if cache.get(probe_key) != '1':
             return False, 'redis cache read/write failed'
+        cache.delete(probe_key)
         return True, 'ok'
     except Exception as exc:
         return False, str(exc)

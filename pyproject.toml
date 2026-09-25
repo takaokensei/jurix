@@ -49,6 +49,11 @@ known-first-party = ["src", "config", "legislation", "ingestion", "core", "proce
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-addopts = "--nomigrations --reuse-db -v"
+addopts = "--reuse-db -v"
+markers = [
+    "unit: fast tests without external services",
+    "integration: tests requiring Django/database services",
+    "browser: real browser tests",
+]
 testpaths = ["src/tests"]
 DJANGO_SETTINGS_MODULE = "config.settings"

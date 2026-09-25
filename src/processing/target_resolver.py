@@ -116,32 +116,81 @@ def _ancestor_chain(dispositivo: Any) -> list[Any]:
 
 
 def _parse_hierarchy(text: str, reference_type: str, reference_number: str) -> dict[str, Any]:
-    """Extract a conservative parent path from the raw legal reference."""
+    """Extract the hierarchy belonging to the specific reference occurrence."""
     raw = text or ''
-    article_match = _ARTICLE_IN_TEXT.search(raw)
-    path: dict[str, Any] = {
-        'artigo': (
-            _normalise_article_token(
-                f"{article_match.group(1)}-{article_match.group(2)}"
-                if article_match and article_match.group(2)
-                else article_match.group(1)
-            )
-            if article_match else None
-        )
-    }
     ref_type = (reference_type or '').lower()
     ref_num = (reference_number or '').strip()
-    path[ref_type] = ref_num
 
-    for pattern, key in (
+    if ref_type not in _HIERARCHICAL_TYPES:
+        return {'artigo': None, ref_type: ref_num}
+
+    token_specs = (
+        (_ARTICLE_IN_TEXT, 'artigo'),
         (_PARAGRAPH_IN_TEXT, 'paragrafo'),
         (_INCISO_IN_TEXT, 'inciso'),
         (_ALINEA_IN_TEXT, 'alinea'),
         (_ITEM_IN_TEXT, 'item'),
+    )
+    tokens: list[tuple[int, int, str, str]] = []
+    for pattern, key in token_specs:
+        for match in pattern.finditer(raw):
+            tokens.append((match.start(), match.end(), key, match.group(1).strip()))
+
+    tokens.sort(key=lambda item: (item[0], item[1]))
+    target_positions = [
+        index
+        for index, (_start, _end, key, number) in enumerate(tokens)
+        if key == ref_type and _number_equal(ref_type, number, ref_num)
+    ]
+
+    if len(target_positions) != 1:
+        return {
+            'artigo': None,
+            ref_type: ref_num,
+            '_ambiguous': True,
+        }
+
+    index = target_positions[0]
+    start, _end, _key, number = tokens[index]
+    article_candidates: list[tuple[int, tuple[int, int, str, str], list[tuple[int, int, str, str]]]] = []
+
+    for direction in (-1, 1):
+        cursor = index + direction
+        article_token = None
+        between: list[tuple[int, int, str, str]] = []
+        while 0 <= cursor < len(tokens):
+            token = tokens[cursor]
+            if abs(token[0] - start) > MAX_RANGE_SPAN:
+                break
+            if token[2] == 'artigo':
+                article_token = token
+                break
+            if token[2] == ref_type:
+                break
+            between.append(token)
+            cursor += direction
+
+        if article_token is not None:
+            dist = abs(article_token[0] - start)
+            article_candidates.append((dist, article_token, between))
+
+    if not article_candidates:
+        return {'artigo': None, ref_type: ref_num}
+
+    article_candidates.sort(key=lambda item: item[0])
+    _dist, article_token, between = article_candidates[0]
+
+    _article_start, _article_end, _article_type, article_number = article_token
+    path: dict[str, Any] = {
+        'artigo': _normalise_article_token(article_number),
+        ref_type: number,
+    }
+    for _s, _e, key, value in sorted(
+        between,
+        key=lambda item: abs(item[0] - start),
     ):
-        match = pattern.search(raw)
-        if match:
-            path[key] = match.group(1).strip()
+        if key in _HIERARCHICAL_TYPES and key != ref_type:
+            path.setdefault(key, value)
     return path
 
 
@@ -177,6 +226,8 @@ def _resolve_hierarchical(
         ref_type,
         getattr(event, 'referencia_numero', ''),
     )
+    if path.get('_ambiguous'):
+        return Resolution((), 'referência hierárquica ambígua no texto fonte')
     article_key_value = path.get('artigo')
     if article_key_value is None:
         return Resolution((), 'referência hierárquica sem artigo ancestral identificável')
@@ -206,7 +257,7 @@ def _resolve_hierarchical(
     if not candidates:
         return Resolution((), 'referência hierárquica não encontrada na norma alvo')
     if len(candidates) > 1:
-        return Resolution((), 'referência hierárquica duplicada na norma alvo')
+        return Resolution((), 'referência hierárquica ambígua ou duplicada na norma alvo')
     return Resolution((candidates[0],))
 
 
