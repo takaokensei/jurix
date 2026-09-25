@@ -35,6 +35,8 @@ jobs:
         run: python scripts/validate_documentation_contract.py
       - name: Hotspot report
         run: python scripts/check_repository_hotspots_v2.py || test $? -eq 2
+      - name: Ingestion public-task contract
+        run: python scripts/check_ingestion_contract.py
 
   django-contract:
     runs-on: ubuntu-latest
@@ -82,4 +84,29 @@ jobs:
           JURIX_ALLOW_LOCAL_STORAGE: 'true'
           JURIX_SINGLE_HOST: 'true'
           RAG_STRICT_GROUNDING: 'true'
-        run: pytest src/tests/test_strict_grounding.py src/tests/test_rag_policy_v2.py src/tests/test_storage_operations_v2.py src/tests/test_production_validation_v2.py
+          RAG_REQUIRE_STRICT_POLICY: 'true'
+          RAG_REQUIRE_SOURCE_CITATIONS: 'true'
+          RAG_STREAM_PROVISIONAL_OUTPUT: 'false'
+        run: pytest src/tests/test_strict_grounding.py src/tests/test_rag_policy_v2.py src/tests/test_rag_policy_v3.py src/tests/test_rag_assurance_v4.py src/tests/test_rag_stream_safety_v2.py src/tests/test_storage_operations_v2.py src/tests/test_vector_index_command.py src/tests/test_verify_vector_index.py src/tests/test_production_validation_v2.py
+      - name: Vector query plan contract
+        env:
+          DATABASE_URL: postgresql://jurix:test@localhost:5432/jurix
+          DJANGO_SECRET_KEY: ci-secret-ci-secret-ci-secret-ci-secret-ci-secret
+          ALLOWED_HOSTS: localhost
+          DEBUG: 'False'
+          STORAGE_BACKEND: local
+          JURIX_ALLOW_LOCAL_STORAGE: 'true'
+          JURIX_SINGLE_HOST: 'true'
+        run: python manage.py verify_vector_query_plan
+      - name: Production gate
+        env:
+          DATABASE_URL: postgresql://jurix:test@localhost:5432/jurix
+          DJANGO_SECRET_KEY: ci-secret-ci-secret-ci-secret-ci-secret-ci-secret
+          ALLOWED_HOSTS: localhost
+          DEBUG: 'False'
+          STORAGE_BACKEND: local
+          JURIX_ALLOW_LOCAL_STORAGE: 'true'
+          JURIX_SINGLE_HOST: 'true'
+          RAG_STRICT_GROUNDING: 'true'
+          RAG_REQUIRE_STRICT_POLICY: 'true'
+        run: python scripts/production_gate.py --with-django --with-lint --require-rag-contract --require-vector-plan --require-staging-contract

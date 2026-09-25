@@ -1,0 +1,5 @@
+# Engineering contract cases; add expert-reviewed legal cases before making legal-quality claims.
+{"id":"supported-number","answer":"A Lei 1234/2025 exige 3 documentos.","sources":[{"text":"A Lei 1234/2025 exige 3 documentos.","norma_ref":"Lei 1234/2025","identifier":"Art. 1","dispositivo_id":1}],"expected_grounded":true}
+{"id":"unsupported-number","answer":"A Lei 1234/2025 exige 9 documentos.","sources":[{"text":"A Lei 1234/2025 exige 3 documentos.","norma_ref":"Lei 1234/2025","identifier":"Art. 1","dispositivo_id":1}],"expected_grounded":false}
+{"id":"negation-mismatch","answer":"A lei não exige autorização.","sources":[{"text":"A lei exige autorização.","norma_ref":"Lei 1234/2025","identifier":"Art. 1","dispositivo_id":1}],"expected_grounded":false}
+{"id":"unknown-citation","answer":"A Lei 9999/2025 exige cadastro.","sources":[{"text":"A Lei 1234/2025 exige cadastro.","norma_ref":"Lei 1234/2025","identifier":"Art. 1","dispositivo_id":1}],"expected_grounded":false}

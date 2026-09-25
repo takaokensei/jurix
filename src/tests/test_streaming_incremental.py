@@ -1,8 +1,11 @@
 from unittest.mock import Mock, patch
 
+from django.test import override_settings
+
 from src.processing.rag_service import RAGService
 
 
+@override_settings(RAG_STREAM_PROVISIONAL_OUTPUT=True)
 @patch('src.processing.rag_service.OllamaService')
 def test_stream_forwards_ollama_chunks_incrementally(mock_service):
     ollama = Mock()

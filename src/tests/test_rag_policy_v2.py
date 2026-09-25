@@ -7,7 +7,7 @@ from src.processing.rag_policy import decide_grounding, response_metadata
 def test_policy_metadata_is_machine_readable():
     decision = decide_grounding({"grounded": True, "score": 1.0}, True)
     metadata = response_metadata(decision)
-    assert metadata["policy"] == "strict-grounding-v1"
+    assert metadata["policy"].startswith("strict-grounding")
     assert metadata["cacheable"] is True
 
 

@@ -267,12 +267,20 @@ LLM_MAX_QUESTION_LENGTH = int(os.getenv('LLM_MAX_QUESTION_LENGTH', '2000'))
 LLM_RATE_LIMIT_REQUESTS = int(os.getenv('LLM_RATE_LIMIT_REQUESTS', '20'))  # 0 disables
 LLM_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv('LLM_RATE_LIMIT_WINDOW_SECONDS', '60'))
 RAG_STRICT_MIN_LEXICAL_OVERLAP = float(os.getenv('RAG_STRICT_MIN_LEXICAL_OVERLAP', '0.55'))
-RAG_STRICT_REQUIRE_SOURCE_DIVERSITY = env_bool('RAG_STRICT_REQUIRE_SOURCE_DIVERSITY', False)
+RAG_STRICT_REQUIRE_SOURCE_DIVERSITY = env_bool('RAG_STRICT_REQUIRE_SOURCE_DIVERSITY', not DEBUG)
 RAG_MIN_ACCEPTED_SCORE = float(os.getenv('RAG_MIN_ACCEPTED_SCORE', '1.0'))
 RAG_STRICT_GROUNDING = env_bool('RAG_STRICT_GROUNDING', True)
+RAG_REQUIRE_STRICT_POLICY = env_bool('RAG_REQUIRE_STRICT_POLICY', not DEBUG)
+RAG_REQUIRE_SOURCE_CITATIONS = env_bool('RAG_REQUIRE_SOURCE_CITATIONS', True)
+RAG_MAX_CONTEXT_CHARS = int(os.getenv('RAG_MAX_CONTEXT_CHARS', '8000'))
+RAG_MAX_ANSWER_CHARS = int(os.getenv('RAG_MAX_ANSWER_CHARS', '24000'))
+RAG_STREAM_PROVISIONAL_OUTPUT = env_bool('RAG_STREAM_PROVISIONAL_OUTPUT', False)
 RAG_BENCHMARK_REQUIRED = env_bool('RAG_BENCHMARK_REQUIRED', False)
 RAG_BENCHMARK_PATH = os.getenv('RAG_BENCHMARK_PATH', str(BASE_DIR / 'benchmarks' / 'rag' / 'production' / 'manifest.json'))
-RAG_MAX_CONTEXT_CHARS = int(os.getenv('RAG_MAX_CONTEXT_CHARS', '8000'))
+
+if not DEBUG and not RAG_STRICT_GROUNDING:
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured('RAG_STRICT_GROUNDING cannot be disabled outside DEBUG.')
 
 # Reverse proxies in front of the app (0 = use REMOTE_ADDR). Behind one nginx/ALB
 # set 1; otherwise every visitor appears to share the proxy's IP and one rate-limit

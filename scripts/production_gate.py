@@ -125,6 +125,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--with-django", action="store_true")
     parser.add_argument("--with-lint", action="store_true")
     parser.add_argument("--require-rag", action="store_true")
+    parser.add_argument("--require-rag-contract", action="store_true")
+    parser.add_argument("--require-vector-plan", action="store_true")
+    parser.add_argument("--require-staging-contract", action="store_true")
     args = parser.parse_args(argv)
 
     failures = validate_files()

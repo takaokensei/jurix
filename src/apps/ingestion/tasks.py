@@ -381,6 +381,9 @@ def bulk_ingest_normas_task(
         raise self.retry(exc=e) from e
 
 
+ingest_normas_bulk_task = bulk_ingest_normas_task
+
+
 # Celery task for asynchronous PDF download from SAPL API
 # Downloads legal norm PDFs and stores them in data/raw/ directory
 # Implements retry logic with exponential backoff for network failures

@@ -434,7 +434,9 @@ RESPOSTA:"""
             }
 
         # Step 4: Post-process markdown to fix formatting issues
-        answer = self._fix_markdown_formatting(answer)
+        answer = self._fix_markdown_formatting(answer).strip()
+        if len(answer) > int(getattr(settings, 'RAG_MAX_ANSWER_CHARS', 24000)):
+            logger.warning('RAG answer exceeds the configured output limit; strict assurance will reject it')
 
         from src.observability.metrics import (
             RAG_GROUNDING_FAILURES,
@@ -658,9 +660,11 @@ RESPOSTA:"""
         )
 
         full_chunks = []
+        stream_provisional = bool(getattr(settings, 'RAG_STREAM_PROVISIONAL_OUTPUT', False))
         for chunk in self.ollama.stream_text(prompt, model=model, temperature=0.3, max_tokens=2048):
             full_chunks.append(chunk)
-            yield {'event': 'chunk', 'chunk': chunk, 'provisional': True}
+            if stream_provisional:
+                yield {'event': 'chunk', 'chunk': chunk, 'provisional': True}
 
         full_answer = "".join(full_chunks)
         full_answer = self._fix_markdown_formatting(full_answer).strip()
@@ -686,6 +690,9 @@ RESPOSTA:"""
         else:
             RAG_REQUESTS.labels("grounded").inc()
             final_answer = full_answer
+
+        if not stream_provisional:
+            yield {'event': 'chunk', 'chunk': final_answer, 'provisional': False}
 
         if is_grounded and self.use_cache and self.cache:
             result_payload = self._contract(
