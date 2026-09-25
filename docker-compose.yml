@@ -50,7 +50,8 @@ services:
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - OLLAMA_MODEL=llama3
       - DJANGO_SETTINGS_MODULE=config.settings
-      - DEBUG=${DEBUG:-True}
+      - DEBUG=${DEBUG:-False}
+      - CACHE_REDIS_URL=redis://redis:6379/1
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/')"]
       interval: 15s
@@ -80,7 +81,8 @@ services:
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - OLLAMA_MODEL=llama3
       - DJANGO_SETTINGS_MODULE=config.settings
-      - DEBUG=${DEBUG:-True}
+      - DEBUG=${DEBUG:-False}
+      - CACHE_REDIS_URL=redis://redis:6379/1
     depends_on:
       db:
         condition: service_healthy
@@ -88,6 +90,22 @@ services:
         condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  beat:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    command: celery -A config beat -l info --schedule=/tmp/jurix-celerybeat
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-jurix_user}:${POSTGRES_PASSWORD:-jurix_pass_dev}@db:5432/${POSTGRES_DB:-jurix}
+      - REDIS_URL=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - DEBUG=${DEBUG:-False}
+    depends_on:
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:

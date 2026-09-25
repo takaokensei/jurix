@@ -20,7 +20,7 @@ from src.apps.legislation.models import EventoAlteracao, Norma
 REFERENCE_RE = re.compile(
     r"\b(?P<tipo>lei\s+complementar|lei|decreto|resolu(?:c|ç)ão|portaria|emenda)"
     r"(?:\s+(?:municipal|ordinária|do município))?\s*"
-    r"(?:n(?:º|o|\.)?\s*)?(?P<numero>[0-9][0-9.\-/]*)"
+    r"(?:n(?:º|o|\.)?\s*)?(?P<numero>[0-9][0-9.]*)"
     r"(?:\s*(?:de|/|-)\s*)?(?P<ano>19[0-9]{2}|20[0-9]{2})?",
     flags=re.IGNORECASE,
 )
@@ -53,10 +53,15 @@ def parse_target_reference(event: EventoAlteracao) -> TargetReference | None:
     tipo = getattr(event, "referencia_tipo", None)
     numero = getattr(event, "referencia_numero", None)
     ano = None
-    if tipo and numero:
+    if tipo and numero and _normalize_type(tipo) in {
+        "lei", "lei complementar", "decreto", "resolucao", "portaria", "emenda"
+    }:
         match_year = re.search(r"\b(19\d{2}|20\d{2})\b", str(getattr(event, "target_text", "") or ""))
         if match_year:
             ano = int(match_year.group(1))
+        parts = str(numero).split('/')
+        if len(parts) == 2 and re.fullmatch(r'(19|20)\d{2}', parts[1]):
+            numero, ano = parts[0], int(parts[1])
         return TargetReference(str(tipo), str(numero), ano)
 
     text = str(getattr(event, "target_text", "") or "")
@@ -76,8 +81,9 @@ def resolve_event_target(event: EventoAlteracao) -> bool:
     if reference is None:
         return False
 
-    source_norma = getattr(event, "norma", None)
-    expected_year = reference.ano or getattr(source_norma, "ano", None)
+    # An amendment may refer to a much older law. Never guess its year
+    # from the amending norm; without a year require an unambiguous match.
+    expected_year = reference.ano
     type_key = _normalize_type(reference.tipo)
     number_key = _normalize_number(reference.numero)
     if not type_key or not number_key:
@@ -91,10 +97,7 @@ def resolve_event_target(event: EventoAlteracao) -> bool:
     matched = []
     for norma in candidates.only("id", "tipo", "numero", "ano"):
         if _normalize_type(norma.tipo) != type_key:
-            # A plain "lei" can match project-specific values such as
-            # "Lei Ordinária", already normalized by _normalize_type.
-            if type_key == "lei" and _normalize_type(norma.tipo) != "lei":
-                continue
+            continue
         if _normalize_number(norma.numero) != number_key:
             continue
         matched.append(norma)
@@ -108,15 +111,15 @@ def resolve_event_target(event: EventoAlteracao) -> bool:
     if getattr(event, "norma_alvo_id", None) == target.id:
         return True
     with transaction.atomic():
-        EventoAlteracao.objects.filter(pk=event.pk, norma_alvo__isnull=True).update(norma_alvo_id=target.id)
-    return True
+        changed = EventoAlteracao.objects.filter(pk=event.pk, norma_alvo__isnull=True).update(norma_alvo_id=target.id)
+    return bool(changed)
 
 
 def reconcile_unresolved_event_targets(limit: int = 5000) -> dict[str, int]:
     """Resolve a bounded number of previously unresolved alteration events."""
     events = (
         EventoAlteracao.objects.filter(norma_alvo__isnull=True)
-        .select_related("norma")
+        .select_related("dispositivo_fonte__norma")
         .order_by("id")[: max(1, min(int(limit), 50_000))]
     )
     inspected = resolved = ambiguous = 0

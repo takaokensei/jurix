@@ -13,6 +13,8 @@ import os
 import re
 import secrets
 import time
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -66,24 +68,52 @@ def _safe_filename(name: str) -> str:
 
 
 def _extract_text(path: Path, suffix: str) -> str:
-    if suffix == ".pdf":
+    worker = Path(__file__).resolve().parents[2] / 'processing' / 'attachment_worker.py'
+    try:
+        result = subprocess.run(
+            [sys.executable, str(worker), str(path.resolve())],
+            capture_output=True, timeout=20, check=True,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+        )
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as exc:
+        raise AttachmentError('Não foi possível processar o documento dentro dos limites permitidos.') from exc
+    return result.stdout.decode('utf-8')[:60_000]
+
+
+def cleanup_expired_attachments(now: float | None = None) -> int:
+    """Collect expired session files even when their owners never return."""
+    cutoff = (time.time() if now is None else now) - DEFAULT_TTL_SECONDS
+    root = _root().resolve()
+    removed = 0
+    for directory in root.iterdir():
+        if directory.is_symlink() or not directory.is_dir() or not re.fullmatch(r'[a-f0-9]{64}', directory.name):
+            continue
+        for path in directory.iterdir():
+            if path.is_symlink() or not path.is_file():
+                continue
+            if path.resolve().parent != directory.resolve():
+                continue
+            try:
+                if path.stat().st_mtime < cutoff:
+                    path.unlink()
+                    removed += 1
+            except FileNotFoundError:
+                pass
         try:
-            import fitz  # type: ignore
-        except Exception as exc:
-            raise AttachmentError("Leitura de PDF indisponível no ambiente atual.") from exc
-        pages = []
-        with fitz.open(path) as document:
-            for page in document:
-                pages.append(page.get_text("text"))
-        return "\n".join(pages)
-    if suffix == ".docx":
-        try:
-            from docx import Document  # type: ignore
-        except Exception as exc:
-            raise AttachmentError("Leitura de DOCX indisponível no ambiente atual.") from exc
-        document = Document(path)
-        return "\n".join(paragraph.text for paragraph in document.paragraphs)
-    return path.read_text(encoding="utf-8", errors="replace")
+            directory.rmdir()
+        except OSError:
+            pass
+    return removed
+def _validate_file_signature(path: Path, suffix: str) -> None:
+    """Reject renamed binaries before handing them to document parsers."""
+    with path.open("rb") as source:
+        header = source.read(8)
+    if suffix == ".pdf" and not header.startswith(b"%PDF-"):
+        raise AttachmentError("O conteúdo não corresponde a um PDF válido.")
+    if suffix == ".docx" and header[:2] != b"PK":
+        raise AttachmentError("O conteúdo não corresponde a um DOCX válido.")
+    if suffix in {".txt", ".md", ".csv", ".json"} and b"\x00" in header:
+        raise AttachmentError("Arquivo de texto inválido.")
 
 
 def cleanup_request_attachments(request, now: float | None = None) -> int:
@@ -142,6 +172,7 @@ def upload_attachment(request, upload: UploadedFile) -> dict[str, Any]:
             target.write(chunk)
 
     try:
+        _validate_file_signature(path, suffix)
         text = _extract_text(path, suffix).strip()
     except Exception:
         path.unlink(missing_ok=True)

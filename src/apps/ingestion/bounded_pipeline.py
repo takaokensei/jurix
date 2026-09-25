@@ -52,7 +52,7 @@ def bounded_sapl_ingest_task(
             raise self.retry(exc=RuntimeError(error))
 
         value = result.result if isinstance(result.result, dict) else {}
-        fetched = int(value.get("count", value.get("processed", page_limit)) or 0)
+        fetched = int(value["total_fetched"])
         processed += max(0, min(fetched, page_limit))
         offset += page_limit
 

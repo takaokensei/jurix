@@ -14,6 +14,7 @@ import { JSDOM } from 'jsdom';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
 const TPL = path.join(ROOT, 'src/apps/legislation/templates/legislation/chatbot.html');
+const CSP_SOURCE = path.join(ROOT, 'config/middleware.py');
 const JS_DIR = path.join(ROOT, 'src/apps/core/static/js');
 const read = (f) => fs.readFileSync(path.join(JS_DIR, f), 'utf8');
 const tick = () => new Promise((r) => setTimeout(r, 30));
@@ -39,11 +40,9 @@ test('the raw template has no inline script, no on*= handler, no javascript: URL
 });
 
 test('the CSP header no longer allows unsafe-inline / unsafe-eval for scripts', () => {
-  const html = fs.readFileSync(TPL, 'utf8');
-  const csp = html.match(/Content-Security-Policy"\s+content="([^"]+)"/)[1];
-  const scriptSrc = csp.split(';').find((d) => d.trim().startsWith('script-src'));
-  assert.ok(scriptSrc, 'no script-src directive found');
-  assert.doesNotMatch(scriptSrc, /unsafe-inline|unsafe-eval/);
+  const source = fs.readFileSync(CSP_SOURCE, 'utf8');
+  assert.match(source, /script-src/);
+  assert.doesNotMatch(source, /script-src[^\n]*unsafe-inline|script-src[^\n]*unsafe-eval/);
 });
 
 /**

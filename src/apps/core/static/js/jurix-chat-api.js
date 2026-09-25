@@ -71,15 +71,16 @@
         return requestJson('/api/v1/chat/sessions/');
     }
 
-    function getSession(sessionId) {
+    function getSession(sessionId, cursor = null) {
         if (!sessionId) return Promise.reject(new Error('sessionId is required'));
-        return requestJson(`/api/v1/chat/sessions/${encodeURIComponent(sessionId)}/`);
+        const query = cursor ? `?before=${encodeURIComponent(cursor)}` : '';
+        return requestJson(`/api/v1/chat/sessions/${encodeURIComponent(sessionId)}/${query}`);
     }
 
     function getSessionBySlug(slug) {
         if (!slug) return Promise.reject(new Error('slug is required'));
         return requestJson(
-            `/api/v1/chat/sessions/by-slug/${encodeURIComponent(slug)}/`
+            `/api/v1/chat/sessions/slug/${encodeURIComponent(slug)}/`
         );
     }
 
@@ -107,7 +108,7 @@
     async function streamAnswer(
         question,
         sessionId,
-        { onChunk, onSources, onDone, onError } = {}
+        { onChunk, onSources, onDone, onError, onSession } = {}
     ) {
         if (!question || !String(question).trim()) {
             throw new Error('question is required');
@@ -119,6 +120,7 @@
 
         const controller = new AbortController();
         activeStreamController = controller;
+        let reader;
 
         try {
             let response;
@@ -146,9 +148,10 @@
                 );
             }
 
-            const reader = response.body.getReader();
+            reader = response.body.getReader();
             const decoder = new TextDecoder('utf-8');
             let buffer = '';
+            let completed = false;
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -164,27 +167,35 @@
 
                     try {
                         const eventData = JSON.parse(line.substring(6));
-                        if (eventData.type === 'sources' && onSources) {
-                            onSources(eventData.sources, eventData.confidence);
+                        if (eventData.type === 'session' && onSession) {
+                            await onSession(eventData);
+                        } else if (eventData.type === 'sources' && onSources) {
+                            await onSources(eventData.sources, eventData.confidence);
                         } else if (eventData.type === 'chunk' && onChunk) {
-                            onChunk(eventData.chunk);
-                        } else if (eventData.type === 'done' && onDone) {
-                            onDone(eventData);
+                            await onChunk(eventData.chunk);
+                        } else if (eventData.type === 'done') {
+                            completed = true;
+                            if (onDone) await onDone(eventData);
+                            return;
                         } else if (eventData.type === 'error') {
-                            if (onError) onError(eventData.error);
                             const error = new Error(eventData.error || 'RAG stream error');
                             error.code = 'RAG_STREAM_ERROR';
                             throw error;
                         }
                     } catch (parseError) {
-                        if (parseError && parseError.code === 'RAG_STREAM_ERROR') {
-                            throw parseError;
-                        }
-                        console.error('Error parsing SSE event:', parseError);
+                        throw parseError;
                     }
                 }
             }
+            if (!completed) {
+                throw Object.assign(new Error('A resposta foi interrompida antes de terminar.'), { code: 'INCOMPLETE_STREAM' });
+            }
+        } catch (error) {
+            if (onError) await onError(error);
+            throw error;
         } finally {
+            try { await reader?.cancel?.(); } catch (_) { /* Preserve the original stream error. */ }
+            reader?.releaseLock?.();
             if (activeStreamController === controller) {
                 activeStreamController = null;
             }

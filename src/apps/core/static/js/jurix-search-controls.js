@@ -15,8 +15,10 @@
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     state = { ...state, ...saved };
-    if (!Array.isArray(state.attachment_ids)) state.attachment_ids = [];
   } catch (_) {}
+  // Attachments belong to the current conversation and must never survive a new one.
+  state.attachment_ids = [];
+  state.attachments = [];
 
   const config = () => {
     const value = document.body?.dataset?.searchOptions;
@@ -67,7 +69,7 @@
   function buttonLabel(control, key) {
     const map = {
       norma_status: state.norma_status === 'all' ? 'Todas as normas' : 'Normativas',
-      source_scope: state.source_scope === 'all' ? 'Todas as fontes' : 'Fontes',
+      source_scope: state.source_scope === 'all' ? 'Todas as fontes' : 'Legislação municipal',
       mode: state.mode === 'lexical' ? 'Pesquisa textual' : state.mode === 'semantic' ? 'Pesquisa semântica' : 'Pesquisa híbrida',
     };
     const label = control.querySelector('[data-control-label]');
@@ -138,8 +140,10 @@
   }
 
   function setAttachments(attachments) {
-    state.attachment_ids = attachments.map(item => item.id).slice(0, 5);
+    state.attachments = attachments.slice(0, 5);
+    state.attachment_ids = state.attachments.map(item => item.id);
     save();
+    renderAttachments();
     document.querySelectorAll('.jurix-attachment-count').forEach(node => {
       node.textContent = state.attachment_ids.length ? `(${state.attachment_ids.length})` : '';
     });
@@ -150,14 +154,47 @@
     return JSON.parse(JSON.stringify(state));
   }
 
+  function renderAttachments() {
+    const container = document.getElementById('jurix-attachment-previews');
+    if (!container) return;
+    container.replaceChildren();
+    state.attachments.forEach(item => {
+      const preview = document.createElement('div');
+      preview.className = 'jurix-attachment-preview';
+      preview.title = item.name || 'Documento anexado';
+      preview.innerHTML = `<span class="jurix-attachment-icon" aria-hidden="true">PDF</span><span class="jurix-attachment-name"></span>`;
+      preview.querySelector('.jurix-attachment-name').textContent = item.name || 'Documento';
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'jurix-attachment-remove';
+      remove.setAttribute('aria-label', `Desanexar ${item.name || 'documento'}`);
+      remove.textContent = 'x';
+      remove.onclick = async () => {
+        remove.disabled = true;
+        try {
+          await (window.JurixChatAPI || window.jurixChatAPI).deleteAttachment(item.id);
+          setAttachments(state.attachments.filter(current => current.id !== item.id));
+        } catch (error) {
+          remove.disabled = false;
+          window.alert(error.message || 'Não foi possível desanexar o documento.');
+        }
+      };
+      preview.appendChild(remove);
+      container.appendChild(preview);
+    });
+    container.hidden = state.attachments.length === 0;
+    document.querySelectorAll('.jurix-attachment-count').forEach(node => {
+      node.textContent = state.attachments.length ? `(${state.attachments.length})` : '';
+    });
+  }
+
   async function upload(files) {
     const chatApi = window.JurixChatAPI || window.jurixChatAPI;
     if (!chatApi?.uploadAttachment) {
       throw new Error('API de anexos indisponível.');
     }
-    const current = Array.isArray(chatApi.listLocalAttachments?.()) ? chatApi.listLocalAttachments() : [];
-    const merged = [...current];
-    for (const file of Array.from(files || []).slice(0, 5 - state.attachment_ids.length)) {
+    const merged = [...state.attachments];
+    for (const file of Array.from(files || []).slice(0, 5 - state.attachments.length)) {
       const item = await chatApi.uploadAttachment(file);
       merged.push(item);
     }
@@ -177,6 +214,20 @@
     event.target.value = '';
   });
 
+  document.addEventListener('jurix:new-conversation', () => {
+    const current = [...state.attachments];
+    state.attachments = [];
+    state.attachment_ids = [];
+    save();
+    renderAttachments();
+    const api = window.JurixChatAPI || window.jurixChatAPI;
+    current.forEach(item => api?.deleteAttachment?.(item.id).catch(() => {}));
+    window.dispatchEvent(new CustomEvent('jurix:search-options-changed', { detail: getPayload() }));
+  });
+
   window.JurixSearchControls = { getPayload, setAttachments, upload, state };
-  document.addEventListener('DOMContentLoaded', wire, { once: true });
+  document.addEventListener('DOMContentLoaded', () => {
+    wire();
+    renderAttachments();
+  }, { once: true });
 })();

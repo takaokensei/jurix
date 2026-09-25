@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from django.core.management.base import BaseCommand, CommandError
 
-from src.clients.sapl.sapl_client import SAPLClient
+from src.clients.sapl.sapl_client import SaplAPIClient
 
 
 class Command(BaseCommand):
@@ -14,7 +14,7 @@ class Command(BaseCommand):
         parser.add_argument("--max-pages", type=int, default=4)
 
     def handle(self, *args, **options):
-        client = SAPLClient()
+        client = SaplAPIClient()
         limit = max(1, min(options["limit"], 100))
         max_pages = max(1, min(options["max_pages"], 50))
         self.stdout.write(f"SAPL base: {client.base_url}")
@@ -27,9 +27,9 @@ class Command(BaseCommand):
                 payload = client.fetch_normas(limit=limit, offset=offset)
             except Exception as exc:
                 raise CommandError(f"Falha consultando SAPL na página {page_no}: {exc}") from exc
-            if not isinstance(payload, dict):
+            if not isinstance(payload, list):
                 raise CommandError(f"Resposta SAPL inesperada na página {page_no}: {type(payload).__name__}")
-            results = payload.get("results") or payload.get("objects") or []
+            results = payload
             ids = tuple(str(item.get("id")) for item in results if isinstance(item, dict) and item.get("id") is not None)
             unique = len(set(ids))
             self.stdout.write(

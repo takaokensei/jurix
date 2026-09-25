@@ -490,9 +490,11 @@ strong, b {
 }
 
 .navbar-logo {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
     flex-shrink: 0;
+    filter: drop-shadow(0 0 3px rgba(103, 232, 249, 0.45));
 }
 
 .navbar-title {

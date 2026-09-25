@@ -36,8 +36,8 @@ class CacheService:
     # Monotonic counter mixed into every key derived from the corpus (search results
     # and answers). Bumping it invalidates them all at once and leaves query
     # embeddings alone, which depend only on the query and the model. This replaces
-    # cache.clear(), which on Redis is FLUSHDB and would also wipe the Celery queue
-    # (broker and cache share REDIS_URL, DB 0).
+    # cache.clear(), which on Redis is FLUSHDB and must never touch the Celery broker
+    # database.
     VERSION_KEY = "corpus_version"
 
     # Cache TTLs (Time To Live in seconds)
@@ -226,7 +226,8 @@ class CacheService:
         question: str,
         k: int,
         model: str,
-        corpus_version: int | None = None
+        corpus_version: int | None = None,
+        retrieval_fingerprint: str = ""
     ) -> dict[str, Any] | None:
         """
         Get cached RAG answer.
@@ -245,7 +246,7 @@ class CacheService:
 
         if corpus_version is None:
             corpus_version = self.get_corpus_version()
-        cache_input = f"v{corpus_version}:{question}:k={k}:model={model}"
+        cache_input = f"v{corpus_version}:{question}:k={k}:model={model}:retrieval={retrieval_fingerprint}"
         key = self._generate_key(self.ANSWER_PREFIX, cache_input)
 
         try:
@@ -266,7 +267,8 @@ class CacheService:
         k: int,
         model: str,
         answer_data: dict[str, Any],
-        corpus_version: int | None = None
+        corpus_version: int | None = None,
+        retrieval_fingerprint: str = ""
     ) -> bool:
         """
         Cache RAG answer.
@@ -288,7 +290,7 @@ class CacheService:
 
         if corpus_version is None:
             corpus_version = self.get_corpus_version()
-        cache_input = f"v{corpus_version}:{question}:k={k}:model={model}"
+        cache_input = f"v{corpus_version}:{question}:k={k}:model={model}:retrieval={retrieval_fingerprint}"
         key = self._generate_key(self.ANSWER_PREFIX, cache_input)
 
         try:

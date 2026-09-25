@@ -14,6 +14,7 @@ SRC = ROOT / "src"
 
 # import name -> distribution name, where they differ
 IMPORT_TO_DIST = {
+    "docx": "python-docx",
     "fitz": "pymupdf",
     "dotenv": "python-dotenv",
     "PIL": "pillow",

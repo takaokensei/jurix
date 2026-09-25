@@ -14,6 +14,9 @@ from typing import Any
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db.models import Count, OuterRef, Q, Subquery
+from django.db import transaction
+from django.utils import timezone
+from django.core import signing
 from django.http import HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
@@ -233,13 +236,8 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
 
         # Generate answer using RAG
         rag_service = RAGService()
-        if retrieval_options.attachment_texts:
-            from src.processing.adaptive_retrieval import attachment_context
-            question_for_rag = question + "\n\n" + attachment_context(retrieval_options.attachment_texts)
-        else:
-            question_for_rag = question
         response = rag_service.answer_question(
-            question=question_for_rag,
+            question=question,
             k=k,
             model=model,
             options=retrieval_options,
@@ -309,28 +307,33 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
     # Session management
     chat_session = None
     if request.user.is_authenticated:
-        if session_id:
-            chat_session = ChatSession.objects.filter(id=session_id, user=request.user).first()
-        if not chat_session:
-            chat_session = ChatSession.objects.create(
-                user=request.user,
-                title=question[:50] + ('...' if len(question) > 50 else ''),
-                is_active=True
-            )
         try:
-            ChatMessage.objects.create(
-                session=chat_session,
-                role='user',
-                content=question
-            )
+            with transaction.atomic():
+                if session_id:
+                    chat_session = ChatSession.objects.filter(id=session_id, user=request.user).first()
+                    if not chat_session:
+                        return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
+                if not chat_session:
+                    chat_session = ChatSession.objects.create(
+                        user=request.user, title=question[:50], is_active=True
+                    )
+                ChatMessage.objects.create(session=chat_session, role='user', content=question)
+                ChatSession.objects.filter(pk=chat_session.pk).update(updated_at=timezone.now())
         except Exception as e:
-            logger.error(f"Error persisting user message: {e}")
+            return _server_error('persisting user message', e)
 
     def event_stream():
         sources_list = []
+        accumulated_answer = ''
+        assistant_persisted = False
+        stream_gen = None
         try:
+            if chat_session:
+                yield f"data: {json.dumps({'type': 'session', 'session_id': chat_session.id, 'session_slug': chat_session.slug})}\n\n"
             rag_service = RAGService()
-            stream_gen = rag_service.stream_answer_question(question, k=k, model=model)
+            stream_gen = rag_service.stream_answer_question(
+                question, k=k, model=model, options=retrieval_options
+            )
 
             for item in stream_gen:
                 ev_type = item.get('event')
@@ -345,17 +348,12 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     }
                     yield f"data: {json.dumps(payload)}\n\n"
                 elif ev_type == 'chunk':
+                    accumulated_answer += item.get('chunk', '') or ''
                     payload = {
                         'type': 'chunk',
                         'chunk': item.get('chunk', '')
                     }
                     yield f"data: {json.dumps(payload)}\n\n"
-    if retrieval_options.attachment_texts:
-        from src.processing.adaptive_retrieval import attachment_context
-        question_for_rag = question + "\n\n" + attachment_context(retrieval_options.attachment_texts)
-    else:
-        question_for_rag = question
-
                 elif ev_type == 'done':
                     final_answer = item.get('answer', '')
                     if request.user.is_authenticated and chat_session:
@@ -371,8 +369,11 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                                     'streaming': True
                                 }
                             )
+                            assistant_persisted = True
                         except Exception as msg_err:
                             logger.error(f"Error persisting streaming assistant message: {msg_err}")
+                            yield f"data: {json.dumps({'type': 'error', 'error': 'A resposta foi gerada, mas não pôde ser salva. Copie o texto antes de sair.'})}\n\n"
+                            return
 
                     payload = {
                         'type': 'done',
@@ -385,6 +386,33 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
             logger.error(f"Error in chatbot_stream_api stream: {e}", exc_info=True)
             err_payload = {'type': 'error', 'error': _format_error_message(e)}
             yield f"data: {json.dumps(err_payload)}\n\n"
+        finally:
+            if stream_gen is not None and hasattr(stream_gen, 'close'):
+                try:
+                    stream_gen.close()
+                except Exception:
+                    logger.exception('Error closing RAG stream')
+            if (
+                request.user.is_authenticated
+                and chat_session
+                and accumulated_answer
+                and not assistant_persisted
+            ):
+                try:
+                    ChatMessage.objects.create(
+                        session=chat_session,
+                        role='assistant',
+                        content=accumulated_answer,
+                        sources_json=sources_list,
+                        metadata_json={
+                            'model': model,
+                            'sources_count': len(sources_list),
+                            'streaming': True,
+                            'interrupted': True,
+                        }
+                    )
+                except Exception as msg_err:
+                    logger.error(f"Error persisting interrupted assistant message: {msg_err}")
 
     response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
     response['Cache-Control'] = 'no-cache'
@@ -576,12 +604,28 @@ def _preview(content: str | None) -> str:
     return content[:SESSION_PREVIEW_LENGTH] + suffix
 
 
-def _chat_session_response(session: ChatSession) -> JsonResponse:
+def _chat_session_response(session: ChatSession, before: str | None = None) -> JsonResponse:
     """Session + its last CHAT_MESSAGES_PAGE_SIZE messages in chronological order."""
     queryset = ChatMessage.objects.filter(session=session)
     total = queryset.count()
+    if before:
+        try:
+            cursor = signing.loads(before, salt='chat-history')
+            if cursor['session'] != session.pk:
+                raise ValueError('Wrong session')
+            queryset = queryset.filter(
+                Q(created_at__lt=cursor['date']) |
+                Q(created_at=cursor['date'], id__lt=cursor['id'])
+            )
+        except (signing.BadSignature, ValueError, KeyError, TypeError):
+            return JsonResponse({'success': False, 'error': 'Invalid cursor'}, status=400)
     # id breaks ties between messages created in the same instant
-    latest = list(queryset.order_by('-created_at', '-id')[:CHAT_MESSAGES_PAGE_SIZE])
+    latest = list(queryset.order_by('-created_at', '-id')[:CHAT_MESSAGES_PAGE_SIZE + 1])
+    has_more = len(latest) > CHAT_MESSAGES_PAGE_SIZE
+    latest = latest[:CHAT_MESSAGES_PAGE_SIZE]
+    next_cursor = signing.dumps({
+        'session': session.pk, 'date': latest[-1].created_at.isoformat(), 'id': latest[-1].pk
+    }, salt='chat-history') if has_more else None
     messages = [serialize_chat_message(m) for m in reversed(latest)]
     return JsonResponse({
         'success': True,
@@ -589,7 +633,8 @@ def _chat_session_response(session: ChatSession) -> JsonResponse:
         'messages': messages,
         'count': len(messages),
         'total_count': total,
-        'has_more': total > CHAT_MESSAGES_PAGE_SIZE,
+        'has_more': has_more,
+        'next_cursor': next_cursor,
     })
 
 
@@ -615,17 +660,17 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
 
     try:
         if request.method == 'GET':
-            first_user_message = (
+            latest_user_message = (
                 ChatMessage.objects.filter(session=OuterRef('pk'), role='user')
-                .order_by('created_at')
+                .order_by('-created_at', '-id')
                 .values('content')[:1]
             )
-            # Count and first-question preview come from the same query: no N+1.
+            # Count and latest-question preview come from the same query: no N+1.
             sessions = (
                 ChatSession.objects.filter(user=request.user)
                 .annotate(
                     message_count=Count('messages'),
-                    first_user_content=Subquery(first_user_message),
+                    latest_user_content=Subquery(latest_user_message),
                 )
                 .order_by('-updated_at', '-id')[:_parse_limit(request.GET.get('limit'))]
             )
@@ -633,7 +678,7 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
             for session in sessions:
                 item = serialize_chat_session(session)
                 item['message_count'] = session.message_count
-                item['latest_message_preview'] = _preview(session.first_user_content)
+                item['latest_message_preview'] = _preview(session.latest_user_content)
                 sessions_data.append(item)
             return JsonResponse({'success': True, 'sessions': sessions_data, 'count': len(sessions_data)})
 
@@ -668,7 +713,7 @@ def chat_session_by_slug_api(request: HttpRequest, slug: str) -> JsonResponse:
         return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
 
     try:
-        return _chat_session_response(session)
+        return _chat_session_response(session, request.GET.get('before'))
     except Exception as e:
         return _server_error("chat session by slug API", e)
 
@@ -688,7 +733,7 @@ def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonRespon
         if request.method == 'DELETE':
             session.delete()
             return JsonResponse({'success': True, 'message': 'Session deleted'})
-        return _chat_session_response(session)
+        return _chat_session_response(session, request.GET.get('before'))
     except Exception as e:
         return _server_error("chat session detail API", e)
 
@@ -789,9 +834,18 @@ def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonRe
             'metadata': {
                 'model': response.get('model', model),
                 'context_length': response.get('context_length', 0),
+                'sources_count': len(sources)
+            }
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        logger.error(f"Error in chat session regenerate API: {e}", exc_info=True)
+        return JsonResponse({'success': False, 'error': _format_error_message(e)}, status=500)
+
 
 @require_http_methods(["GET", "POST"])
-@csrf_exempt
 def chat_attachment_api(request: HttpRequest) -> JsonResponse:
     """List or upload temporary, session-bound chat documents."""
     limited = rate_limit_response(request, scope='attachment')
@@ -814,7 +868,6 @@ def chat_attachment_api(request: HttpRequest) -> JsonResponse:
 
 
 @require_http_methods(["DELETE"])
-@csrf_exempt
 def chat_attachment_detail_api(request: HttpRequest, attachment_id: str) -> JsonResponse:
     """Delete one temporary session-bound chat document."""
     limited = rate_limit_response(request, scope='attachment')
@@ -823,13 +876,3 @@ def chat_attachment_detail_api(request: HttpRequest, attachment_id: str) -> Json
     if not delete_attachment(request, attachment_id):
         return JsonResponse({'success': False, 'error': 'Documento não encontrado.'}, status=404)
     return JsonResponse({'success': True, 'attachments': list_attachments(request)})
-                'sources_count': len(sources)
-            }
-        })
-
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
-    except Exception as e:
-        logger.error(f"Error in chat session regenerate API: {e}", exc_info=True)
-        return JsonResponse({'success': False, 'error': _format_error_message(e)}, status=500)
-

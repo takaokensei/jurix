@@ -1,7 +1,7 @@
 """Backward-compatible RAGService facade with adaptive retrieval controls."""
 from __future__ import annotations
 
-from src.processing.adaptive_retrieval import AdaptiveRetriever, RetrievalOptions
+from src.processing.adaptive_retrieval import AdaptiveRetriever, RetrievalOptions, attachment_context
 from src.processing.rag_service import RAGService
 
 
@@ -19,8 +19,28 @@ class AdaptiveRAGService(RAGService):
             return value
         return RetrievalOptions(max_sources=12)
 
+    def get_relevant_context(self, query_text: str, k: int = 5, max_tokens: int = 2000):
+        """Use explicitly attached documents as the authoritative corpus."""
+        options = self._options()
+        if options.attachment_texts:
+            context = attachment_context(options.attachment_texts, max_chars=max_tokens * 4)
+            sources = [
+                {
+                    'text': text[:200],
+                    'full_text': text,
+                    'norma_ref': 'Documento anexado',
+                    'similarity_score': 1.0,
+                    'distance': 0.0,
+                    'attachment': True,
+                }
+                for text in options.attachment_texts
+            ]
+            return context, sources
+        return super().get_relevant_context(query_text, k=k, max_tokens=max_tokens)
+
     def semantic_search(self, query_text: str, k: int = 10, norma_id=None, min_similarity: float = 0.0):
         options = self._options()
+        min_similarity = max(min_similarity, options.min_similarity)
         if norma_id is not None or options.mode == "semantic":
             rows = super().semantic_search(
                 query_text=query_text,
@@ -55,8 +75,6 @@ class AdaptiveRAGService(RAGService):
 
     @staticmethod
     def _filter_status(rows, options):
-        if options.norma_status == "all":
-            return rows
         filtered = []
         for row in rows:
             norma = getattr(row.get("dispositivo"), "norma", None)
@@ -69,11 +87,22 @@ class AdaptiveRAGService(RAGService):
             filtered.append(row)
         return filtered
 
-    def answer_question(self, question: str, k: int = 5, model=None, options: RetrievalOptions | None = None):
+    def answer_question(
+        self,
+        question: str,
+        k: int = 5,
+        model=None,
+        options: RetrievalOptions | None = None,
+        force_refresh: bool = False,
+    ):
         previous = getattr(self, "_jurix_retrieval_options", None)
         self._jurix_retrieval_options = options or RetrievalOptions(max_sources=k)
         try:
-            return super().answer_question(question=question, k=k, model=model)
+            return super().answer_question(
+                question=question, k=k, model=model,
+                force_refresh=force_refresh,
+                retrieval_fingerprint=self._options().fingerprint(),
+            )
         finally:
             self._jurix_retrieval_options = previous
 
@@ -81,6 +110,9 @@ class AdaptiveRAGService(RAGService):
         previous = getattr(self, "_jurix_retrieval_options", None)
         self._jurix_retrieval_options = options or RetrievalOptions(max_sources=k)
         try:
-            yield from super().stream_answer_question(question=question, k=k, model=model)
+            yield from super().stream_answer_question(
+                question=question, k=k, model=model,
+                retrieval_fingerprint=self._options().fingerprint(),
+            )
         finally:
             self._jurix_retrieval_options = previous

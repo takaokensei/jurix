@@ -189,6 +189,8 @@ class OllamaService:
             }
         }
 
+        response = None
+        completed = False
         try:
             response = self.session.post(
                 url,
@@ -202,16 +204,24 @@ class OllamaService:
                 if line:
                     try:
                         data = json.loads(line)
+                        if data.get('error'):
+                            raise RuntimeError('Ollama returned an error')
                         chunk = data.get('response', '')
                         if chunk:
                             yield chunk
                         if data.get('done', False):
+                            completed = True
                             break
                     except json.JSONDecodeError:
-                        continue
+                        raise RuntimeError('Invalid Ollama stream') from None
+            if not completed:
+                raise RuntimeError('Incomplete Ollama stream')
         except Exception as e:
             logger.error(f"Error streaming text from Ollama: {e}", exc_info=True)
-            yield "\n[Erro ao gerar resposta. Tente novamente.]"
+            raise RuntimeError('Erro ao gerar resposta. Tente novamente.') from None
+        finally:
+            if response is not None:
+                response.close()
 
     def check_health(self) -> bool:
         """

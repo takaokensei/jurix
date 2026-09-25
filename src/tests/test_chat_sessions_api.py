@@ -57,8 +57,10 @@ SESSION_KEYS = {"id", "title", "slug", "is_active", "created_at", "updated_at"}
 
 # ------------------------------------------------------------- contract: list
 class TestListContract:
-    def test_requires_authentication(self):
-        assert Client().get(SESSIONS).status_code == 401
+    def test_guest_list_exposes_no_database_sessions(self):
+        response = Client().get(SESSIONS)
+        assert response.status_code == 200
+        assert response.json()['sessions'] == []
 
     def test_shape_order_preview_and_count(self, client, user):
         old = ChatSession.objects.create(user=user, title="Antiga")
@@ -74,7 +76,7 @@ class TestListContract:
         first = body["sessions"][0]
         assert set(first) == SESSION_KEYS | {"message_count", "latest_message_preview"}
         assert first["message_count"] == 3
-        assert first["latest_message_preview"] == "x" * 50 + "..."
+        assert first["latest_message_preview"] == "msg 2"
         assert first["slug"]
         assert body["sessions"][1]["message_count"] == 0
         assert body["sessions"][1]["latest_message_preview"] == ""

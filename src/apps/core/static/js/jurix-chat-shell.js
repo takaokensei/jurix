@@ -119,7 +119,7 @@
         const composer = getComposer();
         if (!composer) return;
         composer.style.height = 'auto';
-        composer.style.height = `${Math.min(composer.scrollHeight, 200)}px`;
+        composer.style.height = `${Math.min(composer.scrollHeight, 96)}px`;
     }
 
     function persistDraft() {

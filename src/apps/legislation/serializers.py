@@ -83,7 +83,7 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
     # Fallback for cached or dict-only source
     disp_id = source.get('dispositivo_id') or source.get('id')
     disp_texto = source.get('texto') or source.get('text') or source.get('full_text', '')
-    norma_ref = source.get('norma') or source.get('norma_ref', '')
+    norma_ref = source.get('norma') or source.get('norma_ref', 'Fonte anexada')
 
     return {
         'id': disp_id,

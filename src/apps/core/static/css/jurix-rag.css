@@ -23,9 +23,34 @@
 .jurix-composer-textarea {
     resize: none;
     min-height: 24px;
-    max-height: 120px;
+    max-height: 96px;
+    overflow: hidden !important;
+    scrollbar-width: none;
+    color: var(--figma-text-white, #f8fafc);
+    caret-color: var(--figma-text-white, #f8fafc);
 }
 
+.jurix-composer-textarea::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+
+.jurix-composer-textarea::placeholder {
+    color: var(--figma-text-muted, #94a3b8);
+    opacity: 1;
+}
+
+#question-textarea.jurix-composer-textarea {
+    color: var(--figma-text-white, #f8fafc) !important;
+    -webkit-text-fill-color: var(--figma-text-white, #f8fafc);
+}
+
+#question-textarea.jurix-composer-textarea::placeholder {
+    color: var(--figma-text-muted, #94a3b8) !important;
+    -webkit-text-fill-color: var(--figma-text-muted, #94a3b8);
+}
 .jurix-composer-footer {
     justify-content: space-between;
     align-items: center;

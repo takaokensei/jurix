@@ -64,6 +64,9 @@ PERGUNTA DO USUÁRIO:
 INSTRUÇÕES:
 - Responda em português claro e objetivo
 - Cite os dispositivos específicos usando **negrito** para as referências legais
+- Use somente as normas e os textos presentes no CONTEXTO LEGAL; não use conhecimento externo
+- Não invente leis, artigos, capítulos, datas ou números que não apareçam no CONTEXTO LEGAL
+- Se o contexto não responder à pergunta, diga exatamente que não há informação suficiente nas fontes recuperadas
 - Se não houver informação suficiente, seja honesto sobre as limitações
 - NUNCA invente ou alucine informações legais
 
@@ -124,6 +127,14 @@ RESPOSTA:"""
 
         logger.info(f"Performing semantic search for query: '{query_text[:100]}...'")
 
+        if getattr(connection, 'vendor', '') == 'sqlite':
+            from src.processing.adaptive_retrieval import AdaptiveRetriever, RetrievalOptions
+            rows = AdaptiveRetriever(self)._lexical(
+                query_text, max(1, k), RetrievalOptions(norma_status='all', source_scope='all'), norma_id=norma_id
+            )
+            return [row for row in rows if row['similarity_score'] >= min_similarity
+                    and (norma_id is None or row['dispositivo'].norma_id == norma_id)][:k]
+
         # Step 1: Try to get cached embedding
         query_embedding = None
         if self.use_cache and self.cache:
@@ -146,37 +157,6 @@ RESPOSTA:"""
             logger.error("Embedding model %s returned dimension %s; expected 768", self.model, len(query_embedding))
             return []
 
-        # Step 2: Execute vector similarity search using raw SQL
-        if getattr(connection, 'vendor', '') == 'sqlite':
-            # Fallback for SQLite in local development without pgvector extension
-            qs = Dispositivo.objects.all().select_related('norma', 'dispositivo_pai')
-            if norma_id:
-                qs = qs.filter(norma_id=norma_id)
-            query_terms = [t.lower() for t in query_text.split() if len(t) > 2]
-            results = []
-            for d in qs[:50]:
-                text = (d.texto or '').lower()
-                matches = sum(1 for term in query_terms if term in text) if query_terms else 1
-                sim = min(0.95, 0.4 + (matches / max(len(query_terms), 1)) * 0.5) if matches > 0 else 0.3
-                results.append({
-                    'dispositivo': d,
-                    'similarity_score': sim,
-                    'distance': 1.0 - sim,
-                    'context': {
-                        'norma': {
-                            'id': d.norma.id,
-                            'tipo': d.norma.tipo,
-                            'numero': d.norma.numero,
-                            'ano': d.norma.ano,
-                            'ementa': d.norma.ementa[:200] if d.norma.ementa else None,
-                        },
-                        'hierarchy': d.get_caminho_completo(),
-                        'parent': str(d.dispositivo_pai) if d.dispositivo_pai else None,
-                    },
-                    'embedding_model': 'sqlite-fallback',
-                })
-            results.sort(key=lambda r: r['similarity_score'], reverse=True)
-            return results[:k]
 
 
         # Using <=> operator for cosine distance (pgvector vector_cosine_ops)
@@ -306,6 +286,7 @@ RESPOSTA:"""
 
         # Format context
         context_parts = []
+        used_results = []
         total_chars = 0
         max_chars = max_tokens * 4  # Rough approximation: 1 token ≈ 4 chars
 
@@ -319,11 +300,13 @@ RESPOSTA:"""
                 f"{disp.get_full_identifier()}: {disp.texto}"
             )
 
-            if total_chars + len(part) > max_chars:
+            remaining = max_chars - total_chars
+            if remaining <= 0:
                 break
-
-            context_parts.append(f"{idx}. {part}")
-            total_chars += len(part)
+            part = f"{idx}. {part}"[:remaining]
+            context_parts.append(part)
+            used_results.append(result)
+            total_chars += len(part) + 2
 
         formatted_context = "\n\n".join(context_parts)
 
@@ -332,14 +315,15 @@ RESPOSTA:"""
             f"from {len(context_parts)} dispositivos"
         )
 
-        return formatted_context, results
+        return formatted_context, used_results
 
     def answer_question(
         self,
         question: str,
         k: int = 5,
         model: str = "llama3",
-        force_refresh: bool = False
+        force_refresh: bool = False,
+        retrieval_fingerprint: str = ""
     ) -> dict[str, Any]:
         """
         Answer a legal question using RAG (Retrieval + Generation).
@@ -366,7 +350,8 @@ RESPOSTA:"""
         # Step 0: Check cache if enabled and not forced to refresh
         if not force_refresh and self.use_cache and self.cache:
             cached_result = self.cache.get_answer(
-                clean_question, k=k, model=model, corpus_version=corpus_version
+                clean_question, k=k, model=model, corpus_version=corpus_version,
+                retrieval_fingerprint=retrieval_fingerprint
             )
             if cached_result:
                 logger.info(f"Cache HIT for RAG answer: '{clean_question[:50]}...'")
@@ -420,6 +405,11 @@ RESPOSTA:"""
 
         # Step 4: Post-process markdown to fix formatting issues
         answer = self._fix_markdown_formatting(answer)
+        if not self._answer_uses_only_sources(answer, results):
+            answer = (
+                "Não encontrei informação suficiente nas fontes recuperadas para responder "
+                "com segurança a essa pergunta."
+            )
 
         # Calculate average confidence from similarity scores
         avg_confidence = sum(r['similarity_score'] for r in results) / len(results)
@@ -437,7 +427,8 @@ RESPOSTA:"""
         if self.use_cache and self.cache:
             self.cache.set_answer(
                 clean_question, k=k, model=model, answer_data=result_payload,
-                corpus_version=corpus_version
+                corpus_version=corpus_version,
+                retrieval_fingerprint=retrieval_fingerprint
             )
 
         return result_payload
@@ -446,7 +437,8 @@ RESPOSTA:"""
         self,
         question: str,
         k: int = 5,
-        model: str = "llama3"
+        model: str = "llama3",
+        retrieval_fingerprint: str = ""
     ) -> Generator[dict[str, Any], None, None]:
         """
         Stream answer generation for legal question using RAG.
@@ -461,7 +453,8 @@ RESPOSTA:"""
         # Check cache first
         if self.use_cache and self.cache:
             cached_result = self.cache.get_answer(
-                clean_question, k=k, model=model, corpus_version=corpus_version
+                clean_question, k=k, model=model, corpus_version=corpus_version,
+                retrieval_fingerprint=retrieval_fingerprint
             )
             if cached_result:
                 cached_sources = cached_result.get('sources', [])
@@ -516,10 +509,16 @@ RESPOSTA:"""
         full_chunks = []
         for chunk in self.ollama.stream_text(prompt, model=model, temperature=0.3, max_tokens=2048):
             full_chunks.append(chunk)
-            yield {'event': 'chunk', 'chunk': chunk}
 
         full_answer = "".join(full_chunks)
         full_answer = self._fix_markdown_formatting(full_answer).strip()
+        if not self._answer_uses_only_sources(full_answer, results):
+            full_answer = (
+                "Não encontrei informação suficiente nas fontes recuperadas para responder "
+                "com segurança a essa pergunta."
+            )
+
+        yield {'event': 'chunk', 'chunk': full_answer}
 
         # Cache result
         if self.use_cache and self.cache:
@@ -533,7 +532,8 @@ RESPOSTA:"""
             }
             self.cache.set_answer(
                 clean_question, k=k, model=model, answer_data=result_payload,
-                corpus_version=corpus_version
+                corpus_version=corpus_version,
+                retrieval_fingerprint=retrieval_fingerprint
             )
 
         yield {'event': 'done', 'answer': full_answer}
@@ -574,6 +574,19 @@ RESPOSTA:"""
         text = re.sub(r'\n{3,}', '\n\n', text)
 
         return text
+
+    @staticmethod
+    def _answer_uses_only_sources(answer: str, results: list[dict[str, Any]]) -> bool:
+        """Reject legal citations that were not present in retrieved sources."""
+        if any(result.get('attachment') for result in results):
+            return True
+        allowed = {
+            f"{result['dispositivo'].norma.numero}/{result['dispositivo'].norma.ano}"
+            for result in results
+            if result.get('dispositivo') and getattr(result['dispositivo'], 'norma', None)
+        }
+        cited = set(re.findall(r"\b(?:Lei|Decreto|Resolução|Portaria)\s*(?:n[ºo.]?\s*)?(\d[\d.]*/\d{4})", answer, re.IGNORECASE))
+        return cited.issubset(allowed)
 
 
 # Convenience function for quick searches

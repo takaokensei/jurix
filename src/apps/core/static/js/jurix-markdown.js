@@ -11,7 +11,7 @@
             'a', 'hr', 'span', 'div',
         ],
         ALLOWED_ATTR: [
-            'href', 'title', 'target', 'rel', 'class', 'data-source-index', 'aria-label',
+            'href', 'title', 'target', 'rel', 'class', 'data-source-index', 'aria-label', 'align',
         ],
         FORBID_TAGS: [
             'img', 'picture', 'source', 'video', 'audio', 'track', 'image', 'use', 'svg', 'math',

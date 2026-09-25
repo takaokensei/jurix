@@ -12,11 +12,12 @@ breaking the existing fallback path.
 from __future__ import annotations
 
 import math
+import hashlib
 import re
 from dataclasses import dataclass, field
 from typing import Any, Iterable
 
-from django.db.models import Q
+from django.db.models import Q, Case, When, Value, IntegerField
 
 from src.apps.legislation.models import Dispositivo
 
@@ -42,10 +43,12 @@ class RetrievalOptions:
     attachment_texts: tuple[str, ...] = field(default_factory=tuple)
 
     def fingerprint(self) -> str:
-        attachment_count = len(self.attachment_texts)
+        attachment_digest = hashlib.sha256(
+            "\x1f".join(self.attachment_texts).encode("utf-8")
+        ).hexdigest()[:16] if self.attachment_texts else "none"
         return (
-            f"mode={self.mode};status={self.norma_status};scope={self.source_scope};"
-            f"max={self.max_sources};min={self.min_similarity:.3f};attachments={attachment_count}"
+            f"retrieval=v2;mode={self.mode};status={self.norma_status};scope={self.source_scope};"
+            f"max={self.max_sources};min={self.min_similarity:.3f};attachments={attachment_digest}"
         )
 
 
@@ -67,7 +70,7 @@ def _lexical_score(question_tokens: set[str], text: str) -> float:
 
 def _normalize(value: float, low: float, high: float) -> float:
     if high <= low:
-        return 0.0
+        return max(0.0, min(1.0, value))
     return max(0.0, min(1.0, (value - low) / (high - low)))
 
 
@@ -123,20 +126,35 @@ class AdaptiveRetriever:
             result.append(copy)
         return result
 
-    def _lexical(self, question: str, candidate_k: int, options: RetrievalOptions) -> list[dict[str, Any]]:
+    def _lexical(self, question: str, candidate_k: int, options: RetrievalOptions, norma_id=None) -> list[dict[str, Any]]:
         tokens = _tokens(question)
         if not tokens:
             return []
 
         query = Q()
-        for token in list(tokens)[:12]:
+        selected_tokens = sorted(tokens)[:12]
+        for token in selected_tokens:
             query |= Q(texto__icontains=token)
 
         queryset = (
-            Dispositivo.objects.select_related("norma", "parent")
+            Dispositivo.objects.select_related("norma", "dispositivo_pai")
             .filter(query)
-            .order_by("norma_id", "ordem")[: max(100, candidate_k * 8)]
         )
+        if options.norma_status != "all":
+            queryset = queryset.filter(norma__status=options.norma_status)
+        if norma_id is not None:
+            queryset = queryset.filter(norma_id=norma_id)
+        if options.source_scope != "all":
+            queryset = queryset.filter(
+                Q(norma__sapl_url__icontains="sapl.natal.rn.leg.br") | Q(norma__sapl_url="")
+            )
+        coverage = sum(
+            (Case(When(texto__icontains=token, then=Value(1)), default=Value(0),
+                  output_field=IntegerField()) for token in selected_tokens), Value(0)
+        )
+        queryset = queryset.annotate(term_coverage=coverage).order_by(
+            "-term_coverage", "id"
+        )[:max(100, candidate_k * 8)]
 
         rows = []
         for dispositivo in queryset:
@@ -154,11 +172,12 @@ class AdaptiveRetriever:
                     "lexical_score": score,
                     "semantic_score": 0.0,
                     "retrieval_score": score,
+                    "similarity_score": score,
                     "distance": None,
                     "embedding_model": getattr(dispositivo, "embedding_model", None),
                     "context": {
                         "hierarchy": "",
-                        "parent": getattr(getattr(dispositivo, "parent", None), "texto", None),
+                        "parent": getattr(getattr(dispositivo, "dispositivo_pai", None), "texto", None),
                     },
                 }
             )
@@ -200,6 +219,7 @@ class AdaptiveRetriever:
                 # exact article/number queries from disappearing.
                 score = (0.72 * s) + (0.28 * l)
             row["retrieval_score"] = score
+            row["similarity_score"] = score
         return sorted(values, key=lambda row: row["retrieval_score"], reverse=True)
 
     @staticmethod
@@ -217,7 +237,7 @@ class AdaptiveRetriever:
 
         for row in ranked:
             score = float(row.get("retrieval_score", 0.0))
-            if selected and score < threshold:
+            if score < threshold:
                 break
             dispositivo = row["dispositivo"]
             norma_id = int(getattr(dispositivo, "norma_id", 0) or 0)

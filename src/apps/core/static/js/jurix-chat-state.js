@@ -95,7 +95,8 @@
     }
 
     function setSessionId(value) {
-        sessionId = value === null || value === undefined ? null : Number(value);
+        sessionId = value === null || value === undefined ? null :
+            String(value).startsWith('local-') ? String(value) : Number(value);
         if (Number.isNaN(sessionId)) sessionId = null;
         emit();
     }

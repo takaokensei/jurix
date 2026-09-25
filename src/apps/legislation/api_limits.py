@@ -82,6 +82,10 @@ def parse_llm_request(data: Any) -> tuple[str, int, str]:
     if not isinstance(data, Mapping):
         raise InvalidLLMParams("Corpo da requisição inválido.")
     return (
+        parse_question(data.get('question')),
+        parse_k(data.get('k')),
+        parse_model(data.get('model')),
+    )
 
 
 def parse_search_options(data: Any) -> dict[str, Any]:
@@ -128,12 +132,6 @@ def parse_search_options(data: Any) -> dict[str, Any]:
         'min_similarity': min_similarity,
         'attachment_ids': attachment_ids,
     }
-        parse_question(data.get('question')),
-        parse_k(data.get('k')),
-        parse_model(data.get('model')),
-    )
-
-
 def client_ip(request: HttpRequest) -> str:
     """
     Best-effort client IP that a client cannot forge.

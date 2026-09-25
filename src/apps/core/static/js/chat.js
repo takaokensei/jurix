@@ -193,6 +193,10 @@
         }
     }
 
+    // The renderer commits streamed markdown in requestAnimationFrame. Expose
+    // this callback so it can re-evaluate the scroll position after that commit.
+    window.scrollToBottomIfAtBottom = scrollToBottomIfAtBottom;
+
     function shuffleArray(array) {
         const shuffled = [...array];
         for (let i = shuffled.length - 1; i > 0; i--) {
@@ -239,7 +243,7 @@
                     const shouldBeActive =
                         !isInNewConversation &&
                         ((sessionSlug && session.slug === sessionSlug) ||
-                            (!sessionSlug && currentSessionId && parseInt(session.id) === currentSessionId));
+                            (!sessionSlug && currentSessionId && String(session.id) === String(currentSessionId)));
                     existing.className = `chat-session-item ${shouldBeActive ? 'active' : ''}`;
                     const titleEl = existing.querySelector('.chat-session-title');
                     if (titleEl) {
@@ -251,7 +255,7 @@
                 const shouldBeActive =
                     !isInNewConversation &&
                     ((sessionSlug && session.slug === sessionSlug) ||
-                        (!sessionSlug && currentSessionId && parseInt(session.id) === currentSessionId));
+                        (!sessionSlug && currentSessionId && String(session.id) === String(currentSessionId)));
 
                 const sessionItem = document.createElement('div');
                 sessionItem.className = `chat-session-item ${shouldBeActive ? 'active' : ''}`;
@@ -309,8 +313,11 @@
     }
 
     async function createNewSession() {
+        if (chatState?.isBusy?.()) return;
         try {
+            document.dispatchEvent(new CustomEvent('jurix:new-conversation'));
             window.history.pushState({}, '', config.chatbotUrl);
+            try { sessionStorage.setItem('jurix:new-conversation', '1'); } catch (_) {}
             currentSessionId = null;
             chatState.setSessionId(null);
 
@@ -362,7 +369,7 @@
     }
 
     async function loadSession(sessionId) {
-        if (!sessionId) return;
+        if (!sessionId || chatState?.isBusy?.()) return;
 
         try {
             const sessionData = await chatAPI.getSession(sessionId);
@@ -394,7 +401,7 @@
 
             document.querySelectorAll('.chat-session-item').forEach((item) => {
                 item.classList.remove('active');
-                if (parseInt(item.dataset.sessionId) === sessionId) {
+                if (String(item.dataset.sessionId) === String(sessionId)) {
                     item.classList.add('active');
                 }
             });
@@ -413,7 +420,7 @@
                         addAssistantMessage(
                             msg.content,
                             msg.sources || [],
-                            isLastAssistant && currentSessionId ? true : false,
+                            isLastAssistant && typeof currentSessionId === 'number',
                             true
                         );
                     }
@@ -422,6 +429,7 @@
 
             scrollToBottom();
             loadSavedText(sessionId);
+            installHistoryPager(sessionData, sessionId);
             updateNewChatButtonState();
         } catch (error) {
             console.error('Error loading session:', error);
@@ -429,14 +437,51 @@
         }
     }
 
+    function installHistoryPager(data, sessionId) {
+        const wrapper = document.getElementById('messages-wrapper');
+        if (!wrapper || !data.has_more || !data.next_cursor) return;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'messages-load-more-indicator';
+        button.textContent = 'Carregar mensagens anteriores';
+        wrapper.prepend(button);
+        button.addEventListener('click', async () => {
+            button.disabled = true;
+            try {
+                const page = await chatAPI.getSession(sessionId, data.next_cursor);
+                if (String(currentSessionId) !== String(sessionId) || !button.isConnected) return;
+                const container = document.getElementById('messages-container');
+                const oldHeight = container?.scrollHeight || 0;
+                const oldTop = container?.scrollTop || 0;
+                const existing = new Set(wrapper.children);
+                for (const msg of page.messages || []) {
+                    if (msg.role === 'user') addUserMessage(msg.content);
+                    else addAssistantMessage(msg.content, msg.sources || [], false, true);
+                }
+                const fragment = document.createDocumentFragment();
+                for (const child of Array.from(wrapper.children)) {
+                    if (!existing.has(child)) fragment.appendChild(child);
+                }
+                button.after(fragment);
+                button.remove();
+                installHistoryPager(page, sessionId);
+                if (container) container.scrollTop = oldTop + container.scrollHeight - oldHeight;
+            } catch (_) {
+                button.textContent = 'Falha ao carregar. Tentar novamente';
+                button.disabled = false;
+            }
+        });
+    }
+
     function loadSavedText(sessionId) {
         const textarea = document.getElementById('question-textarea');
         if (!textarea || !sessionId) return;
-        const savedText = localStorage.getItem(`chat-input-${sessionId}`);
+        let savedText = null;
+        try { savedText = localStorage.getItem(`chat-input-${sessionId}`); } catch (_) {}
         if (savedText !== null) {
             textarea.value = savedText;
             textarea.style.height = 'auto';
-            textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+            textarea.style.height = Math.min(textarea.scrollHeight, 96) + 'px';
         }
     }
 
@@ -952,7 +997,7 @@
         if (!chipsContainer) return;
 
         const shuffled = shuffleArray(SUGGESTION_QUESTIONS);
-        const selected = shuffled.slice(0, 3);
+        const selected = shuffled.slice(0, 5);
 
         chipsContainer.innerHTML = selected
             .map(
@@ -1032,6 +1077,8 @@
                 window.location.href = config.chatbotUrl;
             }
         } else {
+            let keepBlank = false;
+            try { keepBlank = sessionStorage.getItem('jurix:new-conversation') === '1'; } catch (_) {}
             currentSessionId = null;
             const messagesWrapper = document.getElementById('messages-wrapper');
             if (messagesWrapper) {
@@ -1041,6 +1088,14 @@
             }
             showWelcomeStateWithStreaming();
             await loadChatSessions();
+
+            // A reload at the assistant root should restore the most recent
+            // anonymous conversation. Explicitly starting a new conversation
+            // opts out once, so the New Conversation button still means blank.
+            if (!keepBlank && window.JurixAnonymousHistory?.isAnonymous?.()) {
+                const [latest] = window.JurixAnonymousHistory.list();
+                if (latest?.id) await loadSession(latest.id);
+            }
         }
 
         updateNewChatButtonState();
@@ -1115,6 +1170,8 @@
 
                 const question = textarea.value.trim();
                 if (!question) return;
+                chatState?.transition?.('submitting', { question });
+                try { sessionStorage.removeItem('jurix:new-conversation'); } catch (_) {}
                 if (chatState && typeof chatState.setLastQuestion === 'function') {
                     chatState.setLastQuestion(question);
                 }
@@ -1129,7 +1186,7 @@
                 textarea.style.height = 'auto';
 
                 if (currentSessionId) {
-                    localStorage.removeItem(`chat-input-${currentSessionId}`);
+                    try { localStorage.removeItem(`chat-input-${currentSessionId}`); } catch (_) {}
                 }
 
                 const wasNewSession = !currentSessionId;
@@ -1207,6 +1264,11 @@
 
     async function streamAssistantResponse(question, sessionId, onChunk, onSources, onDone, onError) {
         return chatAPI.streamAnswer(question, sessionId, {
+            onSession(data) {
+                currentSessionId = data.session_id;
+                chatState?.setSessionId?.(currentSessionId);
+                window.history.replaceState({}, '', `${config.chatbotUrl}${encodeURIComponent(data.session_slug)}/`);
+            },
             onChunk,
             onSources,
             onDone,
@@ -1243,25 +1305,27 @@
                         },
                         (sources) => {
                             finalSources = sources || [];
+                        },
+                        async (doneData) => {
+                            doneData = doneData && typeof doneData === 'object' ? doneData : {};
+                            const finalAnswer = doneData.answer || accumulatedText;
+                            if (streamElements && window.JurixRagUI) {
+                                window.JurixRagUI.flushRender(streamElements.messageBody, finalAnswer);
+                                window.JurixRagUI.setStreamingState(streamElements.messageBody, false);
+                                window.JurixRagUI.announce('Resposta concluída.');
+                            }
                             if (streamElements && streamElements.sourcesContainer && finalSources.length > 0) {
                                 showSourcesGradually(streamElements.sourcesContainer, finalSources);
                                 window.requestAnimationFrame(() => {
                                     if (window.JurixRagUI) window.JurixRagUI.enhanceSources(streamElements.sourcesContainer);
                                 });
                             }
-                        },
-                        async (doneData) => {
-                            if (streamElements && window.JurixRagUI) {
-                                window.JurixRagUI.flushRender(streamElements.messageBody, doneData.answer || accumulatedText);
-                                window.JurixRagUI.setStreamingState(streamElements.messageBody, false);
-                                window.JurixRagUI.announce('Resposta concluída.');
-                            }
                             if (streamElements) {
                                 if (streamElements.copyButton) {
-                                    streamElements.copyButton.setAttribute('data-markdown', doneData.answer || accumulatedText);
+                                    streamElements.copyButton.setAttribute('data-markdown', finalAnswer);
                                     streamElements.copyButton.classList.add('show');
                                 }
-                                if (streamElements.regenerateBtn && currentSessionId) {
+                                if (streamElements.regenerateBtn && typeof currentSessionId === 'number') {
                                     streamElements.regenerateBtn.style.display = 'inline-flex';
                                     streamElements.regenerateBtn.classList.add('show');
                                     streamElements.regenerateBtn.addEventListener('click', async () => {
@@ -1271,7 +1335,13 @@
                             }
                             if (doneData.session_id) {
                                 currentSessionId = doneData.session_id;
-                                chatState.setSessionId(doneData.session_id);
+                                if (chatState && typeof chatState.setSessionId === 'function') {
+                                    chatState.setSessionId(doneData.session_id);
+                                }
+                                if (doneData.session_slug) {
+                                    const sessionUrl = `${config.chatbotUrl}${doneData.session_slug}/`;
+                                    window.history.replaceState({}, '', sessionUrl);
+                                }
                                 if (wasNewSession && window.tempSessionCard) {
                                     window.tempSessionCard.remove();
                                     window.tempSessionCard = null;
@@ -1283,75 +1353,18 @@
                         },
                         (errorMsg) => {
                             chatState.transition('error', { error: errorMsg });
-                            if (streamElements && streamElements.messageBody && window.JurixRagUI) {
-                                window.JurixRagUI.renderErrorState(
-                                    streamElements.messageBody,
-                                    errorMsg,
-                                    () => {
-                                        const retryTextarea = document.getElementById('question-textarea');
-                                        const retryForm = document.getElementById('chat-form');
-                                        if (retryTextarea && retryForm) {
-                                            retryTextarea.value = question;
-                                            retryForm.dispatchEvent(new Event('submit'));
-                                        }
-                                    }
-                                );
-                            }
                         }
                     );
                 } catch (streamError) {
-                    console.warn('Real-time streaming failed, using batch fallback:', streamError);
-                    if (streamElements && streamElements.messageDiv) {
-                        streamElements.messageDiv.remove();
-                    }
-
-                    // Fallback to standard batch POST
-                    try {
-                        const data = await chatAPI.answerBatch(
-                            question,
-                            currentSessionId,
-                            config.chatbotUrl
-                        );
-                        removeLoadingMessage(loadingId);
-
-                        if (data.success) {
-                            if (data.session_id) {
-                                currentSessionId = data.session_id;
-                                if (chatState && typeof chatState.setSessionId === 'function') {
-                                    chatState.setSessionId(data.session_id);
-                                }
-                                if (wasNewSession && window.tempSessionCard) {
-                                    window.tempSessionCard.remove();
-                                    window.tempSessionCard = null;
-                                    animateSessionCreated();
-                                }
-                                await loadChatSessions();
-                                updateNewChatButtonState();
-                            }
-
-                            const answer = data.answer || 'Desculpe, não consegui gerar uma resposta.';
-                            const sources = data.sources || [];
-                            addAssistantMessage(answer, sources, true);
-                        } else {
-                            addErrorMessage(data.error || 'Erro ao processar pergunta');
-                        }
-                    } catch (batchError) {
-                        removeLoadingMessage(loadingId);
-                        chatState.transition('error', { error: batchError });
-                        console.error('Request error:', batchError);
-                        if (window.JurixRagUI) {
-                            window.JurixRagUI.renderErrorState(
-                                document.getElementById('messages-wrapper'),
-                                batchError,
-                                () => {
-                                        const retryTextarea = document.getElementById('question-textarea');
-                                        const retryForm = document.getElementById('chat-form');
-                                        if (retryTextarea && retryForm) {
-                                            retryTextarea.value = question;
-                                            retryForm.dispatchEvent(new Event('submit'));
-                                        }
-                                    }
-                            );
+                    if (streamError.name !== 'AbortError') {
+                        if (streamElements?.messageBody && window.JurixRagUI) {
+                            const errorBox = document.createElement('div');
+                            streamElements.messageDiv.appendChild(errorBox);
+                            window.JurixRagUI.setStreamingState(streamElements.messageBody, false);
+                            window.JurixRagUI.renderErrorState(errorBox, streamError, () => {
+                                textarea.value = question;
+                                textarea.focus();
+                            });
                         } else {
                             addErrorMessage('Não foi possível concluir a pesquisa.');
                         }

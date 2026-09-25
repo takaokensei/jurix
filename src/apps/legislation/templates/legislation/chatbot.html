@@ -8,7 +8,6 @@
     <title>{{ page_title|default:"Jurix - Inteligência Jurídica" }}</title>
     
     <!-- Content Security Policy -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self';">
     
     <!-- Google Fonts: Inter & Lora -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -329,13 +328,18 @@
                             </svg>
                         </button>
                     </div>
+                    <div id="jurix-attachment-previews" class="jurix-attachment-previews" hidden aria-live="polite"></div>
                     <div class="figma-filters-row jurix-composer-footer">
                         <div class="jurix-composer-filters">
-                            <div class="figma-search-dropdown figma-search-dropdown-compact">
-                                <span>Pesquisa normativa</span>
+                            <div class="figma-search-dropdown figma-search-dropdown-compact" data-control="mode">
+                                <span data-control-label>Pesquisa híbrida</span>
                             </div>
-                            <div class="figma-search-dropdown figma-search-dropdown-compact">
-                                <span>Fontes</span>
+                            <div class="figma-search-dropdown figma-search-dropdown-compact" data-control="source_scope">
+                                <span data-control-label>Legislação municipal</span>
+                            </div>
+                            <div class="figma-search-dropdown figma-search-dropdown-compact" data-control="attachment">
+                                <span>Anexar PDF</span>
+                                <span class="jurix-attachment-count" aria-live="polite"></span>
                             </div>
                         </div>
                         <div class="jurix-chat-state-indicator" id="chat-state-indicator" role="status" aria-live="polite" hidden></div>
@@ -385,6 +389,7 @@
     <script src="{% static 'js/jurix-api-reliability-overlay.js' %}"></script>
     <script src="{% static 'js/jurix-chat-sessions.js' %}"></script>
     <script src="{% static 'js/jurix-chat-state.js' %}"></script>
+    <script src="{% static 'js/jurix-chat-renderer.js' %}"></script>
     <script src="{% static 'js/chat.js' %}"></script>
     <script src="{% static 'js/jurix-chat-controller.js' %}"></script>
     <script src="{% static 'js/command_palette.js' %}"></script>

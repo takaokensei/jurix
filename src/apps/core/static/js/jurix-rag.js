@@ -17,6 +17,14 @@
     };
 
     const state = new WeakMap();
+    let evidenceId = 0;
+
+    function commitMarkdown(element, markdown) {
+        const container = document.getElementById('messages-container');
+        const follow = container && container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+        element.innerHTML = renderMarkdown(markdown);
+        if (follow) container.scrollTop = container.scrollHeight;
+    }
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -48,7 +56,7 @@
         current.pending = true;
         requestAnimationFrame(() => {
             current.pending = false;
-            element.innerHTML = renderMarkdown(current.markdown);
+            commitMarkdown(element, current.markdown);
             if (current.streaming) element.classList.add('is-streaming');
             if (typeof window.scrollToBottomIfAtBottom === 'function') {
                 window.scrollToBottomIfAtBottom();
@@ -62,7 +70,7 @@
         current.markdown = markdown;
         current.pending = false;
         state.set(element, current);
-        element.innerHTML = renderMarkdown(markdown);
+        commitMarkdown(element, markdown);
     }
 
     function setStreamingState(element, isStreaming) {
@@ -78,6 +86,9 @@
     }
 
     function errorCopy(error) {
+        if (error?.code === 'RAG_STREAM_ERROR' || error?.code === 'INCOMPLETE_STREAM') {
+            return { title: 'Resposta interrompida', detail: String(error.message), tone: 'warning' };
+        }
         const status = getStatus(error);
         if (status === 429) {
             return {
@@ -190,7 +201,7 @@
         const sourceType = safeSource.tipo || safeSource.type || '';
         const status = safeSource.status_label || safeSource.vigencia || safeSource.situacao || '';
         const snippet = String(safeSource.text || safeSource.full_text || '').trim();
-        const linkUrl = safeHttpUrl(safeSource.sapl_url) || safeHttpUrl(safeSource.pdf_url);
+        const linkUrl = safeHttpUrl(safeSource.pdf_url) || safeHttpUrl(safeSource.sapl_url);
         const cardLabel = `Fonte jurídica ${index + 1}: ${normaRef}`;
 
         const meta = [
@@ -215,11 +226,12 @@
 
         return `
             <article
-                class="source-card jurix-rag-source jurix-rag-source--${band}"
-                id="jurix-evidence-${index + 1}"
+                class="source-card jurix-rag-source jurix-rag-source--${band}${linkUrl ? ' source-card-clickable' : ''}"
+                id="jurix-evidence-${++evidenceId}"
                 aria-label="${escapeHtml(cardLabel)}"
                 data-evidence-rank="${index + 1}"
                 data-evidence-band="${band}"
+                ${linkUrl ? `data-url="${escapeHtml(linkUrl)}"` : ''}
             >
                 <div class="source-card-header">
                     <div class="source-title">${escapeHtml(normaRef)}</div>
@@ -255,8 +267,8 @@
         `;
     }
 
-    function focusEvidence(index) {
-        const target = document.getElementById(`jurix-evidence-${Number(index)}`);
+    function focusEvidence(index, scope = document) {
+        const target = scope.querySelector(`[data-evidence-rank="${Number(index)}"]`);
         if (!target) {
             announce(`Fonte ${Number(index)} não encontrada.`);
             return;
@@ -271,7 +283,7 @@
         const citation = event.target.closest ? event.target.closest('.jurix-citation[data-source-index]') : null;
         if (!citation) return;
         event.preventDefault();
-        focusEvidence(citation.dataset.sourceIndex);
+        focusEvidence(citation.dataset.sourceIndex, citation.closest('.message') || document);
     });
 
     window.JurixRagUI = {

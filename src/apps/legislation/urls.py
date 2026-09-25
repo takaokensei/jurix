@@ -5,7 +5,6 @@ URL configuration for legislation app.
 from django.urls import path
 
 from . import views
-from . import workspace_views
 
 app_name = 'legislation'
 

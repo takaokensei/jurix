@@ -6,6 +6,7 @@ Tasks para orquestrar a ingestão assíncrona de normas jurídicas.
 
 import io
 import logging
+import os
 import time
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,30 @@ from src.processing.legal_parser import LegalTextParser
 from src.processing.ner_extractor import LegalNERExtractor
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_norma_tipo(value: Any) -> str:
+    """Convert SAPL type codes into the public legal type label."""
+    raw = str(value or '').strip()
+    return {'1': 'Lei'}.get(raw, raw)
+
+
+def _configure_tesseract() -> None:
+    """Prefer the native Windows install over Unicode-path shims."""
+    configured = getattr(settings, 'TESSERACT_CMD', '')
+    command = Path(configured) if configured else Path(r'C:\Program Files\Tesseract-OCR\tesseract.exe')
+    if not command.exists():
+        return
+    pytesseract.pytesseract.tesseract_cmd = str(command)
+    tessdata = command.parent / 'tessdata'
+    if tessdata.exists():
+        os.environ['TESSDATA_PREFIX'] = str(tessdata)
+
+
+@shared_task(name='ingestion.cleanup_chat_attachments')
+def cleanup_chat_attachments():
+    from src.apps.legislation.attachment_service import cleanup_expired_attachments
+    return cleanup_expired_attachments()
 
 
 def _invalidate_rag_cache() -> None:
@@ -177,6 +202,7 @@ def ingest_normas_task(
             client.close()
 
 
+@transaction.atomic
 def _process_norma_data(norma_data: dict[str, Any], auto_download: bool = False) -> dict[str, Any]:
     """
     Processa dados brutos de uma norma e cria/atualiza o registro no banco.
@@ -201,13 +227,13 @@ def _process_norma_data(norma_data: dict[str, Any], auto_download: bool = False)
 
     # Extrair campos principais
     tipo_dict = norma_data.get('tipo', {})
-    tipo = tipo_dict.get('descricao', '') if isinstance(tipo_dict, dict) else str(tipo_dict)
+    tipo_value = tipo_dict.get('descricao', '') if isinstance(tipo_dict, dict) else tipo_dict
+    tipo = _normalize_norma_tipo(tipo_value)
 
     numero = norma_data.get('numero', '')
     ano = norma_data.get('ano')
     ementa = norma_data.get('ementa', '')
     observacao = norma_data.get('observacao', '')
-    texto_integral = norma_data.get('texto_integral', '')
 
     # Parsear datas (podem vir como string no formato ISO)
     data_publicacao = None
@@ -229,7 +255,7 @@ def _process_norma_data(norma_data: dict[str, Any], auto_download: bool = False)
     sapl_url = canonical_sapl_url(sapl_id=sapl_id) or f"{sapl_base_host}/norma/{sapl_id}/"
 
     # Preservar status caso a norma já tenha sido processada/consolidada
-    existing = Norma.objects.filter(sapl_id=sapl_id).only('status').first()
+    existing = Norma.objects.select_for_update().filter(sapl_id=sapl_id).only('status', 'pdf_url').first()
     preserved_status = 'pending'
     if existing and existing.status in ('consolidated', 'embedded', 'segmented', 'ocr_completed', 'text_extracted'):
         preserved_status = existing.status
@@ -245,13 +271,21 @@ def _process_norma_data(norma_data: dict[str, Any], auto_download: bool = False)
             'observacao': observacao,
             'data_publicacao': data_publicacao,
             'data_vigencia': data_vigencia,
-            'texto_original': texto_integral,
             'pdf_url': pdf_url,
             'sapl_url': sapl_url,
             'sapl_metadata': norma_data,  # Salvar payload bruto
             'status': preserved_status,  # Não desconsolida normas existentes
         }
     )
+
+    if existing and existing.pdf_url != pdf_url:
+        norma.status = 'pending'
+        norma.needs_review = True
+        norma.processing_error = 'Documento de origem alterado; requer reprocessamento.'
+        norma.texto_consolidado = ''
+        norma.save(update_fields=['status', 'needs_review', 'processing_error', 'texto_consolidado', 'updated_at'])
+        Dispositivo.objects.filter(norma=norma).update(embedding=None)
+        transaction.on_commit(_invalidate_rag_cache)
 
     action = "criada" if created else "atualizada"
     logger.info(f"Norma {norma} {action} com sucesso (ID DB={norma.id})")
@@ -295,6 +329,11 @@ def bulk_ingest_normas_task(
     Returns:
         Estatísticas consolidadas
     """
+    if isinstance(page_size, bool) or not isinstance(page_size, int) or page_size <= 0:
+        raise ValueError('page_size must be a positive integer')
+    if isinstance(max_normas, bool) or not isinstance(max_normas, int) or not 1 <= max_normas <= 5000:
+        raise ValueError('max_normas must be between 1 and 5000')
+    page_size = min(page_size, 100)
     task_id = self.request.id
     logger.info(
         f"[Task {task_id}] Iniciando ingestão em massa: "
@@ -313,12 +352,12 @@ def bulk_ingest_normas_task(
     try:
         while offset < max_normas:
             # Disparar subtask assíncrona para cada página
-            subtask = ingest_normas_task.apply(
-                limit=page_size,
-                offset=offset,
-                tipo=tipo,
-                ano=ano
-            )
+            subtask = ingest_normas_task.apply_async(kwargs={
+                'limit': min(page_size, max_normas - offset),
+                'offset': offset,
+                'tipo': tipo,
+                'ano': ano,
+            })
             consolidated_stats['dispatched_tasks'].append(subtask.id)
             consolidated_stats['total_batches'] += 1
             offset += page_size
@@ -540,6 +579,7 @@ def ocr_pdf_task(self, norma_id: int) -> dict[str, Any]:
                 img = Image.open(io.BytesIO(img_bytes))
 
                 # Aplicar Tesseract OCR (português)
+                _configure_tesseract()
                 ocr_text = pytesseract.image_to_string(
                     img,
                     lang='por',
@@ -1311,4 +1351,3 @@ def generate_embedding_task(self, dispositivo_id: int, model: str = "nomic-embed
             'error': str(e),
             'dispositivo_id': dispositivo_id
         }
-

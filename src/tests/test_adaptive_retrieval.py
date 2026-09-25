@@ -22,7 +22,7 @@ def test_selector_does_not_force_five_sources():
 
 
 def test_selector_can_return_many_strong_sources():
-    rows = [_row(index, 0.90 - index * 0.01) for index in range(1, 10)]
+    rows = [_row(index, 0.90 - index * 0.01, norma_id=index) for index in range(1, 10)]
     service = SimpleNamespace(semantic_search=lambda **_: rows)
     result = AdaptiveRetriever(service).retrieve("consulta", RetrievalOptions(mode="semantic", max_sources=12))
     assert 5 < len(result) <= 9

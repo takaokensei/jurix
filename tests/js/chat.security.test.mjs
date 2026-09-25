@@ -7,7 +7,7 @@
  * are structural: the resulting DOM must contain no executable node, no on* attribute and no
  * javascript: URL. A control test proves the detector is not vacuous.
  */
-import { test } from 'node:test';
+import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,7 +16,7 @@ import { JSDOM } from 'jsdom';
 const JS_DIR = path.resolve(import.meta.dirname, '../../src/apps/core/static/js');
 const read = (f) => fs.readFileSync(path.join(JS_DIR, f), 'utf8');
 
-const SKELETON = `<!doctype html><html><body>
+const SKELETON = `<!doctype html><html><body data-authenticated="true">
 <aside id="sidebar"><div id="chat-sessions-list"></div></aside>
 <button id="toggle-sidebar"></button><button id="new-chat-button"></button>
 <div id="messages-container"><div id="messages-wrapper">
@@ -66,6 +66,12 @@ function findDangerous(root) {
 }
 
 const tick = () => new Promise((r) => setTimeout(r, 30));
+const activeWindows = new Set();
+
+afterEach(() => {
+  for (const window of activeWindows) window.close();
+  activeWindows.clear();
+});
 
 async function boot(routes) {
   const dom = new JSDOM(SKELETON, { url: 'http://localhost/normas/chatbot/', runScripts: 'dangerously', pretendToBeVisual: true });
@@ -78,8 +84,21 @@ async function boot(routes) {
   };
   window.eval(read('vendor/marked.min.js'));
   window.eval(read('vendor/purify.min.js'));
+  // Mirror the production dependency order. chat.js is intentionally a UI
+  // consumer and should not be tested with its transport/state modules absent.
+  for (const file of [
+    'jurix-markdown.js',
+    'jurix-rag.js',
+    'jurix-anonymous-history.js',
+    'jurix-chat-api.js',
+    'jurix-api-reliability-overlay.js',
+    'jurix-chat-sessions.js',
+    'jurix-chat-state.js',
+    'jurix-chat-renderer.js',
+  ]) window.eval(read(file));
   window.eval(read('chat.js'));
   await tick();
+  activeWindows.add(window);
   return window;
 }
 

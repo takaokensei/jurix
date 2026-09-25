@@ -7,6 +7,8 @@
 (function () {
   'use strict';
 
+  const installedApis = new WeakSet();
+
   function apiObject() {
     return window.JurixChatAPI || window.jurixChatAPI || window.chatAPI || null;
   }
@@ -64,9 +66,13 @@
   }
 
   function install() {
-    const api = apiObject();
-    if (!api || api.__jurixReliabilityOverlay) return;
-    api.__jurixReliabilityOverlay = true;
+    let api = apiObject();
+    if (!api || installedApis.has(api)) return;
+    if (Object.isFrozen(api) || !Object.isExtensible(api)) {
+      api = { ...api };
+      window.JurixChatAPI = api;
+    }
+    installedApis.add(api);
     installFetchEnvelope();
 
     const originalList = api.listSessions?.bind(api);
@@ -90,13 +96,17 @@
         if (anonymous()) {
           const session = window.JurixAnonymousHistory.get(sessionId);
           if (!session) throw Object.assign(new Error('Session not found'), { status: 404 });
-          return { success: true, session };
+          return { success: true, session, messages: session.messages, has_more: false };
         }
         return originalGet(sessionId);
       };
     }
 
     const originalDelete = api.deleteSession?.bind(api);
+    const originalGetBySlug = api.getSessionBySlug?.bind(api);
+    api.getSessionBySlug = function (slug) {
+      return anonymous() ? api.getSession(slug) : originalGetBySlug(slug);
+    };
     if (originalDelete) {
       api.deleteSession = async function (sessionId) {
         if (anonymous()) {
@@ -109,26 +119,32 @@
 
     const originalStream = api.streamAnswer?.bind(api);
     if (originalStream) {
-      api.streamAnswer = async function (question, sessionId, onChunk, onSources, onDone, onError) {
+      api.streamAnswer = async function (question, sessionId, callbacks = {}) {
+        const { onChunk, onSources, onDone, onError, onSession } = callbacks || {};
         if (!anonymous()) {
-          return originalStream(question, sessionId, onChunk, onSources, onDone, onError);
+          return originalStream(question, sessionId, callbacks);
         }
         const localId = window.JurixAnonymousHistory.ensureSession(sessionId, question);
         window.JurixAnonymousHistory.addMessage(localId, 'user', question, []);
+        await onSession?.({ session_id: localId, session_slug: localId });
         let answer = '';
         let sources = [];
         const wrappedChunk = (chunk) => {
           answer += String(chunk || '');
+          window.JurixAnonymousHistory.updateLastAssistant(localId, answer, sources);
           return onChunk?.(chunk);
         };
         const wrappedSources = (items, ...rest) => {
           sources = Array.isArray(items) ? items : [];
           return onSources?.(items, ...rest);
         };
-        const wrappedDone = (doneAnswer, ...rest) => {
-          if (doneAnswer != null) answer = String(doneAnswer);
+        const wrappedDone = (doneEvent, ...rest) => {
+          const answerFromEvent = doneEvent && typeof doneEvent === 'object'
+            ? doneEvent.answer
+            : doneEvent;
+          if (answerFromEvent != null) answer = String(answerFromEvent);
           window.JurixAnonymousHistory.updateLastAssistant(localId, answer, sources);
-          return onDone?.(doneAnswer, ...rest);
+          return onDone?.({ ...doneEvent, answer, session_id: localId, session_slug: localId }, ...rest);
         };
         const wrappedError = (error) => {
           if (answer.trim()) window.JurixAnonymousHistory.updateLastAssistant(localId, answer, sources);
@@ -136,7 +152,12 @@
         };
         // The anonymous DB API intentionally receives no session_id because
         // ChatSession.user is non-null. The local ID remains the UI identity.
-        return originalStream(question, null, wrappedChunk, wrappedSources, wrappedDone, wrappedError);
+        return originalStream(question, null, {
+          onChunk: wrappedChunk,
+          onSources: wrappedSources,
+          onDone: wrappedDone,
+          onError: wrappedError,
+        });
       };
     }
 
@@ -176,12 +197,27 @@
       return payload.attachment;
     };
 
+    api.deleteAttachment = async function (attachmentId) {
+      const response = await fetch(`/api/v1/chat/attachments/${encodeURIComponent(attachmentId)}/`, {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers: authToken() ? { 'X-CSRFToken': authToken() } : {},
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || 'Não foi possível desanexar o documento.');
+      }
+      const values = attachmentStore().read().filter(item => item.id !== attachmentId);
+      attachmentStore().write(values);
+      return payload;
+    };
+
     api.listLocalAttachments = function () {
       return attachmentStore().read();
     };
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
-  else install();
-  setTimeout(install, 0);
+  // Install synchronously: chat.js captures the API object during evaluation.
+  // A deferred replacement would leave it holding the unwrapped frozen object.
+  install();
 })();

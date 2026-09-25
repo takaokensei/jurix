@@ -228,7 +228,9 @@ class TestRAGService:
         service = RAGService(use_cache=False)
         service.cache = None  # Disable cache
 
-        results = service.semantic_search("test query", k=5)
+        with patch('src.processing.rag_service.connection') as connection:
+            connection.vendor = 'postgresql'
+            results = service.semantic_search("test query", k=5)
 
         assert results == []
         mock_ollama.generate_embedding.assert_called_once()
@@ -301,6 +303,7 @@ class TestRAGService:
         service.cache.get_answer.assert_called_once_with(
             'Qual o prazo de obras?', k=5, model='llama3',
             corpus_version=service.cache.get_corpus_version.return_value,
+            retrieval_fingerprint='',
         )
 
     @patch('src.processing.rag_service.OllamaService')
@@ -386,7 +389,9 @@ class TestRAGService:
         ollama.generate_embedding.return_value = [0.1] * 3
         monkeypatch.setattr('src.processing.rag_service.OllamaService', lambda **_: ollama)
         service = RAGService(model='nomic-embed-text', use_cache=False)
-        assert service.semantic_search('zoneamento') == []
+        with patch('src.processing.rag_service.connection') as connection:
+            connection.vendor = 'postgresql'
+            assert service.semantic_search('zoneamento') == []
 
 
 class TestPromptConstruction:

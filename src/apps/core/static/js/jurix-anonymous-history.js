@@ -15,6 +15,21 @@
   const MAX_SESSIONS = 24;
   const MAX_MESSAGES = 80;
   const MAX_BYTES = 3 * 1024 * 1024;
+  let memoryState = null;
+  let storageUnavailable = false;
+
+  function storageFailed(error) {
+    storageUnavailable = true;
+    console.warn('[Jurix] history is temporarily in memory', error);
+    let notice = document.getElementById('jurix-storage-warning');
+    if (!notice && document.body) {
+      notice = document.createElement('p');
+      notice.id = 'jurix-storage-warning';
+      notice.setAttribute('role', 'alert');
+      notice.textContent = 'O histórico não pôde ser salvo neste navegador. Copie as respostas antes de sair.';
+      document.body.prepend(notice);
+    }
+  }
 
   function isAnonymous() {
     const bodyValue = document.body?.dataset?.authenticated;
@@ -37,6 +52,7 @@
   }
 
   function read() {
+    if (storageUnavailable && memoryState) return JSON.parse(JSON.stringify(memoryState));
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return emptyState();
@@ -46,8 +62,8 @@
       }
       return value;
     } catch (error) {
-      console.warn('[Jurix] anonymous history read failed', error);
-      return emptyState();
+      storageFailed(error);
+      return memoryState || emptyState();
     }
   }
 
@@ -71,10 +87,6 @@
   function write(state) {
     state = prune(state);
     let serialized = JSON.stringify(state);
-    if (serialized.length <= MAX_BYTES) {
-      localStorage.setItem(STORAGE_KEY, serialized);
-      return state;
-    }
 
     // Reduce history gradually instead of deleting everything at once.
     while (serialized.length > MAX_BYTES && state.sessions.length) {
@@ -87,9 +99,11 @@
       serialized = JSON.stringify(state);
     }
     try {
+      memoryState = JSON.parse(serialized);
       localStorage.setItem(STORAGE_KEY, serialized);
+      storageUnavailable = false;
     } catch (error) {
-      console.warn('[Jurix] anonymous history write failed', error);
+      storageFailed(error);
     }
     return state;
   }
@@ -154,6 +168,7 @@
   function list() {
     return prune(read()).sessions.map(session => ({
       id: session.id,
+      slug: session.id,
       title: session.title,
       created_at: session.created_at,
       updated_at: session.updated_at,
@@ -176,7 +191,8 @@
   }
 
   function clear() {
-    localStorage.removeItem(STORAGE_KEY);
+    memoryState = emptyState();
+    try { localStorage.removeItem(STORAGE_KEY); } catch (error) { storageFailed(error); }
   }
 
   window.JurixAnonymousHistory = {

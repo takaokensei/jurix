@@ -42,6 +42,7 @@ db.sqlite3-journal
 # IDEs
 .vscode/
 .idea/
+.history/
 *.swp
 *.swo
 *~
@@ -49,6 +50,7 @@ db.sqlite3-journal
 # Data
 data/raw/
 data/logs/
+data/chat_attachments/
 # Downloaded/derived data only. A bare '*.pdf' / '*.json' also hid legitimate files anywhere in
 # the tree (test fixtures, package.json, VS Code settings, docs).
 /data/**/*.pdf

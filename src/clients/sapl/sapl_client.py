@@ -101,13 +101,6 @@ class SaplAPIClient:
         """
         Gera headers HTTP com rotação de User-Agent.
 
-    def get_public_norma_url(self, sapl_id: int | str) -> str:
-        """Return the current public SAPL URL, never the API route."""
-        base = self.base_url.rstrip('/')
-        if base.endswith('/api'):
-            base = base[:-4]
-        return f"{base}/norma/{int(sapl_id)}/"
-
         Returns:
             Dicionário de headers
         """
@@ -119,6 +112,13 @@ class SaplAPIClient:
             'Accept': 'application/json',
             'Accept-Language': 'pt-BR,pt;q=0.9',
         }
+
+    def get_public_norma_url(self, sapl_id: int | str) -> str:
+        """Return the current public SAPL URL, never the API route."""
+        base = self.base_url.rstrip('/')
+        if base.endswith('/api'):
+            base = base[:-4]
+        return f"{base}/norma/{int(sapl_id)}/"
 
     def _make_request(
         self,

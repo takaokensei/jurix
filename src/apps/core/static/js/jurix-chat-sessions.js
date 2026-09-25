@@ -6,6 +6,8 @@
 
     function getSessionId(item) {
         const rawId = item && item.dataset ? item.dataset.sessionId : null;
+        if (rawId?.startsWith('local-')) return rawId;
+        if (!rawId) return null;
         const id = Number(rawId);
         return Number.isFinite(id) ? id : null;
     }
@@ -101,15 +103,20 @@
                     break;
                 }
             }
-            if (shouldRefresh) enhanceSessions();
+            if (shouldRefresh) {
+                observer.disconnect();
+                enhanceSessions();
+                observer.observe(list, observationOptions);
+            }
         });
 
-        observer.observe(list, {
+        const observationOptions = {
             childList: true,
             subtree: true,
             attributes: true,
             attributeFilter: ['class', 'style', 'data-session-id'],
-        });
+        };
+        observer.observe(list, observationOptions);
     }
 
     function init() {

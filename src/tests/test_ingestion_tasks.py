@@ -14,19 +14,21 @@ from src.apps.ingestion.tasks import _process_norma_data, bulk_ingest_normas_tas
 from src.apps.legislation.models import Norma
 
 
+@pytest.mark.django_db
 class TestIngestionTasks:
     """Test suite for Ingestion tasks."""
 
     @patch('src.apps.ingestion.tasks.Norma.objects.update_or_create')
-    @patch('src.apps.ingestion.tasks.Norma.objects.filter')
+    @patch('src.apps.ingestion.tasks.Norma.objects.select_for_update')
     def test_reingest_preserves_consolidated_status(self, mock_filter, mock_update_or_create):
         """Test that re-ingesting a norma preserves its consolidated status."""
         # Setup existing norma in database with consolidated status
         existing_norma = Mock()
         existing_norma.status = 'consolidated'
+        existing_norma.pdf_url = ''
         mock_qs = Mock()
         mock_qs.only.return_value.first.return_value = existing_norma
-        mock_filter.return_value = mock_qs
+        mock_filter.return_value.filter.return_value = mock_qs
 
         mock_updated_norma = Mock()
         mock_updated_norma.id = 42
@@ -49,7 +51,7 @@ class TestIngestionTasks:
         call_kwargs = mock_update_or_create.call_args[1]
         assert call_kwargs['defaults']['status'] == 'consolidated'
 
-    @patch('src.apps.ingestion.tasks.ingest_normas_task.delay')
+    @patch('src.apps.ingestion.tasks.ingest_normas_task.apply_async')
     def test_bulk_ingest_dispatches_async_tasks(self, mock_delay):
         """Test that bulk_ingest_normas_task dispatches tasks asynchronously with .delay()."""
         mock_subtask = Mock()
@@ -97,7 +99,8 @@ class TestConsolidationTaskReviewFlag:
         result = consolidate_norma_task(base.id)
         base.refresh_from_db()
 
-        assert result["success"] is True
+        assert result["success"] is False
+        assert base.status == 'failed'
         assert result["events_unresolved"] == 1
         assert result["events_applied"] == 0
         assert result["needs_review"] is True

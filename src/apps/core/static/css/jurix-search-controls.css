@@ -26,3 +26,61 @@
 }
 .jurix-control-option:hover,
 .jurix-control-option[aria-pressed="true"] { background: rgba(98,216,255,.12); }
+
+.jurix-attachment-previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  max-height: 42px;
+  overflow: hidden;
+}
+
+.jurix-attachment-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  max-width: 260px;
+  height: 30px;
+  padding: 0 6px 0 9px;
+  border: 1px solid rgba(96, 165, 250, .28);
+  border-radius: 8px;
+  background: rgba(59, 130, 246, .10);
+  color: #dbeafe;
+  font-size: 11px;
+}
+
+.jurix-attachment-icon {
+  color: #93c5fd;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.jurix-attachment-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jurix-attachment-remove {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #bfdbfe;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.jurix-attachment-remove:hover,
+.jurix-attachment-remove:focus-visible {
+  background: rgba(248, 250, 252, .14);
+  color: #fff;
+}

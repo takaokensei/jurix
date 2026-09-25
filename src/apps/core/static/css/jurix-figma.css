@@ -77,14 +77,21 @@ body.figma-theme {
 }
 
 .figma-logo-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background-color: var(--figma-bg-surface);
-  border: 1px solid var(--figma-border);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.45), rgba(15, 23, 42, 0.85));
+  border: 1px solid rgba(103, 232, 249, 0.3);
+  box-shadow: 0 0 14px rgba(6, 182, 212, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.figma-logo-group:hover .figma-logo-icon {
+  border-color: rgba(103, 232, 249, 0.6);
+  box-shadow: 0 0 18px rgba(6, 182, 212, 0.3);
 }
 
 .figma-logo-text {
@@ -364,9 +371,10 @@ body.figma-theme {
 }
 
 .figma-input-line {
-  height: 40px;
+  min-height: 40px;
+  max-height: 96px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
 }
 
@@ -375,10 +383,17 @@ body.figma-theme {
   align-items: center;
   gap: 12px;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .figma-hero-search-input {
   width: 100%;
+  min-width: 0;
+  max-height: 96px;
+  overflow-y: hidden;
+  overflow-x: hidden;
+  box-sizing: border-box;
   background: transparent;
   border: none;
   outline: none;
@@ -416,6 +431,8 @@ body.figma-theme {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  position: relative;
+  z-index: 2;
 }
 
 .figma-search-dropdown {
