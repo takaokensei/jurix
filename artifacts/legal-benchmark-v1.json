@@ -1,0 +1,165 @@
+{
+  "benchmark": "jurix-legal-production-v1",
+  "snapshot_date": "2026-09-25",
+  "timestamp": "2026-09-25T22:22:35.155746+00:00",
+  "git_commit": "unknown",
+  "endpoint": "http://127.0.0.1:8000/api/v1/search/answer/",
+  "cases": [
+    {
+      "case_id": "cpc-219-001",
+      "accepted": false,
+      "source_match": false,
+      "source_hits": 0,
+      "content_hits": 0,
+      "answer": "Não encontrei evidências suficientes nas fontes recuperadas para sustentar essa resposta com segurança.",
+      "expected_source": {
+        "law": "Lei 13.105/2015",
+        "article": "219",
+        "url": "https://planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm"
+      },
+      "latency_ms": 10961.2
+    },
+    {
+      "case_id": "cpc-220-001",
+      "accepted": false,
+      "source_match": false,
+      "source_hits": 0,
+      "content_hits": 0,
+      "answer": "Não encontrei evidências suficientes nas fontes recuperadas para sustentar essa resposta com segurança.",
+      "expected_source": {
+        "law": "Lei 13.105/2015",
+        "article": "220",
+        "url": "https://planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm"
+      },
+      "latency_ms": 10883.4
+    },
+    {
+      "case_id": "cpc-213-001",
+      "accepted": false,
+      "source_match": false,
+      "source_hits": 0,
+      "content_hits": 0,
+      "answer": "Não encontrei evidências suficientes nas fontes recuperadas para sustentar essa resposta com segurança.",
+      "expected_source": {
+        "law": "Lei 13.105/2015",
+        "article": "213",
+        "url": "https://planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm"
+      },
+      "latency_ms": 17875.7
+    },
+    {
+      "case_id": "cpc-218-001",
+      "accepted": false,
+      "source_match": false,
+      "source_hits": 0,
+      "content_hits": 0,
+      "answer": "Não encontrei evidências suficientes nas fontes recuperadas para sustentar essa resposta com segurança.",
+      "expected_source": {
+        "law": "Lei 13.105/2015",
+        "article": "218",
+        "url": "https://planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm"
+      },
+      "latency_ms": 11790.0
+    },
+    {
+      "case_id": "cf-5-ii-001",
+      "accepted": false,
+      "source_match": false,
+      "source_hits": 0,
+      "content_hits": 0,
+      "answer": "Não encontrei evidências suficientes nas fontes recuperadas para sustentar essa resposta com segurança.",
+      "expected_source": {
+        "law": "Constituição Federal",
+        "article": "5, II",
+        "url": "https://www4.planalto.gov.br/legislacao/legis-federal/constituicao"
+      },
+      "latency_ms": 16294.2
+    },
+    {
+      "case_id": "cf-5-x-001",
+      "accepted": false,
+      "source_match": false,
+      "source_hits": 0,
+      "content_hits": 0,
+      "answer": "Não encontrei evidências suficientes nas fontes recuperadas para sustentar essa resposta com segurança.",
+      "expected_source": {
+        "law": "Constituição Federal",
+        "article": "5, X",
+        "url": "https://www4.planalto.gov.br/legislacao/legis-federal/constituicao"
+      },
+      "latency_ms": 16002.8
+    },
+    {
+      "case_id": "cdc-6-i-001",
+      "accepted": false,
+      "source_match": false,
+      "source_hits": 0,
+      "content_hits": 1,
+      "answer": "Não encontrei evidências suficientes nas fontes recuperadas para sustentar essa resposta com segurança.",
+      "expected_source": {
+        "law": "Lei 8.078/1990",
+        "article": "6, I",
+        "url": "https://planalto.gov.br/ccivil_03/leis/l8078compilado.htm"
+      },
+      "latency_ms": 11816.2
+    },
+    {
+      "case_id": "eca-5-001",
+      "accepted": false,
+      "source_match": false,
+      "source_hits": 0,
+      "content_hits": 1,
+      "answer": "Não encontrei evidências suficientes nas fontes recuperadas para sustentar essa resposta com segurança.",
+      "expected_source": {
+        "law": "Lei 8.069/1990",
+        "article": "5",
+        "url": "https://www.planalto.gov.br/ccivil_03/leis/l8069compilado.htm"
+      },
+      "latency_ms": 8144.2
+    },
+    {
+      "case_id": "eca-7-001",
+      "accepted": false,
+      "source_match": false,
+      "source_hits": 0,
+      "content_hits": 0,
+      "answer": "Não encontrei evidências suficientes nas fontes recuperadas para sustentar essa resposta com segurança.",
+      "expected_source": {
+        "law": "Lei 8.069/1990",
+        "article": "7",
+        "url": "https://www.planalto.gov.br/ccivil_03/leis/l8069.htm"
+      },
+      "latency_ms": 8292.1
+    },
+    {
+      "case_id": "l7347-8-001",
+      "accepted": false,
+      "source_match": false,
+      "source_hits": 0,
+      "content_hits": 0,
+      "answer": "Não encontrei evidências suficientes nas fontes recuperadas para sustentar essa resposta com segurança.",
+      "expected_source": {
+        "law": "Lei 7.347/1985",
+        "article": "8, §1º",
+        "url": "https://www4.planalto.gov.br/legislacao/portal-legis/legislacao-por-assunto-OLD/acesso-a-justica-e-processo-judicial/acoes-constitucionais/lei-no-7-347-de-24-de-julho-de-1985"
+      },
+      "latency_ms": 10616.6
+    },
+    {
+      "case_id": "oab-5-001",
+      "accepted": false,
+      "source_match": false,
+      "source_hits": 0,
+      "content_hits": 0,
+      "answer": "Não encontrei evidências suficientes nas fontes recuperadas para sustentar essa resposta com segurança.",
+      "expected_source": {
+        "law": "Lei 8.906/1994",
+        "article": "5",
+        "url": "https://www.planalto.gov.br/ccivil_03/leis/l8906.htm"
+      },
+      "latency_ms": 8807.9
+    }
+  ],
+  "pass_rate": 0.0,
+  "source_match_rate": 0.0
+}

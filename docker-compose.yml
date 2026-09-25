@@ -6,6 +6,8 @@ services:
   db:
     image: pgvector/pgvector:pg16
     container_name: jurix_db
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-jurix}
       POSTGRES_USER: ${POSTGRES_USER:-jurix_user}
@@ -21,6 +23,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: jurix_redis
+    ports:
+      - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -28,6 +32,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+
 
   web:
     build:

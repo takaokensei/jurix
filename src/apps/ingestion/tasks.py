@@ -1,4 +1,5 @@
 """Stable public ingestion task API."""
+
 from __future__ import annotations
 
 import sys

@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import argparse
 import ast
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PKG = ROOT / "src/apps/ingestion"
@@ -64,7 +64,7 @@ def apply() -> None:
     all_exports = sorted(set(names) | {"ingest_normas_bulk_task"})
     TASKS.write_text(
         '"""Stable public ingestion task API."""\n\nfrom __future__ import annotations\n\n'
-        'import sys\nfrom typing import Any\n\nfrom . import tasks_legacy\nfrom .tasks_legacy import *  # noqa: F403,F401\n\n'
+        "import sys\nfrom typing import Any\n\nfrom . import tasks_legacy\nfrom .tasks_legacy import *  # noqa: F403,F401\n\n"
         f"{exports}\n\ningest_normas_bulk_task = bulk_ingest_normas_task\n\n"
         f"__all__ = {all_exports!r}\n\n\n"
         "class _TasksModule(sys.modules[__name__].__class__):\n"
