@@ -22,6 +22,7 @@ IMPORT_TO_DIST = {
     "psycopg2": "psycopg2-binary",
     "django_htmx": "django-htmx",
     "yaml": "pyyaml",
+    "opentelemetry": "opentelemetry-api",
 }
 FIRST_PARTY = {"src", "config", "manage", "legislation", "ingestion", "core", "processing",
                "llm_engine", "clients"}
@@ -33,6 +34,7 @@ USED_WITHOUT_IMPORT = {
     "django-htmx",         # enabled through INSTALLED_APPS / MIDDLEWARE strings
     "redis",               # Celery broker + Django's RedisCache backend, via URLs/settings
     "ruff", "pytest", "pytest-django", "pytest-cov", "pytest-mock", "boto3",   # tooling
+    "opentelemetry-sdk", "opentelemetry-exporter-otlp-proto-http",  # tracing exporters/sdk
 }
 
 

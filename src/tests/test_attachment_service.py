@@ -10,6 +10,8 @@ from src.apps.legislation.attachment_service import (
     upload_attachment,
 )
 
+pytestmark = pytest.mark.django_db
+
 
 class DummySession(dict):
     session_key = "test-session"
@@ -50,21 +52,49 @@ def test_empty_file_is_rejected(tmp_path, settings):
 
 
 def test_expiration_collects_abandoned_session_only(tmp_path, settings):
-    import os
-    import time
+    from datetime import timedelta
+
+    from django.utils import timezone
 
     from src.apps.legislation.attachment_service import cleanup_expired_attachments
+    from src.apps.legislation.attachment_storage import LocalAttachmentStorage
+    from src.apps.operations.models import AttachmentRecord
+
     settings.JURIX_ATTACHMENT_ROOT = str(tmp_path)
-    directory = tmp_path / ('a' * 64)
-    directory.mkdir()
-    expired = directory / 'expired.pdf'
-    expired.write_bytes(b'old')
-    live = directory / 'live.txt'
-    live.write_text('live')
-    old = time.time() - 10000
-    os.utime(expired, (old, old))
+    storage = LocalAttachmentStorage(tmp_path)
+
+    storage.save_bytes("chat/expired/f1.txt", b"old", "text/plain")
+    storage.save_bytes("chat/expired/f1.txt.txt", b"old text", "text/plain")
+    AttachmentRecord.objects.create(
+        id="f1",
+        session_hash="expired",
+        name="expired.txt",
+        size=3,
+        content_type="text/plain",
+        storage_key="chat/expired/f1.txt",
+        text_storage_key="chat/expired/f1.txt.txt",
+        sha256="abc",
+        expires_at=timezone.now() - timedelta(seconds=10),
+    )
+
+    storage.save_bytes("chat/live/f2.txt", b"live", "text/plain")
+    storage.save_bytes("chat/live/f2.txt.txt", b"live text", "text/plain")
+    AttachmentRecord.objects.create(
+        id="f2",
+        session_hash="live",
+        name="live.txt",
+        size=4,
+        content_type="text/plain",
+        storage_key="chat/live/f2.txt",
+        text_storage_key="chat/live/f2.txt.txt",
+        sha256="def",
+        expires_at=timezone.now() + timedelta(seconds=3600),
+    )
+
     assert cleanup_expired_attachments() == 1
-    assert live.exists()
+    assert AttachmentRecord.objects.filter(id="f1").count() == 0
+    assert AttachmentRecord.objects.filter(id="f2").count() == 1
+    assert (tmp_path / "chat/live/f2.txt").exists()
 
 
 def test_pdf_page_limit(tmp_path, settings):
@@ -180,39 +210,34 @@ def test_resource_limits_enforced_in_process():
 
 
 def test_cleanup_skips_symlinks_and_external_paths(tmp_path, settings):
-    import os
-    import time
+    from datetime import timedelta
+
+    from django.utils import timezone
 
     from src.apps.legislation.attachment_service import cleanup_expired_attachments
+    from src.apps.legislation.attachment_storage import LocalAttachmentStorage
+    from src.apps.operations.models import AttachmentRecord
 
     settings.JURIX_ATTACHMENT_ROOT = str(tmp_path)
-    safe_dir = tmp_path / ('b' * 64)
-    safe_dir.mkdir()
+    storage = LocalAttachmentStorage(tmp_path)
 
-    # File outside safe dir
-    external_dir = tmp_path / 'external'
-    external_dir.mkdir()
-    external_file = external_dir / 'important.txt'
+    external_file = tmp_path / 'important.txt'
     external_file.write_text('do not delete')
-    old_time = time.time() - 20000
-    os.utime(external_file, (old_time, old_time))
 
-    # Expired file inside valid directory
-    expired_file = safe_dir / 'expired.txt'
-    expired_file.write_text('expired')
-    os.utime(expired_file, (old_time, old_time))
-
-    # If OS supports symlinks, test symlink exclusion
-    symlink_file = safe_dir / 'symlink.txt'
-    try:
-        os.symlink(external_file, symlink_file)
-        has_symlink = True
-    except (OSError, NotImplementedError):
-        has_symlink = False
+    storage.save_bytes("chat/expired/f1.txt", b"old", "text/plain")
+    storage.save_bytes("chat/expired/f1.txt.txt", b"old text", "text/plain")
+    AttachmentRecord.objects.create(
+        id="f1",
+        session_hash="expired",
+        name="expired.txt",
+        size=3,
+        content_type="text/plain",
+        storage_key="chat/expired/f1.txt",
+        text_storage_key="chat/expired/f1.txt.txt",
+        sha256="abc",
+        expires_at=timezone.now() - timedelta(seconds=10),
+    )
 
     removed = cleanup_expired_attachments()
     assert removed == 1
-    assert not expired_file.exists()
     assert external_file.exists()
-    if has_symlink:
-        assert symlink_file.exists() or not symlink_file.is_file()

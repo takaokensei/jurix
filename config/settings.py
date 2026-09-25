@@ -277,15 +277,24 @@ SAPL_BASE_URL = os.getenv('SAPL_BASE_URL', 'https://sapl.natal.rn.leg.br/api')
 SAPL_INCREMENTAL_MAX_PAGES = int(os.getenv('SAPL_INCREMENTAL_MAX_PAGES', '20'))
 SAPL_SYNC_LEASE_SECONDS = int(os.getenv('SAPL_SYNC_LEASE_SECONDS', '900'))
 
-# Attachment/object-storage configuration. The current attachment service still
-# uses its local/session implementation; these settings are the stable contract
-# for the storage backend introduced in the next production-hardening patch.
+# Attachment/object-storage configuration. Metadata is persisted in the operations
+# database; file bytes are stored by the selected backend.
 STORAGE_BACKEND = os.getenv('STORAGE_BACKEND', 'local').strip().lower()
 S3_ENDPOINT = os.getenv('S3_ENDPOINT', '')
 S3_BUCKET = os.getenv('S3_BUCKET', '')
 S3_ACCESS_KEY = os.getenv('S3_ACCESS_KEY', '')
 S3_SECRET_KEY = os.getenv('S3_SECRET_KEY', '')
 S3_REGION = os.getenv('S3_REGION', 'us-east-1')
+JURIX_ATTACHMENT_TTL_SECONDS = int(os.getenv('JURIX_ATTACHMENT_TTL_SECONDS', str(2 * 60 * 60)))
+JURIX_ATTACHMENT_STAGING_DIR = Path(os.getenv(
+    'JURIX_ATTACHMENT_STAGING_DIR',
+    str(BASE_DIR / 'data' / 'attachment-staging'),
+))
+
+# OpenTelemetry tracing is disabled by default so local development remains zero-config.
+OTEL_ENABLED = env_bool('OTEL_ENABLED', False)
+OTEL_SERVICE_NAME = os.getenv('OTEL_SERVICE_NAME', 'jurix')
+OTEL_EXPORTER_OTLP_ENDPOINT = os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT', '')
 
 
 # Logging Configuration

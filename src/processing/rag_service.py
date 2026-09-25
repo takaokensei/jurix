@@ -279,7 +279,9 @@ RESPOSTA:"""
         Returns:
             Tuple of (formatted_context_string, results_list)
         """
-        results = self.semantic_search(query_text, k=k)
+        from src.observability.tracing import span
+        with span('rag.retrieval', {'rag.k': k, 'rag.query_length': len(query_text)}):
+            results = self.semantic_search(query_text, k=k)
 
         if not results:
             return "Nenhum contexto relevante encontrado.", []
@@ -410,12 +412,14 @@ RESPOSTA:"""
         prompt = self.build_prompt(context, clean_question)
 
         # Step 3: Generate answer using LLM
-        answer = self.ollama.generate_text(
-            prompt=prompt,
-            model=model,
-            temperature=0.3,  # Lower temperature for factual answers
-            max_tokens=2048  # Increased for longer, complete answers
-        )
+        from src.observability.tracing import span
+        with span('rag.generation', {'llm.model': model, 'rag.context_sources': len(results)}):
+            answer = self.ollama.generate_text(
+                prompt=prompt,
+                model=model,
+                temperature=0.3,  # Lower temperature for factual answers
+                max_tokens=2048  # Increased for longer, complete answers
+            )
 
         if not answer:
             return {
