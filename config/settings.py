@@ -308,6 +308,11 @@ SAPL_DOWNLOAD_MAX_BYTES = int(os.getenv("SAPL_DOWNLOAD_MAX_BYTES", str(80 * 1024
 SAPL_DOWNLOAD_TIMEOUT_SECONDS = int(os.getenv("SAPL_DOWNLOAD_TIMEOUT_SECONDS", "60"))
 SAPL_OCR_MAX_PAGE_PIXELS = int(os.getenv("SAPL_OCR_MAX_PAGE_PIXELS", str(12_000_000)))
 SAPL_OCR_TIMEOUT_SECONDS = int(os.getenv("SAPL_OCR_TIMEOUT_SECONDS", "1800"))
+SAPL_CORPUS_TARGET = int(os.getenv("SAPL_CORPUS_TARGET", "300"))
+SAPL_PILOT_SIZE = int(os.getenv("SAPL_PILOT_SIZE", "20"))
+SAPL_CORPUS_START_YEAR = int(os.getenv("SAPL_CORPUS_START_YEAR", "2000"))
+SAPL_CORPUS_REQUEST_DELAY_SECONDS = float(os.getenv("SAPL_CORPUS_REQUEST_DELAY_SECONDS", "0.2"))
+
 
 # Attachment/object-storage configuration. Metadata is persisted in the operations
 # database; file bytes are stored by the selected backend.

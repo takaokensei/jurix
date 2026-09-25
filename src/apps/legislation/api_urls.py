@@ -33,6 +33,7 @@ urlpatterns = [
     path("search/answer/stream/", api_views.chatbot_stream_api, name="rag_answer_stream"),
     # Norma listing
     path("normas/", api_views.norma_list_api, name="norma_list"),
+    path("suggestions/", api_views.dynamic_suggestions_api, name="dynamic_suggestions"),
     # Norma detail
     path("normas/<int:pk>/", api_views.norma_detail_api, name="norma_detail"),
     # Chat sessions endpoints

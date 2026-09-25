@@ -153,7 +153,11 @@ def main() -> int:
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
-        print("Vector production gate passed." if ok else "\n".join(["Vector production gate FAILED:"] + failures))
+        print(
+            "Vector production gate passed."
+            if ok
+            else "\n".join(["Vector production gate FAILED:"] + failures)
+        )
     return 0 if ok else 1
 
 

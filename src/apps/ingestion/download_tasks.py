@@ -6,6 +6,7 @@ from .tasks_legacy import (
     full_sync_sapl_task,
     incremental_sync_sapl_task,
     ingest_normas_task,
+    ingest_sapl_corpus_task,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "full_sync_sapl_task",
     "incremental_sync_sapl_task",
     "ingest_normas_task",
+    "ingest_sapl_corpus_task",
 ]

@@ -50,6 +50,7 @@ from src.apps.legislation.serializers import (
     serialize_chat_session,
     serialize_dispositivo_source,
 )
+from src.apps.legislation.suggestion_service import build_dynamic_suggestions
 from src.processing.adaptive_rag_service import AdaptiveRAGService
 
 RAGService = AdaptiveRAGService
@@ -980,3 +981,32 @@ def chat_attachment_detail_api(request: HttpRequest, attachment_id: str) -> Json
     if not delete_attachment(request, attachment_id):
         return JsonResponse({"success": False, "error": "Documento não encontrado."}, status=404)
     return JsonResponse({"success": True, "attachments": list_attachments(request)})
+
+
+@require_http_methods(["GET"])
+def dynamic_suggestions_api(request: HttpRequest) -> JsonResponse:
+    """Return suggestion cards generated from the current municipal corpus."""
+    try:
+        limit = max(1, min(int(request.GET.get("limit", 4)), 8))
+    except (TypeError, ValueError):
+        limit = 4
+    try:
+        suggestions = build_dynamic_suggestions(limit)
+        return JsonResponse(
+            {
+                "success": True,
+                "suggestions": suggestions,
+                "count": len(suggestions),
+                "source": "municipal_natal_corpus",
+            }
+        )
+    except Exception as exc:
+        logger.error("Dynamic suggestion generation failed: %s", exc, exc_info=True)
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "Não foi possível carregar sugestões do corpus.",
+                "suggestions": [],
+            },
+            status=500,
+        )

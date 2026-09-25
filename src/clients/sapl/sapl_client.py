@@ -154,6 +154,39 @@ class SaplAPIClient:
             logger.error(f"Erro ao parsear JSON: {url} - {str(e)}")
             raise
 
+    def _make_request_url(self, url: str) -> dict[str, Any]:
+        """Follow a pagination URL returned by SAPL without rebuilding its query."""
+        headers = self._get_headers()
+        try:
+            response = self.session.get(
+                url,
+                headers=headers,
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException:
+            logger.error("Erro ao seguir paginação SAPL: %s", url, exc_info=True)
+            raise
+        except ValueError:
+            logger.error("Resposta JSON inválida ao seguir paginação SAPL: %s", url, exc_info=True)
+            raise
+
+    def fetch_normas_page(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        tipo: str | None = None,
+        ano: int | None = None,
+    ) -> dict[str, Any]:
+        """Return the complete SAPL page payload, including ``count`` and ``next``."""
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if tipo:
+            params["tipo"] = tipo
+        if ano:
+            params["ano"] = ano
+        return self._make_request(self.NORMA_ENDPOINT, params)
+
     def fetch_normas(
         self, limit: int = 50, offset: int = 0, tipo: str | None = None, ano: int | None = None
     ) -> list[dict[str, Any]]:
@@ -184,19 +217,9 @@ class SaplAPIClient:
             f"Iniciando fetch de normas: limit={limit}, offset={offset}, " f"tipo={tipo}, ano={ano}"
         )
 
-        params = {
-            "limit": limit,
-            "offset": offset,
-        }
-
-        if tipo:
-            params["tipo"] = tipo
-        if ano:
-            params["ano"] = ano
-
         try:
             start_time = time.time()
-            data = self._make_request(self.NORMA_ENDPOINT, params)
+            data = self.fetch_normas_page(limit=limit, offset=offset, tipo=tipo, ano=ano)
             elapsed = time.time() - start_time
 
             results = data.get("results", [])
@@ -324,68 +347,181 @@ class SaplAPIClient:
         page_size: int = 50,
     ) -> list[dict[str, Any]]:
         """
-        Busca todas as normas com paginação automática.
+        Busca todas as normas com paginação automática e segue o link ``next`` do SAPL.
 
-        NOTA: Devido à limitação da API SAPL (retorna sempre as mesmas 10 normas),
-        recomenda-se usar fetch_normas_by_year_range para busca histórica completa.
-
-        Args:
-            max_normas: Número máximo de normas (None = todas)
-            tipo: Filtro por tipo
-            ano: Filtro por ano
-            page_size: Tamanho de cada página
-
-        Returns:
-            Lista completa de normas
+        Algumas implantações do SAPL devolvem uma página fixa mesmo quando ``offset``
+        muda. Nesses casos a paginação por offset é interrompida de forma segura em vez
+        de duplicar indefinidamente a primeira página. Para corpus científico use
+        ``fetch_normas_for_corpus`` que particiona a busca por ano/tipo quando necessário.
         """
         logger.info(
-            f"Iniciando fetch paginado: max_normas={max_normas}, "
-            f"tipo={tipo}, ano={ano}, page_size={page_size}"
+            "Iniciando fetch paginado: max_normas=%s, tipo=%s, ano=%s, page_size=%s",
+            max_normas,
+            tipo,
+            ano,
+            page_size,
         )
 
-        all_normas = []
+        all_normas: list[dict[str, Any]] = []
+        seen_ids: set[Any] = set()
+        seen_urls: set[str] = set()
         offset = 0
-        seen_ids = set()  # Para detectar duplicatas
+        data = self.fetch_normas_page(limit=page_size, offset=offset, tipo=tipo, ano=ano)
+        page_guard = 0
+        max_pages = max(1, int(getattr(settings, "SAPL_FULL_SYNC_MAX_PAGES", 1000)))
 
-        while True:
-            try:
-                normas = self.fetch_normas(limit=page_size, offset=offset, tipo=tipo, ano=ano)
-
-                if not normas:
-                    logger.info("Nenhuma norma adicional encontrada. Fetch completo.")
-                    break
-
-                # Filtrar duplicatas
-                novas_normas = []
-                for norma in normas:
-                    sapl_id = norma.get("id")
-                    if sapl_id and sapl_id not in seen_ids:
-                        seen_ids.add(sapl_id)
-                        novas_normas.append(norma)
-
-                if not novas_normas:
-                    logger.info("Apenas normas duplicadas encontradas. Encerrando paginação.")
-                    break
-
-                all_normas.extend(novas_normas)
-                logger.info(f"Progresso: {len(all_normas)} normas acumuladas")
-
-                if max_normas and len(all_normas) >= max_normas:
-                    all_normas = all_normas[:max_normas]
-                    logger.info(f"Limite de {max_normas} normas atingido")
-                    break
-
-                offset += page_size
-
-                # Rate limiting (boa prática)
-                time.sleep(0.5)
-
-            except Exception as e:
-                logger.error(f"Erro durante fetch paginado no offset {offset}: {str(e)}")
+        while data and page_guard < max_pages:
+            page_guard += 1
+            results = data.get("results") or []
+            if not results:
                 break
 
-        logger.info(f"Fetch paginado concluído: {len(all_normas)} normas totais")
-        return all_normas
+            new_count = 0
+            for norma in results:
+                sapl_id = norma.get("id")
+                if sapl_id is None or sapl_id in seen_ids:
+                    continue
+                seen_ids.add(sapl_id)
+                all_normas.append(norma)
+                new_count += 1
+
+            logger.info("Progresso: %s normas acumuladas", len(all_normas))
+            if max_normas and len(all_normas) >= max_normas:
+                return all_normas[:max_normas]
+
+            next_url = data.get("next")
+            if next_url:
+                next_url = str(next_url)
+                if next_url in seen_urls:
+                    logger.warning("SAPL repetiu o mesmo link de paginação; encerrando.")
+                    break
+                seen_urls.add(next_url)
+                data = self._make_request_url(next_url)
+                time.sleep(0.2)
+                continue
+
+            # Fallback para APIs que omitem ``next`` mas respeitam offset.
+            if new_count == 0:
+                logger.warning(
+                    "SAPL devolveu uma página repetida sem link next; "
+                    "não avançando por offset para evitar loop."
+                )
+                break
+            offset += len(results)
+            expected = int(data.get("count") or 0)
+            if expected and offset >= expected:
+                break
+            data = self.fetch_normas_page(limit=page_size, offset=offset, tipo=tipo, ano=ano)
+            time.sleep(0.2)
+
+        if page_guard >= max_pages:
+            logger.warning("Limite de %s páginas SAPL atingido.", max_pages)
+        return all_normas[:max_normas] if max_normas else all_normas
+
+    def fetch_normas_for_corpus(
+        self,
+        target: int = 300,
+        ano_inicio: int | None = None,
+        ano_fim: int | None = None,
+        tipos: list[str] | None = None,
+        page_size: int = 50,
+    ) -> list[dict[str, Any]]:
+        """
+        Collect a bounded municipal corpus even when SAPL pagination is defective.
+
+        Strategy:
+        1. Follow real ``next`` links whenever SAPL supplies them.
+        2. Probe each year independently to avoid a global "latest 10" ceiling.
+        3. Discover type labels from the payload and re-query year/type partitions,
+           which provides additional coverage on installations that cap each response.
+
+        The result is deliberately bounded (default 300) and deduplicated by SAPL id.
+        It is a corpus-selection tool, not a claim that the remote database was fully
+        enumerated. Logging records when fewer than ``target`` unique norms were found.
+        """
+        if isinstance(target, bool) or target < 1:
+            raise ValueError("target must be a positive integer")
+
+        current_year = time.gmtime().tm_year
+        start_year = ano_inicio or int(getattr(settings, "SAPL_CORPUS_START_YEAR", 2000))
+        end_year = ano_fim or current_year
+        if start_year > end_year:
+            raise ValueError("ano_inicio must be <= ano_fim")
+
+        discovered_types: set[str] = set(tipos or [])
+        collected: dict[Any, dict[str, Any]] = {}
+        years = range(end_year, start_year - 1, -1)
+        delay = float(getattr(settings, "SAPL_CORPUS_REQUEST_DELAY_SECONDS", 0.2))
+
+        def add_results(items: list[dict[str, Any]]) -> None:
+            for item in items:
+                sapl_id = item.get("id")
+                if sapl_id is None:
+                    continue
+                collected.setdefault(sapl_id, item)
+                raw_type = item.get("tipo")
+                if isinstance(raw_type, dict):
+                    label = str(raw_type.get("descricao") or raw_type.get("sigla") or "").strip()
+                else:
+                    label = str(raw_type or "").strip()
+                if label:
+                    discovered_types.add(label)
+
+        for year in years:
+            if len(collected) >= target:
+                break
+            try:
+                page = self.fetch_normas_page(limit=page_size, offset=0, ano=year)
+                add_results(page.get("results") or [])
+                next_url = page.get("next")
+                seen: set[str] = set()
+                guard = 0
+                max_pages = max(1, int(getattr(settings, "SAPL_FULL_SYNC_MAX_PAGES", 1000)))
+                while next_url and len(collected) < target and guard < max_pages:
+                    next_url = str(next_url)
+                    if next_url in seen:
+                        break
+                    seen.add(next_url)
+                    guard += 1
+                    page = self._make_request_url(next_url)
+                    add_results(page.get("results") or [])
+                    next_url = page.get("next")
+                    time.sleep(delay)
+                time.sleep(delay)
+            except Exception:
+                logger.warning("Falha ao consultar SAPL no ano %s", year, exc_info=True)
+
+        # Fallback for installations where year-only queries are capped at 10 rows.
+        for tipo in sorted(discovered_types):
+            for year in years:
+                if len(collected) >= target:
+                    break
+                try:
+                    page = self.fetch_normas_page(
+                        limit=page_size,
+                        offset=0,
+                        tipo=tipo,
+                        ano=year,
+                    )
+                    add_results(page.get("results") or [])
+                    time.sleep(delay)
+                except Exception:
+                    logger.debug(
+                        "Ignorando partição SAPL tipo=%s ano=%s", tipo, year, exc_info=True
+                    )
+
+        result = list(collected.values())[:target]
+        if len(result) < target:
+            logger.warning(
+                "Corpus SAPL incompleto: %s/%s normas únicas coletadas no intervalo %s-%s.",
+                len(result),
+                target,
+                start_year,
+                end_year,
+            )
+        else:
+            logger.info("Corpus SAPL alvo atingido: %s normas únicas.", len(result))
+        return result
 
     def download_pdf(self, pdf_url: str, output_path: str) -> bool:
         """

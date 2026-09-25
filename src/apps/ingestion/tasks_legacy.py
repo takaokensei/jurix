@@ -390,6 +390,61 @@ def bulk_ingest_normas_task(
         raise self.retry(exc=e) from e
 
 
+@shared_task(
+    bind=True,
+    name="ingestion.ingest_sapl_corpus_task",
+    max_retries=2,
+)
+def ingest_sapl_corpus_task(
+    self,
+    max_normas: int = 300,
+    ano_inicio: int | None = None,
+    ano_fim: int | None = None,
+    auto_download: bool = False,
+) -> dict[str, Any]:
+    """Ingest a bounded municipal SAPL corpus without relying on broken offset pagination."""
+    if isinstance(max_normas, bool) or not 1 <= max_normas <= 5000:
+        raise ValueError("max_normas must be between 1 and 5000")
+    task_id = self.request.id
+    client = SaplAPIClient()
+    stats = {
+        "task_id": task_id,
+        "requested": max_normas,
+        "fetched": 0,
+        "created": 0,
+        "updated": 0,
+        "failed": 0,
+        "download_tasks": [],
+        "errors": [],
+    }
+    try:
+        normas_data = client.fetch_normas_for_corpus(
+            target=max_normas,
+            ano_inicio=ano_inicio,
+            ano_fim=ano_fim,
+        )
+        stats["fetched"] = len(normas_data)
+        for norma_data in normas_data:
+            try:
+                result = _process_norma_data(norma_data, auto_download=auto_download)
+                if result["created"]:
+                    stats["created"] += 1
+                else:
+                    stats["updated"] += 1
+                if result.get("download_task_id"):
+                    stats["download_tasks"].append(result["download_task_id"])
+            except Exception as exc:
+                stats["failed"] += 1
+                stats["errors"].append(f"Norma ID {norma_data.get('id')}: {exc}")
+                logger.exception("Falha ao ingerir norma SAPL durante corpus boundado")
+        return stats
+    except Exception as exc:
+        logger.error("Falha crítica na ingestão do corpus SAPL: %s", exc, exc_info=True)
+        raise self.retry(exc=exc, countdown=60 * (2**self.request.retries)) from exc
+    finally:
+        client.close()
+
+
 ingest_normas_bulk_task = bulk_ingest_normas_task
 
 

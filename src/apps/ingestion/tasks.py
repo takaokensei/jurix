@@ -14,6 +14,7 @@ from .download_tasks import (
     full_sync_sapl_task,
     incremental_sync_sapl_task,
     ingest_normas_task,
+    ingest_sapl_corpus_task,
 )
 from .ner_tasks import generate_embedding_task
 from .ocr_tasks import ocr_pdf_task
@@ -33,6 +34,7 @@ __all__ = [
     "incremental_sync_sapl_task",
     "ingest_normas_bulk_task",
     "ingest_normas_task",
+    "ingest_sapl_corpus_task",
     "ocr_pdf_task",
     "segment_text_task",
 ]
