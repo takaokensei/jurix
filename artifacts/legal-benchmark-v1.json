@@ -1,7 +1,7 @@
 {
   "benchmark": "jurix-legal-production-v1",
   "snapshot_date": "2026-09-25",
-  "timestamp": "2026-09-25T22:22:35.155746+00:00",
+  "timestamp": "2026-09-25T22:26:00.151863+00:00",
   "git_commit": "unknown",
   "endpoint": "http://127.0.0.1:8000/api/v1/search/answer/",
   "cases": [
@@ -17,7 +17,7 @@
         "article": "219",
         "url": "https://planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm"
       },
-      "latency_ms": 10961.2
+      "latency_ms": 5307.5
     },
     {
       "case_id": "cpc-220-001",
@@ -31,7 +31,7 @@
         "article": "220",
         "url": "https://planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm"
       },
-      "latency_ms": 10883.4
+      "latency_ms": 3479.4
     },
     {
       "case_id": "cpc-213-001",
@@ -45,7 +45,7 @@
         "article": "213",
         "url": "https://planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm"
       },
-      "latency_ms": 17875.7
+      "latency_ms": 5442.3
     },
     {
       "case_id": "cpc-218-001",
@@ -59,7 +59,7 @@
         "article": "218",
         "url": "https://planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm"
       },
-      "latency_ms": 11790.0
+      "latency_ms": 4104.3
     },
     {
       "case_id": "cf-5-ii-001",
@@ -73,7 +73,7 @@
         "article": "5, II",
         "url": "https://www4.planalto.gov.br/legislacao/legis-federal/constituicao"
       },
-      "latency_ms": 16294.2
+      "latency_ms": 4656.5
     },
     {
       "case_id": "cf-5-x-001",
@@ -87,7 +87,7 @@
         "article": "5, X",
         "url": "https://www4.planalto.gov.br/legislacao/legis-federal/constituicao"
       },
-      "latency_ms": 16002.8
+      "latency_ms": 4546.1
     },
     {
       "case_id": "cdc-6-i-001",
@@ -101,7 +101,7 @@
         "article": "6, I",
         "url": "https://planalto.gov.br/ccivil_03/leis/l8078compilado.htm"
       },
-      "latency_ms": 11816.2
+      "latency_ms": 5761.7
     },
     {
       "case_id": "eca-5-001",
@@ -115,7 +115,7 @@
         "article": "5",
         "url": "https://www.planalto.gov.br/ccivil_03/leis/l8069compilado.htm"
       },
-      "latency_ms": 8144.2
+      "latency_ms": 3176.8
     },
     {
       "case_id": "eca-7-001",
@@ -129,7 +129,7 @@
         "article": "7",
         "url": "https://www.planalto.gov.br/ccivil_03/leis/l8069.htm"
       },
-      "latency_ms": 8292.1
+      "latency_ms": 6428.9
     },
     {
       "case_id": "l7347-8-001",
@@ -143,7 +143,7 @@
         "article": "8, §1º",
         "url": "https://www4.planalto.gov.br/legislacao/portal-legis/legislacao-por-assunto-OLD/acesso-a-justica-e-processo-judicial/acoes-constitucionais/lei-no-7-347-de-24-de-julho-de-1985"
       },
-      "latency_ms": 10616.6
+      "latency_ms": 5775.1
     },
     {
       "case_id": "oab-5-001",
@@ -157,7 +157,7 @@
         "article": "5",
         "url": "https://www.planalto.gov.br/ccivil_03/leis/l8906.htm"
       },
-      "latency_ms": 8807.9
+      "latency_ms": 4992.8
     }
   ],
   "pass_rate": 0.0,
