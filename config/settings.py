@@ -279,7 +279,7 @@ LOGGING = {
         },
         'file': {
             'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'data' / 'logs' / 'jurix.log',
+            'filename': os.getenv('JURIX_LOG_FILE', str(BASE_DIR / 'data' / 'logs' / 'jurix.log')),
             'formatter': 'verbose',
         },
     },

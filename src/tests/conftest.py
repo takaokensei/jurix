@@ -6,18 +6,7 @@ import pytest
 from django.contrib.auth.models import User
 from django.db import connection
 from django.test import RequestFactory
-import django.template.context as django_context
 
-
-def _patched_base_context_copy(self):
-    cls = self.__class__
-    duplicate = cls.__new__(cls)
-    duplicate.__dict__.update(self.__dict__)
-    duplicate.dicts = self.dicts[:]
-    return duplicate
-
-
-django_context.BaseContext.__copy__ = _patched_base_context_copy
 
 
 @pytest.fixture(scope='session')

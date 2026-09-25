@@ -1,0 +1,388 @@
+﻿
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/static/img/logo-icon.png">
+    <title>Jurix - Inteligência Jurídica</title>
+
+    <!-- Content Security Policy -->
+
+    <!-- Google Fonts: Inter & Lora -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="/static/css/swiss-design-system.css">
+    <link rel="stylesheet" href="/static/css/jurix-figma.css">
+    <link rel="stylesheet" href="/static/css/workspace.css">
+    <link rel="stylesheet" href="/static/css/jurix-rag.css">
+    <link rel="stylesheet" href="/static/css/jurix-markdown.css">
+    <link rel="stylesheet" href="/static/css/jurix-chat.css">
+    <link rel="stylesheet" href="/static/css/jurix-chat-controller.css">
+    <link rel="stylesheet" href="/static/css/jurix-components.css">
+    <link rel="stylesheet" href="/static/css/jurix-chat-sessions.css">
+    <link rel="stylesheet" href="/static/css/jurix-chat-shell.css">
+<meta name="jurix-authenticated" content="true">
+<link rel="stylesheet" href="/static/css/jurix-search-controls.css">
+</head>
+<body class="figma-theme"
+      data-chatbot-url="/assistente/"
+      data-norma-list-url="/normas/"
+      data-logo-icon-url="/static/img/logo-icon.png"
+      data-user-name="Caua">
+    <!-- Skip link for keyboard accessibility -->
+    <a href="#messages-container" class="skip-link jurix-skip-link">Pular para a pesquisa</a>
+
+    <div class="figma-workspace">
+        <!-- Sidebar (240px) -->
+        <aside class="figma-sidebar" id="sidebar" role="complementary" aria-label="Barra lateral de navegação">
+            <div class="figma-sidebar-top">
+                <!-- Brand / Logo Group -->
+                <a href="/assistente/" class="figma-logo-group" aria-label="Jurix Início">
+                    <div class="figma-logo-icon">
+                        <img class="figma-logo-image" src="/static/img/logo-icon.png" alt="Logo Jurix">
+                    </div>
+                    <span class="figma-logo-text">Jurix</span>
+                </a>
+
+                <!-- Action button: + Nova pesquisa -->
+                <button
+                    id="new-chat-button"
+                    class="figma-sidebar-item item-nova-pesquisa"
+                    aria-label="Nova pesquisa"
+                    title="Nova pesquisa"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Nova pesquisa</span>
+                </button>
+
+                <!-- Primary Navigation -->
+                <nav class="figma-nav-list" role="navigation" aria-label="Menu principal">
+                    <a href="/assistente/" class="figma-sidebar-item active">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <span>Assistente</span>
+                    </a>
+
+                    <a href="/normas/" class="figma-sidebar-item">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        </svg>
+                        <span>Normas</span>
+                    </a>
+
+                    <a href="/pesquisa/" class="figma-sidebar-item">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <span>Pesquisa jurídica</span>
+                    </a>
+
+                    <a href="/colecoes/" class="figma-sidebar-item">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <span>Coleções</span>
+                    </a>
+
+                    <!-- Histórico / Sessões -->
+                    <div class="workspace-sidebar-section">
+                        <div class="workspace-sidebar-section-label">
+                            <span>Histórico</span>
+                        </div>
+                        <div id="chat-sessions-list" class="chat-sessions-list">
+                            <!-- Renderizado por chat.js e aprimorado por jurix-chat-sessions.js -->
+                        </div>
+                    </div>
+                </nav>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="figma-sidebar-footer">
+
+                <a href="/configuracoes/" class="figma-sidebar-item">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                    <span>Configurações</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Area (1200px) -->
+        <main class="figma-main" role="main">
+            <!-- Top Header Row -->
+            <div class="figma-header-row">
+                <div class="figma-left-indicator">
+                    <button class="toggle-sidebar jurix-icon-button" id="toggle-sidebar" aria-label="Alternar barra lateral">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    </button>
+                    <div class="figma-indicator-dot"></div>
+                    <span class="figma-indicator-text">Assistente Jurídico Inteligente</span>
+                </div>
+
+                <button type="button" class="figma-system-search" id="command-palette-trigger" aria-label="Abrir busca rápida (⌘K)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <span class="figma-search-placeholder">Buscar normas ou consultas...</span>
+                    <span class="figma-shortcut-badge figma-shortcut-badge-push">⌘K</span>
+                </button>
+            </div>
+
+
+
+            <!-- Scroll Container (Messages & Welcome Canvas) -->
+            <div class="figma-scroll-container" id="messages-container" role="log" aria-live="polite" aria-atomic="false">
+                <div id="rag-stream-status" class="jurix-rag-sr-only" aria-live="polite" aria-atomic="true"></div>
+                <div id="messages-wrapper" class="messages-wrapper">
+
+                    <!-- Welcome State (Figma Canvas Hero + Recent Searches) -->
+                    <div class="welcome-state figma-welcome-state" id="welcome-state">
+
+                        <!-- Hero Section -->
+                        <div class="figma-hero-section">
+                            <!-- Left vertical category labels -->
+                            <div class="figma-vertical-categories">
+                                <div>LEGISLAÇÃO</div>
+                                <div>JURISPRUDÊNCIA</div>
+                                <div>DOUTRINA</div>
+                            </div>
+
+                            <!-- Middle Hero (832px) -->
+                            <div class="figma-middle-hero">
+                                <div class="figma-hero-text-block">
+                                    <div class="figma-hero-tag">INTELIGÊNCIA JURÍDICA</div>
+                                    <h1 class="figma-hero-title">
+                                        <span class="figma-title-white">Em que podemos ajudar</span><br>
+                                        <span class="figma-title-blue">na sua pesquisa jurídica?</span>
+                                    </h1>
+                                    <p class="figma-hero-description">
+                                        Consulte normas, compare versões e analise impactos legislativos com precisão e fundamentação jurídica completa.
+                                    </p>
+                                </div>
+
+                                <!-- Smart Search Panel (832px x 116px) -->
+                                <form id="hero-search-form" class="figma-smart-search-panel">
+                                    <div class="figma-input-line">
+                                        <div class="figma-input-left">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2">
+                                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                            </svg>
+                                            <input
+                                                type="text"
+                                                id="hero-search-input"
+                                                class="figma-hero-search-input"
+                                                placeholder="Pergunte sobre normas, artigos ou jurisprudência..."
+                                                autocomplete="off"
+                                            />
+                                        </div>
+                                        <button type="submit" class="figma-action-arrow-btn" aria-label="Pesquisar">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                                <polyline points="12 5 19 12 12 19"></polyline>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div class="figma-filters-row">
+                                        <div class="figma-search-dropdown" tabindex="0">
+                                            <span>Pesquisa normativa</span>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                        </div>
+                                        <div class="figma-search-dropdown" tabindex="0">
+                                            <span>Fontes</span>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                        </div>
+                                        <div class="figma-search-dropdown" tabindex="0">
+                                            <span>Anexar documento</span>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                        </div>
+                                        <div class="figma-search-dropdown" tabindex="0">
+                                            <span>Modo de pesquisa</span>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                        </div>
+                                    </div>
+                                </form>
+
+                                <!-- Suggestions Row (4 Cards) -->
+                                <div class="figma-suggestions-row" id="figma-suggestions-cards">
+                                    <div class="figma-suggestion-card" data-question="Quais normas regulam a regularização de construções e edificações?">
+                                        <div class="figma-suggestion-top">
+                                            <span class="figma-suggestion-title">Quais normas regulam...</span>
+                                            <span class="figma-suggestion-arrow" aria-hidden="true">➔</span>
+                                        </div>
+                                        <span class="figma-suggestion-desc">a regularização de construções?</span>
+                                    </div>
+
+                                    <div class="figma-suggestion-card" data-question="Compare as principais alterações introduzidas pela Lei nº 14.133/2021.">
+                                        <div class="figma-suggestion-top">
+                                            <span class="figma-suggestion-title">Compare as alterações</span>
+                                            <span class="figma-suggestion-arrow" aria-hidden="true">➔</span>
+                                        </div>
+                                        <span class="figma-suggestion-desc">da Lei nº 14.133/2021.</span>
+                                    </div>
+
+                                    <div class="figma-suggestion-card" data-question="Quais dispositivos sobre zoneamento urbano estão atualmente vigentes?">
+                                        <div class="figma-suggestion-top">
+                                            <span class="figma-suggestion-title">Quais dispositivos est...</span>
+                                            <span class="figma-suggestion-arrow" aria-hidden="true">➔</span>
+                                        </div>
+                                        <span class="figma-suggestion-desc">atualmente vigentes?</span>
+                                    </div>
+
+                                    <div class="figma-suggestion-card" data-question="Quais são os entendimentos jurisprudenciais do STF sobre desapropriação?">
+                                        <div class="figma-suggestion-top">
+                                            <span class="figma-suggestion-title">Quais são os entendi...</span>
+                                            <span class="figma-suggestion-arrow" aria-hidden="true">➔</span>
+                                        </div>
+                                        <span class="figma-suggestion-desc">do STF sobre o tema?</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right vertical metadata labels -->
+                            <div class="figma-vertical-metadata">
+                                <div>BASE ATUALIZADA</div>
+                                <div>PRECISÃO JURÍDICA</div>
+                                <div>FONTES OFICIAIS</div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Searches Section (1120px) -->
+                        <div class="figma-recent-searches-section">
+                            <div class="figma-section-header">
+                                <div class="figma-header-left">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 6 12 12 16 14"></polyline>
+                                    </svg>
+                                    <span class="figma-header-title">Pesquisa recente</span>
+                                </div>
+                                <a href="/historico/" class="figma-header-link">
+                                    <span>Ver todo o histórico</span>
+                                    <span>➔</span>
+                                </a>
+                            </div>
+
+                            <div class="figma-recent-searches-list" id="figma-recent-searches-list">
+                                <!-- Carregado dinamicamente por jurix-chat-shell.js -->
+                                <div class="figma-recent-searches-loading" id="figma-recent-searches-loading" aria-live="polite">
+                                    <span class="figma-loading-text">Carregando histórico…</span>
+                                </div>
+                            </div>
+                            <div class="figma-recent-searches-empty" id="figma-recent-searches-empty" hidden>
+                                <span>Nenhuma conversa recente. <a href="#" id="figma-new-chat-link">Inicie uma pesquisa</a>.</span>
+                            </div>
+                        </div>
+
+                        <!-- Internal fallback container for chat.js compatibility -->
+                        <div id="suggestion-chips" class="jurix-compat-hidden"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Floating bottom input bar (active during ongoing chat conversation) -->
+            <div class="figma-floating-input-bar jurix-floating-input-initial" id="conversation-input-bar">
+                <form id="chat-form" class="figma-smart-search-panel" role="search" aria-label="Formulário de pesquisa de legislação">
+                    <div class="figma-input-line">
+                        <div class="figma-input-left">
+                            <textarea
+                                id="question-textarea"
+                                name="question"
+                                placeholder="Pergunte sobre normas, artigos ou jurisprudência..."
+                                rows="1"
+                                required
+                                class="figma-hero-search-input jurix-composer-textarea"
+                                aria-label="Digite sua pergunta sobre legislação"
+                            ></textarea>
+                        </div>
+                        <button type="submit" class="figma-action-arrow-btn" id="send-button" aria-label="Enviar pergunta">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                <polyline points="12 5 19 12 12 19"></polyline>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="jurix-attachment-previews" class="jurix-attachment-previews" hidden aria-live="polite"></div>
+                    <div class="figma-filters-row jurix-composer-footer">
+                        <div class="jurix-composer-filters">
+                            <div class="figma-search-dropdown figma-search-dropdown-compact" data-control="mode">
+                                <span data-control-label>Pesquisa híbrida</span>
+                            </div>
+                            <div class="figma-search-dropdown figma-search-dropdown-compact" data-control="source_scope">
+                                <span data-control-label>Legislação municipal</span>
+                            </div>
+                            <div class="figma-search-dropdown figma-search-dropdown-compact" data-control="attachment">
+                                <span>Anexar PDF</span>
+                                <span class="jurix-attachment-count" aria-live="polite"></span>
+                            </div>
+                        </div>
+                        <div class="jurix-chat-state-indicator" id="chat-state-indicator" role="status" aria-live="polite" hidden></div>
+                        <div class="jurix-composer-disclaimer">
+                            Jurix pode cometer erros. Verifique fontes oficiais.
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <!-- Command Palette (⌘K / Ctrl+K) -->
+    <div class="command-palette-overlay" id="command-palette-overlay" role="dialog" aria-modal="true" aria-label="Busca rápida do Jurix">
+        <div class="command-palette" role="document">
+            <div class="command-palette-header">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input
+                    type="text"
+                    class="command-palette-input"
+                    id="command-palette-input"
+                    placeholder="Buscar comandos, normas, navegar..."
+                    autocomplete="off"
+                />
+                <div class="command-palette-shortcut">
+                    <kbd>⌘</kbd><kbd>K</kbd>
+                </div>
+            </div>
+            <div class="command-palette-results" id="command-palette-results"></div>
+        </div>
+    </div>
+
+    <!-- Local-first Vendorized Libraries -->
+    <script src="/static/js/vendor/marked.min.js"></script>
+    <script src="/static/js/vendor/purify.min.js"></script>
+
+    <!-- Jurix Configuration: read from data-* attributes on <body> by config.js (CSP: no inline script) -->
+    <script src="/static/js/config.js"></script>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/jurix-markdown.js"></script>
+    <script src="/static/js/jurix-rag.js"></script>
+    <script src="/static/js/jurix-anonymous-history.js"></script>
+    <script src="/static/js/jurix-chat-api.js"></script>
+    <script src="/static/js/jurix-api-reliability-overlay.js"></script>
+    <script src="/static/js/jurix-chat-sessions.js"></script>
+    <script src="/static/js/jurix-chat-state.js"></script>
+    <script src="/static/js/jurix-chat-renderer.js"></script>
+    <script src="/static/js/chat.js"></script>
+    <script src="/static/js/jurix-chat-controller.js"></script>
+    <script src="/static/js/command_palette.js"></script>
+
+    <!-- Synchronizer for Floating Bar and Hero Search State (floating-bar-sync.js; CSP: no inline script) -->
+    <script src="/static/js/floating-bar-sync.js"></script>
+    <script src="/static/js/jurix-chat-shell.js"></script>
+        <script src="/static/js/jurix-search-controls.js"></script>
+</body>
+</html>

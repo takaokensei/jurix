@@ -64,7 +64,9 @@
                 theme: String(formData.get('theme') || DEFAULTS.theme),
                 density: String(formData.get('density') || DEFAULTS.density),
             };
-            localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+            try {
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+            } catch (_) {}
             applyAppearance(settings);
             const status = form.querySelector('[data-settings-status]');
             if (status) status.textContent = 'Preferências salvas neste navegador.';
@@ -73,7 +75,9 @@
 
         const reset = form.querySelector('[data-settings-reset]');
         reset?.addEventListener('click', () => {
-            localStorage.removeItem(SETTINGS_KEY);
+            try {
+                localStorage.removeItem(SETTINGS_KEY);
+            } catch (_) {}
             Object.assign(DEFAULTS, { model: modelField?.options[0]?.value || 'llama3' });
             window.location.reload();
         });

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Jurix Chatbot Engine
  * Full-featured Swiss Design Legal Assistant Frontend.
  * Modular, decoupled from Django HTML templates.
@@ -44,6 +44,7 @@
     const chatState = window.JurixChatState;
     let currentSessionId = null;
     let isStreamingGreeting = false;
+    let navSeq = 0;
 
     // ===== SUGGESTION QUESTIONS =====
     const SUGGESTION_QUESTIONS = [
@@ -312,14 +313,30 @@
         }
     }
 
-    async function createNewSession() {
-        if (chatState?.isBusy?.()) return;
+    async function createNewSession(pushHistory = true, navToken = null) {
+        const thisToken = navToken !== null ? navToken : ++navSeq;
+        if (thisToken !== navSeq) return;
+
+        if (chatState && typeof chatState.isBusy === 'function' && chatState.isBusy()) {
+            chatAPI?.cancelStream?.();
+            chatState.transition('idle');
+        }
         try {
             document.dispatchEvent(new CustomEvent('jurix:new-conversation'));
-            window.history.pushState({}, '', config.chatbotUrl);
+            if (pushHistory && window.location.pathname !== config.chatbotUrl) {
+                window.history.pushState({}, '', config.chatbotUrl);
+            }
             try { sessionStorage.setItem('jurix:new-conversation', '1'); } catch (_) {}
+            if (thisToken !== navSeq) return;
+
             currentSessionId = null;
-            chatState.setSessionId(null);
+            if (chatState && typeof chatState.setSessionId === 'function') {
+                chatState.setSessionId(null);
+            }
+
+            document.querySelectorAll('.chat-session-item').forEach((item) => {
+                item.classList.remove('active');
+            });
 
             const messagesWrapper = document.getElementById('messages-wrapper');
             if (messagesWrapper) {
@@ -354,30 +371,55 @@
             if (textarea) {
                 textarea.value = '';
                 textarea.style.height = 'auto';
-                Object.keys(localStorage).forEach((key) => {
-                    if (key.startsWith('chat-input-')) {
-                        localStorage.removeItem(key);
+                try {
+                    const keys = Object.keys(localStorage);
+                    for (let i = 0; i < keys.length; i++) {
+                        const key = keys[i];
+                        if (typeof key === 'string' && key.startsWith('chat-input-')) {
+                            try { localStorage.removeItem(key); } catch (_) {}
+                        }
                     }
-                });
+                } catch (_) {}
             }
-
-            await loadChatSessions();
-            updateNewChatButtonState();
         } catch (error) {
+            if (thisToken !== navSeq) return;
             console.error('Error creating new session:', error);
+        } finally {
+            if (thisToken === navSeq) {
+                try {
+                    await loadChatSessions();
+                } catch (err) {
+                    console.error('Error loading chat sessions in new session:', err);
+                }
+                if (thisToken === navSeq) {
+                    updateNewChatButtonState();
+                }
+            }
         }
     }
 
-    async function loadSession(sessionId) {
-        if (!sessionId || chatState?.isBusy?.()) return;
+    async function loadSession(sessionId, pushHistory = true, navToken = null) {
+        if (!sessionId) return;
+        const thisToken = navToken !== null ? navToken : ++navSeq;
+        if (thisToken !== navSeq) return;
+
+        if (chatState && typeof chatState.isBusy === 'function' && chatState.isBusy()) {
+            chatAPI?.cancelStream?.();
+            chatState.transition('idle');
+        }
 
         try {
             const sessionData = await chatAPI.getSession(sessionId);
-            if (!sessionData.success || !sessionData.session) return;
+            if (thisToken !== navSeq) return;
+            if (!sessionData || !sessionData.success || !sessionData.session) return;
 
             const sessionSlug = sessionData.session.slug || sessionData.session.id;
             const sessionUrl = `${config.chatbotUrl}${sessionSlug}/`;
-            window.history.pushState({}, '', sessionUrl);
+            if (pushHistory && window.location.pathname !== sessionUrl) {
+                window.history.pushState({}, '', sessionUrl);
+            }
+
+            if (thisToken !== navSeq) return;
 
             currentSessionId = sessionId;
             if (chatState && typeof chatState.setSessionId === 'function') {
@@ -432,6 +474,7 @@
             installHistoryPager(sessionData, sessionId);
             updateNewChatButtonState();
         } catch (error) {
+            if (thisToken !== navSeq) return;
             console.error('Error loading session:', error);
             window.location.href = config.chatbotUrl;
         }
@@ -445,8 +488,14 @@
         button.className = 'messages-load-more-indicator';
         button.textContent = 'Carregar mensagens anteriores';
         wrapper.prepend(button);
+        let isLoading = false;
         button.addEventListener('click', async () => {
+            if (isLoading) return;
+            isLoading = true;
             button.disabled = true;
+            button.classList.add('is-loading');
+            button.setAttribute('aria-busy', 'true');
+            button.textContent = 'Carregando mensagens anteriores...';
             try {
                 const page = await chatAPI.getSession(sessionId, data.next_cursor);
                 if (String(currentSessionId) !== String(sessionId) || !button.isConnected) return;
@@ -467,8 +516,11 @@
                 installHistoryPager(page, sessionId);
                 if (container) container.scrollTop = oldTop + container.scrollHeight - oldHeight;
             } catch (_) {
-                button.textContent = 'Falha ao carregar. Tentar novamente';
+                isLoading = false;
                 button.disabled = false;
+                button.classList.remove('is-loading');
+                button.removeAttribute('aria-busy');
+                button.textContent = 'Falha ao carregar. Tentar novamente';
             }
         });
     }
@@ -663,9 +715,11 @@
         if (!messagesWrapper) return;
 
         const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        const messageId = 'msg-' + Date.now();
-        const sourcesId = 'sources-' + Date.now();
-        const copyButtonId = 'copy-btn-' + Date.now();
+        const uid = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+        const messageId = 'msg-' + uid;
+        const sourcesId = 'sources-' + uid;
+        const copyButtonId = 'copy-btn-' + uid;
+        const regenerateId = 'regenerate-' + uid;
 
         const messageDiv = document.createElement('div');
         messageDiv.className = 'message message-assistant';
@@ -680,7 +734,7 @@
                 </div>
                 <div class="message-body jurix-legal-answer" id="${messageId}"></div>
                 <div class="message-actions">
-                    <button class="regenerate-button" id="regenerate-${Date.now()}" aria-label="Tentar novamente" title="Tentar novamente" style="display: none;">
+                    <button class="regenerate-button" id="${regenerateId}" aria-label="Tentar novamente" title="Tentar novamente" style="display: none;">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             <path d="M21 3v5h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -705,9 +759,9 @@
         messagesWrapper.appendChild(messageDiv);
         scrollToBottom();
 
-        const sourcesContainer = document.getElementById(sourcesId);
-        const copyButton = document.getElementById(copyButtonId);
-        const messageBody = document.getElementById(messageId);
+        const sourcesContainer = messageDiv.querySelector(`#${sourcesId}`) || document.getElementById(sourcesId);
+        const copyButton = messageDiv.querySelector(`#${copyButtonId}`) || document.getElementById(copyButtonId);
+        const messageBody = messageDiv.querySelector(`#${messageId}`) || document.getElementById(messageId);
 
         copyButton.setAttribute('data-markdown', answer);
         copyButton.addEventListener('click', () => {
@@ -1061,24 +1115,30 @@
 
     // ===== INITIALIZATION =====
     async function initializeChatbot() {
+        if (navSeq > 0) return;
+        const thisToken = ++navSeq;
         const sessionSlug = getSessionSlugFromPath();
 
         if (sessionSlug) {
             try {
                 const data = await chatAPI.getSessionBySlug(sessionSlug);
+                if (thisToken !== navSeq) return;
                 if (data.success && data.session) {
-                    await loadSession(data.session.id);
+                    await loadSession(data.session.id, true, thisToken);
+                    if (thisToken !== navSeq) return;
                     await loadChatSessions();
                     return;
                 }
                 window.location.href = config.chatbotUrl;
             } catch (error) {
+                if (thisToken !== navSeq) return;
                 console.error('Error initializing with slug:', error);
                 window.location.href = config.chatbotUrl;
             }
         } else {
             let keepBlank = false;
             try { keepBlank = sessionStorage.getItem('jurix:new-conversation') === '1'; } catch (_) {}
+            if (thisToken !== navSeq) return;
             currentSessionId = null;
             const messagesWrapper = document.getElementById('messages-wrapper');
             if (messagesWrapper) {
@@ -1094,11 +1154,13 @@
             // opts out once, so the New Conversation button still means blank.
             if (!keepBlank && window.JurixAnonymousHistory?.isAnonymous?.()) {
                 const [latest] = window.JurixAnonymousHistory.list();
-                if (latest?.id) await loadSession(latest.id);
+                if (latest?.id && thisToken === navSeq) await loadSession(latest.id, true, thisToken);
             }
         }
 
-        updateNewChatButtonState();
+        if (thisToken === navSeq) {
+            updateNewChatButtonState();
+        }
     }
 
     // ===== EVENT LISTENERS SETUP =====
@@ -1376,6 +1438,33 @@
                 }
             });
         }
+
+        window.addEventListener('popstate', async () => {
+            const thisSeq = ++navSeq;
+            if (chatState && typeof chatState.isBusy === 'function' && chatState.isBusy()) {
+                chatAPI?.cancelStream?.();
+                chatState.transition('idle');
+            }
+            const sessionSlug = getSessionSlugFromPath();
+            if (sessionSlug) {
+                try {
+                    const data = await chatAPI.getSessionBySlug(sessionSlug);
+                    if (thisSeq !== navSeq) return;
+                    if (data && data.success && data.session) {
+                        await loadSession(data.session.id, false, thisSeq);
+                        if (thisSeq !== navSeq) return;
+                        await loadChatSessions();
+                        return;
+                    }
+                } catch (error) {
+                    if (thisSeq !== navSeq) return;
+                    console.error('Error handling popstate navigation:', error);
+                }
+            } else {
+                if (thisSeq !== navSeq) return;
+                await createNewSession(false, thisSeq);
+            }
+        });
     }
 
     // Attach lifecycle listeners
@@ -1395,5 +1484,7 @@
         createNewSession,
         deleteSession,
         askQuestion,
+        getCurrentSessionId: () => currentSessionId,
+        getNavSeq: () => navSeq,
     };
 })();

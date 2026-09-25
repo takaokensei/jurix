@@ -26,13 +26,30 @@
     return window.JurixSearchControls?.getPayload?.() || {};
   }
 
+  let attachmentMemoryBackup = [];
+
   function attachmentStore() {
     const key = 'jurix:anonymous-attachments:v1';
     return {
       read() {
-        try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch (_) { return []; }
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return parsed;
+          }
+        } catch (_) {}
+        return Array.isArray(attachmentMemoryBackup) ? attachmentMemoryBackup.slice() : [];
       },
-      write(value) { localStorage.setItem(key, JSON.stringify(value.slice(-5))); },
+      write(value) {
+        const sliced = Array.isArray(value) ? value.slice(-5) : [];
+        attachmentMemoryBackup = sliced.slice();
+        try {
+          localStorage.setItem(key, JSON.stringify(sliced));
+        } catch (error) {
+          console.warn('[Jurix] Local attachment metadata store unavailable:', error);
+        }
+      },
     };
   }
 
@@ -92,20 +109,20 @@
 
     const originalGet = api.getSession?.bind(api);
     if (originalGet) {
-      api.getSession = async function (sessionId) {
+      api.getSession = async function (sessionId, cursor = null) {
         if (anonymous()) {
           const session = window.JurixAnonymousHistory.get(sessionId);
           if (!session) throw Object.assign(new Error('Session not found'), { status: 404 });
-          return { success: true, session, messages: session.messages, has_more: false };
+          return { success: true, session, messages: session.messages, has_more: false, next_cursor: null };
         }
-        return originalGet(sessionId);
+        return originalGet(sessionId, cursor);
       };
     }
 
     const originalDelete = api.deleteSession?.bind(api);
     const originalGetBySlug = api.getSessionBySlug?.bind(api);
-    api.getSessionBySlug = function (slug) {
-      return anonymous() ? api.getSession(slug) : originalGetBySlug(slug);
+    api.getSessionBySlug = function (slug, cursor = null) {
+      return anonymous() ? api.getSession(slug, cursor) : (originalGetBySlug ? originalGetBySlug(slug, cursor) : undefined);
     };
     if (originalDelete) {
       api.deleteSession = async function (sessionId) {
@@ -182,7 +199,9 @@
         const payload = await response.json();
         if (!response.ok || !payload.success) throw new Error(payload.error || 'Não foi possível anexar o documento.');
         values.push(payload.attachment);
-        attachmentStore().write(values);
+        try {
+          attachmentStore().write(values);
+        } catch (_) {}
         return payload.attachment;
       }
       const form = new FormData();
@@ -207,8 +226,10 @@
       if (!response.ok || !payload.success) {
         throw new Error(payload.error || 'Não foi possível desanexar o documento.');
       }
-      const values = attachmentStore().read().filter(item => item.id !== attachmentId);
-      attachmentStore().write(values);
+      try {
+        const values = attachmentStore().read().filter(item => item.id !== attachmentId);
+        attachmentStore().write(values);
+      } catch (_) {}
       return payload;
     };
 

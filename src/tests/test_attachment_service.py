@@ -100,3 +100,106 @@ def test_docx_extraction_in_child_process(tmp_path):
     document.add_paragraph('Lei municipal')
     document.save(path)
     assert 'Lei municipal' in _extract_text(path, '.docx')
+
+
+def test_resource_limits_enforced_in_process():
+    import subprocess
+    import sys
+
+    # 1. Verify memory containment in an isolated subprocess (does NOT pollute pytest process)
+    mem_code = (
+        "import sys\n"
+        "from src.processing.attachment_worker import apply_resource_limits\n"
+        "if not apply_resource_limits(max_memory_bytes=30 * 1024 * 1024, max_cpu_seconds=5):\n"
+        "    sys.exit(10)\n"  # Failure to apply limits
+        "try:\n"
+        "    x = bytearray(100 * 1024 * 1024)\n"
+        "    sys.exit(20)\n"  # Allocation incorrectly succeeded
+        "except MemoryError:\n"
+        "    sys.exit(42)\n"  # Memory limit successfully caught
+    )
+    r1 = subprocess.run([sys.executable, "-c", mem_code], capture_output=True, timeout=10)
+    assert r1.returncode != 10, f"apply_resource_limits failed to install limits: {r1.stderr.decode()}"
+    assert r1.returncode != 20, "Memory limit was not enforced: allocation of 100MB succeeded under 30MB limit"
+    assert r1.returncode == 42 or (r1.returncode & 0xFFFFFFFF) == 0xC0000044, f"Unexpected returncode: {r1.returncode}"
+
+    # 2. Verify CPU limit containment in an isolated subprocess
+    cpu_code = (
+        "import sys, os\n"
+        "from src.processing.attachment_worker import apply_resource_limits\n"
+        "if not apply_resource_limits(max_memory_bytes=512 * 1024 * 1024, max_cpu_seconds=1):\n"
+        "    sys.exit(10)\n"
+        "sys.stdout.write('CPU_LIMIT_INSTALLED\\n')\n"
+        "sys.stdout.flush()\n"
+        "tot = 0\n"
+        "for i in range(100_000_000):\n"
+        "    tot += i * i\n"
+        "sys.exit(20)\n"  # Computation incorrectly completed without limit termination
+    )
+    r2 = subprocess.run([sys.executable, "-c", cpu_code], capture_output=True, timeout=10)
+    assert b"CPU_LIMIT_INSTALLED" in r2.stdout, f"Process failed before starting compute loop: {r2.stderr.decode()}"
+    assert r2.returncode != 20, "CPU limit was not enforced: compute finished under 1s limit"
+    if sys.platform == 'win32':
+        assert (r2.returncode & 0xFFFFFFFF) == 0xC0000044, (
+            f"Expected STATUS_QUOTA_EXCEEDED (0xC0000044), got {hex(r2.returncode & 0xFFFFFFFF)}"
+        )
+    else:
+        import signal
+        assert r2.returncode in (
+            -signal.SIGXCPU,
+            -signal.SIGKILL,
+            128 + signal.SIGXCPU,
+            128 + signal.SIGKILL,
+            137,
+        ), (
+            f"Expected CPU limit termination (SIGXCPU or SIGKILL), got {r2.returncode}"
+        )
+
+    # 3. Verify real attachment_worker.main() entry point aborts if limits fail to apply without calling extract()
+    from unittest.mock import patch
+    from src.processing import attachment_worker
+
+    with patch.object(attachment_worker, 'apply_resource_limits', return_value=False):
+        with patch.object(attachment_worker, 'extract') as mock_extract:
+            with patch('sys.stderr'):
+                rc = attachment_worker.main(['worker.py', 'test.pdf'])
+                assert rc == 1, f"Expected main() to return 1 when limits fail, got {rc}"
+                mock_extract.assert_not_called()
+
+
+def test_cleanup_skips_symlinks_and_external_paths(tmp_path, settings):
+    import os
+    import time
+    from src.apps.legislation.attachment_service import cleanup_expired_attachments
+
+    settings.JURIX_ATTACHMENT_ROOT = str(tmp_path)
+    safe_dir = tmp_path / ('b' * 64)
+    safe_dir.mkdir()
+
+    # File outside safe dir
+    external_dir = tmp_path / 'external'
+    external_dir.mkdir()
+    external_file = external_dir / 'important.txt'
+    external_file.write_text('do not delete')
+    old_time = time.time() - 20000
+    os.utime(external_file, (old_time, old_time))
+
+    # Expired file inside valid directory
+    expired_file = safe_dir / 'expired.txt'
+    expired_file.write_text('expired')
+    os.utime(expired_file, (old_time, old_time))
+
+    # If OS supports symlinks, test symlink exclusion
+    symlink_file = safe_dir / 'symlink.txt'
+    try:
+        os.symlink(external_file, symlink_file)
+        has_symlink = True
+    except (OSError, NotImplementedError):
+        has_symlink = False
+
+    removed = cleanup_expired_attachments()
+    assert removed == 1
+    assert not expired_file.exists()
+    assert external_file.exists()
+    if has_symlink:
+        assert symlink_file.exists() or not symlink_file.is_file()
