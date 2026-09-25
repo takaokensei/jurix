@@ -429,19 +429,37 @@ class SaplAPIClient:
         """
         logger.info(f"Baixando PDF: {pdf_url} -> {output_path}")
 
+        max_bytes = int(getattr(settings, 'SAPL_DOWNLOAD_MAX_BYTES', 80 * 1024 * 1024))
+        timeout = int(getattr(settings, 'SAPL_DOWNLOAD_TIMEOUT_SECONDS', self.timeout))
+        target = os.path.abspath(output_path)
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        temporary = target + '.part'
         try:
             headers = self._get_headers()
             response = self.session.get(
                 pdf_url,
                 headers=headers,
-                timeout=self.timeout,
+                timeout=timeout,
                 stream=True
             )
             response.raise_for_status()
+            content_length = response.headers.get('Content-Length')
+            if content_length and int(content_length) > max_bytes:
+                logger.warning("PDF exceeds configured download limit: %s bytes", content_length)
+                return False
 
-            with open(output_path, 'wb') as f:
+            total = 0
+            with open(temporary, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
+                    if not chunk:
+                        continue
+                    total += len(chunk)
+                    if total > max_bytes:
+                        logger.warning("PDF exceeded configured download limit while streaming")
+                        return False
                     f.write(chunk)
+
+            os.replace(temporary, target)
 
             logger.info(f"PDF baixado com sucesso: {output_path}")
             return True
@@ -449,6 +467,12 @@ class SaplAPIClient:
         except Exception as e:
             logger.error(f"Falha ao baixar PDF {pdf_url}: {str(e)}")
             return False
+        finally:
+            try:
+                if os.path.exists(temporary):
+                    os.remove(temporary)
+            except OSError:
+                logger.debug("Could not remove partial SAPL PDF", exc_info=True)
 
     def close(self):
         """Fecha a sessão HTTP."""

@@ -1,37 +1,49 @@
-# Production RAG benchmark
+# Benchmark jurídico de produção
 
-This directory defines the contract for the benchmark that is allowed to block
-a Jurix production release.
+Este diretório é o **contrato**, não um corpus jurídico inventado pelo projeto.
+Os casos devem ser adicionados por uma pessoa responsável pelo conteúdo jurídico
+e aprovados antes de serem usados como baseline de release.
 
-The repository intentionally does **not** ship fabricated legal answers. The
-production dataset must be built from a reviewed corpus and versioned together
-with the model configuration used to create its baseline.
+## Requisitos mínimos
 
-## Case format
+Cada linha do dataset JSONL deve conter:
 
-Each JSONL row must contain:
+```json
+{
+  "id": "case-0001",
+  "question": "pergunta jurídica real",
+  "expected_sources": ["dispositivo-id"],
+  "expected_citations": ["Lei 1234/2025"],
+  "answer_policy": "grounded|no_answer"
+}
+```
 
-- `id`: stable case identifier.
-- `question`: reviewed user question.
-- `expected_sources`: source identifiers that should be retrievable.
-- `answerability`: `answerable` or `unanswerable`.
+O manifesto deve fixar:
 
-Additional fields can record expected citation spans, dates, jurisdiction, or
-manual evaluator notes, but the stable minimum contract is above.
+- hash SHA-256 do dataset;
+- modelo de embeddings;
+- modelo de geração;
+- quantidade mínima de casos;
+- limites de recall, MRR, precisão/recall de citações e groundedness;
+- versão do esquema.
 
-## Required baseline metadata
+## Classes de casos
 
-`manifest.json` must pin:
+O conjunto deve conter representantes de:
 
-- corpus hash;
-- embedding model;
-- generation model;
-- minimum case count;
-- protected retrieval and grounding metrics.
+1. recuperação direta de artigo;
+2. paráfrase da regra;
+3. perguntas sem resposta no corpus;
+4. números, prazos e datas;
+5. citações explícitas;
+6. conflitos entre documentos ou versões temporais;
+7. perguntas adversariais que tentem introduzir fatos não presentes nas fontes;
+8. anexos fornecidos pelo usuário.
 
-Use `scripts/validate_rag_benchmark.py` before publishing a baseline. Then run
-`scripts/check_rag_regression.py` against the baseline and current metrics.
+## Baseline
 
-A release is not considered production-ready until the reviewed corpus and its
-baseline are present. The gate can enforce that requirement with
-`--require-rag`.
+Uma baseline só deve ser publicada depois da revisão dos casos. O CI deve falhar
+quando o hash do corpus mudar sem uma nova baseline ou quando qualquer métrica
+ficar abaixo do limite registrado no manifesto.
+
+Não use respostas geradas automaticamente como verdade de referência.

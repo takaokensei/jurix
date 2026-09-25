@@ -266,6 +266,13 @@ LLM_MAX_K = int(os.getenv('LLM_MAX_K', '20'))
 LLM_MAX_QUESTION_LENGTH = int(os.getenv('LLM_MAX_QUESTION_LENGTH', '2000'))
 LLM_RATE_LIMIT_REQUESTS = int(os.getenv('LLM_RATE_LIMIT_REQUESTS', '20'))  # 0 disables
 LLM_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv('LLM_RATE_LIMIT_WINDOW_SECONDS', '60'))
+RAG_STRICT_MIN_LEXICAL_OVERLAP = float(os.getenv('RAG_STRICT_MIN_LEXICAL_OVERLAP', '0.55'))
+RAG_STRICT_REQUIRE_SOURCE_DIVERSITY = env_bool('RAG_STRICT_REQUIRE_SOURCE_DIVERSITY', False)
+RAG_MIN_ACCEPTED_SCORE = float(os.getenv('RAG_MIN_ACCEPTED_SCORE', '1.0'))
+RAG_STRICT_GROUNDING = env_bool('RAG_STRICT_GROUNDING', True)
+RAG_BENCHMARK_REQUIRED = env_bool('RAG_BENCHMARK_REQUIRED', False)
+RAG_BENCHMARK_PATH = os.getenv('RAG_BENCHMARK_PATH', str(BASE_DIR / 'benchmarks' / 'rag' / 'production' / 'manifest.json'))
+RAG_MAX_CONTEXT_CHARS = int(os.getenv('RAG_MAX_CONTEXT_CHARS', '8000'))
 
 # Reverse proxies in front of the app (0 = use REMOTE_ADDR). Behind one nginx/ALB
 # set 1; otherwise every visitor appears to share the proxy's IP and one rate-limit
@@ -277,10 +284,16 @@ SAPL_BASE_URL = os.getenv('SAPL_BASE_URL', 'https://sapl.natal.rn.leg.br/api')
 SAPL_INCREMENTAL_MAX_PAGES = int(os.getenv('SAPL_INCREMENTAL_MAX_PAGES', '20'))
 SAPL_SYNC_LEASE_SECONDS = int(os.getenv('SAPL_SYNC_LEASE_SECONDS', '900'))
 SAPL_OCR_MAX_PAGES = int(os.getenv('SAPL_OCR_MAX_PAGES', '200'))
+SAPL_DOWNLOAD_MAX_BYTES = int(os.getenv('SAPL_DOWNLOAD_MAX_BYTES', str(80 * 1024 * 1024)))
+SAPL_DOWNLOAD_TIMEOUT_SECONDS = int(os.getenv('SAPL_DOWNLOAD_TIMEOUT_SECONDS', '60'))
+SAPL_OCR_MAX_PAGE_PIXELS = int(os.getenv('SAPL_OCR_MAX_PAGE_PIXELS', str(12_000_000)))
+SAPL_OCR_TIMEOUT_SECONDS = int(os.getenv('SAPL_OCR_TIMEOUT_SECONDS', '1800'))
 
 # Attachment/object-storage configuration. Metadata is persisted in the operations
 # database; file bytes are stored by the selected backend.
 STORAGE_BACKEND = os.getenv('STORAGE_BACKEND', 'local').strip().lower()
+JURIX_ALLOW_LOCAL_STORAGE = env_bool('JURIX_ALLOW_LOCAL_STORAGE', False)
+JURIX_SINGLE_HOST = env_bool('JURIX_SINGLE_HOST', False)
 S3_ENDPOINT = os.getenv('S3_ENDPOINT', '')
 S3_BUCKET = os.getenv('S3_BUCKET', '')
 S3_ACCESS_KEY = os.getenv('S3_ACCESS_KEY', '')
@@ -295,6 +308,10 @@ JURIX_ATTACHMENT_STAGING_DIR = Path(os.getenv(
     'JURIX_ATTACHMENT_STAGING_DIR',
     str(BASE_DIR / 'data' / 'attachment-staging'),
 ))
+
+# CSP remains development-friendly while becoming strict by default in production.
+CSP_ALLOW_GOOGLE_FONTS = env_bool('CSP_ALLOW_GOOGLE_FONTS', DEBUG)
+CSP_ALLOW_INLINE_STYLES = env_bool('CSP_ALLOW_INLINE_STYLES', DEBUG)
 
 # OpenTelemetry tracing is disabled by default so local development remains zero-config.
 OTEL_ENABLED = env_bool('OTEL_ENABLED', False)

@@ -1,0 +1,60 @@
+groups:
+  - name: jurix-http
+    rules:
+      - alert: JurixHttpErrorRateHigh
+        expr: |
+          sum(rate(jurix_http_requests_total{status=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(jurix_http_requests_total[5m])), 1) > 0.02
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Jurix HTTP 5xx rate above 2%
+          description: Investigate application errors, dependency failures and recent deploys.
+
+      - alert: JurixHttpP95High
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(jurix_http_request_latency_seconds_bucket[5m])) by (le)
+          ) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Jurix HTTP p95 latency above 500ms
+          description: Check database, Redis, CPU and upstream dependencies.
+
+  - name: jurix-rag
+    rules:
+      - alert: JurixRagGroundingRejectRateHigh
+        expr: |
+          sum(rate(jurix_rag_requests_total{status="grounding_rejected"}[15m]))
+          /
+          clamp_min(sum(rate(jurix_rag_requests_total[15m])), 1) > 0.20
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: High RAG grounding rejection rate
+          description: Review retrieval quality, corpus changes, model changes and benchmark results.
+
+      - alert: JurixRagNoRetrieval
+        expr: sum(rate(jurix_rag_requests_total{status="no_retrieval"}[10m])) > 0.5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: RAG is frequently returning no retrieval
+          description: Inspect embeddings, vector index and corpus ingestion health.
+
+  - name: jurix-dependencies
+    rules:
+      - alert: JurixReadinessDown
+        expr: up{job=~"jurix.*"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Jurix service is down
+          description: Check container health and deployment state.

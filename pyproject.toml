@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jurix"
-version = "1.1.0"
+version = "1.2.0"
 description = "Sistema de Consolidação Normativa e Rastreabilidade Jurídica Inteligente (PIBIC/UFRN)"
 authors = [
     { name = "Cauã Vitor F. Silva", email = "cauavitorfigueredo@gmail.com" },

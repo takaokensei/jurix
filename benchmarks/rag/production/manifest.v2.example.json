@@ -1,0 +1,18 @@
+{
+  "schema_version": "2.0",
+  "dataset_path": "benchmarks/rag/production/cases.v2.jsonl",
+  "dataset_sha256": "REPLACE_WITH_REVIEWED_DATASET_SHA256",
+  "embedding_model": "nomic-embed-text",
+  "generation_model": "REPLACE_WITH_REVIEWED_MODEL",
+  "min_cases": 50,
+  "metrics": {
+    "recall@1": 0.85,
+    "recall@3": 0.95,
+    "mrr": 0.90,
+    "citation_precision": 0.95,
+    "citation_recall": 0.95,
+    "groundedness": 0.98
+  },
+  "baseline_version": "v2",
+  "review_status": "REQUIRES_HUMAN_REVIEW"
+}

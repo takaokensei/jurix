@@ -545,9 +545,9 @@ Ollama hospedado localmente. <strong>Zero dependência</strong> de APIs pagas ex
 
 | Feature | Descrição | Status |
 |---------|-----------|--------|
-| **SAPL Integration** | Cliente para API oficial de câmaras municipais | 🔄 Em Desenvolvimento |
-| **OCR Inteligente** | Tesseract + pré-processamento de imagem | ⏳ Planejado |
-| **NLP Pipeline** | spaCy para extração de entidades jurídicas | ⏳ Planejado |
+| **SAPL Integration** | Cliente para API oficial de câmaras municipais | ✅ Implementado |
+| **OCR Inteligente** | Tesseract + pré-processamento de imagem | ✅ Implementado |
+| **NLP Pipeline** | spaCy para extração de entidades jurídicas | ✅ Implementado |
 | **pgvector Search** | Busca vetorial com PostgreSQL nativo | ✅ Implementado |
 | **Celery Pipeline** | Processamento distribuído e escalável | ✅ Implementado |
 | **Docker-first** | Deploy reproduzível em qualquer ambiente | ✅ Implementado |

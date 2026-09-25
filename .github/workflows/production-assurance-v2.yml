@@ -1,0 +1,85 @@
+name: Production Assurance v2
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'config/**'
+      - 'scripts/**'
+      - 'docs/**'
+      - 'benchmarks/**'
+      - 'docker-compose.prod.yml'
+      - '.env.production.example'
+      - 'pyproject.toml'
+      - '.github/workflows/production-assurance-v2.yml'
+
+jobs:
+  static-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install minimal tooling
+        run: python -m pip install --upgrade pip ruff
+      - name: Ruff
+        run: |
+          ruff check src/ scripts/
+          ruff format --check src/ scripts/
+      - name: Repository release contract
+        run: python scripts/validate_release_contract.py
+      - name: Documentation contract
+        run: python scripts/validate_documentation_contract.py
+      - name: Hotspot report
+        run: python scripts/check_repository_hotspots_v2.py || test $? -eq 2
+
+  django-contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        ports: ['5432:5432']
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: jurix
+          POSTGRES_USER: jurix
+        options: >-
+          --health-cmd "pg_isready -U jurix -d jurix"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Migrations
+        env:
+          DATABASE_URL: postgresql://jurix:test@localhost:5432/jurix
+          DJANGO_SECRET_KEY: ci-secret-ci-secret-ci-secret-ci-secret-ci-secret
+          ALLOWED_HOSTS: localhost
+          DEBUG: 'False'
+          STORAGE_BACKEND: local
+          JURIX_ALLOW_LOCAL_STORAGE: 'true'
+          JURIX_SINGLE_HOST: 'true'
+          RAG_STRICT_GROUNDING: 'true'
+        run: |
+          python manage.py makemigrations --check --dry-run
+          python manage.py migrate --noinput
+          python manage.py check --deploy
+      - name: Unit tests
+        env:
+          DATABASE_URL: postgresql://jurix:test@localhost:5432/jurix
+          DJANGO_SECRET_KEY: ci-secret-ci-secret-ci-secret-ci-secret-ci-secret
+          ALLOWED_HOSTS: localhost
+          DEBUG: 'False'
+          STORAGE_BACKEND: local
+          JURIX_ALLOW_LOCAL_STORAGE: 'true'
+          JURIX_SINGLE_HOST: 'true'
+          RAG_STRICT_GROUNDING: 'true'
+        run: pytest src/tests/test_strict_grounding.py src/tests/test_rag_policy_v2.py src/tests/test_storage_operations_v2.py src/tests/test_production_validation_v2.py

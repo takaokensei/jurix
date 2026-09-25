@@ -5,6 +5,8 @@ import logging
 import time
 import uuid
 
+from django.conf import settings
+
 from src.observability.metrics import HTTP_LATENCY, HTTP_REQUESTS
 
 logger = logging.getLogger("jurix.request")
@@ -67,24 +69,34 @@ class RequestObservabilityMiddleware:
         return response
 
 
-CONTENT_SECURITY_POLICY = (
-    "default-src 'self'; "
-    "script-src 'self'; "
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-    "font-src 'self' https://fonts.gstatic.com data:; "
-    "img-src 'self' data:; "
-    "connect-src 'self'; "
-    "object-src 'none'; "
-    "base-uri 'self'; "
-    "form-action 'self'; "
-    "frame-ancestors 'none'; "
-    "manifest-src 'self'; "
-    "worker-src 'self' blob:"
-)
+def _build_content_security_policy() -> str:
+    """Build a strict CSP in production without breaking local development."""
+    style_sources = ["'self'"]
+    font_sources = ["'self'"]
+    if settings.CSP_ALLOW_INLINE_STYLES:
+        style_sources.append("'unsafe-inline'")
+    if settings.CSP_ALLOW_GOOGLE_FONTS:
+        style_sources.append('https://fonts.googleapis.com')
+        font_sources.append('https://fonts.gstatic.com')
+    return (
+        "default-src 'self'; "
+        "script-src 'self'; "
+        f"style-src {' '.join(style_sources)}; "
+        f"font-src {' '.join(font_sources)}; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'none'; "
+        "manifest-src 'self'; "
+        "worker-src 'self' blob:; "
+        "upgrade-insecure-requests"
+    )
 
 
 class ContentSecurityPolicyMiddleware:
-    """Apply the application CSP as an HTTP header to HTML responses."""
+    """Apply CSP and baseline browser security headers."""
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -93,5 +105,9 @@ class ContentSecurityPolicyMiddleware:
         response = self.get_response(request)
         content_type = response.headers.get('Content-Type', '')
         if content_type.lower().startswith('text/html') and not request.path.startswith('/admin/'):
-            response['Content-Security-Policy'] = CONTENT_SECURITY_POLICY
+            response['Content-Security-Policy'] = _build_content_security_policy()
+        response['X-Content-Type-Options'] = 'nosniff'
+        response['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
+        response['Cross-Origin-Opener-Policy'] = 'same-origin'
         return response

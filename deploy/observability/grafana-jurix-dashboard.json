@@ -1,0 +1,11 @@
+{
+  "title": "Jurix Production Overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {"type": "timeseries", "title": "HTTP p95", "targets": [{"expr": "histogram_quantile(0.95, sum(rate(jurix_http_request_latency_seconds_bucket[5m])) by (le))"}]},
+    {"type": "timeseries", "title": "HTTP 5xx rate", "targets": [{"expr": "sum(rate(jurix_http_requests_total{status=~\"5..\"}[5m]))"}]},
+    {"type": "timeseries", "title": "RAG grounding rejected", "targets": [{"expr": "sum(rate(jurix_rag_requests_total{status=\"grounding_rejected\"}[5m]))"}]},
+    {"type": "timeseries", "title": "RAG cache hit rate", "targets": [{"expr": "sum(rate(jurix_rag_cache_hits_total[5m])) / clamp_min(sum(rate(jurix_rag_cache_hits_total[5m])) + sum(rate(jurix_rag_cache_misses_total[5m])), 1)"}]}
+  ]
+}

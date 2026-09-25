@@ -35,6 +35,11 @@ class LocalAttachmentStorage:
     def __init__(self, root: str | Path | None = None):
         configured = root or getattr(settings, 'JURIX_ATTACHMENT_ROOT', '')
         self.root = Path(configured or Path(settings.BASE_DIR) / 'data' / 'chat_attachments').resolve()
+        base_dir = Path(settings.BASE_DIR).resolve()
+        if not self.root.is_relative_to(base_dir) and not getattr(settings, 'JURIX_SINGLE_HOST', False):
+            raise StorageError(
+                'JURIX_ATTACHMENT_ROOT must remain inside BASE_DIR unless single-host storage is explicitly enabled.'
+            )
         self.root.mkdir(parents=True, exist_ok=True)
 
     def _path(self, key: str) -> Path:

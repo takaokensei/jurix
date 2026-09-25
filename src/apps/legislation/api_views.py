@@ -9,10 +9,8 @@ Provides REST API endpoints for:
 
 import json
 import logging
-from typing import Any
 
 from django.conf import settings
-from django.core import signing
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, OuterRef, Q, Subquery
@@ -35,6 +33,11 @@ from src.apps.legislation.attachment_service import (
     list_attachments,
     upload_attachment,
 )
+from src.apps.legislation.chat_api_helpers import (
+    _chat_session_response,
+    _parse_limit,
+    _preview,
+)
 from src.apps.legislation.models import (
     ChatMessage,
     ChatSession,
@@ -44,7 +47,6 @@ from src.apps.legislation.models import (
 )
 from src.apps.legislation.retrieval_api import build_retrieval_options
 from src.apps.legislation.serializers import (
-    serialize_chat_message,
     serialize_chat_session,
     serialize_dispositivo_source,
 )
@@ -704,58 +706,6 @@ def norma_detail_api(request: HttpRequest, pk: int) -> JsonResponse:
         }, status=500)
 
 
-CHAT_SESSIONS_DEFAULT_LIMIT = 20
-CHAT_SESSIONS_MAX_LIMIT = 100
-CHAT_MESSAGES_PAGE_SIZE = 25   # last N messages: recent context without loading hundreds
-SESSION_PREVIEW_LENGTH = 50
-
-
-def _parse_limit(raw: Any) -> int:
-    """Clamp the ?limit= query parameter to [1, CHAT_SESSIONS_MAX_LIMIT]."""
-    try:
-        return max(1, min(int(raw), CHAT_SESSIONS_MAX_LIMIT))
-    except (TypeError, ValueError):
-        return CHAT_SESSIONS_DEFAULT_LIMIT
-
-
-def _preview(content: str | None) -> str:
-    content = content or ''
-    suffix = '...' if len(content) > SESSION_PREVIEW_LENGTH else ''
-    return content[:SESSION_PREVIEW_LENGTH] + suffix
-
-
-def _chat_session_response(session: ChatSession, before: str | None = None) -> JsonResponse:
-    """Session + its last CHAT_MESSAGES_PAGE_SIZE messages in chronological order."""
-    queryset = ChatMessage.objects.filter(session=session)
-    total = queryset.count()
-    if before:
-        try:
-            cursor = signing.loads(before, salt='chat-history')
-            if cursor['session'] != session.pk:
-                raise ValueError('Wrong session')
-            queryset = queryset.filter(
-                Q(created_at__lt=cursor['date']) |
-                Q(created_at=cursor['date'], id__lt=cursor['id'])
-            )
-        except (signing.BadSignature, ValueError, KeyError, TypeError):
-            return JsonResponse({'success': False, 'error': 'Invalid cursor'}, status=400)
-    # id breaks ties between messages created in the same instant
-    latest = list(queryset.order_by('-created_at', '-id')[:CHAT_MESSAGES_PAGE_SIZE + 1])
-    has_more = len(latest) > CHAT_MESSAGES_PAGE_SIZE
-    latest = latest[:CHAT_MESSAGES_PAGE_SIZE]
-    next_cursor = signing.dumps({
-        'session': session.pk, 'date': latest[-1].created_at.isoformat(), 'id': latest[-1].pk
-    }, salt='chat-history') if has_more else None
-    messages = [serialize_chat_message(m) for m in reversed(latest)]
-    return JsonResponse({
-        'success': True,
-        'session': serialize_chat_session(session),
-        'messages': messages,
-        'count': len(messages),
-        'total_count': total,
-        'has_more': has_more,
-        'next_cursor': next_cursor,
-    })
 
 
 def _server_error(context: str, exc: Exception) -> JsonResponse:

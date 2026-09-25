@@ -1,0 +1,2 @@
+{"id":"example-direct","question":"Substitua por uma pergunta jurídica revisada.","expected_sources":[],"expected_citations":[],"answer_policy":"grounded"}
+{"id":"example-no-answer","question":"Substitua por uma pergunta cuja resposta não esteja presente no corpus.","expected_sources":[],"expected_citations":[],"answer_policy":"no_answer"}
