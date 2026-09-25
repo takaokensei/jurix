@@ -1,0 +1,47 @@
+name: RAG Benchmark
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install benchmark dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Evaluate expert-reviewed corpus when versioned
+        shell: bash
+        run: |
+          if [[ ! -f benchmarks/rag/cases.jsonl || \
+                ! -f benchmarks/rag/results.jsonl || \
+                ! -f benchmarks/rag/baseline.json ]]; then
+            echo "No versioned legal gold corpus/baseline yet; benchmark job is intentionally skipped."
+            exit 0
+          fi
+
+          python scripts/run_rag_benchmark.py \
+            --cases benchmarks/rag/cases.jsonl \
+            --results benchmarks/rag/results.jsonl \
+            --output benchmarks/rag/current.json
+
+          python scripts/check_rag_regression.py \
+            --baseline benchmarks/rag/baseline.json \
+            --current benchmarks/rag/current.json \
+            --max-regression 0.03
+
+      - name: Show evaluated metrics
+        if: ${{ hashFiles('benchmarks/rag/current.json') != '' }}
+        run: cat benchmarks/rag/current.json

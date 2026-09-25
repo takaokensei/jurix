@@ -25,7 +25,7 @@ IMPORT_TO_DIST = {
     "opentelemetry": "opentelemetry-api",
 }
 FIRST_PARTY = {"src", "config", "manage", "legislation", "ingestion", "core", "processing",
-               "llm_engine", "clients"}
+               "llm_engine", "clients", "scripts"}
 
 # Declared but never imported by our code, on purpose.
 USED_WITHOUT_IMPORT = {
