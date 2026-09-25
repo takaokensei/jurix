@@ -22,21 +22,21 @@ class Command(BaseCommand):
         try:
             call_command("check", deploy=True, fail_level="ERROR", stdout=subprocess.DEVNULL)
             results["django_deploy_checks"] = "passed"
-        except SystemExit as exc:
+        except (SystemExit, Exception) as exc:
             results["django_deploy_checks"] = f"failed:{exc}"
 
         try:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT 1")
             results["database"] = "passed"
-        except Exception as exc:
+        except (SystemExit, Exception) as exc:
             results["database"] = f"failed:{type(exc).__name__}"
 
         try:
             vector_args = ["--strict"] if getattr(settings, "PRODUCTION_REQUIRE_VECTOR_INDEX", True) else []
             call_command("ensure_vector_index", *vector_args, stdout=subprocess.DEVNULL)
             results["vector_index"] = "inspected"
-        except Exception as exc:
+        except (SystemExit, Exception) as exc:
             results["vector_index"] = f"failed:{type(exc).__name__}"
 
         results["storage_backend"] = str(getattr(settings, "STORAGE_BACKEND", ""))

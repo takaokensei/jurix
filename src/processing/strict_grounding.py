@@ -36,7 +36,11 @@ _NEGATION_RE = re.compile(
     re.IGNORECASE,
 )
 _CERTAINTY_RE = re.compile(
-    r"\b(?:sempre|nunca|obrigatoriamente|necessariamente|é proibido|é permitido|deve)\b",
+    r"\b(?:sempre|nunca|obrigatoriamente|necessariamente|é proibido|é permitida|é permitido|é proibida|deve)\b",
+    re.IGNORECASE,
+)
+_CONDITION_RE = re.compile(
+    r"\b(?:somente|apenas|exceto|salvo|específico|específica|específicos|específicas|ressalvado|ressalvada)\b",
     re.IGNORECASE,
 )
 
@@ -120,7 +124,10 @@ def _match_claim(claim, evidence) -> EvidenceMatch:
     citation_ok = _citation_ok(claim, evidence)
     claim_certainty = _certainty(claim.text)
     evidence_certainty = _certainty(evidence_text)
-    certainty_ok = not claim_certainty or bool(claim_certainty & evidence_certainty)
+    has_claim_condition = bool(_CONDITION_RE.search(claim.text))
+    has_evidence_condition = bool(_CONDITION_RE.search(evidence_text))
+    condition_mismatch = has_evidence_condition and not has_claim_condition
+    certainty_ok = (not claim_certainty or bool(claim_certainty & evidence_certainty)) and not condition_mismatch
     return EvidenceMatch(
         evidence_index=-1,
         lexical_overlap=round(overlap, 4),

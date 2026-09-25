@@ -292,8 +292,8 @@ SAPL_OCR_TIMEOUT_SECONDS = int(os.getenv('SAPL_OCR_TIMEOUT_SECONDS', '1800'))
 # Attachment/object-storage configuration. Metadata is persisted in the operations
 # database; file bytes are stored by the selected backend.
 STORAGE_BACKEND = os.getenv('STORAGE_BACKEND', 'local').strip().lower()
-JURIX_ALLOW_LOCAL_STORAGE = env_bool('JURIX_ALLOW_LOCAL_STORAGE', False)
-JURIX_SINGLE_HOST = env_bool('JURIX_SINGLE_HOST', False)
+JURIX_ALLOW_LOCAL_STORAGE = env_bool('JURIX_ALLOW_LOCAL_STORAGE', DEBUG)
+JURIX_SINGLE_HOST = env_bool('JURIX_SINGLE_HOST', DEBUG)
 S3_ENDPOINT = os.getenv('S3_ENDPOINT', '')
 S3_BUCKET = os.getenv('S3_BUCKET', '')
 S3_ACCESS_KEY = os.getenv('S3_ACCESS_KEY', '')
