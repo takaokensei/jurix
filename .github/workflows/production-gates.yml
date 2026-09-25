@@ -1,0 +1,76 @@
+name: Production Gates
+
+on:
+  workflow_dispatch:
+    inputs:
+      require_rag:
+        description: "Require reviewed RAG benchmark before release"
+        required: false
+        default: true
+        type: boolean
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: jurix_test
+          POSTGRES_USER: jurix
+          POSTGRES_PASSWORD: testpassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run production readiness gate
+        run: |
+          python scripts/production_gate.py --with-django --with-lint ${{ inputs.require_rag && '--require-rag' || '' }}
+        env:
+          DATABASE_URL: postgresql://jurix:testpassword@localhost:5432/jurix_test
+          REDIS_URL: redis://localhost:6379/0
+          DJANGO_SECRET_KEY: ci-production-gate-secret-key-do-not-use-in-production-12345
+          DEBUG: "False"
+          ALLOWED_HOSTS: localhost,127.0.0.1
+          STORAGE_BACKEND: local
+          JURIX_ATTACHMENT_ROOT: /app/data/chat_attachments
+          SAPL_OCR_MAX_PAGES: 200
+          USE_LOCMEM_CACHE: "False"
+          SECURE_HSTS_SECONDS: 0
+
+      - name: Spot-check large modules
+        run: |
+          python scripts/check_hotspots.py

@@ -126,14 +126,14 @@ class OllamaService:
 
         Args:
             prompt: Input prompt
-            model: Model to use (defaults to llama3)
+            model: Model to use (defaults to settings.OLLAMA_MODEL)
             temperature: Sampling temperature (0-1)
             max_tokens: Maximum tokens to generate
 
         Returns:
             Generated text, or None if failed
         """
-        model = model or "llama3"
+        model = model or getattr(settings, 'OLLAMA_MODEL', 'llama3')
         url = f"{self.base_url}/api/generate"
         payload = {
             "model": model,
@@ -170,14 +170,14 @@ class OllamaService:
 
         Args:
             prompt: Input prompt
-            model: Model to use (defaults to llama3)
+            model: Model to use (defaults to settings.OLLAMA_MODEL)
             temperature: Sampling temperature (0-1)
             max_tokens: Maximum tokens to generate
 
         Yields:
             Token/text chunks as strings
         """
-        model = model or "llama3"
+        model = model or getattr(settings, 'OLLAMA_MODEL', 'llama3')
         url = f"{self.base_url}/api/generate"
         payload = {
             "model": model,

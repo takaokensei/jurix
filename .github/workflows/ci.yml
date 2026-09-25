@@ -116,8 +116,6 @@ jobs:
     - name: Ruff format
       run: |
         ruff format --check src/
-      run: |
-        ruff format --check src/
 
   frontend-tests:
     runs-on: ubuntu-latest

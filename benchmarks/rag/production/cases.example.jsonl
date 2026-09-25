@@ -1,0 +1,2 @@
+{"id":"example-001","question":"REPLACE WITH A REVIEWED LEGAL QUESTION","expected_sources":["REPLACE_WITH_SOURCE_IDENTIFIER"],"answerability":"answerable"}
+{"id":"example-002","question":"REPLACE WITH A REVIEWED UNANSWERABLE QUESTION","expected_sources":[],"answerability":"unanswerable"}

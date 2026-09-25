@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "dataset_path": "cases.jsonl",
+  "dataset_sha256": "REPLACE_WITH_SHA256_OF_CASES_JSONL",
+  "embedding_model": "REPLACE_WITH_PINNED_EMBEDDING_MODEL",
+  "generation_model": "REPLACE_WITH_PINNED_GENERATION_MODEL",
+  "min_cases": 200,
+  "metrics": [
+    "recall@1",
+    "recall@3",
+    "recall@5",
+    "mrr",
+    "citation_precision",
+    "citation_recall",
+    "groundedness"
+  ],
+  "notes": "Populate only with reviewed, versioned legal cases before a production release."
+}

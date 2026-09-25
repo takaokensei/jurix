@@ -276,6 +276,7 @@ NUM_PROXIES = int(os.getenv('NUM_PROXIES', '0'))
 SAPL_BASE_URL = os.getenv('SAPL_BASE_URL', 'https://sapl.natal.rn.leg.br/api')
 SAPL_INCREMENTAL_MAX_PAGES = int(os.getenv('SAPL_INCREMENTAL_MAX_PAGES', '20'))
 SAPL_SYNC_LEASE_SECONDS = int(os.getenv('SAPL_SYNC_LEASE_SECONDS', '900'))
+SAPL_OCR_MAX_PAGES = int(os.getenv('SAPL_OCR_MAX_PAGES', '200'))
 
 # Attachment/object-storage configuration. Metadata is persisted in the operations
 # database; file bytes are stored by the selected backend.
@@ -285,6 +286,10 @@ S3_BUCKET = os.getenv('S3_BUCKET', '')
 S3_ACCESS_KEY = os.getenv('S3_ACCESS_KEY', '')
 S3_SECRET_KEY = os.getenv('S3_SECRET_KEY', '')
 S3_REGION = os.getenv('S3_REGION', 'us-east-1')
+JURIX_ATTACHMENT_ROOT = os.getenv(
+    'JURIX_ATTACHMENT_ROOT',
+    str(BASE_DIR / 'data' / 'chat_attachments'),
+)
 JURIX_ATTACHMENT_TTL_SECONDS = int(os.getenv('JURIX_ATTACHMENT_TTL_SECONDS', str(2 * 60 * 60)))
 JURIX_ATTACHMENT_STAGING_DIR = Path(os.getenv(
     'JURIX_ATTACHMENT_STAGING_DIR',

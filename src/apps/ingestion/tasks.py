@@ -558,6 +558,37 @@ def ocr_pdf_task(self, norma_id: int) -> dict[str, Any]:
 
         logger.info(f"[Task {task_id}] PDF tem {total_pages} página(s)")
 
+        max_pages = int(getattr(settings, 'SAPL_OCR_MAX_PAGES', 200))
+        if total_pages > max_pages:
+            pdf_document.close()
+            error_msg = (
+                f"PDF excede o limite de OCR configurado "
+                f"({total_pages} páginas > {max_pages})."
+            )
+            norma.needs_review = True
+            norma.processing_error = error_msg
+            norma.status = 'pdf_downloaded'
+            norma.save(
+                update_fields=[
+                    'needs_review',
+                    'processing_error',
+                    'status',
+                    'updated_at',
+                ]
+            )
+            logger.warning(
+                f"[Task {task_id}] {error_msg} "
+                f"Norma ID={norma_id} marcada para revisão."
+            )
+            return {
+                'success': False,
+                'error': error_msg,
+                'norma_id': norma_id,
+                'pages_processed': 0,
+                'total_chars': 0,
+                'processing_time': time.time() - start_time,
+            }
+
         # Extrair texto de cada página
         extracted_text_pages = []
 

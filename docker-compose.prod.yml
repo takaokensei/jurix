@@ -18,6 +18,8 @@ x-app-env: &app-env
   READINESS_REQUIRE_OLLAMA: ${READINESS_REQUIRE_OLLAMA:-true}
   SAPL_INCREMENTAL_MAX_PAGES: ${SAPL_INCREMENTAL_MAX_PAGES:-20}
   SAPL_FULL_SYNC_MAX_PAGES: ${SAPL_FULL_SYNC_MAX_PAGES:-1000}
+  SAPL_OCR_MAX_PAGES: ${SAPL_OCR_MAX_PAGES:-200}
+  JURIX_ATTACHMENT_ROOT: ${JURIX_ATTACHMENT_ROOT:-/app/data/chat_attachments}
   STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
   OTEL_ENABLED: ${OTEL_ENABLED:-false}
   OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-jurix}
@@ -95,6 +97,8 @@ services:
     ports:
       - "${JURIX_BIND_ADDRESS:-127.0.0.1}:${JURIX_HTTP_PORT:-8000}:8000"
     environment: *app-env
+    volumes:
+      - jurix_data:/app/data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/live/', timeout=3)"]
       interval: 15s
@@ -115,6 +119,8 @@ services:
     container_name: jurix_prod_worker
     command: ["celery", "-A", "config", "worker", "-l", "info", "--pool=prefork", "--concurrency=${CELERY_CONCURRENCY:-4}", "--max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-100}"]
     environment: *app-env
+    volumes:
+      - jurix_data:/app/data
     depends_on:
       db:
         condition: service_healthy
@@ -129,6 +135,8 @@ services:
     container_name: jurix_prod_beat
     command: ["celery", "-A", "config", "beat", "-l", "info", "--schedule=/tmp/jurix-celerybeat"]
     environment: *app-env
+    volumes:
+      - jurix_data:/app/data
     depends_on:
       db:
         condition: service_healthy
@@ -138,3 +146,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  jurix_data:
