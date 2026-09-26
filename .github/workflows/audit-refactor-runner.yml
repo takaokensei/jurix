@@ -17,12 +17,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Generate ingestion modules
-        run: python scripts/refactor_ingestion_tasks.py
-      - name: Commit generated modules to audit branch
+      - name: Generate refactors
+        run: |
+          python scripts/refactor_ingestion_tasks.py
+          python scripts/refactor_api_and_sapl.py
+          python scripts/apply_audit_hygiene.py
+      - name: Commit generated refactors to audit branch
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/apps/ingestion scripts/refactor_ingestion_tasks.py
-          git commit -m 'refactor: split ingestion tasks by domain [skip audit-refactor]' || exit 0
+          git add -A
+          git commit -m 'refactor: complete audit split and hygiene fixes [skip audit-refactor]' || exit 0
           git push origin HEAD:fix/claude-audit-complete
