@@ -37,24 +37,22 @@ logger = logging.getLogger(__name__)
 '''
 HELPERS = '''
 def _format_error_message(e: Exception) -> str:
-    """Format a safe client-facing error message."""
     if settings.DEBUG:
         return str(e)
     return "Internal server error"
 
 
 def _server_error(context: str, exc: Exception) -> JsonResponse:
-    """Log the failure with its traceback; never expose internal details."""
     logger.error(f"Error in {context}: {exc}", exc_info=True)
     return JsonResponse({"success": False, "error": _format_error_message(exc)}, status=500)
 '''
 
 def top_nodes(source: str) -> dict[str, str]:
     tree = ast.parse(source); lines = source.splitlines(); result = {}
-    for node in tree.body:
+    for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             start = node.decorator_list[0].lineno if node.decorator_list else node.lineno
-            result[node.name] = "\n".join(lines[start - 1 : node.end_lineno])
+            result.setdefault(node.name, "\n".join(lines[start - 1 : node.end_lineno]))
     return result
 
 def split_api() -> None:
