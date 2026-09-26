@@ -386,3 +386,6 @@ def ingest_sapl_corpus_task(
         raise self.retry(exc=exc, countdown=60 * (2**self.request.retries)) from exc
     finally:
         client.close()
+
+# Historical import alias retained for compatibility.
+ingest_normas_bulk_task = bulk_ingest_normas_task
