@@ -8,6 +8,9 @@ patch ``api_views`` symbols keep working.
 
 from __future__ import annotations
 
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+
 from . import api_attachments, api_chat, api_health, api_normas, api_search
 from .api_attachments import *  # noqa: F401,F403
 from .api_attachments import (
@@ -93,6 +96,8 @@ def semantic_search_api(request):
     return api_search.semantic_search_api(request)
 
 
+@require_http_methods(["GET", "POST"])
+@csrf_exempt
 def rag_answer_api(request):
     _sync(api_search)
     return api_search.rag_answer_api(request)
