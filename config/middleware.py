@@ -95,7 +95,6 @@ def _build_content_security_policy() -> str:
     )
 
 
-CONTENT_SECURITY_POLICY = _build_content_security_policy()
 
 
 class ContentSecurityPolicyMiddleware:

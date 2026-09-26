@@ -11,7 +11,9 @@ from src.apps.legislation.suggestion_service import build_dynamic_suggestions
 ROOT = Path(__file__).resolve().parents[2]
 CHAT_JS = ROOT / "src" / "apps" / "core" / "static" / "js" / "chat.js"
 CHATBOT_HTML = ROOT / "src" / "apps" / "legislation" / "templates" / "legislation" / "chatbot.html"
-NORMA_TEMPLATE = ROOT / "src" / "apps" / "legislation" / "templates" / "legislation" / "norma_list.html"
+NORMA_TEMPLATE = (
+    ROOT / "src" / "apps" / "legislation" / "templates" / "legislation" / "norma_list.html"
+)
 
 
 class DynamicSuggestionContractTests(TestCase):
@@ -74,7 +76,9 @@ class NormaListContractTests(TestCase):
         )
 
     def test_list_has_type_and_year_filters(self):
-        response = self.client.get(reverse("legislation:norma_list"), {"tipo": "Lei", "ano": "2025"})
+        response = self.client.get(
+            reverse("legislation:norma_list"), {"tipo": "Lei", "ano": "2025"}
+        )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Lei 100/2025")
         self.assertNotContains(response, "Decreto 200/2026")

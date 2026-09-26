@@ -162,7 +162,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.NOTICE(f"\n📊 Found {total} dispositivo(s) to process"))
         self.stdout.write(self.style.NOTICE(f"   Batch size: {batch_size}"))
         self.stdout.write(self.style.NOTICE(f"   Model: {model}"))
-        self.stdout.write(self.style.NOTICE(f'   Cache: {"Enabled" if use_cache else "Disabled"}'))
+        self.stdout.write(self.style.NOTICE(f"   Cache: {'Enabled' if use_cache else 'Disabled'}"))
         self.stdout.write(self.style.NOTICE("-" * 80))
 
         # Initialize services
@@ -263,7 +263,7 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.SUCCESS(
                     f"  ✓ Batch completed in {batch_time:.2f}s "
-                    f"({len(batch)/batch_time:.1f} items/sec)"
+                    f"({len(batch) / batch_time:.1f} items/sec)"
                 )
             )
 
@@ -285,5 +285,5 @@ class Command(BaseCommand):
             self.stdout.write(f"   Cache hit rate: {cache_hit_rate:.1f}%")
 
         self.stdout.write(f"\n⏱️  Total time: {total_time:.2f}s")
-        self.stdout.write(f"   Average: {total/total_time:.1f} items/sec")
+        self.stdout.write(f"   Average: {total / total_time:.1f} items/sec")
         self.stdout.write(self.style.NOTICE("=" * 80))

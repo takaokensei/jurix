@@ -103,19 +103,19 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS("=" * 80))
             self.stdout.write(self.style.SUCCESS("RESUMO DA INGESTÃO"))
             self.stdout.write(self.style.SUCCESS("=" * 80))
-            self.stdout.write(f'  ✓ Normas processadas: {stats["created"] + stats["updated"]}')
-            self.stdout.write(f'  ✓ Novas criadas: {stats["created"]}')
-            self.stdout.write(f'  ✓ Atualizadas: {stats["updated"]}')
-            self.stdout.write(f'  ✗ Falhas: {stats["failed"]}')
+            self.stdout.write(f"  ✓ Normas processadas: {stats['created'] + stats['updated']}")
+            self.stdout.write(f"  ✓ Novas criadas: {stats['created']}")
+            self.stdout.write(f"  ✓ Atualizadas: {stats['updated']}")
+            self.stdout.write(f"  ✗ Falhas: {stats['failed']}")
 
             if auto_download:
-                self.stdout.write(f'  📥 Downloads agendados: {len(stats["download_tasks"])}')
+                self.stdout.write(f"  📥 Downloads agendados: {len(stats['download_tasks'])}")
                 if is_async:
                     self.stdout.write(self.style.NOTICE("💡 Downloads via Celery (assíncrono)"))
 
             if stats["errors"]:
                 self.stdout.write(
-                    self.style.WARNING(f'\n⚠️  {len(stats["errors"])} erro(s) encontrado(s)')
+                    self.style.WARNING(f"\n⚠️  {len(stats['errors'])} erro(s) encontrado(s)")
                 )
 
             self.stdout.write("")

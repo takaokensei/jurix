@@ -5,6 +5,7 @@ The command intentionally excludes legal text and chat content. It captures
 counts, model identifiers and status distributions useful for deployment
 records.
 """
+
 from __future__ import annotations
 
 import json

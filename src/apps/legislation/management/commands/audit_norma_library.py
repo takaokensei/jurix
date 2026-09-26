@@ -12,8 +12,12 @@ class Command(BaseCommand):
     help = "Audita a superfície de pesquisa das normas consolidadas."
 
     def add_arguments(self, parser):
-        parser.add_argument("--strict", action="store_true", help="Falha se houver anomalias bloqueantes.")
-        parser.add_argument("--limit", type=int, default=20, help="Quantidade máxima de exemplos por categoria.")
+        parser.add_argument(
+            "--strict", action="store_true", help="Falha se houver anomalias bloqueantes."
+        )
+        parser.add_argument(
+            "--limit", type=int, default=20, help="Quantidade máxima de exemplos por categoria."
+        )
 
     def handle(self, *args, **options):
         strict = bool(options["strict"])
@@ -24,9 +28,7 @@ class Command(BaseCommand):
         missing_identifier = qs.filter(Q(tipo="") | Q(numero="") | Q(ano__isnull=True)).count()
         missing_sapl = qs.filter(sapl_id__isnull=True).count()
         duplicated_identifiers = (
-            qs.values("tipo", "numero", "ano")
-            .annotate(total=Count("id"))
-            .filter(total__gt=1)
+            qs.values("tipo", "numero", "ano").annotate(total=Count("id")).filter(total__gt=1)
         )
         duplicate_count = duplicated_identifiers.count()
         types = Counter(qs.values_list("tipo", flat=True))
@@ -42,9 +44,13 @@ class Command(BaseCommand):
             self.stdout.write(f"  - {name}: {count}")
 
         if missing_ementa:
-            self.stdout.write(self.style.WARNING("Ementas ausentes reduzem a qualidade das sugestões dinâmicas."))
+            self.stdout.write(
+                self.style.WARNING("Ementas ausentes reduzem a qualidade das sugestões dinâmicas.")
+            )
         if missing_sapl:
-            self.stdout.write(self.style.WARNING("Normas sem SAPL ID não podem originar sugestões do corpus."))
+            self.stdout.write(
+                self.style.WARNING("Normas sem SAPL ID não podem originar sugestões do corpus.")
+            )
         if duplicate_count:
             examples = list(duplicated_identifiers[:limit])
             self.stdout.write(self.style.ERROR(f"Encontradas chaves duplicadas: {examples}"))

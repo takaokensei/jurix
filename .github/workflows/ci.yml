@@ -41,6 +41,7 @@ jobs:
       REDIS_URL: redis://localhost:6379/0
       DJANGO_SECRET_KEY: test-secret-key-for-ci
       DEBUG: "False"
+      JURIX_SINGLE_HOST: "True"
     
     steps:
     - uses: actions/checkout@v4

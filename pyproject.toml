@@ -44,6 +44,10 @@ ignore = [
     "DJ001", # django-nullable-model-string-field
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"src/apps/legislation/api_views.py" = ["F811"]
+"src/apps/legislation/api_*.py" = ["E402"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["src", "config", "legislation", "ingestion", "core", "processing", "llm_engine", "clients"]
 

@@ -44,10 +44,7 @@ class Command(BaseCommand):
             return
 
         self.stdout.write(
-            self.style.SUCCESS(
-                f"Cache de sugestões aquecido com {len(suggestions)} item(ns)."
-            )
+            self.style.SUCCESS(f"Cache de sugestões aquecido com {len(suggestions)} item(ns).")
         )
         for item in suggestions:
             self.stdout.write(f"• {item['identifier']}: {item['question']}")
-

@@ -1,4 +1,5 @@
 """Deterministic temporal reasoning for municipal-law retrieval and audit."""
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -71,9 +72,11 @@ def revoked_norma_ids(norma_ids: Iterable[int], as_of: date | None) -> set[int]:
 
     from src.apps.legislation.models import EventoAlteracao
 
-    events = EventoAlteracao.objects.filter(acao="REVOGA").filter(
-        Q(norma_alvo_id__in=ids) | Q(dispositivo_alvo__norma_id__in=ids)
-    ).select_related("dispositivo_fonte__norma", "dispositivo_alvo")
+    events = (
+        EventoAlteracao.objects.filter(acao="REVOGA")
+        .filter(Q(norma_alvo_id__in=ids) | Q(dispositivo_alvo__norma_id__in=ids))
+        .select_related("dispositivo_fonte__norma", "dispositivo_alvo")
+    )
     revoked: set[int] = set()
     for event in events:
         source_norma = getattr(event.dispositivo_fonte, "norma", None)
@@ -149,23 +152,27 @@ def build_norma_timeline(norma, *, as_of: date | None = None) -> list[dict[str, 
 
     items: list[dict[str, Any]] = []
     if norma.data_publicacao and (as_of is None or norma.data_publicacao <= as_of):
-        items.append({
-            "kind": "publication",
-            "date": norma.data_publicacao.isoformat(),
-            "title": "Publicação",
-            "description": f"{norma} publicada no corpus municipal.",
-            "source_norma": str(norma),
-            "confidence": 1.0,
-        })
+        items.append(
+            {
+                "kind": "publication",
+                "date": norma.data_publicacao.isoformat(),
+                "title": "Publicação",
+                "description": f"{norma} publicada no corpus municipal.",
+                "source_norma": str(norma),
+                "confidence": 1.0,
+            }
+        )
     if norma.data_vigencia and (as_of is None or norma.data_vigencia <= as_of):
-        items.append({
-            "kind": "effective",
-            "date": norma.data_vigencia.isoformat(),
-            "title": "Início da vigência",
-            "description": f"Vigência indicada para {norma}.",
-            "source_norma": str(norma),
-            "confidence": 1.0,
-        })
+        items.append(
+            {
+                "kind": "effective",
+                "date": norma.data_vigencia.isoformat(),
+                "title": "Início da vigência",
+                "description": f"Vigência indicada para {norma}.",
+                "source_norma": str(norma),
+                "confidence": 1.0,
+            }
+        )
 
     events = (
         EventoAlteracao.objects.filter(Q(norma_alvo=norma) | Q(dispositivo_alvo__norma=norma))
@@ -177,17 +184,19 @@ def build_norma_timeline(norma, *, as_of: date | None = None) -> list[dict[str, 
         source_date = source.data_publicacao
         if as_of is not None and source_date and source_date > as_of:
             continue
-        items.append({
-            "kind": "event",
-            "date": source_date.isoformat() if source_date else None,
-            "title": event.get_acao_display(),
-            "description": event.get_descricao_completa(),
-            "source_norma": str(source),
-            "source_norma_id": source.id,
-            "target_text": event.target_text,
-            "target_dispositivo_id": event.dispositivo_alvo_id,
-            "validated": bool(event.validado),
-            "confidence": float(event.extraction_confidence or 0.0),
-        })
+        items.append(
+            {
+                "kind": "event",
+                "date": source_date.isoformat() if source_date else None,
+                "title": event.get_acao_display(),
+                "description": event.get_descricao_completa(),
+                "source_norma": str(source),
+                "source_norma_id": source.id,
+                "target_text": event.target_text,
+                "target_dispositivo_id": event.dispositivo_alvo_id,
+                "validated": bool(event.validado),
+                "confidence": float(event.extraction_confidence or 0.0),
+            }
+        )
     items.sort(key=lambda item: (item["date"] or "9999-99-99", item["kind"], item["title"]))
     return items

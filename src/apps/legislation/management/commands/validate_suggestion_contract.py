@@ -10,8 +10,12 @@ class Command(BaseCommand):
 
     ROOT = Path(__file__).resolve().parents[5]
     CHAT_JS = ROOT / "src" / "apps" / "core" / "static" / "js" / "chat.js"
-    CHATBOT_HTML = ROOT / "src" / "apps" / "legislation" / "templates" / "legislation" / "chatbot.html"
-    SUGGESTIONS_JS = ROOT / "src" / "apps" / "core" / "static" / "js" / "jurix-dynamic-suggestions.js"
+    CHATBOT_HTML = (
+        ROOT / "src" / "apps" / "legislation" / "templates" / "legislation" / "chatbot.html"
+    )
+    SUGGESTIONS_JS = (
+        ROOT / "src" / "apps" / "core" / "static" / "js" / "jurix-dynamic-suggestions.js"
+    )
 
     def _read(self, path: Path) -> str:
         if not path.exists():
@@ -28,11 +32,15 @@ class Command(BaseCommand):
             if token in chat_js:
                 violations.append(f"chat.js ainda contém {token}")
 
-        card_section = chatbot.split("figma-suggestions-cards", 1)[1] if "figma-suggestions-cards" in chatbot else ""
+        card_section = (
+            chatbot.split("figma-suggestions-cards", 1)[1]
+            if "figma-suggestions-cards" in chatbot
+            else ""
+        )
         if "data-question=" in card_section.split("</div>", 1)[0]:
             violations.append("chatbot.html contém perguntas hardcoded no container de sugestões")
 
-        for token in ("/api/v1/suggestions/", "data-source=\"corpus\"", "municipal_natal_corpus"):
+        for token in ("/api/v1/suggestions/", 'data-source="corpus"', "municipal_natal_corpus"):
             if token not in dynamic_js:
                 violations.append(f"controller dinâmico sem contrato esperado: {token}")
 
@@ -40,4 +48,3 @@ class Command(BaseCommand):
             raise CommandError("; ".join(violations))
 
         self.stdout.write(self.style.SUCCESS("Suggestion contract: PASS"))
-

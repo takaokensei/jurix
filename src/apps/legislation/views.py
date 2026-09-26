@@ -83,7 +83,9 @@ class NormaListView(ListView):
             queryset = queryset.filter(ano=int(selected_year))
 
         ordering = self.request.GET.get("ordenar", "recentes")
-        queryset = queryset.order_by(*self.ORDERING_OPTIONS.get(ordering, self.ORDERING_OPTIONS["recentes"]))
+        queryset = queryset.order_by(
+            *self.ORDERING_OPTIONS.get(ordering, self.ORDERING_OPTIONS["recentes"])
+        )
         return queryset.only(
             "id",
             "tipo",
@@ -115,9 +117,7 @@ class NormaListView(ListView):
 
         page_obj = context.get("page_obj")
         context["filtered_count"] = (
-            page_obj.paginator.count
-            if page_obj is not None
-            else self.object_list.count()
+            page_obj.paginator.count if page_obj is not None else self.object_list.count()
         )
         return context
 

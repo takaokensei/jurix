@@ -13,7 +13,9 @@ def test_manifest_example_is_machine_readable():
 
 def test_synthetic_unanswerable_dataset_is_structurally_valid():
     path = Path("benchmarks/rag/production/synthetic-unanswerable.jsonl")
-    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    rows = [
+        json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
+    ]
     assert len(rows) == 60
     assert all(row["answerability"] == "unanswerable" for row in rows)
 

@@ -1,4 +1,5 @@
 """Reproducible evaluation of extracted legal alteration actions."""
+
 from __future__ import annotations
 
 import json
@@ -64,14 +65,16 @@ def evaluate(cases: list[EventCase]) -> dict:
     for case in cases:
         gold = set(case.gold_actions)
         predicted = set(predicted_actions(case.norma_id))
-        case_results.append({
-            "case_id": case.case_id,
-            "norma_id": case.norma_id,
-            "gold_actions": sorted(gold),
-            "predicted_actions": sorted(predicted),
-            "missing": sorted(gold - predicted),
-            "unexpected": sorted(predicted - gold),
-        })
+        case_results.append(
+            {
+                "case_id": case.case_id,
+                "norma_id": case.norma_id,
+                "gold_actions": sorted(gold),
+                "predicted_actions": sorted(predicted),
+                "missing": sorted(gold - predicted),
+                "unexpected": sorted(predicted - gold),
+            }
+        )
         for action in ACTIONS:
             totals[action]["tp"] += int(action in gold and action in predicted)
             totals[action]["fp"] += int(action not in gold and action in predicted)
@@ -80,17 +83,29 @@ def evaluate(cases: list[EventCase]) -> dict:
     metrics = []
     for action in ACTIONS:
         current = totals[action]
-        precision = current["tp"] / (current["tp"] + current["fp"]) if current["tp"] + current["fp"] else 0.0
-        recall = current["tp"] / (current["tp"] + current["fn"]) if current["tp"] + current["fn"] else 0.0
-        metrics.append(asdict(ClassMetrics(
-            action=action,
-            tp=current["tp"],
-            fp=current["fp"],
-            fn=current["fn"],
-            precision=round(precision, 6),
-            recall=round(recall, 6),
-            f1=round(_f1(precision, recall), 6),
-        )))
+        precision = (
+            current["tp"] / (current["tp"] + current["fp"])
+            if current["tp"] + current["fp"]
+            else 0.0
+        )
+        recall = (
+            current["tp"] / (current["tp"] + current["fn"])
+            if current["tp"] + current["fn"]
+            else 0.0
+        )
+        metrics.append(
+            asdict(
+                ClassMetrics(
+                    action=action,
+                    tp=current["tp"],
+                    fp=current["fp"],
+                    fn=current["fn"],
+                    precision=round(precision, 6),
+                    recall=round(recall, 6),
+                    f1=round(_f1(precision, recall), 6),
+                )
+            )
+        )
     macro_f1 = sum(item["f1"] for item in metrics) / len(metrics) if metrics else 0.0
     return {
         "cases": len(cases),

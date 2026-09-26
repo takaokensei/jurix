@@ -118,12 +118,12 @@ class Command(BaseCommand):
 
                 self.stdout.write(
                     self.style.SUCCESS(
-                        f'\nIngestão concluída:\n'
-                        f'  - Total buscadas: {stats["total_fetched"]}\n'
-                        f'  - Criadas: {stats["created"]}\n'
-                        f'  - Atualizadas: {stats["updated"]}\n'
-                        f'  - Falhas: {stats["failed"]}\n'
-                        f'  - Downloads disparados: {len(stats.get("download_tasks", []))}'
+                        f"\nIngestão concluída:\n"
+                        f"  - Total buscadas: {stats['total_fetched']}\n"
+                        f"  - Criadas: {stats['created']}\n"
+                        f"  - Atualizadas: {stats['updated']}\n"
+                        f"  - Falhas: {stats['failed']}\n"
+                        f"  - Downloads disparados: {len(stats.get('download_tasks', []))}"
                     )
                 )
 
@@ -133,7 +133,7 @@ class Command(BaseCommand):
                         self.stdout.write(f"  - {error}")
 
                     if len(stats["errors"]) > 10:
-                        self.stdout.write(f'  ... e mais {len(stats["errors"]) - 10} erro(s)')
+                        self.stdout.write(f"  ... e mais {len(stats['errors']) - 10} erro(s)")
 
         except Exception as e:
             raise CommandError(f"Falha na ingestão: {str(e)}") from e
@@ -219,17 +219,17 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS("=" * 80))
             self.stdout.write(self.style.SUCCESS("RESUMO DA INGESTÃO"))
             self.stdout.write(self.style.SUCCESS("=" * 80))
-            self.stdout.write(f'  ✓ Normas processadas: {stats["processed"]}')
-            self.stdout.write(f'  ✓ Novas criadas: {stats["created"]}')
-            self.stdout.write(f'  ✓ Atualizadas: {stats["updated"]}')
-            self.stdout.write(f'  ✗ Falhas: {stats["failed"]}')
+            self.stdout.write(f"  ✓ Normas processadas: {stats['processed']}")
+            self.stdout.write(f"  ✓ Novas criadas: {stats['created']}")
+            self.stdout.write(f"  ✓ Atualizadas: {stats['updated']}")
+            self.stdout.write(f"  ✗ Falhas: {stats['failed']}")
 
             if auto_download:
-                self.stdout.write(f'  📥 Downloads agendados: {len(stats["download_tasks"])}')
+                self.stdout.write(f"  📥 Downloads agendados: {len(stats['download_tasks'])}")
 
             if stats["errors"]:
                 self.stdout.write(
-                    self.style.WARNING(f'\n⚠️  {len(stats["errors"])} erro(s) encontrado(s)')
+                    self.style.WARNING(f"\n⚠️  {len(stats['errors'])} erro(s) encontrado(s)")
                 )
                 for error in stats["errors"][:5]:
                     self.stdout.write(f"  - {error}")

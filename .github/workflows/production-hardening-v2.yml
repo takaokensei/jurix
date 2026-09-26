@@ -18,8 +18,8 @@ jobs:
       DEBUG: "False"
       DJANGO_SECRET_KEY: github-actions-jurix-nonproduction-secret
       ALLOWED_HOSTS: localhost,127.0.0.1
-      USE_SQLITE: "True"
-      USE_LOCMEM_CACHE: "True"
+      USE_SQLITE: "False"
+      USE_LOCMEM_CACHE: "False"
       STORAGE_BACKEND: local
       JURIX_ATTACHMENT_ROOT: /tmp/jurix-attachments
       OLLAMA_MODEL: llama3

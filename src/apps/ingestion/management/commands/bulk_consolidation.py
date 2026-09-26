@@ -117,17 +117,17 @@ class Command(BaseCommand):
         if total == 0:
             self.stdout.write(
                 self.style.WARNING(
-                    "\n⚠️  No normas found matching criteria. " "Try --force or --all flags."
+                    "\n⚠️  No normas found matching criteria. Try --force or --all flags."
                 )
             )
             return
 
         self.stdout.write(self.style.NOTICE(f"\n📊 Found {total} norma(s) to process"))
         self.stdout.write(self.style.NOTICE(f"   Offset: {offset}"))
-        self.stdout.write(self.style.NOTICE(f'   Limit: {limit if limit else "None (all)"}'))
+        self.stdout.write(self.style.NOTICE(f"   Limit: {limit if limit else 'None (all)'}"))
         self.stdout.write(
             self.style.NOTICE(
-                f'   Mode: {"Synchronous (blocking)" if sync_mode else "Async (Celery)"}'
+                f"   Mode: {'Synchronous (blocking)' if sync_mode else 'Async (Celery)'}"
             )
         )
         self.stdout.write(self.style.NOTICE("-" * 80))
@@ -150,25 +150,25 @@ class Command(BaseCommand):
                         success_count += 1
                         self.stdout.write(
                             self.style.SUCCESS(
-                                f'  ✓ SUCCESS: '
-                                f'{result.get("total_dispositivos", 0)} dispositivos, '
-                                f'{result.get("revoked_count", 0)} revoked, '
-                                f'{result.get("altered_count", 0)} altered, '
-                                f'{result.get("added_count", 0)} added, '
-                                f'{result.get("events_applied", 0)}/'
-                                f'{result.get("events_processed", 0)} events applied '
-                                f'({result.get("events_unresolved", 0)} unresolved'
-                                f'{", NEEDS REVIEW" if result.get("needs_review") else ""}) '
-                                f'in {result.get("processing_time", 0):.2f}s'
+                                f"  ✓ SUCCESS: "
+                                f"{result.get('total_dispositivos', 0)} dispositivos, "
+                                f"{result.get('revoked_count', 0)} revoked, "
+                                f"{result.get('altered_count', 0)} altered, "
+                                f"{result.get('added_count', 0)} added, "
+                                f"{result.get('events_applied', 0)}/"
+                                f"{result.get('events_processed', 0)} events applied "
+                                f"({result.get('events_unresolved', 0)} unresolved"
+                                f"{', NEEDS REVIEW' if result.get('needs_review') else ''}) "
+                                f"in {result.get('processing_time', 0):.2f}s"
                             )
                         )
                         self.stdout.write(
-                            f'    Consolidated text: {result.get("consolidated_length", 0)} chars'
+                            f"    Consolidated text: {result.get('consolidated_length', 0)} chars"
                         )
                     else:
                         failure_count += 1
                         self.stdout.write(
-                            self.style.ERROR(f'  ✗ FAILED: {result.get("error", "Unknown error")}')
+                            self.style.ERROR(f"  ✗ FAILED: {result.get('error', 'Unknown error')}")
                         )
                 else:
                     # Asynchronous execution via Celery
@@ -194,8 +194,7 @@ class Command(BaseCommand):
         if not sync_mode:
             self.stdout.write(
                 self.style.WARNING(
-                    "\n💡 Tasks are running asynchronously. "
-                    "Check Celery worker logs for results."
+                    "\n💡 Tasks are running asynchronously. Check Celery worker logs for results."
                 )
             )
 
@@ -205,19 +204,19 @@ class Command(BaseCommand):
         """Display detailed result for a single task execution."""
         if result.get("success"):
             self.stdout.write(self.style.SUCCESS("\n✓ SUCCESS"))
-            self.stdout.write(f'  Total dispositivos: {result.get("total_dispositivos", 0)}')
-            self.stdout.write(f'  Revoked: {result.get("revoked_count", 0)}')
-            self.stdout.write(f'  Altered: {result.get("altered_count", 0)}')
-            self.stdout.write(f'  Added: {result.get("added_count", 0)}')
-            self.stdout.write(f'  Events considered: {result.get("events_processed", 0)}')
-            self.stdout.write(f'  Events applied: {result.get("events_applied", 0)}')
-            self.stdout.write(f'  Events unresolved: {result.get("events_unresolved", 0)}')
+            self.stdout.write(f"  Total dispositivos: {result.get('total_dispositivos', 0)}")
+            self.stdout.write(f"  Revoked: {result.get('revoked_count', 0)}")
+            self.stdout.write(f"  Altered: {result.get('altered_count', 0)}")
+            self.stdout.write(f"  Added: {result.get('added_count', 0)}")
+            self.stdout.write(f"  Events considered: {result.get('events_processed', 0)}")
+            self.stdout.write(f"  Events applied: {result.get('events_applied', 0)}")
+            self.stdout.write(f"  Events unresolved: {result.get('events_unresolved', 0)}")
             if result.get("needs_review"):
                 self.stdout.write(self.style.WARNING("  ⚠ Norma flagged for review"))
             self.stdout.write(
-                f'  Consolidated text length: {result.get("consolidated_length", 0)} chars'
+                f"  Consolidated text length: {result.get('consolidated_length', 0)} chars"
             )
-            self.stdout.write(f'  Processing time: {result.get("processing_time", 0):.2f}s')
+            self.stdout.write(f"  Processing time: {result.get('processing_time', 0):.2f}s")
         else:
             self.stdout.write(self.style.ERROR("\n✗ FAILED"))
-            self.stdout.write(self.style.ERROR(f'  Error: {result.get("error", "Unknown")}'))
+            self.stdout.write(self.style.ERROR(f"  Error: {result.get('error', 'Unknown')}"))

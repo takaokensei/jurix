@@ -106,16 +106,16 @@ class Command(BaseCommand):
                         success_count += 1
                         self.stdout.write(
                             self.style.SUCCESS(
-                                f'  ✓ Segmentation completed: {result["dispositivos_created"]} '
-                                f'dispositivos ({result["articles"]} articles, '
-                                f'{result["paragraphs"]} paragraphs, {result["incisos"]} incisos, '
-                                f'{result["alineas"]} alineas) in {result["processing_time"]:.2f}s'
+                                f"  ✓ Segmentation completed: {result['dispositivos_created']} "
+                                f"dispositivos ({result['articles']} articles, "
+                                f"{result['paragraphs']} paragraphs, {result['incisos']} incisos, "
+                                f"{result['alineas']} alineas) in {result['processing_time']:.2f}s"
                             )
                         )
                     else:
                         failed_count += 1
                         self.stdout.write(
-                            self.style.ERROR(f'  ✗ Failed: {result.get("error", "Unknown error")}')
+                            self.style.ERROR(f"  ✗ Failed: {result.get('error', 'Unknown error')}")
                         )
                 else:
                     # Execute asynchronously via Celery

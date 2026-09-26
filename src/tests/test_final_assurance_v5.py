@@ -25,6 +25,6 @@ def test_release_workflow_contains_blocking_vector_gate() -> None:
     assert "vector_production_gate_v5.py --strict --json" in text
 
 
-def test_ingestion_refactor_tools_exist() -> None:
-    assert (root() / "scripts/refactor_ingestion_tasks_v5.py").exists()
-    assert (root() / "scripts/verify_ingestion_refactor_v5.py").exists()
+def test_ingestion_refactor_contract_is_current() -> None:
+    assert (root() / "scripts/check_ingestion_contract.py").exists()
+    assert not (root() / "src/apps/ingestion/tasks_legacy.py").exists()

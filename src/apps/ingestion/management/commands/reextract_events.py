@@ -113,7 +113,7 @@ class Command(BaseCommand):
             self.stdout.write(f"Previous total events: {initial_events_count}")
             self.stdout.write(f"Current total events:  {final_events_count}")
             diff = final_events_count - initial_events_count
-            self.stdout.write(f'Net event delta:       {"+" if diff >= 0 else ""}{diff}')
+            self.stdout.write(f"Net event delta:       {'+' if diff >= 0 else ''}{diff}")
 
             # Action distribution breakdown
             distribution = dict(EventoAlteracao.objects.values_list("acao").annotate(Count("id")))
