@@ -1,0 +1,45 @@
+name: RAG Release Gate v2
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/processing/**"
+      - "src/llm_engine/**"
+      - "benchmarks/rag/**"
+      - "scripts/**"
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings
+      DJANGO_SKIP_DOTENV: "1"
+      DEBUG: "False"
+      DJANGO_SECRET_KEY: github-actions-jurix-nonproduction-secret
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      USE_SQLITE: "True"
+      USE_LOCMEM_CACHE: "True"
+      OLLAMA_MODEL: llama3
+      OLLAMA_ALLOWED_MODELS: llama3
+      OLLAMA_BASE_URL: http://127.0.0.1:11434
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python scripts/architecture_budget_v2.py
+      - run: python -m pytest src/tests/test_rag_release_policy_v2.py src/tests/test_rag_eval_engine_v2.py
+      - name: Validate reviewed benchmark when present
+        shell: bash
+        run: |
+          if [[ -f benchmarks/rag/production/manifest.json ]]; then
+            python scripts/validate_rag_benchmark.py benchmarks/rag/production/manifest.json
+          else
+            echo "Reviewed production benchmark not present; contract test suite remains mandatory."
+          fi

@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "required": [
+    "id",
+    "question",
+    "expected_sources",
+    "answerability"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "question": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected_sources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "expected_citations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "answerability": {
+      "enum": [
+        "answerable",
+        "unanswerable"
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}

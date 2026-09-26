@@ -289,6 +289,15 @@ RAG_BENCHMARK_PATH = os.getenv(
     "RAG_BENCHMARK_PATH", str(BASE_DIR / "benchmarks" / "rag" / "production" / "manifest.json")
 )
 
+# Production hardening v2: explicit release thresholds. These values are consumed
+# by offline gates and can be tuned per environment without changing code.
+RAG_RELEASE_MIN_SCORE = float(os.getenv("RAG_RELEASE_MIN_SCORE", "1.0"))
+RAG_RELEASE_MIN_SOURCE_RECALL = float(os.getenv("RAG_RELEASE_MIN_SOURCE_RECALL", "1.0"))
+RAG_RELEASE_MIN_CITATION_PRECISION = float(os.getenv("RAG_RELEASE_MIN_CITATION_PRECISION", "1.0"))
+RAG_RELEASE_MIN_CITATION_RECALL = float(os.getenv("RAG_RELEASE_MIN_CITATION_RECALL", "1.0"))
+RAG_RELEASE_MAX_ANSWER_CHARS = int(os.getenv("RAG_RELEASE_MAX_ANSWER_CHARS", "24000"))
+RAG_RELEASE_MIN_EMBEDDING_COVERAGE = float(os.getenv("RAG_RELEASE_MIN_EMBEDDING_COVERAGE", "0.95"))
+
 if not DEBUG and not RAG_STRICT_GROUNDING:
     from django.core.exceptions import ImproperlyConfigured
 
