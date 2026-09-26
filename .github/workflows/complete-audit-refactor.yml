@@ -1,0 +1,48 @@
+name: Complete Claude Audit Refactor
+
+on:
+  push:
+    branches: [fix/claude-audit-complete]
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    if: ${{ !contains(github.event.head_commit.message, '[skip audit-refactor]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/claude-audit-complete
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Split ingestion implementation
+        run: python scripts/refactor_ingestion_tasks.py
+
+      - name: Verify legacy implementation is gone
+        run: |
+          test ! -e src/apps/ingestion/tasks_legacy.py
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          root = Path('src/apps/ingestion')
+          public = ast.parse((root / 'tasks.py').read_text())
+          names = {n.name for n in public.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+          imported = {a.asname or a.name for n in public.body if isinstance(n, ast.ImportFrom) for a in n.names}
+          required = {'ingest_normas_task','ingest_normas_bulk_task','download_pdf_task','ocr_pdf_task','consolidate_norma_task','generate_embedding_task'}
+          missing = required - names - imported
+          assert not missing, missing
+          assert len((root / 'tasks.py').read_text().splitlines()) < 80
+          PY
+
+      - name: Commit generated split
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/apps/ingestion scripts/refactor_ingestion_tasks.py
+          git commit -m 'refactor: split ingestion tasks by domain [skip audit-refactor]' || exit 0
+          git push origin HEAD:fix/claude-audit-complete
