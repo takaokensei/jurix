@@ -1,0 +1,19 @@
+name: Merge Current Main
+on:
+  push:
+    branches: [fix/claude-audit-complete]
+permissions:
+  contents: write
+jobs:
+  merge:
+    if: ${{ !contains(github.event.head_commit.message, '[skip merge-current]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: fix/claude-audit-complete, fetch-depth: 0}
+      - run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git merge --no-edit -X ours origin/main
+          git push origin HEAD:fix/claude-audit-complete
