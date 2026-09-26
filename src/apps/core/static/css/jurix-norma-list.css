@@ -1,0 +1,911 @@
+/*
+ * Jurix Norma Library — production reading surface
+ * --------------------------------------------------
+ * Dedicated styles for /normas/. This stylesheet intentionally does not mutate
+ * generic cards used by the assistant so the legislation library can evolve
+ * independently and remain readable at 320px–1920px widths.
+ */
+
+.jurix-normas-page {
+    --norma-bg: #0b1220;
+    --norma-panel: rgba(17, 27, 43, 0.92);
+    --norma-panel-soft: rgba(21, 34, 54, 0.74);
+    --norma-border: rgba(148, 163, 184, 0.16);
+    --norma-border-strong: rgba(96, 165, 250, 0.34);
+    --norma-text: #f8fafc;
+    --norma-text-soft: #cbd5e1;
+    --norma-text-muted: #94a3b8;
+    --norma-accent: #60a5fa;
+    --norma-accent-strong: #3b82f6;
+    --norma-success: #34d399;
+    --norma-shadow: 0 18px 60px rgba(0, 0, 0, 0.22);
+    --norma-radius: 18px;
+    background:
+        radial-gradient(circle at 14% 0%, rgba(59, 130, 246, 0.10), transparent 32rem),
+        radial-gradient(circle at 96% 20%, rgba(34, 211, 238, 0.055), transparent 26rem),
+        var(--figma-bg, #081220);
+    min-height: 100vh;
+}
+
+[data-theme="light"] .jurix-normas-page {
+    --norma-bg: #f7f9fc;
+    --norma-panel: rgba(255, 255, 255, 0.94);
+    --norma-panel-soft: rgba(255, 255, 255, 0.78);
+    --norma-border: rgba(15, 23, 42, 0.10);
+    --norma-border-strong: rgba(37, 99, 235, 0.28);
+    --norma-text: #0f172a;
+    --norma-text-soft: #334155;
+    --norma-text-muted: #64748b;
+    --norma-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+    background: linear-gradient(180deg, #f8fafc 0%, #eef3f9 100%);
+}
+
+.jurix-normas-page .container {
+    width: min(1420px, calc(100% - 48px));
+    max-width: 1420px;
+    padding: 0 0 72px;
+}
+
+.jurix-normas-page main.container {
+    min-height: calc(100vh - 64px);
+}
+
+.jurix-normas-page .navbar {
+    background: rgba(6, 14, 27, 0.88);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+[data-theme="light"] .jurix-normas-page .navbar {
+    background: rgba(255, 255, 255, 0.88);
+    border-bottom-color: rgba(15, 23, 42, 0.08);
+}
+
+.jurix-norma-shell {
+    display: grid;
+    gap: 28px;
+    padding-top: clamp(28px, 5vw, 54px);
+}
+
+.jurix-norma-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 28px;
+    align-items: end;
+}
+
+.jurix-norma-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    color: var(--norma-accent);
+    font-size: 11px;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.jurix-norma-eyebrow::before {
+    content: "";
+    width: 22px;
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+}
+
+.jurix-norma-title {
+    max-width: 980px;
+    margin: 0;
+    color: var(--norma-text);
+    font-family: 'Lora', Georgia, serif;
+    font-size: clamp(34px, 4.4vw, 64px);
+    line-height: 1.02;
+    letter-spacing: -0.045em;
+}
+
+.jurix-norma-subtitle {
+    max-width: 760px;
+    margin: 14px 0 0;
+    color: var(--norma-text-muted);
+    font-size: clamp(15px, 1.4vw, 18px);
+    line-height: 1.7;
+}
+
+.jurix-norma-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(145px, 1fr));
+    gap: 10px;
+    min-width: min(100%, 320px);
+}
+
+.jurix-norma-stat {
+    min-height: 96px;
+    padding: 16px 18px;
+    border: 1px solid var(--norma-border);
+    border-radius: 14px;
+    background: var(--norma-panel-soft);
+    box-shadow: var(--norma-shadow);
+}
+
+.jurix-norma-stat-value {
+    display: block;
+    color: var(--norma-text);
+    font-size: 25px;
+    line-height: 1.1;
+    font-weight: 750;
+}
+
+.jurix-norma-stat-label {
+    display: block;
+    margin-top: 8px;
+    color: var(--norma-text-muted);
+    font-size: 11px;
+    line-height: 1.35;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.jurix-norma-toolbar {
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+    border: 1px solid var(--norma-border);
+    border-radius: var(--norma-radius);
+    background: var(--norma-panel);
+    box-shadow: var(--norma-shadow);
+}
+
+.jurix-norma-search-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: stretch;
+}
+
+.jurix-norma-search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 54px;
+    border: 1px solid var(--norma-border);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.025);
+    transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+[data-theme="light"] .jurix-norma-search-box {
+    background: rgba(15, 23, 42, 0.025);
+}
+
+.jurix-norma-search-box:focus-within {
+    border-color: var(--norma-border-strong);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08);
+}
+
+.jurix-norma-search-icon {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    margin-left: 16px;
+    color: var(--norma-text-muted);
+}
+
+.jurix-norma-search-input {
+    width: 100%;
+    min-width: 0;
+    height: 52px;
+    padding: 0 50px 0 12px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--norma-text);
+    font: 500 16px/1.4 Inter, system-ui, sans-serif;
+}
+
+.jurix-norma-search-input::placeholder {
+    color: var(--norma-text-muted);
+}
+
+.jurix-norma-clear {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    width: 34px;
+    height: 34px;
+    transform: translateY(-50%);
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 9px;
+    color: var(--norma-text-muted);
+    background: transparent;
+    cursor: pointer;
+}
+
+.jurix-norma-clear:hover,
+.jurix-norma-clear:focus-visible {
+    color: var(--norma-text);
+    background: rgba(148, 163, 184, 0.10);
+}
+
+.jurix-norma-primary-button,
+.jurix-norma-secondary-button {
+    min-height: 54px;
+    padding: 0 18px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font: 700 13px/1 Inter, system-ui, sans-serif;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.jurix-norma-primary-button {
+    color: white;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    box-shadow: 0 10px 28px rgba(37, 99, 235, 0.22);
+}
+
+.jurix-norma-primary-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 30px rgba(37, 99, 235, 0.28);
+}
+
+.jurix-norma-secondary-button {
+    color: var(--norma-text-soft);
+    background: rgba(148, 163, 184, 0.06);
+    border-color: var(--norma-border);
+}
+
+.jurix-norma-secondary-button:hover {
+    color: var(--norma-text);
+    border-color: var(--norma-border-strong);
+}
+
+.jurix-norma-filter-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(150px, .55fr)) auto;
+    gap: 10px;
+}
+
+.jurix-norma-field {
+    display: grid;
+    gap: 6px;
+}
+
+.jurix-norma-field label {
+    margin-left: 2px;
+    color: var(--norma-text-muted);
+    font-size: 10px;
+    line-height: 1.3;
+    font-weight: 800;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+}
+
+.jurix-norma-select {
+    width: 100%;
+    min-height: 42px;
+    padding: 0 36px 0 12px;
+    border: 1px solid var(--norma-border);
+    border-radius: 10px;
+    color: var(--norma-text-soft);
+    background: var(--norma-panel-soft);
+    font: 600 13px/1 Inter, system-ui, sans-serif;
+    outline: 0;
+}
+
+.jurix-norma-select:focus-visible {
+    border-color: var(--norma-border-strong);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+}
+
+.jurix-norma-results-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 2px;
+}
+
+.jurix-norma-result-copy {
+    color: var(--norma-text-muted);
+    font-size: 12px;
+}
+
+.jurix-norma-result-copy strong {
+    color: var(--norma-text-soft);
+}
+
+.jurix-norma-view-switcher {
+    display: inline-flex;
+    padding: 3px;
+    gap: 3px;
+    border: 1px solid var(--norma-border);
+    border-radius: 10px;
+    background: rgba(148, 163, 184, 0.05);
+}
+
+.jurix-norma-view-button {
+    width: 34px;
+    height: 30px;
+    border: 0;
+    border-radius: 7px;
+    color: var(--norma-text-muted);
+    background: transparent;
+    cursor: pointer;
+}
+
+.jurix-norma-view-button[aria-pressed="true"] {
+    color: var(--norma-text);
+    background: rgba(96, 165, 250, 0.14);
+}
+
+.jurix-norma-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.jurix-norma-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 100%;
+    border: 1px solid var(--norma-border);
+    border-radius: var(--norma-radius);
+    background: linear-gradient(180deg, rgba(20, 31, 49, 0.90), rgba(13, 23, 39, 0.96));
+    box-shadow: var(--norma-shadow);
+    overflow: hidden;
+    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+[data-theme="light"] .jurix-norma-card {
+    background: rgba(255, 255, 255, 0.94);
+}
+
+.jurix-norma-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--norma-border-strong);
+    box-shadow: 0 22px 60px rgba(0, 0, 0, 0.26);
+}
+
+.jurix-norma-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 2px;
+    background: linear-gradient(90deg, rgba(96, 165, 250, 0.05), rgba(96, 165, 250, 0.8), rgba(34, 211, 238, 0.05));
+}
+
+.jurix-norma-card-main {
+    display: grid;
+    gap: 16px;
+    padding: 20px;
+    flex: 1;
+}
+
+.jurix-norma-meta-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.jurix-norma-type {
+    color: var(--norma-accent);
+    font-size: 10px;
+    line-height: 1.2;
+    font-weight: 850;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.jurix-norma-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #bbf7d0;
+    font-size: 10px;
+    line-height: 1.2;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.jurix-norma-status::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--norma-success);
+    box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.10);
+}
+
+[data-theme="light"] .jurix-norma-status {
+    color: #047857;
+}
+
+.jurix-norma-card-title {
+    margin: 0;
+    color: var(--norma-text);
+    font: 700 clamp(18px, 1.6vw, 22px)/1.2 Inter, system-ui, sans-serif;
+    letter-spacing: -0.025em;
+    overflow-wrap: anywhere;
+}
+
+.jurix-norma-card-ementa {
+    margin: 0;
+    color: var(--norma-text-soft);
+    font-size: 13px;
+    line-height: 1.72;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 5;
+    overflow: hidden;
+}
+
+.jurix-norma-card-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: auto;
+}
+
+.jurix-norma-fact {
+    min-width: 0;
+    padding: 10px 11px;
+    border: 1px solid var(--norma-border);
+    border-radius: 10px;
+    background: rgba(148, 163, 184, 0.035);
+}
+
+.jurix-norma-fact-label {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--norma-text-muted);
+    font-size: 9px;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.jurix-norma-fact-value {
+    display: block;
+    color: var(--norma-text-soft);
+    font-size: 12px;
+    line-height: 1.4;
+    font-weight: 650;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.jurix-norma-card-actions {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px 18px;
+}
+
+.jurix-norma-card-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    gap: 8px;
+    border: 1px solid rgba(96, 165, 250, 0.22);
+    border-radius: 10px;
+    color: #dbeafe;
+    background: rgba(59, 130, 246, 0.10);
+    font-size: 12px;
+    font-weight: 750;
+    text-decoration: none;
+}
+
+.jurix-norma-card-link:hover,
+.jurix-norma-card-link:focus-visible {
+    border-color: rgba(96, 165, 250, 0.42);
+    background: rgba(59, 130, 246, 0.16);
+}
+
+[data-theme="light"] .jurix-norma-card-link {
+    color: #1d4ed8;
+    background: rgba(59, 130, 246, 0.07);
+}
+
+.jurix-norma-external-link {
+    display: inline-grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--norma-border);
+    border-radius: 10px;
+    color: var(--norma-text-muted);
+    background: rgba(148, 163, 184, 0.045);
+}
+
+.jurix-norma-list.is-list {
+    grid-template-columns: 1fr;
+}
+
+.jurix-norma-list.is-list .jurix-norma-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+}
+
+.jurix-norma-list.is-list .jurix-norma-card-main {
+    padding-right: 6px;
+}
+
+.jurix-norma-list.is-list .jurix-norma-card-actions {
+    min-width: 190px;
+    padding: 20px;
+    grid-template-columns: 1fr;
+    align-content: center;
+}
+
+.jurix-norma-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 26px;
+}
+
+.jurix-norma-page-link,
+.jurix-norma-page-current {
+    min-width: 42px;
+    min-height: 40px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--norma-border);
+    border-radius: 10px;
+    color: var(--norma-text-soft);
+    background: var(--norma-panel);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.jurix-norma-page-current {
+    color: white;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    border-color: transparent;
+}
+
+.jurix-norma-page-link:hover,
+.jurix-norma-page-link:focus-visible {
+    border-color: var(--norma-border-strong);
+    color: var(--norma-text);
+}
+
+.jurix-norma-empty {
+    padding: clamp(48px, 8vw, 96px) 24px;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    border: 1px dashed var(--norma-border-strong);
+    border-radius: 22px;
+    background: var(--norma-panel-soft);
+}
+
+.jurix-norma-empty-icon {
+    width: 56px;
+    height: 56px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    color: var(--norma-accent);
+    background: rgba(96, 165, 250, 0.08);
+}
+
+.jurix-norma-empty h2 {
+    margin: 18px 0 8px;
+    color: var(--norma-text);
+    font-size: 22px;
+}
+
+.jurix-norma-empty p {
+    max-width: 540px;
+    margin: 0;
+    color: var(--norma-text-muted);
+    line-height: 1.7;
+}
+
+.jurix-norma-empty .jurix-norma-primary-button {
+    margin-top: 18px;
+}
+
+/* Responsive: large tablet */
+@media (max-width: 1180px) {
+    .jurix-norma-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .jurix-norma-hero { grid-template-columns: 1fr; }
+    .jurix-norma-summary { grid-template-columns: repeat(2, minmax(0, 180px)); }
+    .jurix-norma-filter-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Responsive: tablet */
+@media (max-width: 860px) {
+    .jurix-normas-page .container { width: min(100% - 28px, 760px); }
+    .jurix-norma-search-row { grid-template-columns: 1fr; }
+    .jurix-norma-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .jurix-norma-results-bar { align-items: flex-start; flex-direction: column; }
+    .jurix-norma-grid { grid-template-columns: 1fr; }
+    .jurix-norma-list.is-list .jurix-norma-card { grid-template-columns: 1fr; }
+    .jurix-norma-list.is-list .jurix-norma-card-actions { min-width: 0; padding-top: 0; }
+}
+
+/* Responsive: phone */
+@media (max-width: 620px) {
+    .jurix-normas-page .container { width: min(100% - 20px, 540px); padding-bottom: 42px; }
+    .jurix-norma-shell { gap: 18px; padding-top: 22px; }
+    .jurix-norma-title { font-size: clamp(30px, 11vw, 44px); }
+    .jurix-norma-subtitle { font-size: 14px; line-height: 1.62; }
+    .jurix-norma-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
+    .jurix-norma-stat { min-height: 82px; padding: 12px 13px; }
+    .jurix-norma-stat-value { font-size: 20px; }
+    .jurix-norma-stat-label { font-size: 9px; }
+    .jurix-norma-toolbar { padding: 12px; border-radius: 14px; }
+    .jurix-norma-filter-grid { grid-template-columns: 1fr; }
+    .jurix-norma-primary-button,
+    .jurix-norma-secondary-button { width: 100%; }
+    .jurix-norma-card-main { padding: 16px; }
+    .jurix-norma-card-actions { padding: 10px 16px 16px; }
+    .jurix-norma-card-facts { grid-template-columns: 1fr; }
+    .jurix-norma-page-link,
+    .jurix-norma-page-current { min-width: 38px; min-height: 38px; padding: 0 9px; }
+}
+
+/* Touch targets and accessibility */
+@media (pointer: coarse) {
+    .jurix-norma-clear,
+    .jurix-norma-view-button,
+    .jurix-norma-page-link,
+    .jurix-norma-page-current { min-height: 42px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .jurix-norma-card,
+    .jurix-norma-primary-button,
+    .jurix-norma-search-box { transition: none; }
+}
+
+@media print {
+    .jurix-normas-page .navbar,
+    .jurix-norma-toolbar,
+    .jurix-norma-view-switcher,
+    .jurix-norma-card-actions,
+    .jurix-norma-pagination { display: none !important; }
+    .jurix-norma-grid { grid-template-columns: 1fr 1fr; }
+    .jurix-norma-card { break-inside: avoid; box-shadow: none; }
+}
+
+/*
+ * Fine-grained type rhythm. Keeping these selectors local avoids fighting the
+ * legacy Swiss tokens that still serve the assistant and detail pages.
+ */
+.jurix-norma-card p,
+.jurix-norma-shell p,
+.jurix-norma-shell label,
+.jurix-norma-shell select,
+.jurix-norma-shell input,
+.jurix-norma-shell button { letter-spacing: 0; }
+
+.jurix-norma-card-title,
+.jurix-norma-title,
+.jurix-norma-subtitle,
+.jurix-norma-card-ementa { text-wrap: pretty; }
+
+.jurix-norma-card:focus-within {
+    border-color: var(--norma-border-strong);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.06), var(--norma-shadow);
+}
+
+.jurix-norma-card-link:focus-visible,
+.jurix-norma-external-link:focus-visible,
+.jurix-norma-primary-button:focus-visible,
+.jurix-norma-secondary-button:focus-visible,
+.jurix-norma-view-button:focus-visible,
+.jurix-norma-search-input:focus-visible,
+.jurix-norma-select:focus-visible,
+.jurix-norma-clear:focus-visible,
+.jurix-norma-page-link:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+
+/* Suggestion states shared by the assistant welcome surface. */
+.jurix-suggestions-loading {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+}
+
+.jurix-suggestion-skeleton {
+    min-height: 92px;
+    border-radius: 14px;
+    border: 1px solid var(--figma-border, rgba(148, 163, 184, 0.16));
+    background: linear-gradient(90deg, rgba(148,163,184,.055), rgba(148,163,184,.12), rgba(148,163,184,.055));
+    background-size: 200% 100%;
+    animation: jurix-suggestion-shimmer 1.35s linear infinite;
+}
+
+.jurix-suggestions-empty {
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--figma-border, rgba(148,163,184,.16));
+    border-radius: 14px;
+    color: var(--figma-text-muted, #94a3b8);
+    background: rgba(148, 163, 184, 0.035);
+}
+
+.jurix-suggestions-empty-mark {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    color: var(--figma-blue-light, #60a5fa);
+    background: rgba(96,165,250,.08);
+}
+
+.jurix-suggestions-empty strong { color: var(--figma-text-white, #f8fafc); font-size: 13px; }
+.jurix-suggestions-empty p { margin: 4px 0 0; font-size: 11px; line-height: 1.5; }
+.jurix-suggestion-source { display: block; margin-top: 8px; color: var(--figma-text-muted, #94a3b8); font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.jurix-dynamic-suggestion-card { text-align: left; width: 100%; border: 0; cursor: pointer; font: inherit; appearance: none; -webkit-appearance: none; margin: 0; padding: 0; }
+
+@keyframes jurix-suggestion-shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+}
+
+/* Generated density hooks reserved for future server-selected display profiles. */
+.jurix-norma-density-1 { --norma-density-step: 1px; }
+.jurix-norma-density-2 { --norma-density-step: 2px; }
+.jurix-norma-density-3 { --norma-density-step: 3px; }
+.jurix-norma-density-4 { --norma-density-step: 4px; }
+.jurix-norma-density-5 { --norma-density-step: 5px; }
+.jurix-norma-density-6 { --norma-density-step: 6px; }
+.jurix-norma-density-7 { --norma-density-step: 7px; }
+.jurix-norma-density-8 { --norma-density-step: 8px; }
+.jurix-norma-density-9 { --norma-density-step: 9px; }
+.jurix-norma-density-10 { --norma-density-step: 10px; }
+.jurix-norma-density-11 { --norma-density-step: 11px; }
+.jurix-norma-density-12 { --norma-density-step: 12px; }
+.jurix-norma-density-13 { --norma-density-step: 13px; }
+.jurix-norma-density-14 { --norma-density-step: 14px; }
+.jurix-norma-density-15 { --norma-density-step: 15px; }
+.jurix-norma-density-16 { --norma-density-step: 16px; }
+.jurix-norma-density-17 { --norma-density-step: 17px; }
+.jurix-norma-density-18 { --norma-density-step: 18px; }
+.jurix-norma-density-19 { --norma-density-step: 19px; }
+.jurix-norma-density-20 { --norma-density-step: 20px; }
+.jurix-norma-density-21 { --norma-density-step: 21px; }
+.jurix-norma-density-22 { --norma-density-step: 22px; }
+.jurix-norma-density-23 { --norma-density-step: 23px; }
+.jurix-norma-density-24 { --norma-density-step: 24px; }
+.jurix-norma-density-25 { --norma-density-step: 25px; }
+.jurix-norma-density-26 { --norma-density-step: 26px; }
+.jurix-norma-density-27 { --norma-density-step: 27px; }
+.jurix-norma-density-28 { --norma-density-step: 28px; }
+.jurix-norma-density-29 { --norma-density-step: 29px; }
+.jurix-norma-density-30 { --norma-density-step: 30px; }
+.jurix-norma-density-31 { --norma-density-step: 31px; }
+.jurix-norma-density-32 { --norma-density-step: 32px; }
+.jurix-norma-density-33 { --norma-density-step: 33px; }
+.jurix-norma-density-34 { --norma-density-step: 34px; }
+.jurix-norma-density-35 { --norma-density-step: 35px; }
+.jurix-norma-density-36 { --norma-density-step: 36px; }
+.jurix-norma-density-37 { --norma-density-step: 37px; }
+.jurix-norma-density-38 { --norma-density-step: 38px; }
+.jurix-norma-density-39 { --norma-density-step: 39px; }
+.jurix-norma-density-40 { --norma-density-step: 40px; }
+.jurix-norma-density-41 { --norma-density-step: 41px; }
+.jurix-norma-density-42 { --norma-density-step: 42px; }
+.jurix-norma-density-43 { --norma-density-step: 43px; }
+.jurix-norma-density-44 { --norma-density-step: 44px; }
+.jurix-norma-density-45 { --norma-density-step: 45px; }
+.jurix-norma-density-46 { --norma-density-step: 46px; }
+.jurix-norma-density-47 { --norma-density-step: 47px; }
+.jurix-norma-density-48 { --norma-density-step: 48px; }
+.jurix-norma-density-49 { --norma-density-step: 49px; }
+.jurix-norma-density-50 { --norma-density-step: 50px; }
+.jurix-norma-density-51 { --norma-density-step: 51px; }
+.jurix-norma-density-52 { --norma-density-step: 52px; }
+.jurix-norma-density-53 { --norma-density-step: 53px; }
+.jurix-norma-density-54 { --norma-density-step: 54px; }
+.jurix-norma-density-55 { --norma-density-step: 55px; }
+.jurix-norma-density-56 { --norma-density-step: 56px; }
+.jurix-norma-density-57 { --norma-density-step: 57px; }
+.jurix-norma-density-58 { --norma-density-step: 58px; }
+.jurix-norma-density-59 { --norma-density-step: 59px; }
+.jurix-norma-density-60 { --norma-density-step: 60px; }
+.jurix-norma-density-61 { --norma-density-step: 61px; }
+.jurix-norma-density-62 { --norma-density-step: 62px; }
+.jurix-norma-density-63 { --norma-density-step: 63px; }
+.jurix-norma-density-64 { --norma-density-step: 64px; }
+.jurix-norma-density-65 { --norma-density-step: 65px; }
+.jurix-norma-density-66 { --norma-density-step: 66px; }
+.jurix-norma-density-67 { --norma-density-step: 67px; }
+.jurix-norma-density-68 { --norma-density-step: 68px; }
+.jurix-norma-density-69 { --norma-density-step: 69px; }
+.jurix-norma-density-70 { --norma-density-step: 70px; }
+.jurix-norma-density-71 { --norma-density-step: 71px; }
+.jurix-norma-density-72 { --norma-density-step: 72px; }
+.jurix-norma-density-73 { --norma-density-step: 73px; }
+.jurix-norma-density-74 { --norma-density-step: 74px; }
+
+/* Responsive: large tablet */
+@media (max-width: 1180px) {
+    .jurix-norma-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .jurix-norma-hero { grid-template-columns: 1fr; }
+    .jurix-norma-summary { grid-template-columns: repeat(2, minmax(0, 180px)); }
+    .jurix-norma-filter-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Responsive: tablet */
+@media (max-width: 860px) {
+    .jurix-normas-page .container { width: min(100% - 28px, 760px); }
+    .jurix-norma-search-row { grid-template-columns: 1fr; }
+    .jurix-norma-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .jurix-norma-results-bar { align-items: flex-start; flex-direction: column; }
+    .jurix-norma-grid { grid-template-columns: 1fr; }
+    .jurix-norma-list.is-list .jurix-norma-card { grid-template-columns: 1fr; }
+    .jurix-norma-list.is-list .jurix-norma-card-actions { min-width: 0; padding-top: 0; }
+}
+
+/* Responsive: mobile */
+@media (max-width: 720px) {
+    .jurix-norma-grid { grid-template-columns: 1fr; }
+    .jurix-norma-filter-grid { grid-template-columns: 1fr; }
+}
+
+/* Responsive: phone */
+@media (max-width: 620px) {
+    .jurix-normas-page .container { width: min(100% - 20px, 540px); padding-bottom: 42px; }
+    .jurix-norma-shell { gap: 18px; padding-top: 22px; }
+    .jurix-norma-title { font-size: clamp(30px, 11vw, 44px); }
+    .jurix-norma-subtitle { font-size: 14px; line-height: 1.62; }
+    .jurix-norma-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
+    .jurix-norma-page-link,
+    .jurix-norma-page-current { min-width: 38px; min-height: 38px; padding: 0 9px; }
+}
+
+/* Touch targets and accessibility */
+@media (pointer: coarse) {
+    .jurix-norma-clear,
+    .jurix-norma-view-button,
+    .jurix-norma-page-link,
+    .jurix-norma-page-current { min-height: 42px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .jurix-norma-card,
+    .jurix-norma-primary-button,
+    .jurix-norma-search-box { transition: none; }
+}
+
+@media print {
+    .jurix-normas-page .navbar,
+    .jurix-norma-toolbar,
+    .jurix-norma-view-switcher,
+    .jurix-norma-card-actions,
+    .jurix-norma-pagination { display: none !important; }
+}

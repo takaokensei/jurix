@@ -986,13 +986,16 @@ def chat_attachment_detail_api(request: HttpRequest, attachment_id: str) -> Json
 @require_http_methods(["GET"])
 def dynamic_suggestions_api(request: HttpRequest) -> JsonResponse:
     """Return suggestion cards generated from the current municipal corpus."""
+    limited = rate_limit_response(request, scope="suggestions")
+    if limited:
+        return limited
     try:
         limit = max(1, min(int(request.GET.get("limit", 4)), 8))
     except (TypeError, ValueError):
         limit = 4
     try:
         suggestions = build_dynamic_suggestions(limit)
-        return JsonResponse(
+        response = JsonResponse(
             {
                 "success": True,
                 "suggestions": suggestions,
@@ -1000,6 +1003,9 @@ def dynamic_suggestions_api(request: HttpRequest) -> JsonResponse:
                 "source": "municipal_natal_corpus",
             }
         )
+        response["Cache-Control"] = "private, max-age=120, stale-while-revalidate=300"
+        response["X-Jurix-Suggestion-Source"] = "corpus"
+        return response
     except Exception as exc:
         logger.error("Dynamic suggestion generation failed: %s", exc, exc_info=True)
         return JsonResponse(

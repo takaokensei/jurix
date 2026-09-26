@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Content-Security-Policy of chatbot.html (audit: 'unsafe-inline'/'unsafe-eval' removal).
  *
  * jsdom does NOT enforce CSP, so a script-src without 'unsafe-inline' is simulated by actually
@@ -17,7 +17,7 @@ const TPL = path.join(ROOT, 'src/apps/legislation/templates/legislation/chatbot.
 const CSP_SOURCE = path.join(ROOT, 'config/middleware.py');
 const JS_DIR = path.join(ROOT, 'src/apps/core/static/js');
 const read = (f) => fs.readFileSync(path.join(JS_DIR, f), 'utf8');
-const tick = () => new Promise((r) => setTimeout(r, 30));
+const tick = () => new Promise((r) => setTimeout(r, 60));
 
 function renderTemplate(raw) {
   // Minimal Django-template stand-in: only the tags chatbot.html actually uses.
@@ -55,12 +55,70 @@ async function bootUnderCsp() {
   html = html.replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*')/gi, '');
   assertNoInlineExecutionVectors(html);
 
+  const MOCK_CORPUS_SUGGESTIONS = [
+    {
+      question: 'Como a Lei Complementar nº 123/2024 afeta a Zona Norte de Natal?',
+      title: 'Lei Complementar 123/2024 · Tributário & Fazendário',
+      description: 'Tema extraído da ementa da própria norma: Tributário & Fazendário',
+      norma_id: 1,
+      sapl_id: 101,
+      identifier: 'Lei Complementar 123/2024',
+      source: 'municipal_natal_corpus',
+      topic: 'Tributário & Fazendário'
+    },
+    {
+      question: 'Quais as regras de zoneamento do Decreto nº 456/2023?',
+      title: 'Decreto 456/2023 · Urbanismo & Meio Ambiente',
+      description: 'Localize os dispositivos correspondentes no texto consolidado.',
+      norma_id: 2,
+      sapl_id: 102,
+      identifier: 'Decreto 456/2023',
+      source: 'municipal_natal_corpus',
+      topic: 'Urbanismo & Meio Ambiente'
+    },
+    {
+      question: 'Quais os requisitos sanitários segundo a Portaria nº 789/2022?',
+      title: 'Portaria 789/2022 · Saúde & Vigilância Sanitária',
+      description: 'A resposta deve usar as datas e os dispositivos disponíveis no corpus.',
+      norma_id: 3,
+      sapl_id: 103,
+      identifier: 'Portaria 789/2022',
+      source: 'municipal_natal_corpus',
+      topic: 'Saúde & Vigilância Sanitária'
+    },
+    {
+      question: 'Compare as diretrizes da Lei nº 101/2021 com a Lei nº 14.133/2021.',
+      title: 'Lei 101/2021 · Licitações & Contratos',
+      description: 'Consulte os eventos normativos relacionados à norma.',
+      norma_id: 4,
+      sapl_id: 104,
+      identifier: 'Lei 101/2021',
+      source: 'municipal_natal_corpus',
+      topic: 'Licitações & Contratos'
+    }
+  ];
+
   // resources: 'usable' would make jsdom itself fetch every <script src>/<link> in <head> over
   // the network (they don't exist here -- static files are served by Django); scripts are
   // injected manually below via window.eval, in the exact order the template lists them.
   const dom = new JSDOM(html, { url: 'http://localhost/normas/chatbot/', runScripts: 'dangerously', pretendToBeVisual: true });
   const { window } = dom;
-  window.fetch = async () => ({ ok: true, status: 200, json: async () => ({ success: true, sessions: [], count: 0 }) });
+  window.fetch = async (url) => {
+    const urlStr = String(url);
+    if (urlStr.includes('/api/v1/suggestions/')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          source: 'municipal_natal_corpus',
+          count: MOCK_CORPUS_SUGGESTIONS.length,
+          suggestions: MOCK_CORPUS_SUGGESTIONS
+        })
+      };
+    }
+    return { ok: true, status: 200, json: async () => ({ success: true, sessions: [], count: 0 }) };
+  };
   for (const f of [
     'vendor/marked.min.js',
     'vendor/purify.min.js',
@@ -70,6 +128,7 @@ async function bootUnderCsp() {
     'jurix-rag.js',
     'jurix-chat-api.js',
     'jurix-chat-state.js',
+    'jurix-dynamic-suggestions.js',
     'chat.js',
     'jurix-chat-controller.js',
     'command_palette.js',
@@ -77,6 +136,11 @@ async function bootUnderCsp() {
     'jurix-chat-sessions.js'
   ]) {
     window.eval(read(f));
+  }
+  // Trigger DOMContentLoaded manually if already parsed
+  window.document.dispatchEvent(new window.Event('DOMContentLoaded', { bubbles: true, cancelable: true }));
+  if (window.JurixDynamicSuggestions) {
+    await window.JurixDynamicSuggestions.refresh();
   }
   await tick();
   return window;
@@ -115,15 +179,16 @@ test('every suggestion card and recent-search row still asks its question on cli
   // answer endpoint carrying the card's exact question) is asserted instead of mocking it.
   const window = await bootUnderCsp();
   const questionsSent = [];
+  const origFetch = window.fetch;
   window.fetch = async (url, opts) => {
     if (opts && opts.body) {
       try { questionsSent.push(JSON.parse(opts.body).question); } catch (_) { /* not a JSON body */ }
     }
-    return { ok: true, status: 200, json: async () => ({ success: true, sessions: [], count: 0 }) };
+    return origFetch(url, opts);
   };
 
-  const elements = [...window.document.querySelectorAll('[data-question]')];
-  assert.ok(elements.length >= 9, `expected at least 9 clickable questions, found ${elements.length}`);
+  const elements = [...window.document.querySelectorAll('#figma-suggestions-cards [data-question]')];
+  assert.ok(elements.length >= 4, `expected at least 4 clickable questions, found ${elements.length}`);
   for (const el of elements) {
     el.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
     await tick();

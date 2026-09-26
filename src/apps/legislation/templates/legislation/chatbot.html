@@ -229,38 +229,12 @@
                                     </div>
                                 </form>
                                 
-                                <!-- Suggestions are generated from the current municipal corpus with fallback cards. -->
+                                <!-- Suggestions are generated exclusively from the current municipal corpus. -->
                                 <div class="figma-suggestions-row" id="figma-suggestions-cards" aria-live="polite">
-                                    <div class="figma-suggestion-card" data-question="Quais normas regulam a regularização de construções e edificações?" role="button" tabindex="0">
-                                        <div class="figma-suggestion-top">
-                                            <span class="figma-suggestion-title">Quais normas regulam...</span>
-                                            <span class="figma-suggestion-arrow" aria-hidden="true">➔</span>
-                                        </div>
-                                        <span class="figma-suggestion-desc">a regularização de construções?</span>
-                                    </div>
-                                    
-                                    <div class="figma-suggestion-card" data-question="Compare as principais alterações introduzidas pela Lei nº 14.133/2021." role="button" tabindex="0">
-                                        <div class="figma-suggestion-top">
-                                            <span class="figma-suggestion-title">Compare as alterações</span>
-                                            <span class="figma-suggestion-arrow" aria-hidden="true">➔</span>
-                                        </div>
-                                        <span class="figma-suggestion-desc">da Lei nº 14.133/2021.</span>
-                                    </div>
-                                    
-                                    <div class="figma-suggestion-card" data-question="Quais dispositivos sobre zoneamento urbano estão atualmente vigentes?" role="button" tabindex="0">
-                                        <div class="figma-suggestion-top">
-                                            <span class="figma-suggestion-title">Quais dispositivos est...</span>
-                                            <span class="figma-suggestion-arrow" aria-hidden="true">➔</span>
-                                        </div>
-                                        <span class="figma-suggestion-desc">atualmente vigentes?</span>
-                                    </div>
-                                    
-                                    <div class="figma-suggestion-card" data-question="Quais são os entendimentos jurisprudenciais do STF sobre desapropriação?" role="button" tabindex="0">
-                                        <div class="figma-suggestion-top">
-                                            <span class="figma-suggestion-title">Quais são os entendi...</span>
-                                            <span class="figma-suggestion-arrow" aria-hidden="true">➔</span>
-                                        </div>
-                                        <span class="figma-suggestion-desc">do STF sobre o tema?</span>
+                                    <div class="jurix-suggestions-loading" data-suggestion-state="loading" aria-busy="true">
+                                        <span class="jurix-suggestion-skeleton"></span>
+                                        <span class="jurix-suggestion-skeleton"></span>
+                                        <span class="jurix-suggestion-skeleton"></span>
                                     </div>
                                 </div>
 
@@ -391,6 +365,7 @@
     <script src="{% static 'js/jurix-chat-sessions.js' %}"></script>
     <script src="{% static 'js/jurix-chat-state.js' %}"></script>
     <script src="{% static 'js/jurix-chat-renderer.js' %}"></script>
+    <script src="{% static 'js/jurix-dynamic-suggestions.js' %}"></script>
     <script src="{% static 'js/chat.js' %}"></script>
     <script src="{% static 'js/jurix-chat-controller.js' %}"></script>
     <script src="{% static 'js/command_palette.js' %}"></script>

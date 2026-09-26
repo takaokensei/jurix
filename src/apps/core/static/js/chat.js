@@ -46,20 +46,6 @@
     let isStreamingGreeting = false;
     let navSeq = 0;
 
-    // ===== SUGGESTION QUESTIONS =====
-    const SUGGESTION_QUESTIONS = [
-        'Como funciona o zoneamento urbano?',
-        'Quais as regras para licença de construção?',
-        'Explique as normas de uso do solo',
-        'Quais são os requisitos para alvará de funcionamento?',
-        'Como funciona o cadastramento de imóveis?',
-        'Quais as normas sobre reformas e ampliações?',
-        'Explique as regras de regularização de construções',
-        'Como funciona o licenciamento ambiental?',
-        'Quais são as regras de parcelamento do solo?',
-        'Explique as normas de ocupação do solo',
-    ];
-
     // ===== UTILITIES =====
     function escapeHtml(text) {
         if (!text) return '';
@@ -1045,80 +1031,10 @@
         type();
     }
 
-    // ===== DYNAMIC CORPUS SUGGESTIONS & FALLBACKS =====
-    const SUGGESTION_ENDPOINT = '/api/v1/suggestions/';
-    let suggestionRequest = null;
-
-    function renderFallbackChips() {
-        const chipsContainer = document.getElementById('suggestion-chips');
-        if (!chipsContainer) return;
-        const shuffled = shuffleArray(SUGGESTION_QUESTIONS);
-        const selected = shuffled.slice(0, 5);
-        chipsContainer.innerHTML = selected
-            .map(
-                (question) =>
-                    `<div class="chip" data-question="${escapeAttr(question)}">${escapeHtml(question)}</div>`
-            )
-            .join('');
-    }
-
-    async function fetchDynamicSuggestions() {
-        if (suggestionRequest) return suggestionRequest;
-        suggestionRequest = fetch(`${SUGGESTION_ENDPOINT}?limit=4`, {
-            headers: { Accept: 'application/json' },
-            credentials: 'same-origin',
-        })
-            .then((response) => {
-                if (!response.ok) throw new Error(`Suggestion API ${response.status}`);
-                return response.json();
-            })
-            .then((payload) => (payload && Array.isArray(payload.suggestions) ? payload.suggestions : []))
-            .catch((error) => {
-                console.warn('[Jurix] Could not load corpus suggestions', error);
-                return [];
-            })
-            .finally(() => {
-                suggestionRequest = null;
-            });
-        return suggestionRequest;
-    }
-
-    function renderDynamicSuggestionTargets(items) {
-        const chipsContainer = document.getElementById('suggestion-chips');
-        if (chipsContainer) {
-            chipsContainer.innerHTML = items
-                .slice(0, 3)
-                .map(
-                    (item) =>
-                        `<div class="chip" data-question="${escapeAttr(item.question)}">${escapeHtml(item.question)}</div>`
-                )
-                .join('');
-        }
-
-        const cardsContainer = document.getElementById('figma-suggestions-cards');
-        if (cardsContainer) {
-            cardsContainer.innerHTML = items
-                .map(
-                    (item) => `
-                        <div class="figma-suggestion-card" data-question="${escapeAttr(item.question)}" role="button" tabindex="0">
-                            <div class="figma-suggestion-top">
-                                <span class="figma-suggestion-title">${escapeHtml(item.title || item.question)}</span>
-                                <span class="figma-suggestion-arrow" aria-hidden="true">➔</span>
-                            </div>
-                            <span class="figma-suggestion-desc">${escapeHtml(item.description || '')}</span>
-                        </div>
-                    `
-                )
-                .join('');
-        }
-    }
-
     async function renderRandomSuggestions() {
-        renderFallbackChips();
-        const items = await fetchDynamicSuggestions();
-        if (items && items.length > 0) {
-            renderDynamicSuggestionTargets(items);
-        }
+        const service = window.JurixDynamicSuggestions;
+        if (!service || typeof service.refresh !== 'function') return;
+        await service.refresh();
     }
 
 

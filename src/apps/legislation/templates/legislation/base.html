@@ -1,4 +1,4 @@
-﻿{% load static %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -117,7 +117,7 @@
     </style>
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
     <!-- Skip link for keyboard navigation (WCAG 2.1) -->
     <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
     

@@ -1,118 +1,183 @@
 {% extends 'legislation/base.html' %}
+{% load static %}
 
-{% block title %}Normas Consolidadas - Jurix{% endblock %}
+{% block title %}Normas Consolidadas — Jurix{% endblock %}
+{% block body_class %}jurix-normas-page{% endblock %}
 
-{% block content %}
-<!-- Header Section -->
-<div class="page-header">
-    <h1>Normas Consolidadas</h1>
-    <p class="page-subtitle">{{ total_consolidated }} {{ total_consolidated|pluralize:"norma,normas" }} cadastradas no sistema</p>
-</div>
-
-<!-- Search Bar -->
-<div class="search-section">
-    <form method="get" class="search-form">
-        <div class="search-container">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" class="search-icon">
-                <path d="M9 17A8 8 0 1 0 9 1a8 8 0 0 0 0 16zM16 16l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <input type="text" name="q" value="{{ search_query }}" placeholder="Buscar por ementa, número ou tipo..." class="search-input">
-            <button type="submit" class="btn btn-primary">Buscar</button>
-            {% if search_query %}
-            <a href="{% url 'legislation:norma_list' %}" class="btn btn-secondary">Limpar</a>
-            {% endif %}
-        </div>
-    </form>
-</div>
-
-<!-- Norma Grid -->
-{% if normas %}
-<div class="norma-grid">
-    {% for norma in normas %}
-    <article class="norma-card">
-        <header class="norma-card-header">
-            <div class="norma-title-row">
-                <h3 class="norma-title">{{ norma.tipo }} {{ norma.numero }}/{{ norma.ano }}</h3>
-                <span class="badge badge-success">{{ norma.get_status_display }}</span>
-            </div>
-        </header>
-        
-        <div class="norma-card-body">
-            <p class="norma-ementa">{{ norma.ementa|truncatewords:20 }}</p>
-        </div>
-        
-        <footer class="norma-card-footer">
-            <time class="norma-date">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="1" y="2" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.5"/>
-                    <path d="M4 1v2M10 1v2M1 5h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                </svg>
-                {{ norma.data_publicacao|date:"d/m/Y"|default:"-" }}
-            </time>
-            <a href="{% url 'legislation:norma_detail' norma.pk %}" class="link-primary">
-                Ver detalhes
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </a>
-        </footer>
-    </article>
-    {% endfor %}
-</div>
-
-
-<!-- Pagination -->
-{% if is_paginated %}
-<nav class="pagination">
-    {% if page_obj.has_previous %}
-    <a href="?page=1{% if search_query %}&q={{ search_query }}{% endif %}" class="pagination-link">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M10 12L6 8l4-4M12 12L8 8l4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        Primeira
-    </a>
-    <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}" class="pagination-link">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        Anterior
-    </a>
-    {% endif %}
-    
-    <span class="pagination-info">
-        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
-    </span>
-    
-    {% if page_obj.has_next %}
-    <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}" class="pagination-link">
-        Próxima
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M6 12l4-4-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-    </a>
-    <a href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&q={{ search_query }}{% endif %}" class="pagination-link">
-        Última
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M6 12l4-4-4-4M4 12l4-4-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-    </a>
-    {% endif %}
-</nav>
-{% endif %}
-
-{% else %}
-<!-- Empty State -->
-<div class="empty-state">
-    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" class="empty-state-icon">
-        <circle cx="32" cy="32" r="30" stroke="currentColor" stroke-width="2"/>
-        <path d="M20 32h24M32 20v24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-    </svg>
-    <h3>Nenhuma norma encontrada</h3>
-    <p>{% if search_query %}Não encontramos resultados para "{{ search_query }}".{% else %}Nenhuma norma consolidada cadastrada no sistema.{% endif %}</p>
-    {% if search_query %}
-    <a href="{% url 'legislation:norma_list' %}" class="btn btn-primary">Limpar busca</a>
-    {% endif %}
-</div>
-{% endif %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/jurix-norma-list.css' %}">
 {% endblock %}
 
+{% block content %}
+<div class="jurix-norma-shell">
+    <section class="jurix-norma-hero" aria-labelledby="normas-title">
+        <div>
+            <span class="jurix-norma-eyebrow">Biblioteca normativa</span>
+            <h1 id="normas-title" class="jurix-norma-title">Normas consolidadas</h1>
+            <p class="jurix-norma-subtitle">
+                Encontre legislação municipal consolidada com uma interface projetada para leitura rápida,
+                comparação de versões e acesso direto às fontes oficiais.
+            </p>
+        </div>
+        <div class="jurix-norma-summary" aria-label="Resumo do acervo">
+            <div class="jurix-norma-stat">
+                <span class="jurix-norma-stat-value">{{ total_consolidated }}</span>
+                <span class="jurix-norma-stat-label">normas consolidadas</span>
+            </div>
+            <div class="jurix-norma-stat">
+                <span class="jurix-norma-stat-value">{{ filtered_count }}</span>
+                <span class="jurix-norma-stat-label">resultados nesta busca</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="jurix-norma-toolbar" aria-label="Filtros de normas">
+        <form method="get" class="jurix-norma-search-form" id="norma-filter-form">
+            <div class="jurix-norma-search-row">
+                <div class="jurix-norma-search-box">
+                    <svg class="jurix-norma-search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"></circle>
+                        <path d="m16.5 16.5 4.2 4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+                    </svg>
+                    <input
+                        id="norma-search-input"
+                        class="jurix-norma-search-input"
+                        type="search"
+                        name="q"
+                        value="{{ search_query }}"
+                        placeholder="Pesquisar por número, tipo ou ementa…"
+                        autocomplete="off"
+                        spellcheck="false"
+                        aria-label="Pesquisar normas"
+                    >
+                    <button class="jurix-norma-clear" id="norma-search-clear" type="button" aria-label="Limpar pesquisa" {% if not search_query %}hidden{% endif %}>
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <button class="jurix-norma-primary-button" type="submit">
+                    <span>Pesquisar</span>
+                    <span aria-hidden="true">↗</span>
+                </button>
+            </div>
+
+            <div class="jurix-norma-filter-grid" id="norma-filter-grid">
+                <div class="jurix-norma-field">
+                    <label for="norma-tipo">Tipo</label>
+                    <select class="jurix-norma-select" id="norma-tipo" name="tipo">
+                        <option value="">Todos os tipos</option>
+                        {% for tipo in available_types %}
+                        <option value="{{ tipo }}" {% if selected_type == tipo %}selected{% endif %}>{{ tipo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="jurix-norma-field">
+                    <label for="norma-ano">Ano</label>
+                    <select class="jurix-norma-select" id="norma-ano" name="ano">
+                        <option value="">Todos os anos</option>
+                        {% for year in available_years %}
+                        <option value="{{ year }}" {% if selected_year == year|stringformat:'s' %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="jurix-norma-field">
+                    <label for="norma-ordenar">Ordenação</label>
+                    <select class="jurix-norma-select" id="norma-ordenar" name="ordenar">
+                        <option value="recentes" {% if ordering == 'recentes' %}selected{% endif %}>Mais recentes</option>
+                        <option value="antigas" {% if ordering == 'antigas' %}selected{% endif %}>Mais antigas</option>
+                    </select>
+                </div>
+                <div class="jurix-norma-field jurix-norma-filter-action">
+                    <label>&nbsp;</label>
+                    <a class="jurix-norma-secondary-button" href="{% url 'legislation:norma_list' %}">Limpar filtros</a>
+                </div>
+            </div>
+        </form>
+
+        <div class="jurix-norma-results-bar">
+            <span class="jurix-norma-result-copy" id="resultados">
+                {% if search_query or selected_type or selected_year %}
+                    <strong>{{ filtered_count }}</strong> resultado(s) encontrados
+                {% else %}
+                    Exibindo <strong>{{ filtered_count }}</strong> normas do acervo consolidado
+                {% endif %}
+            </span>
+            <div class="jurix-norma-view-switcher" aria-label="Modo de visualização">
+                <button type="button" class="jurix-norma-view-button" data-norma-view="grid" aria-label="Visualização em grade" aria-pressed="true">▦</button>
+                <button type="button" class="jurix-norma-view-button" data-norma-view="list" aria-label="Visualização em lista" aria-pressed="false">☰</button>
+            </div>
+        </div>
+    </section>
+
+    {% if normas %}
+    <section aria-labelledby="normas-results-heading">
+        <h2 id="normas-results-heading" class="jurix-sr-only">Resultados das normas</h2>
+        <div class="jurix-norma-grid jurix-norma-list" id="jurix-norma-list">
+            {% for norma in normas %}
+            <article class="jurix-norma-card">
+                <div class="jurix-norma-card-main">
+                    <div class="jurix-norma-meta-row">
+                        <span class="jurix-norma-type">{{ norma.tipo }}</span>
+                        <span class="jurix-norma-status">{{ norma.get_status_display }}</span>
+                    </div>
+                    <h3 class="jurix-norma-card-title">{{ norma.tipo }} {{ norma.numero }}/{{ norma.ano }}</h3>
+                    <p class="jurix-norma-card-ementa">{{ norma.ementa|default:'Ementa não informada.' }}</p>
+                    <div class="jurix-norma-card-facts">
+                        <div class="jurix-norma-fact">
+                            <span class="jurix-norma-fact-label">Publicação</span>
+                            <span class="jurix-norma-fact-value">{{ norma.data_publicacao|date:'d/m/Y'|default:'Não informada' }}</span>
+                        </div>
+                        <div class="jurix-norma-fact">
+                            <span class="jurix-norma-fact-label">Vigência</span>
+                            <span class="jurix-norma-fact-value">{{ norma.data_vigencia|date:'d/m/Y'|default:'Não informada' }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="jurix-norma-card-actions">
+                    <a class="jurix-norma-card-link" href="{% url 'legislation:norma_detail' norma.pk %}">
+                        Ver norma
+                        <span aria-hidden="true">→</span>
+                    </a>
+                    {% if norma.sapl_id and norma.sapl_url %}
+                    <a class="jurix-norma-external-link" href="{{ norma.sapl_url }}" target="_blank" rel="noopener noreferrer" aria-label="Abrir fonte oficial no SAPL">
+                        ↗
+                    </a>
+                    {% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+
+        {% if is_paginated %}
+        <nav class="jurix-norma-pagination" aria-label="Paginação de normas">
+            {% if page_obj.has_previous %}
+            <a class="jurix-norma-page-link" href="?q={{ search_query|urlencode }}&tipo={{ selected_type|urlencode }}&ano={{ selected_year|urlencode }}&ordenar={{ ordering|urlencode }}&page={{ page_obj.previous_page_number }}">← Anterior</a>
+            {% endif %}
+            <span class="jurix-norma-page-current" aria-current="page">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}
+            <a class="jurix-norma-page-link" href="?q={{ search_query|urlencode }}&tipo={{ selected_type|urlencode }}&ano={{ selected_year|urlencode }}&ordenar={{ ordering|urlencode }}&page={{ page_obj.next_page_number }}">Próxima →</a>
+            {% endif %}
+        </nav>
+        {% endif %}
+    </section>
+    {% else %}
+    <section class="jurix-norma-empty" aria-labelledby="norma-empty-title">
+        <div class="jurix-norma-empty-icon" aria-hidden="true">⌕</div>
+        <h2 id="norma-empty-title">Nenhuma norma encontrada</h2>
+        <p>
+            {% if search_query or selected_type or selected_year %}
+                Não encontramos normas para os filtros atuais. Tente ampliar a pesquisa ou remover um dos filtros.
+            {% else %}
+                O acervo consolidado ainda não possui normas disponíveis para consulta.
+            {% endif %}
+        </p>
+        {% if search_query or selected_type or selected_year %}
+        <a class="jurix-norma-primary-button" href="{% url 'legislation:norma_list' %}">Limpar filtros</a>
+        {% endif %}
+    </section>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/jurix-norma-list.js' %}"></script>
+{% endblock %}

@@ -11,6 +11,7 @@ from collections import defaultdict
 from typing import Any
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import Q
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -27,25 +28,44 @@ from .serializers import (
 
 logger = logging.getLogger(__name__)
 
+NORMA_LIST_CACHE_TTL = 120
+MAX_NORMA_SEARCH_LENGTH = 160
+
+
+def _normalize_norma_query(value: object) -> str:
+    return str(value or "").strip()[:MAX_NORMA_SEARCH_LENGTH]
+
+
+def _norma_list_facets() -> tuple[list[str], list[int]]:
+    cache_key = "jurix:norma-list:facets:v1"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    queryset = Norma.objects.filter(status="consolidated")
+    types = list(queryset.values_list("tipo", flat=True).distinct().order_by("tipo"))
+    years = list(queryset.values_list("ano", flat=True).distinct().order_by("-ano"))
+    result = (types, years)
+    cache.set(cache_key, result, NORMA_LIST_CACHE_TTL)
+    return result
+
 
 class NormaListView(ListView):
-    """
-    List view for consolidated normas.
-
-    Displays all normas with status='consolidated' in a table format.
-    """
+    """Responsive, filterable list of consolidated municipal norms."""
 
     model = Norma
     template_name = "legislation/norma_list.html"
     context_object_name = "normas"
-    paginate_by = 20
+    paginate_by = 18
+
+    ORDERING_OPTIONS = {
+        "recentes": ("-ano", "-numero"),
+        "antigas": ("ano", "numero"),
+    }
 
     def get_queryset(self):
-        """Filter to show only consolidated normas."""
-        queryset = Norma.objects.filter(status="consolidated").order_by("-ano", "-numero")
-
-        # Optional search filter
-        search_query = self.request.GET.get("q")
+        queryset = Norma.objects.filter(status="consolidated")
+        search_query = _normalize_norma_query(self.request.GET.get("q"))
         if search_query:
             queryset = queryset.filter(
                 Q(ementa__icontains=search_query)
@@ -53,13 +73,51 @@ class NormaListView(ListView):
                 | Q(tipo__icontains=search_query)
             )
 
-        return queryset
+        selected_type = _normalize_norma_query(self.request.GET.get("tipo"))
+        if selected_type:
+            queryset = queryset.filter(tipo=selected_type)
+
+        selected_year = self.request.GET.get("ano", "").strip()
+        if selected_year.isdigit() and len(selected_year) <= 4:
+            queryset = queryset.filter(ano=int(selected_year))
+
+        ordering = self.request.GET.get("ordenar", "recentes")
+        queryset = queryset.order_by(*self.ORDERING_OPTIONS.get(ordering, self.ORDERING_OPTIONS["recentes"]))
+        return queryset.only(
+            "id",
+            "tipo",
+            "numero",
+            "ano",
+            "ementa",
+            "status",
+            "data_publicacao",
+            "data_vigencia",
+            "sapl_id",
+        )
 
     def get_context_data(self, **kwargs):
-        """Add additional context."""
         context = super().get_context_data(**kwargs)
-        context["search_query"] = self.request.GET.get("q", "")
-        context["total_consolidated"] = Norma.objects.filter(status="consolidated").count()
+        context["search_query"] = _normalize_norma_query(self.request.GET.get("q"))
+        context["selected_type"] = _normalize_norma_query(self.request.GET.get("tipo"))
+        selected_year = self.request.GET.get("ano", "").strip()
+        context["selected_year"] = selected_year if selected_year.isdigit() else ""
+        context["ordering"] = self.request.GET.get("ordenar", "recentes")
+
+        available_types, available_years = _norma_list_facets()
+        context["available_types"] = available_types
+        context["available_years"] = available_years
+        context["total_consolidated"] = cache.get_or_set(
+            "jurix:norma-list:total:v1",
+            lambda: Norma.objects.filter(status="consolidated").count(),
+            NORMA_LIST_CACHE_TTL,
+        )
+
+        page_obj = context.get("page_obj")
+        context["filtered_count"] = (
+            page_obj.paginator.count
+            if page_obj is not None
+            else self.object_list.count()
+        )
         return context
 
 
