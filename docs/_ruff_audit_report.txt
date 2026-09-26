@@ -1,0 +1,2270 @@
+E402 Module level import not at top of file
+  --> src/apps/ingestion/consolidation_tasks.py:32:1
+   |
+30 | logger = logging.getLogger(__name__)
+31 |
+32 | from .task_support import _invalidate_rag_cache, _mark_norma_failed
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 |
+34 | @shared_task(bind=True, name="ingestion.consolidate_norma", max_retries=3, default_retry_delay=60)
+   |
+help: Move module level imports to top of file
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/apps/ingestion/consolidation_tasks.py:32:1
+   |
+30 | logger = logging.getLogger(__name__)
+31 |
+32 | from .task_support import _invalidate_rag_cache, _mark_norma_failed
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 |
+34 | @shared_task(bind=True, name="ingestion.consolidate_norma", max_retries=3, default_retry_delay=60)
+   |
+help: Organize imports
+   |
+33 |
+34 +
+35 | @shared_task(bind=True, name="ingestion.consolidate_norma", max_retries=3, default_retry_delay=60)
+   |
+
+E402 Module level import not at top of file
+  --> src/apps/ingestion/core_tasks.py:32:1
+   |
+30 | logger = logging.getLogger(__name__)
+31 |
+32 | from .download_tasks import download_pdf_task
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 |
+34 | from .task_support import _invalidate_rag_cache, _normalize_norma_tipo
+   |
+help: Move module level imports to top of file
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/apps/ingestion/core_tasks.py:32:1
+   |
+30 |   logger = logging.getLogger(__name__)
+31 |
+32 | / from .download_tasks import download_pdf_task
+33 | |
+34 | | from .task_support import _invalidate_rag_cache, _normalize_norma_tipo
+   | |______________________________________________________________________^
+35 |
+36 |   @shared_task(name="ingestion.cleanup_chat_attachments")
+   |
+help: Organize imports
+   |
+32 | from .download_tasks import download_pdf_task
+33 + from .task_support import _invalidate_rag_cache, _normalize_norma_tipo
+34 |
+   - from .task_support import _invalidate_rag_cache, _normalize_norma_tipo
+35 |
+   |
+
+E402 Module level import not at top of file
+  --> src/apps/ingestion/core_tasks.py:34:1
+   |
+32 | from .download_tasks import download_pdf_task
+33 |
+34 | from .task_support import _invalidate_rag_cache, _normalize_norma_tipo
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+35 |
+36 | @shared_task(name="ingestion.cleanup_chat_attachments")
+   |
+help: Move module level imports to top of file
+
+E402 Module level import not at top of file
+  --> src/apps/ingestion/download_tasks.py:32:1
+   |
+30 | logger = logging.getLogger(__name__)
+31 |
+32 | from .task_support import _mark_norma_failed
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 |
+34 | from .task_support import _invalidate_rag_cache
+   |
+help: Move module level imports to top of file
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/apps/ingestion/download_tasks.py:32:1
+   |
+30 |   logger = logging.getLogger(__name__)
+31 |
+32 | / from .task_support import _mark_norma_failed
+33 | |
+34 | | from .task_support import _invalidate_rag_cache
+   | |_______________________________________________^
+35 |
+36 |   @shared_task(bind=True, name="ingestion.download_pdf_task", max_retries=3, default_retry_delay=60)
+   |
+help: Organize imports
+   |
+31 |
+   - from .task_support import _mark_norma_failed
+32 + from .task_support import _invalidate_rag_cache, _mark_norma_failed
+33 |
+   - from .task_support import _invalidate_rag_cache
+34 |
+   |
+
+E402 Module level import not at top of file
+  --> src/apps/ingestion/download_tasks.py:34:1
+   |
+32 | from .task_support import _mark_norma_failed
+33 |
+34 | from .task_support import _invalidate_rag_cache
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+35 |
+36 | @shared_task(bind=True, name="ingestion.download_pdf_task", max_retries=3, default_retry_delay=60)
+   |
+help: Move module level imports to top of file
+
+E402 Module level import not at top of file
+  --> src/apps/ingestion/ner_tasks.py:32:1
+   |
+30 | logger = logging.getLogger(__name__)
+31 |
+32 | from .task_support import _invalidate_rag_cache, _mark_norma_failed, _resolve_norma_reference
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 |
+34 | @shared_task(bind=True, name="ingestion.extract_entities", max_retries=3, default_retry_delay=60)
+   |
+help: Move module level imports to top of file
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/apps/ingestion/ner_tasks.py:32:1
+   |
+30 | logger = logging.getLogger(__name__)
+31 |
+32 | from .task_support import _invalidate_rag_cache, _mark_norma_failed, _resolve_norma_reference
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 |
+34 | @shared_task(bind=True, name="ingestion.extract_entities", max_retries=3, default_retry_delay=60)
+   |
+help: Organize imports
+   |
+33 |
+34 +
+35 | @shared_task(bind=True, name="ingestion.extract_entities", max_retries=3, default_retry_delay=60)
+   |
+
+E402 Module level import not at top of file
+  --> src/apps/ingestion/ocr_tasks.py:32:1
+   |
+30 | logger = logging.getLogger(__name__)
+31 |
+32 | from .task_support import _configure_tesseract, _mark_norma_failed
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 |
+34 | @shared_task(bind=True, name="ingestion.ocr_pdf_task", max_retries=2, default_retry_delay=120)
+   |
+help: Move module level imports to top of file
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/apps/ingestion/ocr_tasks.py:32:1
+   |
+30 | logger = logging.getLogger(__name__)
+31 |
+32 | from .task_support import _configure_tesseract, _mark_norma_failed
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 |
+34 | @shared_task(bind=True, name="ingestion.ocr_pdf_task", max_retries=2, default_retry_delay=120)
+   |
+help: Organize imports
+   |
+33 |
+34 +
+35 | @shared_task(bind=True, name="ingestion.ocr_pdf_task", max_retries=2, default_retry_delay=120)
+   |
+
+E402 Module level import not at top of file
+  --> src/apps/ingestion/segmentation_tasks.py:32:1
+   |
+30 | logger = logging.getLogger(__name__)
+31 |
+32 | from .task_support import _invalidate_rag_cache, _mark_norma_failed
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 |
+34 | @shared_task(bind=True, name="ingestion.segment_text_task", max_retries=2, default_retry_delay=60)
+   |
+help: Move module level imports to top of file
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/apps/ingestion/segmentation_tasks.py:32:1
+   |
+30 | logger = logging.getLogger(__name__)
+31 |
+32 | from .task_support import _invalidate_rag_cache, _mark_norma_failed
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 |
+34 | @shared_task(bind=True, name="ingestion.segment_text_task", max_retries=2, default_retry_delay=60)
+   |
+help: Organize imports
+   |
+33 |
+34 +
+35 | @shared_task(bind=True, name="ingestion.segment_text_task", max_retries=2, default_retry_delay=60)
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/apps/legislation/api_attachments.py:2:1
+   |
+ 1 |   # ruff: noqa: F401,F403,E501,E701
+ 2 | / from __future__ import annotations
+ 3 | |
+ 4 | | import json
+ 5 | | import logging
+ 6 | | from django.conf import settings
+ 7 | | from django.core.paginator import Paginator
+ 8 | | from django.db import transaction
+ 9 | | from django.db.models import Count, OuterRef, Q, Subquery
+10 | | from django.http import HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
+11 | | from django.shortcuts import get_object_or_404
+12 | | from django.utils import timezone
+13 | | from django.views.decorators.csrf import csrf_exempt
+14 | | from django.views.decorators.http import require_http_methods
+15 | | from src.apps.legislation.api_limits import InvalidLLMParams, parse_k, parse_llm_request, parse_model, rate_limit_response
+16 | | from src.apps.legislation.attachment_service import AttachmentError, delete_attachment, list_attachments, upload_attachment
+17 | | from src.apps.legislation.chat_api_helpers import _chat_session_response, _parse_limit, _preview
+18 | | from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
+19 | | from src.apps.legislation.retrieval_api import build_retrieval_options
+20 | | from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
+21 | | from src.apps.legislation.suggestion_service import build_dynamic_suggestions
+22 | | from src.processing.adaptive_rag_service import AdaptiveRAGService
+   | |__________________________________________________________________^
+23 |   RAGService = AdaptiveRAGService
+   |
+help: Organize imports
+   |
+5  | import logging
+6  +
+7  | from django.conf import settings
+--------------------------------------------------------------------------------
+15 | from django.views.decorators.http import require_http_methods
+   - from src.apps.legislation.api_limits import InvalidLLMParams, parse_k, parse_llm_request, parse_model, rate_limit_response
+   - from src.apps.legislation.attachment_service import AttachmentError, delete_attachment, list_attachments, upload_attachment
+16 +
+17 + from src.apps.legislation.api_limits import (
+18 +     InvalidLLMParams,
+19 +     parse_k,
+20 +     parse_llm_request,
+21 +     parse_model,
+22 +     rate_limit_response,
+23 + )
+24 + from src.apps.legislation.attachment_service import (
+25 +     AttachmentError,
+26 +     delete_attachment,
+27 +     list_attachments,
+28 +     upload_attachment,
+29 + )
+30 | from src.apps.legislation.chat_api_helpers import _chat_session_response, _parse_limit, _preview
+   - from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
+31 + from src.apps.legislation.models import (
+32 +     ChatMessage,
+33 +     ChatSession,
+34 +     Dispositivo,
+35 +     EventoAlteracao,
+36 +     Norma,
+37 + )
+38 | from src.apps.legislation.retrieval_api import build_retrieval_options
+39 | from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
+40 | from src.apps.legislation.suggestion_service import build_dynamic_suggestions
+41 | from src.processing.adaptive_rag_service import AdaptiveRAGService
+42 +
+43 | RAGService = AdaptiveRAGService
+   |
+
+F821 Undefined name `_format_error_message`
+  --> src/apps/legislation/api_attachments.py:45:57
+   |
+43 |     except Exception as exc:
+44 |         logger.error("Attachment upload failed", exc_info=True)
+45 |         return JsonResponse({"success": False, "error": _format_error_message(exc)}, status=500)
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^
+46 |     return JsonResponse(
+47 |         {"success": True, "attachment": item, "attachments": list_attachments(request)}
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/apps/legislation/api_chat.py:2:1
+   |
+ 1 |   # ruff: noqa: F401,F403,E501,E701
+ 2 | / from __future__ import annotations
+ 3 | |
+ 4 | | import json
+ 5 | | import logging
+ 6 | | from django.conf import settings
+ 7 | | from django.core.paginator import Paginator
+ 8 | | from django.db import transaction
+ 9 | | from django.db.models import Count, OuterRef, Q, Subquery
+10 | | from django.http import HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
+11 | | from django.shortcuts import get_object_or_404
+12 | | from django.utils import timezone
+13 | | from django.views.decorators.csrf import csrf_exempt
+14 | | from django.views.decorators.http import require_http_methods
+15 | | from src.apps.legislation.api_limits import InvalidLLMParams, parse_k, parse_llm_request, parse_model, rate_limit_response
+16 | | from src.apps.legislation.attachment_service import AttachmentError, delete_attachment, list_attachments, upload_attachment
+17 | | from src.apps.legislation.chat_api_helpers import _chat_session_response, _parse_limit, _preview
+18 | | from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
+19 | | from src.apps.legislation.retrieval_api import build_retrieval_options
+20 | | from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
+21 | | from src.apps.legislation.suggestion_service import build_dynamic_suggestions
+22 | | from src.processing.adaptive_rag_service import AdaptiveRAGService
+   | |__________________________________________________________________^
+23 |   RAGService = AdaptiveRAGService
+   |
+help: Organize imports
+   |
+5  | import logging
+6  +
+7  | from django.conf import settings
+--------------------------------------------------------------------------------
+15 | from django.views.decorators.http import require_http_methods
+   - from src.apps.legislation.api_limits import InvalidLLMParams, parse_k, parse_llm_request, parse_model, rate_limit_response
+   - from src.apps.legislation.attachment_service import AttachmentError, delete_attachment, list_attachments, upload_attachment
+16 +
+17 + from src.apps.legislation.api_limits import (
+18 +     InvalidLLMParams,
+19 +     parse_k,
+20 +     parse_llm_request,
+21 +     parse_model,
+22 +     rate_limit_response,
+23 + )
+24 + from src.apps.legislation.attachment_service import (
+25 +     AttachmentError,
+26 +     delete_attachment,
+27 +     list_attachments,
+28 +     upload_attachment,
+29 + )
+30 | from src.apps.legislation.chat_api_helpers import _chat_session_response, _parse_limit, _preview
+   - from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
+31 + from src.apps.legislation.models import (
+32 +     ChatMessage,
+33 +     ChatSession,
+34 +     Dispositivo,
+35 +     EventoAlteracao,
+36 +     Norma,
+37 + )
+38 | from src.apps.legislation.retrieval_api import build_retrieval_options
+39 | from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
+40 | from src.apps.legislation.suggestion_service import build_dynamic_suggestions
+41 | from src.processing.adaptive_rag_service import AdaptiveRAGService
+42 +
+43 | RAGService = AdaptiveRAGService
+   |
+
+F821 Undefined name `_server_error`
+  --> src/apps/legislation/api_chat.py:81:16
+   |
+79 |         return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
+80 |     except Exception as e:
+81 |         return _server_error("chat sessions API", e)
+   |                ^^^^^^^^^^^^^
+82 |
+83 | @require_http_methods(["GET"])
+   |
+
+F821 Undefined name `_server_error`
+   --> src/apps/legislation/api_chat.py:101:16
+    |
+ 99 |         return _chat_session_response(session, request.GET.get("before"))
+100 |     except Exception as e:
+101 |         return _server_error("chat session by slug API", e)
+    |                ^^^^^^^^^^^^^
+102 |
+103 | @require_http_methods(["GET", "DELETE"])
+    |
+
+F821 Undefined name `_server_error`
+   --> src/apps/legislation/api_chat.py:120:16
+    |
+118 |         return _chat_session_response(session, request.GET.get("before"))
+119 |     except Exception as e:
+120 |         return _server_error("chat session detail API", e)
+    |                ^^^^^^^^^^^^^
+121 |
+122 | @require_http_methods(["POST"])
+    |
+
+F821 Undefined name `_format_error_message`
+   --> src/apps/legislation/api_chat.py:233:57
+    |
+231 |     except Exception as e:
+232 |         logger.error(f"Error in chat session regenerate API: {e}", exc_info=True)
+233 |         return JsonResponse({"success": False, "error": _format_error_message(e)}, status=500)
+    |                                                         ^^^^^^^^^^^^^^^^^^^^^
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/apps/legislation/api_health.py:2:1
+   |
+ 1 |   # ruff: noqa: F401,F403,E501,E701
+ 2 | / from __future__ import annotations
+ 3 | |
+ 4 | | import json
+ 5 | | import logging
+ 6 | | from django.conf import settings
+ 7 | | from django.core.paginator import Paginator
+ 8 | | from django.db import transaction
+ 9 | | from django.db.models import Count, OuterRef, Q, Subquery
+10 | | from django.http import HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
+11 | | from django.shortcuts import get_object_or_404
+12 | | from django.utils import timezone
+13 | | from django.views.decorators.csrf import csrf_exempt
+14 | | from django.views.decorators.http import require_http_methods
+15 | | from src.apps.legislation.api_limits import InvalidLLMParams, parse_k, parse_llm_request, parse_model, rate_limit_response
+16 | | from src.apps.legislation.attachment_service import AttachmentError, delete_attachment, list_attachments, upload_attachment
+17 | | from src.apps.legislation.chat_api_helpers import _chat_session_response, _parse_limit, _preview
+18 | | from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
+19 | | from src.apps.legislation.retrieval_api import build_retrieval_options
+20 | | from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
+21 | | from src.apps.legislation.suggestion_service import build_dynamic_suggestions
+22 | | from src.processing.adaptive_rag_service import AdaptiveRAGService
+   | |__________________________________________________________________^
+23 |   RAGService = AdaptiveRAGService
+   |
+help: Organize imports
+   |
+5  | import logging
+6  +
+7  | from django.conf import settings
+--------------------------------------------------------------------------------
+15 | from django.views.decorators.http import require_http_methods
+   - from src.apps.legislation.api_limits import InvalidLLMParams, parse_k, parse_llm_request, parse_model, rate_limit_response
+   - from src.apps.legislation.attachment_service import AttachmentError, delete_attachment, list_attachments, upload_attachment
+16 +
+17 + from src.apps.legislation.api_limits import (
+18 +     InvalidLLMParams,
+19 +     parse_k,
+20 +     parse_llm_request,
+21 +     parse_model,
+22 +     rate_limit_response,
+23 + )
+24 + from src.apps.legislation.attachment_service import (
+25 +     AttachmentError,
+26 +     delete_attachment,
+27 +     list_attachments,
+28 +     upload_attachment,
+29 + )
+30 | from src.apps.legislation.chat_api_helpers import _chat_session_response, _parse_limit, _preview
+   - from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
+31 + from src.apps.legislation.models import (
+32 +     ChatMessage,
+33 +     ChatSession,
+34 +     Dispositivo,
+35 +     EventoAlteracao,
+36 +     Norma,
+37 + )
+38 | from src.apps.legislation.retrieval_api import build_retrieval_options
+39 | from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
+40 | from src.apps.legislation.suggestion_service import build_dynamic_suggestions
+41 | from src.processing.adaptive_rag_service import AdaptiveRAGService
+42 +
+43 | RAGService = AdaptiveRAGService
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/apps/legislation/api_normas.py:2:1
+   |
+ 1 |   # ruff: noqa: F401,F403,E501,E701
+ 2 | / from __future__ import annotations
+ 3 | |
+ 4 | | import json
+ 5 | | import logging
+ 6 | | from django.conf import settings
+ 7 | | from django.core.paginator import Paginator
+ 8 | | from django.db import transaction
+ 9 | | from django.db.models import Count, OuterRef, Q, Subquery
+10 | | from django.http import HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
+11 | | from django.shortcuts import get_object_or_404
+12 | | from django.utils import timezone
+13 | | from django.views.decorators.csrf import csrf_exempt
+14 | | from django.views.decorators.http import require_http_methods
+15 | | from src.apps.legislation.api_limits import InvalidLLMParams, parse_k, parse_llm_request, parse_model, rate_limit_response
+16 | | from src.apps.legislation.attachment_service import AttachmentError, delete_attachment, list_attachments, upload_attachment
+17 | | from src.apps.legislation.chat_api_helpers import _chat_session_response, _parse_limit, _preview
+18 | | from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
+19 | | from src.apps.legislation.retrieval_api import build_retrieval_options
+20 | | from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
+21 | | from src.apps.legislation.suggestion_service import build_dynamic_suggestions
+22 | | from src.processing.adaptive_rag_service import AdaptiveRAGService
+   | |__________________________________________________________________^
+23 |   RAGService = AdaptiveRAGService
+   |
+help: Organize imports
+   |
+5  | import logging
+6  +
+7  | from django.conf import settings
+--------------------------------------------------------------------------------
+15 | from django.views.decorators.http import require_http_methods
+   - from src.apps.legislation.api_limits import InvalidLLMParams, parse_k, parse_llm_request, parse_model, rate_limit_response
+   - from src.apps.legislation.attachment_service import AttachmentError, delete_attachment, list_attachments, upload_attachment
+16 +
+17 + from src.apps.legislation.api_limits import (
+18 +     InvalidLLMParams,
+19 +     parse_k,
+20 +     parse_llm_request,
+21 +     parse_model,
+22 +     rate_limit_response,
+23 + )
+24 + from src.apps.legislation.attachment_service import (
+25 +     AttachmentError,
+26 +     delete_attachment,
+27 +     list_attachments,
+28 +     upload_attachment,
+29 + )
+30 | from src.apps.legislation.chat_api_helpers import _chat_session_response, _parse_limit, _preview
+   - from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
+31 + from src.apps.legislation.models import (
+32 +     ChatMessage,
+33 +     ChatSession,
+34 +     Dispositivo,
+35 +     EventoAlteracao,
+36 +     Norma,
+37 + )
+38 | from src.apps.legislation.retrieval_api import build_retrieval_options
+39 | from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
+40 | from src.apps.legislation.suggestion_service import build_dynamic_suggestions
+41 | from src.processing.adaptive_rag_service import AdaptiveRAGService
+42 +
+43 | RAGService = AdaptiveRAGService
+   |
+
+F821 Undefined name `_format_error_message`
+   --> src/apps/legislation/api_normas.py:109:57
+    |
+107 |     except Exception as e:
+108 |         logger.error(f"Error in norma list API: {e}", exc_info=True)
+109 |         return JsonResponse({"success": False, "error": _format_error_message(e)}, status=500)
+    |                                                         ^^^^^^^^^^^^^^^^^^^^^
+110 |
+111 | @require_http_methods(["GET"])
+    |
+
+F821 Undefined name `_format_error_message`
+   --> src/apps/legislation/api_normas.py:202:57
+    |
+200 |     except Exception as e:
+201 |         logger.error(f"Error in norma detail API: {e}", exc_info=True)
+202 |         return JsonResponse({"success": False, "error": _format_error_message(e)}, status=500)
+    |                                                         ^^^^^^^^^^^^^^^^^^^^^
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/apps/legislation/api_search.py:2:1
+   |
+ 1 |   # ruff: noqa: F401,F403,E501,E701
+ 2 | / from __future__ import annotations
+ 3 | |
+ 4 | | import json
+ 5 | | import logging
+ 6 | | from django.conf import settings
+ 7 | | from django.core.paginator import Paginator
+ 8 | | from django.db import transaction
+ 9 | | from django.db.models import Count, OuterRef, Q, Subquery
+10 | | from django.http import HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
+11 | | from django.shortcuts import get_object_or_404
+12 | | from django.utils import timezone
+13 | | from django.views.decorators.csrf import csrf_exempt
+14 | | from django.views.decorators.http import require_http_methods
+15 | | from src.apps.legislation.api_limits import InvalidLLMParams, parse_k, parse_llm_request, parse_model, rate_limit_response
+16 | | from src.apps.legislation.attachment_service import AttachmentError, delete_attachment, list_attachments, upload_attachment
+17 | | from src.apps.legislation.chat_api_helpers import _chat_session_response, _parse_limit, _preview
+18 | | from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
+19 | | from src.apps.legislation.retrieval_api import build_retrieval_options
+20 | | from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
+21 | | from src.apps.legislation.suggestion_service import build_dynamic_suggestions
+22 | | from src.processing.adaptive_rag_service import AdaptiveRAGService
+   | |__________________________________________________________________^
+23 |   RAGService = AdaptiveRAGService
+   |
+help: Organize imports
+   |
+5  | import logging
+6  +
+7  | from django.conf import settings
+--------------------------------------------------------------------------------
+15 | from django.views.decorators.http import require_http_methods
+   - from src.apps.legislation.api_limits import InvalidLLMParams, parse_k, parse_llm_request, parse_model, rate_limit_response
+   - from src.apps.legislation.attachment_service import AttachmentError, delete_attachment, list_attachments, upload_attachment
+16 +
+17 + from src.apps.legislation.api_limits import (
+18 +     InvalidLLMParams,
+19 +     parse_k,
+20 +     parse_llm_request,
+21 +     parse_model,
+22 +     rate_limit_response,
+23 + )
+24 + from src.apps.legislation.attachment_service import (
+25 +     AttachmentError,
+26 +     delete_attachment,
+27 +     list_attachments,
+28 +     upload_attachment,
+29 + )
+30 | from src.apps.legislation.chat_api_helpers import _chat_session_response, _parse_limit, _preview
+   - from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
+31 + from src.apps.legislation.models import (
+32 +     ChatMessage,
+33 +     ChatSession,
+34 +     Dispositivo,
+35 +     EventoAlteracao,
+36 +     Norma,
+37 + )
+38 | from src.apps.legislation.retrieval_api import build_retrieval_options
+39 | from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
+40 | from src.apps.legislation.suggestion_service import build_dynamic_suggestions
+41 | from src.processing.adaptive_rag_service import AdaptiveRAGService
+42 +
+43 | RAGService = AdaptiveRAGService
+   |
+
+F821 Undefined name `_format_error_message`
+   --> src/apps/legislation/api_search.py:140:57
+    |
+138 |     except Exception as e:
+139 |         logger.error(f"Error in semantic search API: {e}", exc_info=True)
+140 |         return JsonResponse({"success": False, "error": _format_error_message(e)}, status=500)
+    |                                                         ^^^^^^^^^^^^^^^^^^^^^
+141 |
+142 | @require_http_methods(["GET", "POST"])
+    |
+
+F821 Undefined name `_format_error_message`
+   --> src/apps/legislation/api_search.py:232:57
+    |
+230 |     except Exception as e:
+231 |         logger.error(f"Error in RAG answer API: {e}", exc_info=True)
+232 |         return JsonResponse({"success": False, "error": _format_error_message(e)}, status=500)
+    |                                                         ^^^^^^^^^^^^^^^^^^^^^
+233 |
+234 | @require_http_methods(["POST"])
+    |
+
+F821 Undefined name `_server_error`
+   --> src/apps/legislation/api_search.py:287:20
+    |
+285 |                 ChatSession.objects.filter(pk=chat_session.pk).update(updated_at=timezone.now())
+286 |         except Exception as e:
+287 |             return _server_error("persisting user message", e)
+    |                    ^^^^^^^^^^^^^
+288 |
+289 |     def event_stream():
+    |
+
+F821 Undefined name `_format_error_message`
+   --> src/apps/legislation/api_search.py:350:54
+    |
+348 |         except Exception as e:
+349 |             logger.error(f"Error in chatbot_stream_api stream: {e}", exc_info=True)
+350 |             err_payload = {"type": "error", "error": _format_error_message(e)}
+    |                                                      ^^^^^^^^^^^^^^^^^^^^^
+351 |             yield f"data: {json.dumps(err_payload)}\n\n"
+352 |         finally:
+    |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/apps/legislation/api_views.py:8:1
+   |
+ 6 |   patch ``api_views`` symbols keep working.
+ 7 |   """
+ 8 | / from __future__ import annotations
+ 9 | |
+10 | | from . import api_attachments, api_chat, api_health, api_normas, api_search
+11 | | from .api_health import _check_database, _check_migrations, _check_ollama, _check_pgvector, _check_redis, _format_error_message, hea…
+12 | | from .api_search import RAGService
+13 | | from .api_normas import norma_detail_api, norma_list_api
+14 | | from .api_chat import chat_session_by_slug_api, chat_session_detail_api, chat_session_regenerate_api, chat_sessions_api
+15 | | from .api_attachments import chat_attachment_api, chat_attachment_detail_api, dynamic_suggestions_api
+16 | | from .api_search import chatbot_stream_api, rag_answer_api, semantic_search_api
+17 | | from .api_attachments import *  # noqa: F401,F403
+18 | | from .api_chat import *  # noqa: F401,F403
+19 | | from .api_health import *  # noqa: F401,F403
+20 | | from .api_normas import *  # noqa: F401,F403
+21 | | from .api_search import *  # noqa: F401,F403
+22 | |
+23 | | # Compatibility symbols commonly patched by downstream tests/integrations.
+24 | | from .api_search import (  # noqa: E402
+25 | |     ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma,
+26 | |     InvalidLLMParams, build_retrieval_options, parse_k, parse_llm_request, parse_model,
+27 | |     rate_limit_response, serialize_dispositivo_source, transaction, timezone,
+28 | | )
+   | |_^
+help: Organize imports
+   |
+10 | from . import api_attachments, api_chat, api_health, api_normas, api_search
+   - from .api_health import _check_database, _check_migrations, _check_ollama, _check_pgvector, _check_redis, _format_error_message, health_check_api, health_live_api, health_ready_api
+   - from .api_search import RAGService
+   - from .api_normas import norma_detail_api, norma_list_api
+   - from .api_chat import chat_session_by_slug_api, chat_session_detail_api, chat_session_regenerate_api, chat_sessions_api
+   - from .api_attachments import chat_attachment_api, chat_attachment_detail_api, dynamic_suggestions_api
+   - from .api_search import chatbot_stream_api, rag_answer_api, semantic_search_api
+11 | from .api_attachments import *  # noqa: F401,F403
+12 + from .api_attachments import (
+13 +     chat_attachment_api,
+14 +     chat_attachment_detail_api,
+15 +     dynamic_suggestions_api,
+16 + )
+17 | from .api_chat import *  # noqa: F401,F403
+18 + from .api_chat import (
+19 +     chat_session_by_slug_api,
+20 +     chat_session_detail_api,
+21 +     chat_session_regenerate_api,
+22 +     chat_sessions_api,
+23 + )
+24 | from .api_health import *  # noqa: F401,F403
+25 + from .api_health import (
+26 +     _check_database,
+27 +     _check_migrations,
+28 +     _check_ollama,
+29 +     _check_pgvector,
+30 +     _check_redis,
+31 +     _format_error_message,
+32 +     health_check_api,
+33 +     health_live_api,
+34 +     health_ready_api,
+35 + )
+36 | from .api_normas import *  # noqa: F401,F403
+37 + from .api_normas import norma_detail_api, norma_list_api
+38 | from .api_search import *  # noqa: F401,F403
+39 |
+40 | # Compatibility symbols commonly patched by downstream tests/integrations.
+41 | from .api_search import (  # noqa: E402
+   -     ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma,
+   -     InvalidLLMParams, build_retrieval_options, parse_k, parse_llm_request, parse_model,
+   -     rate_limit_response, serialize_dispositivo_source, transaction, timezone,
+42 +     ChatMessage,
+43 +     ChatSession,
+44 +     Dispositivo,
+45 +     EventoAlteracao,
+46 +     InvalidLLMParams,
+47 +     Norma,
+48 +     RAGService,
+49 +     build_retrieval_options,
+50 +     chatbot_stream_api,
+51 +     parse_k,
+52 +     parse_llm_request,
+53 +     parse_model,
+54 +     rag_answer_api,
+55 +     rate_limit_response,
+56 +     semantic_search_api,
+57 +     serialize_dispositivo_source,
+58 +     timezone,
+59 +     transaction,
+60 | )
+   |
+
+F811 Redefinition of unused `health_ready_api` from line 11
+  --> src/apps/legislation/api_views.py:45:5
+   |
+45 | def health_ready_api(request):
+   |     ^^^^^^^^^^^^^^^^ `health_ready_api` redefined here
+46 |     _sync(api_health)
+47 |     return api_health.health_ready_api(request)
+   |
+  ::: src/apps/legislation/api_views.py:11:165
+   |
+10 | …
+11 | …health_check_api, health_live_api, health_ready_api
+   |                                     ---------------- previous definition of `health_ready_api` here
+12 | …
+13 | …
+   |
+help: Remove definition: `health_ready_api`
+
+F811 Redefinition of unused `health_check_api` from line 11
+  --> src/apps/legislation/api_views.py:50:5
+   |
+50 | def health_check_api(request):
+   |     ^^^^^^^^^^^^^^^^ `health_check_api` redefined here
+51 |     _sync(api_health)
+52 |     return api_health.health_check_api(request)
+   |
+  ::: src/apps/legislation/api_views.py:11:130
+   |
+10 | …
+11 | …heck_redis, _format_error_message, health_check_api, health_live_api, health_ready_api
+   |                                     ---------------- previous definition of `health_check_api` here
+12 | …
+13 | …
+   |
+help: Remove definition: `health_check_api`
+
+F811 Redefinition of unused `semantic_search_api` from line 16
+  --> src/apps/legislation/api_views.py:55:5
+   |
+55 | def semantic_search_api(request):
+   |     ^^^^^^^^^^^^^^^^^^^ `semantic_search_api` redefined here
+56 |     _sync(api_search)
+57 |     return api_search.semantic_search_api(request)
+   |
+  ::: src/apps/legislation/api_views.py:16:61
+   |
+14 | from .api_chat import chat_session_by_slug_api, chat_session_detail_api, chat_session_regenerate_api, chat_sessions_api
+15 | from .api_attachments import chat_attachment_api, chat_attachment_detail_api, dynamic_suggestions_api
+16 | from .api_search import chatbot_stream_api, rag_answer_api, semantic_search_api
+   |                                                             ------------------- previous definition of `semantic_search_api` here
+17 | from .api_attachments import *  # noqa: F401,F403
+18 | from .api_chat import *  # noqa: F401,F403
+   |
+help: Remove definition: `semantic_search_api`
+
+F811 Redefinition of unused `rag_answer_api` from line 16
+  --> src/apps/legislation/api_views.py:60:5
+   |
+60 | def rag_answer_api(request):
+   |     ^^^^^^^^^^^^^^ `rag_answer_api` redefined here
+61 |     _sync(api_search)
+62 |     return api_search.rag_answer_api(request)
+   |
+  ::: src/apps/legislation/api_views.py:16:45
+   |
+14 | from .api_chat import chat_session_by_slug_api, chat_session_detail_api, chat_session_regenerate_api, chat_sessions_api
+15 | from .api_attachments import chat_attachment_api, chat_attachment_detail_api, dynamic_suggestions_api
+16 | from .api_search import chatbot_stream_api, rag_answer_api, semantic_search_api
+   |                                             -------------- previous definition of `rag_answer_api` here
+17 | from .api_attachments import *  # noqa: F401,F403
+18 | from .api_chat import *  # noqa: F401,F403
+   |
+help: Remove definition: `rag_answer_api`
+
+F811 Redefinition of unused `chatbot_stream_api` from line 16
+  --> src/apps/legislation/api_views.py:65:5
+   |
+65 | def chatbot_stream_api(request):
+   |     ^^^^^^^^^^^^^^^^^^ `chatbot_stream_api` redefined here
+66 |     _sync(api_search)
+67 |     return api_search.chatbot_stream_api(request)
+   |
+  ::: src/apps/legislation/api_views.py:16:25
+   |
+14 | from .api_chat import chat_session_by_slug_api, chat_session_detail_api, chat_session_regenerate_api, chat_sessions_api
+15 | from .api_attachments import chat_attachment_api, chat_attachment_detail_api, dynamic_suggestions_api
+16 | from .api_search import chatbot_stream_api, rag_answer_api, semantic_search_api
+   |                         ------------------ previous definition of `chatbot_stream_api` here
+17 | from .api_attachments import *  # noqa: F401,F403
+18 | from .api_chat import *  # noqa: F401,F403
+   |
+help: Remove definition: `chatbot_stream_api`
+
+F811 Redefinition of unused `norma_list_api` from line 13
+  --> src/apps/legislation/api_views.py:70:5
+   |
+70 | def norma_list_api(request):
+   |     ^^^^^^^^^^^^^^ `norma_list_api` redefined here
+71 |     _sync(api_normas)
+72 |     return api_normas.norma_list_api(request)
+   |
+  ::: src/apps/legislation/api_views.py:13:43
+   |
+11 | from .api_health import _check_database, _check_migrations, _check_ollama, _check_pgvector, _check_redis, _format_error_message, healt…
+12 | from .api_search import RAGService
+13 | from .api_normas import norma_detail_api, norma_list_api
+   |                                           -------------- previous definition of `norma_list_api` here
+14 | from .api_chat import chat_session_by_slug_api, chat_session_detail_api, chat_session_regenerate_api, chat_sessions_api
+15 | from .api_attachments import chat_attachment_api, chat_attachment_detail_api, dynamic_suggestions_api
+   |
+help: Remove definition: `norma_list_api`
+
+F811 Redefinition of unused `norma_detail_api` from line 13
+  --> src/apps/legislation/api_views.py:75:5
+   |
+75 | def norma_detail_api(request, pk):
+   |     ^^^^^^^^^^^^^^^^ `norma_detail_api` redefined here
+76 |     _sync(api_normas)
+77 |     return api_normas.norma_detail_api(request, pk)
+   |
+  ::: src/apps/legislation/api_views.py:13:25
+   |
+11 | from .api_health import _check_database, _check_migrations, _check_ollama, _check_pgvector, _check_redis, _format_error_message, healt…
+12 | from .api_search import RAGService
+13 | from .api_normas import norma_detail_api, norma_list_api
+   |                         ---------------- previous definition of `norma_detail_api` here
+14 | from .api_chat import chat_session_by_slug_api, chat_session_detail_api, chat_session_regenerate_api, chat_sessions_api
+15 | from .api_attachments import chat_attachment_api, chat_attachment_detail_api, dynamic_suggestions_api
+   |
+help: Remove definition: `norma_detail_api`
+
+F811 Redefinition of unused `chat_sessions_api` from line 14
+  --> src/apps/legislation/api_views.py:80:5
+   |
+80 | def chat_sessions_api(request):
+   |     ^^^^^^^^^^^^^^^^^ `chat_sessions_api` redefined here
+81 |     _sync(api_chat)
+82 |     return api_chat.chat_sessions_api(request)
+   |
+  ::: src/apps/legislation/api_views.py:14:103
+   |
+12 | from .api_search import RAGService
+13 | from .api_normas import norma_detail_api, norma_list_api
+14 | from .api_chat import chat_session_by_slug_api, chat_session_detail_api, chat_session_regenerate_api, chat_sessions_api
+   |                                                                                                       ----------------- previous definition of `chat_sessions_api` here
+15 | from .api_attachments import chat_attachment_api, chat_attachment_detail_api, dynamic_suggestions_api
+16 | from .api_search import chatbot_stream_api, rag_answer_api, semantic_search_api
+   |
+help: Remove definition: `chat_sessions_api`
+
+F811 Redefinition of unused `chat_session_by_slug_api` from line 14
+  --> src/apps/legislation/api_views.py:85:5
+   |
+85 | def chat_session_by_slug_api(request, slug):
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ `chat_session_by_slug_api` redefined here
+86 |     _sync(api_chat)
+87 |     return api_chat.chat_session_by_slug_api(request, slug)
+   |
+  ::: src/apps/legislation/api_views.py:14:23
+   |
+12 | from .api_search import RAGService
+13 | from .api_normas import norma_detail_api, norma_list_api
+14 | from .api_chat import chat_session_by_slug_api, chat_session_detail_api, chat_session_regenerate_api, chat_sessions_api
+   |                       ------------------------ previous definition of `chat_session_by_slug_api` here
+15 | from .api_attachments import chat_attachment_api, chat_attachment_detail_api, dynamic_suggestions_api
+16 | from .api_search import chatbot_stream_api, rag_answer_api, semantic_search_api
+   |
+help: Remove definition: `chat_session_by_slug_api`
+
+F811 Redefinition of unused `chat_session_detail_api` from line 14
+  --> src/apps/legislation/api_views.py:90:5
+   |
+90 | def chat_session_detail_api(request, session_id):
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ `chat_session_detail_api` redefined here
+91 |     _sync(api_chat)
+92 |     return api_chat.chat_session_detail_api(request, session_id)
+   |
+  ::: src/apps/legislation/api_views.py:14:49
+   |
+12 | from .api_search import RAGService
+13 | from .api_normas import norma_detail_api, norma_list_api
+14 | from .api_chat import chat_session_by_slug_api, chat_session_detail_api, chat_session_regenerate_api, chat_sessions_api
+   |                                                 ----------------------- previous definition of `chat_session_detail_api` here
+15 | from .api_attachments import chat_attachment_api, chat_attachment_detail_api, dynamic_suggestions_api
+16 | from .api_search import chatbot_stream_api, rag_answer_api, semantic_search_api
+   |
+help: Remove definition: `chat_session_detail_api`
+
+F811 Redefinition of unused `chat_session_regenerate_api` from line 14
+  --> src/apps/legislation/api_views.py:95:5
+   |
+95 | def chat_session_regenerate_api(request, session_id):
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `chat_session_regenerate_api` redefined here
+96 |     _sync(api_chat)
+97 |     return api_chat.chat_session_regenerate_api(request, session_id)
+   |
+  ::: src/apps/legislation/api_views.py:14:74
+   |
+12 | from .api_search import RAGService
+13 | from .api_normas import norma_detail_api, norma_list_api
+14 | from .api_chat import chat_session_by_slug_api, chat_session_detail_api, chat_session_regenerate_api, chat_sessions_api
+   |                                                                          --------------------------- previous definition of `chat_session_regenerate_api` here
+15 | from .api_attachments import chat_attachment_api, chat_attachment_detail_api, dynamic_suggestions_api
+16 | from .api_search import chatbot_stream_api, rag_answer_api, semantic_search_api
+   |
+help: Remove definition: `chat_session_regenerate_api`
+
+F811 Redefinition of unused `chat_attachment_api` from line 15
+   --> src/apps/legislation/api_views.py:100:5
+    |
+100 | def chat_attachment_api(request):
+    |     ^^^^^^^^^^^^^^^^^^^ `chat_attachment_api` redefined here
+101 |     _sync(api_attachments)
+102 |     return api_attachments.chat_attachment_api(request)
+    |
+   ::: src/apps/legislation/api_views.py:15:30
+    |
+ 13 | from .api_normas import norma_detail_api, norma_list_api
+ 14 | from .api_chat import chat_session_by_slug_api, chat_session_detail_api, chat_session_regenerate_api, chat_sessions_api
+ 15 | from .api_attachments import chat_attachment_api, chat_attachment_detail_api, dynamic_suggestions_api
+    |                              ------------------- previous definition of `chat_attachment_api` here
+ 16 | from .api_search import chatbot_stream_api, rag_answer_api, semantic_search_api
+ 17 | from .api_attachments import *  # noqa: F401,F403
+    |
+help: Remove definition: `chat_attachment_api`
+
+F811 Redefinition of unused `chat_attachment_detail_api` from line 15
+   --> src/apps/legislation/api_views.py:105:5
+    |
+105 | def chat_attachment_detail_api(request, attachment_id):
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ `chat_attachment_detail_api` redefined here
+106 |     _sync(api_attachments)
+107 |     return api_attachments.chat_attachment_detail_api(request, attachment_id)
+    |
+   ::: src/apps/legislation/api_views.py:15:51
+    |
+ 13 | from .api_normas import norma_detail_api, norma_list_api
+ 14 | from .api_chat import chat_session_by_slug_api, chat_session_detail_api, chat_session_regenerate_api, chat_sessions_api
+ 15 | from .api_attachments import chat_attachment_api, chat_attachment_detail_api, dynamic_suggestions_api
+    |                                                   -------------------------- previous definition of `chat_attachment_detail_api` here
+ 16 | from .api_search import chatbot_stream_api, rag_answer_api, semantic_search_api
+ 17 | from .api_attachments import *  # noqa: F401,F403
+    |
+help: Remove definition: `chat_attachment_detail_api`
+
+F811 Redefinition of unused `dynamic_suggestions_api` from line 15
+   --> src/apps/legislation/api_views.py:110:5
+    |
+110 | def dynamic_suggestions_api(request):
+    |     ^^^^^^^^^^^^^^^^^^^^^^^ `dynamic_suggestions_api` redefined here
+111 |     _sync(api_attachments)
+112 |     return api_attachments.dynamic_suggestions_api(request)
+    |
+   ::: src/apps/legislation/api_views.py:15:79
+    |
+ 13 | from .api_normas import norma_detail_api, norma_list_api
+ 14 | from .api_chat import chat_session_by_slug_api, chat_session_detail_api, chat_session_regenerate_api, chat_sessions_api
+ 15 | from .api_attachments import chat_attachment_api, chat_attachment_detail_api, dynamic_suggestions_api
+    |                                                                               ----------------------- previous definition of `dynamic_suggestions_api` here
+ 16 | from .api_search import chatbot_stream_api, rag_answer_api, semantic_search_api
+ 17 | from .api_attachments import *  # noqa: F401,F403
+    |
+help: Remove definition: `dynamic_suggestions_api`
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/clients/sapl/sapl_client.py:3:1
+   |
+ 1 |   # ruff: noqa: F401,F403,E501,E701
+ 2 |   """Compatibility facade for the SAPL client, split into focused mixins."""
+ 3 | / from __future__ import annotations
+ 4 | | import logging
+ 5 | | import os
+ 6 | | from django.conf import settings
+ 7 | | from .sapl_transport import SaplTransportMixin
+ 8 | | from .sapl_normas import SaplNormasMixin
+ 9 | | from .sapl_corpus import SaplCorpusMixin
+10 | | from .sapl_download import SaplDownloadMixin
+   | |____________________________________________^
+11 |   logger = logging.getLogger(__name__)
+   |
+help: Organize imports
+   |
+3  | from __future__ import annotations
+4  +
+5  | import logging
+6  | import os
+7  +
+8  | from django.conf import settings
+   - from .sapl_transport import SaplTransportMixin
+   - from .sapl_normas import SaplNormasMixin
+9  +
+10 | from .sapl_corpus import SaplCorpusMixin
+11 | from .sapl_download import SaplDownloadMixin
+12 + from .sapl_normas import SaplNormasMixin
+13 + from .sapl_transport import SaplTransportMixin
+14 +
+15 | logger = logging.getLogger(__name__)
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/clients/sapl/sapl_corpus.py:2:1
+   |
+ 1 |   # ruff: noqa: F401,F403,E501,E701
+ 2 | / from __future__ import annotations
+ 3 | | import logging
+ 4 | | import os
+ 5 | | import time
+ 6 | | from typing import Any
+ 7 | | import requests
+ 8 | | from django.conf import settings
+ 9 | | from requests.adapters import HTTPAdapter
+10 | | from requests.packages.urllib3.util.retry import Retry
+   | |______________________________________________________^
+11 |   logger = logging.getLogger(__name__)
+   |
+help: Organize imports
+   |
+2  | from __future__ import annotations
+3  +
+4  | import logging
+5  | import os
+6  | import time
+7  | from typing import Any
+8  +
+9  | import requests
+10 | from django.conf import settings
+11 | from requests.adapters import HTTPAdapter
+12 | from requests.packages.urllib3.util.retry import Retry
+13 +
+14 | logger = logging.getLogger(__name__)
+   |
+
+W293 Blank line contains whitespace
+  --> src/clients/sapl/sapl_corpus.py:23:1
+   |
+21 |             """
+22 |             Busca todas as normas com paginação automática e segue o link ``next`` do SAPL.
+23 |     
+   | ^^^^
+24 |             Algumas implantações do SAPL devolvem uma página fixa mesmo quando ``offset``
+25 |             muda. Nesses casos a paginação por offset é interrompida de forma segura em vez
+   |
+help: Remove whitespace from blank line
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_corpus.py:36:1
+   |
+34 |                 page_size,
+35 |             )
+36 |     
+   | ^^^^
+37 |             all_normas: list[dict[str, Any]] = []
+38 |             seen_ids: set[Any] = set()
+   |
+help: Remove whitespace from blank line
+   |
+35 |             )
+   -     
+36 +
+37 |             all_normas: list[dict[str, Any]] = []
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_corpus.py:44:1
+   |
+42 |             page_guard = 0
+43 |             max_pages = max(1, int(getattr(settings, "SAPL_FULL_SYNC_MAX_PAGES", 1000)))
+44 |     
+   | ^^^^
+45 |             while data and page_guard < max_pages:
+46 |                 page_guard += 1
+   |
+help: Remove whitespace from blank line
+   |
+43 |             max_pages = max(1, int(getattr(settings, "SAPL_FULL_SYNC_MAX_PAGES", 1000)))
+   -     
+44 +
+45 |             while data and page_guard < max_pages:
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_corpus.py:50:1
+   |
+48 |                 if not results:
+49 |                     break
+50 |     
+   | ^^^^
+51 |                 new_count = 0
+52 |                 for norma in results:
+   |
+help: Remove whitespace from blank line
+   |
+49 |                     break
+   -     
+50 +
+51 |                 new_count = 0
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_corpus.py:59:1
+   |
+57 |                     all_normas.append(norma)
+58 |                     new_count += 1
+59 |     
+   | ^^^^
+60 |                 logger.info("Progresso: %s normas acumuladas", len(all_normas))
+61 |                 if max_normas and len(all_normas) >= max_normas:
+   |
+help: Remove whitespace from blank line
+   |
+58 |                     new_count += 1
+   -     
+59 +
+60 |                 logger.info("Progresso: %s normas acumuladas", len(all_normas))
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_corpus.py:63:1
+   |
+61 |                 if max_normas and len(all_normas) >= max_normas:
+62 |                     return all_normas[:max_normas]
+63 |     
+   | ^^^^
+64 |                 next_url = data.get("next")
+65 |                 if next_url:
+   |
+help: Remove whitespace from blank line
+   |
+62 |                     return all_normas[:max_normas]
+   -     
+63 +
+64 |                 next_url = data.get("next")
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_corpus.py:74:1
+   |
+72 |                     time.sleep(0.2)
+73 |                     continue
+74 |     
+   | ^^^^
+75 |                 # Fallback para APIs que omitem ``next`` mas respeitam offset.
+76 |                 if new_count == 0:
+   |
+help: Remove whitespace from blank line
+   |
+73 |                     continue
+   -     
+74 +
+75 |                 # Fallback para APIs que omitem ``next`` mas respeitam offset.
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_corpus.py:88:1
+   |
+86 |                 data = self.fetch_normas_page(limit=page_size, offset=offset, tipo=tipo, ano=ano)
+87 |                 time.sleep(0.2)
+88 |     
+   | ^^^^
+89 |             if page_guard >= max_pages:
+90 |                 logger.warning("Limite de %s páginas SAPL atingido.", max_pages)
+   |
+help: Remove whitespace from blank line
+   |
+87 |                 time.sleep(0.2)
+   -     
+88 +
+89 |             if page_guard >= max_pages:
+   |
+
+W293 Blank line contains whitespace
+   --> src/clients/sapl/sapl_corpus.py:103:1
+    |
+101 |             """
+102 |             Collect a bounded municipal corpus even when SAPL pagination is defective.
+103 |     
+    | ^^^^
+104 |             Strategy:
+105 |             1. Follow real ``next`` links whenever SAPL supplies them.
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> src/clients/sapl/sapl_corpus.py:109:1
+    |
+107 |             3. Discover type labels from the payload and re-query year/type partitions,
+108 |                which provides additional coverage on installations that cap each response.
+109 |     
+    | ^^^^
+110 |             The result is deliberately bounded (default 300) and deduplicated by SAPL id.
+111 |             It is a corpus-selection tool, not a claim that the remote database was fully
+    |
+help: Remove whitespace from blank line
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_corpus.py:116:1
+    |
+114 |             if isinstance(target, bool) or target < 1:
+115 |                 raise ValueError("target must be a positive integer")
+116 |     
+    | ^^^^
+117 |             current_year = time.gmtime().tm_year
+118 |             start_year = ano_inicio or int(getattr(settings, "SAPL_CORPUS_START_YEAR", 2000))
+    |
+help: Remove whitespace from blank line
+    |
+115 |                 raise ValueError("target must be a positive integer")
+    -     
+116 +
+117 |             current_year = time.gmtime().tm_year
+    |
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_corpus.py:122:1
+    |
+120 |             if start_year > end_year:
+121 |                 raise ValueError("ano_inicio must be <= ano_fim")
+122 |     
+    | ^^^^
+123 |             discovered_types: set[str] = set(tipos or [])
+124 |             collected: dict[Any, dict[str, Any]] = {}
+    |
+help: Remove whitespace from blank line
+    |
+121 |                 raise ValueError("ano_inicio must be <= ano_fim")
+    -     
+122 +
+123 |             discovered_types: set[str] = set(tipos or [])
+    |
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_corpus.py:127:1
+    |
+125 |             years = range(end_year, start_year - 1, -1)
+126 |             delay = float(getattr(settings, "SAPL_CORPUS_REQUEST_DELAY_SECONDS", 0.2))
+127 |     
+    | ^^^^
+128 |             def add_results(items: list[dict[str, Any]]) -> None:
+129 |                 for item in items:
+    |
+help: Remove whitespace from blank line
+    |
+126 |             delay = float(getattr(settings, "SAPL_CORPUS_REQUEST_DELAY_SECONDS", 0.2))
+    -     
+127 +
+128 |             def add_results(items: list[dict[str, Any]]) -> None:
+    |
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_corpus.py:141:1
+    |
+139 |                     if label:
+140 |                         discovered_types.add(label)
+141 |     
+    | ^^^^
+142 |             for year in years:
+143 |                 if len(collected) >= target:
+    |
+help: Remove whitespace from blank line
+    |
+140 |                         discovered_types.add(label)
+    -     
+141 +
+142 |             for year in years:
+    |
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_corpus.py:165:1
+    |
+163 |                 except Exception:
+164 |                     logger.warning("Falha ao consultar SAPL no ano %s", year, exc_info=True)
+165 |     
+    | ^^^^
+166 |             # Fallback for installations where year-only queries are capped at 10 rows.
+167 |             for tipo in sorted(discovered_types):
+    |
+help: Remove whitespace from blank line
+    |
+164 |                     logger.warning("Falha ao consultar SAPL no ano %s", year, exc_info=True)
+    -     
+165 +
+166 |             # Fallback for installations where year-only queries are capped at 10 rows.
+    |
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_corpus.py:184:1
+    |
+182 |                             "Ignorando partição SAPL tipo=%s ano=%s", tipo, year, exc_info=True
+183 |                         )
+184 |     
+    | ^^^^
+185 |             result = list(collected.values())[:target]
+186 |             if len(result) < target:
+    |
+help: Remove whitespace from blank line
+    |
+183 |                         )
+    -     
+184 +
+185 |             result = list(collected.values())[:target]
+    |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/clients/sapl/sapl_download.py:2:1
+   |
+ 1 |   # ruff: noqa: F401,F403,E501,E701
+ 2 | / from __future__ import annotations
+ 3 | | import logging
+ 4 | | import os
+ 5 | | import time
+ 6 | | from typing import Any
+ 7 | | import requests
+ 8 | | from django.conf import settings
+ 9 | | from requests.adapters import HTTPAdapter
+10 | | from requests.packages.urllib3.util.retry import Retry
+   | |______________________________________________________^
+11 |   logger = logging.getLogger(__name__)
+   |
+help: Organize imports
+   |
+2  | from __future__ import annotations
+3  +
+4  | import logging
+5  | import os
+6  | import time
+7  | from typing import Any
+8  +
+9  | import requests
+10 | from django.conf import settings
+11 | from requests.adapters import HTTPAdapter
+12 | from requests.packages.urllib3.util.retry import Retry
+13 +
+14 | logger = logging.getLogger(__name__)
+   |
+
+W293 Blank line contains whitespace
+  --> src/clients/sapl/sapl_download.py:17:1
+   |
+15 |             """
+16 |             Baixa um arquivo PDF da URL fornecida.
+17 |     
+   | ^^^^
+18 |             Args:
+19 |                 pdf_url: URL do PDF
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> src/clients/sapl/sapl_download.py:21:1
+   |
+19 |                 pdf_url: URL do PDF
+20 |                 output_path: Caminho local para salvar
+21 |     
+   | ^^^^
+22 |             Returns:
+23 |                 True se bem-sucedido, False caso contrário
+   |
+help: Remove whitespace from blank line
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_download.py:26:1
+   |
+24 |             """
+25 |             logger.info(f"Baixando PDF: {pdf_url} -> {output_path}")
+26 |     
+   | ^^^^
+27 |             max_bytes = int(getattr(settings, "SAPL_DOWNLOAD_MAX_BYTES", 80 * 1024 * 1024))
+28 |             timeout = int(getattr(settings, "SAPL_DOWNLOAD_TIMEOUT_SECONDS", self.timeout))
+   |
+help: Remove whitespace from blank line
+   |
+25 |             logger.info(f"Baixando PDF: {pdf_url} -> {output_path}")
+   -     
+26 +
+27 |             max_bytes = int(getattr(settings, "SAPL_DOWNLOAD_MAX_BYTES", 80 * 1024 * 1024))
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_download.py:40:1
+   |
+38 |                     logger.warning("PDF exceeds configured download limit: %s bytes", content_length)
+39 |                     return False
+40 |     
+   | ^^^^
+41 |                 total = 0
+42 |                 with open(temporary, "wb") as f:
+   |
+help: Remove whitespace from blank line
+   |
+39 |                     return False
+   -     
+40 +
+41 |                 total = 0
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_download.py:51:1
+   |
+49 |                             return False
+50 |                         f.write(chunk)
+51 |     
+   | ^^^^
+52 |                 os.replace(temporary, target)
+   |
+help: Remove whitespace from blank line
+   |
+50 |                         f.write(chunk)
+   -     
+51 +
+52 |                 os.replace(temporary, target)
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_download.py:53:1
+   |
+52 |                 os.replace(temporary, target)
+53 |     
+   | ^^^^
+54 |                 logger.info(f"PDF baixado com sucesso: {output_path}")
+55 |                 return True
+   |
+help: Remove whitespace from blank line
+   |
+52 |                 os.replace(temporary, target)
+   -     
+53 +
+54 |                 logger.info(f"PDF baixado com sucesso: {output_path}")
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_download.py:56:1
+   |
+54 |                 logger.info(f"PDF baixado com sucesso: {output_path}")
+55 |                 return True
+56 |     
+   | ^^^^
+57 |             except Exception as e:
+58 |                 logger.error(f"Falha ao baixar PDF {pdf_url}: {str(e)}")
+   |
+help: Remove whitespace from blank line
+   |
+55 |                 return True
+   -     
+56 +
+57 |             except Exception as e:
+   |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/clients/sapl/sapl_normas.py:2:1
+   |
+ 1 |   # ruff: noqa: F401,F403,E501,E701
+ 2 | / from __future__ import annotations
+ 3 | | import logging
+ 4 | | import os
+ 5 | | import time
+ 6 | | from typing import Any
+ 7 | | import requests
+ 8 | | from django.conf import settings
+ 9 | | from requests.adapters import HTTPAdapter
+10 | | from requests.packages.urllib3.util.retry import Retry
+   | |______________________________________________________^
+11 |   logger = logging.getLogger(__name__)
+   |
+help: Organize imports
+   |
+2  | from __future__ import annotations
+3  +
+4  | import logging
+5  | import os
+6  | import time
+7  | from typing import Any
+8  +
+9  | import requests
+10 | from django.conf import settings
+11 | from requests.adapters import HTTPAdapter
+12 | from requests.packages.urllib3.util.retry import Retry
+13 +
+14 | logger = logging.getLogger(__name__)
+   |
+
+W293 Blank line contains whitespace
+  --> src/clients/sapl/sapl_normas.py:34:1
+   |
+32 |             """
+33 |             Busca normas jurídicas na API SAPL.
+34 |     
+   | ^^^^
+35 |             A API do SAPL retorna dados paginados no formato:
+36 |             {
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> src/clients/sapl/sapl_normas.py:42:1
+   |
+40 |                 "results": [...]
+41 |             }
+42 |     
+   | ^^^^
+43 |             Args:
+44 |                 limit: Número máximo de normas a buscar
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> src/clients/sapl/sapl_normas.py:48:1
+   |
+46 |                 tipo: Filtro por tipo de norma (ex: "Lei Ordinária")
+47 |                 ano: Filtro por ano
+48 |     
+   | ^^^^
+49 |             Returns:
+50 |                 Lista de dicionários com metadados das normas
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> src/clients/sapl/sapl_normas.py:51:1
+   |
+49 |             Returns:
+50 |                 Lista de dicionários com metadados das normas
+51 |     
+   | ^^^^
+52 |             Raises:
+53 |                 requests.RequestException: Em caso de falha na API
+   |
+help: Remove whitespace from blank line
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_normas.py:58:1
+   |
+56 |                 f"Iniciando fetch de normas: limit={limit}, offset={offset}, " f"tipo={tipo}, ano={ano}"
+57 |             )
+58 |     
+   | ^^^^
+59 |             try:
+60 |                 start_time = time.time()
+   |
+help: Remove whitespace from blank line
+   |
+57 |             )
+   -     
+58 +
+59 |             try:
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_normas.py:63:1
+   |
+61 |                 data = self.fetch_normas_page(limit=limit, offset=offset, tipo=tipo, ano=ano)
+62 |                 elapsed = time.time() - start_time
+63 |     
+   | ^^^^
+64 |                 results = data.get("results", [])
+65 |                 total_count = data.get("count", 0)
+   |
+help: Remove whitespace from blank line
+   |
+62 |                 elapsed = time.time() - start_time
+   -     
+63 +
+64 |                 results = data.get("results", [])
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_normas.py:66:1
+   |
+64 |                 results = data.get("results", [])
+65 |                 total_count = data.get("count", 0)
+66 |     
+   | ^^^^
+67 |                 logger.info(
+68 |                     f"Fetch concluído: {len(results)} normas recuperadas de {total_count} "
+   |
+help: Remove whitespace from blank line
+   |
+65 |                 total_count = data.get("count", 0)
+   -     
+66 +
+67 |                 logger.info(
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_normas.py:71:1
+   |
+69 |                     f"totais em {elapsed:.2f}s"
+70 |                 )
+71 |     
+   | ^^^^
+72 |                 return results
+   |
+help: Remove whitespace from blank line
+   |
+70 |                 )
+   -     
+71 +
+72 |                 return results
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_normas.py:73:1
+   |
+72 |                 return results
+73 |     
+   | ^^^^
+74 |             except Exception as e:
+75 |                 logger.error(f"Falha no fetch de normas: {str(e)}")
+   |
+help: Remove whitespace from blank line
+   |
+72 |                 return results
+   -     
+73 +
+74 |             except Exception as e:
+   |
+
+W293 Blank line contains whitespace
+  --> src/clients/sapl/sapl_normas.py:81:1
+   |
+79 |             """
+80 |             Busca uma norma específica por ID.
+81 |     
+   | ^^^^
+82 |             Args:
+83 |                 norma_id: ID da norma no SAPL
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> src/clients/sapl/sapl_normas.py:84:1
+   |
+82 |             Args:
+83 |                 norma_id: ID da norma no SAPL
+84 |     
+   | ^^^^
+85 |             Returns:
+86 |                 Dicionário com metadados da norma
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> src/clients/sapl/sapl_normas.py:87:1
+   |
+85 |             Returns:
+86 |                 Dicionário com metadados da norma
+87 |     
+   | ^^^^
+88 |             Raises:
+89 |                 requests.RequestException: Em caso de falha na API
+   |
+help: Remove whitespace from blank line
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_normas.py:92:1
+   |
+90 |             """
+91 |             logger.info(f"Buscando norma ID={norma_id}")
+92 |     
+   | ^^^^
+93 |             endpoint = f"{self.NORMA_ENDPOINT}{norma_id}/"
+   |
+help: Remove whitespace from blank line
+   |
+91 |             logger.info(f"Buscando norma ID={norma_id}")
+   -     
+92 +
+93 |             endpoint = f"{self.NORMA_ENDPOINT}{norma_id}/"
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_normas.py:94:1
+   |
+93 |             endpoint = f"{self.NORMA_ENDPOINT}{norma_id}/"
+94 |     
+   | ^^^^
+95 |             try:
+96 |                 data = self._make_request(endpoint)
+   |
+help: Remove whitespace from blank line
+   |
+93 |             endpoint = f"{self.NORMA_ENDPOINT}{norma_id}/"
+   -     
+94 +
+95 |             try:
+   |
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_normas.py:99:1
+    |
+ 97 |                 logger.info(f"Norma ID={norma_id} recuperada com sucesso")
+ 98 |                 return data
+ 99 |     
+    | ^^^^
+100 |             except Exception as e:
+101 |                 logger.error(f"Falha ao buscar norma ID={norma_id}: {str(e)}")
+    |
+help: Remove whitespace from blank line
+    |
+98  |                 return data
+    -     
+99  +
+100 |             except Exception as e:
+    |
+
+W293 Blank line contains whitespace
+   --> src/clients/sapl/sapl_normas.py:113:1
+    |
+111 |             """
+112 |             Busca normas por intervalo de anos (workaround para limitação de paginação da API).
+113 |     
+    | ^^^^
+114 |             Esta estratégia contorna a limitação da API SAPL que retorna sempre as mesmas
+115 |             10 normas independente do offset, iterando ano por ano.
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> src/clients/sapl/sapl_normas.py:116:1
+    |
+114 |             Esta estratégia contorna a limitação da API SAPL que retorna sempre as mesmas
+115 |             10 normas independente do offset, iterando ano por ano.
+116 |     
+    | ^^^^
+117 |             Args:
+118 |                 ano_inicio: Ano inicial do intervalo (inclusive)
+    |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+   --> src/clients/sapl/sapl_normas.py:122:1
+    |
+120 |                 tipo: Filtro opcional por tipo de norma
+121 |                 max_normas_por_ano: Limite máximo de normas por ano (None = todas)
+122 |     
+    | ^^^^
+123 |             Returns:
+124 |                 Lista completa de normas do intervalo
+    |
+help: Remove whitespace from blank line
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_normas.py:130:1
+    |
+128 |                 f"tipo={tipo}, max_por_ano={max_normas_por_ano}"
+129 |             )
+130 |     
+    | ^^^^
+131 |             all_normas = []
+132 |             anos_para_processar = list(range(ano_inicio, ano_fim + 1))
+    |
+help: Remove whitespace from blank line
+    |
+129 |             )
+    -     
+130 +
+131 |             all_normas = []
+    |
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_normas.py:133:1
+    |
+131 |             all_normas = []
+132 |             anos_para_processar = list(range(ano_inicio, ano_fim + 1))
+133 |     
+    | ^^^^
+134 |             for ano in anos_para_processar:
+135 |                 try:
+    |
+help: Remove whitespace from blank line
+    |
+132 |             anos_para_processar = list(range(ano_inicio, ano_fim + 1))
+    -     
+133 +
+134 |             for ano in anos_para_processar:
+    |
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_normas.py:137:1
+    |
+135 |                 try:
+136 |                     logger.info(f"Buscando normas do ano {ano}...")
+137 |     
+    | ^^^^
+138 |                     # Buscar todas as normas deste ano
+139 |                     normas_do_ano = self.fetch_all_normas(
+    |
+help: Remove whitespace from blank line
+    |
+136 |                     logger.info(f"Buscando normas do ano {ano}...")
+    -     
+137 +
+138 |                     # Buscar todas as normas deste ano
+    |
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_normas.py:142:1
+    |
+140 |                         max_normas=max_normas_por_ano, tipo=tipo, ano=ano, page_size=50
+141 |                     )
+142 |     
+    | ^^^^
+143 |                     # Remover duplicatas por sapl_id
+144 |                     normas_unicas = {}
+    |
+help: Remove whitespace from blank line
+    |
+141 |                     )
+    -     
+142 +
+143 |                     # Remover duplicatas por sapl_id
+    |
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_normas.py:149:1
+    |
+147 |                         if sapl_id and sapl_id not in normas_unicas:
+148 |                             normas_unicas[sapl_id] = norma
+149 |     
+    | ^^^^
+150 |                     normas_do_ano_unicas = list(normas_unicas.values())
+151 |                     all_normas.extend(normas_do_ano_unicas)
+    |
+help: Remove whitespace from blank line
+    |
+148 |                             normas_unicas[sapl_id] = norma
+    -     
+149 +
+150 |                     normas_do_ano_unicas = list(normas_unicas.values())
+    |
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_normas.py:152:1
+    |
+150 |                     normas_do_ano_unicas = list(normas_unicas.values())
+151 |                     all_normas.extend(normas_do_ano_unicas)
+152 |     
+    | ^^^^
+153 |                     logger.info(
+154 |                         f"Ano {ano}: {len(normas_do_ano_unicas)} normas únicas encontradas "
+    |
+help: Remove whitespace from blank line
+    |
+151 |                     all_normas.extend(normas_do_ano_unicas)
+    -     
+152 +
+153 |                     logger.info(
+    |
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_normas.py:157:1
+    |
+155 |                         f"(total acumulado: {len(all_normas)})"
+156 |                     )
+157 |     
+    | ^^^^
+158 |                     # Rate limiting entre anos
+159 |                     time.sleep(0.5)
+    |
+help: Remove whitespace from blank line
+    |
+156 |                     )
+    -     
+157 +
+158 |                     # Rate limiting entre anos
+    |
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_normas.py:160:1
+    |
+158 |                     # Rate limiting entre anos
+159 |                     time.sleep(0.5)
+160 |     
+    | ^^^^
+161 |                 except Exception as e:
+162 |                     logger.error(f"Erro ao buscar normas do ano {ano}: {str(e)}")
+    |
+help: Remove whitespace from blank line
+    |
+159 |                     time.sleep(0.5)
+    -     
+160 +
+161 |                 except Exception as e:
+    |
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_normas.py:164:1
+    |
+162 |                     logger.error(f"Erro ao buscar normas do ano {ano}: {str(e)}")
+163 |                     continue
+164 |     
+    | ^^^^
+165 |             # Remover duplicatas finais (caso alguma norma apareça em múltiplos anos)
+166 |             normas_finais_unicas = {}
+    |
+help: Remove whitespace from blank line
+    |
+163 |                     continue
+    -     
+164 +
+165 |             # Remover duplicatas finais (caso alguma norma apareça em múltiplos anos)
+    |
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_normas.py:171:1
+    |
+169 |                 if sapl_id and sapl_id not in normas_finais_unicas:
+170 |                     normas_finais_unicas[sapl_id] = norma
+171 |     
+    | ^^^^
+172 |             resultado_final = list(normas_finais_unicas.values())
+    |
+help: Remove whitespace from blank line
+    |
+170 |                     normas_finais_unicas[sapl_id] = norma
+    -     
+171 +
+172 |             resultado_final = list(normas_finais_unicas.values())
+    |
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_normas.py:173:1
+    |
+172 |             resultado_final = list(normas_finais_unicas.values())
+173 |     
+    | ^^^^
+174 |             logger.info(
+175 |                 f"Fetch por intervalo de anos concluído: {len(resultado_final)} normas únicas "
+    |
+help: Remove whitespace from blank line
+    |
+172 |             resultado_final = list(normas_finais_unicas.values())
+    -     
+173 +
+174 |             logger.info(
+    |
+
+W293 [*] Blank line contains whitespace
+   --> src/clients/sapl/sapl_normas.py:178:1
+    |
+176 |                 f"de {ano_inicio} a {ano_fim}"
+177 |             )
+178 |     
+    | ^^^^
+179 |             return resultado_final
+    |
+help: Remove whitespace from blank line
+    |
+177 |             )
+    -     
+178 +
+179 |             return resultado_final
+    |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/clients/sapl/sapl_transport.py:2:1
+   |
+ 1 |   # ruff: noqa: F401,F403,E501,E701
+ 2 | / from __future__ import annotations
+ 3 | | import logging
+ 4 | | import os
+ 5 | | import time
+ 6 | | from typing import Any
+ 7 | | import requests
+ 8 | | from django.conf import settings
+ 9 | | from requests.adapters import HTTPAdapter
+10 | | from requests.packages.urllib3.util.retry import Retry
+   | |______________________________________________________^
+11 |   logger = logging.getLogger(__name__)
+   |
+help: Organize imports
+   |
+2  | from __future__ import annotations
+3  +
+4  | import logging
+5  | import os
+6  | import time
+7  | from typing import Any
+8  +
+9  | import requests
+10 | from django.conf import settings
+11 | from requests.adapters import HTTPAdapter
+12 | from requests.packages.urllib3.util.retry import Retry
+13 +
+14 | logger = logging.getLogger(__name__)
+   |
+
+W293 Blank line contains whitespace
+  --> src/clients/sapl/sapl_transport.py:17:1
+   |
+15 |             """
+16 |             Cria uma sessão HTTP com retry automático.
+17 |     
+   | ^^^^
+18 |             Args:
+19 |                 max_retries: Número máximo de tentativas
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> src/clients/sapl/sapl_transport.py:20:1
+   |
+18 |             Args:
+19 |                 max_retries: Número máximo de tentativas
+20 |     
+   | ^^^^
+21 |             Returns:
+22 |                 Sessão requests configurada
+   |
+help: Remove whitespace from blank line
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_transport.py:25:1
+   |
+23 |             """
+24 |             session = requests.Session()
+25 |     
+   | ^^^^
+26 |             retry_strategy = Retry(
+27 |                 total=max_retries,
+   |
+help: Remove whitespace from blank line
+   |
+24 |             session = requests.Session()
+   -     
+25 +
+26 |             retry_strategy = Retry(
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_transport.py:32:1
+   |
+30 |                 allowed_methods=["GET", "POST"],
+31 |             )
+32 |     
+   | ^^^^
+33 |             adapter = HTTPAdapter(max_retries=retry_strategy)
+34 |             session.mount("http://", adapter)
+   |
+help: Remove whitespace from blank line
+   |
+31 |             )
+   -     
+32 +
+33 |             adapter = HTTPAdapter(max_retries=retry_strategy)
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_transport.py:36:1
+   |
+34 |             session.mount("http://", adapter)
+35 |             session.mount("https://", adapter)
+36 |     
+   | ^^^^
+37 |             return session
+   |
+help: Remove whitespace from blank line
+   |
+35 |             session.mount("https://", adapter)
+   -     
+36 +
+37 |             return session
+   |
+
+W293 Blank line contains whitespace
+  --> src/clients/sapl/sapl_transport.py:42:1
+   |
+40 |             """
+41 |             Gera headers HTTP com rotação de User-Agent.
+42 |     
+   | ^^^^
+43 |             Returns:
+44 |                 Dicionário de headers
+   |
+help: Remove whitespace from blank line
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_transport.py:48:1
+   |
+46 |             user_agent = self.USER_AGENTS[self._request_count % len(self.USER_AGENTS)]
+47 |             self._request_count += 1
+48 |     
+   | ^^^^
+49 |             return {
+50 |                 "User-Agent": user_agent,
+   |
+help: Remove whitespace from blank line
+   |
+47 |             self._request_count += 1
+   -     
+48 +
+49 |             return {
+   |
+
+W293 Blank line contains whitespace
+  --> src/clients/sapl/sapl_transport.py:65:1
+   |
+63 |             """
+64 |             Executa uma requisição GET na API SAPL.
+65 |     
+   | ^^^^
+66 |             Args:
+67 |                 endpoint: Endpoint relativo (ex: '/norma/normajuridica/')
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> src/clients/sapl/sapl_transport.py:69:1
+   |
+67 |                 endpoint: Endpoint relativo (ex: '/norma/normajuridica/')
+68 |                 params: Query parameters opcionais
+69 |     
+   | ^^^^
+70 |             Returns:
+71 |                 Resposta JSON deserializada
+   |
+help: Remove whitespace from blank line
+
+W293 Blank line contains whitespace
+  --> src/clients/sapl/sapl_transport.py:72:1
+   |
+70 |             Returns:
+71 |                 Resposta JSON deserializada
+72 |     
+   | ^^^^
+73 |             Raises:
+74 |                 requests.RequestException: Em caso de falha na requisição
+   |
+help: Remove whitespace from blank line
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_transport.py:78:1
+   |
+76 |             url = f"{self.base_url}{endpoint}"
+77 |             headers = self._get_headers()
+78 |     
+   | ^^^^
+79 |             logger.debug(f"Requisitando: {url} com params={params}")
+   |
+help: Remove whitespace from blank line
+   |
+77 |             headers = self._get_headers()
+   -     
+78 +
+79 |             logger.debug(f"Requisitando: {url} com params={params}")
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_transport.py:80:1
+   |
+79 |             logger.debug(f"Requisitando: {url} com params={params}")
+80 |     
+   | ^^^^
+81 |             try:
+82 |                 response = self.session.get(url, headers=headers, params=params, timeout=self.timeout)
+   |
+help: Remove whitespace from blank line
+   |
+79 |             logger.debug(f"Requisitando: {url} com params={params}")
+   -     
+80 +
+81 |             try:
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_transport.py:84:1
+   |
+82 |                 response = self.session.get(url, headers=headers, params=params, timeout=self.timeout)
+83 |                 response.raise_for_status()
+84 |     
+   | ^^^^
+85 |                 data = response.json()
+86 |                 logger.info(f"Requisição bem-sucedida: {url} - Status {response.status_code}")
+   |
+help: Remove whitespace from blank line
+   |
+83 |                 response.raise_for_status()
+   -     
+84 +
+85 |                 data = response.json()
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_transport.py:87:1
+   |
+85 |                 data = response.json()
+86 |                 logger.info(f"Requisição bem-sucedida: {url} - Status {response.status_code}")
+87 |     
+   | ^^^^
+88 |                 return data
+   |
+help: Remove whitespace from blank line
+   |
+86 |                 logger.info(f"Requisição bem-sucedida: {url} - Status {response.status_code}")
+   -     
+87 +
+88 |                 return data
+   |
+
+W293 [*] Blank line contains whitespace
+  --> src/clients/sapl/sapl_transport.py:89:1
+   |
+88 |                 return data
+89 |     
+   | ^^^^
+90 |             except requests.exceptions.Timeout:
+91 |                 logger.error(f"Timeout ao acessar {url}")
+   |
+help: Remove whitespace from blank line
+   |
+88 |                 return data
+   -     
+89 +
+90 |             except requests.exceptions.Timeout:
+   |
+
+Found 118 errors.
+[*] 64 fixable with the `--fix` option (21 hidden fixes can be enabled with the `--unsafe-fixes` option).
