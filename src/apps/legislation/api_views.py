@@ -39,29 +39,6 @@ from .api_normas import norma_detail_api, norma_list_api
 from .api_search import *  # noqa: F401,F403
 from .chat_api_helpers import _chat_session_response
 
-# Compatibility symbols commonly patched by downstream tests/integrations.
-from .api_search import (  # noqa: E402
-    ChatMessage,
-    ChatSession,
-    Dispositivo,
-    EventoAlteracao,
-    InvalidLLMParams,
-    Norma,
-    RAGService,
-    build_retrieval_options,
-    chatbot_stream_api,
-    parse_k,
-    parse_llm_request,
-    parse_model,
-    rag_answer_api,
-    rate_limit_response,
-    semantic_search_api,
-    serialize_dispositivo_source,
-    timezone,
-    transaction,
-)
-
-
 def _sync(module) -> None:
     for name in (
         "RAGService",
