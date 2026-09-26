@@ -1,0 +1,30 @@
+name: One-shot format repair
+on:
+  push:
+    branches: [fix/claude-audit-complete]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Ruff
+        run: pip install -q ruff==0.8.4
+      - name: Format Python sources
+        run: ruff format src/
+      - name: Commit formatted sources and retire workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src
+          git commit -m 'style: normalize Python formatting [skip format-repair]' || true
+          rm -f .github/workflows/one-shot-format-repair.yml
+          git add -A
+          git commit -m 'chore: remove one-shot format repair workflow [skip format-repair]' || true
+          git push origin HEAD:fix/claude-audit-complete
