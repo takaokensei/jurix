@@ -387,5 +387,6 @@ def ingest_sapl_corpus_task(
     finally:
         client.close()
 
+
 # Historical import alias retained for compatibility.
 ingest_normas_bulk_task = bulk_ingest_normas_task

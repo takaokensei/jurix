@@ -7,8 +7,19 @@ from src.apps.legislation.models import Norma
 
 from . import core_tasks
 from .consolidation_tasks import consolidate_norma_task
-from .core_tasks import bulk_ingest_normas_task, cleanup_chat_attachments, ingest_normas_bulk_task, ingest_normas_task, ingest_sapl_corpus_task
-from .download_tasks import _sapl_payload_hash, download_pdf_task, full_sync_sapl_task, incremental_sync_sapl_task
+from .core_tasks import (
+    bulk_ingest_normas_task,
+    cleanup_chat_attachments,
+    ingest_normas_bulk_task,
+    ingest_normas_task,
+    ingest_sapl_corpus_task,
+)
+from .download_tasks import (
+    _sapl_payload_hash,
+    download_pdf_task,
+    full_sync_sapl_task,
+    incremental_sync_sapl_task,
+)
 from .ner_tasks import extract_entities_task, generate_embedding_task
 from .ocr_tasks import ocr_pdf_task
 from .segmentation_tasks import segment_text_task
@@ -47,8 +58,17 @@ def _mark_norma_failed(norma_id, label, exc, *, set_failed_status=True):
 
 
 __all__ = [
-    "bulk_ingest_normas_task", "cleanup_chat_attachments", "consolidate_norma_task",
-    "download_pdf_task", "extract_entities_task", "full_sync_sapl_task",
-    "generate_embedding_task", "incremental_sync_sapl_task", "ingest_normas_bulk_task",
-    "ingest_normas_task", "ingest_sapl_corpus_task", "ocr_pdf_task", "segment_text_task",
+    "bulk_ingest_normas_task",
+    "cleanup_chat_attachments",
+    "consolidate_norma_task",
+    "download_pdf_task",
+    "extract_entities_task",
+    "full_sync_sapl_task",
+    "generate_embedding_task",
+    "incremental_sync_sapl_task",
+    "ingest_normas_bulk_task",
+    "ingest_normas_task",
+    "ingest_sapl_corpus_task",
+    "ocr_pdf_task",
+    "segment_text_task",
 ]
