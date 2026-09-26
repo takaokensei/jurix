@@ -1,6 +1,8 @@
 # ruff: noqa: F401,F403,E501,E701
 """Stable public ingestion task API; implementations live by domain."""
 
+import logging
+
 from src.apps.legislation.models import Norma
 
 from . import core_tasks
@@ -11,7 +13,6 @@ from .ner_tasks import extract_entities_task, generate_embedding_task
 from .ocr_tasks import ocr_pdf_task
 from .segmentation_tasks import segment_text_task
 from .task_support import get_cache_service
-import logging
 
 logger = logging.getLogger(__name__)
 
