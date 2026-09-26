@@ -1,4 +1,4 @@
-# ruff: noqa: F401,F403,E501,E701
+# ruff: noqa: F401,F403,E501,E701,I001
 """Stable public ingestion task API; implementations live by domain."""
 
 import logging
