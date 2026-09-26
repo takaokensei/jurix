@@ -15,9 +15,11 @@ def test_build_norma_timeline_accepts_as_of(monkeypatch):
     # historical timeline. The function must preserve both dates <= as_of.
     monkeypatch.setattr(
         "src.apps.legislation.models.EventoAlteracao.objects",
-        SimpleNamespace(filter=lambda *args, **kwargs: SimpleNamespace(
-            select_related=lambda *a, **k: SimpleNamespace(order_by=lambda *x, **y: [])
-        )),
+        SimpleNamespace(
+            filter=lambda *args, **kwargs: SimpleNamespace(
+                select_related=lambda *a, **k: SimpleNamespace(order_by=lambda *x, **y: [])
+            )
+        ),
     )
     timeline = build_norma_timeline(norma, as_of=date(2024, 1, 1))
     assert [item["kind"] for item in timeline] == ["publication", "effective"]

@@ -15,7 +15,7 @@ def test_welcome_template_has_no_legal_question_placeholders():
         "14.133/2021",
     )
     assert not any(value in text for value in banned)
-    assert 'static \'js/jurix-dynamic-suggestions.js\'' in text
+    assert "static 'js/jurix-dynamic-suggestions.js'" in text
 
 
 def test_chat_js_contains_no_static_suggestion_catalog():

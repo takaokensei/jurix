@@ -5,6 +5,7 @@ This is intentionally independent from the live RAG API. It lets CI or an
 operator feed recorded requests/responses into the same deterministic release
 policy used to decide whether an artifact is safe to publish or cache.
 """
+
 from __future__ import annotations
 
 import json

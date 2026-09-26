@@ -5,6 +5,7 @@ This command is intentionally read-only. It checks configuration hazards, pendin
 migrations, cache backend, database engine, vector extension visibility, storage
 contract, and required runtime integrations.
 """
+
 from __future__ import annotations
 
 import os
@@ -47,7 +48,11 @@ class Command(BaseCommand):
 
         secret = getattr(settings, "SECRET_KEY", "")
         if not secret or secret == "django-insecure-dev-key-change-in-production":
-            self._fail("DJANGO_SECRET_KEY is missing or using the public development key.", strict, failures)
+            self._fail(
+                "DJANGO_SECRET_KEY is missing or using the public development key.",
+                strict,
+                failures,
+            )
 
         if "*" in getattr(settings, "ALLOWED_HOSTS", []):
             self._fail("ALLOWED_HOSTS contains '*'.", strict, failures)
@@ -55,11 +60,15 @@ class Command(BaseCommand):
         database = settings.DATABASES["default"]
         engine = str(database.get("ENGINE", ""))
         if strict and "sqlite3" in engine:
-            self._fail("SQLite is not allowed by the strict production preflight.", strict, failures)
+            self._fail(
+                "SQLite is not allowed by the strict production preflight.", strict, failures
+            )
 
         cache_backend = settings.CACHES["default"]["BACKEND"]
         if strict and "locmem" in cache_backend.lower():
-            self._fail("LocMemCache is not allowed by the strict production preflight.", strict, failures)
+            self._fail(
+                "LocMemCache is not allowed by the strict production preflight.", strict, failures
+            )
 
         storage = str(getattr(settings, "STORAGE_BACKEND", "local")).lower()
         if strict and storage == "local" and not os.getenv("JURIX_ATTACHMENT_ROOT"):
@@ -72,7 +81,9 @@ class Command(BaseCommand):
         if storage in {"s3", "minio"}:
             for name in ("S3_BUCKET", "S3_ACCESS_KEY", "S3_SECRET_KEY"):
                 if not os.getenv(name):
-                    self._fail(f"{name} is required for storage backend {storage}.", strict, failures)
+                    self._fail(
+                        f"{name} is required for storage backend {storage}.", strict, failures
+                    )
 
         if not options.get("skip_db", False):
             try:
@@ -105,6 +116,10 @@ class Command(BaseCommand):
             raise SystemExit(2)
 
         if failures:
-            self.stdout.write(self.style.WARNING("Production preflight completed with failures in non-strict mode."))
+            self.stdout.write(
+                self.style.WARNING(
+                    "Production preflight completed with failures in non-strict mode."
+                )
+            )
         else:
             self.stdout.write(self.style.SUCCESS("Production preflight PASSED."))

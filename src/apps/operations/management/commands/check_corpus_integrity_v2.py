@@ -1,6 +1,7 @@
 """
 Corpus integrity audit for Norma, Dispositivo and EventoAlteracao relations.
 """
+
 from __future__ import annotations
 
 from django.core.management.base import BaseCommand
@@ -44,7 +45,9 @@ class Command(BaseCommand):
         if order_collisions:
             failures.append(f"Potential order collisions in {order_collisions} norma groups")
 
-        orphan_event_sources = EventoAlteracao.objects.filter(dispositivo_fonte__isnull=True).count()
+        orphan_event_sources = EventoAlteracao.objects.filter(
+            dispositivo_fonte__isnull=True
+        ).count()
         if orphan_event_sources:
             failures.append(f"Orphan alteration sources: {orphan_event_sources}")
 

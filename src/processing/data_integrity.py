@@ -5,6 +5,7 @@ These checks are safe to run before backups, deployments, or corpus refreshes.
 They intentionally do not mutate rows. Any mutation belongs in an explicit,
 reviewable command.
 """
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
@@ -40,7 +41,9 @@ class IntegritySummary:
         }
 
 
-def check_numeric_range(value: Any, minimum: float, maximum: float, code: str) -> list[IntegrityIssue]:
+def check_numeric_range(
+    value: Any, minimum: float, maximum: float, code: str
+) -> list[IntegrityIssue]:
     try:
         number = float(value)
     except (TypeError, ValueError):

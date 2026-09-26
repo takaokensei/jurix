@@ -86,14 +86,7 @@ class StaticSuggestionContractTests(TestCase):
 
     def test_no_placeholder_card_markup_exists(self):
         template = (
-            ROOT
-            / "src"
-            / "apps"
-            / "legislation"
-            / "templates"
-            / "legislation"
-            / "chatbot.html"
+            ROOT / "src" / "apps" / "legislation" / "templates" / "legislation" / "chatbot.html"
         ).read_text(encoding="utf-8")
         section = template.split("figma-suggestions-cards", 1)[1].split("</div>", 1)[0]
         self.assertNotIn("data-question=", section)
-

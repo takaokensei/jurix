@@ -89,7 +89,9 @@ class RetrievalOptions:
     published_to: Any = None
 
     def __post_init__(self):
-        if (self.as_of or self.published_from or self.published_to) and self.temporal_scope == TemporalScope():
+        if (
+            self.as_of or self.published_from or self.published_to
+        ) and self.temporal_scope == TemporalScope():
             object.__setattr__(
                 self,
                 "temporal_scope",
@@ -239,11 +241,9 @@ class AdaptiveRetriever:
             )
         if scope.as_of:
             queryset = queryset.filter(
-                Q(norma__data_publicacao__lte=scope.as_of)
-                | Q(norma__data_publicacao__isnull=True)
+                Q(norma__data_publicacao__lte=scope.as_of) | Q(norma__data_publicacao__isnull=True)
             ).filter(
-                Q(norma__data_vigencia__lte=scope.as_of)
-                | Q(norma__data_vigencia__isnull=True)
+                Q(norma__data_vigencia__lte=scope.as_of) | Q(norma__data_vigencia__isnull=True)
             )
         coverage = sum(
             (

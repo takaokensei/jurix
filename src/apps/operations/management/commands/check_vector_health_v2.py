@@ -1,6 +1,7 @@
 """
 Inspect pgvector availability and legal embedding health without mutating data.
 """
+
 from __future__ import annotations
 
 from django.core.management.base import BaseCommand
@@ -54,9 +55,9 @@ class Command(BaseCommand):
         total = Dispositivo.objects.count()
         with_embedding = Dispositivo.objects.exclude(embedding=None).count()
         ready = Norma.objects.filter(status=Norma.Status.CONSOLIDATED).count()
-        ready_without_embeddings = (
-            Dispositivo.objects.filter(norma__status=Norma.Status.CONSOLIDATED, embedding=None).count()
-        )
+        ready_without_embeddings = Dispositivo.objects.filter(
+            norma__status=Norma.Status.CONSOLIDATED, embedding=None
+        ).count()
 
         coverage = with_embedding / total if total else 0.0
         self.stdout.write(f"Dispositivos={total}")

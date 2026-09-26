@@ -6,6 +6,7 @@ and generated answer metadata; this module computes deterministic metrics that c
 be compared between releases without embedding vendor-specific assumptions into
 the benchmark format.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
@@ -120,9 +121,7 @@ def evaluate_cases(cases: Sequence[CaseResult]) -> dict[str, Any]:
         citation_precision.append(
             overlap_precision(case.citations_predicted, case.citations_expected)
         )
-        citation_recall.append(
-            overlap_recall(case.citations_predicted, case.citations_expected)
-        )
+        citation_recall.append(overlap_recall(case.citations_predicted, case.citations_expected))
         groundedness.append(1.0 if case.grounded else 0.0)
 
     def mean(values: Sequence[float]) -> float:

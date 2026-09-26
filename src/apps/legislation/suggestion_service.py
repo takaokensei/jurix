@@ -64,11 +64,15 @@ def _candidate_queryset(limit: int) -> list[Norma]:
             "data_publicacao",
             "data_vigencia",
         )
-        .order_by("-updated_at", "-data_publicacao", "-ano", "-id")[: max(12, limit * CANDIDATE_MULTIPLIER)]
+        .order_by("-updated_at", "-data_publicacao", "-ano", "-id")[
+            : max(12, limit * CANDIDATE_MULTIPLIER)
+        ]
     )
 
 
-def _question_variants(identifier: str, topic: str, has_events: bool, has_validity: bool) -> list[tuple[str, str]]:
+def _question_variants(
+    identifier: str, topic: str, has_events: bool, has_validity: bool
+) -> list[tuple[str, str]]:
     variants = [
         (
             f"O que estabelece a {identifier} sobre {topic}?",

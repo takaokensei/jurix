@@ -1,4 +1,5 @@
 """Public temporal/provenance endpoints for norma research."""
+
 from __future__ import annotations
 
 from django.http import HttpRequest, JsonResponse
@@ -18,24 +19,28 @@ def norma_timeline_api(request: HttpRequest, pk: int) -> JsonResponse:
     except ValueError as exc:
         return JsonResponse({"success": False, "error": str(exc)}, status=400)
     timeline = build_norma_timeline(norma, as_of=as_of)
-    return JsonResponse({
-        "success": True,
-        "norma": {"id": norma.id, "ref": str(norma)},
-        "as_of": as_of.isoformat() if as_of else None,
-        "temporal_status": temporal_status(norma, as_of=as_of),
-        "timeline": timeline,
-        "count": len(timeline),
-    })
+    return JsonResponse(
+        {
+            "success": True,
+            "norma": {"id": norma.id, "ref": str(norma)},
+            "as_of": as_of.isoformat() if as_of else None,
+            "temporal_status": temporal_status(norma, as_of=as_of),
+            "timeline": timeline,
+            "count": len(timeline),
+        }
+    )
 
 
 @require_GET
 def norma_conflicts_api(request: HttpRequest, pk: int) -> JsonResponse:
     norma = get_object_or_404(Norma, pk=pk)
     signals = detect_for_norma(norma)
-    return JsonResponse({
-        "success": True,
-        "norma": {"id": norma.id, "ref": str(norma)},
-        "advisory_only": True,
-        "signals": signals,
-        "count": len(signals),
-    })
+    return JsonResponse(
+        {
+            "success": True,
+            "norma": {"id": norma.id, "ref": str(norma)},
+            "advisory_only": True,
+            "signals": signals,
+            "count": len(signals),
+        }
+    )

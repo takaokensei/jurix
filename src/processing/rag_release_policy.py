@@ -9,6 +9,7 @@ The runtime RAG service already has strict grounding. This module is deliberatel
 separate so CI, offline benchmark jobs, and future review tooling can use the same
 acceptance contract without importing the HTTP layer.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -92,9 +93,7 @@ def evaluate_result(
         "grounded": grounded,
         "grounding_score": _number(grounding.get("score")),
         "source_count": len(sources) if isinstance(sources, list) else 0,
-        "policy_accepted": bool(
-            isinstance(policy_report, dict) and policy_report.get("accepted")
-        ),
+        "policy_accepted": bool(isinstance(policy_report, dict) and policy_report.get("accepted")),
     }
 
     if policy.require_answer and not _non_empty_str(answer):
