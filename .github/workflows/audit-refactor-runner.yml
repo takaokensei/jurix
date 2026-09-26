@@ -1,0 +1,33 @@
+name: Audit Refactor Runner
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/claude-audit-complete
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate refactors
+        run: |
+          python scripts/refactor_ingestion_tasks.py
+          python scripts/refactor_api_and_sapl.py
+          python scripts/apply_audit_hygiene.py
+      - name: Commit generated refactors to audit branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'refactor: complete audit split and hygiene fixes [skip audit-refactor]' || exit 0
+          git push origin HEAD:fix/claude-audit-complete
+
+# runner revision: 2026-09-26-0213
