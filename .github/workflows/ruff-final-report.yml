@@ -1,0 +1,23 @@
+name: Ruff Final Report
+on:
+  push:
+    branches: [fix/claude-audit-complete]
+permissions:
+  contents: write
+jobs:
+  report:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ruff-final]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -q ruff
+      - run: ruff check src > /tmp/ruff-final.txt 2>&1 || true
+      - run: |
+          cp /tmp/ruff-final.txt docs/_ruff_final.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/_ruff_final.txt
+          git commit -m 'chore: capture final ruff report [skip ruff-final]' || exit 0
+          git push origin HEAD:fix/claude-audit-complete
