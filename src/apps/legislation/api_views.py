@@ -37,6 +37,7 @@ from .api_health import (
 from .api_normas import *  # noqa: F401,F403
 from .api_normas import norma_detail_api, norma_list_api
 from .api_search import *  # noqa: F401,F403
+from .chat_api_helpers import _chat_session_response
 
 # Compatibility symbols commonly patched by downstream tests/integrations.
 from .api_search import (  # noqa: E402
@@ -79,6 +80,7 @@ def _sync(module) -> None:
         "timezone",
         "InvalidLLMParams",
         "_format_error_message",
+        "_chat_session_response",
         "_server_error",
         "_check_database",
         "_check_pgvector",
