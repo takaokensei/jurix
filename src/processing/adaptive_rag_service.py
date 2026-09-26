@@ -8,6 +8,11 @@ from src.processing.adaptive_retrieval import (
     attachment_context,
 )
 from src.processing.rag_service import RAGService
+from src.processing.temporal_scope import (
+    matches_temporal_scope,
+    revoked_dispositivo_ids,
+    revoked_norma_ids,
+)
 
 
 class AdaptiveRAGService(RAGService):
@@ -88,6 +93,13 @@ class AdaptiveRAGService(RAGService):
 
     @staticmethod
     def _filter_status(rows, options):
+        norma_ids = {
+            int(getattr(getattr(row.get("dispositivo"), "norma", None), "id", 0) or 0)
+            for row in rows
+            if row.get("dispositivo")
+        }
+        revoked_normas = revoked_norma_ids(norma_ids, options.temporal_scope.as_of)
+        revoked_devices = revoked_dispositivo_ids(norma_ids, options.temporal_scope.as_of)
         filtered = []
         for row in rows:
             norma = getattr(row.get("dispositivo"), "norma", None)
@@ -100,6 +112,11 @@ class AdaptiveRAGService(RAGService):
                 url = str(getattr(norma, "sapl_url", "") or "").lower()
                 if url and "sapl.natal.rn.leg.br" not in url:
                     continue
+            dispositivo = row.get("dispositivo")
+            if not matches_temporal_scope(norma, options.temporal_scope, revoked_normas):
+                continue
+            if getattr(dispositivo, "id", None) in revoked_devices:
+                continue
             filtered.append(row)
         return filtered
 

@@ -45,7 +45,8 @@
         if (!root) return;
         setBusy(true);
         root.innerHTML = `
-            <div class="jurix-suggestions-loading" role="status" aria-live="polite">
+            <div class="jurix-suggestions-loading" role="status" aria-live="polite" aria-label="Carregando sugestões do corpus">
+                <span class="jurix-suggestion-skeleton"></span>
                 <span class="jurix-suggestion-skeleton"></span>
                 <span class="jurix-suggestion-skeleton"></span>
                 <span class="jurix-suggestion-skeleton"></span>
@@ -146,7 +147,10 @@
         });
         if (!response.ok) throw new Error(`Suggestion API ${response.status}`);
         const payload = await response.json();
-        if (!payload || payload.success !== true || payload.source !== 'municipal_natal_corpus' || !Array.isArray(payload.suggestions)) return [];
+        if (!payload || payload.success !== true || payload.source !== 'municipal_natal_corpus' || !Array.isArray(payload.suggestions)) {
+            throw new Error('Suggestion API returned an invalid corpus contract');
+        }
+        if (payload.count !== payload.suggestions.length) throw new Error('Suggestion API count mismatch');
         return payload.suggestions;
     }
 

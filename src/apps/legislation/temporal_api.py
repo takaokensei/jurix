@@ -17,7 +17,7 @@ def norma_timeline_api(request: HttpRequest, pk: int) -> JsonResponse:
         as_of = parse_iso_date(request.GET.get("as_of"), "as_of")
     except ValueError as exc:
         return JsonResponse({"success": False, "error": str(exc)}, status=400)
-    timeline = build_norma_timeline(norma)
+    timeline = build_norma_timeline(norma, as_of=as_of)
     return JsonResponse({
         "success": True,
         "norma": {"id": norma.id, "ref": str(norma)},

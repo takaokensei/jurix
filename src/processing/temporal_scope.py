@@ -82,8 +82,26 @@ def revoked_norma_ids(norma_ids: Iterable[int], as_of: date | None) -> set[int]:
             continue
         if event.norma_alvo_id:
             revoked.add(int(event.norma_alvo_id))
-        if event.dispositivo_alvo_id and event.dispositivo_alvo:
-            revoked.add(int(event.dispositivo_alvo.norma_id))
+    return revoked
+
+
+def revoked_dispositivo_ids(norma_ids: Iterable[int], as_of: date | None) -> set[int]:
+    """Return device-level revocations without invalidating the containing norma."""
+    ids = {int(item) for item in norma_ids if item}
+    if not ids or as_of is None:
+        return set()
+    from src.apps.legislation.models import EventoAlteracao
+
+    events = EventoAlteracao.objects.filter(
+        acao="REVOGA",
+        dispositivo_alvo__norma_id__in=ids,
+    ).select_related("dispositivo_fonte__norma")
+    revoked: set[int] = set()
+    for event in events:
+        source_norma = getattr(event.dispositivo_fonte, "norma", None)
+        source_date = getattr(source_norma, "data_publicacao", None)
+        if source_date is not None and source_date <= as_of and event.dispositivo_alvo_id:
+            revoked.add(int(event.dispositivo_alvo_id))
     return revoked
 
 
@@ -125,12 +143,12 @@ def matches_temporal_scope(
     return True
 
 
-def build_norma_timeline(norma) -> list[dict[str, Any]]:
-    """Build an auditable timeline using explicit dates and source-norm dates."""
+def build_norma_timeline(norma, *, as_of: date | None = None) -> list[dict[str, Any]]:
+    """Build an auditable timeline, optionally cut at a historical date."""
     from src.apps.legislation.models import EventoAlteracao
 
     items: list[dict[str, Any]] = []
-    if norma.data_publicacao:
+    if norma.data_publicacao and (as_of is None or norma.data_publicacao <= as_of):
         items.append({
             "kind": "publication",
             "date": norma.data_publicacao.isoformat(),
@@ -139,7 +157,7 @@ def build_norma_timeline(norma) -> list[dict[str, Any]]:
             "source_norma": str(norma),
             "confidence": 1.0,
         })
-    if norma.data_vigencia:
+    if norma.data_vigencia and (as_of is None or norma.data_vigencia <= as_of):
         items.append({
             "kind": "effective",
             "date": norma.data_vigencia.isoformat(),
@@ -157,6 +175,8 @@ def build_norma_timeline(norma) -> list[dict[str, Any]]:
     for event in events:
         source = event.dispositivo_fonte.norma
         source_date = source.data_publicacao
+        if as_of is not None and source_date and source_date > as_of:
+            continue
         items.append({
             "kind": "event",
             "date": source_date.isoformat() if source_date else None,

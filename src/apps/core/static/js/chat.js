@@ -651,7 +651,7 @@
                 }
                 const welcomeState = document.getElementById('welcome-state');
                 if (welcomeState) welcomeState.style.display = 'flex';
-                renderRandomSuggestions();
+                refreshCorpusSuggestions();
             }
 
             await loadChatSessions();
@@ -1031,10 +1031,14 @@
         type();
     }
 
-    async function renderRandomSuggestions() {
-        const service = window.JurixDynamicSuggestions;
-        if (!service || typeof service.refresh !== 'function') return;
-        await service.refresh();
+    // ===== CORPUS SUGGESTIONS =====
+    async function refreshCorpusSuggestions({ force = false } = {}) {
+        const dynamic = window.JurixDynamicSuggestions;
+        if (!dynamic || typeof dynamic.refresh !== 'function') {
+            console.error('[Jurix] Dynamic suggestion module is missing; placeholders are disabled.');
+            return [];
+        }
+        return dynamic.refresh({ force });
     }
 
 
@@ -1071,13 +1075,13 @@
                     setTimeout(streamNextChar, 40);
                 } else {
                     chatState.endGreeting();
-                    renderRandomSuggestions();
+                    refreshCorpusSuggestions();
                 }
             }
 
             setTimeout(streamNextChar, 100);
         } else {
-            renderRandomSuggestions();
+            refreshCorpusSuggestions();
         }
     }
 

@@ -25,6 +25,7 @@ from src.apps.legislation.models import Dispositivo
 from src.processing.temporal_scope import (
     TemporalScope,
     matches_temporal_scope,
+    revoked_dispositivo_ids,
     revoked_norma_ids,
 )
 
@@ -82,9 +83,22 @@ class RetrievalOptions:
     max_sources: int = 12
     min_similarity: float = 0.0
     attachment_texts: tuple[str, ...] = field(default_factory=tuple)
+    temporal_scope: TemporalScope = field(default_factory=TemporalScope)
     as_of: Any = None
     published_from: Any = None
     published_to: Any = None
+
+    def __post_init__(self):
+        if (self.as_of or self.published_from or self.published_to) and self.temporal_scope == TemporalScope():
+            object.__setattr__(
+                self,
+                "temporal_scope",
+                TemporalScope(
+                    as_of=self.as_of,
+                    published_from=self.published_from,
+                    published_to=self.published_to,
+                ),
+            )
 
     def fingerprint(self) -> str:
         attachment_digest = (
@@ -92,14 +106,10 @@ class RetrievalOptions:
             if self.attachment_texts
             else "none"
         )
-        temporal = (
-            f"as_of={self.as_of.isoformat() if self.as_of else 'none'};"
-            f"from={self.published_from.isoformat() if self.published_from else 'none'};"
-            f"to={self.published_to.isoformat() if self.published_to else 'none'}"
-        )
         return (
             f"retrieval=v3;mode={self.mode};status={self.norma_status};scope={self.source_scope};"
-            f"max={self.max_sources};min={self.min_similarity:.3f};{temporal};attachments={attachment_digest}"
+            f"max={self.max_sources};min={self.min_similarity:.3f};"
+            f"temporal={self.temporal_scope.fingerprint()};attachments={attachment_digest}"
         )
 
 
@@ -165,15 +175,13 @@ class AdaptiveRetriever:
             min_similarity=options.min_similarity,
         )
         result = []
-        revoked_ids = revoked_norma_ids(
-            {getattr(getattr(row.get("dispositivo"), "norma", None), "id", 0) for row in rows},
-            options.as_of,
-        )
-        scope = TemporalScope(
-            as_of=options.as_of,
-            published_from=options.published_from,
-            published_to=options.published_to,
-        )
+        norma_ids = {
+            int(getattr(getattr(row.get("dispositivo"), "norma", None), "id", 0) or 0)
+            for row in rows
+            if row.get("dispositivo")
+        }
+        revoked_normas = revoked_norma_ids(norma_ids, options.temporal_scope.as_of)
+        revoked_devices = revoked_dispositivo_ids(norma_ids, options.temporal_scope.as_of)
         for row in rows:
             dispositivo = row.get("dispositivo")
             norma = getattr(dispositivo, "norma", None)
@@ -186,7 +194,9 @@ class AdaptiveRetriever:
                 continue
             if not self._in_scope(norma, options):
                 continue
-            if not matches_temporal_scope(norma, scope, revoked_ids):
+            if not matches_temporal_scope(norma, options.temporal_scope, revoked_normas):
+                continue
+            if getattr(dispositivo, "id", None) in revoked_devices:
                 continue
             copy = dict(row)
             copy["semantic_score"] = float(row.get("similarity_score") or 0.0)
@@ -216,20 +226,24 @@ class AdaptiveRetriever:
             queryset = queryset.filter(
                 Q(norma__sapl_url__icontains="sapl.natal.rn.leg.br") | Q(norma__sapl_url="")
             )
-        if options.published_from:
+        scope = options.temporal_scope
+        if scope.published_from:
             queryset = queryset.filter(
-                Q(norma__data_publicacao__gte=options.published_from)
+                Q(norma__data_publicacao__gte=scope.published_from)
                 | Q(norma__data_publicacao__isnull=True)
             )
-        if options.published_to:
+        if scope.published_to:
             queryset = queryset.filter(
-                Q(norma__data_publicacao__lte=options.published_to)
+                Q(norma__data_publicacao__lte=scope.published_to)
                 | Q(norma__data_publicacao__isnull=True)
             )
-        if options.as_of:
+        if scope.as_of:
             queryset = queryset.filter(
-                Q(norma__data_publicacao__lte=options.as_of)
+                Q(norma__data_publicacao__lte=scope.as_of)
                 | Q(norma__data_publicacao__isnull=True)
+            ).filter(
+                Q(norma__data_vigencia__lte=scope.as_of)
+                | Q(norma__data_vigencia__isnull=True)
             )
         coverage = sum(
             (
@@ -247,12 +261,9 @@ class AdaptiveRetriever:
         ]
 
         dispositivos = list(queryset)
-        revoked_ids = revoked_norma_ids({d.norma_id for d in dispositivos}, options.as_of)
-        scope = TemporalScope(
-            as_of=options.as_of,
-            published_from=options.published_from,
-            published_to=options.published_to,
-        )
+        norma_ids = {int(d.norma_id) for d in dispositivos}
+        revoked_normas = revoked_norma_ids(norma_ids, options.temporal_scope.as_of)
+        revoked_devices = revoked_dispositivo_ids(norma_ids, options.temporal_scope.as_of)
         rows = []
         for dispositivo in dispositivos:
             norma = dispositivo.norma
@@ -263,7 +274,9 @@ class AdaptiveRetriever:
                 continue
             if not self._in_scope(norma, options):
                 continue
-            if not matches_temporal_scope(norma, scope, revoked_ids):
+            if not matches_temporal_scope(norma, options.temporal_scope, revoked_normas):
+                continue
+            if int(dispositivo.id) in revoked_devices:
                 continue
             score = _lexical_score(tokens, dispositivo.texto)
             if score <= 0:

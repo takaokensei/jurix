@@ -26,7 +26,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.http import HttpRequest, JsonResponse
 
-from src.processing.temporal_scope import parse_iso_date
+from src.processing.temporal_scope import TemporalScope, parse_iso_date
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +149,11 @@ def parse_search_options(data: Any) -> dict[str, Any]:
         "as_of": as_of,
         "published_from": published_from,
         "published_to": published_to,
+        "temporal_scope": TemporalScope(
+            as_of=as_of,
+            published_from=published_from,
+            published_to=published_to,
+        ),
     }
 
 
