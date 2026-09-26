@@ -1,4 +1,4 @@
-# ruff: noqa: F401,F403,E501,E701
+# ruff: noqa: F401,F403,E501,E701,I001
 """Compatibility facade for the SAPL client, split into focused mixins."""
 
 from __future__ import annotations
@@ -7,7 +7,6 @@ import logging
 import os
 
 import requests
-
 from django.conf import settings
 
 from .sapl_corpus import SaplCorpusMixin
