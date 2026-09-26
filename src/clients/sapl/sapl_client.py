@@ -6,6 +6,8 @@ from __future__ import annotations
 import logging
 import os
 
+import requests
+
 from django.conf import settings
 
 from .sapl_corpus import SaplCorpusMixin
