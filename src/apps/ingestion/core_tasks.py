@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 from .download_tasks import download_pdf_task
 
-from .task_support import _invalidate_rag_cache
+from .task_support import _invalidate_rag_cache, _normalize_norma_tipo
 
 @shared_task(name="ingestion.cleanup_chat_attachments")
 def cleanup_chat_attachments():

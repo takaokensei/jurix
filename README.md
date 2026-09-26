@@ -450,7 +450,7 @@ celery -A config worker -l info
 </tr>
 <tr>
 <td align="center">♿ Acessibilidade WCAG 2.1 AA</td>
-<td align="center">✅ Completo</td>
+<td align="center">🟡 Em validação</td>
 </tr>
 </table>
 

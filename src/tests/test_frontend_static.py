@@ -85,9 +85,9 @@ def test_chatbot_template_has_no_inline_handlers_scripts_or_javascript_urls():
 
 
 def test_chatbot_csp_does_not_allow_unsafe_inline_or_unsafe_eval_scripts():
-    from config.middleware import CONTENT_SECURITY_POLICY
+    from config.middleware import _build_content_security_policy
 
     script_src = next(
-        d for d in CONTENT_SECURITY_POLICY.split(";") if d.strip().startswith("script-src")
+        d for d in _build_content_security_policy().split(";") if d.strip().startswith("script-src")
     )
     assert "unsafe-inline" not in script_src and "unsafe-eval" not in script_src
