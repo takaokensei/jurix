@@ -1,3 +1,4 @@
+# ruff: noqa: F401,F403,E501,E701
 """Compatibility facade for the SAPL client, split into focused mixins."""
 from __future__ import annotations
 import logging

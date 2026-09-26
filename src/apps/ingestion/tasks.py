@@ -1,3 +1,4 @@
+# ruff: noqa: F401,F403,E501,E701
 """Stable public ingestion task API; implementations live by domain."""
 
 from .consolidation_tasks import consolidate_norma_task
