@@ -173,3 +173,9 @@ def health_ready_api(request: HttpRequest) -> JsonResponse:
 def health_check_api(request: HttpRequest) -> JsonResponse:
     """Compatibility alias for health check."""
     return health_ready_api(request)
+
+
+def _server_error(context: str, exc: Exception) -> JsonResponse:
+    """Log the failure with its traceback and hide internal details from clients."""
+    logger.error("Error in %s: %s", context, exc, exc_info=True)
+    return JsonResponse({"success": False, "error": _format_error_message(exc)}, status=500)
