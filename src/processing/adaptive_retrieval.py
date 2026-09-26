@@ -22,6 +22,11 @@ from typing import Any
 from django.db.models import Case, IntegerField, Q, Value, When
 
 from src.apps.legislation.models import Dispositivo
+from src.processing.temporal_scope import (
+    TemporalScope,
+    matches_temporal_scope,
+    revoked_norma_ids,
+)
 
 _TOKEN_RE = re.compile(r"[\wÀ-ÿ]{3,}", flags=re.UNICODE)
 _STOPWORDS = {
@@ -77,6 +82,9 @@ class RetrievalOptions:
     max_sources: int = 12
     min_similarity: float = 0.0
     attachment_texts: tuple[str, ...] = field(default_factory=tuple)
+    as_of: Any = None
+    published_from: Any = None
+    published_to: Any = None
 
     def fingerprint(self) -> str:
         attachment_digest = (
@@ -84,9 +92,14 @@ class RetrievalOptions:
             if self.attachment_texts
             else "none"
         )
+        temporal = (
+            f"as_of={self.as_of.isoformat() if self.as_of else 'none'};"
+            f"from={self.published_from.isoformat() if self.published_from else 'none'};"
+            f"to={self.published_to.isoformat() if self.published_to else 'none'}"
+        )
         return (
-            f"retrieval=v2;mode={self.mode};status={self.norma_status};scope={self.source_scope};"
-            f"max={self.max_sources};min={self.min_similarity:.3f};attachments={attachment_digest}"
+            f"retrieval=v3;mode={self.mode};status={self.norma_status};scope={self.source_scope};"
+            f"max={self.max_sources};min={self.min_similarity:.3f};{temporal};attachments={attachment_digest}"
         )
 
 
@@ -152,6 +165,15 @@ class AdaptiveRetriever:
             min_similarity=options.min_similarity,
         )
         result = []
+        revoked_ids = revoked_norma_ids(
+            {getattr(getattr(row.get("dispositivo"), "norma", None), "id", 0) for row in rows},
+            options.as_of,
+        )
+        scope = TemporalScope(
+            as_of=options.as_of,
+            published_from=options.published_from,
+            published_to=options.published_to,
+        )
         for row in rows:
             dispositivo = row.get("dispositivo")
             norma = getattr(dispositivo, "norma", None)
@@ -163,6 +185,8 @@ class AdaptiveRetriever:
             ):
                 continue
             if not self._in_scope(norma, options):
+                continue
+            if not matches_temporal_scope(norma, scope, revoked_ids):
                 continue
             copy = dict(row)
             copy["semantic_score"] = float(row.get("similarity_score") or 0.0)
@@ -192,6 +216,21 @@ class AdaptiveRetriever:
             queryset = queryset.filter(
                 Q(norma__sapl_url__icontains="sapl.natal.rn.leg.br") | Q(norma__sapl_url="")
             )
+        if options.published_from:
+            queryset = queryset.filter(
+                Q(norma__data_publicacao__gte=options.published_from)
+                | Q(norma__data_publicacao__isnull=True)
+            )
+        if options.published_to:
+            queryset = queryset.filter(
+                Q(norma__data_publicacao__lte=options.published_to)
+                | Q(norma__data_publicacao__isnull=True)
+            )
+        if options.as_of:
+            queryset = queryset.filter(
+                Q(norma__data_publicacao__lte=options.as_of)
+                | Q(norma__data_publicacao__isnull=True)
+            )
         coverage = sum(
             (
                 Case(
@@ -207,8 +246,15 @@ class AdaptiveRetriever:
             : max(100, candidate_k * 8)
         ]
 
+        dispositivos = list(queryset)
+        revoked_ids = revoked_norma_ids({d.norma_id for d in dispositivos}, options.as_of)
+        scope = TemporalScope(
+            as_of=options.as_of,
+            published_from=options.published_from,
+            published_to=options.published_to,
+        )
         rows = []
-        for dispositivo in queryset:
+        for dispositivo in dispositivos:
             norma = dispositivo.norma
             if (
                 options.norma_status != "all"
@@ -216,6 +262,8 @@ class AdaptiveRetriever:
             ):
                 continue
             if not self._in_scope(norma, options):
+                continue
+            if not matches_temporal_scope(norma, scope, revoked_ids):
                 continue
             score = _lexical_score(tokens, dispositivo.texto)
             if score <= 0:

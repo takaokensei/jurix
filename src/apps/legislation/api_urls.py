@@ -9,7 +9,7 @@ Provides RESTful API endpoints for:
 
 from django.urls import path
 
-from . import api_views
+from . import api_views, temporal_api
 
 app_name = "legislation_api"
 
@@ -36,6 +36,8 @@ urlpatterns = [
     path("suggestions/", api_views.dynamic_suggestions_api, name="dynamic_suggestions"),
     # Norma detail
     path("normas/<int:pk>/", api_views.norma_detail_api, name="norma_detail"),
+    path("normas/<int:pk>/timeline/", temporal_api.norma_timeline_api, name="norma_timeline"),
+    path("normas/<int:pk>/conflicts/", temporal_api.norma_conflicts_api, name="norma_conflicts"),
     # Chat sessions endpoints
     path("chat/sessions/", api_views.chat_sessions_api, name="chat_sessions"),
     path("chat/attachments/", api_views.chat_attachment_api, name="chat-attachments"),

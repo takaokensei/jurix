@@ -26,6 +26,8 @@ from django.conf import settings
 from django.core.cache import cache
 from django.http import HttpRequest, JsonResponse
 
+from src.processing.temporal_scope import parse_iso_date
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_K = 12
@@ -101,7 +103,6 @@ def parse_search_options(data: Any) -> dict[str, Any]:
     norma_status = data.get("norma_status", "consolidated")
     if norma_status not in {"consolidated", "all"}:
         raise InvalidLLMParams("Escopo de normas inválido.")
-
     source_scope = data.get("source_scope", "municipal")
     if source_scope not in {"municipal", "all"}:
         raise InvalidLLMParams("Escopo de fontes inválido.")
@@ -114,6 +115,19 @@ def parse_search_options(data: Any) -> dict[str, Any]:
         raise InvalidLLMParams("min_similarity inválido.") from None
     if not 0.0 <= min_similarity <= 1.0:
         raise InvalidLLMParams("min_similarity deve estar entre 0 e 1.")
+
+    try:
+        as_of = parse_iso_date(data.get("as_of"), "as_of")
+        published_from = parse_iso_date(data.get("published_from"), "published_from")
+        published_to = parse_iso_date(data.get("published_to"), "published_to")
+    except ValueError as exc:
+        raise InvalidLLMParams(str(exc)) from exc
+    if published_from and published_to and published_from > published_to:
+        raise InvalidLLMParams("published_from não pode ser posterior a published_to.")
+    if as_of and published_from and published_from > as_of:
+        raise InvalidLLMParams("published_from não pode ser posterior a as_of.")
+    if as_of and published_to and published_to > as_of:
+        raise InvalidLLMParams("published_to não pode ser posterior a as_of.")
 
     attachment_ids = data.get("attachment_ids", [])
     if attachment_ids is None:
@@ -132,6 +146,9 @@ def parse_search_options(data: Any) -> dict[str, Any]:
         "max_sources": max_sources,
         "min_similarity": min_similarity,
         "attachment_ids": attachment_ids,
+        "as_of": as_of,
+        "published_from": published_from,
+        "published_to": published_to,
     }
 
 

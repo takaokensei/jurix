@@ -20,4 +20,7 @@ def build_retrieval_options(request, data: Any, k: int) -> RetrievalOptions:
         max_sources=max(1, min(values["max_sources"], k, 20)),
         min_similarity=values["min_similarity"],
         attachment_texts=tuple(texts),
+        as_of=values["as_of"],
+        published_from=values["published_from"],
+        published_to=values["published_to"],
     )

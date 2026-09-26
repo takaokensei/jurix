@@ -19,6 +19,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import DetailView, ListView
 
 from src.processing.rag_service import RAGService
+from src.processing.temporal_scope import build_norma_timeline, temporal_status
 
 from .api_limits import InvalidLLMParams, parse_llm_request, rate_limit_response
 from .models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
@@ -172,6 +173,8 @@ class NormaDetailView(DetailView):
                 "dispositivos": dispositivos,
                 "root_dispositivos": root_dispositivos,
                 "stats": stats,
+                "timeline": build_norma_timeline(norma),
+                "temporal_status": temporal_status(norma),
             }
         )
 

@@ -11,6 +11,7 @@ import logging
 from typing import Any
 
 from src.apps.legislation.source_urls import canonical_norma_url, public_source_url
+from src.processing.temporal_scope import temporal_state_from_dates
 
 logger = logging.getLogger(__name__)
 
@@ -55,10 +56,13 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
             norma_id = getattr(norma, "id", None)
             pdf_url = getattr(norma, "pdf_url", None) or None
             sapl_url = canonical_norma_url(norma)
+            publication_date = getattr(norma, "data_publicacao", None)
+            effective_date = getattr(norma, "data_vigencia", None)
         except Exception as e:
             logger.warning(f"Error accessing norma attributes: {e}")
             norma_tipo, norma_numero, norma_ano = "Norma", "", ""
             norma_id, pdf_url, sapl_url = None, None, None
+            publication_date, effective_date = None, None
 
         disp_id = getattr(disp, "id", None)
         disp_texto = getattr(disp, "texto", "") or ""
@@ -82,6 +86,9 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
             "pdf_url": pdf_url,
             "sapl_url": sapl_url,
             "source_url": public_source_url(norma),
+            "data_publicacao": publication_date.isoformat() if publication_date else None,
+            "data_vigencia": effective_date.isoformat() if effective_date else None,
+            "temporal_status": temporal_state_from_dates(norma),
             "dispositivo_id": disp_id,
         }
 
@@ -102,6 +109,9 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
         "hierarchy": source.get("hierarchy", ""),
         "pdf_url": source.get("pdf_url"),
         "sapl_url": source.get("sapl_url"),
+        "data_publicacao": source.get("data_publicacao"),
+        "data_vigencia": source.get("data_vigencia"),
+        "temporal_status": source.get("temporal_status", "data_indeterminada"),
         "dispositivo_id": disp_id,
     }
 

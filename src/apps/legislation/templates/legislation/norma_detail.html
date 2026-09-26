@@ -89,6 +89,33 @@
 </div>
 {% endif %}
 
+{% if timeline %}
+<div class="card norma-timeline" aria-labelledby="timeline-title">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+        <div>
+            <h2 id="timeline-title">Linha do tempo normativa</h2>
+            <p style="margin-top:6px;opacity:.72;">Datas e eventos visíveis no corpus. Inferências são sinalizadas para revisão.</p>
+        </div>
+        <span class="badge {% if temporal_status == 'revogada' %}badge-warning{% else %}badge-success{% endif %}">{{ temporal_status }}</span>
+    </div>
+    <ol style="display:grid;gap:12px;margin:18px 0 0;padding:0;list-style:none;">
+        {% for item in timeline %}
+        <li style="display:grid;grid-template-columns:minmax(110px,140px) 1fr;gap:16px;padding:14px;border:1px solid var(--border-color,#e5e7eb);border-radius:12px;">
+            <div>
+                <strong>{{ item.date|default:"Data não disponível" }}</strong>
+                <div style="font-size:.78rem;opacity:.65;margin-top:4px;">{{ item.kind }}</div>
+            </div>
+            <div>
+                <strong>{{ item.title }}</strong>
+                <p style="margin:5px 0 0;line-height:1.55;">{{ item.description }}</p>
+                {% if item.source_norma %}<small style="opacity:.68;">Fonte: {{ item.source_norma }}</small>{% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ol>
+</div>
+{% endif %}
+
 {% if eventos_recebidos %}
 <div class="card">
     <h2>Eventos de Alteração ({{ eventos_recebidos.count }})</h2>
