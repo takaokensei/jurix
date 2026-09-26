@@ -1,4 +1,4 @@
-# ruff: noqa: F401,F403,E501,E701
+# ruff: noqa: F401,F403,E501,E701,I001
 from __future__ import annotations
 
 import hashlib
@@ -27,9 +27,10 @@ from src.processing.consolidation_engine import ConsolidationEngine
 from src.processing.legal_parser import LegalTextParser
 from src.processing.ner_extractor import LegalNERExtractor
 
+from .task_support import _configure_tesseract, _mark_norma_failed
+
 logger = logging.getLogger(__name__)
 
-from .task_support import _configure_tesseract, _mark_norma_failed
 
 @shared_task(bind=True, name="ingestion.ocr_pdf_task", max_retries=2, default_retry_delay=120)
 def ocr_pdf_task(self, norma_id: int) -> dict[str, Any]:
@@ -94,7 +95,7 @@ def ocr_pdf_task(self, norma_id: int) -> dict[str, Any]:
         if total_pages > max_pages:
             pdf_document.close()
             error_msg = (
-                f"PDF excede o limite de OCR configurado " f"({total_pages} páginas > {max_pages})."
+                f"PDF excede o limite de OCR configurado ({total_pages} páginas > {max_pages})."
             )
             norma.needs_review = True
             norma.processing_error = error_msg
@@ -108,7 +109,7 @@ def ocr_pdf_task(self, norma_id: int) -> dict[str, Any]:
                 ]
             )
             logger.warning(
-                f"[Task {task_id}] {error_msg} " f"Norma ID={norma_id} marcada para revisão."
+                f"[Task {task_id}] {error_msg} Norma ID={norma_id} marcada para revisão."
             )
             return {
                 "success": False,

@@ -5,38 +5,94 @@ The endpoint implementations are grouped by concern. Wrappers synchronize the
 legacy module globals before delegation so existing tests and integrations that
 patch ``api_views`` symbols keep working.
 """
+
 from __future__ import annotations
 
 from . import api_attachments, api_chat, api_health, api_normas, api_search
-from .api_health import _check_database, _check_migrations, _check_ollama, _check_pgvector, _check_redis, _format_error_message, health_check_api, health_live_api, health_ready_api
-from .api_search import RAGService
-from .api_normas import norma_detail_api, norma_list_api
-from .api_chat import chat_session_by_slug_api, chat_session_detail_api, chat_session_regenerate_api, chat_sessions_api
-from .api_attachments import chat_attachment_api, chat_attachment_detail_api, dynamic_suggestions_api
-from .api_search import chatbot_stream_api, rag_answer_api, semantic_search_api
 from .api_attachments import *  # noqa: F401,F403
+from .api_attachments import (
+    chat_attachment_api,
+    chat_attachment_detail_api,
+    dynamic_suggestions_api,
+)
 from .api_chat import *  # noqa: F401,F403
+from .api_chat import (
+    chat_session_by_slug_api,
+    chat_session_detail_api,
+    chat_session_regenerate_api,
+    chat_sessions_api,
+)
 from .api_health import *  # noqa: F401,F403
+from .api_health import (
+    _check_database,
+    _check_migrations,
+    _check_ollama,
+    _check_pgvector,
+    _check_redis,
+    _format_error_message,
+    health_check_api,
+    health_live_api,
+    health_ready_api,
+)
 from .api_normas import *  # noqa: F401,F403
+from .api_normas import norma_detail_api, norma_list_api
 from .api_search import *  # noqa: F401,F403
 
 # Compatibility symbols commonly patched by downstream tests/integrations.
 from .api_search import (  # noqa: E402
-    ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma,
-    InvalidLLMParams, build_retrieval_options, parse_k, parse_llm_request, parse_model,
-    rate_limit_response, serialize_dispositivo_source, transaction, timezone,
+    ChatMessage,
+    ChatSession,
+    Dispositivo,
+    EventoAlteracao,
+    InvalidLLMParams,
+    Norma,
+    RAGService,
+    build_retrieval_options,
+    chatbot_stream_api,
+    parse_k,
+    parse_llm_request,
+    parse_model,
+    rag_answer_api,
+    rate_limit_response,
+    semantic_search_api,
+    serialize_dispositivo_source,
+    timezone,
+    transaction,
 )
 
 
 def _sync(module) -> None:
     for name in (
-        "RAGService", "ChatMessage", "ChatSession", "Dispositivo", "EventoAlteracao", "Norma",
-        "rate_limit_response", "parse_k", "parse_llm_request", "parse_model", "build_retrieval_options",
-        "serialize_dispositivo_source", "transaction", "timezone", "InvalidLLMParams",
-        "_format_error_message", "_server_error", "_check_database", "_check_pgvector",
-        "_check_redis", "_check_migrations", "_check_ollama",
-        "list_attachments", "upload_attachment", "delete_attachment", "AttachmentError",
-        "build_dynamic_suggestions", "_chat_session_response", "_parse_limit", "_preview",
+        "RAGService",
+        "ChatMessage",
+        "ChatSession",
+        "Dispositivo",
+        "EventoAlteracao",
+        "Norma",
+        "rate_limit_response",
+        "parse_k",
+        "parse_llm_request",
+        "parse_model",
+        "build_retrieval_options",
+        "serialize_dispositivo_source",
+        "transaction",
+        "timezone",
+        "InvalidLLMParams",
+        "_format_error_message",
+        "_server_error",
+        "_check_database",
+        "_check_pgvector",
+        "_check_redis",
+        "_check_migrations",
+        "_check_ollama",
+        "list_attachments",
+        "upload_attachment",
+        "delete_attachment",
+        "AttachmentError",
+        "build_dynamic_suggestions",
+        "_chat_session_response",
+        "_parse_limit",
+        "_preview",
     ):
         if name in globals():
             setattr(module, name, globals()[name])

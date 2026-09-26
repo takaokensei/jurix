@@ -1,4 +1,4 @@
-# ruff: noqa: F401,F403,E501,E701
+# ruff: noqa: F401,F403,E501,E701,I001
 from __future__ import annotations
 
 import json
@@ -12,17 +12,37 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from src.apps.legislation.api_limits import InvalidLLMParams, parse_k, parse_llm_request, parse_model, rate_limit_response
-from src.apps.legislation.attachment_service import AttachmentError, delete_attachment, list_attachments, upload_attachment
+from src.apps.legislation.api_limits import (
+    InvalidLLMParams,
+    parse_k,
+    parse_llm_request,
+    parse_model,
+    rate_limit_response,
+)
+from src.apps.legislation.attachment_service import (
+    AttachmentError,
+    delete_attachment,
+    list_attachments,
+    upload_attachment,
+)
 from src.apps.legislation.chat_api_helpers import _chat_session_response, _parse_limit, _preview
-from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
+from src.apps.legislation.models import (
+    ChatMessage,
+    ChatSession,
+    Dispositivo,
+    EventoAlteracao,
+    Norma,
+)
 from src.apps.legislation.retrieval_api import build_retrieval_options
 from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
 from src.apps.legislation.suggestion_service import build_dynamic_suggestions
 from src.processing.adaptive_rag_service import AdaptiveRAGService
+
 RAGService = AdaptiveRAGService
+from .api_health import _format_error_message, _server_error
 
 logger = logging.getLogger(__name__)
+
 
 @require_http_methods(["GET", "POST"])
 def chat_attachment_api(request: HttpRequest) -> JsonResponse:
@@ -47,6 +67,7 @@ def chat_attachment_api(request: HttpRequest) -> JsonResponse:
         {"success": True, "attachment": item, "attachments": list_attachments(request)}
     )
 
+
 @require_http_methods(["DELETE"])
 def chat_attachment_detail_api(request: HttpRequest, attachment_id: str) -> JsonResponse:
     """Delete one temporary session-bound chat document."""
@@ -56,6 +77,7 @@ def chat_attachment_detail_api(request: HttpRequest, attachment_id: str) -> Json
     if not delete_attachment(request, attachment_id):
         return JsonResponse({"success": False, "error": "Documento não encontrado."}, status=404)
     return JsonResponse({"success": True, "attachments": list_attachments(request)})
+
 
 @require_http_methods(["GET"])
 def dynamic_suggestions_api(request: HttpRequest) -> JsonResponse:

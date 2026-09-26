@@ -1,4 +1,4 @@
-# ruff: noqa: F401,F403,E501,E701
+# ruff: noqa: F401,F403,E501,E701,I001
 from __future__ import annotations
 
 import json
@@ -12,17 +12,37 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from src.apps.legislation.api_limits import InvalidLLMParams, parse_k, parse_llm_request, parse_model, rate_limit_response
-from src.apps.legislation.attachment_service import AttachmentError, delete_attachment, list_attachments, upload_attachment
+from src.apps.legislation.api_limits import (
+    InvalidLLMParams,
+    parse_k,
+    parse_llm_request,
+    parse_model,
+    rate_limit_response,
+)
+from src.apps.legislation.attachment_service import (
+    AttachmentError,
+    delete_attachment,
+    list_attachments,
+    upload_attachment,
+)
 from src.apps.legislation.chat_api_helpers import _chat_session_response, _parse_limit, _preview
-from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
+from src.apps.legislation.models import (
+    ChatMessage,
+    ChatSession,
+    Dispositivo,
+    EventoAlteracao,
+    Norma,
+)
 from src.apps.legislation.retrieval_api import build_retrieval_options
 from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
 from src.apps.legislation.suggestion_service import build_dynamic_suggestions
 from src.processing.adaptive_rag_service import AdaptiveRAGService
+
 RAGService = AdaptiveRAGService
+from .api_health import _format_error_message, _server_error
 
 logger = logging.getLogger(__name__)
+
 
 @require_http_methods(["GET", "POST"])
 def chat_sessions_api(request: HttpRequest) -> JsonResponse:
@@ -80,6 +100,7 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
     except Exception as e:
         return _server_error("chat sessions API", e)
 
+
 @require_http_methods(["GET"])
 def chat_session_by_slug_api(request: HttpRequest, slug: str) -> JsonResponse:
     """
@@ -100,6 +121,7 @@ def chat_session_by_slug_api(request: HttpRequest, slug: str) -> JsonResponse:
     except Exception as e:
         return _server_error("chat session by slug API", e)
 
+
 @require_http_methods(["GET", "DELETE"])
 def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonResponse:
     """API endpoint for single chat session operations (GET detail, DELETE)."""
@@ -118,6 +140,7 @@ def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonRespon
         return _chat_session_response(session, request.GET.get("before"))
     except Exception as e:
         return _server_error("chat session detail API", e)
+
 
 @require_http_methods(["POST"])
 def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonResponse:

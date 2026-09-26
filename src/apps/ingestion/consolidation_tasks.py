@@ -1,4 +1,4 @@
-# ruff: noqa: F401,F403,E501,E701
+# ruff: noqa: F401,F403,E501,E701,I001
 from __future__ import annotations
 
 import hashlib
@@ -27,9 +27,10 @@ from src.processing.consolidation_engine import ConsolidationEngine
 from src.processing.legal_parser import LegalTextParser
 from src.processing.ner_extractor import LegalNERExtractor
 
+from .task_support import _invalidate_rag_cache, _mark_norma_failed
+
 logger = logging.getLogger(__name__)
 
-from .task_support import _invalidate_rag_cache, _mark_norma_failed
 
 @shared_task(bind=True, name="ingestion.consolidate_norma", max_retries=3, default_retry_delay=60)
 def consolidate_norma_task(self, norma_id: int) -> dict[str, Any]:

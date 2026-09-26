@@ -115,17 +115,17 @@ class Command(BaseCommand):
         if total == 0:
             self.stdout.write(
                 self.style.WARNING(
-                    "\n⚠️  No normas found matching criteria. " "Try --force or --all flags."
+                    "\n⚠️  No normas found matching criteria. Try --force or --all flags."
                 )
             )
             return
 
         self.stdout.write(self.style.NOTICE(f"\n📊 Found {total} norma(s) to process"))
         self.stdout.write(self.style.NOTICE(f"   Offset: {offset}"))
-        self.stdout.write(self.style.NOTICE(f'   Limit: {limit if limit else "None (all)"}'))
+        self.stdout.write(self.style.NOTICE(f"   Limit: {limit if limit else 'None (all)'}"))
         self.stdout.write(
             self.style.NOTICE(
-                f'   Mode: {"Synchronous (blocking)" if sync_mode else "Async (Celery)"}'
+                f"   Mode: {'Synchronous (blocking)' if sync_mode else 'Async (Celery)'}"
             )
         )
         self.stdout.write(self.style.NOTICE("-" * 80))
@@ -148,17 +148,17 @@ class Command(BaseCommand):
                         success_count += 1
                         self.stdout.write(
                             self.style.SUCCESS(
-                                f'  ✓ SUCCESS: {result.get("events_created", 0)} events created '
-                                f'from {result.get("dispositivos_with_events", 0)} dispositivos '
-                                f'in {result.get("processing_time", 0):.2f}s'
+                                f"  ✓ SUCCESS: {result.get('events_created', 0)} events created "
+                                f"from {result.get('dispositivos_with_events', 0)} dispositivos "
+                                f"in {result.get('processing_time', 0):.2f}s"
                             )
                         )
                         if result.get("action_stats"):
-                            self.stdout.write(f'    Actions: {result["action_stats"]}')
+                            self.stdout.write(f"    Actions: {result['action_stats']}")
                     else:
                         failure_count += 1
                         self.stdout.write(
-                            self.style.ERROR(f'  ✗ FAILED: {result.get("error", "Unknown error")}')
+                            self.style.ERROR(f"  ✗ FAILED: {result.get('error', 'Unknown error')}")
                         )
                 else:
                     # Asynchronous execution via Celery
@@ -184,8 +184,7 @@ class Command(BaseCommand):
         if not sync_mode:
             self.stdout.write(
                 self.style.WARNING(
-                    "\n💡 Tasks are running asynchronously. "
-                    "Check Celery worker logs for results."
+                    "\n💡 Tasks are running asynchronously. Check Celery worker logs for results."
                 )
             )
 
@@ -195,16 +194,16 @@ class Command(BaseCommand):
         """Display detailed result for a single task execution."""
         if result.get("success"):
             self.stdout.write(self.style.SUCCESS("\n✓ SUCCESS"))
-            self.stdout.write(f'  Events created: {result.get("events_created", 0)}')
+            self.stdout.write(f"  Events created: {result.get('events_created', 0)}")
             self.stdout.write(
-                f'  Dispositivos processed: {result.get("dispositivos_processed", 0)}'
+                f"  Dispositivos processed: {result.get('dispositivos_processed', 0)}"
             )
             self.stdout.write(
-                f'  Dispositivos with events: {result.get("dispositivos_with_events", 0)}'
+                f"  Dispositivos with events: {result.get('dispositivos_with_events', 0)}"
             )
-            self.stdout.write(f'  Processing time: {result.get("processing_time", 0):.2f}s')
+            self.stdout.write(f"  Processing time: {result.get('processing_time', 0):.2f}s")
             if result.get("action_stats"):
-                self.stdout.write(f'  Action stats: {result["action_stats"]}')
+                self.stdout.write(f"  Action stats: {result['action_stats']}")
         else:
             self.stdout.write(self.style.ERROR("\n✗ FAILED"))
-            self.stdout.write(self.style.ERROR(f'  Error: {result.get("error", "Unknown")}'))
+            self.stdout.write(self.style.ERROR(f"  Error: {result.get('error', 'Unknown')}"))

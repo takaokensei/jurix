@@ -1,4 +1,4 @@
-# ruff: noqa: F401,F403,E501,E701
+# ruff: noqa: F401,F403,E501,E701,I001
 from __future__ import annotations
 
 import json
@@ -12,17 +12,37 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from src.apps.legislation.api_limits import InvalidLLMParams, parse_k, parse_llm_request, parse_model, rate_limit_response
-from src.apps.legislation.attachment_service import AttachmentError, delete_attachment, list_attachments, upload_attachment
+from src.apps.legislation.api_limits import (
+    InvalidLLMParams,
+    parse_k,
+    parse_llm_request,
+    parse_model,
+    rate_limit_response,
+)
+from src.apps.legislation.attachment_service import (
+    AttachmentError,
+    delete_attachment,
+    list_attachments,
+    upload_attachment,
+)
 from src.apps.legislation.chat_api_helpers import _chat_session_response, _parse_limit, _preview
-from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
+from src.apps.legislation.models import (
+    ChatMessage,
+    ChatSession,
+    Dispositivo,
+    EventoAlteracao,
+    Norma,
+)
 from src.apps.legislation.retrieval_api import build_retrieval_options
 from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
 from src.apps.legislation.suggestion_service import build_dynamic_suggestions
 from src.processing.adaptive_rag_service import AdaptiveRAGService
+
 RAGService = AdaptiveRAGService
+from .api_health import _format_error_message, _server_error
 
 logger = logging.getLogger(__name__)
+
 
 @require_http_methods(["GET"])
 def semantic_search_api(request: HttpRequest) -> JsonResponse:
@@ -139,6 +159,7 @@ def semantic_search_api(request: HttpRequest) -> JsonResponse:
         logger.error(f"Error in semantic search API: {e}", exc_info=True)
         return JsonResponse({"success": False, "error": _format_error_message(e)}, status=500)
 
+
 @require_http_methods(["GET", "POST"])
 @csrf_exempt  # Anonymous, session-less and side-effect free: there is no ambient
 # credential for a cross-site request to abuse. Cost/abuse is handled by the
@@ -230,6 +251,7 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
     except Exception as e:
         logger.error(f"Error in RAG answer API: {e}", exc_info=True)
         return JsonResponse({"success": False, "error": _format_error_message(e)}, status=500)
+
 
 @require_http_methods(["POST"])
 def chatbot_stream_api(request: HttpRequest) -> HttpResponse:

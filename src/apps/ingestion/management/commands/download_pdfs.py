@@ -100,12 +100,12 @@ class Command(BaseCommand):
                     result = download_pdf_task(norma.id)
                     if result["success"]:
                         success_count += 1
-                        self.stdout.write(self.style.SUCCESS(f'  ✓ PDF baixado: {result["path"]}'))
+                        self.stdout.write(self.style.SUCCESS(f"  ✓ PDF baixado: {result['path']}"))
                     else:
                         failed_count += 1
                         self.stdout.write(
                             self.style.ERROR(
-                                f'  ✗ Falha: {result.get("error", "Erro desconhecido")}'
+                                f"  ✗ Falha: {result.get('error', 'Erro desconhecido')}"
                             )
                         )
                 else:

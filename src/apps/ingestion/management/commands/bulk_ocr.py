@@ -98,15 +98,15 @@ class Command(BaseCommand):
                         success_count += 1
                         self.stdout.write(
                             self.style.SUCCESS(
-                                f'  ✓ OCR completed: {result["pages_processed"]} pages, '
-                                f'{result["total_chars"]} chars, '
-                                f'{result["processing_time"]:.2f}s'
+                                f"  ✓ OCR completed: {result['pages_processed']} pages, "
+                                f"{result['total_chars']} chars, "
+                                f"{result['processing_time']:.2f}s"
                             )
                         )
                     else:
                         failed_count += 1
                         self.stdout.write(
-                            self.style.ERROR(f'  ✗ Failed: {result.get("error", "Unknown error")}')
+                            self.style.ERROR(f"  ✗ Failed: {result.get('error', 'Unknown error')}")
                         )
                 else:
                     # Execute asynchronously via Celery

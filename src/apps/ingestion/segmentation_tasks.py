@@ -1,4 +1,4 @@
-# ruff: noqa: F401,F403,E501,E701
+# ruff: noqa: F401,F403,E501,E701,I001
 from __future__ import annotations
 
 import hashlib
@@ -27,9 +27,10 @@ from src.processing.consolidation_engine import ConsolidationEngine
 from src.processing.legal_parser import LegalTextParser
 from src.processing.ner_extractor import LegalNERExtractor
 
+from .task_support import _invalidate_rag_cache, _mark_norma_failed
+
 logger = logging.getLogger(__name__)
 
-from .task_support import _invalidate_rag_cache, _mark_norma_failed
 
 @shared_task(bind=True, name="ingestion.segment_text_task", max_retries=2, default_retry_delay=60)
 def segment_text_task(self, norma_id: int) -> dict[str, Any]:
@@ -104,7 +105,7 @@ def segment_text_task(self, norma_id: int) -> dict[str, Any]:
         hierarchy = parser.build_hierarchy(elements)
 
         logger.info(
-            f"[Task {task_id}] Found {len(hierarchy)} elements, " f"building hierarchical structure"
+            f"[Task {task_id}] Found {len(hierarchy)} elements, building hierarchical structure"
         )
 
         # Atomic transaction: delete existing and recreate with relationships
@@ -155,8 +156,7 @@ def segment_text_task(self, norma_id: int) -> dict[str, Any]:
             created_dispositivos = Dispositivo.objects.bulk_create(dispositivos_to_create)
 
             logger.info(
-                f"[Task {task_id}] Created {len(created_dispositivos)} dispositivos "
-                f"(bulk insert)"
+                f"[Task {task_id}] Created {len(created_dispositivos)} dispositivos (bulk insert)"
             )
 
             # Second pass: set parent relationships using in-memory mapping O(1)

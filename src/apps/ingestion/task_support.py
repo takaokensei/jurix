@@ -35,6 +35,7 @@ def _normalize_norma_tipo(value: Any) -> str:
     raw = str(value or "").strip()
     return {"1": "Lei"}.get(raw, raw)
 
+
 def _configure_tesseract() -> None:
     """Prefer the native Windows install over Unicode-path shims."""
     configured = getattr(settings, "TESSERACT_CMD", "")
@@ -48,6 +49,7 @@ def _configure_tesseract() -> None:
     if tessdata.exists():
         os.environ["TESSDATA_PREFIX"] = str(tessdata)
 
+
 def _invalidate_rag_cache() -> None:
     """
     Invalidate cached RAG answers/search results after the corpus changed.
@@ -58,6 +60,7 @@ def _invalidate_rag_cache() -> None:
         get_cache_service().bump_corpus_version()
     except Exception:
         logger.warning("Could not invalidate the RAG cache", exc_info=True)
+
 
 def _mark_norma_failed(
     norma_id: int, label: str, exc: Exception, *, set_failed_status: bool = True
@@ -83,6 +86,7 @@ def _mark_norma_failed(
         norma.save(update_fields=update_fields)
     except Exception:
         logger.warning(f"Could not record failure on Norma ID={norma_id}", exc_info=True)
+
 
 def _resolve_norma_reference(tipo: str, numero: str, ano: str) -> Norma | None:
     """

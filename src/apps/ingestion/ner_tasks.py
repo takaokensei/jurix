@@ -1,4 +1,4 @@
-# ruff: noqa: F401,F403,E501,E701
+# ruff: noqa: F401,F403,E501,E701,I001
 from __future__ import annotations
 
 import hashlib
@@ -27,9 +27,10 @@ from src.processing.consolidation_engine import ConsolidationEngine
 from src.processing.legal_parser import LegalTextParser
 from src.processing.ner_extractor import LegalNERExtractor
 
+from .task_support import _invalidate_rag_cache, _mark_norma_failed, _resolve_norma_reference
+
 logger = logging.getLogger(__name__)
 
-from .task_support import _invalidate_rag_cache, _mark_norma_failed, _resolve_norma_reference
 
 @shared_task(bind=True, name="ingestion.extract_entities", max_retries=3, default_retry_delay=60)
 def extract_entities_task(self, norma_id: int) -> dict[str, Any]:
@@ -201,6 +202,7 @@ def extract_entities_task(self, norma_id: int) -> dict[str, Any]:
             raise self.retry(exc=e, countdown=60 * (2**self.request.retries)) from e
 
         return {"success": False, "error": str(e), "norma_id": norma_id}
+
 
 @shared_task(bind=True, name="ingestion.generate_embedding", max_retries=3, default_retry_delay=60)
 def generate_embedding_task(

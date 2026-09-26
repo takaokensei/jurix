@@ -1,4 +1,4 @@
-# ruff: noqa: F401,F403,E501,E701
+# ruff: noqa: F401,F403,E501,E701,I001
 from __future__ import annotations
 
 import hashlib
@@ -27,11 +27,10 @@ from src.processing.consolidation_engine import ConsolidationEngine
 from src.processing.legal_parser import LegalTextParser
 from src.processing.ner_extractor import LegalNERExtractor
 
+from .task_support import _invalidate_rag_cache, _mark_norma_failed
+
 logger = logging.getLogger(__name__)
 
-from .task_support import _mark_norma_failed
-
-from .task_support import _invalidate_rag_cache
 
 @shared_task(bind=True, name="ingestion.download_pdf_task", max_retries=3, default_retry_delay=60)
 def download_pdf_task(self, norma_id: int) -> dict[str, Any]:
@@ -131,10 +130,12 @@ def download_pdf_task(self, norma_id: int) -> dict[str, Any]:
 
         return {"success": False, "error": str(e), "norma_id": norma_id}
 
+
 def _sapl_payload_hash(payload: dict[str, Any]) -> str:
     """Stable source fingerprint used to make incremental SAPL sync idempotent."""
     canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
 
 @shared_task(
     bind=True,
@@ -162,6 +163,7 @@ def incremental_sync_sapl_task(
     except Exception as exc:
         logger.error("Incremental SAPL sync task failed", exc_info=True)
         raise self.retry(exc=exc, countdown=60 * (2**self.request.retries)) from exc
+
 
 @shared_task(
     bind=True,

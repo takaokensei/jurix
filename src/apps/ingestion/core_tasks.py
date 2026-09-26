@@ -1,4 +1,4 @@
-# ruff: noqa: F401,F403,E501,E701
+# ruff: noqa: F401,F403,E501,E701,I001
 from __future__ import annotations
 
 import hashlib
@@ -27,17 +27,18 @@ from src.processing.consolidation_engine import ConsolidationEngine
 from src.processing.legal_parser import LegalTextParser
 from src.processing.ner_extractor import LegalNERExtractor
 
+from .download_tasks import download_pdf_task
+from .task_support import _invalidate_rag_cache, _normalize_norma_tipo
+
 logger = logging.getLogger(__name__)
 
-from .download_tasks import download_pdf_task
-
-from .task_support import _invalidate_rag_cache, _normalize_norma_tipo
 
 @shared_task(name="ingestion.cleanup_chat_attachments")
 def cleanup_chat_attachments():
     from src.apps.legislation.attachment_service import cleanup_expired_attachments
 
     return cleanup_expired_attachments()
+
 
 @shared_task(bind=True, name="ingestion.ingest_normas_task", max_retries=3, default_retry_delay=60)
 def ingest_normas_task(
@@ -136,6 +137,7 @@ def ingest_normas_task(
     finally:
         if client:
             client.close()
+
 
 @transaction.atomic
 def _process_norma_data(norma_data: dict[str, Any], auto_download: bool = False) -> dict[str, Any]:
@@ -254,6 +256,7 @@ def _process_norma_data(norma_data: dict[str, Any], auto_download: bool = False)
 
     return result
 
+
 @shared_task(bind=True, name="ingestion.bulk_ingest_normas_task", max_retries=2)
 def bulk_ingest_normas_task(
     self,
@@ -328,6 +331,7 @@ def bulk_ingest_normas_task(
         logger.error(f"[Task {task_id}] Falha na ingestão em massa: {str(e)}")
         consolidated_stats["errors"].append(str(e))
         raise self.retry(exc=e) from e
+
 
 @shared_task(
     bind=True,

@@ -40,7 +40,7 @@ class Command(BaseCommand):
                     ementa = norma.get("ementa", "")[:80]
 
                     self.stdout.write(
-                        f'\n  [{norma.get("id")}] {tipo} {numero}/{ano}\n' f'  Ementa: {ementa}...'
+                        f"\n  [{norma.get('id')}] {tipo} {numero}/{ano}\n  Ementa: {ementa}..."
                     )
 
             client.close()

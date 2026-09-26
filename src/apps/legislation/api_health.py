@@ -1,4 +1,4 @@
-# ruff: noqa: F401,F403,E501,E701
+# ruff: noqa: F401,F403,E501,E701,I001
 from __future__ import annotations
 
 import json
@@ -12,17 +12,36 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from src.apps.legislation.api_limits import InvalidLLMParams, parse_k, parse_llm_request, parse_model, rate_limit_response
-from src.apps.legislation.attachment_service import AttachmentError, delete_attachment, list_attachments, upload_attachment
+from src.apps.legislation.api_limits import (
+    InvalidLLMParams,
+    parse_k,
+    parse_llm_request,
+    parse_model,
+    rate_limit_response,
+)
+from src.apps.legislation.attachment_service import (
+    AttachmentError,
+    delete_attachment,
+    list_attachments,
+    upload_attachment,
+)
 from src.apps.legislation.chat_api_helpers import _chat_session_response, _parse_limit, _preview
-from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
+from src.apps.legislation.models import (
+    ChatMessage,
+    ChatSession,
+    Dispositivo,
+    EventoAlteracao,
+    Norma,
+)
 from src.apps.legislation.retrieval_api import build_retrieval_options
 from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
 from src.apps.legislation.suggestion_service import build_dynamic_suggestions
 from src.processing.adaptive_rag_service import AdaptiveRAGService
+
 RAGService = AdaptiveRAGService
 
 logger = logging.getLogger(__name__)
+
 
 def _format_error_message(e: Exception) -> str:
     """Format safe error message for API responses."""
@@ -30,10 +49,12 @@ def _format_error_message(e: Exception) -> str:
         return str(e)
     return "Ocorreu um erro interno ao processar sua solicitação."
 
+
 @require_http_methods(["GET"])
 def health_live_api(request: HttpRequest) -> JsonResponse:
     """Liveness probe: cheap check ensuring process is alive."""
     return JsonResponse({"status": "alive"})
+
 
 def _check_database() -> tuple[bool, str]:
     """Check database connectivity."""
@@ -45,6 +66,7 @@ def _check_database() -> tuple[bool, str]:
         return True, "ok"
     except Exception as exc:
         return False, str(exc)
+
 
 def _check_pgvector() -> tuple[bool, str]:
     """Check if pgvector extension is available."""
@@ -61,6 +83,7 @@ def _check_pgvector() -> tuple[bool, str]:
         return True, "ok"
     except Exception as exc:
         return False, str(exc)
+
 
 def _check_redis() -> tuple[bool, str]:
     """Check direct Redis connectivity and the configured Django cache separately."""
@@ -85,6 +108,7 @@ def _check_redis() -> tuple[bool, str]:
     except Exception as exc:
         return False, str(exc)
 
+
 def _check_migrations() -> tuple[bool, str]:
     """Check for unapplied database migrations."""
     try:
@@ -100,6 +124,7 @@ def _check_migrations() -> tuple[bool, str]:
     except Exception as exc:
         return False, str(exc)
 
+
 def _check_ollama() -> tuple[bool, str]:
     """Check Ollama service connectivity."""
     if not getattr(settings, "READINESS_REQUIRE_OLLAMA", True):
@@ -113,6 +138,7 @@ def _check_ollama() -> tuple[bool, str]:
         return True, "ok"
     except Exception as exc:
         return False, str(exc)
+
 
 @require_http_methods(["GET"])
 def health_ready_api(request: HttpRequest) -> JsonResponse:
@@ -141,6 +167,7 @@ def health_ready_api(request: HttpRequest) -> JsonResponse:
         },
         status=status_code,
     )
+
 
 @require_http_methods(["GET"])
 def health_check_api(request: HttpRequest) -> JsonResponse:
