@@ -150,5 +150,10 @@ class SaplAPIClient(SaplTransportMixin, SaplNormasMixin, SaplCorpusMixin, SaplDo
 ''', encoding="utf-8")
 
 def main() -> None:
-    split_api(); split_sapl()
+    api_text = (LEG / "api_views.py").read_text(encoding="utf-8")
+    sapl_text = (SAPL / "sapl_client.py").read_text(encoding="utf-8")
+    if "Stable API view import surface" not in api_text:
+        split_api()
+    if "Compatibility facade for the SAPL client" not in sapl_text:
+        split_sapl()
 if __name__ == "__main__": main()
