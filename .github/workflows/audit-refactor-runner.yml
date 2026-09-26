@@ -14,14 +14,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: fix/claude-audit-complete
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
       - name: Generate ingestion modules
         run: python scripts/refactor_ingestion_tasks.py
-
       - name: Commit generated modules to audit branch
         run: |
           git config user.name 'github-actions[bot]'
