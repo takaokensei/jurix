@@ -1,0 +1,309 @@
+E402 Module level import not at top of file
+  --> src/apps/legislation/api_attachments.py:42:1
+   |
+41 | RAGService = AdaptiveRAGService
+42 | from .api_health import _format_error_message, _server_error
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+43 |
+44 | logger = logging.getLogger(__name__)
+   |
+help: Move module level imports to top of file
+
+E402 Module level import not at top of file
+  --> src/apps/legislation/api_chat.py:42:1
+   |
+41 | RAGService = AdaptiveRAGService
+42 | from .api_health import _format_error_message, _server_error
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+43 |
+44 | logger = logging.getLogger(__name__)
+   |
+help: Move module level imports to top of file
+
+E402 Module level import not at top of file
+  --> src/apps/legislation/api_normas.py:42:1
+   |
+41 | RAGService = AdaptiveRAGService
+42 | from .api_health import _format_error_message, _server_error
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+43 |
+44 | logger = logging.getLogger(__name__)
+   |
+help: Move module level imports to top of file
+
+E402 Module level import not at top of file
+  --> src/apps/legislation/api_search.py:42:1
+   |
+41 | RAGService = AdaptiveRAGService
+42 | from .api_health import _format_error_message, _server_error
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+43 |
+44 | logger = logging.getLogger(__name__)
+   |
+help: Move module level imports to top of file
+
+F811 Redefinition of unused `health_ready_api` from line 35
+   --> src/apps/legislation/api_views.py:101:5
+    |
+101 | def health_ready_api(request):
+    |     ^^^^^^^^^^^^^^^^ `health_ready_api` redefined here
+102 |     _sync(api_health)
+103 |     return api_health.health_ready_api(request)
+    |
+   ::: src/apps/legislation/api_views.py:35:5
+    |
+ 33 |     health_check_api,
+ 34 |     health_live_api,
+ 35 |     health_ready_api,
+    |     ---------------- previous definition of `health_ready_api` here
+ 36 | )
+ 37 | from .api_normas import *  # noqa: F401,F403
+    |
+help: Remove definition: `health_ready_api`
+
+F811 Redefinition of unused `health_check_api` from line 33
+   --> src/apps/legislation/api_views.py:106:5
+    |
+106 | def health_check_api(request):
+    |     ^^^^^^^^^^^^^^^^ `health_check_api` redefined here
+107 |     _sync(api_health)
+108 |     return api_health.health_check_api(request)
+    |
+   ::: src/apps/legislation/api_views.py:33:5
+    |
+ 31 |     _check_redis,
+ 32 |     _format_error_message,
+ 33 |     health_check_api,
+    |     ---------------- previous definition of `health_check_api` here
+ 34 |     health_live_api,
+ 35 |     health_ready_api,
+    |
+help: Remove definition: `health_check_api`
+
+F811 Redefinition of unused `semantic_search_api` from line 57
+   --> src/apps/legislation/api_views.py:111:5
+    |
+111 | def semantic_search_api(request):
+    |     ^^^^^^^^^^^^^^^^^^^ `semantic_search_api` redefined here
+112 |     _sync(api_search)
+113 |     return api_search.semantic_search_api(request)
+    |
+   ::: src/apps/legislation/api_views.py:57:5
+    |
+ 55 |     rag_answer_api,
+ 56 |     rate_limit_response,
+ 57 |     semantic_search_api,
+    |     ------------------- previous definition of `semantic_search_api` here
+ 58 |     serialize_dispositivo_source,
+ 59 |     timezone,
+    |
+help: Remove definition: `semantic_search_api`
+
+F811 Redefinition of unused `rag_answer_api` from line 55
+   --> src/apps/legislation/api_views.py:116:5
+    |
+116 | def rag_answer_api(request):
+    |     ^^^^^^^^^^^^^^ `rag_answer_api` redefined here
+117 |     _sync(api_search)
+118 |     return api_search.rag_answer_api(request)
+    |
+   ::: src/apps/legislation/api_views.py:55:5
+    |
+ 53 |     parse_llm_request,
+ 54 |     parse_model,
+ 55 |     rag_answer_api,
+    |     -------------- previous definition of `rag_answer_api` here
+ 56 |     rate_limit_response,
+ 57 |     semantic_search_api,
+    |
+help: Remove definition: `rag_answer_api`
+
+F811 Redefinition of unused `chatbot_stream_api` from line 51
+   --> src/apps/legislation/api_views.py:121:5
+    |
+121 | def chatbot_stream_api(request):
+    |     ^^^^^^^^^^^^^^^^^^ `chatbot_stream_api` redefined here
+122 |     _sync(api_search)
+123 |     return api_search.chatbot_stream_api(request)
+    |
+   ::: src/apps/legislation/api_views.py:51:5
+    |
+ 49 |     RAGService,
+ 50 |     build_retrieval_options,
+ 51 |     chatbot_stream_api,
+    |     ------------------ previous definition of `chatbot_stream_api` here
+ 52 |     parse_k,
+ 53 |     parse_llm_request,
+    |
+help: Remove definition: `chatbot_stream_api`
+
+F811 Redefinition of unused `norma_list_api` from line 38
+   --> src/apps/legislation/api_views.py:126:5
+    |
+126 | def norma_list_api(request):
+    |     ^^^^^^^^^^^^^^ `norma_list_api` redefined here
+127 |     _sync(api_normas)
+128 |     return api_normas.norma_list_api(request)
+    |
+   ::: src/apps/legislation/api_views.py:38:43
+    |
+ 36 | )
+ 37 | from .api_normas import *  # noqa: F401,F403
+ 38 | from .api_normas import norma_detail_api, norma_list_api
+    |                                           -------------- previous definition of `norma_list_api` here
+ 39 | from .api_search import *  # noqa: F401,F403
+    |
+help: Remove definition: `norma_list_api`
+
+F811 Redefinition of unused `norma_detail_api` from line 38
+   --> src/apps/legislation/api_views.py:131:5
+    |
+131 | def norma_detail_api(request, pk):
+    |     ^^^^^^^^^^^^^^^^ `norma_detail_api` redefined here
+132 |     _sync(api_normas)
+133 |     return api_normas.norma_detail_api(request, pk)
+    |
+   ::: src/apps/legislation/api_views.py:38:25
+    |
+ 36 | )
+ 37 | from .api_normas import *  # noqa: F401,F403
+ 38 | from .api_normas import norma_detail_api, norma_list_api
+    |                         ---------------- previous definition of `norma_detail_api` here
+ 39 | from .api_search import *  # noqa: F401,F403
+    |
+help: Remove definition: `norma_detail_api`
+
+F811 Redefinition of unused `chat_sessions_api` from line 23
+   --> src/apps/legislation/api_views.py:136:5
+    |
+136 | def chat_sessions_api(request):
+    |     ^^^^^^^^^^^^^^^^^ `chat_sessions_api` redefined here
+137 |     _sync(api_chat)
+138 |     return api_chat.chat_sessions_api(request)
+    |
+   ::: src/apps/legislation/api_views.py:23:5
+    |
+ 21 |     chat_session_detail_api,
+ 22 |     chat_session_regenerate_api,
+ 23 |     chat_sessions_api,
+    |     ----------------- previous definition of `chat_sessions_api` here
+ 24 | )
+ 25 | from .api_health import *  # noqa: F401,F403
+    |
+help: Remove definition: `chat_sessions_api`
+
+F811 Redefinition of unused `chat_session_by_slug_api` from line 20
+   --> src/apps/legislation/api_views.py:141:5
+    |
+141 | def chat_session_by_slug_api(request, slug):
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^ `chat_session_by_slug_api` redefined here
+142 |     _sync(api_chat)
+143 |     return api_chat.chat_session_by_slug_api(request, slug)
+    |
+   ::: src/apps/legislation/api_views.py:20:5
+    |
+ 18 | from .api_chat import *  # noqa: F401,F403
+ 19 | from .api_chat import (
+ 20 |     chat_session_by_slug_api,
+    |     ------------------------ previous definition of `chat_session_by_slug_api` here
+ 21 |     chat_session_detail_api,
+ 22 |     chat_session_regenerate_api,
+    |
+help: Remove definition: `chat_session_by_slug_api`
+
+F811 Redefinition of unused `chat_session_detail_api` from line 21
+   --> src/apps/legislation/api_views.py:146:5
+    |
+146 | def chat_session_detail_api(request, session_id):
+    |     ^^^^^^^^^^^^^^^^^^^^^^^ `chat_session_detail_api` redefined here
+147 |     _sync(api_chat)
+148 |     return api_chat.chat_session_detail_api(request, session_id)
+    |
+   ::: src/apps/legislation/api_views.py:21:5
+    |
+ 19 | from .api_chat import (
+ 20 |     chat_session_by_slug_api,
+ 21 |     chat_session_detail_api,
+    |     ----------------------- previous definition of `chat_session_detail_api` here
+ 22 |     chat_session_regenerate_api,
+ 23 |     chat_sessions_api,
+    |
+help: Remove definition: `chat_session_detail_api`
+
+F811 Redefinition of unused `chat_session_regenerate_api` from line 22
+   --> src/apps/legislation/api_views.py:151:5
+    |
+151 | def chat_session_regenerate_api(request, session_id):
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `chat_session_regenerate_api` redefined here
+152 |     _sync(api_chat)
+153 |     return api_chat.chat_session_regenerate_api(request, session_id)
+    |
+   ::: src/apps/legislation/api_views.py:22:5
+    |
+ 20 |     chat_session_by_slug_api,
+ 21 |     chat_session_detail_api,
+ 22 |     chat_session_regenerate_api,
+    |     --------------------------- previous definition of `chat_session_regenerate_api` here
+ 23 |     chat_sessions_api,
+ 24 | )
+    |
+help: Remove definition: `chat_session_regenerate_api`
+
+F811 Redefinition of unused `chat_attachment_api` from line 14
+   --> src/apps/legislation/api_views.py:156:5
+    |
+156 | def chat_attachment_api(request):
+    |     ^^^^^^^^^^^^^^^^^^^ `chat_attachment_api` redefined here
+157 |     _sync(api_attachments)
+158 |     return api_attachments.chat_attachment_api(request)
+    |
+   ::: src/apps/legislation/api_views.py:14:5
+    |
+ 12 | from .api_attachments import *  # noqa: F401,F403
+ 13 | from .api_attachments import (
+ 14 |     chat_attachment_api,
+    |     ------------------- previous definition of `chat_attachment_api` here
+ 15 |     chat_attachment_detail_api,
+ 16 |     dynamic_suggestions_api,
+    |
+help: Remove definition: `chat_attachment_api`
+
+F811 Redefinition of unused `chat_attachment_detail_api` from line 15
+   --> src/apps/legislation/api_views.py:161:5
+    |
+161 | def chat_attachment_detail_api(request, attachment_id):
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ `chat_attachment_detail_api` redefined here
+162 |     _sync(api_attachments)
+163 |     return api_attachments.chat_attachment_detail_api(request, attachment_id)
+    |
+   ::: src/apps/legislation/api_views.py:15:5
+    |
+ 13 | from .api_attachments import (
+ 14 |     chat_attachment_api,
+ 15 |     chat_attachment_detail_api,
+    |     -------------------------- previous definition of `chat_attachment_detail_api` here
+ 16 |     dynamic_suggestions_api,
+ 17 | )
+    |
+help: Remove definition: `chat_attachment_detail_api`
+
+F811 Redefinition of unused `dynamic_suggestions_api` from line 16
+   --> src/apps/legislation/api_views.py:166:5
+    |
+166 | def dynamic_suggestions_api(request):
+    |     ^^^^^^^^^^^^^^^^^^^^^^^ `dynamic_suggestions_api` redefined here
+167 |     _sync(api_attachments)
+168 |     return api_attachments.dynamic_suggestions_api(request)
+    |
+   ::: src/apps/legislation/api_views.py:16:5
+    |
+ 14 |     chat_attachment_api,
+ 15 |     chat_attachment_detail_api,
+ 16 |     dynamic_suggestions_api,
+    |     ----------------------- previous definition of `dynamic_suggestions_api` here
+ 17 | )
+ 18 | from .api_chat import *  # noqa: F401,F403
+    |
+help: Remove definition: `dynamic_suggestions_api`
+
+Found 18 errors.
