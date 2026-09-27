@@ -24,6 +24,8 @@ ou cores. Novas telas devem estender
 - Toda mudança visual deve ser verificada em desktop e em viewport de 390px.
 - Foco visível, `prefers-reduced-motion` e contraste legível são requisitos de
   cada componente, não refinamentos opcionais.
+- `scripts/check_design_tokens.py` protege a migração: novos hexadecimais fora
+  dos arquivos de tokens falham no CI; remoções do baseline são permitidas.
 
 ## Migração atual
 
