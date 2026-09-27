@@ -16,7 +16,7 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body class="figma-theme workspace-page{% block body_class %}{% endblock %}" data-chatbot-url="{% url 'workspace:assistant' %}" data-norma-list-url="{% url 'legislation:norma_list' %}" data-logo-icon-url="{% static 'img/logo-icon.png' %}" data-user-name="{{ request.user.first_name|default:request.user.username|title }}">
-    <a class="skip-link" href="#main-content">Pular para o conteúdo principal</a>
+    <a class="skip-link jurix-skip-link" href="#main-content">Pular para o conteúdo principal</a>
 
     <div class="workspace-shell">
         <aside class="workspace-sidebar" data-workspace-sidebar aria-label="Navegação principal">
