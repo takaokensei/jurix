@@ -129,6 +129,14 @@ def test_norma_detail_exposes_safe_assistant_and_official_source_actions(norma):
     assert 'rel="noopener noreferrer"' in body
 
 
+def test_norma_pdf_export_returns_a_real_pdf(norma):
+    response = Client().get(f"/normas/{norma.pk}/export/pdf/")
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/pdf"
+    assert response["Content-Disposition"].startswith("attachment;")
+    assert response.content.startswith(b"%PDF-")
+
+
 def test_assistant_can_prefill_a_consolidated_norm_context(norma):
     body = Client().get(f"/assistente/?norma_id={norma.pk}").content.decode()
     assert f"Sobre Lei nº {norma.numero}/{norma.ano}:" in body

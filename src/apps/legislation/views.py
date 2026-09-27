@@ -8,6 +8,7 @@ comparing versions.
 import json
 import logging
 import re
+import textwrap
 import uuid
 from collections import defaultdict
 from difflib import SequenceMatcher
@@ -322,6 +323,40 @@ def norma_compare_view(request: HttpRequest, pk: int) -> HttpResponse:
     }
 
     return render(request, "legislation/norma_compare.html", context)
+
+
+def norma_pdf_export_view(request: HttpRequest, pk: int) -> HttpResponse:
+    """Generate a paginated, print-ready PDF of the consolidated norm."""
+    norma = get_object_or_404(Norma, pk=pk)
+    import fitz
+
+    document = fitz.open()
+    title = f"{norma.get_tipo_display_name()} nº {norma.numero}/{norma.ano}"
+    body = _presentation_consolidated_text(norma) or "Texto consolidado não disponível."
+    lines = []
+    for raw_line in body.splitlines():
+        lines.extend(textwrap.wrap(raw_line, width=96, replace_whitespace=False) or [""])
+    page_lines = 52
+    for offset in range(0, len(lines) or 1, page_lines):
+        page = document.new_page(width=595, height=842)
+        page.insert_text((48, 48), "JURIX · NORMA CONSOLIDADA", fontsize=9, color=(0.18, 0.43, 0.78))
+        page.insert_text((48, 75), title, fontsize=16, fontname="hebo", color=(0.06, 0.10, 0.18))
+        page.insert_text((48, 94), "Exportação do texto consolidado", fontsize=9, color=(0.35, 0.40, 0.48))
+        page.insert_textbox(
+            fitz.Rect(48, 120, 547, 790),
+            "\n".join(lines[offset : offset + page_lines]),
+            fontsize=9.5,
+            lineheight=1.45,
+            fontname="cour",
+            color=(0.10, 0.12, 0.16),
+        )
+        page.insert_text((48, 818), f"Fonte oficial: SAPL · Página {offset // page_lines + 1}", fontsize=8, color=(0.40, 0.44, 0.50))
+    payload = document.tobytes(garbage=4, deflate=True)
+    document.close()
+    response = HttpResponse(payload, content_type="application/pdf")
+    filename = f"jurix-{norma.tipo}-{norma.numero}-{norma.ano}.pdf"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 def norma_dispositivos_tree_view(request: HttpRequest, pk: int) -> HttpResponse:

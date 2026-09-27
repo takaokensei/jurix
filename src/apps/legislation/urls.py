@@ -16,6 +16,7 @@ urlpatterns = [
     path("chatbot/<str:session_slug>/", views.chatbot_view, name="chatbot_session"),
     # Detail views (generic patterns at the end)
     path("<int:pk>/", views.NormaDetailView.as_view(), name="norma_detail"),
+    path("<int:pk>/export/pdf/", views.norma_pdf_export_view, name="norma_pdf_export"),
     path("<int:pk>/compare/", views.norma_compare_view, name="norma_compare"),
     path("<int:pk>/tree/", views.norma_dispositivos_tree_view, name="norma_tree"),
 ]
