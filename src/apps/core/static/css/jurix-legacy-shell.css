@@ -24,6 +24,25 @@ footer p { margin-bottom: var(--jurix-space-1); }
 .compare-summary .badge-warning { color: var(--figma-amber-soft); background: var(--figma-amber-deep); }
 .compare-panel pre { max-width: 100%; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; overflow-x: auto; color: inherit; background: var(--figma-bg-root); border: 1px solid var(--figma-border); border-radius: var(--jurix-radius-sm); padding: 14px; }
 .compare-diff-row code { background: transparent !important; color: var(--figma-blue-soft); }
+.compare-diff { display: grid; gap: 1px; overflow-x: auto; border: 1px solid var(--figma-border); border-radius: var(--jurix-radius-sm); background: var(--figma-border); }
+.compare-diff-header,
+.compare-diff-row { display: grid; grid-template-columns: 52px minmax(180px, 1fr) 28px 52px minmax(180px, 1fr); min-width: 680px; align-items: stretch; }
+.compare-diff-header { background: var(--figma-bg-button); color: var(--figma-text-muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.compare-diff-header span { grid-column: span 2; padding: 11px 10px; }
+.compare-diff-header span:first-child { grid-column: 1 / 3; }
+.compare-diff-header span:last-child { grid-column: 4 / 6; }
+.compare-diff-row { background: var(--figma-bg-root); }
+.compare-diff-row > * { min-width: 0; padding: 9px 10px; border-right: 1px solid var(--figma-border); }
+.compare-diff-row code { display: block; overflow-wrap: anywhere; white-space: pre-wrap; color: var(--figma-text-body); font: 12px/1.55 var(--font-mono, ui-monospace, SFMono-Regular, Consolas, monospace); }
+.compare-diff-row .compare-line-number { color: var(--figma-text-dim); background: color-mix(in srgb, var(--figma-bg-button) 72%, transparent); text-align: right; font: 11px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; user-select: none; }
+.compare-diff-row .compare-diff-marker { display: grid; place-items: center; color: var(--figma-text-dim); font-weight: 700; }
+.compare-diff-row.compare-diff-removed { background: color-mix(in srgb, var(--figma-red-deep) 18%, var(--figma-bg-root)); }
+.compare-diff-row.compare-diff-removed .compare-diff-marker { color: var(--figma-red-soft); }
+.compare-diff-row.compare-diff-added { background: color-mix(in srgb, var(--figma-green-deep) 18%, var(--figma-bg-root)); }
+.compare-diff-row.compare-diff-added .compare-diff-marker { color: var(--figma-green-soft); }
+.compare-diff-row.compare-diff-changed { background: color-mix(in srgb, var(--figma-amber-deep) 14%, var(--figma-bg-root)); }
+.compare-diff-row.compare-diff-changed .compare-diff-marker { color: var(--figma-amber-soft); }
+.compare-empty { padding: 20px; color: var(--figma-text-muted); }
 .tree { margin-top: 20px; }
 .tree-node { margin-left: 20px; margin-bottom: 10px; padding: 12px; background: var(--figma-bg-surface); border: 1px solid var(--figma-border); border-left: 3px solid var(--figma-blue-light); border-radius: 10px; color: var(--figma-text-body); }
 .tree-node.level-0 { border-left-color: var(--figma-red); background: color-mix(in srgb, var(--figma-red-deep) 18%, transparent); }
