@@ -159,6 +159,10 @@ test('with every inline script/handler stripped, the command palette still opens
     btn.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
     assert.equal(opened, true, `${btn.outerHTML.slice(0, 60)} did not open the palette`);
   }
+  await new Promise((resolve) => window.setTimeout(resolve, 10));
+  const rendered = window.document.getElementById('command-palette-results');
+  assert.ok(rendered.querySelectorAll('.command-palette-item-icon svg').length > 0);
+  assert.equal(rendered.textContent.includes('d="0 0 24 24"'), false, 'SVG attributes must not leak as text');
 });
 
 test('restored conversation reveals the floating composer after the welcome state hides', async () => {

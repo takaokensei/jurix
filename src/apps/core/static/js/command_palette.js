@@ -180,6 +180,13 @@
             .replace(/'/g, '&#039;');
 
         const allCommands = [...commands, ...chatSessionsForSearch];
+        // Icons are trusted, local SVG templates defined above. Escape labels and
+        // descriptions, but keep the SVG as markup so its path data is not exposed
+        // as visible text in the palette.
+        const renderIcon = (value) => {
+            const icon = String(value || '').trim();
+            return icon.startsWith('<svg ') && icon.endsWith('</svg>') ? icon : '';
+        };
         const queryLower = query.toLowerCase().trim();
 
         const filtered = allCommands.filter(
@@ -211,7 +218,7 @@
                 <div class="command-palette-category" role="presentation">${escapeHtml(category)}</div>
                 ${grouped[category].map((cmd) => `
                     <div class="command-palette-item" data-command-id="${escapeHtml(cmd.id)}" role="option" tabindex="-1">
-                        <span class="command-palette-item-icon">${escapeHtml(cmd.icon)}</span>
+                        <span class="command-palette-item-icon" aria-hidden="true">${renderIcon(cmd.icon)}</span>
                         <div class="command-palette-item-content">
                             <div class="command-palette-item-title">${escapeHtml(cmd.title)}</div>
                             <div class="command-palette-item-description">${escapeHtml(cmd.description)}</div>

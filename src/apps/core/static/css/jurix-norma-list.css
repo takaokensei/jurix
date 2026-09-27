@@ -442,6 +442,10 @@
     overflow-wrap: anywhere;
 }
 
+.jurix-norma-card-facts { opacity: .86; }
+.jurix-norma-fact-label { font-size: 9px; letter-spacing: .12em; }
+.jurix-norma-fact-value { font-size: 12px; font-weight: 500; }
+
 .jurix-norma-card-ementa {
     margin: 0;
     color: var(--norma-text-soft);
