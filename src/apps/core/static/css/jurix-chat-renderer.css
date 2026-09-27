@@ -38,6 +38,21 @@
    while streaming and renders as an unexplained white rectangle. */
 .message-actions .copy-response-button,
 .message-actions .regenerate-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--figma-border);
+    border-radius: var(--jurix-radius-sm);
+    background: transparent;
+    color: var(--figma-text-muted);
+    font: inherit;
+    line-height: 1;
+    cursor: pointer;
+    box-sizing: border-box;
     visibility: hidden;
     width: 0;
     min-width: 0;
@@ -55,12 +70,25 @@
 .message-actions .copy-response-button.show,
 .message-actions .regenerate-button.show {
     visibility: visible;
-    width: auto;
-    min-width: auto;
-    padding: revert;
-    margin: revert;
+    width: 32px;
+    min-width: 32px;
+    padding: 0;
+    margin: 0;
     opacity: 1;
     pointer-events: auto;
+}
+
+.message-actions .copy-response-button:hover,
+.message-actions .regenerate-button:hover {
+    background: var(--figma-bg-surface);
+    border-color: var(--figma-blue-light);
+    color: var(--figma-text-white);
+}
+
+.message-actions .copy-response-button svg,
+.message-actions .regenerate-button svg {
+    width: 16px;
+    height: 16px;
 }
 
 .message-status--interrupted {
