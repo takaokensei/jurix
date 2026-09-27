@@ -18,8 +18,8 @@
 .workspace-topbar { height: 64px; display: flex; align-items: center; gap: 18px; padding: 0 28px; border-bottom: 1px solid var(--figma-border); background: rgba(8,18,32,.74); backdrop-filter: blur(15px); position: sticky; top: 0; z-index: 15; }
 .workspace-mobile-toggle { display: none; border: 0; background: transparent; color: var(--figma-text-muted); cursor: pointer; font-size: 18px; }
 .workspace-breadcrumb { display: flex; align-items: center; gap: 9px; min-width: 0; color: var(--figma-text-muted); font-size: 12px; }
-.workspace-breadcrumb strong { color: var(--figma-text-white); font-weight: 600; }
-.workspace-top-search { margin-left: auto; width: min(420px, 52vw); display: flex; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid var(--figma-border); border-radius: 9px; color: var(--figma-text-muted); background: rgba(255,255,255,.025); cursor: pointer; text-align: left; }
+.workspace-breadcrumb strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--figma-text-white); font-weight: 600; }
+.workspace-top-search { min-width: 0; margin-left: auto; width: min(420px, 52vw); display: flex; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid var(--figma-border); border-radius: 9px; color: var(--figma-text-muted); background: rgba(255,255,255,.025); cursor: pointer; text-align: left; }
 .workspace-top-search:hover { border-color: var(--figma-blue-light); color: var(--figma-text-white); }
 .workspace-top-search span:nth-child(2) { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-top-search kbd { font-size: 10px; opacity: .65; }
