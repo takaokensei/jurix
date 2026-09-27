@@ -5,7 +5,7 @@
 
 .jurix-network-status {
     position: fixed;
-    top: 1rem;
+    top: 6.5rem;
     left: 50%;
     z-index: 1200;
     display: inline-flex;
@@ -23,6 +23,10 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 180ms ease, transform 180ms ease;
+}
+
+body:has(.jurix-network-status.is-visible) .figma-scroll-container {
+    padding-top: 76px;
 }
 
 .jurix-network-status.is-visible {
@@ -84,7 +88,7 @@
 
 @media (max-width: 640px) {
     .jurix-network-status {
-        top: .65rem;
+        top: 6.5rem;
         max-width: calc(100vw - 1rem);
         font-size: .74rem;
     }
