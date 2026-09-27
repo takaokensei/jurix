@@ -7,9 +7,10 @@ shell atualmente usado pelo assistente e pelo workspace: fundo Deep Navy,
 superfícies em grafite, azul para ações e foco, tipografia Lora para títulos
 editoriais e Inter para interface e conteúdo operacional.
 
-O `swiss-design-system.css` permanece temporariamente carregado apenas onde
-há dependências legadas que ainda estão sendo migradas. Ele não deve receber
-novos componentes, tokens ou cores. Novas telas devem estender
+O `swiss-design-system.css` permanece isolado nas telas legadas que ainda
+estão sendo migradas. O shell do workspace e o assistente não carregam os dois
+vocabulários simultaneamente. Ele não deve receber novos componentes, tokens
+ou cores. Novas telas devem estender
 `legislation/workspace/base.html` e usar os tokens `--figma-*`.
 
 ## Regras de implementação
@@ -32,5 +33,5 @@ novos componentes, tokens ou cores. Novas telas devem estender
 compatíveis enquanto os componentes internos dessas três telas são
 modernizados.
 
-O arquivo Swiss será removido do caminho de renderização quando os seletores
-legados restantes forem migrados e os testes visuais confirmarem paridade.
+O arquivo Swiss será removido completamente quando os seletores legados
+restantes forem migrados e os testes visuais confirmarem paridade.

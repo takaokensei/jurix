@@ -23,7 +23,7 @@
 .workspace-top-search:hover { border-color: var(--figma-blue-light); color: var(--figma-text-white); }
 .workspace-top-search span:nth-child(2) { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-top-search kbd { font-size: 10px; opacity: .65; }
-.workspace-content { width: min(1180px, 100%); margin: 0 auto; padding: 40px clamp(18px, 3vw, 42px) 64px; }
+.workspace-content { box-sizing: border-box; width: min(1180px, 100%); margin: 0 auto; padding: 40px clamp(18px, 3vw, 42px) 64px; }
 .workspace-page-header { display: flex; justify-content: space-between; gap: 28px; align-items: flex-end; margin-bottom: 28px; }
 .workspace-page-header h1 { margin: 3px 0 8px; font-family: 'Lora', serif; font-size: clamp(30px,4vw,48px); letter-spacing: -.03em; color: var(--figma-text-white); }
 .workspace-page-header p { max-width: 700px; margin: 0; color: var(--figma-text-muted); line-height: 1.7; }
