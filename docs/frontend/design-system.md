@@ -41,4 +41,4 @@ restantes forem migrados e os testes visuais confirmarem paridade.
 Na primeira etapa de migração efetiva, `jurix-legacy-shell.css` deixou de usar
 tokens Swiss e fallbacks hexadecimais: compare, tree, alerts e estatísticas
 agora consomem exclusivamente tokens `--figma-*`. O baseline do gate caiu de
-204 para 106 ocorrências legadas fora dos arquivos de tokens.
+204 para 79 ocorrências legadas fora dos arquivos de tokens.

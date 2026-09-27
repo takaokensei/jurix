@@ -3,9 +3,9 @@
     --jurix-rag-evidence-surface: rgba(15, 23, 42, 0.76);
     --jurix-rag-error-bg: rgba(127, 29, 29, 0.18);
     --jurix-rag-warning-bg: rgba(120, 53, 15, 0.18);
-    --jurix-rag-success: #34d399;
-    --jurix-rag-warning: #fbbf24;
-    --jurix-rag-muted: #64748b;
+    --jurix-rag-success: var(--figma-green);
+    --jurix-rag-warning: var(--figma-amber);
+    --jurix-rag-muted: var(--figma-text-dim);
 }
 
 .jurix-rag-sr-only {
@@ -26,8 +26,8 @@
     max-height: 96px;
     overflow: hidden !important;
     scrollbar-width: none;
-    color: var(--figma-text-white, #f8fafc);
-    caret-color: var(--figma-text-white, #f8fafc);
+    color: var(--figma-text-white);
+    caret-color: var(--figma-text-white);
 }
 
 .jurix-composer-textarea::-webkit-scrollbar {
@@ -38,19 +38,19 @@
 
 
 .jurix-composer-textarea::placeholder {
-    color: var(--figma-text-muted, #94a3b8);
+    color: var(--figma-text-muted);
     opacity: 1;
 }
-.jurix-attachment-error { margin: 8px 0 0; color: #fecaca; font-size: .82rem; }
+.jurix-attachment-error { margin: 8px 0 0; color: var(--figma-red-soft); font-size: .82rem; }
 
 #question-textarea.jurix-composer-textarea {
-    color: var(--figma-text-white, #f8fafc) !important;
-    -webkit-text-fill-color: var(--figma-text-white, #f8fafc);
+    color: var(--figma-text-white) !important;
+    -webkit-text-fill-color: var(--figma-text-white);
 }
 
 #question-textarea.jurix-composer-textarea::placeholder {
-    color: var(--figma-text-muted, #94a3b8) !important;
-    -webkit-text-fill-color: var(--figma-text-muted, #94a3b8);
+    color: var(--figma-text-muted) !important;
+    -webkit-text-fill-color: var(--figma-text-muted);
 }
 .jurix-composer-footer {
     justify-content: space-between;
@@ -178,7 +178,7 @@
     flex: 0 0 auto;
     border-radius: 999px;
     background: rgba(248, 113, 113, 0.14);
-    color: #fca5a5;
+    color: var(--figma-red-soft);
     font-weight: 700;
 }
 
@@ -463,10 +463,10 @@ button.jurix-sources-pill-btn,
     gap: 8px !important;
     padding: 6px 14px !important;
     border-radius: 9999px !important;
-    background: #1E293B !important;
+    background: var(--figma-bg-button) !important;
     background-color: rgba(30, 41, 59, 0.9) !important;
     border: 1px solid rgba(148, 163, 184, 0.3) !important;
-    color: #94A3B8 !important;
+    color: var(--figma-text-muted) !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
     font-size: 12.5px !important;
     font-weight: 500 !important;
@@ -484,8 +484,8 @@ button.jurix-sources-pill-btn,
 button.jurix-sources-pill-btn:hover,
 .jurix-sources-pill-btn:hover {
     border-color: rgba(96, 165, 250, 0.65) !important;
-    color: #F8FAFC !important;
-    background: #253349 !important;
+    color: var(--figma-text-white) !important;
+    background: var(--figma-source-hover) !important;
     background-color: rgba(37, 51, 73, 0.95) !important;
     transform: translateY(-1px) !important;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
@@ -496,7 +496,7 @@ button.jurix-sources-pill-btn:hover,
     align-items: center !important;
     justify-content: center !important;
     background-color: rgba(59, 130, 246, 0.2) !important;
-    color: #60A5FA !important;
+    color: var(--figma-blue-light) !important;
     font-size: 11px !important;
     font-weight: 600 !important;
     padding: 2px 8px !important;
@@ -507,7 +507,7 @@ button.jurix-sources-pill-btn:hover,
 
 .jurix-sources-pill-action {
     font-size: 11.5px !important;
-    color: #60A5FA !important;
+    color: var(--figma-blue-light) !important;
     font-weight: 600 !important;
     margin-left: 2px !important;
     display: inline-flex !important;
@@ -544,7 +544,7 @@ button.jurix-sources-pill-btn:hover,
     width: 480px !important;
     max-width: 92vw !important;
     height: 100vh !important;
-    background-color: #0B1120 !important;
+    background-color: var(--figma-bg-sidebar) !important;
     border-left: 1px solid rgba(148, 163, 184, 0.2) !important;
     box-shadow: -8px 0 32px rgba(0, 0, 0, 0.75) !important;
     z-index: 99999 !important;
@@ -577,7 +577,7 @@ button.jurix-sources-pill-btn:hover,
 .jurix-sources-drawer-title-group h3 {
     font-size: 16px !important;
     font-weight: 600 !important;
-    color: #F8FAFC !important;
+    color: var(--figma-text-white) !important;
     margin: 0 !important;
 }
 
@@ -585,7 +585,7 @@ button.jurix-sources-pill-btn:hover,
     all: unset !important;
     background: transparent !important;
     border: none !important;
-    color: #94A3B8 !important;
+    color: var(--figma-text-muted) !important;
     cursor: pointer !important;
     padding: 6px !important;
     border-radius: 6px !important;
@@ -597,7 +597,7 @@ button.jurix-sources-pill-btn:hover,
 }
 
 .jurix-sources-drawer-close:hover {
-    color: #F8FAFC !important;
+    color: var(--figma-text-white) !important;
     background-color: rgba(255, 255, 255, 0.1) !important;
 }
 @media (max-width: 640px) {
@@ -606,7 +606,7 @@ button.jurix-sources-pill-btn:hover,
 
 .jurix-sources-drawer-subtitle {
     font-size: 12.5px !important;
-    color: #64748B !important;
+    color: var(--figma-text-dim) !important;
     padding: 14px 22px 4px 22px !important;
     line-height: 1.4 !important;
 }
@@ -624,17 +624,17 @@ button.jurix-sources-pill-btn:hover,
     border: 1px solid rgba(148, 163, 184, .22);
     border-radius: 12px;
     padding: 20px;
-    color: #CBD5E1;
+    color: var(--figma-text-body);
     background: rgba(15, 23, 42, .72);
 }
-.jurix-sources-empty strong { display: block; color: #F8FAFC; margin-bottom: 8px; }
-.jurix-sources-empty p { margin: 0 0 16px; color: #94A3B8; line-height: 1.55; }
+.jurix-sources-empty strong { display: block; color: var(--figma-text-white); margin-bottom: 8px; }
+.jurix-sources-empty p { margin: 0 0 16px; color: var(--figma-text-muted); line-height: 1.55; }
 .jurix-sources-empty-retry {
     min-height: 40px;
     border: 1px solid rgba(96, 165, 250, .55);
     border-radius: 9px;
     padding: 8px 14px;
-    color: #DBEAFE;
+    color: var(--figma-blue-pale);
     background: rgba(37, 99, 235, .18);
     cursor: pointer;
 }
