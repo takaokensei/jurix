@@ -498,10 +498,14 @@
             const oldHeight = container?.scrollHeight || 0;
             const oldTop = container?.scrollTop || 0;
             const previousOverflowAnchor = container?.style.overflowAnchor || '';
+            const previousScrollBehavior = container?.style.scrollBehavior || '';
             // The browser's automatic scroll anchoring competes with the
             // explicit delta below when the pager is removed. Disable it for
             // this single DOM transaction so pagination remains pixel-stable.
-            if (container) container.style.overflowAnchor = 'none';
+            if (container) {
+                container.style.overflowAnchor = 'none';
+                container.style.scrollBehavior = 'auto';
+            }
             button.disabled = true;
             button.classList.add('is-loading');
             button.setAttribute('aria-busy', 'true');
@@ -511,7 +515,10 @@
             try {
                 const page = await chatAPI.getSession(sessionId, data.next_cursor);
                 if (String(currentSessionId) !== String(sessionId) || !button.isConnected) {
-                    if (container) container.style.overflowAnchor = previousOverflowAnchor;
+                    if (container) {
+                        container.style.overflowAnchor = previousOverflowAnchor;
+                        container.style.scrollBehavior = previousScrollBehavior;
+                    }
                     return;
                 }
                 const existing = new Set(wrapper.children);
@@ -528,6 +535,10 @@
                 installHistoryPager(page, sessionId);
                 if (container) {
                     const restoreScrollPosition = () => {
+                        // Force the post-pagination layout before reading the
+                        // final height. This prevents Chromium from applying
+                        // the removed/inserted pager height after our delta.
+                        void container.offsetHeight;
                         container.scrollTop = oldTop + container.scrollHeight - oldHeight;
                     };
                     restoreScrollPosition();
@@ -544,11 +555,15 @@
                             if (!container.isConnected) return;
                             restoreScrollPosition();
                             container.style.overflowAnchor = previousOverflowAnchor;
+                            container.style.scrollBehavior = previousScrollBehavior;
                         });
                     });
                 }
             } catch (_) {
-                if (container) container.style.overflowAnchor = previousOverflowAnchor;
+                if (container) {
+                    container.style.overflowAnchor = previousOverflowAnchor;
+                    container.style.scrollBehavior = previousScrollBehavior;
+                }
                 isLoading = false;
                 button.disabled = false;
                 button.classList.remove('is-loading');
