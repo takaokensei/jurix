@@ -36,3 +36,16 @@ devem contradizer esta página.
 A interface existente deve ser validada manualmente em teclado, leitor de tela,
 mobile, erro de dependência e streaming interrompido. Este repositório não deve
 atribuir conformidade WCAG sem evidência de auditoria.
+
+### Auditoria parcial de contraste — tema escuro
+
+Em 2026-09-27 foram calculados os pares dos tokens principais do workspace
+contra suas superfícies: `#F8FAFC`/`#081220` = 17,96:1,
+`#94A3B8`/`#081220` = 7,33:1, `#60A5FA`/`#081220` = 7,39:1 e
+`#3B82F6`/`#081220` = 5,11:1. O uso de `#64748B` como texto pequeno tinha
+3,95:1 e foi substituído pelo token de texto muted no workspace.
+
+Essa medição cobre tokens e componentes auditados nesta etapa; não constitui
+uma declaração de conformidade WCAG da aplicação inteira. Permanecem pendentes
+os componentes legados, estados claros/escuros alternativos e uma auditoria
+automatizada de todas as combinações efetivamente renderizadas.
