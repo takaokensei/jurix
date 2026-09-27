@@ -11,6 +11,9 @@ on:
       - 'docs/**'
       - 'benchmarks/**'
       - 'docker-compose.prod.yml'
+      - 'docker/**'
+      - 'requirements.txt'
+      - 'tests/**'
       - '.env.production.example'
       - 'pyproject.toml'
       - '.github/workflows/production-assurance-v2.yml'
@@ -53,6 +56,14 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -63,6 +74,7 @@ jobs:
       - name: Migrations
         env:
           DATABASE_URL: postgresql://jurix:test@localhost:5432/jurix
+          REDIS_URL: redis://localhost:6379/0
           DJANGO_SECRET_KEY: ci-secret-ci-secret-ci-secret-ci-secret-ci-secret
           ALLOWED_HOSTS: localhost
           DEBUG: 'False'
@@ -77,6 +89,7 @@ jobs:
       - name: Unit tests
         env:
           DATABASE_URL: postgresql://jurix:test@localhost:5432/jurix
+          REDIS_URL: redis://localhost:6379/0
           DJANGO_SECRET_KEY: ci-secret-ci-secret-ci-secret-ci-secret-ci-secret
           ALLOWED_HOSTS: localhost
           DEBUG: 'False'
@@ -91,6 +104,7 @@ jobs:
       - name: Vector query plan contract
         env:
           DATABASE_URL: postgresql://jurix:test@localhost:5432/jurix
+          REDIS_URL: redis://localhost:6379/0
           DJANGO_SECRET_KEY: ci-secret-ci-secret-ci-secret-ci-secret-ci-secret
           ALLOWED_HOSTS: localhost
           DEBUG: 'False'
@@ -101,6 +115,7 @@ jobs:
       - name: Production gate
         env:
           DATABASE_URL: postgresql://jurix:test@localhost:5432/jurix
+          REDIS_URL: redis://localhost:6379/0
           DJANGO_SECRET_KEY: ci-secret-ci-secret-ci-secret-ci-secret-ci-secret
           ALLOWED_HOSTS: localhost
           DEBUG: 'False'
@@ -109,4 +124,7 @@ jobs:
           JURIX_SINGLE_HOST: 'true'
           RAG_STRICT_GROUNDING: 'true'
           RAG_REQUIRE_STRICT_POLICY: 'true'
-        run: python scripts/production_gate.py --with-django --with-lint --require-rag-contract --require-vector-plan --require-staging-contract
+        # This workflow is the release assurance gate: a contract smoke test is
+        # not enough to claim legal quality. Require the reviewed benchmark
+        # manifest so an unreviewed corpus cannot silently pass CI.
+        run: python scripts/production_gate.py --with-django --with-lint --require-rag --require-rag-contract --require-vector-plan --require-staging-contract

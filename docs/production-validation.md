@@ -20,6 +20,12 @@ the existing Celery cleanup task.
 
 ## RAG quality regression
 
+The release-assurance workflow provisions both PostgreSQL/pgvector and Redis,
+then runs the technical contracts and the strict production gate. The release
+gate uses `--require-rag`: it must fail until a reviewed production manifest
+and baseline are versioned. Local development may run the technical contract
+gate without that flag.
+
 The repository now contains a standalone regression comparator:
 
 ```bash
@@ -29,9 +35,9 @@ python scripts/check_rag_regression.py \
   --max-regression 0.03
 ```
 
-The GitHub Actions workflow runs this check only after an expert-reviewed
-gold corpus and baseline are versioned. Until then, the workflow exits
-successfully without pretending that benchmark coverage exists.
+The non-release/manual workflow may run this check only after an expert-reviewed
+gold corpus and baseline are versioned. The release-assurance workflow does not
+silently pass when benchmark coverage is absent.
 
 ## HTTP smoke/load
 

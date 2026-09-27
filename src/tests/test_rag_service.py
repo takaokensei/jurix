@@ -462,8 +462,33 @@ class TestPromptConstruction:
         list(service.stream_answer_question("Pergunta?", k=3, model="llama3"))
 
         batch_prompt = ollama.generate_text.call_args.kwargs["prompt"]
-        stream_prompt = ollama.stream_text.call_args.args[0]
-        assert batch_prompt == stream_prompt == RAGService.build_prompt("CONTEXTO", "Pergunta?")
+        stream_prompts = [call.args[0] for call in ollama.stream_text.call_args_list]
+        expected_prompt = RAGService.build_prompt("CONTEXTO", "Pergunta?")
+        assert batch_prompt == stream_prompts[0] == expected_prompt
+        assert len(stream_prompts) == 2
+        assert "REVISÃO OBRIGATÓRIA" in stream_prompts[1]
+
+    @patch("src.processing.rag_service.OllamaService")
+    def test_empty_generation_returns_safe_grounding_contract(self, mock_ollama_class):
+        mock_ollama_class.return_value.generate_text.return_value = ""
+        service = RAGService(use_cache=False)
+        service.get_relevant_context = Mock(return_value=("CONTEXTO", [{"similarity_score": 0.91}]))
+
+        result = service.answer_question("Pergunta", model="llama3")
+
+        assert result["grounded"] is False
+        assert result["confidence"] is None
+        assert result["grounding"]["reason"] == "generation_empty"
+        assert result["sources"]
+
+    def test_unsupported_absence_claim_is_rejected(self):
+        evidence = [{"text": "O prazo para resposta será de dez dias."}]
+        assert RAGService._has_unsupported_absence_claim(
+            "Nenhum outro dispositivo altera o prazo.", evidence
+        )
+        assert not RAGService._has_unsupported_absence_claim(
+            "O prazo para resposta será de dez dias.", evidence
+        )
 
     def test_placeholder_like_text_inside_the_context_is_not_rewritten(self):
         prompt = RAGService.build_prompt("texto com @@QUESTION@@ literal", "PERGUNTA-REAL")

@@ -102,7 +102,7 @@
       };
       menu.appendChild(item);
     });
-    control.style.position = control.style.position || 'relative';
+    control.classList.add('jurix-control-positioned');
     control.appendChild(menu);
   }
 
@@ -112,6 +112,7 @@
     input = document.createElement('input');
     input.type = 'file';
     input.id = 'jurix-document-input';
+    input.setAttribute('aria-label', 'Selecionar documentos para anexar');
     input.accept = '.pdf,.txt,.md,.csv,.json,.docx';
     input.multiple = true;
     input.hidden = true;
@@ -156,6 +157,21 @@
     return JSON.parse(JSON.stringify(state));
   }
 
+  function announceAttachmentError(message) {
+    const container = document.getElementById('jurix-attachment-previews');
+    if (!container) return;
+    let notice = container.querySelector('[data-attachment-error]');
+    if (!notice) {
+      notice = document.createElement('p');
+      notice.dataset.attachmentError = 'true';
+      notice.className = 'jurix-attachment-error';
+      notice.setAttribute('role', 'alert');
+      container.prepend(notice);
+    }
+    notice.textContent = message;
+    window.setTimeout(() => notice.remove(), 5000);
+  }
+
   function renderAttachments() {
     const container = document.getElementById('jurix-attachment-previews');
     if (!container) return;
@@ -178,7 +194,7 @@
           setAttachments(state.attachments.filter(current => current.id !== item.id));
         } catch (error) {
           remove.disabled = false;
-          window.alert(error.message || 'Não foi possível desanexar o documento.');
+          announceAttachmentError(error.message || 'Não foi possível desanexar o documento.');
         }
       };
       preview.appendChild(remove);
@@ -211,7 +227,7 @@
     if (event.target?.id !== 'jurix-document-input') return;
     upload(event.target.files).catch(error => {
       console.error('[Jurix] attachment upload failed', error);
-      window.alert(error.message || 'Não foi possível anexar o documento.');
+      announceAttachmentError(error.message || 'Não foi possível anexar o documento.');
     });
     event.target.value = '';
   });

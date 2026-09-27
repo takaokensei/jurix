@@ -43,6 +43,7 @@ USED_WITHOUT_IMPORT = {
     "gunicorn",  # process server, started by the Dockerfile CMD
     "psycopg2-binary",  # loaded by Django's postgresql backend
     "django-htmx",  # enabled through INSTALLED_APPS / MIDDLEWARE strings
+    "whitenoise",  # enabled through middleware/storage configuration strings
     "redis",  # Celery broker + Django's RedisCache backend, via URLs/settings
     "ruff",
     "pytest",

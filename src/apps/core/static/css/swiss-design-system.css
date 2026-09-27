@@ -556,6 +556,13 @@ strong, b {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
 }
+@media (max-width: 640px) {
+  .theme-toggle-navbar { min-width: 44px !important; width: 44px !important; min-height: 44px !important; height: 44px !important; }
+  .nav-link { min-height: 44px; height: 44px; }
+  .navbar-brand { min-height: 44px; height: 44px; }
+  .navbar-brand { display: inline-flex; align-items: center; }
+  select { min-height: 44px; height: 44px; }
+}
 
 .theme-toggle-icon-navbar {
     width: 18px;
@@ -2470,6 +2477,7 @@ strong, b {
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
+.dispositivo-text.is-expanded { -webkit-line-clamp: unset; }
 
 .dispositivo-expand {
     margin-top: var(--space-2);

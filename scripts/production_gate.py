@@ -101,6 +101,13 @@ def validate_files() -> int:
 def run_django_gate() -> int:
     env = os.environ.copy()
     env.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+    # The gate must validate the environment supplied by CI/deployment, not a
+    # developer's untracked .env file accidentally copied into the workspace.
+    env["DJANGO_SKIP_DOTENV"] = "1"
+    # CI may mount the source tree read-only. Runtime deployments use the
+    # persistent /app/data volume, but the gate itself must not depend on it
+    # merely to configure Django's file logger.
+    env.setdefault("JURIX_LOG_FILE", "/tmp/jurix-production-gate.log")
     env.setdefault("DATABASE_URL", "postgresql://jurix:testpassword@localhost:5432/jurix_test")
     env.setdefault("REDIS_URL", "redis://localhost:6379/0")
     env.setdefault("DJANGO_SECRET_KEY", "ci-only-production-gate-secret-change-me")
@@ -116,6 +123,7 @@ def run_django_gate() -> int:
         [sys.executable, "manage.py", "check", "--deploy"],
         [sys.executable, "manage.py", "validate_production_config"],
         [sys.executable, "manage.py", "makemigrations", "--check", "--dry-run"],
+        [sys.executable, "manage.py", "collectstatic", "--noinput"],
         [sys.executable, "-m", "pytest", "src/tests/", "-q"],
     ]
     return max(run(command, env=env) for command in commands)
@@ -130,6 +138,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--require-vector-plan", action="store_true")
     parser.add_argument("--require-staging-contract", action="store_true")
     args = parser.parse_args(argv)
+    validation_env = os.environ.copy()
+    validation_env["DJANGO_SKIP_DOTENV"] = "1"
+    validation_env.setdefault("JURIX_LOG_FILE", "/tmp/jurix-production-gate.log")
 
     failures = validate_files()
 
@@ -140,9 +151,41 @@ def main(argv: list[str] | None = None) -> int:
     if args.with_django:
         failures += bool(run_django_gate())
 
+    if args.require_rag_contract:
+        contract_cases = ROOT / "benchmarks/rag/production/contract-cases.v2.jsonl"
+        if not contract_cases.is_file():
+            fail("RAG contract cases are missing")
+            failures += 1
+        else:
+            failures += bool(
+                run(
+                    [
+                        sys.executable,
+                        "scripts/run_rag_contract_benchmark.py",
+                        str(contract_cases),
+                    ],
+                    env=validation_env,
+                )
+            )
+
+    if args.require_vector_plan:
+        failures += bool(
+            run([sys.executable, "manage.py", "verify_vector_query_plan"], env=validation_env)
+        )
+
+    if args.require_staging_contract:
+        failures += bool(
+            run([sys.executable, "scripts/validate_staging_contract.py"], env=validation_env)
+        )
+
     manifest = ROOT / "benchmarks/rag/production/manifest.json"
     if manifest.exists():
-        failures += bool(run([sys.executable, "scripts/validate_rag_benchmark.py", str(manifest)]))
+        failures += bool(
+            run(
+                [sys.executable, "scripts/validate_rag_benchmark.py", str(manifest)],
+                env=validation_env,
+            )
+        )
     elif args.require_rag:
         fail("production RAG benchmark manifest is missing")
         failures += 1

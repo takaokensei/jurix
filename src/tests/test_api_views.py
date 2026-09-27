@@ -36,6 +36,16 @@ class TestAPIViews:
         assert data["success"] is False
         assert "Query parameter is required" in data["error"]
 
+    @override_settings(LLM_MAX_QUESTION_LENGTH=32)
+    def test_semantic_search_rejects_oversized_query_before_retrieval(self, factory):
+        request = factory.get("/api/v1/search/semantic/?query=" + ("x" * 33))
+        with patch("src.apps.legislation.api_views.RAGService") as mock_rag_class:
+            response = semantic_search_api(request)
+
+        assert response.status_code == 400
+        assert "Pergunta muito longa" in json.loads(response.content)["error"]
+        mock_rag_class.assert_not_called()
+
     @override_settings(DEBUG=False)
     @patch("src.apps.legislation.api_views.RAGService")
     def test_semantic_search_sanitizes_500_error(self, mock_rag_class, factory):
@@ -54,6 +64,48 @@ class TestAPIViews:
         assert data["success"] is False
         assert "FATAL: Secret" not in data["error"]
         assert "Ocorreu um erro interno" in data["error"]
+
+    @patch("src.apps.legislation.api_views.RAGService")
+    def test_semantic_search_clamps_k_to_at_least_one(self, mock_rag_class, factory):
+        mock_rag_class.return_value.semantic_search.return_value = []
+
+        request = factory.get("/api/v1/search/semantic/?query=zoneamento&k=-10")
+        response = semantic_search_api(request)
+
+        assert response.status_code == 200
+        payload = json.loads(response.content)
+        assert mock_rag_class.return_value.semantic_search.call_args.kwargs["k"] == 1
+        assert payload["metadata"]["model"] == "nomic-embed-text"
+
+    @patch("src.apps.legislation.api_views.RAGService")
+    def test_semantic_search_rejects_invalid_norma_id(self, mock_rag_class, factory):
+        response = semantic_search_api(
+            factory.get("/api/v1/search/semantic/?query=zoneamento&norma_id=abc")
+        )
+
+        assert response.status_code == 400
+        assert "norma_id" in json.loads(response.content)["error"]
+        mock_rag_class.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("parameter", "value", "message"),
+        [
+            ("k", "abc", "k"),
+            ("min_similarity", "abc", "min_similarity"),
+            ("min_similarity", "NaN", "min_similarity"),
+        ],
+    )
+    @patch("src.apps.legislation.api_views.RAGService")
+    def test_semantic_search_rejects_malformed_numeric_filters(
+        self, mock_rag_class, factory, parameter, value, message
+    ):
+        response = semantic_search_api(
+            factory.get(f"/api/v1/search/semantic/?query=zoneamento&{parameter}={value}")
+        )
+
+        assert response.status_code == 400
+        assert message in json.loads(response.content)["error"]
+        mock_rag_class.assert_not_called()
 
     @patch("src.apps.legislation.api_views.ChatMessage.objects.filter")
     @patch("src.apps.legislation.api_views.ChatSession.objects.get")

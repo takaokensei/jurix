@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
+from .models import ChatMessage, ChatSession, Collection, Dispositivo, EventoAlteracao, Norma
 
 
 @admin.register(Norma)
@@ -123,3 +123,17 @@ class ChatMessageAdmin(admin.ModelAdmin):
         return obj.content[:100] + ("..." if len(obj.content) > 100 else "")
 
     content_preview.short_description = "Conteúdo"
+
+
+@admin.register(Collection)
+class CollectionAdmin(admin.ModelAdmin):
+    list_display = ("name", "user", "norma_count", "updated_at")
+    list_filter = ("updated_at",)
+    search_fields = ("name", "description", "user__username")
+    filter_horizontal = ("normas",)
+    readonly_fields = ("created_at", "updated_at")
+
+    def norma_count(self, obj):
+        return obj.normas.count()
+
+    norma_count.short_description = "Normas"

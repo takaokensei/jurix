@@ -18,6 +18,7 @@ applies exactly the same limits.
 
 import hashlib
 import logging
+import math
 import time
 from collections.abc import Mapping
 from typing import Any
@@ -61,6 +62,21 @@ def parse_model(value: Any) -> str:
     if not isinstance(value, str) or value not in settings.OLLAMA_ALLOWED_MODELS:
         raise InvalidLLMParams("Modelo não permitido.")
     return value
+
+
+def parse_temperature(value: Any) -> float:
+    """Validate the generation temperature within the public 0..1 contract."""
+    if value is None or value == "":
+        return 0.3
+    if isinstance(value, bool):
+        raise InvalidLLMParams("Parâmetro 'temperature' inválido.")
+    try:
+        temperature = float(value)
+    except (TypeError, ValueError):
+        raise InvalidLLMParams("Parâmetro 'temperature' inválido.") from None
+    if not math.isfinite(temperature) or not 0.0 <= temperature <= 1.0:
+        raise InvalidLLMParams("temperature deve estar entre 0 e 1.")
+    return temperature
 
 
 def parse_question(value: Any) -> str:
@@ -109,11 +125,13 @@ def parse_search_options(data: Any) -> dict[str, Any]:
 
     max_sources = parse_k(data.get("max_sources", data.get("k")))
     raw_min_similarity = data.get("min_similarity", 0.0)
+    if isinstance(raw_min_similarity, bool):
+        raise InvalidLLMParams("min_similarity inválido.")
     try:
         min_similarity = float(raw_min_similarity)
     except (TypeError, ValueError):
         raise InvalidLLMParams("min_similarity inválido.") from None
-    if not 0.0 <= min_similarity <= 1.0:
+    if not math.isfinite(min_similarity) or not 0.0 <= min_similarity <= 1.0:
         raise InvalidLLMParams("min_similarity deve estar entre 0 e 1.")
 
     try:

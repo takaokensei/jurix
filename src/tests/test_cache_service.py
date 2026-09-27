@@ -6,6 +6,7 @@ the only "invalidation" (clear_cache) was never called and would have flushed th
 whole Redis DB, which Celery shares as its broker.
 """
 
+import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -103,3 +104,20 @@ def test_cache_outage_never_raises(svc):
         assert svc.get_corpus_version() == 0
         assert svc.bump_corpus_version() is None
         assert svc.get_answer("q?", k=5, model="m") is None
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        ["not an object"],
+        {"sources": []},
+        {"answer": "ok", "sources": {}},
+        {"answer": "ok", "sources": [], "grounding": []},
+    ],
+)
+def test_malformed_cached_answer_is_discarded(svc, payload):
+    cache.set(
+        svc._generate_key(svc.ANSWER_PREFIX, "v0:q?:k=5:model=m:retrieval="), json.dumps(payload)
+    )
+
+    assert svc.get_answer("q?", k=5, model="m") is None

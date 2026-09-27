@@ -1,4 +1,4 @@
-<div class="tree-node level-{{ level }}">
+<div class="tree-node level-{{ level }}" role="treeitem" aria-level="{{ level|add:1 }}" aria-label="{{ node.dispositivo }}">
     <div class="node-header">
         {{ node.dispositivo }}
     </div>
@@ -10,11 +10,10 @@
     </div>
     
     {% if node.children %}
-    <div style="margin-top: 10px;">
+    <div class="tree-node-children">
         {% for child in node.children %}
             {% include 'legislation/tree_node.html' with node=child level=level|add:1 %}
         {% endfor %}
     </div>
     {% endif %}
 </div>
-

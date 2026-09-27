@@ -19,6 +19,20 @@
   --figma-text-white: #F8FAFC;
   --figma-text-muted: #94A3B8;
 
+  /* Product tokens shared by the assistant, evidence and norma surfaces. */
+  --jurix-space-1: 4px;
+  --jurix-space-2: 8px;
+  --jurix-space-3: 12px;
+  --jurix-space-4: 16px;
+  --jurix-space-5: 24px;
+  --jurix-radius-sm: 8px;
+  --jurix-radius-md: 12px;
+  --jurix-radius-lg: 16px;
+  --jurix-motion-fast: 160ms ease;
+  --jurix-motion-standard: 220ms ease;
+  --jurix-focus-ring: 0 0 0 3px rgba(96, 165, 250, .3);
+  --jurix-surface-elevated: rgba(17, 24, 39, .92);
+
   --font-serif: 'Lora', Georgia, serif;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
@@ -31,6 +45,23 @@ body.figma-theme {
   padding: 0;
   height: 100vh;
   overflow: hidden;
+}
+
+body.figma-theme :is(button, a, input, textarea, select, summary):focus-visible {
+  outline: 2px solid var(--figma-blue-light);
+  outline-offset: 3px;
+  box-shadow: var(--jurix-focus-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.figma-theme *,
+  body.figma-theme *::before,
+  body.figma-theme *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Workspace Frame (1440 x 943) */
@@ -459,50 +490,304 @@ body.figma-theme {
 /* Suggestions Row (4 Cards) */
 .figma-suggestions-row {
   width: 100%;
+  max-width: 832px;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  box-sizing: border-box;
 }
 
 .figma-suggestion-card {
-  border-radius: 12px;
-  padding: 16px;
-  background-color: var(--figma-bg-surface);
-  border: 1px solid var(--figma-border);
+  border-radius: 14px;
+  padding: 16px 20px;
+  background-color: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(148, 163, 184, 0.18);
   display: flex;
   flex-direction: column;
-  gap: 8px;
   text-align: left;
   cursor: pointer;
-  transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s;
+  transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .figma-suggestion-card:hover {
   transform: translateY(-2px);
-  border-color: var(--figma-blue-light);
-  background-color: rgba(17, 24, 39, 0.9);
+  border-color: rgba(56, 189, 248, 0.5);
+  background-color: rgba(30, 41, 59, 0.85);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 16px rgba(56, 189, 248, 0.15);
 }
 
+.figma-suggestion-main,
 .figma-suggestion-top {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+}
+
+.figma-suggestion-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.figma-suggestion-grok-icon {
+  color: #38BDF8;
+  font-size: 17px;
+  font-weight: 700;
+  flex-shrink: 0;
+  line-height: 1.4;
+  margin-top: 1px;
 }
 
 .figma-suggestion-title {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
-  color: var(--figma-text-white);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: #F8FAFC;
+  line-height: 1.45;
+  word-break: break-word;
+  letter-spacing: -0.01em;
+}
+
+.jurix-streaming-text::after {
+  content: '▋';
+  display: inline-block;
+  margin-left: 3px;
+  color: #38BDF8;
+  font-size: 13px;
+  animation: jurixCursorBlink 0.5s infinite alternate;
+  vertical-align: baseline;
+}
+
+@keyframes jurixCursorBlink {
+  0% { opacity: 1; }
+  100% { opacity: 0.2; }
+}
+
+.figma-suggestion-arrow {
+  color: #38BDF8;
+  font-size: 16px;
+  font-weight: 600;
+  flex-shrink: 0;
+  line-height: 1.4;
+  margin-top: 2px;
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+
+.figma-suggestion-card:hover .figma-suggestion-arrow {
+  transform: translateX(4px);
+  color: #7DD3FC;
+}
+
+.figma-suggestion-meta,
+.figma-suggestion-footer {
+  display: flex;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.jurix-suggestion-source-badge,
+.jurix-suggestion-source {
+  display: inline-flex !important;
+  align-items: center;
+  color: #93C5FD !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em;
+  background-color: rgba(59, 130, 246, 0.14) !important;
+  border: 1px solid rgba(147, 197, 253, 0.3) !important;
+  padding: 3px 10px !important;
+  border-radius: 6px !important;
+  width: fit-content;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .figma-suggestion-desc {
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--figma-text-muted);
-  line-height: 15px;
+  display: none;
+}
+
+/* ==========================================================================
+   SOURCES PILL BUTTON & SLIDE-OVER DRAWER (GROK / PERPLEXITY STYLE)
+   ========================================================================== */
+.sources-section {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jurix-sources-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background-color: rgba(30, 41, 59, 0.85);
+  border: 1px solid var(--figma-border);
+  color: #94A3B8;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  width: fit-content;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+
+.jurix-sources-pill-btn:hover {
+  border-color: var(--figma-blue-light);
+  color: var(--figma-text-white);
+  background-color: rgba(59, 130, 246, 0.15);
+  transform: translateY(-1px);
+}
+
+.jurix-sources-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #60A5FA;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.jurix-sources-pill-action {
+  font-size: 11px;
+  color: #60A5FA;
+  font-weight: 500;
+  margin-left: 2px;
+}
+
+/* Slide-over Side Drawer */
+.jurix-sources-drawer-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 9998;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.jurix-sources-drawer-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.jurix-sources-drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 480px;
+  max-width: 90vw;
+  height: 100vh;
+  background-color: #0B1120;
+  border-left: 1px solid var(--figma-border);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.75);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.jurix-sources-drawer-panel.is-open {
+  transform: translateX(0);
+}
+
+.jurix-sources-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--figma-border);
+  background-color: rgba(15, 23, 42, 0.95);
+}
+
+.jurix-sources-drawer-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.jurix-sources-drawer-title-group h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--figma-text-white);
+  margin: 0;
+}
+
+.jurix-sources-drawer-close {
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.jurix-sources-drawer-close:hover {
+  color: var(--figma-text-white);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.jurix-sources-drawer-subtitle {
+  font-size: 12.5px;
+  color: #64748B;
+  padding: 12px 22px 0 22px;
+  line-height: 1.4;
+}
+
+.jurix-sources-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 22px 30px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.jurix-sources-empty {
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 12px;
+  padding: 20px;
+  color: #CBD5E1;
+  background: rgba(15, 23, 42, .72);
+}
+.jurix-sources-empty strong { display: block; color: #F8FAFC; margin-bottom: 8px; }
+.jurix-sources-empty p { margin: 0 0 16px; color: #94A3B8; line-height: 1.55; }
+.jurix-sources-empty-retry {
+  min-height: 40px;
+  border: 1px solid rgba(96, 165, 250, .55);
+  border-radius: 9px;
+  padding: 8px 14px;
+  color: #DBEAFE;
+  background: rgba(37, 99, 235, .18);
+  cursor: pointer;
+}
+.jurix-sources-empty-retry:hover { background: rgba(37, 99, 235, .3); }
+
+/* The drawer owns already-finalized evidence cards; do not inherit the
+   streaming-only hidden state used by inline source transitions. */
+.jurix-sources-drawer-panel .source-card {
+  opacity: 1 !important;
+  transform: none !important;
 }
 
 /* ==========================================================================
@@ -685,6 +970,18 @@ body.figma-theme {
   display: none;
   justify-content: center;
   transition: left 0.25s ease, opacity 0.25s ease;
+}
+
+/* The bar is hidden until a conversation exists; once the synchronizer removes
+   the initial state it must override the base display:none above. */
+.figma-floating-input-bar:not(.is-hidden) {
+  display: flex;
+}
+
+/* Conversation state is authoritative even when a restored anonymous
+   session arrives through a different JavaScript path. */
+body.figma-theme:has(#messages-wrapper .message) #conversation-input-bar {
+  display: flex !important;
 }
 
 .figma-sidebar.collapsed ~ .figma-main .figma-floating-input-bar {
@@ -1170,4 +1467,42 @@ body.figma-theme {
   --jurix-evidence-text: var(--figma-text-white);
   --jurix-evidence-text-secondary: var(--figma-text-muted);
   --jurix-evidence-focus: var(--figma-blue-light);
+}
+
+/* The hero is a research entry point, not a fixed canvas: it must shrink with
+   the content column before the browser ever needs horizontal scrolling. */
+.figma-theme .figma-hero-section,
+.figma-theme .figma-middle-hero,
+.figma-theme .figma-smart-search-panel,
+.figma-theme .figma-suggestions-row { max-width: 100%; box-sizing: border-box; }
+.figma-theme .figma-middle-hero { width: min(832px, calc(100% - 32px)); }
+.figma-theme .figma-suggestions-row { width: 100%; }
+.figma-theme .sources-section { animation: jurixSourcesReveal .35s ease-out both; }
+.figma-theme .jurix-rag-source__contribution { display:flex; gap:6px; align-items:baseline; margin:8px 0; padding:7px 9px; border-left:2px solid rgba(96,165,250,.65); color:#cbd5e1; background:rgba(59,130,246,.06); font-size:11px; line-height:1.4; }
+.figma-theme .jurix-rag-source__contribution-label { color:#93c5fd; font-weight:700; text-transform:uppercase; letter-spacing:.06em; font-size:9px; }
+.figma-theme .jurix-rag-score-text { max-width:130px; text-align:right; }
+.figma-theme #conversation-input-bar.is-hidden { display: none !important; }
+@keyframes jurixSourcesReveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 640px) {
+  .figma-theme .figma-middle-hero { width: 100%; }
+  .figma-theme .figma-hero-section { gap: 12px; }
+
+  /* Touch targets remain usable when the assistant collapses to a phone-sized
+     viewport.  Keep the visual icon compact while expanding its hit area. */
+  .figma-theme #toggle-sidebar,
+  .figma-theme #command-palette-trigger,
+  .figma-theme #send-button,
+  .figma-theme .figma-action-arrow-btn,
+  .figma-theme .figma-search-dropdown,
+  .figma-theme #new-chat-button,
+  .figma-theme .figma-sidebar-item,
+  .figma-theme .figma-hero-search-input { min-height: 44px; height: 44px; }
+
+  #toggle-sidebar, #command-palette-trigger, #send-button,
+  .figma-action-arrow-btn { width: 44px !important; min-width: 44px !important; height: 44px !important; }
+  .figma-search-dropdown { min-height: 44px !important; }
+  .figma-logo-group { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .figma-theme .sources-section { animation: none; }
 }

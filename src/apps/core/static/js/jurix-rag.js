@@ -18,6 +18,8 @@
 
     const state = new WeakMap();
     let evidenceId = 0;
+    let lastSourceTrigger = null;
+    let drawerListenersBound = false;
 
     function commitMarkdown(element, markdown) {
         const container = document.getElementById('messages-container');
@@ -71,6 +73,9 @@
         current.pending = false;
         state.set(element, current);
         commitMarkdown(element, markdown);
+        if (typeof window.scrollToBottomIfAtBottom === 'function') {
+            window.requestAnimationFrame(() => window.scrollToBottomIfAtBottom());
+        }
     }
 
     function setStreamingState(element, isStreaming) {
@@ -186,19 +191,31 @@
         };
     }
 
+    function getRelevanceLabel(normalized) {
+        if (normalized >= 0.8) return 'Alta correspondência';
+        if (normalized >= 0.6) return 'Boa correspondência';
+        if (normalized >= 0.4) return 'Correspondência parcial';
+        return 'Baixa correspondência';
+    }
+
+    function getContributionLabel(source, normalized) {
+        const explicit = source?.contribution || source?.evidence_role || source?.source_role;
+        if (explicit) return String(explicit);
+        if (normalized < 0.4) return 'Contexto relacionado';
+        if (source?.dispositivo_ref || source?.hierarchy) return 'Trecho de dispositivo';
+        return 'Fonte normativa relacionada';
+    }
+
     function renderEvidenceCard(source, index = 0) {
         const safeSource = source || {};
         const { normalized, percent } = getSourceScore(safeSource);
         const band = normalized >= 0.8 ? 'high' : normalized >= 0.6 ? 'medium' : 'low';
-        const relevanceLabel = band === 'high'
-            ? 'Alta correspondência'
-            : band === 'medium'
-            ? 'Boa correspondência'
-            : 'Baixa correspondência';
+        const relevanceLabel = getRelevanceLabel(normalized);
+        const contributionLabel = getContributionLabel(safeSource, normalized);
 
         const normaRef = safeSource.norma || safeSource.norma_ref || 'Norma jurídica';
         const dispositivoRef = safeSource.dispositivo_ref || '';
-        const sourceType = safeSource.tipo || safeSource.type || '';
+        const sourceType = safeSource.source_type || safeSource.tipo || safeSource.type || '';
         const status = safeSource.status_label || safeSource.vigencia || safeSource.situacao || '';
         const snippet = String(safeSource.text || safeSource.full_text || '').trim();
         const linkUrl = safeHttpUrl(safeSource.pdf_url) || safeHttpUrl(safeSource.sapl_url);
@@ -218,7 +235,7 @@
                     target="_blank"
                     rel="noopener noreferrer"
                 >
-                    Abrir fonte
+                    ${linkUrl.includes('sapl') ? 'Abrir no SAPL' : 'Abrir fonte oficial'}
                     <span aria-hidden="true">↗</span>
                 </a>
             `
@@ -235,16 +252,21 @@
             >
                 <div class="source-card-header">
                     <div class="source-title">${escapeHtml(normaRef)}</div>
-                    <div class="source-score" aria-label="Relevância da fonte: ${percent}%">
+                    <div class="source-score" aria-label="${escapeHtml(relevanceLabel)}. Pontuação técnica: ${percent}%">
                         <span class="jurix-rag-score-label">Relevância</span>
                         <div class="score-bar" aria-hidden="true">
                             <div class="score-fill score-fill-${band}"></div>
                         </div>
-                        <span class="jurix-rag-score-text">${percent}%</span>
+                        <span class="jurix-rag-score-text">${escapeHtml(relevanceLabel)}</span>
                     </div>
                 </div>
 
                 ${meta ? `<div class="jurix-rag-source__meta-row">${meta}</div>` : ''}
+
+                <div class="jurix-rag-source__contribution">
+                    <span class="jurix-rag-source__contribution-label">Contribuição</span>
+                    <span>${escapeHtml(contributionLabel)}</span>
+                </div>
 
                 <div class="source-snippet">${escapeHtml(snippet.substring(0, 280))}${snippet.length > 280 ? '…' : ''}</div>
 
@@ -262,7 +284,7 @@
                     ${openAction}
                 </div>
 
-                <span class="jurix-rag-sr-only">${escapeHtml(relevanceLabel)}. Similaridade da recuperação: ${percent}%.</span>
+                <span class="jurix-rag-sr-only">${escapeHtml(relevanceLabel)}. Pontuação técnica de recuperação: ${percent}%.</span>
             </article>
         `;
     }
@@ -273,17 +295,202 @@
             announce(`Fonte ${Number(index)} não encontrada.`);
             return;
         }
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (typeof target.scrollIntoView === 'function') {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
         target.classList.add('is-citation-target');
         window.setTimeout(() => target.classList.remove('is-citation-target'), 1400);
         announce(`Fonte ${Number(index)} destacada.`);
     }
 
+    function ensureDrawerDOM() {
+        let backdrop = document.getElementById('jurix-sources-drawer-backdrop');
+        let panel = document.getElementById('jurix-sources-drawer-panel');
+        if (!backdrop) {
+            backdrop = document.createElement('div');
+            backdrop.id = 'jurix-sources-drawer-backdrop';
+            backdrop.className = 'jurix-sources-drawer-backdrop';
+            backdrop.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(backdrop);
+        }
+        if (!panel) {
+            panel = document.createElement('aside');
+            panel.id = 'jurix-sources-drawer-panel';
+            panel.className = 'jurix-sources-drawer-panel';
+            panel.setAttribute('aria-hidden', 'true');
+            panel.setAttribute('role', 'dialog');
+            panel.setAttribute('aria-modal', 'true');
+            panel.setAttribute('tabindex', '-1');
+            panel.setAttribute('aria-labelledby', 'sources-drawer-title');
+            panel.setAttribute('aria-describedby', 'sources-drawer-subtitle');
+            panel.innerHTML = `
+                <div class="jurix-sources-drawer-header">
+                    <div class="jurix-sources-drawer-title-group">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                        <h3 id="sources-drawer-title">Fontes Consultadas</h3>
+                    </div>
+                    <button type="button" class="jurix-sources-drawer-close" id="jurix-sources-drawer-close" aria-label="Fechar painel de fontes">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="jurix-sources-drawer-subtitle" id="sources-drawer-subtitle">
+                    Evidências legislativas recuperadas para fundamentar a resposta com exatidão jurídica.
+                </div>
+                <div class="jurix-sources-drawer-body" id="jurix-sources-drawer-body"></div>
+            `;
+            document.body.appendChild(panel);
+        }
+        if (!drawerListenersBound) {
+            const closeButton = panel.querySelector('#jurix-sources-drawer-close');
+            const closeHandler = (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                closeSourcesDrawer();
+            };
+            if (closeButton) closeButton.dataset.bound = 'true';
+            closeButton?.addEventListener('click', closeHandler);
+            backdrop?.addEventListener('click', closeHandler);
+            drawerListenersBound = true;
+        }
+        return {
+            backdrop,
+            panel,
+            body: panel.querySelector('#jurix-sources-drawer-body') || document.getElementById('jurix-sources-drawer-body'),
+            titleEl: panel.querySelector('#sources-drawer-title') || document.getElementById('sources-drawer-title'),
+            subtitleEl: panel.querySelector('#sources-drawer-subtitle') || document.getElementById('sources-drawer-subtitle'),
+        };
+    }
+
+    function openSourcesDrawer(sources = [], title = 'Fontes Consultadas') {
+        const dom = ensureDrawerDOM();
+        const { backdrop, panel, body, titleEl, subtitleEl } = dom;
+        if (!panel || !body) return;
+        lastSourceTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+        const count = Array.isArray(sources) ? sources.length : 0;
+        if (titleEl) titleEl.textContent = `${title} (${count})`;
+        if (subtitleEl) {
+            subtitleEl.textContent = `${count} ${count === 1 ? 'dispositivo recuperado' : 'dispositivos recuperados'} do corpus municipal de Natal.`;
+        }
+
+        body.innerHTML = '';
+        if (Array.isArray(sources)) {
+            sources.forEach((source, index) => {
+                const cardHtml = renderEvidenceCard(source, index);
+                body.insertAdjacentHTML('beforeend', cardHtml);
+            });
+        }
+        if (!body.children.length) {
+            body.innerHTML = `
+                <div class="jurix-sources-empty" role="status">
+                    <strong>As evidências não estão disponíveis nesta restauração.</strong>
+                    <p>Recarregue a conversa para tentar recuperar os trechos usados na resposta. Até lá, confirme a informação na fonte oficial antes de utilizá-la.</p>
+                    <button type="button" class="jurix-sources-empty-retry">Recarregar conversa</button>
+                </div>
+            `;
+            body.querySelector('.jurix-sources-empty-retry')?.addEventListener('click', () => {
+                window.location.reload();
+            }, { once: true });
+        }
+
+        panel.classList.add('is-open');
+        panel.setAttribute('aria-hidden', 'false');
+        if (backdrop) {
+            backdrop.classList.add('is-open');
+            backdrop.setAttribute('aria-hidden', 'false');
+        }
+        document.body.classList.add('jurix-sources-drawer-open');
+        window.requestAnimationFrame(() => {
+            document.getElementById('jurix-sources-drawer-close')?.focus();
+        });
+    }
+
+    function closeSourcesDrawer() {
+        const backdrop = document.getElementById('jurix-sources-drawer-backdrop');
+        const panel = document.getElementById('jurix-sources-drawer-panel');
+        if (panel) {
+            panel.classList.remove('is-open');
+            panel.setAttribute('aria-hidden', 'true');
+        }
+        if (backdrop) {
+            backdrop.classList.remove('is-open');
+            backdrop.setAttribute('aria-hidden', 'true');
+        }
+        document.body.classList.remove('jurix-sources-drawer-open');
+        if (lastSourceTrigger && document.contains(lastSourceTrigger)) {
+            lastSourceTrigger.focus();
+        }
+        lastSourceTrigger = null;
+    }
+
     document.addEventListener('click', (event) => {
-        const citation = event.target.closest ? event.target.closest('.jurix-citation[data-source-index]') : null;
-        if (!citation) return;
-        event.preventDefault();
-        focusEvidence(citation.dataset.sourceIndex, citation.closest('.message') || document);
+        if (!event.target || !event.target.closest) return;
+        const pill = event.target.closest('.jurix-sources-pill-btn');
+        if (pill) {
+            event.preventDefault();
+            const sources = pill._sourcesData || [];
+            openSourcesDrawer(sources, 'Fontes Consultadas');
+            return;
+        }
+        if (event.target.closest('#jurix-sources-drawer-close') || event.target.closest('#jurix-sources-drawer-backdrop')) {
+            if (event.target.closest('#jurix-sources-drawer-close')?.dataset.bound === 'true') return;
+            event.preventDefault();
+            closeSourcesDrawer();
+            return;
+        }
+        const citation = event.target.closest('.jurix-citation[data-source-index]');
+        if (citation) {
+            event.preventDefault();
+            const message = citation.closest('.message');
+            const sourcesContainer = message?.querySelector('[id^="sources-"]');
+            const sources = sourcesContainer?._sourcesData || [];
+            const sourceIndex = citation.dataset.sourceIndex;
+
+            // Evidence cards live in the global drawer, not inside the message
+            // that contains the citation. Open that drawer before resolving the
+            // target; otherwise citation clicks silently announce "not found".
+            if (sources.length > 0) {
+                openSourcesDrawer(sources, 'Fontes Consultadas');
+                window.requestAnimationFrame(() => focusEvidence(sourceIndex, document));
+            } else {
+                focusEvidence(sourceIndex, document);
+            }
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeSourcesDrawer();
+            return;
+        }
+        if (event.key !== 'Tab') return;
+
+        const panel = document.getElementById('jurix-sources-drawer-panel');
+        if (!panel || panel.getAttribute('aria-hidden') === 'true') return;
+
+        const focusable = [...panel.querySelectorAll(
+            'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )].filter((element) => element.getClientRects().length > 0);
+        if (!focusable.length) {
+            event.preventDefault();
+            panel.focus();
+            return;
+        }
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
     });
 
     window.JurixRagUI = {
@@ -295,5 +502,7 @@
         announce,
         renderEvidenceCard,
         focusEvidence,
+        openSourcesDrawer,
+        closeSourcesDrawer,
     };
 })();

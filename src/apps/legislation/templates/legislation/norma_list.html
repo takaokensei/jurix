@@ -65,8 +65,8 @@
                     <label for="norma-tipo">Tipo</label>
                     <select class="jurix-norma-select" id="norma-tipo" name="tipo">
                         <option value="">Todos os tipos</option>
-                        {% for tipo in available_types %}
-                        <option value="{{ tipo }}" {% if selected_type == tipo %}selected{% endif %}>{{ tipo }}</option>
+                        {% for tipo in available_type_options %}
+                        <option value="{{ tipo.value }}" {% if selected_type == tipo.value %}selected{% endif %}>{{ tipo.label }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -116,10 +116,10 @@
             <article class="jurix-norma-card">
                 <div class="jurix-norma-card-main">
                     <div class="jurix-norma-meta-row">
-                        <span class="jurix-norma-type">{{ norma.tipo }}</span>
+                        <span class="jurix-norma-type">{{ norma.get_tipo_display_name }}</span>
                         <span class="jurix-norma-status">{{ norma.get_status_display }}</span>
                     </div>
-                    <h3 class="jurix-norma-card-title">{{ norma.tipo }} {{ norma.numero }}/{{ norma.ano }}</h3>
+                    <h3 class="jurix-norma-card-title">{{ norma.get_tipo_display_name }} {{ norma.numero }}/{{ norma.ano }}</h3>
                     <p class="jurix-norma-card-ementa">{{ norma.ementa|default:'Ementa não informada.' }}</p>
                     <div class="jurix-norma-card-facts">
                         <div class="jurix-norma-fact">

@@ -1,0 +1,36 @@
+.git
+.gitignore
+.venv
+venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+.history
+node_modules
+tests
+src/tests
+data
+*.sqlite3
+*.db
+*.log
+*.tmp
+*.bak
+*.orig
+.env
+.env.*
+!.env.production.example
+docs
+*.md
+*.pdf
+*.png
+*.jpg
+*.jpeg
+
+# The production gate is shipped with the image and needs these two
+# repository-level contracts when operators run it inside the container.
+!docs/production-validation.md
+!docs/production-final-assurance-v4.md

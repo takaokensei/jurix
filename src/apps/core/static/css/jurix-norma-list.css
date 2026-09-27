@@ -670,6 +670,9 @@
     .jurix-norma-page-link,
     .jurix-norma-page-current { min-width: 38px; min-height: 38px; padding: 0 9px; }
 }
+@media (max-width: 640px) {
+  .jurix-norma-clear { min-width: 44px !important; min-height: 44px !important; width: 44px !important; height: 44px !important; }
+}
 
 /* Touch targets and accessibility */
 @media (pointer: coarse) {

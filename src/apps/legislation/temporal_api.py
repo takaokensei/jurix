@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from django.http import HttpRequest, JsonResponse
-from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_GET
 
 from src.apps.legislation.models import Norma
@@ -13,7 +12,12 @@ from src.processing.temporal_scope import build_norma_timeline, parse_iso_date, 
 
 @require_GET
 def norma_timeline_api(request: HttpRequest, pk: int) -> JsonResponse:
-    norma = get_object_or_404(Norma, pk=pk)
+    norma = Norma.objects.filter(pk=pk).first()
+    if norma is None:
+        return JsonResponse(
+            {"success": False, "error": f"Norma with ID {pk} not found"},
+            status=404,
+        )
     try:
         as_of = parse_iso_date(request.GET.get("as_of"), "as_of")
     except ValueError as exc:
@@ -33,7 +37,12 @@ def norma_timeline_api(request: HttpRequest, pk: int) -> JsonResponse:
 
 @require_GET
 def norma_conflicts_api(request: HttpRequest, pk: int) -> JsonResponse:
-    norma = get_object_or_404(Norma, pk=pk)
+    norma = Norma.objects.filter(pk=pk).first()
+    if norma is None:
+        return JsonResponse(
+            {"success": False, "error": f"Norma with ID {pk} not found"},
+            status=404,
+        )
     signals = detect_for_norma(norma)
     return JsonResponse(
         {

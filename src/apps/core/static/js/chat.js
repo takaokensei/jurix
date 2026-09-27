@@ -87,6 +87,18 @@
             .replace(/'/g, '&#39;');
     }
 
+    function resetComposerSize(textarea) {
+        if (!textarea) return;
+        textarea.classList.remove('is-composer-medium', 'is-composer-large');
+    }
+
+    function fitComposerSize(textarea) {
+        if (!textarea) return;
+        resetComposerSize(textarea);
+        if (textarea.scrollHeight > 68) textarea.classList.add('is-composer-large');
+        else if (textarea.scrollHeight > 44) textarea.classList.add('is-composer-medium');
+    }
+
     // Only http(s) URLs may be opened from a source card: javascript:, data:, vbscript: and
     // friends are dropped. The value comes from ingested SAPL data, i.e. it is not trusted.
     function safeHttpUrl(value) {
@@ -144,6 +156,7 @@
     document.addEventListener('click', (event) => {
         const card = event.target.closest ? event.target.closest('.source-card-clickable[data-url]') : null;
         if (!card) return;
+        if (event.target.closest('a, button, details, summary')) return;
         const url = safeHttpUrl(card.dataset.url);   // re-validated at use time
         if (url) window.open(url, '_blank', 'noopener,noreferrer');
     });
@@ -289,13 +302,9 @@
         if (!sessionSlug && !currentSessionId) {
             newChatBtn.disabled = true;
             newChatBtn.classList.add('disabled');
-            newChatBtn.style.opacity = '0.5';
-            newChatBtn.style.cursor = 'not-allowed';
         } else {
             newChatBtn.disabled = false;
             newChatBtn.classList.remove('disabled');
-            newChatBtn.style.opacity = '1';
-            newChatBtn.style.cursor = 'pointer';
         }
     }
 
@@ -331,7 +340,7 @@
                 messages.forEach((msg) => msg.remove());
 
                 if (welcomeState) {
-                    welcomeState.style.display = 'flex';
+                    welcomeState.classList.remove('is-hidden');
                     if (welcomeState.parentNode !== messagesWrapper) {
                         messagesWrapper.insertBefore(welcomeState, messagesWrapper.firstChild);
                     }
@@ -339,7 +348,6 @@
                     const newWelcomeState = document.createElement('div');
                     newWelcomeState.id = 'welcome-state';
                     newWelcomeState.className = 'welcome-state';
-                    newWelcomeState.style.display = 'flex';
                     newWelcomeState.innerHTML = `
                         <h1 class="welcome-greeting">
                             <span class="greeting-text">Olá, </span>
@@ -356,7 +364,7 @@
             const textarea = document.getElementById('question-textarea');
             if (textarea) {
                 textarea.value = '';
-                textarea.style.height = 'auto';
+                resetComposerSize(textarea);
                 try {
                     const keys = Object.keys(localStorage);
                     for (let i = 0; i < keys.length; i++) {
@@ -422,8 +430,10 @@
                 if (existingIndicator) existingIndicator.remove();
 
                 if (welcomeState) {
-                    welcomeState.style.display =
-                        sessionData.messages && sessionData.messages.length > 0 ? 'none' : 'flex';
+                    welcomeState.classList.toggle(
+                        'is-hidden',
+                        Boolean(sessionData.messages && sessionData.messages.length > 0),
+                    );
                 }
             }
 
@@ -449,9 +459,15 @@
                             msg.content,
                             msg.sources || [],
                             isLastAssistant && typeof currentSessionId === 'number',
-                            true
+                            true,
+                            msg.metadata || {}
                         );
                     }
+                }
+                const conversationInput = document.getElementById('conversation-input-bar');
+                if (conversationInput) {
+                    conversationInput.classList.remove('jurix-floating-input-initial', 'is-hidden');
+                    conversationInput.style.setProperty('display', 'flex', 'important');
                 }
             }
 
@@ -478,20 +494,30 @@
         button.addEventListener('click', async () => {
             if (isLoading) return;
             isLoading = true;
+            const container = document.getElementById('messages-container');
+            const oldHeight = container?.scrollHeight || 0;
+            const oldTop = container?.scrollTop || 0;
+            const previousOverflowAnchor = container?.style.overflowAnchor || '';
+            // The browser's automatic scroll anchoring competes with the
+            // explicit delta below when the pager is removed. Disable it for
+            // this single DOM transaction so pagination remains pixel-stable.
+            if (container) container.style.overflowAnchor = 'none';
             button.disabled = true;
             button.classList.add('is-loading');
             button.setAttribute('aria-busy', 'true');
-            button.textContent = 'Carregando mensagens anteriores...';
+            // Keep the button's geometry stable while the request is in flight.
+            // Changing its label here can add a line/wrap and corrupt the
+            // scroll-delta invariant used to preserve the reader's position.
             try {
                 const page = await chatAPI.getSession(sessionId, data.next_cursor);
-                if (String(currentSessionId) !== String(sessionId) || !button.isConnected) return;
-                const container = document.getElementById('messages-container');
-                const oldHeight = container?.scrollHeight || 0;
-                const oldTop = container?.scrollTop || 0;
+                if (String(currentSessionId) !== String(sessionId) || !button.isConnected) {
+                    if (container) container.style.overflowAnchor = previousOverflowAnchor;
+                    return;
+                }
                 const existing = new Set(wrapper.children);
                 for (const msg of page.messages || []) {
                     if (msg.role === 'user') addUserMessage(msg.content);
-                    else addAssistantMessage(msg.content, msg.sources || [], false, true);
+                    else addAssistantMessage(msg.content, msg.sources || [], false, true, msg.metadata || {});
                 }
                 const fragment = document.createDocumentFragment();
                 for (const child of Array.from(wrapper.children)) {
@@ -500,8 +526,29 @@
                 button.after(fragment);
                 button.remove();
                 installHistoryPager(page, sessionId);
-                if (container) container.scrollTop = oldTop + container.scrollHeight - oldHeight;
+                if (container) {
+                    const restoreScrollPosition = () => {
+                        container.scrollTop = oldTop + container.scrollHeight - oldHeight;
+                    };
+                    restoreScrollPosition();
+                    // Keep native anchoring disabled through the next frame;
+                    // restoring it synchronously lets Chromium apply a second
+                    // correction after the new pager has been inserted.
+                    requestAnimationFrame(() => {
+                        if (!container.isConnected) return;
+                        // Fonts and newly inserted markdown can settle one frame
+                        // after the DOM transaction. Re-apply the same invariant
+                        // once after layout so pagination never loses a row.
+                        restoreScrollPosition();
+                        requestAnimationFrame(() => {
+                            if (!container.isConnected) return;
+                            restoreScrollPosition();
+                            container.style.overflowAnchor = previousOverflowAnchor;
+                        });
+                    });
+                }
             } catch (_) {
+                if (container) container.style.overflowAnchor = previousOverflowAnchor;
                 isLoading = false;
                 button.disabled = false;
                 button.classList.remove('is-loading');
@@ -518,8 +565,7 @@
         try { savedText = localStorage.getItem(`chat-input-${sessionId}`); } catch (_) {}
         if (savedText !== null) {
             textarea.value = savedText;
-            textarea.style.height = 'auto';
-            textarea.style.height = Math.min(textarea.scrollHeight, 96) + 'px';
+            fitComposerSize(textarea);
         }
     }
 
@@ -536,7 +582,7 @@
         sessionCard.setAttribute('role', 'button');
         sessionCard.setAttribute('tabindex', '0');
         sessionCard.innerHTML = `
-            <div style="flex: 1; min-width: 0;">
+            <div class="chat-session-content">
                 <div class="chat-session-title">${escapeHtml(sessionTitle)}</div>
             </div>
             <button 
@@ -630,7 +676,6 @@
             await performDeleteSession(sessionId);
         };
 
-        modalOverlay.style.display = 'flex';
         requestAnimationFrame(() => {
             modalOverlay.classList.add('active');
         });
@@ -650,7 +695,7 @@
                     messagesWrapper.querySelectorAll('.message').forEach((m) => m.remove());
                 }
                 const welcomeState = document.getElementById('welcome-state');
-                if (welcomeState) welcomeState.style.display = 'flex';
+                if (welcomeState) welcomeState.classList.remove('is-hidden');
                 refreshCorpusSuggestions();
             }
 
@@ -666,23 +711,22 @@
         if (!toast) {
             toast = document.createElement('div');
             toast.id = 'chat-toast-notification';
-            toast.style.cssText = 'position: fixed; bottom: 24px; right: 24px; padding: 12px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; z-index: 9999; transition: opacity 0.3s ease, transform 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
+            toast.className = 'chat-toast-notification';
             document.body.appendChild(toast);
         }
-        toast.style.background = type === 'error' ? '#ef4444' : '#10b981';
-        toast.style.color = '#ffffff';
+        toast.classList.toggle('is-error', type === 'error');
+        toast.classList.toggle('is-success', type !== 'error');
         toast.textContent = message;
-        toast.style.opacity = '1';
-        toast.style.transform = 'translateY(0)';
+        toast.classList.remove('is-dismissed');
         setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(8px)';
+            toast.classList.add('is-dismissed');
         }, 3500);
     }
 
     // ===== MESSAGE RENDERING =====
     function addUserMessage(text) {
         if (!window.JurixChatRenderer) return;
+        document.getElementById('welcome-state')?.classList.add('is-hidden');
         window.JurixChatRenderer.addUserMessage(text, { scrollToBottom, renderMarkdown, escapeHtml });
     }
 
@@ -696,9 +740,18 @@
         if (loadingMsg) loadingMsg.remove();
     }
 
-    function addAssistantMessage(answer, sources, showRegenerate = false, skipStreaming = false) {
+    function addAssistantMessage(
+        answer,
+        sources,
+        showRegenerate = false,
+        skipStreaming = false,
+        metadata = {}
+    ) {
         const messagesWrapper = document.getElementById('messages-wrapper');
         if (!messagesWrapper) return;
+        document.getElementById('welcome-state')?.classList.add('is-hidden');
+
+        const interrupted = metadata && metadata.interrupted === true;
 
         const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         const uid = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -708,7 +761,7 @@
         const regenerateId = 'regenerate-' + uid;
 
         const messageDiv = document.createElement('div');
-        messageDiv.className = 'message message-assistant';
+        messageDiv.className = `message message-assistant${interrupted ? ' message-assistant--interrupted' : ''}`;
         messageDiv.innerHTML = `
             <div class="message-avatar">
                 <img src="${escapeHtml(config.logoIconUrl)}" alt="Jurix">
@@ -716,11 +769,13 @@
             <div class="message-content">
                 <div class="message-header">
                     <span class="message-role">Jurix</span>
+                    ${interrupted ? '<span class="message-status message-status--interrupted" role="status">Resposta interrompida</span>' : ''}
                     <span class="message-time">${timestamp}</span>
                 </div>
                 <div class="message-body jurix-legal-answer" id="${messageId}"></div>
+                ${interrupted ? '<p class="message-interrupted-note">A resposta foi interrompida antes de terminar. Tente novamente para gerar uma resposta completa.</p>' : ''}
                 <div class="message-actions">
-                    <button class="regenerate-button" id="${regenerateId}" aria-label="Tentar novamente" title="Tentar novamente" style="display: none;">
+                    <button class="regenerate-button is-hidden" id="${regenerateId}" aria-label="Tentar novamente" title="Tentar novamente">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             <path d="M21 3v5h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -733,7 +788,7 @@
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
                         </svg>
-                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+                        <svg class="check-icon is-hidden" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </button>
@@ -765,7 +820,7 @@
             copyButton.classList.add('show');
 
             if (regenerateBtn && currentSessionId && showRegenerate) {
-                regenerateBtn.style.display = 'inline-flex';
+                regenerateBtn.classList.remove('is-hidden');
                 regenerateBtn.classList.add('show');
                 regenerateBtn.addEventListener('click', async () => {
                     await regenerateLastResponse(currentSessionId, messageDiv, sourcesContainer);
@@ -773,14 +828,14 @@
             }
 
             if (sources && sources.length > 0) {
-                showSourcesGradually(sourcesContainer, sources);
+            showSourcesGradually(sourcesContainer, sources, false, answer);
             }
         } else {
             typewriterEffect(messageId, answer, () => {
                 copyButton.classList.add('show');
 
                 if (regenerateBtn && currentSessionId && showRegenerate) {
-                    regenerateBtn.style.display = 'inline-flex';
+                    regenerateBtn.classList.remove('is-hidden');
                     regenerateBtn.classList.add('show');
                     regenerateBtn.addEventListener('click', async () => {
                         await regenerateLastResponse(currentSessionId, messageDiv, sourcesContainer);
@@ -788,7 +843,7 @@
                 }
 
                 if (sources && sources.length > 0) {
-                    showSourcesGradually(sourcesContainer, sources);
+                    showSourcesGradually(sourcesContainer, sources, true, answer);
                 }
             });
         }
@@ -806,7 +861,7 @@
 
             if (regenerateBtn) {
                 regenerateBtn.disabled = true;
-                regenerateBtn.style.opacity = '0.5';
+                regenerateBtn.classList.add('is-busy');
             }
 
             const messageBody = messageDiv.querySelector('.message-body');
@@ -816,8 +871,8 @@
             }
 
             if (sourcesContainer) sourcesContainer.innerHTML = '';
-            if (copyButton) copyButton.style.display = 'none';
-            if (regenerateBtn) regenerateBtn.style.display = 'none';
+            if (copyButton) copyButton.classList.add('is-hidden');
+            if (regenerateBtn) regenerateBtn.classList.add('is-hidden');
 
             const data = await chatAPI.regenerateSession(sessionId);
             if (data.success && messageBody) {
@@ -826,17 +881,17 @@
 
                 typewriterEffect(messageBody.id, data.answer, () => {
                     if (copyButton) {
-                        copyButton.style.display = 'inline-flex';
+                        copyButton.classList.remove('is-hidden');
                         copyButton.classList.add('show');
                     }
                     if (regenerateBtn) {
-                        regenerateBtn.style.display = 'inline-flex';
+                        regenerateBtn.classList.remove('is-hidden');
                         regenerateBtn.classList.add('show');
                         regenerateBtn.disabled = false;
-                        regenerateBtn.style.opacity = '1';
+                        regenerateBtn.classList.remove('is-busy');
                     }
                     if (data.sources && data.sources.length > 0) {
-                        showSourcesGradually(sourcesContainer, data.sources);
+                        showSourcesGradually(sourcesContainer, data.sources, true, data.answer || '');
                     }
                 });
             }
@@ -845,7 +900,7 @@
             const messageBody = messageDiv.querySelector('.message-body');
             if (messageBody) {
                 messageBody.innerHTML =
-                    '<p style="color: var(--color-error);">Erro ao regenerar resposta. Tente novamente.</p>';
+                    '<p class="chat-error-text">Erro ao regenerar resposta. Tente novamente.</p>';
             }
         } finally {
             chatState.transition('idle');
@@ -860,12 +915,12 @@
                 const copyIcon = button.querySelector('.copy-icon');
                 const checkIcon = button.querySelector('.check-icon');
                 if (copyIcon && checkIcon) {
-                    copyIcon.style.display = 'none';
-                    checkIcon.style.display = 'block';
+                    copyIcon.classList.add('is-hidden');
+                    checkIcon.classList.remove('is-hidden');
                     button.classList.add('copied');
                     setTimeout(() => {
-                        copyIcon.style.display = 'block';
-                        checkIcon.style.display = 'none';
+                        copyIcon.classList.remove('is-hidden');
+                        checkIcon.classList.add('is-hidden');
                         button.classList.remove('copied');
                     }, 2000);
                 }
@@ -873,8 +928,7 @@
             .catch((err) => console.error('Failed to copy:', err));
     }
 
-    // ===== SOURCES RENDERING =====
-    function showSourcesGradually(container, sources) {
+    function showSourcesGradually(container, sources, animated = true, answerText = '') {
         if (!sources || sources.length === 0 || !container) return;
 
         const sortedSources = [...sources].sort((a, b) => {
@@ -883,40 +937,61 @@
             return scoreB - scoreA;
         });
 
+        const topRawScore = parseFloat(sortedSources[0]?.similarity_score || 0);
+        const evidenceInsufficient = /não encontrei evidências suficientes|evidência insuficiente/i.test(String(answerText));
+        const topLabel = evidenceInsufficient
+            ? 'Evidência insuficiente'
+            : topRawScore >= 0.8
+            ? 'Alta correspondência'
+            : topRawScore >= 0.6
+            ? 'Boa correspondência'
+            : topRawScore >= 0.4
+            ? 'Correspondência parcial'
+            : 'Baixa correspondência';
+
         const headerHtml = `
             <div class="sources-section">
-                <div class="sources-header">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M8 2V14M2 8H14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <button type="button" class="jurix-sources-pill-btn" aria-label="Abrir painel com ${sortedSources.length} fontes consultadas">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                     </svg>
-                    <span>${sortedSources.length} ${sortedSources.length === 1 ? 'Fonte' : 'Fontes'}</span>
-                </div>
-                <div class="jurix-rag-evidence-caption">Evidências recuperadas para esta resposta</div>
-                <div class="sources-grid"></div>
+                    <span>${sortedSources.length} ${sortedSources.length === 1 ? 'fonte consultada' : 'fontes consultadas'}</span>
+                    ${topRawScore > 0 ? `<span class="jurix-sources-pill-badge">${topLabel}</span>` : ''}
+                    <span class="jurix-sources-pill-action">Ver fontes →</span>
+                </button>
             </div>
         `;
 
         container.innerHTML = headerHtml;
-        const gridContainer = container.querySelector('.sources-grid');
 
-        sortedSources.forEach((source, index) => {
-            setTimeout(() => {
-                const cardHtml = createSourceCard(source, index);
-                gridContainer.insertAdjacentHTML('beforeend', cardHtml);
-
-                const cardElement = gridContainer.lastElementChild;
-                if (cardElement) {
-                    cardElement.style.opacity = '0';
-                    cardElement.style.transform = 'translateY(10px)';
-                    requestAnimationFrame(() => {
-                        cardElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                        cardElement.style.opacity = '1';
-                        cardElement.style.transform = 'translateY(0)';
-                    });
+        const pillBtn = container.querySelector('.jurix-sources-pill-btn');
+        if (pillBtn) {
+            pillBtn._sourcesData = sortedSources;
+            container._sourcesData = sortedSources;
+            pillBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (window.JurixRagUI && typeof window.JurixRagUI.openSourcesDrawer === 'function') {
+                    window.JurixRagUI.openSourcesDrawer(sortedSources, 'Fontes Consultadas');
                 }
-                scrollToBottom();
-            }, index * 100);
-        });
+            });
+        }
+
+        // Source cards belong exclusively to the drawer. Rendering them inline
+        // duplicates the evidence UI, makes long legal references collapse the
+        // conversation column and exposes sources before the user asks to see
+        // them. The pill itself is the only inline affordance.
+        const section = container.querySelector('.sources-section');
+        if (!section) return;
+        const reveal = () => {
+            section.classList.add('source-section-visible');
+            scrollToBottom();
+        };
+        if (animated) {
+            requestAnimationFrame(reveal);
+        } else {
+            reveal();
+        }
     }
 
     function createSourceCard(source, index) {
@@ -979,7 +1054,7 @@
                         <span class="message-role">Jurix</span>
                         <span class="message-time">${timestamp}</span>
                     </div>
-                    <div class="message-body" style="border-color: var(--color-error); background: #fef2f2;">
+                    <div class="message-body chat-error-body">
                         <span class="error-icon" aria-hidden="true">!</span> ${escapeHtml(errorText)}
                     </div>
                 </div>
@@ -1048,7 +1123,7 @@
 
         if (chatState && typeof chatState.isGreetingStreaming === 'function' && chatState.isGreetingStreaming()) return;
 
-        welcomeState.style.display = 'flex';
+        welcomeState.classList.remove('is-hidden');
         const greetingNameEl = welcomeState.querySelector('.greeting-name');
         const greetingTextEl = welcomeState.querySelector('.greeting-text');
 
@@ -1125,7 +1200,7 @@
             if (messagesWrapper) {
                 messagesWrapper.querySelectorAll('.message').forEach((m) => m.remove());
                 const welcomeState = document.getElementById('welcome-state');
-                if (welcomeState) welcomeState.style.display = 'flex';
+                if (welcomeState) welcomeState.classList.remove('is-hidden');
             }
             showWelcomeStateWithStreaming();
             await loadChatSessions();
@@ -1220,13 +1295,13 @@
                 }
 
                 const welcomeStateEl = document.getElementById('welcome-state');
-                if (welcomeStateEl) welcomeStateEl.style.display = 'none';
+                if (welcomeStateEl) welcomeStateEl.classList.add('is-hidden');
 
                 updateNewChatButtonState();
                 addUserMessage(question);
 
                 textarea.value = '';
-                textarea.style.height = 'auto';
+                resetComposerSize(textarea);
 
                 if (currentSessionId) {
                     try { localStorage.removeItem(`chat-input-${currentSessionId}`); } catch (_) {}
@@ -1247,6 +1322,12 @@
     function createStreamingAssistantMessage() {
         const messagesWrapper = document.getElementById('messages-wrapper');
         if (!messagesWrapper) return null;
+        document.getElementById('welcome-state')?.classList.add('is-hidden');
+        const conversationInput = document.getElementById('conversation-input-bar');
+        if (conversationInput) {
+            conversationInput.classList.remove('jurix-floating-input-initial', 'is-hidden');
+            conversationInput.style.setProperty('display', 'flex', 'important');
+        }
 
         const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         const messageId = 'msg-' + Date.now();
@@ -1266,7 +1347,7 @@
                 </div>
                 <div class="message-body jurix-rag-answer" id="${messageId}"></div>
                 <div class="message-actions">
-                    <button class="regenerate-button" id="regenerate-${Date.now()}" aria-label="Tentar novamente" title="Tentar novamente" style="display: none;">
+                    <button class="regenerate-button is-hidden" id="regenerate-${Date.now()}" aria-label="Tentar novamente" title="Tentar novamente">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             <path d="M21 3v5h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1279,7 +1360,7 @@
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
                         </svg>
-                        <svg class="check-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+                        <svg class="check-icon is-hidden" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </button>
@@ -1305,7 +1386,17 @@
         };
     }
 
-    async function streamAssistantResponse(question, sessionId, onChunk, onSources, onDone, onError) {
+    async function streamAssistantResponse(question, sessionId, onChunk, onSources, onDone, onError, onStatus) {
+        let preferences = {};
+        try {
+            preferences = JSON.parse(localStorage.getItem('jurix-preferences') || '{}');
+        } catch (_) {}
+        const controls = window.JurixSearchControls?.getPayload?.() || {};
+        const searchOptions = {
+            ...controls,
+            max_sources: Number(preferences.sources || 5),
+            model: preferences.model || undefined,
+        };
         return chatAPI.streamAnswer(question, sessionId, {
             onSession(data) {
                 currentSessionId = data.session_id;
@@ -1316,6 +1407,8 @@
             onSources,
             onDone,
             onError,
+            onStatus,
+            searchOptions,
         });
     }
 
@@ -1358,7 +1451,7 @@
                                 window.JurixRagUI.announce('Resposta concluída.');
                             }
                             if (streamElements && streamElements.sourcesContainer && finalSources.length > 0) {
-                                showSourcesGradually(streamElements.sourcesContainer, finalSources);
+                                showSourcesGradually(streamElements.sourcesContainer, finalSources, true, finalAnswer);
                                 window.requestAnimationFrame(() => {
                                     if (window.JurixRagUI) window.JurixRagUI.enhanceSources(streamElements.sourcesContainer);
                                 });
@@ -1369,7 +1462,7 @@
                                     streamElements.copyButton.classList.add('show');
                                 }
                                 if (streamElements.regenerateBtn && typeof currentSessionId === 'number') {
-                                    streamElements.regenerateBtn.style.display = 'inline-flex';
+                                    streamElements.regenerateBtn.classList.remove('is-hidden');
                                     streamElements.regenerateBtn.classList.add('show');
                                     streamElements.regenerateBtn.addEventListener('click', async () => {
                                         await regenerateLastResponse(currentSessionId, streamElements.messageDiv, streamElements.sourcesContainer);
@@ -1396,6 +1489,20 @@
                         },
                         (errorMsg) => {
                             chatState.transition('error', { error: errorMsg });
+                        },
+                        (status) => {
+                            const labels = {
+                                queued: 'Na fila…',
+                                retrieving: 'Buscando normas relevantes…',
+                                reranking: 'Refinando as evidências…',
+                                grounding: 'Validando a resposta nas fontes…',
+                                generating: 'Gerando resposta…',
+                                finalizing: 'Finalizando resposta…',
+                                insufficient_evidence: 'Evidências insuficientes para uma conclusão segura.',
+                            };
+                            if (window.JurixRagUI && labels[status]) {
+                                window.JurixRagUI.announce(labels[status]);
+                            }
                         }
                     );
                 } catch (streamError) {

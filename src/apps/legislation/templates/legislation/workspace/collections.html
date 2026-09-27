@@ -1,19 +1,46 @@
 {% extends "legislation/workspace/base.html" %}
+{% load static %}
 
 {% block title %}Coleções — Jurix{% endblock %}
 {% block section_name %}Coleções{% endblock %}
 
 {% block content %}
 <section class="workspace-page-header">
-    <div><span class="workspace-eyebrow">Organização</span><h1>Coleções</h1><p>Crie dossiês para reunir normas, pesquisas e evidências de um mesmo assunto jurídico.</p></div>
-    <button type="button" class="workspace-button workspace-button-primary" disabled>Nova coleção</button>
+    <div><span class="workspace-eyebrow">Organização</span><h1>Coleções</h1><p>Reúna normas, pesquisas e evidências em dossiês de um mesmo assunto jurídico.</p></div>
+    {% if user.is_authenticated %}<button class="workspace-button workspace-button-primary" type="button" data-open-collection-form>Nova coleção</button>{% endif %}
 </section>
 
+{% if user.is_authenticated and collections %}
+<section class="workspace-card-grid" aria-label="Suas coleções">
+    {% for collection in collections %}
+    <article class="workspace-card">
+        <span class="workspace-eyebrow">Dossiê jurídico</span>
+        <h2><a href="{% url 'workspace:collection_detail' collection.pk %}">{{ collection.name }}</a></h2>
+        <p>{{ collection.description|default:"Sem descrição" }}</p>
+        <span class="workspace-muted">{{ collection.norma_count }} norma{{ collection.norma_count|pluralize }}</span>
+    </article>
+    {% endfor %}
+</section>
+{% else %}
 <section class="workspace-empty-state workspace-empty-state-large">
     <div class="workspace-empty-icon" aria-hidden="true">▱</div>
     <span class="workspace-eyebrow">Sem coleções ainda</span>
-    <h2>A base de coleções está pronta para receber seus dossiês</h2>
-    <p>Nesta primeira fase, a navegação e a tela já estão separadas do Assistente. A persistência de coleções entra como próxima camada de domínio, sem criar dados fictícios agora.</p>
+    <h2>{% if user.is_authenticated %}Crie seu primeiro dossiê jurídico{% else %}Coleções persistentes para seu trabalho jurídico{% endif %}</h2>
+    <p>{% if user.is_authenticated %}Crie uma coleção para reunir normas e evidências de um mesmo assunto jurídico.{% else %}Entre na sua conta para criar dossiês persistentes. Você ainda pode pesquisar normas e manter conversas no histórico.{% endif %}</p>
     <div class="workspace-empty-stats"><span><strong>{{ norma_count }}</strong> normas disponíveis</span><span>Pesquisa semântica integrada</span><span>Histórico de conversas disponível</span></div>
 </section>
+{% endif %}
+
+{% if user.is_authenticated %}
+<dialog class="workspace-dialog" data-collection-dialog aria-labelledby="collection-dialog-title">
+    <form method="post" class="workspace-form">
+        {% csrf_token %}
+        <h2 id="collection-dialog-title">Nova coleção</h2>
+        <label>Nome<input name="name" maxlength="120" required autocomplete="off"></label>
+        <label>Descrição <span>(opcional)</span><textarea name="description" maxlength="500" rows="3"></textarea></label>
+        <div class="workspace-dialog-actions"><button type="button" class="workspace-button workspace-button-ghost" data-close-collection-form>Cancelar</button><button class="workspace-button workspace-button-primary" type="submit">Salvar coleção</button></div>
+    </form>
+</dialog>
+<script src="{% static 'js/jurix-collections.js' %}"></script>
+{% endif %}
 {% endblock %}

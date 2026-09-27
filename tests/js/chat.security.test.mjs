@@ -216,7 +216,10 @@ async function renderWithSource(src) {
   window.open = (...args) => { opened.push(args); return null; };
   await window.jurixChat.loadSession(1);
   await tick(); await tick();
-  return { window, opened, card: window.document.querySelector('.source-card') };
+  // Evidence cards are intentionally rendered only inside the source drawer;
+  // the conversation keeps a compact "Ver fontes" affordance.
+  window.JurixRagUI.openSourcesDrawer([src]);
+  return { window, opened, card: window.document.querySelector('.jurix-sources-drawer-panel .source-card') };
 }
 
 const EXPLOITS = {

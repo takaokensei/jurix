@@ -782,9 +782,9 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
     await page.evaluate(() => {
       window.__capturedOpacities = [];
       const obs = new MutationObserver(() => {
-        const card = document.querySelector('.source-card, .jurix-rag-source');
-        if (card) {
-          const op = parseFloat(window.getComputedStyle(card).opacity);
+        const section = document.querySelector('.sources-section');
+        if (section) {
+          const op = parseFloat(window.getComputedStyle(section).opacity);
           window.__capturedOpacities.push(op);
         }
       });
@@ -811,21 +811,41 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
     await page.evaluate(() => fetch('/api/test/release-done/'));
 
     // VERIFICAÇÃO RIGOROSA 2: Aguardar renderização das fontes
-    await page.waitForSelector('.sources-section, .source-card, .evidence-card, .jurix-rag-source', { timeout: 6000 });
-    const sourceTexts = await page.$$eval(
-      '.sources-section, .source-card, .evidence-card, .jurix-rag-source',
+    await page.waitForSelector('.sources-section', { timeout: 6000 });
+    const sourceTexts = await page.$$eval('.sources-section', (els) => els.map((el) => el.textContent));
+    assert.ok(
+      sourceTexts.some((t) => t.includes('fontes consultadas') || t.includes('Ver fontes')),
+      'O chat deve exibir a affordance compacta para abrir as fontes'
+    );
+    await page.waitForFunction(
+      () => document.querySelector('.jurix-sources-pill-btn')?._sourcesData?.length > 0,
+      { timeout: 6000 }
+    );
+    await page.click('.jurix-sources-pill-btn');
+    await page.waitForSelector('.jurix-sources-drawer-panel.is-open .source-card, .jurix-sources-drawer-panel.is-open .jurix-rag-source', { timeout: 6000 });
+    const drawerSourceTexts = await page.$$eval(
+      '.jurix-sources-drawer-panel.is-open .source-card, .jurix-sources-drawer-panel.is-open .jurix-rag-source',
       (els) => els.map((el) => el.textContent)
     );
     assert.ok(
-      sourceTexts.some((t) => t.includes('8206') || t.includes('Texto integral da Lei 8206 de Natal.')),
-      'As fontes devem conter o número ou texto específico da Lei 8206'
+      drawerSourceTexts.some((t) => t.includes('8206') || t.includes('Texto integral da Lei 8206 de Natal.')),
+      'O drawer deve conter o número ou texto específico da Lei 8206'
     );
+    const visibleDrawerSources = await page.$$eval(
+      '.jurix-sources-drawer-panel.is-open .source-card, .jurix-sources-drawer-panel.is-open .jurix-rag-source',
+      (els) => els.filter((el) => {
+        const style = window.getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        return style.visibility !== 'hidden' && Number(style.opacity) >= 0.9 && rect.height > 0;
+      }).length
+    );
+    assert.ok(visibleDrawerSources > 0, 'Os cards do drawer devem estar visualmente visíveis');
 
     // VERIFICAÇÃO RIGOROSA 3: Comprovação do fade-in (opacidade inicial < 0.5 e opacidade final >= 0.9)
     await page.waitForFunction(() => {
-      const card = document.querySelector('.source-card, .jurix-rag-source');
-      if (!card) return false;
-      return parseFloat(window.getComputedStyle(card).opacity) >= 0.9;
+      const section = document.querySelector('.sources-section.source-section-visible');
+      if (!section) return false;
+      return parseFloat(window.getComputedStyle(section).opacity) >= 0.9;
     }, { timeout: 4000 });
 
     const capturedOpacities = await page.evaluate(() => window.__capturedOpacities || []);

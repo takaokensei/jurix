@@ -7,11 +7,13 @@ comparing versions.
 
 import json
 import logging
+import re
+import uuid
 from collections import defaultdict
+from difflib import SequenceMatcher
 from typing import Any
 
 from django.conf import settings
-from django.core.cache import cache
 from django.db.models import Q
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -29,8 +31,39 @@ from .serializers import (
 
 logger = logging.getLogger(__name__)
 
-NORMA_LIST_CACHE_TTL = 120
 MAX_NORMA_SEARCH_LENGTH = 160
+
+
+def _presentation_consolidated_text(norma: Norma) -> str:
+    """Normalize legacy generated headers without mutating the legal corpus."""
+    text = norma.texto_consolidado or ""
+    raw_type = str(norma.tipo or "").strip()
+    label = norma.get_tipo_display_name()
+    # Old generated rows used the SAPL numeric type as the header even when
+    # the current model stores the human label.  Accept both representations.
+    candidates = {raw_type} if raw_type.isdigit() else set()
+    candidates.update({"1", "2", "3", "4", "5", "6"})
+    prefix = "|".join(re.escape(value) for value in sorted(candidates, key=len, reverse=True))
+    text = re.sub(
+        rf"(?m)^(\s*)(?:{prefix})\s+(?:Nº|nº|N°)\s+",
+        rf"\1{label} nº ",
+        text,
+        count=1,
+    )
+    return text
+
+
+def _norma_tipo_label(value: object) -> str:
+    mapping = {
+        "1": "Lei",
+        "2": "Lei Complementar",
+        "3": "Decreto",
+        "4": "Resolução",
+        "5": "Emenda à Lei Orgânica",
+        "6": "Portaria",
+    }
+    text = str(value or "").strip()
+    return mapping.get(text, "Lei" if text.isdigit() else (text or "Lei"))
 
 
 def _normalize_norma_query(value: object) -> str:
@@ -38,17 +71,10 @@ def _normalize_norma_query(value: object) -> str:
 
 
 def _norma_list_facets() -> tuple[list[str], list[int]]:
-    cache_key = "jurix:norma-list:facets:v1"
-    cached = cache.get(cache_key)
-    if cached is not None:
-        return cached
-
     queryset = Norma.objects.filter(status="consolidated")
     types = list(queryset.values_list("tipo", flat=True).distinct().order_by("tipo"))
     years = list(queryset.values_list("ano", flat=True).distinct().order_by("-ano"))
-    result = (types, years)
-    cache.set(cache_key, result, NORMA_LIST_CACHE_TTL)
-    return result
+    return types, years
 
 
 class NormaListView(ListView):
@@ -108,12 +134,22 @@ class NormaListView(ListView):
 
         available_types, available_years = _norma_list_facets()
         context["available_types"] = available_types
+        type_options = []
+        seen_type_labels = set()
+        for tipo in available_types:
+            label = _norma_tipo_label(tipo)
+            if label in seen_type_labels:
+                continue
+            seen_type_labels.add(label)
+            type_options.append({"value": tipo, "label": label})
+        context["available_type_options"] = type_options
         context["available_years"] = available_years
-        context["total_consolidated"] = cache.get_or_set(
-            "jurix:norma-list:total:v1",
-            lambda: Norma.objects.filter(status="consolidated").count(),
-            NORMA_LIST_CACHE_TTL,
-        )
+        # This count is displayed as a corpus-wide integrity signal. Caching
+        # it independently from the corpus-version bump can show a stale
+        # value after ingestion (for example, "1" beside 356 results). The
+        # count is a cheap indexed query and must reflect the same database
+        # state as the list itself.
+        context["total_consolidated"] = Norma.objects.filter(status="consolidated").count()
 
         page_obj = context.get("page_obj")
         context["filtered_count"] = (
@@ -167,12 +203,19 @@ class NormaDetailView(DetailView):
             "has_consolidated": bool(norma.texto_consolidado),
         }
 
+        if self.request.user.is_authenticated:
+            from .models import Collection
+
+            context["user_collections"] = Collection.objects.filter(
+                user=self.request.user
+            ).prefetch_related("normas")
         context.update(
             {
                 "eventos_recebidos": eventos_recebidos,
                 "dispositivos": dispositivos,
                 "root_dispositivos": root_dispositivos,
                 "stats": stats,
+                "consolidated_text": _presentation_consolidated_text(norma),
                 "timeline": build_norma_timeline(norma),
                 "temporal_status": temporal_status(norma),
             }
@@ -196,7 +239,64 @@ def norma_compare_view(request: HttpRequest, pk: int) -> HttpResponse:
 
     # Split texts into lines for comparison
     original_lines = norma.texto_original.split("\n") if norma.texto_original else []
-    consolidated_lines = norma.texto_consolidado.split("\n") if norma.texto_consolidado else []
+    consolidated_text = _presentation_consolidated_text(norma)
+    consolidated_lines = consolidated_text.split("\n") if consolidated_text else []
+
+    diff_rows = []
+    matcher = SequenceMatcher(a=original_lines, b=consolidated_lines, autojunk=False)
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == "equal":
+            diff_rows.extend(
+                {
+                    "kind": "equal",
+                    "original_number": i + 1,
+                    "original": original_lines[i],
+                    "consolidated_number": j + 1,
+                    "consolidated": consolidated_lines[j],
+                }
+                for i, j in zip(range(i1, i2), range(j1, j2), strict=True)
+            )
+        elif tag == "replace":
+            span = max(i2 - i1, j2 - j1)
+            for offset in range(span):
+                original_index = i1 + offset
+                consolidated_index = j1 + offset
+                diff_rows.append(
+                    {
+                        "kind": "changed",
+                        "original_number": original_index + 1 if original_index < i2 else None,
+                        "original": original_lines[original_index] if original_index < i2 else "",
+                        "consolidated_number": consolidated_index + 1
+                        if consolidated_index < j2
+                        else None,
+                        "consolidated": consolidated_lines[consolidated_index]
+                        if consolidated_index < j2
+                        else "",
+                    }
+                )
+        else:
+            if tag == "delete":
+                diff_rows.extend(
+                    {
+                        "kind": "removed",
+                        "original_number": i + 1,
+                        "original": original_lines[i],
+                        "consolidated_number": None,
+                        "consolidated": "",
+                    }
+                    for i in range(i1, i2)
+                )
+            elif tag == "insert":
+                diff_rows.extend(
+                    {
+                        "kind": "added",
+                        "original_number": None,
+                        "original": "",
+                        "consolidated_number": j + 1,
+                        "consolidated": consolidated_lines[j],
+                    }
+                    for j in range(j1, j2)
+                )
 
     # Get alteration events
     eventos = (
@@ -211,9 +311,11 @@ def norma_compare_view(request: HttpRequest, pk: int) -> HttpResponse:
         "norma": norma,
         "original_lines": original_lines,
         "consolidated_lines": consolidated_lines,
+        "consolidated_text": consolidated_text,
         "eventos": eventos,
         "original_length": len(original_lines),
         "consolidated_length": len(consolidated_lines),
+        "diff_rows": diff_rows,
     }
 
     return render(request, "legislation/norma_compare.html", context)
@@ -314,6 +416,21 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                 session_id = f"temp_{request.session.session_key}"
                 request.session["temp_chat_session_id"] = session_id
 
+        prefill_question = ""
+        norma_id_raw = request.GET.get("norma_id", "").strip()
+        if norma_id_raw.isdigit():
+            norma_context = (
+                Norma.objects.filter(pk=int(norma_id_raw), status="consolidated")
+                .only("tipo", "numero", "ano")
+                .first()
+            )
+            if norma_context:
+                tipo_getter = getattr(norma_context, "get_tipo_display_name", None)
+                tipo_label = tipo_getter() if callable(tipo_getter) else norma_context.tipo
+                prefill_question = (
+                    f"Sobre {tipo_label} nº {norma_context.numero}/{norma_context.ano}: "
+                )
+
         # Render chat interface
         context = {
             "page_title": "Assistente Jurídico - Jurix",
@@ -323,6 +440,7 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
             "active_session": active_session,
             "current_session_id": current_session_id,
             "current_session_slug": session_slug,
+            "prefill_question": prefill_question,
         }
         return render(request, "legislation/chatbot.html", context)
 
@@ -410,24 +528,30 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                         f"Created new chat session {session_id} (slug: {chat_session.slug}) for user {request.user.username}"
                     )
                 else:
-                    session_id = chat_session.id
+                    # Anonymous sessions are represented by the signed Django
+                    # session key. Never dereference the authenticated model
+                    # session here: doing so used to raise AttributeError and
+                    # silently skip conversation persistence.
+                    session_id = request.session.get("temp_chat_session_id")
+                    if not session_id:
+                        session_id = f"temp_{request.session.session_key or uuid.uuid4().hex}"
+                        request.session["temp_chat_session_id"] = session_id
                     # Update session title if it's still the default
                     # Use direct query instead of related manager to avoid errors
                     try:
-                        has_messages = ChatMessage.objects.filter(session_id=session_id).exists()
-                        if chat_session.title == "Nova Conversa" and not has_messages:
-                            chat_session.title = question[:50] + (
-                                "..." if len(question) > 50 else ""
-                            )
-                            chat_session.save()
+                        request.session["temp_chat_title"] = question[:50] + (
+                            "..." if len(question) > 50 else ""
+                        )
+                        request.session.modified = True
                     except Exception as e:
                         logger.debug(f"Could not check messages for session {session_id}: {e}")
                     # Save user message if not regenerating
                     if not regenerate:
                         try:
-                            ChatMessage.objects.create(
-                                session=chat_session, role="user", content=question
+                            request.session.setdefault("temp_chat_messages", []).append(
+                                {"role": "user", "content": question}
                             )
+                            request.session.modified = True
                         except Exception as e:
                             logger.error(f"Error creating user message: {e}", exc_info=True)
                             # Continue even if message creation fails
@@ -618,6 +742,7 @@ Responda APENAS com o título, sem aspas, sem explicações, sem pontuação fin
                     # Continue even if persistence fails
 
             session_slug = chat_session.slug if chat_session else None
+            public_session_id = session_id if request.user.is_authenticated else None
 
             # Build response with error handling
             try:
@@ -627,8 +752,11 @@ Responda APENAS com o título, sem aspas, sem explicações, sem pontuação fin
                         "answer": response.get("answer", ""),
                         "sources": sources,
                         "confidence": response.get("confidence", 0.0),
-                        "session_id": session_id,
-                        "session_slug": session_slug,  # Include slug for URL update
+                        # Anonymous state is stored in the signed browser session
+                        # but remains intentionally absent from the authenticated
+                        # ChatSession API contract.
+                        "session_id": public_session_id,
+                        "session_slug": session_slug if request.user.is_authenticated else None,
                         "metadata": {
                             "model": response.get("model", model),
                             "context_length": response.get("context_length", 0),

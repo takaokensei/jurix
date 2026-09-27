@@ -547,7 +547,15 @@ class ConsolidationEngine:
 
         # Header
         lines.append("=" * 80)
-        lines.append(f"{self.norma.tipo} Nº {self.norma.numero}/{self.norma.ano}")
+        # ``tipo`` is stored as a SAPL code in some corpora ("1", "2", ...)
+        # and as a label in others.  Never leak the raw code into the legal
+        # document shown to users.
+        tipo_label = (
+            self.norma.get_tipo_display_name()
+            if hasattr(self.norma, "get_tipo_display_name")
+            else str(getattr(self.norma, "tipo", "Lei") or "Lei")
+        )
+        lines.append(f"{tipo_label} nº {self.norma.numero}/{self.norma.ano}")
         lines.append("TEXTO CONSOLIDADO")
         lines.append("=" * 80)
         lines.append("")

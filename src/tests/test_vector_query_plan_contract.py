@@ -33,3 +33,15 @@ class VectorQueryPlanContractTests(SimpleTestCase):
             ("Index Scan using dispositivo_embedding_hnsw on legislation_dispositivo",),
         ]
         call_command("verify_vector_query_plan")
+
+    @patch("src.apps.operations.management.commands.verify_vector_query_plan.connection")
+    def test_rejects_non_vector_index_scan(self, connection):
+        connection.vendor = "postgresql"
+        cursor = connection.cursor.return_value.__enter__.return_value
+        cursor.fetchone.return_value = (5000,)
+        cursor.fetchall.return_value = [
+            ("Limit",),
+            ("Index Scan using disp_embed_model_idx on legislation_dispositivo",),
+        ]
+        with self.assertRaises(CommandError):
+            call_command("verify_vector_query_plan")

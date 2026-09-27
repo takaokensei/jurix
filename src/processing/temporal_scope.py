@@ -177,10 +177,17 @@ def build_norma_timeline(norma, *, as_of: date | None = None) -> list[dict[str, 
     events = (
         EventoAlteracao.objects.filter(Q(norma_alvo=norma) | Q(dispositivo_alvo__norma=norma))
         .select_related("dispositivo_fonte__norma", "dispositivo_alvo", "norma_alvo")
+        .distinct()
         .order_by("dispositivo_fonte__norma__data_publicacao", "created_at", "id")
     )
     for event in events:
         source = event.dispositivo_fonte.norma
+        # A self-reference is not a normative change.  SAPL extraction often
+        # creates these from citations inside the body of the same norm; if we
+        # render them as timeline events the UI falsely suggests an alteration
+        # and overwhelms the genuinely relevant history.
+        if source.id == norma.id:
+            continue
         source_date = source.data_publicacao
         if as_of is not None and source_date and source_date > as_of:
             continue

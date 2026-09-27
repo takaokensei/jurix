@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import re
+from typing import Any
+
 from src.processing.adaptive_retrieval import (
     AdaptiveRetriever,
     RetrievalOptions,
@@ -12,6 +15,12 @@ from src.processing.temporal_scope import (
     matches_temporal_scope,
     revoked_dispositivo_ids,
     revoked_norma_ids,
+)
+
+_CITED_NORMA_RE = re.compile(
+    r"\b(lei(?:\s+complementar|\s+ordin[áa]ria|\s+org[âa]nica)?|lc|decreto(?:-lei|\s+legislativo)?|"
+    r"resolu[çc][ãa]o|emenda(?:\s+constitucional)?|portaria)\s*(?:n[º°o.]*\s*)?(\d[\d.]*)(?:\s*(?:/|de)\s*(\d{4}))?\b",
+    re.IGNORECASE,
 )
 
 
@@ -48,11 +57,193 @@ class AdaptiveRAGService(RAGService):
             return context, sources
         return super().get_relevant_context(query_text, k=k, max_tokens=max_tokens)
 
+    @staticmethod
+    def _find_cited_normas(query_text: str) -> list[Any]:
+        if not query_text:
+            return []
+        from src.apps.legislation.models import Norma
+
+        cited_normas = []
+        seen_ids = set()
+        for match in _CITED_NORMA_RE.finditer(query_text):
+            tipo_raw = (match.group(1) or "").lower()
+            numero = (match.group(2) or "").replace(".", "").strip()
+            ano = match.group(3)
+            if not numero:
+                continue
+            qs = Norma.objects.filter(numero=numero)
+            if ano:
+                qs = qs.filter(ano=int(ano))
+            if "complementar" in tipo_raw or tipo_raw == "lc":
+                qs = qs.filter(tipo__in=["2", "lei_complementar", "LEI COMPLEMENTAR"])
+            elif "ordin" in tipo_raw:
+                qs = qs.filter(tipo__in=["1", "lei_ordinaria", "LEI ORDINÁRIA"])
+            for n in qs[:3]:
+                if n.id not in seen_ids:
+                    seen_ids.add(n.id)
+                    cited_normas.append(n)
+        # A pesquisa normativa também accepts the compact, common form
+        # ``8001/2025`` without requiring the user to repeat the type. This is
+        # deliberately limited to a number/year pair to avoid treating dates
+        # or arbitrary numerals as legal citations.
+        for match in re.finditer(r"\b(\d{1,6})\s*/\s*(\d{4})\b", query_text):
+            numero, ano = match.groups()
+            for n in Norma.objects.filter(numero=numero, ano=int(ano))[:3]:
+                if n.id not in seen_ids:
+                    seen_ids.add(n.id)
+                    cited_normas.append(n)
+        return cited_normas
+
+    def _retrieve_cited_norma_devices(
+        self, cited_normas: list[Any], query_text: str, options: RetrievalOptions
+    ) -> list[dict[str, Any]]:
+        from src.apps.legislation.models import Dispositivo
+
+        results: list[dict[str, Any]] = []
+        seen_disp_ids = set()
+        for norma in cited_normas:
+            all_disps = list(
+                Dispositivo.objects.filter(norma_id=norma.id)
+                .select_related("norma", "dispositivo_pai")
+                .order_by("ordem")
+            )
+            if not all_disps:
+                continue
+
+            if len(all_disps) <= 12:
+                chosen_disps = all_disps
+            else:
+                norma_semantic = super().semantic_search(
+                    query_text=query_text, k=10, norma_id=norma.id, min_similarity=0.0
+                )
+                chosen_disps = [r["dispositivo"] for r in norma_semantic if r.get("dispositivo")]
+                if not chosen_disps:
+                    chosen_disps = all_disps[:8]
+
+            for i, d in enumerate(chosen_disps):
+                if d.id in seen_disp_ids:
+                    continue
+                seen_disp_ids.add(d.id)
+                boosted_score = max(0.90, 0.98 - (i * 0.01))
+                results.append(
+                    {
+                        "dispositivo": d,
+                        "similarity_score": boosted_score,
+                        "semantic_score": boosted_score,
+                        "lexical_score": boosted_score,
+                        "retrieval_score": boosted_score,
+                        "distance": round(1.0 - boosted_score, 4),
+                        "context": {
+                            "norma": {
+                                "id": d.norma.id,
+                                "tipo": d.norma.tipo,
+                                "numero": d.norma.numero,
+                                "ano": d.norma.ano,
+                                "ementa": d.norma.ementa[:200] if d.norma.ementa else None,
+                            },
+                            "hierarchy": d.get_caminho_completo(),
+                            "parent": str(d.dispositivo_pai) if d.dispositivo_pai else None,
+                        },
+                        "embedding_model": getattr(d, "embedding_model", None),
+                    }
+                )
+        return results
+
+    @staticmethod
+    def _merge_cited_and_general(
+        cited_rows: list[dict[str, Any]], general_rows: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        if not cited_rows:
+            return general_rows
+        seen_ids = set()
+        merged = []
+        for r in cited_rows:
+            disp = r.get("dispositivo")
+            disp_id = getattr(disp, "id", None)
+            if disp_id and disp_id not in seen_ids:
+                seen_ids.add(disp_id)
+                merged.append(r)
+        for r in general_rows:
+            disp = r.get("dispositivo")
+            disp_id = getattr(disp, "id", None)
+            if disp_id and disp_id not in seen_ids:
+                seen_ids.add(disp_id)
+                merged.append(r)
+        return merged
+
+    @staticmethod
+    def _select_with_citation_priority(
+        cited_rows: list[dict[str, Any]],
+        general_rows: list[dict[str, Any]],
+        *,
+        max_sources: int,
+        min_similarity: float,
+        cited_norma_ids: set[int],
+    ) -> list[dict[str, Any]]:
+        """Keep an explicitly cited norm ahead of semantic neighbours.
+
+        A query such as ``Lei 8001/2025`` is an instruction about scope, not
+        merely another lexical feature.  Applying the generic score selector
+        after merging could let unrelated rows with a saturated semantic
+        score of ``1.0`` outrank the cited norm.  Select cited rows first and
+        only use the general corpus to fill remaining capacity.
+        """
+        if not cited_rows:
+            return AdaptiveRetriever._select(
+                general_rows,
+                max_sources=max_sources,
+                min_similarity=min_similarity,
+                cited_norma_ids=cited_norma_ids,
+            )
+
+        cited_selected = AdaptiveRetriever._select(
+            cited_rows,
+            max_sources=max_sources,
+            min_similarity=min_similarity,
+            cited_norma_ids=cited_norma_ids,
+        )
+        # An explicit norma citation is a scope constraint, not merely a
+        # relevance hint. Filling the remaining capacity with generic corpus
+        # neighbours makes boilerplate provisions (especially "entra em
+        # vigor") appear as if they supported the cited norm. Keep the
+        # response evidence bounded to the cited norma; callers can request a
+        # broader corpus search without naming a norma when contextual sources
+        # are actually desired.
+        if cited_selected:
+            return cited_selected[:max_sources]
+
+        remaining = max_sources - len(cited_selected)
+        general_selected = AdaptiveRetriever._select(
+            general_rows,
+            max_sources=remaining,
+            min_similarity=min_similarity,
+            cited_norma_ids=cited_norma_ids,
+        )
+        seen = {getattr(row.get("dispositivo"), "id", None) for row in cited_selected}
+        return (
+            cited_selected
+            + [
+                row
+                for row in general_selected
+                if getattr(row.get("dispositivo"), "id", None) not in seen
+            ][:remaining]
+        )
+
     def semantic_search(
         self, query_text: str, k: int = 10, norma_id=None, min_similarity: float = 0.0
     ):
         options = self._options()
         min_similarity = max(min_similarity, options.min_similarity)
+
+        cited_normas = self._find_cited_normas(query_text) if norma_id is None else []
+        cited_ids = {n.id for n in cited_normas}
+        cited_rows = (
+            self._retrieve_cited_norma_devices(cited_normas, query_text, options)
+            if cited_normas
+            else []
+        )
+        cited_rows = self._filter_status(cited_rows, options)
+
         if norma_id is not None or options.mode == "semantic":
             rows = super().semantic_search(
                 query_text=query_text,
@@ -64,15 +255,23 @@ class AdaptiveRAGService(RAGService):
             for row in rows:
                 row["retrieval_score"] = float(row.get("similarity_score") or 0.0)
                 row["semantic_score"] = row["retrieval_score"]
-            return AdaptiveRetriever._select(
-                rows, max_sources=min(k, options.max_sources), min_similarity=min_similarity
+            return self._select_with_citation_priority(
+                cited_rows,
+                rows,
+                max_sources=min(k, options.max_sources),
+                min_similarity=min_similarity,
+                cited_norma_ids=cited_ids,
             )
 
         candidate_k = max(k, min(50, options.max_sources * 3))
         if options.mode == "lexical":
             rows = AdaptiveRetriever(self)._lexical(query_text, candidate_k, options)
-            return AdaptiveRetriever._select(
-                rows, max_sources=min(k, options.max_sources), min_similarity=min_similarity
+            return self._select_with_citation_priority(
+                cited_rows,
+                rows,
+                max_sources=min(k, options.max_sources),
+                min_similarity=min_similarity,
+                cited_norma_ids=cited_ids,
             )
 
         semantic = super().semantic_search(
@@ -87,8 +286,12 @@ class AdaptiveRAGService(RAGService):
             row["retrieval_score"] = row["semantic_score"]
         lexical = AdaptiveRetriever(self)._lexical(query_text, candidate_k, options)
         rows = AdaptiveRetriever._merge(semantic, lexical, "hybrid")
-        return AdaptiveRetriever._select(
-            rows, max_sources=min(k, options.max_sources), min_similarity=min_similarity
+        return self._select_with_citation_priority(
+            cited_rows,
+            rows,
+            max_sources=min(k, options.max_sources),
+            min_similarity=min_similarity,
+            cited_norma_ids=cited_ids,
         )
 
     @staticmethod
@@ -125,6 +328,7 @@ class AdaptiveRAGService(RAGService):
         question: str,
         k: int = 5,
         model=None,
+        temperature: float = 0.3,
         options: RetrievalOptions | None = None,
         force_refresh: bool = False,
     ):
@@ -135,6 +339,7 @@ class AdaptiveRAGService(RAGService):
                 question=question,
                 k=k,
                 model=model,
+                temperature=temperature,
                 force_refresh=force_refresh,
                 retrieval_fingerprint=self._options().fingerprint(),
             )
@@ -142,7 +347,12 @@ class AdaptiveRAGService(RAGService):
             self._jurix_retrieval_options = previous
 
     def stream_answer_question(
-        self, question: str, k: int = 5, model=None, options: RetrievalOptions | None = None
+        self,
+        question: str,
+        k: int = 5,
+        model=None,
+        temperature: float = 0.3,
+        options: RetrievalOptions | None = None,
     ):
         previous = getattr(self, "_jurix_retrieval_options", None)
         self._jurix_retrieval_options = options or RetrievalOptions(max_sources=k)
@@ -151,6 +361,7 @@ class AdaptiveRAGService(RAGService):
                 question=question,
                 k=k,
                 model=model,
+                temperature=temperature,
                 retrieval_fingerprint=self._options().fingerprint(),
             )
         finally:

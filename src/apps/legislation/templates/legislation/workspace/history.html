@@ -1,4 +1,5 @@
 {% extends "legislation/workspace/base.html" %}
+{% load static %}
 
 {% block title %}Histórico — Jurix{% endblock %}
 {% block section_name %}Histórico{% endblock %}
@@ -9,7 +10,13 @@
 </section>
 
 {% if not request.user.is_authenticated %}
-<section class="workspace-empty-state"><strong>Entre para acessar seu histórico.</strong><p>Conversas associadas a uma conta são listadas aqui automaticamente.</p></section>
+<section class="workspace-empty-state workspace-empty-state-large" id="anonymous-history-root" data-anonymous-history>
+    <div class="workspace-empty-icon" aria-hidden="true">◷</div>
+    <span class="workspace-eyebrow">Sessão pública</span>
+    <h2>Seu histórico fica disponível nesta sessão</h2>
+    <p>As conversas feitas como visitante permanecem disponíveis enquanto esta sessão do navegador estiver ativa. Para começar uma pesquisa, abra o Assistente.</p>
+    <a href="{% url 'workspace:assistant' %}" class="workspace-button workspace-button-primary">Abrir Assistente</a>
+</section>
 {% elif sessions %}
 <section class="workspace-history-list">
     {% for session in sessions %}
@@ -19,7 +26,20 @@
     </a>
     {% endfor %}
 </section>
+{% if history_page and history_page.has_other_pages %}
+<nav class="workspace-pagination" aria-label="Paginação do histórico">
+    {% if history_page.has_previous %}
+    <a class="workspace-button workspace-button-secondary" href="?page={{ history_page.previous_page_number }}">Anterior</a>
+    {% endif %}
+    <span aria-current="page">Página {{ history_page.number }} de {{ history_page.paginator.num_pages }}</span>
+    {% if history_page.has_next %}
+    <a class="workspace-button workspace-button-secondary" href="?page={{ history_page.next_page_number }}">Próxima</a>
+    {% endif %}
+</nav>
+{% endif %}
 {% else %}
 <section class="workspace-empty-state workspace-empty-state-large"><div class="workspace-empty-icon" aria-hidden="true">◷</div><span class="workspace-eyebrow">Histórico vazio</span><h2>Suas pesquisas aparecerão aqui</h2><p>Comece uma conversa no Assistente ou faça uma pesquisa jurídica para criar o primeiro registro.</p><a href="{% url 'workspace:assistant' %}" class="workspace-button workspace-button-primary">Abrir Assistente</a></section>
 {% endif %}
 {% endblock %}
+
+{% block extra_js %}<script src="{% static 'js/jurix-anonymous-history-page.js' %}"></script>{% endblock %}

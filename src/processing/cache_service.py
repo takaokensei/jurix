@@ -255,7 +255,20 @@ class CacheService:
             cached = cache.get(key)
             if cached:
                 logger.info(f"Cache HIT for answer: {question[:50]}...")
-                return json.loads(cached)
+                payload = json.loads(cached)
+                if not isinstance(payload, dict):
+                    logger.warning("Discarding malformed cached answer: expected object")
+                    return None
+                if not isinstance(payload.get("answer"), str):
+                    logger.warning("Discarding malformed cached answer: missing text")
+                    return None
+                if not isinstance(payload.get("sources", []), list):
+                    logger.warning("Discarding malformed cached answer: sources is not a list")
+                    return None
+                if "grounding" in payload and not isinstance(payload["grounding"], dict):
+                    logger.warning("Discarding malformed cached answer: grounding is not an object")
+                    return None
+                return payload
             else:
                 logger.debug(f"Cache MISS for answer: {question[:50]}...")
                 return None

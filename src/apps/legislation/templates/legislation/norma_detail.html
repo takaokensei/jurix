@@ -1,16 +1,17 @@
 {% extends 'legislation/base.html' %}
+{% load static %}
 
-{% block title %}{{ norma.tipo }} {{ norma.numero }}/{{ norma.ano }} - Jurix{% endblock %}
+{% block title %}{{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }} - Jurix{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2>{{ norma.tipo }} Nº {{ norma.numero }}/{{ norma.ano }}</h2>
+<div class="card legal-detail-card">
+    <div class="legal-detail-heading">
+        <div><span class="legal-detail-eyebrow">Norma consolidada</span><h1>{{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }}</h1></div>
         <span class="badge badge-success">{{ norma.get_status_display }}</span>
     </div>
     
     {% if norma.ementa %}
-    <div style="margin: 16px 0; padding: 16px; background-color: #f8f9fa; border-left: 4px solid #3498db; border-radius: 4px;">
+    <div class="legal-detail-ementa">
         <strong>EMENTA:</strong> {{ norma.ementa }}
     </div>
     {% endif %}
@@ -20,27 +21,46 @@
             <h3>{{ stats.total_dispositivos }}</h3>
             <p>Dispositivos</p>
         </div>
-        <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+        <div class="stat-card">
             <h3>{{ stats.total_eventos }}</h3>
             <p>Eventos de Alteração</p>
         </div>
-        <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+        <div class="stat-card">
             <h3>{{ stats.total_chars }}</h3>
             <p>Caracteres</p>
         </div>
     </div>
     
-    <div style="margin: 20px 0;">
+    <div class="legal-detail-actions">
+        <a href="{% url 'workspace:assistant' %}?norma_id={{ norma.pk }}" class="btn btn-primary">Perguntar sobre esta norma</a>
         <a href="{% url 'legislation:norma_compare' norma.pk %}" class="btn">Comparar Versões</a>
         <a href="{% url 'legislation:norma_tree' norma.pk %}" class="btn btn-secondary">Visualizar Árvore</a>
+        {% if norma.sapl_url %}
+        <a href="{{ norma.sapl_url }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Abrir fonte oficial no SAPL</a>
+        {% elif norma.pdf_url %}
+        <a href="{{ norma.pdf_url }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Abrir PDF oficial</a>
+        {% endif %}
         {% if user.is_authenticated and user.is_staff %}
         <a href="/admin/legislation/norma/{{ norma.pk }}/change/" class="btn btn-secondary">Editar no Admin</a>
         {% endif %}
     </div>
+    {% if user.is_authenticated and user_collections %}
+    <form method="post" action="{% url 'workspace:collection_detail' user_collections.0.pk %}" class="legal-detail-collection-form" data-collection-form>
+        {% csrf_token %}
+        <input type="hidden" name="norma_id" value="{{ norma.pk }}">
+        <input type="hidden" name="action" value="add">
+        <label for="collection-target">Adicionar a uma coleção</label>
+        <select id="collection-target" name="collection_id" data-collection-target>
+            {% for collection in user_collections %}<option value="{{ collection.pk }}">{{ collection.name }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-secondary" type="submit">Salvar na coleção</button>
+    </form>
+    {% endif %}
+    {% if user.is_authenticated and user_collections %}<script src="{% static 'js/jurix-collections.js' %}"></script>{% endif %}
 </div>
 
 {% if dispositivos %}
-<div class="card">
+<div class="card legal-detail-card">
     <h2>Estrutura Hierárquica ({{ dispositivos.count }} Dispositivos)</h2>
     <div class="dispositivos-tree">
         {% for disp in dispositivos %}
@@ -53,7 +73,7 @@
                 {{ disp.texto|truncatewords:50 }}
             </div>
             {% if disp.texto|wordcount > 50 %}
-            <button class="dispositivo-expand" onclick="this.previousElementSibling.style.webkitLineClamp='unset'; this.style.display='none';">
+            <button type="button" class="dispositivo-expand" data-expand-device>
                 Ver texto completo
             </button>
             {% endif %}
@@ -64,7 +84,7 @@
 {% endif %}
 
 {% if norma.data_publicacao or norma.data_vigencia %}
-<div class="card">
+<div class="card legal-detail-card">
     <h2>Informações Temporais</h2>
     <table>
         <tr>
@@ -73,13 +93,18 @@
         </tr>
         <tr>
             <th>Data de Vigência:</th>
-            <td>{{ norma.data_vigencia|date:"d/m/Y"|default:"-" }}</td>
+                        <td>{{ norma.data_vigencia|date:"d/m/Y"|default:"Não informada" }}</td>
         </tr>
         <tr>
             <th>Status Vigência:</th>
             <td>
                 {% if norma.is_em_vacatio_legis %}
                 <span class="badge badge-warning">Vacatio Legis</span>
+                {% elif temporal_status == "data_indeterminada" %}
+                <span class="badge badge-neutral">Data não determinada</span>
+                {% elif not norma.data_vigencia %}
+                <span class="badge badge-success">Vigente desde a publicação*</span>
+                <small class="temporal-disclaimer">* O corpus não registra uma data de vigência específica.</small>
                 {% else %}
                 <span class="badge badge-success">Vigente</span>
                 {% endif %}
@@ -90,25 +115,25 @@
 {% endif %}
 
 {% if timeline %}
-<div class="card norma-timeline" aria-labelledby="timeline-title">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+<div class="card norma-timeline legal-detail-card" aria-labelledby="timeline-title">
+    <div class="timeline-header">
         <div>
             <h2 id="timeline-title">Linha do tempo normativa</h2>
-            <p style="margin-top:6px;opacity:.72;">Datas e eventos visíveis no corpus. Inferências são sinalizadas para revisão.</p>
+            <p class="timeline-intro">Datas e eventos visíveis no corpus. Inferências são sinalizadas para revisão.</p>
         </div>
         <span class="badge {% if temporal_status == 'revogada' %}badge-warning{% else %}badge-success{% endif %}">{{ temporal_status }}</span>
     </div>
-    <ol style="display:grid;gap:12px;margin:18px 0 0;padding:0;list-style:none;">
+    <ol class="timeline-list">
         {% for item in timeline %}
-        <li style="display:grid;grid-template-columns:minmax(110px,140px) 1fr;gap:16px;padding:14px;border:1px solid var(--border-color,#e5e7eb);border-radius:12px;">
+        <li class="norma-timeline-item">
             <div>
                 <strong>{{ item.date|default:"Data não disponível" }}</strong>
-                <div style="font-size:.78rem;opacity:.65;margin-top:4px;">{{ item.kind }}</div>
+                <div class="timeline-kind">{{ item.kind }}</div>
             </div>
             <div>
                 <strong>{{ item.title }}</strong>
-                <p style="margin:5px 0 0;line-height:1.55;">{{ item.description }}</p>
-                {% if item.source_norma %}<small style="opacity:.68;">Fonte: {{ item.source_norma }}</small>{% endif %}
+                <p class="timeline-description">{{ item.description }}</p>
+                {% if item.source_norma %}<small class="timeline-source">Fonte: {{ item.source_norma }}</small>{% endif %}
             </div>
         </li>
         {% endfor %}
@@ -117,7 +142,7 @@
 {% endif %}
 
 {% if eventos_recebidos %}
-<div class="card">
+<div class="card legal-detail-card">
     <h2>Eventos de Alteração ({{ eventos_recebidos.count }})</h2>
     <table>
         <thead>
@@ -135,7 +160,7 @@
                     <span class="badge badge-info">{{ evento.get_acao_display }}</span>
                 </td>
                 <td>
-                    {{ evento.dispositivo_fonte.norma.tipo }} {{ evento.dispositivo_fonte.norma.numero }}/{{ evento.dispositivo_fonte.norma.ano }}
+                    {{ evento.dispositivo_fonte.norma.get_tipo_display_name }} nº {{ evento.dispositivo_fonte.norma.numero }}/{{ evento.dispositivo_fonte.norma.ano }}
                     <br><small>{{ evento.dispositivo_fonte }}</small>
                 </td>
                 <td>
@@ -153,11 +178,11 @@
 </div>
 {% endif %}
 
-<div class="card">
+<div class="card legal-detail-card">
     <h2>Texto Consolidado</h2>
     
-    {% if norma.texto_consolidado %}
-    <pre>{{ norma.texto_consolidado }}</pre>
+    {% if consolidated_text %}
+    <pre>{{ consolidated_text }}</pre>
     {% else %}
     <div class="alert alert-info">
         <p>Texto consolidado não disponível para esta norma.</p>
@@ -165,8 +190,11 @@
     {% endif %}
 </div>
 
-<div style="margin-top: 20px;">
+<div class="legal-detail-back">
     <a href="{% url 'legislation:norma_list' %}" class="btn btn-secondary">« Voltar para a lista</a>
 </div>
 {% endblock %}
 
+{% block extra_js %}
+<script src="{% static 'js/jurix-legal-detail.js' %}" defer></script>
+{% endblock %}

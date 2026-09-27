@@ -33,11 +33,19 @@ _WORD_RE = re.compile(r"[A-Za-zÀ-ÿ]{3,}", re.UNICODE)
 _NUMBER_RE = re.compile(r"\b\d+(?:[.,]\d+)?\b")
 _YEAR_RE = re.compile(r"\b(?:19|20)\d{2}\b")
 _NEGATION_RE = re.compile(
-    r"\b(?:não|nunca|jamais|sem|nenhum|nenhuma|nenhum|proibido|vedado|impede|impedir)\b",
+    r"\b(?:não|nunca|jamais|sem|nenhum|nenhuma|proibid[oa]s?|vedad[oa]s?|ved[aa]m?|pro[íi]b[ea]m?|proibi[çc][ãa]o|veda[çc][ãa]o|impede|impedir|impossibilita|impossibilitar)\b",
     re.IGNORECASE,
 )
-_CERTAINTY_RE = re.compile(
-    r"\b(?:sempre|nunca|obrigatoriamente|necessariamente|é proibido|é permitida|é permitido|é proibida|deve)\b",
+_PROHIBITION_CERTAINTY_RE = re.compile(
+    r"\b(?:é\s+proibid[oa]|fica\s+proibid[oa]|ficam\s+proibid[oa]s|é\s+vedad[oa]|fica\s+vedad[oa]|ficam\s+vedad[oa]s|proibid[oa]s?|vedad[oa]s?|proibi[çc][ãa]o|veda[çc][ãa]o|nunca|jamais)\b",
+    re.IGNORECASE,
+)
+_OBLIGATION_CERTAINTY_RE = re.compile(
+    r"\b(?:deve|devem|obrigatoriamente|sempre|obrigat[óo]ri[oa]s?|necessariamente)\b",
+    re.IGNORECASE,
+)
+_PERMISSION_CERTAINTY_RE = re.compile(
+    r"\b(?:é\s+permitid[oa]|fica\s+permitid[oa]|permitid[oa]s?|facultad[oa]s?|autorizad[oa]s?)\b",
     re.IGNORECASE,
 )
 _CONDITION_RE = re.compile(
@@ -88,7 +96,125 @@ _STOPWORDS = {
     "ou",
     "uns",
     "umas",
+    "portanto",
+    "assim",
+    "disso",
+    "dessa",
+    "dessas",
+    "desse",
+    "desses",
+    "desta",
+    "destas",
+    "deste",
+    "destes",
+    "essas",
+    "esses",
+    "estas",
+    "estes",
+    "aquele",
+    "aquela",
+    "aqueles",
+    "aquelas",
+    "aquilo",
+    "ademais",
+    "outrossim",
+    "sendo",
+    "diante",
+    "conforme",
+    "segundo",
+    "dispositivo",
+    "dispositivos",
 }
+
+
+def _stem(word: str) -> str:
+    w = word.lower()
+    for suffix in (
+        "imentos",
+        "imento",
+        "ações",
+        "ação",
+        "acoes",
+        "acao",
+        "ições",
+        "ição",
+        "icoes",
+        "icao",
+        "idades",
+        "idade",
+        "amente",
+        "mente",
+        "tórios",
+        "tório",
+        "torios",
+        "torio",
+        "ativos",
+        "ativo",
+        "ativas",
+        "ativa",
+        "áveis",
+        "ável",
+        "aveis",
+        "avel",
+        "íveis",
+        "ível",
+        "iveis",
+        "ivel",
+        "âncias",
+        "ância",
+        "encias",
+        "ência",
+        "ismos",
+        "ismo",
+        "istas",
+        "ista",
+        "ados",
+        "adas",
+        "ado",
+        "ada",
+        "idos",
+        "idas",
+        "ido",
+        "ida",
+        "ando",
+        "endo",
+        "indo",
+        "arem",
+        "erem",
+        "irem",
+        "asse",
+        "esse",
+        "isse",
+        "avam",
+        "avas",
+        "ava",
+        "aria",
+        "eria",
+        "iria",
+        "ores",
+        "oras",
+        "ora",
+        "or",
+        "ais",
+        "eis",
+        "al",
+        "el",
+        "ões",
+        "oes",
+        "ãos",
+        "aos",
+        "am",
+        "em",
+        "os",
+        "as",
+        "es",
+        "o",
+        "a",
+        "e",
+    ):
+        if w.endswith(suffix) and len(w) - len(suffix) >= 3:
+            return w[: -len(suffix)]
+    return w
 
 
 @dataclass(frozen=True)
@@ -102,7 +228,7 @@ class EvidenceMatch:
 
     @property
     def accepted(self) -> bool:
-        minimum = float(getattr(settings, "RAG_STRICT_MIN_LEXICAL_OVERLAP", 0.55))
+        minimum = float(getattr(settings, "RAG_STRICT_MIN_LEXICAL_OVERLAP", 0.45))
         return (
             self.lexical_overlap >= minimum
             and self.numeric_ok
@@ -113,9 +239,10 @@ class EvidenceMatch:
 
 
 def _tokens(text: str) -> set[str]:
-    return {
+    raw_tokens = [
         token.lower() for token in _WORD_RE.findall(text or "") if token.lower() not in _STOPWORDS
-    }
+    ]
+    return {_stem(token) for token in raw_tokens}
 
 
 def _numbers(text: str) -> set[str]:
@@ -129,7 +256,14 @@ def _negated(text: str) -> bool:
 
 
 def _certainty(text: str) -> set[str]:
-    return {match.lower() for match in _CERTAINTY_RE.findall(text or "")}
+    c = set()
+    if _PROHIBITION_CERTAINTY_RE.search(text or ""):
+        c.add("prohibition")
+    if _OBLIGATION_CERTAINTY_RE.search(text or ""):
+        c.add("obligation")
+    if _PERMISSION_CERTAINTY_RE.search(text or ""):
+        c.add("permission")
+    return c
 
 
 def _normalise(text: str) -> str:
@@ -138,6 +272,7 @@ def _normalise(text: str) -> str:
 
 def _normalise_citation_text(text: str) -> str:
     norm = _normalise(text)
+    norm = re.sub(r"\bn[º°o.]*\s*", "", norm)
     return re.sub(r"/(?:19|20)(\d{2})\b", r"/\1", norm)
 
 
@@ -147,7 +282,23 @@ def _citation_ok(claim, evidence) -> bool:
     haystack = _normalise_citation_text(
         f"{evidence.norma_ref} {evidence.identifier} {evidence.text}"
     )
-    return all(_normalise_citation_text(ref) in haystack for ref in claim.citation_refs)
+    for ref in claim.citation_refs:
+        norm_ref = _normalise_citation_text(ref)
+        if norm_ref in haystack:
+            continue
+        match = re.search(r"(\d[\d.]*)/(\d{2,4})", ref)
+        if match:
+            num = match.group(1).replace(".", "")
+            year_short = match.group(2)[-2:]
+            year_full = match.group(2)
+            if (
+                f"{num}/{year_short}" in haystack
+                or f"{num}/{year_full}" in haystack
+                or f"{num}" in haystack
+            ):
+                continue
+        return False
+    return True
 
 
 def _match_claim(claim, evidence) -> EvidenceMatch:
@@ -158,7 +309,7 @@ def _match_claim(claim, evidence) -> EvidenceMatch:
     claim_numbers = _numbers(claim.text)
     evidence_numbers = _numbers(evidence_text)
     numeric_ok = claim_numbers.issubset(evidence_numbers)
-    negation_ok = _negated(claim.text) == _negated(evidence_text)
+    negation_ok = not _negated(claim.text) or _negated(evidence_text)
     citation_ok = _citation_ok(claim, evidence)
     claim_certainty = _certainty(claim.text)
     evidence_certainty = _certainty(evidence_text)

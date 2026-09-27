@@ -66,6 +66,7 @@ docker-compose.override.yml
 # Testing & Coverage
 .coverage
 .coverage.*
+coverage.json
 htmlcov/
 .pytest_cache/
 

@@ -64,6 +64,38 @@ test('sources are deferred until the done callback and scroll is wired after ren
   assert.match(rag, /window\.scrollToBottomIfAtBottom\(\)/);
 });
 
+test('interrupted assistant messages are visibly labelled when history is restored', () => {
+  const chat = read('chat.js');
+  assert.match(chat, /metadata\.interrupted === true/);
+  assert.match(chat, /Resposta interrompida/);
+  assert.match(chat, /message-assistant--interrupted/);
+});
+
+test('source drawer keeps keyboard focus inside the modal', () => {
+  const rag = read('jurix-rag.js');
+  assert.match(rag, /event\.key !== 'Tab'/);
+  assert.match(rag, /event\.shiftKey && document\.activeElement === first/);
+  assert.match(rag, /!event\.shiftKey && document\.activeElement === last/);
+});
+
+test('empty source drawer has a focusable dialog fallback', () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+    pretendToBeVisual: true,
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-rag.js'));
+  w.JurixRagUI.openSourcesDrawer([]);
+  const panel = w.document.getElementById('jurix-sources-drawer-panel');
+  assert.equal(panel?.getAttribute('tabindex'), '-1');
+  assert.equal(panel?.getAttribute('aria-hidden'), 'false');
+  assert.match(panel?.textContent || '', /evidências não estão disponíveis/i);
+  assert.ok(panel?.querySelector('.jurix-sources-empty-retry'));
+  w.JurixRagUI.closeSourcesDrawer();
+  dom.window.close();
+});
+
 function guestWindow(saved, events = []) {
   const dom = new JSDOM('<body data-authenticated="false"><div id="messages-container"><div id="messages-wrapper"><div id="welcome-state"></div></div></div><div id="chat-sessions-list"></div><form id="chat-form"><textarea id="question-textarea"></textarea><button id="send-button"></button></form>', {
     url: 'http://localhost/assistente/', runScripts: 'dangerously', pretendToBeVisual: true,
@@ -113,6 +145,40 @@ test('EOF without done reports interruption and preserves guest partial text', a
   } finally { w.close(); }
 });
 
+test('SSE parser accepts fragmented data lines and a terminal event without a blank line', async () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously',
+  });
+  const { window } = dom;
+  window.TextDecoder = TextDecoder;
+  const terminal = `data: {"type":"done","answer":"Resposta final."}`;
+  const chunks = [
+    new TextEncoder().encode('data: {"type":"chunk","chunk":"Res'),
+    new TextEncoder().encode('posta"}\r\n\r\n'),
+    new TextEncoder().encode(terminal),
+  ];
+  let index = 0;
+  window.fetch = async () => ({
+    ok: true,
+    status: 200,
+    body: { getReader: () => ({
+      read: async () => index < chunks.length
+        ? { done: false, value: chunks[index++] }
+        : { done: true },
+    }) },
+  });
+  window.eval(read('jurix-chat-api.js'));
+  const received = [];
+  let done;
+  await window.JurixChatAPI.streamAnswer('Pergunta', null, {
+    onChunk: (chunk) => received.push(chunk),
+    onDone: (event) => { done = event.answer; },
+  });
+  assert.deepEqual(received, ['Resposta']);
+  assert.equal(done, 'Resposta final.');
+  dom.window.close();
+});
+
 test('blocked storage keeps an in-memory conversation and displays warning', () => {
   const w = guestWindow();
   try {
@@ -147,5 +213,25 @@ test('renderer follows large growth only when already at bottom; citations stay 
     w.JurixRagUI.focusEvidence(1, second);
     assert.equal(focused, true);
     assert.notEqual(first.firstElementChild.id, second.firstElementChild.id);
+  } finally { w.close(); }
+});
+
+test('citation click opens the global evidence drawer and focuses the matching source', async () => {
+  const w = guestWindow();
+  try {
+    w.eval(read('jurix-rag.js'));
+    const message = w.document.createElement('div');
+    message.className = 'message message-assistant';
+    message.innerHTML = '<div class="message-body"><a class="jurix-citation" href="#jurix-evidence-1" data-source-index="1">[[1]]</a></div><div id="sources-test"></div>';
+    const sources = [{ norma: 'Lei nº 8.206/2026', text: 'Trecho verificável.' }];
+    message.querySelector('#sources-test')._sourcesData = sources;
+    w.document.body.append(message);
+
+    message.querySelector('.jurix-citation').dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => w.requestAnimationFrame(resolve));
+
+    const panel = w.document.getElementById('jurix-sources-drawer-panel');
+    assert.equal(panel.classList.contains('is-open'), true);
+    assert.equal(panel.querySelector('[data-evidence-rank="1"]')?.classList.contains('is-citation-target'), true);
   } finally { w.close(); }
 });

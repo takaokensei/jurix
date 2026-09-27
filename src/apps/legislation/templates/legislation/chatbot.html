@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="{% static 'css/jurix-rag.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-markdown.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat.css' %}">
+    <link rel="stylesheet" href="{% static 'css/jurix-chat-renderer.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-controller.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-sessions.css' %}">
@@ -136,13 +137,13 @@
                     <span class="figma-indicator-text">Assistente Jurídico Inteligente</span>
                 </div>
                 
-                <button type="button" class="figma-system-search" id="command-palette-trigger" aria-label="Abrir busca rápida (⌘K)">
+                <button type="button" class="figma-system-search" id="command-palette-trigger" aria-label="Abrir busca rápida (Ctrl K)">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2">
                         <circle cx="11" cy="11" r="8"></circle>
                         <path d="m21 21-4.35-4.35"></path>
                     </svg>
                     <span class="figma-search-placeholder">Buscar normas ou consultas...</span>
-                    <span class="figma-shortcut-badge figma-shortcut-badge-push">⌘K</span>
+                    <span class="figma-shortcut-badge figma-shortcut-badge-push">Ctrl K</span>
                 </button>
             </div>
             
@@ -199,6 +200,7 @@
                                                 id="hero-search-input" 
                                                 class="figma-hero-search-input" 
                                                 placeholder="Pergunte sobre normas, artigos ou jurisprudência..."
+                                                aria-label="Pergunte sobre normas, artigos ou jurisprudência"
                                                 autocomplete="off"
                                             />
                                         </div>
@@ -294,7 +296,7 @@
                                 required
                                 class="figma-hero-search-input jurix-composer-textarea"
                                 aria-label="Digite sua pergunta sobre legislação"
-                            ></textarea>
+                            >{% if prefill_question %}{{ prefill_question }}{% endif %}</textarea>
                         </div>
                         <button type="submit" class="figma-action-arrow-btn" id="send-button" aria-label="Enviar pergunta">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -340,6 +342,7 @@
                     class="command-palette-input" 
                     id="command-palette-input"
                     placeholder="Buscar comandos, normas, navegar..."
+                    aria-label="Buscar comandos, normas ou navegar"
                     autocomplete="off"
                 />
                 <div class="command-palette-shortcut">
@@ -350,6 +353,29 @@
         </div>
     </div>
 
+    <!-- Sources Drawer (Slide-over side sheet) -->
+    <div class="jurix-sources-drawer-backdrop" id="jurix-sources-drawer-backdrop" aria-hidden="true"></div>
+    <aside class="jurix-sources-drawer-panel" id="jurix-sources-drawer-panel" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="sources-drawer-title">
+        <div class="jurix-sources-drawer-header">
+            <div class="jurix-sources-drawer-title-group">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+                <h3 id="sources-drawer-title">Fontes Consultadas</h3>
+            </div>
+            <button type="button" class="jurix-sources-drawer-close" id="jurix-sources-drawer-close" aria-label="Fechar painel de fontes">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="jurix-sources-drawer-subtitle" id="sources-drawer-subtitle">
+            Evidências legislativas recuperadas para fundamentar a resposta com exatidão jurídica.
+        </div>
+        <div class="jurix-sources-drawer-body" id="jurix-sources-drawer-body"></div>
+    </aside>
+
     <!-- Local-first Vendorized Libraries -->
     <script src="{% static 'js/vendor/marked.min.js' %}"></script>
     <script src="{% static 'js/vendor/purify.min.js' %}"></script>
@@ -358,7 +384,7 @@
     <script src="{% static 'js/config.js' %}"></script>
     <script src="{% static 'js/theme.js' %}"></script>
     <script src="{% static 'js/jurix-markdown.js' %}"></script>
-    <script src="{% static 'js/jurix-rag.js' %}"></script>
+    <script src="{% static 'js/jurix-rag.js' %}?v=20260926-audit3"></script>
     <script src="{% static 'js/jurix-anonymous-history.js' %}"></script>
     <script src="{% static 'js/jurix-chat-api.js' %}"></script>
     <script src="{% static 'js/jurix-api-reliability-overlay.js' %}"></script>
@@ -366,7 +392,7 @@
     <script src="{% static 'js/jurix-chat-state.js' %}"></script>
     <script src="{% static 'js/jurix-chat-renderer.js' %}"></script>
     <script src="{% static 'js/jurix-dynamic-suggestions.js' %}"></script>
-    <script src="{% static 'js/chat.js' %}"></script>
+    <script src="{% static 'js/chat.js' %}?v=20260926-audit3"></script>
     <script src="{% static 'js/jurix-chat-controller.js' %}"></script>
     <script src="{% static 'js/command_palette.js' %}"></script>
 

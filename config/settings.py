@@ -58,6 +58,7 @@ CSRF_COOKIE_HTTPONLY = False  # required: chat.js reads this cookie (do not chan
 SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", False)
 SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "0"))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", False)
+SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD", False)
 CSRF_TRUSTED_ORIGINS = [
     o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
 ]
@@ -86,6 +87,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "config.middleware.RequestObservabilityMiddleware",
     "config.middleware.ContentSecurityPolicyMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -193,9 +195,21 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [
-    BASE_DIR / "src" / "apps" / "core" / "static",
-]
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": (
+            "whitenoise.storage.CompressedManifestStaticFilesStorage"
+            if not DEBUG
+            else "django.contrib.staticfiles.storage.StaticFilesStorage"
+        ),
+    },
+}
+# The core app owns these assets and Django's app staticfiles finder discovers
+# them. Do not register the same directory again in STATICFILES_DIRS: doing so
+# makes collectstatic silently choose an arbitrary duplicate.
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -275,7 +289,7 @@ LLM_MAX_K = int(os.getenv("LLM_MAX_K", "20"))
 LLM_MAX_QUESTION_LENGTH = int(os.getenv("LLM_MAX_QUESTION_LENGTH", "2000"))
 LLM_RATE_LIMIT_REQUESTS = int(os.getenv("LLM_RATE_LIMIT_REQUESTS", "20"))  # 0 disables
 LLM_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("LLM_RATE_LIMIT_WINDOW_SECONDS", "60"))
-RAG_STRICT_MIN_LEXICAL_OVERLAP = float(os.getenv("RAG_STRICT_MIN_LEXICAL_OVERLAP", "0.55"))
+RAG_STRICT_MIN_LEXICAL_OVERLAP = float(os.getenv("RAG_STRICT_MIN_LEXICAL_OVERLAP", "0.45"))
 RAG_STRICT_REQUIRE_SOURCE_DIVERSITY = env_bool("RAG_STRICT_REQUIRE_SOURCE_DIVERSITY", not DEBUG)
 RAG_MIN_ACCEPTED_SCORE = float(os.getenv("RAG_MIN_ACCEPTED_SCORE", "1.0"))
 RAG_STRICT_GROUNDING = env_bool("RAG_STRICT_GROUNDING", True)
@@ -350,6 +364,11 @@ JURIX_ATTACHMENT_STAGING_DIR = Path(
 # CSP remains development-friendly while becoming strict by default in production.
 CSP_ALLOW_GOOGLE_FONTS = env_bool("CSP_ALLOW_GOOGLE_FONTS", DEBUG)
 CSP_ALLOW_INLINE_STYLES = env_bool("CSP_ALLOW_INLINE_STYLES", DEBUG)
+
+# A web process can be live while the corpus is still being ingested, but a
+# production readiness probe must not advertise legal answers before there is
+# at least one consolidated norma available.
+READINESS_REQUIRE_CORPUS = env_bool("READINESS_REQUIRE_CORPUS", not DEBUG)
 
 # OpenTelemetry tracing is disabled by default so local development remains zero-config.
 OTEL_ENABLED = env_bool("OTEL_ENABLED", False)

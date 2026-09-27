@@ -78,7 +78,7 @@
         </div>
     </div>
 
-    <div class="command-palette-overlay" id="command-palette-overlay" role="dialog" aria-modal="true" aria-label="Busca rápida do Jurix">
+    <div class="command-palette-overlay" id="command-palette-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Busca rápida do Jurix">
         <div class="command-palette" role="document">
             <div class="command-palette-header">
                 <span aria-hidden="true">⌕</span>
@@ -92,5 +92,7 @@
     <script src="{% static 'js/config.js' %}"></script>
     <script src="{% static 'js/workspace.js' %}"></script>
     <script src="{% static 'js/command_palette.js' %}"></script>
+    <script src="{% static 'js/jurix-anonymous-history.js' %}"></script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

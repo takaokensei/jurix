@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -17,6 +18,8 @@ from src.apps.legislation.api_limits import (
     parse_k,
     parse_llm_request,
     parse_model,
+    parse_question,
+    parse_temperature,
     rate_limit_response,
 )
 from src.apps.legislation.attachment_service import (
@@ -71,7 +74,10 @@ def semantic_search_api(request: HttpRequest) -> JsonResponse:
 
     try:
         # Extract query parameters
-        query_text = request.GET.get("query", "").strip()
+        try:
+            query_text = parse_question(request.GET.get("query", ""))
+        except InvalidLLMParams as exc:
+            return JsonResponse({"success": False, "error": str(exc)}, status=400)
 
         if not query_text:
             return JsonResponse(
@@ -85,22 +91,31 @@ def semantic_search_api(request: HttpRequest) -> JsonResponse:
 
         # Parse optional parameters
         try:
-            k = min(int(request.GET.get("k", 10)), 50)  # Max 50 results
+            k = max(1, min(int(request.GET.get("k", 10)), 50))  # 1..50 results
         except ValueError:
-            k = 10
+            return JsonResponse(
+                {"success": False, "error": "k deve ser um número inteiro."}, status=400
+            )
 
         norma_id = request.GET.get("norma_id")
         if norma_id:
             try:
                 norma_id = int(norma_id)
             except ValueError:
-                norma_id = None
+                return JsonResponse(
+                    {"success": False, "error": "norma_id deve ser um número inteiro."},
+                    status=400,
+                )
 
         try:
             min_similarity = float(request.GET.get("min_similarity", 0.0))
+            if not math.isfinite(min_similarity):
+                raise ValueError
             min_similarity = max(0.0, min(1.0, min_similarity))  # Clamp to [0, 1]
         except ValueError:
-            min_similarity = 0.0
+            return JsonResponse(
+                {"success": False, "error": "min_similarity deve ser um número."}, status=400
+            )
 
         logger.info(
             f"API semantic search request: query='{query_text[:50]}...', "
@@ -129,7 +144,7 @@ def semantic_search_api(request: HttpRequest) -> JsonResponse:
                     "distance": result["distance"],
                     "norma": {
                         "id": disp.norma.id,
-                        "tipo": disp.norma.tipo,
+                        "tipo": disp.norma.get_tipo_display_name(),
                         "numero": disp.norma.numero,
                         "ano": disp.norma.ano,
                         "ementa": disp.norma.ementa[:200] if disp.norma.ementa else None,
@@ -150,7 +165,7 @@ def semantic_search_api(request: HttpRequest) -> JsonResponse:
                     "k": k,
                     "norma_id": norma_id,
                     "min_similarity": min_similarity,
-                    "model": "nomic-embed-text",
+                    "model": settings.OLLAMA_EMBEDDING_MODEL,
                 },
             }
         )
@@ -202,6 +217,7 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
 
         try:
             question, k, model = parse_llm_request(data)
+            temperature = parse_temperature(data.get("temperature"))
             retrieval_options = build_retrieval_options(request, data, k)
         except InvalidLLMParams as exc:
             return JsonResponse({"success": False, "error": str(exc)}, status=400)
@@ -224,6 +240,7 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
             question=question,
             k=k,
             model=model,
+            temperature=temperature,
             options=retrieval_options,
         )
 
@@ -262,6 +279,7 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
     Payload: {"question": "...", "k": 5, "model": "llama3", "session_id": 123}
 
     Streams Server-Sent Events (SSE):
+    - data: {"type": "status", "status": "retrieving"}
     - data: {"type": "sources", "sources": [...], "confidence": 0.85}
     - data: {"type": "chunk", "chunk": "..."}
     - data: {"type": "done", "answer": "...", "session_id": ...}
@@ -273,6 +291,7 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
     try:
         data = json.loads(request.body)
         question, k, model = parse_llm_request(data)
+        temperature = parse_temperature(data.get("temperature"))
         retrieval_options = build_retrieval_options(request, data, k)
     except InvalidLLMParams as exc:
         return JsonResponse({"success": False, "error": str(exc)}, status=400)
@@ -314,16 +333,33 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
         assistant_persisted = False
         stream_gen = None
         try:
+            yield f"data: {json.dumps({'type': 'status', 'status': 'queued'})}\n\n"
             if chat_session:
                 yield f"data: {json.dumps({'type': 'session', 'session_id': chat_session.id, 'session_slug': chat_session.slug})}\n\n"
             rag_service = RAGService()
             stream_gen = rag_service.stream_answer_question(
-                question, k=k, model=model, options=retrieval_options
+                question, k=k, model=model, temperature=temperature, options=retrieval_options
             )
 
             for item in stream_gen:
                 ev_type = item.get("event")
-                if ev_type == "sources":
+                if ev_type == "status":
+                    status = item.get("status")
+                    allowed_statuses = {
+                        "queued",
+                        "retrieving",
+                        "reranking",
+                        "grounding",
+                        "generating",
+                        "finalizing",
+                        "completed",
+                        "insufficient_evidence",
+                        "failed",
+                        "cancelled",
+                    }
+                    if status in allowed_statuses:
+                        yield f"data: {json.dumps({'type': 'status', 'status': status})}\n\n"
+                elif ev_type == "sources":
                     raw_sources = item.get("sources", [])
                     sources_list = [serialize_dispositivo_source(s) for s in raw_sources]
                     payload = {
@@ -366,9 +402,11 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                         if chat_session
                         else None,
                     }
+                    yield f"data: {json.dumps({'type': 'status', 'status': 'completed'})}\n\n"
                     yield f"data: {json.dumps(payload)}\n\n"
         except Exception as e:
             logger.error(f"Error in chatbot_stream_api stream: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'status', 'status': 'failed'})}\n\n"
             err_payload = {"type": "error", "error": _format_error_message(e)}
             yield f"data: {json.dumps(err_payload)}\n\n"
         finally:

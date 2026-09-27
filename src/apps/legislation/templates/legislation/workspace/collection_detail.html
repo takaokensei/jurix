@@ -1,0 +1,31 @@
+{% extends "legislation/workspace/base.html" %}
+
+{% block title %}{{ collection.name }} — Jurix{% endblock %}
+{% block section_name %}Coleções{% endblock %}
+
+{% block content %}
+<section class="workspace-page-header">
+    <div><a class="workspace-eyebrow" href="{% url 'workspace:collections' %}">← Todas as coleções</a><h1>{{ collection.name }}</h1><p>{{ collection.description|default:"Dossiê jurídico sem descrição." }}</p></div>
+    <span class="workspace-muted">{{ collection.normas.count }} norma{{ collection.normas.count|pluralize }}</span>
+</section>
+
+{% if collection.normas.all %}
+<section class="workspace-card-grid" aria-label="Normas desta coleção">
+{% for norma in collection.normas.all %}
+    <article class="workspace-card">
+        <span class="workspace-eyebrow">{{ norma.get_tipo_display_name }} · {{ norma.ano }}</span>
+        <h2><a href="{% url 'legislation:norma_detail' norma.pk %}">{{ norma }}</a></h2>
+        <p>{{ norma.ementa|default:"Sem ementa cadastrada."|truncatechars:180 }}</p>
+        <form method="post">
+            {% csrf_token %}<input type="hidden" name="norma_id" value="{{ norma.pk }}"><input type="hidden" name="action" value="remove">
+            <button class="workspace-button workspace-button-ghost" type="submit">Remover</button>
+        </form>
+    </article>
+{% empty %}
+    <p class="workspace-muted">Nenhuma norma nesta coleção.</p>
+{% endfor %}
+</section>
+{% else %}
+<section class="workspace-empty-state workspace-empty-state-large"><span class="workspace-eyebrow">Dossiê vazio</span><h2>Adicione normas a esta coleção</h2><p>Abra uma norma consolidada e use a ação de adicionar à coleção para começar.</p><a class="workspace-button workspace-button-primary" href="{% url 'workspace:legal_search' %}">Pesquisar normas</a></section>
+{% endif %}
+{% endblock %}

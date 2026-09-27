@@ -39,6 +39,16 @@ def test_every_mutating_fetch_in_chat_js_sends_the_csrf_token():
             ), f"mutating fetch() without X-CSRFToken at {filename} lines {missing}"
 
 
+def test_streaming_request_forwards_persisted_search_preferences():
+    api = (JS / "jurix-chat-api.js").read_text(encoding="utf-8")
+    chat = (JS / "chat.js").read_text(encoding="utf-8")
+    assert "searchOptions = {}" in api
+    assert "...searchOptions" in api
+    assert "JurixSearchControls?.getPayload?.()" in chat
+    assert "localStorage.getItem('jurix-preferences')" in chat
+    assert "max_sources: Number(preferences.sources || 5)" in chat
+
+
 def test_no_frontend_file_builds_javascript_urls_or_string_evals():
     for path in JS.glob("*.js"):
         text = path.read_text(encoding="utf-8")
@@ -84,6 +94,38 @@ def test_chatbot_template_has_no_inline_handlers_scripts_or_javascript_urls():
     assert "javascript:" not in html.lower()
 
 
+def test_chatbot_search_inputs_have_explicit_accessible_names():
+    html = (
+        Path(__file__).resolve().parents[1]
+        / "apps"
+        / "legislation"
+        / "templates"
+        / "legislation"
+        / "chatbot.html"
+    ).read_text(encoding="utf-8")
+    assert 'id="hero-search-input"' in html and 'aria-label="Pergunte sobre normas' in html
+    assert 'id="command-palette-input"' in html and 'aria-label="Buscar comandos' in html
+
+
+def test_chatbot_loads_renderer_visibility_contract():
+    html = (
+        Path(__file__).resolve().parents[1]
+        / "apps"
+        / "legislation"
+        / "templates"
+        / "legislation"
+        / "chatbot.html"
+    ).read_text(encoding="utf-8")
+    assert "css/jurix-chat-renderer.css" in html
+
+
+def test_collection_controller_wires_detail_form_without_creation_dialog():
+    source = (JS / "jurix-collections.js").read_text(encoding="utf-8")
+    assert "if (dialog && open)" in source
+    assert "data-collection-target" in source
+    assert "collectionForm.action" in source
+
+
 def test_chatbot_csp_does_not_allow_unsafe_inline_or_unsafe_eval_scripts():
     from config.middleware import _build_content_security_policy
 
@@ -91,3 +133,16 @@ def test_chatbot_csp_does_not_allow_unsafe_inline_or_unsafe_eval_scripts():
         d for d in _build_content_security_policy().split(";") if d.strip().startswith("script-src")
     )
     assert "unsafe-inline" not in script_src and "unsafe-eval" not in script_src
+
+
+def test_mobile_touch_targets_have_accessible_minimums():
+    """Critical compact controls must preserve a 44px touch target on phones."""
+    figma = (
+        Path(__file__).resolve().parents[1] / "apps" / "core" / "static" / "css" / "jurix-figma.css"
+    ).read_text(encoding="utf-8")
+    workspace = (
+        Path(__file__).resolve().parents[1] / "apps" / "core" / "static" / "css" / "workspace.css"
+    ).read_text(encoding="utf-8")
+    assert "#toggle-sidebar" in figma and "#new-chat-button" in figma
+    assert "min-height: 44px" in figma
+    assert ".workspace-mobile-toggle" in workspace and "min-height: 44px" in workspace

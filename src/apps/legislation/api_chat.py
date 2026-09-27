@@ -17,6 +17,7 @@ from src.apps.legislation.api_limits import (
     parse_k,
     parse_llm_request,
     parse_model,
+    parse_temperature,
     rate_limit_response,
 )
 from src.apps.legislation.attachment_service import (
@@ -163,6 +164,7 @@ def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonRe
             raise InvalidLLMParams("Corpo da requisição inválido.")
         k = parse_k(data.get("k"))
         model = parse_model(data.get("model"))
+        temperature = parse_temperature(data.get("temperature"))
     except InvalidLLMParams as exc:
         return JsonResponse({"success": False, "error": str(exc)}, status=400)
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -172,7 +174,7 @@ def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonRe
         # Use direct query instead of related manager
         last_user_msg = (
             ChatMessage.objects.filter(session_id=session.id, role="user")
-            .order_by("-created_at")
+            .order_by("-created_at", "-id")
             .first()
         )
         if not last_user_msg:
@@ -182,58 +184,43 @@ def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonRe
 
         last_assistant = (
             ChatMessage.objects.filter(session_id=session.id, role="assistant")
-            .order_by("-created_at")
+            .order_by("-created_at", "-id")
             .first()
         )
 
         # Generate new answer FIRST before touching database state (force refresh cache)
         rag_service = RAGService()
         response = rag_service.answer_question(
-            question=last_user_msg.content, k=k, model=model, force_refresh=True
+            question=last_user_msg.content,
+            k=k,
+            model=model,
+            temperature=temperature,
+            force_refresh=True,
         )
 
-        # Only after generation succeeds, delete previous assistant response
-        if last_assistant:
-            last_assistant.delete()
+        sources = [
+            serialize_dispositivo_source(source)
+            for source in response.get("sources", [])
+            if isinstance(source, dict)
+        ]
 
-        sources = []
-        for source in response.get("sources", []):
-            disp = source["dispositivo"]
-            similarity = source.get("similarity_score", 0.0)
-            similarity_score = max(
-                0.0, min(1.0, float(similarity) if similarity is not None else 0.0)
+        # Replace the old answer and persist the new one atomically. A database
+        # failure must not leave the session without its last usable answer.
+        with transaction.atomic():
+            if last_assistant:
+                last_assistant.delete()
+            ChatMessage.objects.create(
+                session=session,
+                role="assistant",
+                content=response["answer"],
+                sources_json=sources,
+                metadata_json={
+                    "model": response.get("model", model),
+                    "confidence": response.get("confidence", 0.0),
+                    "context_length": response.get("context_length", 0),
+                    "sources_count": len(sources),
+                },
             )
-            norma = disp.norma
-
-            sources.append(
-                {
-                    "id": disp.id,
-                    "text": disp.texto[:200] + ("..." if len(disp.texto) > 200 else ""),
-                    "full_text": disp.texto,
-                    "similarity_score": similarity_score,
-                    "distance": float(source.get("distance", 1.0)),
-                    "norma_ref": f"{norma.tipo} {norma.numero}/{norma.ano}",
-                    "norma_id": norma.id,
-                    "dispositivo_ref": disp.get_full_identifier(),
-                    "hierarchy": source.get("context", {}).get("hierarchy", ""),
-                    "pdf_url": norma.pdf_url if norma.pdf_url else None,
-                    "sapl_url": norma.sapl_url if norma.sapl_url else None,
-                    "dispositivo_id": disp.id,
-                }
-            )
-
-        ChatMessage.objects.create(
-            session=session,
-            role="assistant",
-            content=response["answer"],
-            sources_json=sources,
-            metadata_json={
-                "model": response.get("model", model),
-                "confidence": response.get("confidence", 0.0),
-                "context_length": response.get("context_length", 0),
-                "sources_count": len(sources),
-            },
-        )
 
         return JsonResponse(
             {

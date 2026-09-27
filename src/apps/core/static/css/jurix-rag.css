@@ -41,6 +41,7 @@
     color: var(--figma-text-muted, #94a3b8);
     opacity: 1;
 }
+.jurix-attachment-error { margin: 8px 0 0; color: #fecaca; font-size: .82rem; }
 
 #question-textarea.jurix-composer-textarea {
     color: var(--figma-text-white, #f8fafc) !important;
@@ -433,4 +434,238 @@
         width: 100%;
         justify-content: center;
     }
+}
+
+/* ==========================================================================
+   SOURCES PILL BUTTON & SLIDE-OVER DRAWER (GROK / PERPLEXITY AESTHETIC)
+   ========================================================================== */
+.sources-section {
+    margin-top: 12px !important;
+    margin-bottom: 6px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.sources-section.source-section-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+button.jurix-sources-pill-btn,
+.jurix-sources-pill-btn {
+    all: unset !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 6px 14px !important;
+    border-radius: 9999px !important;
+    background: #1E293B !important;
+    background-color: rgba(30, 41, 59, 0.9) !important;
+    border: 1px solid rgba(148, 163, 184, 0.3) !important;
+    color: #94A3B8 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-size: 12.5px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    width: fit-content !important;
+    box-sizing: border-box !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    line-height: 1.4 !important;
+    user-select: none !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
+}
+
+button.jurix-sources-pill-btn:hover,
+.jurix-sources-pill-btn:hover {
+    border-color: rgba(96, 165, 250, 0.65) !important;
+    color: #F8FAFC !important;
+    background: #253349 !important;
+    background-color: rgba(37, 51, 73, 0.95) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+}
+
+.jurix-sources-pill-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background-color: rgba(59, 130, 246, 0.2) !important;
+    color: #60A5FA !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    padding: 2px 8px !important;
+    border-radius: 9999px !important;
+    line-height: 1.2 !important;
+    border: 1px solid rgba(96, 165, 250, 0.35) !important;
+}
+
+.jurix-sources-pill-action {
+    font-size: 11.5px !important;
+    color: #60A5FA !important;
+    font-weight: 600 !important;
+    margin-left: 2px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 2px !important;
+}
+
+/* Slide-over Side Drawer */
+.jurix-sources-drawer-backdrop {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background-color: rgba(0, 0, 0, 0.65) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    z-index: 99998 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 0.25s ease !important;
+    display: block !important;
+}
+
+.jurix-sources-drawer-backdrop.is-open {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+.jurix-sources-drawer-panel {
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    width: 480px !important;
+    max-width: 92vw !important;
+    height: 100vh !important;
+    background-color: #0B1120 !important;
+    border-left: 1px solid rgba(148, 163, 184, 0.2) !important;
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.75) !important;
+    z-index: 99999 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    transform: translateX(100%) !important;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-sizing: border-box !important;
+}
+
+.jurix-sources-drawer-panel.is-open {
+    transform: translateX(0) !important;
+}
+
+.jurix-sources-drawer-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 18px 22px !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.15) !important;
+    background-color: rgba(15, 23, 42, 0.95) !important;
+}
+
+.jurix-sources-drawer-title-group {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+
+.jurix-sources-drawer-title-group h3 {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: #F8FAFC !important;
+    margin: 0 !important;
+}
+
+.jurix-sources-drawer-close {
+    all: unset !important;
+    background: transparent !important;
+    border: none !important;
+    color: #94A3B8 !important;
+    cursor: pointer !important;
+    padding: 6px !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.15s ease !important;
+    box-sizing: border-box !important;
+}
+
+.jurix-sources-drawer-close:hover {
+    color: #F8FAFC !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+@media (max-width: 640px) {
+  .jurix-sources-drawer-close { min-width: 44px !important; min-height: 44px !important; }
+}
+
+.jurix-sources-drawer-subtitle {
+    font-size: 12.5px !important;
+    color: #64748B !important;
+    padding: 14px 22px 4px 22px !important;
+    line-height: 1.4 !important;
+}
+
+.jurix-sources-drawer-body {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    padding: 16px 22px 30px 22px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+}
+
+.jurix-sources-empty {
+    border: 1px solid rgba(148, 163, 184, .22);
+    border-radius: 12px;
+    padding: 20px;
+    color: #CBD5E1;
+    background: rgba(15, 23, 42, .72);
+}
+.jurix-sources-empty strong { display: block; color: #F8FAFC; margin-bottom: 8px; }
+.jurix-sources-empty p { margin: 0 0 16px; color: #94A3B8; line-height: 1.55; }
+.jurix-sources-empty-retry {
+    min-height: 40px;
+    border: 1px solid rgba(96, 165, 250, .55);
+    border-radius: 9px;
+    padding: 8px 14px;
+    color: #DBEAFE;
+    background: rgba(37, 99, 235, .18);
+    cursor: pointer;
+}
+.jurix-sources-empty-retry:hover { background: rgba(37, 99, 235, .3); }
+
+/* Source cards are initially hidden only while they are being revealed inline
+   after streaming. Cards rendered in the opened drawer must be visible even
+   when they were restored from history and never passed through that reveal
+   class. */
+.jurix-sources-drawer-panel .source-card {
+    opacity: 1 !important;
+    transform: none !important;
+}
+
+/* The streaming controller toggles this class instead of writing inline
+   opacity/transform styles, keeping the source reveal CSP-safe. */
+.sources-grid .source-card:not(.source-card-visible) {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity .3s ease, transform .3s ease;
+}
+.sources-grid .source-card.source-card-visible {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity .3s ease, transform .3s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+    .sources-section {
+        transition: none;
+        transform: none;
+    }
+
+    .sources-grid .source-card { transition: none; transform: none; }
 }

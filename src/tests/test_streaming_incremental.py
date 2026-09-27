@@ -24,6 +24,8 @@ def test_stream_forwards_ollama_chunks_incrementally(mock_service):
     )
 
     events = list(service.stream_answer_question("pergunta", k=3, model="llama3"))
+    statuses = [item["status"] for item in events if item.get("event") == "status"]
+    assert statuses.index("generating") < statuses.index("grounding") < statuses.index("finalizing")
     chunks = [item["chunk"] for item in events if item.get("event") == "chunk"]
     assert chunks == ["pri", "mei", "ro"]
     assert events[-1]["event"] == "done"

@@ -129,7 +129,8 @@
     function openCommandPalette() {
         lastFocusedElement = document.activeElement;
         overlay.classList.add('active');
-        document.body.style.overflow = 'hidden';
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('jurix-command-palette-open');
         input.value = '';
         selectedIndex = -1;
         loadChatSessionsForSearch().then(() => {
@@ -142,7 +143,8 @@
 
     function closeCommandPalette() {
         overlay.classList.remove('active');
-        document.body.style.overflow = '';
+        overlay.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('jurix-command-palette-open');
         setTimeout(() => {
             input.value = '';
             resultsContainer.innerHTML = '';
@@ -170,6 +172,13 @@
     }
 
     function updateCommandPaletteResults(query) {
+        const escapeHtml = (value) => String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+
         const allCommands = [...commands, ...chatSessionsForSearch];
         const queryLower = query.toLowerCase().trim();
 
@@ -196,20 +205,13 @@
             return groups;
         }, {});
 
-        const escapeHtml = (value) => String(value || '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-
         resultsContainer.innerHTML = groupOrder
             .filter((category) => grouped[category]?.length)
             .map((category) => `
-                <div class="command-palette-category" role="presentation">${category}</div>
+                <div class="command-palette-category" role="presentation">${escapeHtml(category)}</div>
                 ${grouped[category].map((cmd) => `
                     <div class="command-palette-item" data-command-id="${escapeHtml(cmd.id)}" role="option" tabindex="-1">
-                        <span class="command-palette-item-icon">${cmd.icon}</span>
+                        <span class="command-palette-item-icon">${escapeHtml(cmd.icon)}</span>
                         <div class="command-palette-item-content">
                             <div class="command-palette-item-title">${escapeHtml(cmd.title)}</div>
                             <div class="command-palette-item-description">${escapeHtml(cmd.description)}</div>
@@ -290,6 +292,20 @@
             if (items.length > 0) {
                 selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : items.length - 1;
                 selectItem(selectedIndex);
+            }
+        } else if (e.key === 'Tab') {
+            const focusable = [...overlay.querySelectorAll(
+                'button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+            )].filter((element) => element.getClientRects().length > 0);
+            if (!focusable.length) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
             }
         }
     });

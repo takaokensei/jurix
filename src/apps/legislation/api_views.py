@@ -27,6 +27,7 @@ from .api_chat import (
 )
 from .api_health import *  # noqa: F401,F403
 from .api_health import (
+    _check_corpus,
     _check_database,
     _check_migrations,
     _check_ollama,
@@ -68,6 +69,7 @@ def _sync(module) -> None:
         "_check_redis",
         "_check_migrations",
         "_check_ollama",
+        "_check_corpus",
         "list_attachments",
         "upload_attachment",
         "delete_attachment",

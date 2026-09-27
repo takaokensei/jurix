@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -43,6 +44,12 @@ RAGService = AdaptiveRAGService
 logger = logging.getLogger(__name__)
 
 
+def _dependency_failure(name: str, exc: Exception) -> tuple[bool, str]:
+    """Log diagnostic details without exposing infrastructure to probe callers."""
+    logger.error("Health dependency %s failed: %s", name, exc, exc_info=True)
+    return False, f"{name} check failed"
+
+
 def _format_error_message(e: Exception) -> str:
     """Format safe error message for API responses."""
     if settings.DEBUG:
@@ -65,7 +72,7 @@ def _check_database() -> tuple[bool, str]:
             cursor.execute("SELECT 1")
         return True, "ok"
     except Exception as exc:
-        return False, str(exc)
+        return _dependency_failure("database", exc)
 
 
 def _check_pgvector() -> tuple[bool, str]:
@@ -82,11 +89,11 @@ def _check_pgvector() -> tuple[bool, str]:
                 return False, "pgvector extension not installed"
         return True, "ok"
     except Exception as exc:
-        return False, str(exc)
+        return _dependency_failure("pgvector", exc)
 
 
-def _check_redis() -> tuple[bool, str]:
-    """Check direct Redis connectivity and the configured Django cache separately."""
+def _check_redis_impl() -> tuple[bool, str]:
+    """Perform the blocking Redis and cache checks in a worker thread."""
     try:
         import redis
 
@@ -106,7 +113,25 @@ def _check_redis() -> tuple[bool, str]:
         cache.delete(probe_key)
         return True, "ok"
     except Exception as exc:
-        return False, str(exc)
+        return _dependency_failure("redis", exc)
+
+
+def _check_redis() -> tuple[bool, str]:
+    """Check Redis without allowing DNS or connection failures to block readiness."""
+    result: list[tuple[bool, str]] = []
+
+    def probe() -> None:
+        result.append(_check_redis_impl())
+
+    worker = threading.Thread(target=probe, name="jurix-health-redis", daemon=True)
+    worker.start()
+    # A readiness probe performs ping plus cache write/read/delete. 750 ms is
+    # shorter than a normal cold Redis/DNS path in Docker and caused false
+    # negatives even when Redis was healthy; socket timeouts remain bounded.
+    worker.join(timeout=2.5)
+    if worker.is_alive():
+        return False, "redis probe timeout"
+    return result[0] if result else (False, "redis probe returned no result")
 
 
 def _check_migrations() -> tuple[bool, str]:
@@ -122,7 +147,7 @@ def _check_migrations() -> tuple[bool, str]:
             return False, f"Unapplied migrations: {len(plan)}"
         return True, "ok"
     except Exception as exc:
-        return False, str(exc)
+        return _dependency_failure("migrations", exc)
 
 
 def _check_ollama() -> tuple[bool, str]:
@@ -137,7 +162,22 @@ def _check_ollama() -> tuple[bool, str]:
             return False, "ollama unreachable"
         return True, "ok"
     except Exception as exc:
-        return False, str(exc)
+        return _dependency_failure("ollama", exc)
+
+
+def _check_corpus() -> tuple[bool, str]:
+    """Ensure production readiness is not advertised before ingestion."""
+    if not getattr(settings, "READINESS_REQUIRE_CORPUS", not settings.DEBUG):
+        return True, "skipped"
+    try:
+        from src.apps.legislation.models import Norma
+
+        count = Norma.objects.filter(status=Norma.Status.CONSOLIDATED).count()
+        if count == 0:
+            return False, "no consolidated normas available"
+        return True, f"{count} consolidated normas"
+    except Exception as exc:
+        return _dependency_failure("corpus", exc)
 
 
 @require_http_methods(["GET"])
@@ -149,6 +189,7 @@ def health_ready_api(request: HttpRequest) -> JsonResponse:
         "redis": _check_redis,
         "migrations": _check_migrations,
         "ollama": _check_ollama,
+        "corpus": _check_corpus,
     }
     dependencies = {}
     all_ok = True

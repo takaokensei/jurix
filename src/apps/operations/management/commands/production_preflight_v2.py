@@ -88,6 +88,21 @@ class Command(BaseCommand):
         if not options.get("skip_db", False):
             try:
                 call_command("showmigrations", "--plan", stdout=self.stdout)
+                if strict and getattr(settings, "READINESS_REQUIRE_CORPUS", True):
+                    from src.apps.legislation.models import Norma
+
+                    consolidated = Norma.objects.filter(status=Norma.Status.CONSOLIDATED).count()
+                    if consolidated == 0:
+                        self._fail(
+                            "No consolidated normas are available for production readiness. "
+                            "Run the initial manual load before enabling traffic: "
+                            "python manage.py ingest_sapl_bounded --max-normas 300 "
+                            "--batch-size 25; then run bulk_ocr, bulk_segmentation, "
+                            "bulk_extraction and bulk_consolidation. Automatic sync is not "
+                            "enabled by this preflight.",
+                            strict,
+                            failures,
+                        )
             except Exception as exc:
                 self._fail(f"Could not inspect migrations: {exc}", strict, failures)
 

@@ -41,6 +41,9 @@ IGNORE_PARTS = {
     "__pycache__",
     "staticfiles",
     ".pytest_cache",
+    ".history",
+    "htmlcov",
+    "coverage",
 }
 
 

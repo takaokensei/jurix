@@ -41,3 +41,39 @@ def test_selector_limits_same_norma_without_deleting_other_normas():
     )
     assert any(item["dispositivo"].norma_id == 20 for item in result)
     assert sum(item["dispositivo"].norma_id == 10 for item in result) <= 4
+
+
+def test_hybrid_reranking_preserves_strong_exact_lexical_match():
+    exact = _row(1, 0.45)
+    exact["semantic_score"] = 0.45
+    exact["lexical_score"] = 1.0
+    generic = _row(2, 0.92)
+    generic["semantic_score"] = 0.92
+    generic["lexical_score"] = 0.0
+
+    ranked = AdaptiveRetriever._merge([generic], [exact], "hybrid")
+    assert ranked[0]["dispositivo"].id == 1
+
+
+def test_citation_resolver_accepts_number_year_without_norma_type(db):
+    from src.apps.legislation.models import Norma
+    from src.processing.adaptive_rag_service import AdaptiveRAGService
+
+    norma = Norma.objects.create(numero="8001", ano=2025, tipo="1", status="consolidated")
+    assert [item.id for item in AdaptiveRAGService._find_cited_normas("8001/2025")] == [norma.id]
+
+
+def test_explicit_citation_stays_ahead_of_saturated_general_scores():
+    from src.processing.adaptive_rag_service import AdaptiveRAGService
+
+    cited = [_row(1, 0.98, norma_id=8001), _row(2, 0.97, norma_id=8001)]
+    general = [_row(3, 1.0, norma_id=7998), _row(4, 1.0, norma_id=7994)]
+    selected = AdaptiveRAGService._select_with_citation_priority(
+        cited,
+        general,
+        max_sources=4,
+        min_similarity=0.0,
+        cited_norma_ids={8001},
+    )
+    assert [item["dispositivo"].norma_id for item in selected[:2]] == [8001, 8001]
+    assert all(item["dispositivo"].norma_id == 8001 for item in selected)

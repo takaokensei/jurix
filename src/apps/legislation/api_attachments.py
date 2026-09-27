@@ -90,7 +90,7 @@ def dynamic_suggestions_api(request: HttpRequest) -> JsonResponse:
     except (TypeError, ValueError):
         limit = 4
     try:
-        suggestions = build_dynamic_suggestions(limit)
+        suggestions = build_dynamic_suggestions(limit, randomize=True)
         response = JsonResponse(
             {
                 "success": True,
@@ -99,7 +99,9 @@ def dynamic_suggestions_api(request: HttpRequest) -> JsonResponse:
                 "source": "municipal_natal_corpus",
             }
         )
-        response["Cache-Control"] = "private, max-age=120, stale-while-revalidate=300"
+        response["Cache-Control"] = "private, no-cache, no-store, must-revalidate, max-age=0"
+        response["Pragma"] = "no-cache"
+        response["Expires"] = "0"
         response["X-Jurix-Suggestion-Source"] = "corpus"
         return response
     except Exception as exc:

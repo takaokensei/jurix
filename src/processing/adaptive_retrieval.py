@@ -340,14 +340,20 @@ class AdaptiveRetriever:
                 # Semantic retrieval carries more weight because it is the
                 # stronger signal for legal paraphrases; lexical overlap keeps
                 # exact article/number queries from disappearing.
-                score = (0.72 * s) + (0.28 * lex)
+                # A strong exact overlap is a hard floor: otherwise a generic
+                # semantic neighbour can outrank the very provision whose
+                # distinctive legal wording appears in the query.
+                score = max((0.72 * s) + (0.28 * lex), lex)
             row["retrieval_score"] = score
             row["similarity_score"] = score
         return sorted(values, key=lambda row: row["retrieval_score"], reverse=True)
 
     @staticmethod
     def _select(
-        rows: Iterable[dict[str, Any]], max_sources: int, min_similarity: float
+        rows: Iterable[dict[str, Any]],
+        max_sources: int,
+        min_similarity: float,
+        cited_norma_ids: set[int] | None = None,
     ) -> list[dict[str, Any]]:
         ranked = list(rows)
         if not ranked:
@@ -359,6 +365,7 @@ class AdaptiveRetriever:
         threshold = max(float(min_similarity), top * 0.65, top - 0.10)
         selected: list[dict[str, Any]] = []
         norma_counts: dict[int, int] = {}
+        cited_ids = cited_norma_ids or set()
 
         for row in ranked:
             score = float(row.get("retrieval_score", 0.0))
@@ -366,7 +373,8 @@ class AdaptiveRetriever:
                 break
             dispositivo = row["dispositivo"]
             norma_id = int(getattr(dispositivo, "norma_id", 0) or 0)
-            if norma_counts.get(norma_id, 0) >= 4:
+            max_for_norma = 12 if norma_id in cited_ids else 4
+            if norma_counts.get(norma_id, 0) >= max_for_norma:
                 continue
             selected.append(row)
             norma_counts[norma_id] = norma_counts.get(norma_id, 0) + 1

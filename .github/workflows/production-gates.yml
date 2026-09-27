@@ -58,7 +58,9 @@ jobs:
 
       - name: Run production readiness gate
         run: |
-          python scripts/production_gate.py --with-django --with-lint ${{ inputs.require_rag && '--require-rag' || '' }}
+          # A tag de release sempre exige o benchmark RAG revisado. Em execuções
+          # manuais, o operador pode optar por executar apenas os gates técnicos.
+          python scripts/production_gate.py --with-django --with-lint ${{ (github.event_name == 'push' || inputs.require_rag) && '--require-rag' || '' }}
         env:
           DATABASE_URL: postgresql://jurix:testpassword@localhost:5432/jurix_test
           REDIS_URL: redis://localhost:6379/0

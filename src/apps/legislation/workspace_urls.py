@@ -14,5 +14,6 @@ urlpatterns = [
     path("configuracoes/", workspace_views.settings_view, name="settings"),
     path("pesquisa/", workspace_views.legal_search_view, name="legal_search"),
     path("colecoes/", workspace_views.collections_view, name="collections"),
+    path("colecoes/<int:pk>/", workspace_views.collection_detail_view, name="collection_detail"),
     path("historico/", workspace_views.history_view, name="history"),
 ]

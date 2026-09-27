@@ -12,6 +12,12 @@ from src.apps.legislation.attachment_service import (
 pytestmark = pytest.mark.django_db
 
 
+@pytest.fixture(autouse=True)
+def allow_isolated_attachment_root_for_tests(settings):
+    """Keep production path restrictions while isolating service tests."""
+    settings.JURIX_SINGLE_HOST = True
+
+
 class DummySession(dict):
     session_key = "test-session"
     modified = False

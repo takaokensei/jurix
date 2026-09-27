@@ -8,8 +8,8 @@
     'use strict';
 
     const ENDPOINT = '/api/v1/suggestions/';
-    const LIMIT = 4;
-    const CACHE_KEY = 'jurix:ui:suggestions:v3';
+    const LIMIT = 1;
+    const CACHE_KEY = 'jurix:ui:suggestions:v6';
     const CACHE_TTL = 2 * 60 * 1000;
     let request = null;
     let lastItems = [];
@@ -47,9 +47,6 @@
         root.innerHTML = `
             <div class="jurix-suggestions-loading" role="status" aria-live="polite" aria-label="Carregando sugestões do corpus">
                 <span class="jurix-suggestion-skeleton"></span>
-                <span class="jurix-suggestion-skeleton"></span>
-                <span class="jurix-suggestion-skeleton"></span>
-                <span class="jurix-suggestion-skeleton"></span>
             </div>`;
     }
 
@@ -80,18 +77,14 @@
         }
 
         const normalized = items
-            .filter((item) => item && typeof item.question === 'string' && item.question.trim())
-            .slice(0, LIMIT);
+            .filter((item) => item && typeof item.question === 'string' && item.question.trim());
         if (!normalized.length) {
             renderEmpty();
             return;
         }
 
-        setBusy(false);
         root.innerHTML = normalized.map((item) => {
             const question = item.question.trim();
-            const title = (item.title || question).trim();
-            const description = (item.description || item.topic || '').trim();
             const identifier = (item.identifier || '').trim();
             return `
                 <button
@@ -101,14 +94,44 @@
                     data-source="corpus"
                     aria-label="Usar sugestão: ${escapeAttr(question)}"
                 >
-                    <span class="figma-suggestion-top">
-                        <span class="figma-suggestion-title">${escapeHtml(title)}</span>
+                    <div class="figma-suggestion-main">
+                        <span class="figma-suggestion-grok-icon" aria-hidden="true">↳</span>
+                        <div class="figma-suggestion-body">
+                            <span class="figma-suggestion-title" data-full-text="${escapeAttr(question)}">${escapeHtml(question)}</span>
+                            ${identifier ? `<div class="figma-suggestion-meta"><span class="jurix-suggestion-source-badge">${escapeHtml(identifier)}</span></div>` : ''}
+                        </div>
                         <span class="figma-suggestion-arrow" aria-hidden="true">→</span>
-                    </span>
-                    <span class="figma-suggestion-desc">${escapeHtml(description)}</span>
-                    ${identifier ? `<span class="jurix-suggestion-source">${escapeHtml(identifier)}</span>` : ''}
+                    </div>
                 </button>`;
         }).join('');
+
+        // Fast typewriter streaming in visual browser environment
+        if (
+            typeof window.requestAnimationFrame === 'function' &&
+            typeof process === 'undefined' &&
+            !window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+        ) {
+            root.querySelectorAll('.figma-suggestion-title').forEach((titleEl) => {
+                const full = titleEl.getAttribute('data-full-text') || titleEl.textContent;
+                if (!full) return;
+                titleEl.textContent = '';
+                titleEl.classList.add('jurix-streaming-text');
+                let idx = 0;
+                const total = full.length;
+                const step = Math.max(1, Math.ceil(total / 40));
+                function tick() {
+                    idx = Math.min(total, idx + step);
+                    titleEl.textContent = full.slice(0, idx);
+                    if (idx < total) {
+                        requestAnimationFrame(() => setTimeout(tick, 10));
+                    } else {
+                        titleEl.textContent = full;
+                        titleEl.classList.remove('jurix-streaming-text');
+                    }
+                }
+                tick();
+            });
+        }
 
         if (chips) {
             chips.innerHTML = normalized.slice(0, 3).map((item) => {
@@ -138,7 +161,7 @@
     }
 
     async function fetchItems(signal) {
-        const response = await fetch(`${ENDPOINT}?limit=${LIMIT}`, {
+        const response = await fetch(`${ENDPOINT}?limit=${LIMIT}&t=${Date.now()}`, {
             method: 'GET',
             headers: { Accept: 'application/json' },
             credentials: 'same-origin',
@@ -154,7 +177,7 @@
         return payload.suggestions;
     }
 
-    async function refresh({ force = false } = {}) {
+    async function refresh({ force = true } = {}) {
         const cached = force ? null : readCache();
         if (cached) {
             render(cached);

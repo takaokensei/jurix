@@ -17,12 +17,27 @@ RUN apt-get update && apt-get install -y \
     tesseract-ocr-por \
     poppler-utils \
     curl \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd --system --gid 10001 jurix \
+    && useradd --system --uid 10001 --gid 10001 --home-dir /app --no-create-home jurix \
+    && install -d -o jurix -g jurix /app/data
 
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-COPY . .
+COPY --chown=jurix:jurix . .
+
+# Build the immutable static asset bundle into the image. Build-time settings
+# are deliberately non-production and are not used at runtime.
+RUN DJANGO_SKIP_DOTENV=1 DEBUG=False DJANGO_SECRET_KEY=build-only-static-secret-0123456789abcdefghijklmnopqrstuvwxyz-ABCDEFGHIJKLMNOPQRSTUVWXYZ \
+    ALLOWED_HOSTS=localhost python manage.py collectstatic --noinput
+
+# The named data volume is mounted at runtime and is normalized by the
+# runtime entrypoint before dropping privileges.
+COPY --chown=root:root docker/entrypoint.runtime.sh /usr/local/bin/jurix-runtime
+RUN chmod 0755 /usr/local/bin/jurix-runtime
 
 EXPOSE 8000
 

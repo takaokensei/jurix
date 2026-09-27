@@ -107,11 +107,21 @@ class TestCsrf:
 
     def test_stream_with_token_works(self, csrf_client):
         token = _token(csrf_client)
-        with patch("src.apps.legislation.api_views.RAGService", return_value=_fake_rag()):
+        events = [
+            {"event": "status", "status": "retrieving"},
+            {"event": "sources", "sources": [{"id": 1}]},
+            {"event": "chunk", "chunk": "Resposta"},
+            {"event": "done", "answer": "Resposta"},
+        ]
+        with patch(
+            "src.apps.legislation.api_views.RAGService",
+            return_value=_fake_rag(events),
+        ):
             r = _post_json(csrf_client, STREAM, {"question": "oi"}, HTTP_X_CSRFTOKEN=token)
             body = b"".join(r.streaming_content).decode()
         assert r.status_code == 200
         assert '"type": "done"' in body
+        assert body.index('"type": "sources"') < body.index('"type": "chunk"')
 
     def test_public_answer_endpoint_needs_no_csrf_token(self):
         """Anonymous, session-less and side-effect free: nothing for CSRF to protect."""

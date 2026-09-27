@@ -161,6 +161,17 @@ test('with every inline script/handler stripped, the command palette still opens
   }
 });
 
+test('restored conversation reveals the floating composer after the welcome state hides', async () => {
+  const window = await bootUnderCsp();
+  const welcome = window.document.getElementById('welcome-state');
+  const composer = window.document.getElementById('conversation-input-bar');
+  assert.ok(welcome && composer);
+  welcome.classList.add('is-hidden');
+  await new Promise((resolve) => window.setTimeout(resolve, 0));
+  assert.equal(composer.classList.contains('jurix-floating-input-initial'), false);
+  assert.equal(composer.classList.contains('is-hidden'), false);
+});
+
 test('the hero search form still submits the question (no inline onsubmit)', async () => {
   const window = await bootUnderCsp();
   const asked = [];

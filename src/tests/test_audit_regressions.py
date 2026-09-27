@@ -121,6 +121,7 @@ def test_closing_stream_persists_partial_once(user):
         service.return_value.stream_answer_question.return_value = events
         response = chatbot_stream_api(request)
         stream = iter(response.streaming_content)
+        next(stream)  # queued status arrives before generation
         next(stream)  # session identity arrives before generation
         next(stream)  # partial text
         response._iterator.close()  # server closes the generator before request-finished signals

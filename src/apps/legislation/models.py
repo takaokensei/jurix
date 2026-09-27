@@ -144,8 +144,26 @@ class Norma(TimeStampedModel):
             )
         ]
 
+    def get_tipo_display_name(self) -> str:
+        """Retorna a descrição textual do tipo da norma (ex: Lei, Decreto)."""
+        t = str(self.tipo or "").strip()
+        mapping = {
+            "1": "Lei",
+            "2": "Lei Complementar",
+            "3": "Decreto",
+            "4": "Resolução",
+            "5": "Emenda à Lei Orgânica",
+            "6": "Portaria",
+        }
+        if t in mapping:
+            return mapping[t]
+        if t.isdigit():
+            return "Lei"
+        return t or "Lei"
+
     def __str__(self) -> str:
-        return f"{self.tipo} {self.numero}/{self.ano}"
+        tipo_str = self.get_tipo_display_name()
+        return f"{tipo_str} nº {self.numero}/{self.ano}"
 
     def is_em_vacatio_legis(self) -> bool:
         """
@@ -511,6 +529,24 @@ class EventoAlteracao(TimeStampedModel):
             desc += f" '{self.target_text}'"
 
         return desc
+
+
+class Collection(TimeStampedModel):
+    """Authenticated user's curated set of norms for recurring legal work."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="jurix_collections")
+    name = models.CharField(max_length=120)
+    description = models.CharField(max_length=500, blank=True)
+    normas = models.ManyToManyField(Norma, related_name="collections", blank=True)
+
+    class Meta:
+        ordering = ["-updated_at", "name"]
+        constraints = [
+            models.UniqueConstraint(fields=["user", "name"], name="unique_collection_per_user")
+        ]
+
+    def __str__(self) -> str:
+        return self.name
 
 
 class ChatSession(TimeStampedModel):

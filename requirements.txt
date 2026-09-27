@@ -17,6 +17,7 @@ python-docx==1.2.0
 pgvector==0.3.2
 
 django-htmx==1.19.0
+whitenoise==6.8.2
 
 # Testing & Quality
 pytest==8.3.4
