@@ -1,6 +1,12 @@
-{% extends 'legislation/base.html' %}
+{% extends 'legislation/workspace/base.html' %}
 
 {% block title %}Comparação - {{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }}{% endblock %}
+{% block section_name %}Comparar norma{% endblock %}
+
+{% block extra_css %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}">
+{% endblock %}
 
 {% block content %}
 <div class="card">

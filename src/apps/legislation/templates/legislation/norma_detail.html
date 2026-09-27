@@ -1,7 +1,13 @@
-{% extends 'legislation/base.html' %}
+{% extends 'legislation/workspace/base.html' %}
 {% load static %}
 
 {% block title %}{{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }} - Jurix{% endblock %}
+{% block section_name %}Norma {{ norma.numero }}/{{ norma.ano }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}">
+<link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}">
+{% endblock %}
 
 {% block content %}
 <div class="card legal-detail-card">

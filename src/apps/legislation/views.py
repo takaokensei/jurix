@@ -126,6 +126,7 @@ class NormaListView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["active_nav"] = "normas"
         context["search_query"] = _normalize_norma_query(self.request.GET.get("q"))
         context["selected_type"] = _normalize_norma_query(self.request.GET.get("tipo"))
         selected_year = self.request.GET.get("ano", "").strip()
@@ -211,6 +212,7 @@ class NormaDetailView(DetailView):
             ).prefetch_related("normas")
         context.update(
             {
+                "active_nav": "normas",
                 "eventos_recebidos": eventos_recebidos,
                 "dispositivos": dispositivos,
                 "root_dispositivos": root_dispositivos,
@@ -308,6 +310,7 @@ def norma_compare_view(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
     context = {
+        "active_nav": "normas",
         "norma": norma,
         "original_lines": original_lines,
         "consolidated_lines": consolidated_lines,
@@ -353,6 +356,7 @@ def norma_dispositivos_tree_view(request: HttpRequest, pk: int) -> HttpResponse:
     tree = build_tree_nodes(None)
 
     context = {
+        "active_nav": "normas",
         "norma": norma,
         "tree": tree,
         "total_dispositivos": dispositivos.count(),
