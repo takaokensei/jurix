@@ -41,7 +41,7 @@
 .workspace-field input, .workspace-field select, .workspace-search-panel input, .workspace-search-panel select { width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--figma-border); border-radius: 9px; background: rgba(7,13,24,.72); color: var(--figma-text-white); font: inherit; }
 .workspace-field select { appearance: none; padding-right: 40px; background-image: linear-gradient(45deg, transparent 50%, var(--figma-blue-soft) 50%), linear-gradient(135deg, var(--figma-blue-soft) 50%, transparent 50%); background-position: calc(100% - 18px) 18px, calc(100% - 12px) 18px; background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; cursor: pointer; }
 .workspace-field select:focus-visible { outline: 2px solid var(--figma-blue-light); outline-offset: 2px; }
-.workspace-empty-state-auth { gap: 12px; }
+.workspace-empty-state-auth { min-height: 248px; gap: 10px; }
 .workspace-empty-state-auth .workspace-empty-stats { margin-top: 8px; }
 .workspace-auth-note { color: var(--figma-text-muted); font-size: 12px; }
 .workspace-result-snippet mark { color: var(--figma-blue-pale); background: rgba(96,165,250,.28); border-radius: 3px; padding: 0 2px; }
@@ -84,6 +84,9 @@
 .workspace-alert { margin-bottom: 18px; padding: 12px 14px; border: 1px solid rgba(245,158,11,.25); border-radius: 10px; color: var(--figma-amber-soft); background: rgba(245,158,11,.07); font-size: 12px; }
 .workspace-empty-state { padding: 46px 26px; border: 1px dashed rgba(148,163,184,.2); border-radius: 14px; text-align: center; color: var(--figma-text-muted); }
 .workspace-empty-state-large { min-height: 360px; display: grid; place-items: center; align-content: center; gap: 10px; }
+.workspace-empty-state-large.workspace-empty-state-auth { min-height: 248px; padding-top: 28px; padding-bottom: 28px; }
+.workspace-empty-state-auth .workspace-empty-stats { opacity: .78; }
+.workspace-empty-state-auth .workspace-empty-stats span { font-size: 10px; }
 .workspace-empty-state strong { color: var(--figma-text-white); font-size: 15px; }
 .workspace-empty-state h2 { margin: 2px 0; color: var(--figma-text-white); font-size: 22px; }
 .workspace-empty-state p { max-width: 640px; margin: 0 auto 10px; line-height: 1.7; }
