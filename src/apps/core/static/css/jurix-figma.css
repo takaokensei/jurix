@@ -15,9 +15,18 @@
   --figma-blue-light: #60A5FA;
   --figma-green: #10B981;
   --figma-amber: #F59E0B;
+  --figma-red: #F87171;
+  --figma-blue-soft: #BFDBFE;
+  --figma-blue-deep: #1E3A8A;
+  --figma-green-soft: #BBF7D0;
+  --figma-green-deep: #14532D;
+  --figma-amber-soft: #FDE68A;
+  --figma-amber-deep: #78350F;
+  --figma-red-deep: #7F1D1D;
 
   --figma-text-white: #F8FAFC;
   --figma-text-muted: #94A3B8;
+  --figma-text-body: #E2E8F0;
 
   /* Product tokens shared by the assistant, evidence and norma surfaces. */
   --jurix-space-1: 4px;

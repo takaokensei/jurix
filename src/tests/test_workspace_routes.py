@@ -198,8 +198,8 @@ def test_first_party_templates_do_not_depend_on_inline_csp_bypasses():
     ).read_text(encoding="utf-8")
     assert "@media (max-width:640px)" in css
     assert ".tree-node { margin-left:8px" in css
-    assert ".compare-container { display:grid; grid-template-columns:minmax(0,1fr)" in css
-    assert ".alert-info strong { color: var(--figma-text-white, #f8fafc); }" in css
+    assert ".compare-container { display: grid; grid-template-columns: minmax(0, 1fr)" in css
+    assert ".alert-info strong { color: var(--figma-text-white); }" in css
 
 
 def test_norma_api_filters_by_human_type_and_year():
