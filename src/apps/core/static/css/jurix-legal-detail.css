@@ -48,6 +48,8 @@
 .compare-diff-added code:last-of-type, .compare-diff-changed code:last-of-type { background: rgba(22,101,52,.22); }
 .compare-empty { padding: 1rem; color: #94a3b8; }
 .compare-back, .tree-back { margin-top:20px; }
+.dispositivo-node.is-deep-linked, .tree-node.is-deep-linked { outline: 2px solid #60a5fa; outline-offset: 5px; box-shadow: 0 0 0 5px rgba(96,165,250,.12); }
+.dispositivo-node:focus-visible, .tree-node:focus-visible { outline: 2px solid #60a5fa; outline-offset: 4px; }
 .tree-node-children { margin-top:10px; }
 @media (max-width:640px) { .legal-detail-card .stats-grid { grid-template-columns:1fr; } .legal-detail-card { padding:16px; } }
 @media (max-width:640px) { .legal-detail-actions .btn { min-height:44px; } }

@@ -70,7 +70,7 @@
     <h2>Estrutura Hierárquica ({{ dispositivos.count }} Dispositivos)</h2>
     <div class="dispositivos-tree">
         {% for disp in dispositivos %}
-        <article class="dispositivo-node" data-level="{{ disp.get_nivel }}">
+        <article id="dispositivo-{{ disp.pk }}" class="dispositivo-node" data-level="{{ disp.get_nivel }}" tabindex="-1">
             <div class="dispositivo-header">
                 <span class="dispositivo-label">{{ disp.get_full_identifier }}</span>
                 <span class="dispositivo-tipo badge">{{ disp.get_tipo_display }}</span>

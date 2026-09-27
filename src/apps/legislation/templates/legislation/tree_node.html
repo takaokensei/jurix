@@ -1,4 +1,4 @@
-<div class="tree-node level-{{ level }}" role="treeitem" aria-level="{{ level|add:1 }}" aria-label="{{ node.dispositivo }}">
+<div id="dispositivo-{{ node.dispositivo.pk }}" class="tree-node level-{{ level }}" role="treeitem" aria-level="{{ level|add:1 }}" aria-label="{{ node.dispositivo }}" tabindex="-1">
     <div class="node-header">
         {{ node.dispositivo }}
     </div>
