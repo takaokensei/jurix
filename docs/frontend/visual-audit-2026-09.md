@@ -20,6 +20,11 @@ posteriormente, com Chromium controlado por Puppeteer em viewport real de
 As capturas mobile reais de `/assistente/`, `/normas/`, `/pesquisa/` e
 `/configuracoes/` confirmaram `scrollWidth = 390px`, sem overflow horizontal.
 Também foi verificado que a command palette fechada permanece `display: none`.
+Uma segunda rodada cobriu `/colecoes/`, `/historico/`, `/normas/3/`,
+`/normas/3/compare/` e `/normas/3/tree/`; todas também permaneceram em
+`scrollWidth = 390px`. A comparação é deliberadamente alta em dispositivos
+móveis por preservar a leitura linha a linha, mas mantém rolagem vertical e
+seus marcadores de alteração dentro do viewport.
 
 ## Correções realizadas durante a auditoria
 
