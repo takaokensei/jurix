@@ -16,7 +16,7 @@
     border: 1px solid var(--color-border, rgba(148, 163, 184, .25));
     border-radius: 999px;
     background: var(--color-surface-elevated, rgba(15, 23, 42, .94));
-    color: var(--color-text-primary, #f8fafc);
+    color: var(--figma-text-white);
     box-shadow: 0 12px 32px rgba(0, 0, 0, .22);
     font-size: .78rem;
     transform: translate(-50%, -150%);
@@ -31,11 +31,11 @@
 }
 
 .jurix-network-status.is-error {
-    border-color: color-mix(in srgb, var(--color-error, #ef4444) 55%, transparent);
+    border-color: color-mix(in srgb, var(--figma-red) 55%, transparent);
 }
 
 .jurix-network-status.is-offline {
-    border-color: color-mix(in srgb, #f59e0b 55%, transparent);
+    border-color: color-mix(in srgb, var(--figma-amber) 55%, transparent);
 }
 
 .jurix-network-status__dot {
@@ -54,7 +54,7 @@
     min-height: 1.1rem;
     margin-top: .35rem;
     padding-inline: .2rem;
-    color: var(--color-text-tertiary, #94a3b8);
+    color: var(--figma-text-muted);
     font-size: .7rem;
 }
 
@@ -63,11 +63,11 @@
 }
 
 .jurix-composer-counter.is-near-limit {
-    color: var(--color-warning, #f59e0b);
+    color: var(--figma-amber);
 }
 
 .jurix-composer-counter.is-at-limit {
-    color: var(--color-error, #ef4444);
+    color: var(--figma-red);
 }
 
 .jurix-sr-status {

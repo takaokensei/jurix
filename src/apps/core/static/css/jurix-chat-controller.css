@@ -5,7 +5,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: var(--jurix-text-secondary, #94a3b8);
+    color: var(--figma-text-muted);
     font-size: 0.6875rem;
     font-weight: 500;
     letter-spacing: 0.01em;
@@ -22,8 +22,8 @@
     height: 6px;
     flex: 0 0 6px;
     border-radius: 50%;
-    background: var(--jurix-accent, #60a5fa);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--jurix-accent, #60a5fa) 12%, transparent);
+    background: var(--figma-blue-light);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--figma-blue-light) 12%, transparent);
 }
 
 #chat-state-indicator[data-state='streaming']::before,
@@ -33,12 +33,12 @@
 }
 
 #chat-state-indicator[data-state='error'] {
-    color: var(--jurix-error, #fca5a5);
+    color: var(--figma-red-soft);
 }
 
 #chat-state-indicator[data-state='error']::before {
-    background: var(--jurix-error, #f87171);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--jurix-error, #f87171) 12%, transparent);
+    background: var(--figma-red);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--figma-red) 12%, transparent);
 }
 
 #send-button.is-busy {

@@ -34,20 +34,20 @@
 }
 
 .message-status--interrupted {
-    color: var(--jurix-warning, #f59e0b);
+    color: var(--figma-amber);
     font-size: 0.75rem;
     font-weight: 600;
 }
 
 .message-interrupted-note {
     margin: 0.55rem 0 0;
-    color: var(--jurix-text-muted, #94a3b8);
+    color: var(--figma-text-muted);
     font-size: 0.82rem;
     line-height: 1.45;
 }
 
 .message-assistant--interrupted .message-body {
-    border-left: 2px solid var(--jurix-warning, #f59e0b);
+    border-left: 2px solid var(--figma-amber);
     padding-left: 0.8rem;
 }
 
@@ -64,8 +64,8 @@
 }
 
 .jurix-message-error {
-    border-color: var(--color-error, #ef4444);
-    background: color-mix(in srgb, var(--color-error, #ef4444) 8%, var(--color-surface, #fff));
+    border-color: var(--figma-red);
+    background: color-mix(in srgb, var(--figma-red) 8%, var(--figma-bg-surface));
     color: var(--color-text-primary, inherit);
 }
 
@@ -76,8 +76,8 @@
     height: 1.25rem;
     margin-right: .4rem;
     border-radius: 50%;
-    background: var(--color-error, #ef4444);
-    color: #fff;
+    background: var(--figma-red);
+    color: var(--figma-text-white);
     font-weight: 700;
 }
 
@@ -111,11 +111,11 @@
 .jurix-composer-textarea.is-composer-medium { height: 68px; }
 .jurix-composer-textarea.is-composer-large { height: 96px; overflow-y: auto; }
 .regenerate-button.is-busy { opacity: .5; }
-.chat-error-text { color: var(--color-error, #b91c1c); }
-.chat-error-body { border-color: var(--color-error, #b91c1c); background: #fef2f2; }
-.chat-toast-notification { position: fixed; bottom: 24px; right: 24px; padding: 12px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; z-index: 9999; transition: opacity .3s ease, transform .3s ease; box-shadow: 0 4px 12px rgba(0,0,0,.15); color: #fff; opacity: 1; transform: translateY(0); }
-.chat-toast-notification.is-error { background: #ef4444; }
-.chat-toast-notification.is-success { background: #10b981; }
+.chat-error-text { color: var(--figma-red); }
+.chat-error-body { border-color: var(--figma-red); background: color-mix(in srgb, var(--figma-red) 8%, var(--figma-bg-surface)); }
+.chat-toast-notification { position: fixed; bottom: 24px; right: 24px; padding: 12px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; z-index: 9999; transition: opacity .3s ease, transform .3s ease; box-shadow: 0 4px 12px rgba(0,0,0,.15); color: var(--figma-text-white); opacity: 1; transform: translateY(0); }
+.chat-toast-notification.is-error { background: var(--figma-red); }
+.chat-toast-notification.is-success { background: var(--figma-green); }
 .chat-toast-notification.is-dismissed { opacity: 0; transform: translateY(8px); }
 .source-card { opacity: 0; transform: translateY(10px); transition: opacity .3s ease, transform .3s ease; }
 .source-card.source-card-visible { opacity: 1; transform: translateY(0); }
