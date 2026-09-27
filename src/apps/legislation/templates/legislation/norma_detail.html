@@ -70,6 +70,16 @@
 {% if dispositivos %}
 <div class="card legal-detail-card">
     <h2>Estrutura Hierárquica ({{ dispositivos.count }} Dispositivos)</h2>
+    {% if dispositivos.count > 3 %}
+    <nav class="dispositivos-index" aria-label="Índice de dispositivos">
+        <span class="dispositivos-index-label">Ir para</span>
+        <div class="dispositivos-index-links">
+            {% for disp in dispositivos %}
+            <a href="#dispositivo-{{ disp.pk }}" class="dispositivos-index-link">{{ disp.get_full_identifier }}</a>
+            {% endfor %}
+        </div>
+    </nav>
+    {% endif %}
     <div class="dispositivos-tree">
         {% for disp in dispositivos %}
         <article id="dispositivo-{{ disp.pk }}" class="dispositivo-node" data-level="{{ disp.get_nivel }}" tabindex="-1">
