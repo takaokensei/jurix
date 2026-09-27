@@ -542,6 +542,12 @@
                         container.scrollTop = oldTop + container.scrollHeight - oldHeight;
                     };
                     restoreScrollPosition();
+                    // The message renderer may finish a detached markdown
+                    // update in the same task. Re-apply after microtasks have
+                    // drained, before consumers can observe the new count.
+                    queueMicrotask(() => {
+                        if (container.isConnected) restoreScrollPosition();
+                    });
                     // Keep native anchoring disabled through the next frame;
                     // restoring it synchronously lets Chromium apply a second
                     // correction after the new pager has been inserted.
@@ -554,8 +560,12 @@
                         requestAnimationFrame(() => {
                             if (!container.isConnected) return;
                             restoreScrollPosition();
-                            container.style.overflowAnchor = previousOverflowAnchor;
-                            container.style.scrollBehavior = previousScrollBehavior;
+                            requestAnimationFrame(() => {
+                                if (!container.isConnected) return;
+                                restoreScrollPosition();
+                                container.style.overflowAnchor = previousOverflowAnchor;
+                                container.style.scrollBehavior = previousScrollBehavior;
+                            });
                         });
                     });
                 }

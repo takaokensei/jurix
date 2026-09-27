@@ -63,13 +63,9 @@
         </aside>
 
         <div class="workspace-main">
-            <header class="workspace-topbar">
-                <button type="button" class="workspace-mobile-toggle" data-workspace-toggle aria-label="Abrir menu">☰</button>
-                <div class="workspace-breadcrumb"><span>Jurix</span><span aria-hidden="true">/</span><strong>{% block section_name %}Workspace{% endblock %}</strong></div>
-                <button type="button" class="workspace-top-search" data-open-command-palette aria-label="Abrir busca rápida">
-                    <span aria-hidden="true">⌕</span><span>Buscar, navegar ou executar…</span><kbd>Ctrl K</kbd>
-                </button>
-            </header>
+            {% block topbar %}
+                {% include 'legislation/workspace/_topbar.html' with topbar_section='Workspace' %}
+            {% endblock %}
 
             <main id="main-content" class="workspace-content">
                 {% block content %}{% endblock %}

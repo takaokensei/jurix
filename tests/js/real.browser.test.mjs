@@ -271,6 +271,10 @@ test('real browser: authenticated history multi-page pagination and scroll reten
     // Click load more for page 2
     await page.click('.messages-load-more-indicator');
     await page.waitForFunction(() => document.querySelectorAll('#messages-wrapper .message').length === 40);
+    // The chat renderer commits markdown in animation frames after the DOM
+    // count changes. Measure only after that layout transaction settles.
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Measure scroll position after loading page 2
     const afterScroll1 = await page.evaluate(() => {

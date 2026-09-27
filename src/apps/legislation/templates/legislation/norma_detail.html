@@ -3,6 +3,7 @@
 
 {% block title %}{{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }} - Jurix{% endblock %}
 {% block section_name %}Norma {{ norma.numero }}/{{ norma.ano }}{% endblock %}
+{% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Norma' %}{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}">

@@ -2,6 +2,7 @@
 
 {% block title %}Comparação - {{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }}{% endblock %}
 {% block section_name %}Comparar norma{% endblock %}
+{% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Comparar norma' %}{% endblock %}
 
 {% block extra_css %}
 {% load static %}

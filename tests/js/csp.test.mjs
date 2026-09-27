@@ -21,6 +21,8 @@ const tick = () => new Promise((r) => setTimeout(r, 60));
 
 function renderTemplate(raw) {
   // Minimal Django-template stand-in: only the tags chatbot.html actually uses.
+  raw = raw.replace(/\{%\s*include\s+'legislation\/workspace\/_topbar\.html'[^%]*%\}/g,
+    () => fs.readFileSync(path.join(ROOT, 'src/apps/legislation/templates/legislation/workspace/_topbar.html'), 'utf8'));
   return raw
     .replace(/\{%\s*load\s+static\s*%\}/g, '')
     .replace(/\{%\s*static\s+'([^']+)'\s*%\}/g, '/static/$1')
