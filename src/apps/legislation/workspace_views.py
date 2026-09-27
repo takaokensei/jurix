@@ -1,18 +1,35 @@
 """Product-workspace views: assistant, search, collections, history and settings."""
 
 import logging
+import re
 
 from django.conf import settings
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import redirect, render
+from django.utils.html import conditional_escape, mark_safe
 
 from src.processing.rag_service import RAGService
 
 from .models import ChatMessage, ChatSession, Collection, Norma
 
 logger = logging.getLogger(__name__)
+
+
+def _highlight_search_text(text, query):
+    """Escape a result snippet and emphasize the user's exact search terms."""
+    value = str(text or "")[:320]
+    terms = [re.escape(part) for part in query.split() if len(part) >= 2]
+    if not value or not terms:
+        return conditional_escape(value)
+    pattern = re.compile("(" + "|".join(terms) + ")", re.IGNORECASE)
+    chunks = pattern.split(value)
+    rendered = []
+    for index, chunk in enumerate(chunks):
+        escaped = conditional_escape(chunk)
+        rendered.append(f"<mark>{escaped}</mark>" if index % 2 else escaped)
+    return mark_safe("".join(rendered))
 
 
 def _relevance_label(score):
@@ -208,6 +225,12 @@ def legal_search_view(request):
         if label not in seen_labels:
             seen_labels.add(label)
             type_options.append({"value": value, "label": label})
+
+    for result in results:
+        source_text = result.get("texto")
+        if not source_text and result.get("dispositivo"):
+            source_text = result["dispositivo"].texto
+        result["highlighted_text"] = _highlight_search_text(source_text, query)
 
     return render(
         request,

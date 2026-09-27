@@ -30,14 +30,14 @@
         <a class="workspace-result-card" href="{% url 'legislation:norma_detail' result.dispositivo.norma.id %}">
             <div class="workspace-result-meta"><span>{{ result.dispositivo.norma.get_tipo_display_name }} nº {{ result.dispositivo.norma.numero }}/{{ result.dispositivo.norma.ano }}</span><span class="workspace-score">{{ result.relevance_label }}</span></div>
             <h3>{{ result.dispositivo.get_full_identifier }}</h3>
-            <p>{{ result.dispositivo.texto|truncatechars:320 }}</p>
+            <p class="workspace-result-snippet">{{ result.highlighted_text }}</p>
             <small>{{ result.hierarchy }}</small>
         </a>
         {% else %}
         <a class="workspace-result-card" href="{% url 'legislation:norma_detail' result.norma.id %}">
             <div class="workspace-result-meta"><span>{{ result.norma.get_tipo_display_name }} nº {{ result.norma.numero }}/{{ result.norma.ano }}</span><span class="workspace-score workspace-score-neutral">{{ result.relevance_label }}</span></div>
             <h3>{{ result.norma.ementa|default:"Norma consolidada"|truncatechars:140 }}</h3>
-            <p>{{ result.texto|truncatechars:320 }}</p>
+            <p class="workspace-result-snippet">{{ result.highlighted_text }}</p>
         </a>
         {% endif %}
         {% endfor %}

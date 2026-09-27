@@ -44,6 +44,7 @@
 .workspace-empty-state-auth { gap: 12px; }
 .workspace-empty-state-auth .workspace-empty-stats { margin-top: 8px; }
 .workspace-auth-note { color: var(--figma-text-muted); font-size: 12px; }
+.workspace-result-snippet mark { color: #eff6ff; background: rgba(96,165,250,.28); border-radius: 3px; padding: 0 2px; }
 .workspace-field small { color: #64748b; font-weight: 400; }
 .workspace-option-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
 .workspace-fieldset { min-width: 0; display: grid; gap: 10px; border: 0; padding: 0; color: var(--figma-text-muted); }
