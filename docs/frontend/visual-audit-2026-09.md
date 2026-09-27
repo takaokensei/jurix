@@ -1,9 +1,8 @@
 # Auditoria visual das rotas principais
 
-Auditoria realizada no ambiente local com viewport desktop de 1440×900.
-Uma tentativa de viewport mobile de 390×844 foi feita, mas a API do navegador
-automatizado manteve o layout desktop; por isso ela não é considerada evidência
-de responsividade real.
+Auditoria realizada no ambiente local com viewport desktop de 1440×900 e,
+posteriormente, com Chromium controlado por Puppeteer em viewport real de
+390×844.
 
 ## Rotas verificadas
 
@@ -17,6 +16,10 @@ de responsividade real.
 - `/colecoes/`: estado vazio e navegação.
 - `/historico/`: lista de conversas locais.
 - `/configuracoes/`: controles de modelo, tema, densidade e formulário.
+
+As capturas mobile reais de `/assistente/`, `/normas/`, `/pesquisa/` e
+`/configuracoes/` confirmaram `scrollWidth = 390px`, sem overflow horizontal.
+Também foi verificado que a command palette fechada permanece `display: none`.
 
 ## Correções realizadas durante a auditoria
 
@@ -61,7 +64,6 @@ extração de parciais compartilhados, preservando os hooks JavaScript do chat.
 - `/pesquisa/?q=PHAN`: filtros e destaque de trecho.
 - `/configuracoes/`: campos, chevron de select e persistência local.
 
-As capturas de viewport móvel realizadas nesta sessão ficaram limitadas pela
-API de viewport do navegador automatizado, que manteve o layout CSS de desktop
-em uma imagem física estreita; portanto não são consideradas prova de
-responsividade. Uma rodada com runner mobile real permanece necessária.
+As rotas principais acima foram verificadas em viewport mobile real. A auditoria
+completa de todas as rotas secundárias e de estados de erro ainda pode ser
+expandida em uma rodada posterior.
