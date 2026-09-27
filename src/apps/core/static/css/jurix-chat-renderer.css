@@ -33,6 +33,36 @@
     pointer-events: auto;
 }
 
+/* Action controls are revealed only after the answer is complete. Without
+   this baseline, the browser's native button styling briefly leaks through
+   while streaming and renders as an unexplained white rectangle. */
+.message-actions .copy-response-button,
+.message-actions .regenerate-button {
+    visibility: hidden;
+    width: 0;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+    opacity: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.message-actions:not(:has(.show)) {
+    display: none;
+}
+
+.message-actions .copy-response-button.show,
+.message-actions .regenerate-button.show {
+    visibility: visible;
+    width: auto;
+    min-width: auto;
+    padding: revert;
+    margin: revert;
+    opacity: 1;
+    pointer-events: auto;
+}
+
 .message-status--interrupted {
     color: var(--figma-amber);
     font-size: 0.75rem;

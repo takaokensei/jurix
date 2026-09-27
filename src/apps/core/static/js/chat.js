@@ -817,6 +817,10 @@
             } else {
                 messageBody.textContent = answer;
             }
+            // Restored history is already complete. Clear any transient
+            // streaming classes that may have survived an interrupted page
+            // lifecycle so the caret cannot remain below the answer.
+            messageBody?.classList.remove('is-streaming', 'jurix-streaming-text');
             copyButton.classList.add('show');
 
             if (regenerateBtn && currentSessionId && showRegenerate) {

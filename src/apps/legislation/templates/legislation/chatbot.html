@@ -28,7 +28,7 @@
 <meta name="jurix-authenticated" content="{{ request.user.is_authenticated|yesno:'true,false' }}">
 <link rel="stylesheet" href="{% static 'css/jurix-search-controls.css' %}">
 </head>
-<body class="figma-theme"
+<body class="figma-theme workspace-page"
       data-chatbot-url="{% url 'workspace:assistant' %}"
       data-norma-list-url="{% url 'legislation:norma_list' %}"
       data-logo-icon-url="{% static 'img/logo-icon.png' %}"
@@ -125,9 +125,9 @@
         </aside>
         
         <!-- Main Area (1200px) -->
-        <main class="figma-main" role="main">
+        <main class="figma-main workspace-main" id="main-content" role="main">
             <!-- Top Header Row -->
-            <div class="figma-header-row">
+            <div class="figma-header-row workspace-topbar" role="banner">
                 <div class="figma-left-indicator">
                     <button class="toggle-sidebar jurix-icon-button" id="toggle-sidebar" aria-label="Alternar barra lateral">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
@@ -136,7 +136,7 @@
                     <span class="figma-indicator-text">Assistente Jurídico Inteligente</span>
                 </div>
                 
-                <button type="button" class="figma-system-search" id="command-palette-trigger" aria-label="Abrir busca rápida (Ctrl K)">
+                <button type="button" class="figma-system-search workspace-top-search" id="command-palette-trigger" aria-label="Abrir busca rápida (Ctrl K)">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2">
                         <circle cx="11" cy="11" r="8"></circle>
                         <path d="m21 21-4.35-4.35"></path>

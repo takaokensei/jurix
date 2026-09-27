@@ -77,7 +77,7 @@
     position: relative;
 }
 
-.jurix-rag-answer.is-streaming::after {
+.jurix-rag-answer.is-streaming[data-streaming="true"]::after {
     content: '';
     display: inline-block;
     width: 0.45rem;
@@ -247,7 +247,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .jurix-rag-answer.is-streaming::after {
+    .jurix-rag-answer.is-streaming[data-streaming="true"]::after {
         animation: none;
         opacity: 0.7;
     }

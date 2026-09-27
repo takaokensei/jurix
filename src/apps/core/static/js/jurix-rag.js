@@ -84,6 +84,7 @@
         current.streaming = isStreaming;
         state.set(element, current);
         element.classList.toggle('is-streaming', isStreaming);
+        element.toggleAttribute('data-streaming', isStreaming);
     }
 
     function getStatus(error) {
