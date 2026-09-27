@@ -33,6 +33,11 @@
   --figma-text-muted: #94A3B8;
   --figma-text-dim: #64748B;
   --figma-text-body: #E2E8F0;
+  --figma-light-root: #F7F9FC;
+  --figma-light-text: #0F172A;
+  --figma-light-text-body: #334155;
+  --figma-light-muted: #64748B;
+  --figma-light-pale: #EEF3F9;
 
   /* Product tokens shared by the assistant, evidence and norma surfaces. */
   --jurix-space-1: 4px;
