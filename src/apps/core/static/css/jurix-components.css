@@ -6,7 +6,7 @@
  */
 
 :root {
-    --jurix-focus-ring: 2px solid var(--figma-blue-light, #60A5FA);
+    --jurix-focus-ring: 2px solid var(--figma-blue-light);
     --jurix-focus-offset: 2px;
     --jurix-space-1: 4px;
     --jurix-space-2: 8px;
@@ -23,10 +23,10 @@
     z-index: 10000;
     transform: translateY(-150%);
     padding: 8px 12px;
-    border: 1px solid var(--figma-blue-light, #60A5FA);
+    border: 1px solid var(--figma-blue-light);
     border-radius: 8px;
-    color: #fff;
-    background: var(--figma-blue-primary, #3B82F6);
+    color: var(--figma-text-white);
+    background: var(--figma-blue-primary);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
     font-size: 12px;
     font-weight: 700;
@@ -46,14 +46,14 @@
     padding: 0;
     border: 0;
     border-radius: 8px;
-    color: var(--figma-text-muted, #94A3B8);
+    color: var(--figma-text-muted);
     background: transparent;
     cursor: pointer;
     transition: color 150ms ease, background-color 150ms ease;
 }
 
 .jurix-icon-button:hover {
-    color: var(--figma-text-white, #F8FAFC);
+    color: var(--figma-text-white);
     background: rgba(255, 255, 255, 0.05);
 }
 
@@ -74,8 +74,8 @@
     align-items: center;
     gap: 8px;
     padding: 8px 24px;
-    border-bottom: 1px solid var(--figma-border, #1F2444);
-    color: var(--figma-text-muted, #94A3B8);
+    border-bottom: 1px solid var(--figma-border);
+    color: var(--figma-text-muted);
     background: rgba(17, 24, 39, 0.9);
     font-size: 13px;
 }
@@ -90,7 +90,7 @@
 }
 
 .figma-suggestion-arrow {
-    color: var(--figma-blue-light, #60A5FA);
+    color: var(--figma-blue-light);
     font-size: 13px;
     line-height: 1;
 }
