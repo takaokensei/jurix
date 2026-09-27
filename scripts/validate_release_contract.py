@@ -15,7 +15,7 @@ from pathlib import Path
 REQUIRED = (
     ".env.production.example",
     "docker-compose.prod.yml",
-    "docs/production-readiness-v3.md",
+    "docs/production-readiness.md",
     "docs/security-production-matrix.md",
     "docs/rag-quality-contract-v2.md",
     "benchmarks/rag/production/README.md",

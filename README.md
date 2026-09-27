@@ -470,7 +470,7 @@ celery -A config worker -l info
 - Interface chatbot modernizada (workspace layout, input transparente estilo Gemini)
 - Command Palette para navegação rápida
 - Theme system (dark/light mode)
-- Melhorias de acessibilidade (WCAG 2.1 AA)
+- Melhorias de acessibilidade implementadas; conformidade WCAG 2.1 AA ainda não foi auditada formalmente
 - Animações suaves e profissionais
 - Copy response button (Markdown clipboard)
 - Suporte a Markdown em perguntas do usuário
@@ -964,7 +964,7 @@ Esta versão traz uma **modernização completa da interface** seguindo os princ
 - **⌨️ Command Palette**: Navegação rápida com ⌘K/Ctrl+K, animações elegantes, ícones SVG profissionais
 - **📋 Copy Response**: Botão icon-only para copiar respostas em Markdown
 - **🌓 Theme System**: Dark/Light mode com transições suaves, detecção automática de preferência do sistema
-- **♿ Acessibilidade**: WCAG 2.1 AA compliance, skip links, focus-visible states, keyboard navigation
+- **♿ Acessibilidade**: implementação de skip links, focus-visible e navegação por teclado; conformidade WCAG 2.1 AA ainda não auditada formalmente
 - **📱 Responsividade**: Layout adaptativo para mobile, tablet e desktop
 - **✨ Animações**: Transições suaves com cubic-bezier, typewriter effect, skeleton screens
 
@@ -986,4 +986,3 @@ This project successfully demonstrates the application of NLP and AI techniques 
 <div align="center">
   <img width="100%" src="https://capsule-render.vercel.app/api?type=waving&color=1e40af&height=120&section=footer"/>
 </div>
-

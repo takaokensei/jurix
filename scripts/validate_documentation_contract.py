@@ -10,6 +10,7 @@ FORBIDDEN_PATTERNS = (
     re.compile(r"OCR.*planned", re.I),
     re.compile(r"SAPL.*Em Desenvolvimento", re.I),
     re.compile(r"Deploy produção.*próxima", re.I),
+    re.compile(r"WCAG\s*2\.1\s*AA\s*(?:compliance|conformidade|compliant|completo|completa)", re.I),
 )
 
 

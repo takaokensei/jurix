@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = {
     "docker-compose.prod.yml": ("web:", "worker:", "beat:", "jurix_data:"),
-    "docs/production-final-assurance-v4.md": ("staging", "backup", "rollback"),
+    "docs/production-readiness.md": ("staging", "backup", "rollback"),
     ".github/workflows/production-assurance-v2.yml": (
         "Production gate",
         "Vector query plan contract",

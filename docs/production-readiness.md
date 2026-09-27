@@ -25,6 +25,7 @@ serem confrontados com este documento e com `docs/current-status.md`.
 | RAG jurídico | `scripts/run_legal_benchmark_v1.py` | quando houver corpus revisado |
 | Vetores | `scripts/vector_production_gate_v5.py` | staging/produção |
 | Preflight | `scripts/production_preflight_v2.py` | staging/produção |
+| Contrato de staging | `scripts/validate_staging_contract.py` | antes da promoção |
 
 ## Regra de documentação
 
@@ -40,3 +41,8 @@ correspondente.
    qualidade jurídica.
 4. Vector gate validado contra o PostgreSQL/pgvector do ambiente-alvo.
 5. Auditoria manual de UX/acessibilidade concluída quando houver alegação de conformidade.
+
+Antes da promoção, confirme também o backup restaurável do ambiente e o rollback
+documentado e testado no staging.
+O histórico de assurance e readiness permanece em `docs/archive/`; esses arquivos
+não são fontes operacionais alternativas.

@@ -283,78 +283,9 @@ class RAGService:
         Returns:
             Tuple of (formatted_context_string, results_list)
         """
-        from src.observability.tracing import span
+        from src.processing.rag_context_builder import build_relevant_context
 
-        with span("rag.retrieval", {"rag.k": k, "rag.query_length": len(query_text)}):
-            results = self.semantic_search(query_text, k=k)
-
-        if not results:
-            return "Nenhum contexto relevante encontrado.", []
-
-        # Format context
-        context_parts = []
-        used_results = []
-        total_chars = 0
-        max_chars = min(
-            max_tokens * 4, int(getattr(settings, "RAG_MAX_CONTEXT_CHARS", max_tokens * 4))
-        )
-        asks_for_norma_summary = bool(
-            re.search(r"\b(?:ementa|assunto|tema)\b", query_text, re.IGNORECASE)
-        )
-        asks_for_temporal_status = bool(
-            re.search(
-                r"\b(?:vig[êe]ncia|vig[êe]nte|entra\s+em\s+vigor|publica(?:çc)[ãa]o)\b",
-                query_text,
-                re.IGNORECASE,
-            )
-        )
-
-        for idx, result in enumerate(results, 1):
-            disp = result["dispositivo"]
-            score = result["similarity_score"]
-
-            tipo_getter = getattr(disp.norma, "get_tipo_display_name", None)
-            tipo_label = (
-                tipo_getter() if callable(tipo_getter) else getattr(disp.norma, "tipo", "Lei")
-            )
-            if str(tipo_label).isdigit():
-                tipo_label = "Lei"
-
-            norma_ementa = getattr(disp.norma, "ementa", "") or ""
-            ementa_context = (
-                f" | Ementa: {norma_ementa}" if asks_for_norma_summary and norma_ementa else ""
-            )
-            temporal_context = ""
-            if asks_for_temporal_status:
-                publication = getattr(disp.norma, "data_publicacao", None)
-                effective = getattr(disp.norma, "data_vigencia", None)
-                temporal_context = (
-                    f" | Publicação: {publication.isoformat() if publication else 'não informada'}"
-                    f" | Vigência registrada: {effective.isoformat() if effective else 'não informada'}"
-                )
-            part = (
-                f"[{score:.2f}] {tipo_label} nº {disp.norma.numero}/{disp.norma.ano} | "
-                f"{disp.get_full_identifier()}: {disp.texto}{ementa_context}{temporal_context}"
-            )
-
-            result["evidence_text"] = f"{disp.texto}{ementa_context}{temporal_context}"
-
-            remaining = max_chars - total_chars
-            if remaining <= 0:
-                break
-            part = f"{idx}. {part}"[:remaining]
-            context_parts.append(part)
-            used_results.append(result)
-            total_chars += len(part) + 2
-
-        formatted_context = "\n\n".join(context_parts)
-
-        logger.info(
-            f"Generated context of {total_chars} characters "
-            f"from {len(context_parts)} dispositivos"
-        )
-
-        return formatted_context, used_results
+        return build_relevant_context(self, query_text, k=k, max_tokens=max_tokens)
 
     def answer_question(
         self,
