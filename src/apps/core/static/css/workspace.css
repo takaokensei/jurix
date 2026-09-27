@@ -1,5 +1,5 @@
 /* Jurix product workspace: shared shell for dedicated Phase 1 surfaces. */
-.workspace-page { min-height: 100vh; background: var(--figma-bg-root, #081220); color: var(--figma-text-white); }
+.workspace-page { min-height: 100vh; background: var(--figma-bg-root); color: var(--figma-text-white); }
 .workspace-shell { min-height: 100vh; display: grid; grid-template-columns: 240px minmax(0,1fr); }
 .workspace-sidebar { position: sticky; top: 0; height: 100vh; padding: 18px 14px; display: flex; flex-direction: column; justify-content: space-between; background: rgba(10,16,29,.94); border-right: 1px solid var(--figma-border); backdrop-filter: blur(18px); z-index: 20; }
 .workspace-brand-block { display: grid; gap: 18px; }
@@ -14,7 +14,7 @@
 .workspace-nav-item.is-active { color: var(--figma-blue-light); background: rgba(59,130,246,.11); border-color: rgba(96,165,250,.14); }
 .workspace-nav-item kbd { margin-left: auto; font-size: 10px; opacity: .6; }
 .workspace-sidebar-bottom { display: grid; gap: 3px; }
-.workspace-main { min-width: 0; min-height: 100vh; background: radial-gradient(circle at top right, rgba(59,130,246,.06), transparent 28%), var(--figma-bg-root, #081220); }
+.workspace-main { min-width: 0; min-height: 100vh; background: radial-gradient(circle at top right, rgba(59,130,246,.06), transparent 28%), var(--figma-bg-root); }
 .workspace-topbar { height: 64px; display: flex; align-items: center; gap: 18px; padding: 0 28px; border-bottom: 1px solid var(--figma-border); background: rgba(8,18,32,.74); backdrop-filter: blur(15px); position: sticky; top: 0; z-index: 15; }
 .workspace-mobile-toggle { display: none; border: 0; background: transparent; color: var(--figma-text-muted); cursor: pointer; font-size: 18px; }
 .workspace-breadcrumb { display: flex; align-items: center; gap: 9px; min-width: 0; color: var(--figma-text-muted); font-size: 12px; }
@@ -39,12 +39,12 @@
 .workspace-field { display: grid; gap: 8px; color: var(--figma-text-muted); font-size: 12px; font-weight: 600; }
 .workspace-field-wide { grid-column: 1 / -1; }
 .workspace-field input, .workspace-field select, .workspace-search-panel input, .workspace-search-panel select { width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--figma-border); border-radius: 9px; background: rgba(7,13,24,.72); color: var(--figma-text-white); font: inherit; }
-.workspace-field select { appearance: none; padding-right: 40px; background-image: linear-gradient(45deg, transparent 50%, #93c5fd 50%), linear-gradient(135deg, #93c5fd 50%, transparent 50%); background-position: calc(100% - 18px) 18px, calc(100% - 12px) 18px; background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; cursor: pointer; }
-.workspace-field select:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+.workspace-field select { appearance: none; padding-right: 40px; background-image: linear-gradient(45deg, transparent 50%, var(--figma-blue-soft) 50%), linear-gradient(135deg, var(--figma-blue-soft) 50%, transparent 50%); background-position: calc(100% - 18px) 18px, calc(100% - 12px) 18px; background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; cursor: pointer; }
+.workspace-field select:focus-visible { outline: 2px solid var(--figma-blue-light); outline-offset: 2px; }
 .workspace-empty-state-auth { gap: 12px; }
 .workspace-empty-state-auth .workspace-empty-stats { margin-top: 8px; }
 .workspace-auth-note { color: var(--figma-text-muted); font-size: 12px; }
-.workspace-result-snippet mark { color: #eff6ff; background: rgba(96,165,250,.28); border-radius: 3px; padding: 0 2px; }
+.workspace-result-snippet mark { color: var(--figma-blue-pale); background: rgba(96,165,250,.28); border-radius: 3px; padding: 0 2px; }
 .workspace-field small { color: var(--figma-text-muted); font-weight: 400; }
 .workspace-option-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
 .workspace-fieldset { min-width: 0; display: grid; gap: 10px; border: 0; padding: 0; color: var(--figma-text-muted); }
@@ -52,24 +52,24 @@
 .workspace-fieldset label { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .workspace-form-actions { display: flex; align-items: center; gap: 10px; }
 .workspace-button { min-height: 40px; padding: 0 15px; border-radius: 9px; border: 1px solid var(--figma-border); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
-.workspace-button-primary { background: #2563eb; color: #fff; border-color: #3b82f6; }
-.workspace-button-primary:hover { background: #1d4ed8; }
+.workspace-button-primary { background: var(--figma-blue-primary); color: var(--figma-text-white); border-color: var(--figma-blue-primary); }
+.workspace-button-primary:hover { background: var(--figma-blue-dark); }
 .workspace-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
-.workspace-card { padding: 22px; border: 1px solid var(--jurix-border, #263244); border-radius: 14px; background: var(--jurix-surface, #111827); }
+.workspace-card { padding: 22px; border: 1px solid var(--figma-border); border-radius: 14px; background: var(--figma-bg-surface); }
 .workspace-card h2 { margin: 8px 0; font-size: 1.05rem; }
-.workspace-card p { color: var(--jurix-muted, #94a3b8); min-height: 42px; }
-.workspace-muted { color: var(--jurix-muted, #94a3b8); font-size: .84rem; }
-.workspace-dialog { width: min(480px, calc(100vw - 32px)); border: 1px solid var(--jurix-border, #263244); border-radius: 16px; background: #111827; color: #f8fafc; padding: 0; box-shadow: 0 24px 80px rgb(0 0 0 / .45); }
+.workspace-card p { color: var(--figma-text-muted); min-height: 42px; }
+.workspace-muted { color: var(--figma-text-muted); font-size: .84rem; }
+.workspace-dialog { width: min(480px, calc(100vw - 32px)); border: 1px solid var(--figma-border); border-radius: 16px; background: var(--figma-bg-surface); color: var(--figma-text-white); padding: 0; box-shadow: 0 24px 80px rgb(0 0 0 / .45); }
 .workspace-dialog::backdrop { background: rgb(2 6 23 / .72); backdrop-filter: blur(3px); }
 .workspace-dialog .workspace-form { display: grid; gap: 16px; padding: 24px; }
-.workspace-dialog label { display: grid; gap: 7px; color: #cbd5e1; font-size: .9rem; }
-.workspace-dialog label span { color: #94a3b8; font-weight: 400; }
-.workspace-dialog input, .workspace-dialog textarea { width: 100%; border: 1px solid #334155; border-radius: 9px; background: #0b1220; color: #f8fafc; padding: 10px 12px; font: inherit; }
+.workspace-dialog label { display: grid; gap: 7px; color: var(--figma-text-body); font-size: .9rem; }
+.workspace-dialog label span { color: var(--figma-text-muted); font-weight: 400; }
+.workspace-dialog input, .workspace-dialog textarea { width: 100%; border: 1px solid var(--figma-border-strong); border-radius: 9px; background: var(--figma-bg-dropdown); color: var(--figma-text-white); padding: 10px 12px; font: inherit; }
 .workspace-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .workspace-button-ghost { background: transparent; color: var(--figma-text-muted); }
 .workspace-button:disabled { opacity: .45; cursor: default; }
 .workspace-button[aria-disabled="true"] { opacity: .72; cursor: not-allowed; pointer-events: none; }
-.workspace-save-status { color: #4ade80; font-size: 12px; }
+.workspace-save-status { color: var(--figma-green); font-size: 12px; }
 .workspace-search-panel { padding: 18px; display: grid; gap: 14px; margin-bottom: 28px; }
 .workspace-search-input input { min-height: 48px; font-size: 15px; }
 .workspace-filter-row { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
@@ -81,7 +81,7 @@
 .workspace-result-card p, .workspace-history-card p, .workspace-card p { margin: 0; color: var(--figma-text-muted); line-height: 1.65; font-size: 13px; }
 .workspace-result-card small { color: var(--figma-text-muted); }
 .workspace-score-neutral { border-color: rgba(148,163,184,.2); color: var(--figma-text-muted); background: rgba(148,163,184,.06); }
-.workspace-alert { margin-bottom: 18px; padding: 12px 14px; border: 1px solid rgba(245,158,11,.25); border-radius: 10px; color: #fbbf24; background: rgba(245,158,11,.07); font-size: 12px; }
+.workspace-alert { margin-bottom: 18px; padding: 12px 14px; border: 1px solid rgba(245,158,11,.25); border-radius: 10px; color: var(--figma-amber-soft); background: rgba(245,158,11,.07); font-size: 12px; }
 .workspace-empty-state { padding: 46px 26px; border: 1px dashed rgba(148,163,184,.2); border-radius: 14px; text-align: center; color: var(--figma-text-muted); }
 .workspace-empty-state-large { min-height: 360px; display: grid; place-items: center; align-content: center; gap: 10px; }
 .workspace-empty-state strong { color: var(--figma-text-white); font-size: 15px; }
@@ -91,7 +91,7 @@
 .workspace-empty-stats { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .workspace-empty-stats span { padding: 7px 9px; border-radius: 999px; border: 1px solid var(--figma-border); font-size: 10px; }
 .workspace-history-card { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 24px; padding: 18px; color: inherit; text-decoration: none; transition: transform .16s ease,border-color .16s ease,background .16s ease; }
-.workspace-pagination { display:flex; align-items:center; justify-content:center; gap:14px; margin:24px 0 8px; color:var(--figma-text-muted,#94a3b8); font-size:.88rem; }
+.workspace-pagination { display:flex; align-items:center; justify-content:center; gap:14px; margin:24px 0 8px; color:var(--figma-text-muted); font-size:.88rem; }
 .workspace-pagination .workspace-button { min-height:40px; }
 .workspace-history-main { min-width: 0; }
 .workspace-history-main h2 { margin: 4px 0 7px; font-size: 16px; color: var(--figma-text-white); }
@@ -114,10 +114,10 @@
 .workspace-history-card, .workspace-search-panel { min-width: 0; }
 .workspace-content img, .workspace-content video, .workspace-content iframe { max-width: 100%; }
 .workspace-page :is(input, select, textarea, button, a):focus-visible {
-  outline: 2px solid var(--figma-blue-light, #60a5fa);
+  outline: 2px solid var(--figma-blue-light);
   outline-offset: 2px;
 }
-.workspace-alert { color: #fcd34d; }
+.workspace-alert { color: var(--figma-amber-soft); }
 
 @media (max-width: 900px) {
   .workspace-sidebar { z-index: 40; }
