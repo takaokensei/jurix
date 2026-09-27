@@ -1,7 +1,9 @@
 # Auditoria visual das rotas principais
 
-Auditoria realizada no ambiente local com viewport desktop de 1440×900 e
-mobile de 390×844.
+Auditoria realizada no ambiente local com viewport desktop de 1440×900.
+Uma tentativa de viewport mobile de 390×844 foi feita, mas a API do navegador
+automatizado manteve o layout desktop; por isso ela não é considerada evidência
+de responsividade real.
 
 ## Rotas verificadas
 
