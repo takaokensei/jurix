@@ -26,6 +26,11 @@ Uma segunda rodada cobriu `/colecoes/`, `/historico/`, `/normas/3/`,
 móveis por preservar a leitura linha a linha, mas mantém rolagem vertical e
 seus marcadores de alteração dentro do viewport.
 
+No Chromium mobile, também foram exercitados os estados interativos: a sidebar
+abre e fecha pelo botão após a transição, `Ctrl+K` abre a busca rápida, `Escape`
+fecha o diálogo e o foco retorna ao gatilho original. A validação aguarda as
+transições de 200 ms e o foco programado de 50 ms antes de medir o estado final.
+
 ## Correções realizadas durante a auditoria
 
 - As rotas de norma passaram a compartilhar sidebar, breadcrumb e busca rápida.
