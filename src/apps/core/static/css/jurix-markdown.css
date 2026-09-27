@@ -1,5 +1,5 @@
 .jurix-legal-answer {
-    color: var(--figma-text-primary, var(--color-text-primary, #e2e8f0));
+    color: var(--figma-text-body);
     line-height: 1.72;
 }
 
@@ -11,7 +11,7 @@
 .jurix-legal-answer h3,
 .jurix-legal-answer h4 {
     font-family: var(--font-serif, Lora, serif);
-    color: var(--figma-text-primary, #f8fafc);
+    color: var(--figma-text-white);
     letter-spacing: -0.015em;
     margin: 1.25rem 0 0.55rem;
 }
@@ -36,7 +36,7 @@
     margin-inline: 0;
     padding: 0.8rem 1rem;
     border-left: 3px solid rgba(96, 165, 250, 0.55);
-    color: var(--figma-text-secondary, #cbd5e1);
+    color: var(--figma-text-body);
     background: rgba(15, 23, 42, 0.42);
     border-radius: 0 10px 10px 0;
 }
@@ -58,11 +58,11 @@
     letter-spacing: 0.07em;
     align-self: start;
 }
-.jurix-callout > span { color: var(--figma-text-secondary, #cbd5e1); }
-.jurix-callout--vigencia { border-left: 3px solid var(--jurix-rag-success, #34d399); }
-.jurix-callout--atencao { border-left: 3px solid var(--jurix-rag-warning, #fbbf24); }
-.jurix-callout--revogacao { border-left: 3px solid #f87171; }
-.jurix-callout--jurisprudencia { border-left: 3px solid #a78bfa; }
+.jurix-callout > span { color: var(--figma-text-body); }
+.jurix-callout--vigencia { border-left: 3px solid var(--figma-green); }
+.jurix-callout--atencao { border-left: 3px solid var(--figma-amber); }
+.jurix-callout--revogacao { border-left: 3px solid var(--figma-red); }
+.jurix-callout--jurisprudencia { border-left: 3px solid var(--figma-purple); }
 
 .jurix-citation {
     display: inline-flex;
@@ -75,7 +75,7 @@
     border: 1px solid rgba(96, 165, 250, 0.3);
     border-radius: 5px;
     background: rgba(59, 130, 246, 0.12);
-    color: #93c5fd;
+    color: var(--figma-blue-soft);
     font-size: 0.76em;
     line-height: 1;
     text-decoration: none;
@@ -87,7 +87,7 @@
 .jurix-citation:focus-visible {
     border-color: rgba(147, 197, 253, 0.7);
     background: rgba(59, 130, 246, 0.24);
-    color: #dbeafe;
+    color: var(--figma-blue-pale);
 }
 
 .jurix-rag-source.is-citation-target {
@@ -114,7 +114,7 @@
 
 .jurix-legal-answer th {
     background: rgba(30, 41, 59, 0.72);
-    color: var(--figma-text-primary, #f8fafc);
+    color: var(--figma-text-white);
     font-size: 0.78rem;
 }
 
