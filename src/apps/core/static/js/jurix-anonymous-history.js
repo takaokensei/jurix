@@ -165,6 +165,19 @@
     write(state);
   }
 
+  function prepareRetry(sessionId, question) {
+    const state = read();
+    const session = state.sessions.find(item => String(item.id) === String(sessionId));
+    if (!session) return false;
+    const messages = session.messages;
+    if (messages[messages.length - 1]?.role === 'assistant') messages.pop();
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== 'user' || last.content !== String(question || '')) return false;
+    session.updated_at = now();
+    write(state);
+    return true;
+  }
+
   function list() {
     return prune(read()).sessions.map(session => ({
       id: session.id,
@@ -201,6 +214,7 @@
     ensureSession,
     addMessage,
     updateLastAssistant,
+    prepareRetry,
     list,
     get,
     remove,

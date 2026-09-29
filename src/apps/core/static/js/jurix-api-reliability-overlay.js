@@ -137,12 +137,14 @@
     const originalStream = api.streamAnswer?.bind(api);
     if (originalStream) {
       api.streamAnswer = async function (question, sessionId, callbacks = {}) {
-        const { onChunk, onSources, onDone, onError, onSession } = callbacks || {};
+        const { onChunk, onSources, onDone, onError, onSession, retryExistingQuestion } = callbacks || {};
         if (!anonymous()) {
           return originalStream(question, sessionId, callbacks);
         }
         const localId = window.JurixAnonymousHistory.ensureSession(sessionId, question);
-        window.JurixAnonymousHistory.addMessage(localId, 'user', question, []);
+        const retryPrepared = retryExistingQuestion === true &&
+          window.JurixAnonymousHistory.prepareRetry(localId, question);
+        if (!retryPrepared) window.JurixAnonymousHistory.addMessage(localId, 'user', question, []);
         await onSession?.({ session_id: localId, session_slug: localId });
         let answer = '';
         let sources = [];

@@ -942,14 +942,24 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
 });
 
 test('real browser: stream interruption preserves partial text and user question without wiping chat', async () => {
+  let streamAttempts = 0;
   const server = createTestServer({
     isAuthenticated: () => false,
     '/api/v1/search/answer/stream/': (req, res) => {
+      streamAttempts += 1;
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
       });
+
+      if (streamAttempts > 1) {
+        const recoveredAnswer = 'Resposta recuperada com sucesso.';
+        res.write(`data: ${JSON.stringify({ type: 'chunk', chunk: recoveredAnswer })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'done', answer: recoveredAnswer, session_id: null })}\n\n`);
+        res.end();
+        return;
+      }
 
       res.write(`data: ${JSON.stringify({ type: 'chunk', chunk: 'Texto inicial gerado antes da queda.' })}\n\n`);
 
@@ -1001,6 +1011,24 @@ test('real browser: stream interruption preserves partial text and user question
     // The partial assistant text must still be in the DOM
     const asstMsg = await page.$eval('.message-assistant', (el) => el.textContent);
     assert.ok(asstMsg.includes('Texto inicial gerado antes da queda.'), 'O texto parcial deve ser preservado');
+
+    const retryButton = await page.waitForSelector('.jurix-rag-retry', { timeout: 5000 });
+    assert.ok(retryButton, 'O erro deve oferecer uma ação de retry funcional');
+    await retryButton.click();
+    await page.waitForFunction(() => document.body.textContent.includes('Resposta recuperada com sucesso.'), { timeout: 6000 });
+    const retryResult = await page.evaluate(() => ({
+      userMessages: document.querySelectorAll('.message-user').length,
+      assistantMessages: document.querySelectorAll('.message-assistant').length,
+      response: [...document.querySelectorAll('.message-assistant')].map((el) => el.textContent).join(' '),
+      persistedMessages: JSON.parse(localStorage.getItem('jurix:anonymous-history:v2') || '{"sessions":[]}').sessions[0]?.messages || [],
+    }));
+    assert.equal(streamAttempts, 2, 'A ação de retry deve disparar uma nova requisição de streaming');
+    assert.equal(retryResult.userMessages, 1, 'Retry não deve duplicar a pergunta do usuário');
+    assert.equal(retryResult.assistantMessages, 1, 'A tentativa parcial deve ser substituída, não acumulada');
+    assert.ok(retryResult.response.includes('Resposta recuperada com sucesso.'));
+    assert.equal(JSON.stringify(retryResult.persistedMessages.map((message) => message.role)), JSON.stringify(['user', 'assistant']));
+    assert.equal(retryResult.persistedMessages[0].content, 'Pergunta que vai falhar');
+    assert.equal(retryResult.persistedMessages[1].content, 'Resposta recuperada com sucesso.');
   } finally {
     await browser.close();
     server.close();

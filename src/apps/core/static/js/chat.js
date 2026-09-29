@@ -45,6 +45,7 @@
     let currentSessionId = null;
     let isStreamingGreeting = false;
     let navSeq = 0;
+    let retryingExistingQuestion = null;
 
     // ===== UTILITIES =====
     function escapeHtml(text) {
@@ -1351,6 +1352,8 @@
 
                 const question = textarea.value.trim();
                 if (!question) return;
+                const isRetry = retryingExistingQuestion === question;
+                retryingExistingQuestion = null;
                 chatState?.transition?.('submitting', { question });
                 try { sessionStorage.removeItem('jurix:new-conversation'); } catch (_) {}
                 if (chatState && typeof chatState.setLastQuestion === 'function') {
@@ -1361,7 +1364,7 @@
                 if (welcomeStateEl) welcomeStateEl.classList.add('is-hidden');
 
                 updateNewChatButtonState();
-                addUserMessage(question);
+                if (!isRetry) addUserMessage(question);
 
                 textarea.value = '';
                 resetComposerSize(textarea);
@@ -1371,7 +1374,7 @@
                 }
 
                 const wasNewSession = !currentSessionId;
-                if (wasNewSession) {
+                if (wasNewSession && !isRetry) {
                     await createSessionCardImmediately(question);
                 }
 
@@ -1449,7 +1452,7 @@
         };
     }
 
-    async function streamAssistantResponse(question, sessionId, onChunk, onSources, onDone, onError, onStatus) {
+    async function streamAssistantResponse(question, sessionId, onChunk, onSources, onDone, onError, onStatus, retryExistingQuestion = false) {
         let preferences = {};
         try {
             preferences = JSON.parse(localStorage.getItem('jurix-preferences') || '{}');
@@ -1471,6 +1474,7 @@
             onDone,
             onError,
             onStatus,
+            retryExistingQuestion,
             searchOptions,
         });
     }
@@ -1566,7 +1570,8 @@
                             if (window.JurixRagUI && labels[status]) {
                                 window.JurixRagUI.announce(labels[status]);
                             }
-                        }
+                        },
+                        isRetry
                     );
                 } catch (streamError) {
                     if (streamError.name !== 'AbortError') {
@@ -1575,8 +1580,17 @@
                             streamElements.messageDiv.appendChild(errorBox);
                             window.JurixRagUI.setStreamingState(streamElements.messageBody, false);
                             window.JurixRagUI.renderErrorState(errorBox, streamError, () => {
+                                errorBox.remove();
+                                if (typeof currentSessionId === 'number') {
+                                    regenerateLastResponse(currentSessionId, streamElements.messageDiv, streamElements.sourcesContainer);
+                                    return;
+                                }
+                                retryingExistingQuestion = question;
+                                streamElements.messageDiv.remove();
                                 textarea.value = question;
                                 textarea.focus();
+                                if (typeof chatForm.requestSubmit === 'function') chatForm.requestSubmit();
+                                else chatForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
                             });
                         } else {
                             addErrorMessage('Não foi possível concluir a pesquisa.');

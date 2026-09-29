@@ -413,3 +413,34 @@ no API or persistence contract changed.
 Next action: Continue assistant interactions (new conversation, retry/error,
 input limits, keyboard order), then test the same active chat at tablet and
 desktop sizes.
+
+## Cycle 8 — 2026-09-29
+
+Area: Assistant interruption and retry behavior for anonymous conversations.
+
+Observed problem: The interruption card's “Tentar novamente” action only copied
+the failed question back into the composer. It did not launch a new request.
+Retrying through the normal submit flow would also append a duplicate user
+message and preserve the interrupted assistant fragment in local history.
+
+Changes made: Retry now resubmits immediately, removes the interrupted bubble,
+does not add a second user bubble/session card, and marks the callback so the
+anonymous-history layer replaces the partial assistant record while preserving
+the original question. Existing authenticated sessions continue through the
+session regeneration endpoint. Added unit and real Chromium coverage asserting
+that retry makes a second streaming request and leaves exactly one user message
+and one completed assistant message both in the DOM and local history.
+
+Tests: All 10 real-browser tests passed in a sequential full JavaScript run; the
+retry browser test also passed in isolation. One earlier full JavaScript run
+timed out waiting for the recovered answer while the 652-test Python suite was
+running concurrently; a sequential rerun passed. Full Python suite: 652 passed,
+6 skipped. Ruff, design-token guard, architecture budget, Django system check,
+JavaScript syntax checks, and `git diff --check` passed.
+
+Regressions: None observed. No API or backend changes; authenticated retry
+continues to use its existing regeneration contract.
+
+Next action: Continue auditing the assistant's error, retry and composer states
+across authenticated/anonymous and narrow/wide layouts, then inspect another
+high-impact interaction in the workspace.

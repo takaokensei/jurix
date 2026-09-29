@@ -90,6 +90,30 @@ test('copy answer falls back when Clipboard API is unavailable and announces suc
   w.close();
 });
 
+test('anonymous retry replaces the partial assistant answer without duplicating the question', () => {
+  const dom = new JSDOM('<!doctype html><html><body data-authenticated="false"></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously',
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-anonymous-history.js'));
+  const question = 'O que prevê o art. 8º?';
+  const sessionId = w.JurixAnonymousHistory.ensureSession(null, question);
+  w.JurixAnonymousHistory.addMessage(sessionId, 'user', question, []);
+  w.JurixAnonymousHistory.updateLastAssistant(sessionId, 'Resposta parcial', []);
+
+  assert.equal(w.JurixAnonymousHistory.prepareRetry(sessionId, question), true);
+  const retried = w.JurixAnonymousHistory.get(sessionId);
+  assert.equal(retried.messages.length, 1);
+  assert.equal(retried.messages[0].role, 'user');
+  assert.equal(retried.messages[0].content, question);
+  w.JurixAnonymousHistory.updateLastAssistant(sessionId, 'Resposta completa', []);
+  const completed = w.JurixAnonymousHistory.get(sessionId);
+  assert.equal(JSON.stringify(completed.messages.map(message => message.role)), JSON.stringify(['user', 'assistant']));
+  assert.equal(completed.messages[0].content, question);
+  assert.equal(completed.messages[1].content, 'Resposta completa');
+  w.close();
+});
+
 test('interrupted assistant messages are visibly labelled when history is restored', () => {
   const chat = read('chat.js');
   assert.match(chat, /metadata\.interrupted === true/);
