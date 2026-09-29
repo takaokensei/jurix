@@ -142,7 +142,7 @@ test('mobile workspace search stays a compact 44px icon button when its label is
   const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
   assert.match(styles, /@media \(max-width:\s*640px\)[\s\S]*?\.workspace-topbar \.workspace-top-search\s*\{[^}]*flex:\s*0 0 44px;[^}]*width:\s*44px;[^}]*min-width:\s*44px;/);
   assert.match(chat, /css\/workspace\.css['"] %\}\?v=20260929-mobile-search/);
-  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260929-search-relevance-disclaimer1/);
+  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260929-sidebar-flow1/);
 });
 
 test('workspace selects use a clearly visible chevron and norm facts stay secondary', async () => {
@@ -152,6 +152,13 @@ test('workspace selects use a clearly visible chevron and norm facts stay second
   assert.match(normaStyles, /\.jurix-norma-fact-label[\s\S]*?font-size: 9px/);
   assert.match(normaStyles, /\.jurix-norma-fact-value[\s\S]*?font-size: 12px/);
   assert.match(normaStyles, /\.jurix-norma-card-title[\s\S]*?font: 700 clamp\(18px/);
+});
+
+test('workspace sidebar groups primary navigation below branding and anchors utility links at the bottom', async () => {
+  const styles = await read('src/apps/core/static/css/workspace.css');
+  assert.match(styles, /\.workspace-sidebar \{[^}]*justify-content:\s*flex-start/);
+  assert.match(styles, /\.workspace-nav \{[^}]*flex:\s*1;[^}]*align-content:\s*start/);
+  assert.match(styles, /\.workspace-sidebar-bottom \{[^}]*margin-top:\s*auto/);
 });
 
 test('norm actions use a responsive grid instead of stranding the official source link', async () => {

@@ -2083,3 +2083,42 @@ and remains outside this frontend-only track.
 
 Next action: Continue a live pass through settings persistence/reset,
 collection and history routes, plus keyboard-only navigation and direct URLs.
+
+## Cycle 53 — 2026-09-29
+
+Area: Shared workspace sidebar composition.
+
+Goal: Improve navigation hierarchy across all pages using the authenticated-
+style workspace shell.
+
+Observed problems: Desktop screenshots showed the primary navigation vertically
+centered in the full viewport, leaving a large unexplained gap beneath the
+brand/new-search action. The utility links happened to sit at the bottom, but
+the primary route group was visually disconnected from the brand.
+
+Changes made: Changed the sidebar to top-flow layout, let the primary nav take
+remaining vertical space, and anchored utility actions with `margin-top:auto`.
+Updated the shared stylesheet cache key and added a structural contract. No
+navigation routes or mobile drawer behavior changed.
+
+Browser validation: Captured the live `/pesquisa/` workspace at desktop and
+mobile sizes. At 1440×900 the primary nav now starts directly below the brand
+action while settings/quick search remain at the bottom. At 390×844 the
+collapsed mobile shell remains clean and the menu trigger is unchanged.
+
+Tests: Full `npm test` passed: 20 real-Chromium scenarios, 21 structural
+contracts, 15 streaming/persistence checks, composer lifecycle and contrast
+checks. `git diff --check` passed.
+
+Console: Route capture completed 30 views with zero needing review.
+
+Responsive validation: Screenshots reviewed at 1440×900 and 390×844; automated
+capture also covered 1280×800 and reported no overflow/navigation failures.
+
+Visual score: Navigation now follows a familiar product hierarchy: brand,
+primary destinations, then persistent utilities at the lower edge.
+
+Regressions: None observed.
+
+Next action: Continue real-browser checks for settings preference persistence,
+history restoration, and collection empty-state actions across viewport sizes.
