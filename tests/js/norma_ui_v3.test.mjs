@@ -122,6 +122,8 @@ test('legal search does not force mobile autofocus and uses a compact empty stat
   assert.match(template, /workspace-empty-state workspace-search-empty/);
   assert.match(template, /Buscar no acervo normativo/);
   assert.match(template, /norma_list' %\}\?q=\{\{ query\|urlencode \}\}&amp;tipo=\{\{ norma_type\|urlencode \}\}&amp;ano=\{\{ year\|urlencode \}\}/);
+  assert.match(styles, /\.workspace-button-secondary \{[^}]*background: rgba\(255,255,255,\.035\);[^}]*color: var\(--figma-text-body\);/);
+  assert.match(styles, /\.workspace-button-secondary:hover \{[^}]*border-color: var\(--figma-blue-light\);/);
   assert.match(styles, /\.workspace-search-empty \{ padding: 28px 20px; \}/);
   assert.match(styles, /\.workspace-field input, \.workspace-field select, \.workspace-search-panel input, \.workspace-search-panel select \{ box-sizing: border-box;/);
   assert.match(styles, /\.workspace-dialog input, \.workspace-dialog textarea \{ box-sizing: border-box;/);
@@ -133,7 +135,7 @@ test('mobile workspace search stays a compact 44px icon button when its label is
   const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
   assert.match(styles, /@media \(max-width:\s*640px\)[\s\S]*?\.workspace-topbar \.workspace-top-search\s*\{[^}]*flex:\s*0 0 44px;[^}]*width:\s*44px;[^}]*min-width:\s*44px;/);
   assert.match(chat, /css\/workspace\.css['"] %\}\?v=20260929-mobile-search/);
-  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260929-settings-warning1/);
+  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260929-secondary-button1/);
 });
 
 test('workspace selects use a clearly visible chevron and norm facts stay secondary', async () => {

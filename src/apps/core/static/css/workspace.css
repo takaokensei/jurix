@@ -55,6 +55,8 @@
 .workspace-button { min-height: 40px; padding: 0 15px; border-radius: 9px; border: 1px solid var(--figma-border); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 .workspace-button-primary { background: var(--figma-blue-primary); color: var(--figma-text-white); border-color: var(--figma-blue-primary); }
 .workspace-button-primary:hover { background: var(--figma-blue-dark); }
+.workspace-button-secondary { background: rgba(255,255,255,.035); color: var(--figma-text-body); border-color: var(--figma-border-strong); }
+.workspace-button-secondary:hover { background: rgba(96,165,250,.08); color: var(--figma-text-white); border-color: var(--figma-blue-light); }
 .workspace-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
 .workspace-card { padding: 22px; border: 1px solid var(--figma-border); border-radius: 14px; background: var(--figma-bg-surface); }
 .workspace-card h2 { margin: 8px 0; font-size: 1.05rem; }
