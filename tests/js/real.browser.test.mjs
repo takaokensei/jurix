@@ -1285,6 +1285,21 @@ test('real browser: command palette keeps compact icons and focuses search on mo
     assert.ok(mobileSearchControls[0].y === mobileSearchControls[1].y, `Os dois primeiros filtros devem compartilhar a primeira linha: ${JSON.stringify(mobileSearchControls)}`);
     assert.ok(mobileSearchControls[2].y === mobileSearchControls[3].y, `Os dois últimos filtros devem compartilhar a segunda linha: ${JSON.stringify(mobileSearchControls)}`);
     assert.ok(mobileSearchControls.every(({ x, right, width }) => width >= 100 && x >= 0 && right <= 390), JSON.stringify(mobileSearchControls));
+    const promptPlaceholder = await page.$eval('#hero-search-input', (input) => {
+      const context = document.createElement('canvas').getContext('2d');
+      context.font = getComputedStyle(input).font;
+      const bounds = input.getBoundingClientRect();
+      const style = getComputedStyle(input);
+      const availableWidth = bounds.width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      return {
+        text: input.placeholder,
+        textWidth: context.measureText(input.placeholder).width,
+        availableWidth,
+        accessibleName: input.getAttribute('aria-label'),
+      };
+    });
+    assert.ok(promptPlaceholder.textWidth <= promptPlaceholder.availableWidth, JSON.stringify(promptPlaceholder));
+    assert.match(promptPlaceholder.accessibleName, /jurisprudência/);
     const scopeSelector = '#hero-search-form .figma-search-dropdown:nth-child(2)';
     await page.click(scopeSelector);
     await page.waitForSelector('#hero-search-form [data-jurix-control-menu] [role="menuitemradio"]');

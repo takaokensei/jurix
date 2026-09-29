@@ -1107,3 +1107,48 @@ route/viewport coverage.
 Next action: Continue testing the assistant's mobile composer and keyboard
 submission, then inspect reading density and focus behavior in comparison,
 history, and collection flows.
+
+## Cycle 24 — 2026-09-29
+
+Area: Assistant welcome-composer prompt clarity on narrow screens.
+
+Goal: Prevent the hero-search placeholder from ending abruptly behind the
+send control on phones while preserving a fuller accessible description.
+
+Observed problems: The mobile hero input had 185px of width at 320px, while
+the placeholder “Pergunte sobre normas, artigos ou jurisprudência...” measured
+364px at its rendered font. The visible hint stopped at “ou” on 390px, hiding
+the rest of its instruction.
+
+Changes made: Shortened the visible placeholder to “Pergunte sobre leis…” in
+the assistant template and both browser fixtures. Retained the full
+`aria-label` (“Pergunte sobre normas, artigos ou jurisprudência”) so the
+shorter visual hint does not reduce the accessible name. Added a Chromium
+measurement asserting the placeholder fits the available input width.
+
+Browser validation: At 320px on the real local assistant, the new hint
+measures 150px against 181px of available text width; `aria-label` remains
+complete and there is no horizontal overflow. The 390px after screenshot
+shows the complete placeholder and send button with clear separation. Existing
+mobile test also verifies composer controls and 44px target dimensions.
+
+Tests: The focused real-Chromium assistant test and all 17 structural UI tests
+passed. `git diff --check` passed. Refreshed the 30-view after set; manifests
+report zero issues.
+
+Console: No browser errors on the real mobile assistant route or focused test.
+
+Responsive validation: Measured the real route at 320px and visually reviewed
+the 390px capture; placeholder fits at the minimum supported mobile viewport.
+
+Visual score: Mobile welcome composer 8.9/10 after this cycle (estimated
+7.8/10 before); the input prompt is now fully visible rather than clipped.
+
+Regressions: None in the focused browser test or UI structural suite.
+
+Screenshots: Updated all `after/` route captures; the 390px assistant image
+shows the full “Pergunte sobre leis…” hint.
+
+Next action: Continue the remaining mobile assistant composer interaction
+states, then exercise comparison, history, collections, settings, and reading
+flow focus/keyboard behavior.
