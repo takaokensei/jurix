@@ -955,3 +955,58 @@ Next action: Continue remaining UI/UX audit across the norm reading content,
 comparison, search filters/results, history and collection interactions; use
 new-cycle evidence rather than treating the passing route screenshot gate as
 proof that the full product is complete.
+
+## Cycle 21 — 2026-09-29
+
+Area: Command-palette keyboard accessibility across assistant and workspace.
+
+Goal: Make the visually selected command discoverable to assistive technology
+while retaining the existing arrow-key, Enter, Escape, and focus behavior.
+
+Observed problems: The palette already handled ArrowUp/ArrowDown and visually
+marked the active option, but exposed neither the combobox/listbox relationship
+nor the active option to screen readers. The chat template also omitted the
+listbox role that the workspace template already had.
+
+Changes made: The shared controller now exposes the input as a combobox,
+sets controls/expanded/autocomplete semantics, assigns listbox role, gives each
+option a stable in-render ID and synchronized `aria-selected`, and points
+`aria-activedescendant` at the active choice. Empty results and closing clear
+the active descendant; close collapses the combobox. Added listbox semantics
+to the assistant template and cache-busted the shared controller on both
+shells. No security policy or navigation behavior changed.
+
+Browser validation: Ran keyboard and pointer interactions against the live
+Django `/configuracoes/` and `/assistente/` routes in Chromium. In both,
+opening placed focus in the combobox, the first option was announced as
+selected, ArrowDown moved both the visual and ARIA selection to option 2,
+filtering to no results removed the active descendant, Escape closed the
+palette and restored focus to the opening trigger. No page/console errors.
+
+Tests: Full `npm test` passed, including 12 real-Chromium cases. The focused
+palette Chromium test now asserts combobox/listbox semantics, active-descendant
+movement, empty results and focus restoration; `norma_ui_v3.test.mjs` passed
+15/15. JavaScript syntax and `git diff --check` passed.
+
+Console: No palette errors on either live route; no unexpected failed requests
+observed during direct Chromium interaction.
+
+Responsive validation: Existing real-Chromium palette test still verifies
+390px dialog fit, compact icon bounds, option height and focus. The new ARIA
+semantics do not alter the visual layout.
+
+Visual score: Command palette interaction/accessibility 9.0/10 after this
+cycle (estimated 8.0/10 before); keyboard users and screen readers now receive
+the same active-option state as sighted pointer users.
+
+Regressions: None in the full JavaScript test suite or live assistant and
+workspace routes.
+
+Screenshots: Refreshed the 30-view `docs/ui-audit/after/` set after updating
+the shared script URLs; all ten routes at 1440×900, 1280×800, and 390×844
+captured without issues. Both before/after manifests still contain 30 views,
+zero overflow, errors, failed requests, or bad responses.
+
+Next action: Audit the mobile workspace header/composer and norm reading flow
+for clipping and awkward density; then continue remaining interaction paths
+in history, collections, settings and document comparison.

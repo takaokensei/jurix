@@ -15,6 +15,13 @@
         return;
     }
 
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-haspopup', 'listbox');
+    input.setAttribute('aria-controls', resultsContainer.id);
+    input.setAttribute('aria-expanded', overlay.classList.contains('active') ? 'true' : 'false');
+    resultsContainer.setAttribute('role', 'listbox');
+
     let chatSessionsForSearch = [];
     let selectedIndex = -1;
     let lastFocusedElement = null;
@@ -130,6 +137,7 @@
         lastFocusedElement = document.activeElement;
         overlay.classList.add('active');
         overlay.setAttribute('aria-hidden', 'false');
+        input.setAttribute('aria-expanded', 'true');
         document.body.classList.add('jurix-command-palette-open');
         input.value = '';
         selectedIndex = -1;
@@ -144,6 +152,8 @@
     function closeCommandPalette() {
         overlay.classList.remove('active');
         overlay.setAttribute('aria-hidden', 'true');
+        input.setAttribute('aria-expanded', 'false');
+        input.removeAttribute('aria-activedescendant');
         document.body.classList.remove('jurix-command-palette-open');
         setTimeout(() => {
             input.value = '';
@@ -159,6 +169,8 @@
     function selectItem(index) {
         const items = resultsContainer.querySelectorAll('.command-palette-item');
         items.forEach((item, idx) => {
+            item.id = `command-palette-option-${idx}`;
+            item.setAttribute('aria-selected', idx === index ? 'true' : 'false');
             if (idx === index) {
                 item.classList.add('selected');
                 if (typeof item.scrollIntoView === 'function') {
@@ -169,6 +181,12 @@
             }
         });
         selectedIndex = index;
+        const activeItem = index >= 0 ? items[index] : null;
+        if (activeItem) {
+            input.setAttribute('aria-activedescendant', activeItem.id);
+        } else {
+            input.removeAttribute('aria-activedescendant');
+        }
     }
 
     function updateCommandPaletteResults(query) {
@@ -202,6 +220,7 @@
                 </div>
             `;
             selectedIndex = -1;
+            input.removeAttribute('aria-activedescendant');
             return;
         }
 

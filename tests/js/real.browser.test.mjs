@@ -1319,6 +1319,7 @@ test('real browser: command palette keeps compact icons and focuses search on mo
       expanded: 'false',
       status: 'all',
     });
+    const focusBeforePalette = await page.evaluate(() => document.activeElement?.id || document.activeElement?.getAttribute('data-control'));
     await page.keyboard.down('Control');
     await page.keyboard.press('k');
     await page.keyboard.up('Control');
@@ -1336,6 +1337,11 @@ test('real browser: command palette keeps compact icons and focuses search on mo
       return {
         hidden: overlay.getAttribute('aria-hidden'),
         focus: document.activeElement.id,
+        role: document.getElementById('command-palette-input').getAttribute('role'),
+        expanded: document.getElementById('command-palette-input').getAttribute('aria-expanded'),
+        controls: document.getElementById('command-palette-input').getAttribute('aria-controls'),
+        activeDescendant: document.getElementById('command-palette-input').getAttribute('aria-activedescendant'),
+        selectedOptions: items.filter((item) => item.getAttribute('aria-selected') === 'true').length,
         itemCount: items.length,
         iconBounds: icons.map((icon) => {
           const bounds = icon.getBoundingClientRect();
@@ -1349,14 +1355,42 @@ test('real browser: command palette keeps compact icons and focuses search on mo
 
     assert.equal(palette.hidden, 'false');
     assert.equal(palette.focus, 'command-palette-input');
+    assert.equal(palette.role, 'combobox');
+    assert.equal(palette.expanded, 'true');
+    assert.equal(palette.controls, 'command-palette-results');
+    assert.ok(palette.activeDescendant?.startsWith('command-palette-option-'));
+    assert.equal(palette.selectedOptions, 1);
     assert.ok(palette.itemCount >= 8, 'A busca rápida deve exibir os comandos de navegação e ação');
     assert.ok(palette.iconBounds.every(({ width, height }) => width <= 20 && height <= 20));
     assert.ok(palette.itemHeights.every((height) => height < 80));
     assert.ok(palette.dialogWidth <= 358, 'A paleta deve caber na largura mobile com gutters laterais');
     assert.equal(palette.svgMarkupVisible, false, 'O SVG deve ser renderizado como ícone, nunca como texto');
 
+    await page.keyboard.press('ArrowDown');
+    const movedSelection = await page.evaluate(() => {
+      const input = document.getElementById('command-palette-input');
+      const selected = [...document.querySelectorAll('.command-palette-item[aria-selected="true"]')];
+      return { active: input.getAttribute('aria-activedescendant'), selectedId: selected[0]?.id };
+    });
+    assert.ok(movedSelection.active);
+    assert.equal(movedSelection.active, movedSelection.selectedId);
+
+    await page.locator('#command-palette-input').fill('jurix-sem-resultado-xyz');
+    const emptySelection = await page.evaluate(() => ({
+      active: document.getElementById('command-palette-input').getAttribute('aria-activedescendant'),
+      options: document.querySelectorAll('.command-palette-item').length,
+      expanded: document.getElementById('command-palette-input').getAttribute('aria-expanded'),
+    }));
+    assert.equal(emptySelection.active, null);
+    assert.equal(emptySelection.options, 0);
+    assert.equal(emptySelection.expanded, 'true');
+
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => document.getElementById('command-palette-overlay')?.getAttribute('aria-hidden') === 'true');
+    await page.waitForFunction((expected) => {
+      const active = document.activeElement;
+      return (active?.id || active?.getAttribute('data-control')) === expected;
+    }, {}, focusBeforePalette);
   } finally {
     await browser.close();
     server.close();

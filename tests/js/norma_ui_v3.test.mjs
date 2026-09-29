@@ -54,6 +54,18 @@ test('chat sidebar exposes the same quick-search action as the workspace shell',
   assert.match(topbar, /aria-controls="sidebar"[\s\S]*aria-expanded="false"/);
 });
 
+test('command palette templates cache-bust the shared keyboard accessibility behavior', async () => {
+  const chat = await read('src/apps/legislation/templates/legislation/chatbot.html');
+  const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
+  const palette = await read('src/apps/core/static/js/command_palette.js');
+  assert.match(chat, /command-palette-results[^>]+role="listbox"/);
+  assert.match(chat, /js\/command_palette\.js['"] %\}\?v=20260929-combobox-a11y/);
+  assert.match(workspace, /js\/command_palette\.js['"] %\}\?v=20260929-combobox-a11y/);
+  assert.match(palette, /setAttribute\('role', 'combobox'\)/);
+  assert.match(palette, /aria-activedescendant/);
+  assert.match(palette, /aria-selected/);
+});
+
 test('norm catalog uses the shared workspace shell instead of the legacy navbar', async () => {
   const template = await read('src/apps/legislation/templates/legislation/norma_list.html');
   const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
