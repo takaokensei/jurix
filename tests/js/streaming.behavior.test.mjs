@@ -90,6 +90,23 @@ test('copy answer falls back when Clipboard API is unavailable and announces suc
   w.close();
 });
 
+test('restored user-message renderer uses the persisted creation time', () => {
+  const dom = new JSDOM('<!doctype html><html><body><div id="messages-wrapper"></div></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+    pretendToBeVisual: true,
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-chat-renderer.js'));
+  const createdAt = '2020-01-02T03:04:00.000Z';
+  const expected = new Date(createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  const message = w.JurixChatRenderer.addUserMessage('Pergunta restaurada', { createdAt });
+  assert.equal(message.querySelector('.message-time')?.textContent, expected);
+  assert.equal(w.JurixChatRenderer.formatTimestamp('not-a-date'), w.JurixChatRenderer.formatTimestamp());
+  w.close();
+});
+
 test('anonymous retry replaces the partial assistant answer without duplicating the question', () => {
   const dom = new JSDOM('<!doctype html><html><body data-authenticated="false"></body></html>', {
     url: 'http://localhost/assistente/', runScripts: 'dangerously',

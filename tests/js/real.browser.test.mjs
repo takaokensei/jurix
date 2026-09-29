@@ -160,6 +160,16 @@ test('real browser: anonymous history survives reload (F5) and direct URL naviga
     assert.equal(parsed.sessions.length, 1);
     assert.equal(parsed.sessions[0].messages.length, 2);
 
+    const fixedMessageTimes = ['2020-01-02T03:04:00.000Z', '2020-01-02T03:05:00.000Z'];
+    const expectedMessageTimes = await page.evaluate((times) => {
+      const history = JSON.parse(localStorage.getItem('jurix:anonymous-history:v2'));
+      history.sessions[0].messages.forEach((message, index) => {
+        message.created_at = times[index];
+      });
+      localStorage.setItem('jurix:anonymous-history:v2', JSON.stringify(history));
+      return times.map((time) => new Date(time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+    }, fixedMessageTimes);
+
     // 1. REAL F5 (Reload)
     await page.reload({ waitUntil: 'domcontentloaded' });
 
@@ -171,6 +181,8 @@ test('real browser: anonymous history survives reload (F5) and direct URL naviga
 
     const restoredText = await page.$eval('.message-assistant', (el) => el.textContent);
     assert.ok(restoredText.includes('Resposta anônima persistida com sucesso.'));
+    const restoredMessageTimes = await page.$$eval('.message-time', (nodes) => nodes.map((node) => node.textContent));
+    assert.deepEqual(restoredMessageTimes, expectedMessageTimes, 'F5 must preserve original user and assistant message times');
 
     // 2. Direct URL navigation in a new tab
     const page2 = await browser.newPage();
@@ -183,6 +195,8 @@ test('real browser: anonymous history survives reload (F5) and direct URL naviga
 
     const directNavText = await page2.$eval('.message-assistant', (el) => el.textContent);
     assert.ok(directNavText.includes('Resposta anônima persistida com sucesso.'));
+    const directNavMessageTimes = await page2.$$eval('.message-time', (nodes) => nodes.map((node) => node.textContent));
+    assert.deepEqual(directNavMessageTimes, expectedMessageTimes, 'Direct URL restoration must preserve persisted times');
     await page2.close();
   } finally {
     await browser.close();
@@ -356,6 +370,12 @@ test('real browser: authenticated history multi-page pagination and scroll reten
     );
     const expected = Array.from({ length: 60 }, (_, i) => `Mensagem Real ${i + 1}`);
     assert.deepEqual(messageTexts, expected, 'A ordem de 1 a 60 deve estar rigorosamente correta');
+    const firstHistoricalTime = await page.$eval('#messages-wrapper .message .message-time', (node) => node.textContent);
+    const expectedHistoricalTime = await page.evaluate(() => new Date(1700000000000 + 1000).toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    }));
+    assert.equal(firstHistoricalTime, expectedHistoricalTime, 'Authenticated history must render message.created_at');
 
     // Test that when a user manually scrolls up, scrollToBottomIfAtBottom does NOT yank scroll to bottom
     await page.evaluate(() => {

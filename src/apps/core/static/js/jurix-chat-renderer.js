@@ -28,8 +28,10 @@
         return escapeHtml(text).replace(/\n/g, '<br>');
     }
 
-    function timestamp() {
-        return new Date().toLocaleTimeString('pt-BR', {
+    function formatTimestamp(value) {
+        const parsed = value ? new Date(value) : null;
+        const date = parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date();
+        return date.toLocaleTimeString('pt-BR', {
             hour: '2-digit',
             minute: '2-digit',
         });
@@ -53,7 +55,7 @@
             <div class="message-content">
                 <div class="message-header">
                     <span class="message-role">Você</span>
-                    <span class="message-time">${escapeHtml(timestamp())}</span>
+                    <span class="message-time">${escapeHtml(formatTimestamp(deps.createdAt))}</span>
                 </div>
                 <div class="message-body">${body}</div>
             </div>
@@ -176,6 +178,7 @@
 
     // Export public API
     root.escapeHtml = escapeHtml;
+    root.formatTimestamp = formatTimestamp;
     root.addUserMessage = addUserMessage;
     root.addLoadingMessage = addLoadingMessage;
     root.removeLoadingMessage = removeLoadingMessage;

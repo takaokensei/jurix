@@ -69,6 +69,8 @@ test('changed assistant and workspace visual assets use cache-busted URLs', asyn
   assert.match(chat, /css\/jurix-figma\.css['"] %\}\?v=/);
   assert.match(chat, /css\/jurix-rag\.css['"] %\}\?v=/);
   assert.match(chat, /js\/jurix-rag\.js['"] %\}\?v=/);
+  assert.match(chat, /js\/jurix-chat-renderer\.js['"] %\}\?v=/);
+  assert.match(chat, /js\/chat\.js['"] %\}\?v=/);
   assert.match(workspace, /css\/jurix-figma\.css['"] %\}\?v=/);
 });
 

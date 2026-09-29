@@ -682,3 +682,61 @@ repository. Establish a reproducible capture path during the final audit.
 Next action: Continue the full route and keyboard audit, focusing on the
 assistant answer reading hierarchy and the active-conversation shell; then
 establish saved screenshot evidence for the final route matrix.
+
+## Cycle 16 — 2026-09-29
+
+Area: Timestamp fidelity when restoring anonymous and authenticated chat history.
+
+Goal: Keep message metadata stable across refresh, direct URL navigation, and
+loading older pages; show the current time only for newly created messages.
+
+Observed problems: Both the shared user-message renderer and the assistant
+message restoration path generated `new Date()` during rendering, ignoring the
+persisted `created_at`. A reload therefore made an old user/assistant exchange
+appear to have happened at the current time. The issue reproduced on the local
+conversation: before the fix, repeated reloads showed changing time; after it,
+both messages remain at their stored time.
+
+Changes made: The shared renderer now formats a validated stored timestamp and
+falls back to current time only when it is missing/invalid. Session restoration
+and history pagination pass `created_at` for user and assistant messages. Live
+messages continue to use the current time. Updated cache-busting URLs for the
+changed renderer and chat script. No API, model, or backend changes.
+
+Browser validation: The real Chromium anonymous-history test now seeds a fixed
+historical timestamp, performs F5, and opens the direct conversation URL in a
+second tab; both user and assistant times remain unchanged. The authenticated
+multi-page-history browser test verifies the first restored message uses its
+API `created_at` after loading older pages. Repeated F5 in the actual local
+conversation kept both timestamps at 13:39 while the previous implementation
+changed them to the current time.
+
+Tests: Full `npm test` passed (exit code 0), including all 11 real Chromium
+scenarios, 15 streaming behavior tests, sanitization/CSP, command palette, and
+responsive interaction coverage. Focused Python/system, lint and token gates
+were green in Cycle 15; this cycle changes only frontend JS/templates/tests.
+`node --check` and `git diff --check` passed.
+
+Console: No new console errors; F5 and direct-route assertions completed.
+Quota warnings in the unit suite remain intentional fault-injection output.
+
+Responsive validation: No layout changes; message timestamp restoration was
+tested on real Chromium. The route matrix already covers assistant and shell
+interactions at 390px as well as wide desktop widths; the full evidence drawer
+was also checked at 390px and 1440px in Cycle 15.
+
+Visual score: History/message metadata 9/10 after this cycle; old timestamps
+are stable and intentionally retain the existing compact time-only treatment.
+The conversation's substantive answer hierarchy remains a separate open
+presentation concern because changing or suppressing model text at the frontend
+could misrepresent the original answer.
+
+Regressions: None found in the complete JS suite or real reload/navigation
+flows.
+
+Screenshots: Verified in the live in-app browser; persistent before/after
+screenshots for the required full route matrix remain outstanding.
+
+Next action: Continue with the answer reading hierarchy and the complete
+desktop/mobile route audit, then close the screenshot artifact gap during the
+final pass.

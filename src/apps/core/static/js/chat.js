@@ -452,7 +452,7 @@
                 for (let i = 0; i < sessionData.messages.length; i++) {
                     const msg = sessionData.messages[i];
                     if (msg.role === 'user') {
-                        addUserMessage(msg.content);
+                        addUserMessage(msg.content, msg.created_at);
                     } else if (msg.role === 'assistant') {
                         messageIndex++;
                         const isLastAssistant = messageIndex === assistantMessages.length;
@@ -461,7 +461,8 @@
                             msg.sources || [],
                             isLastAssistant && typeof currentSessionId === 'number',
                             true,
-                            msg.metadata || {}
+                            msg.metadata || {},
+                            msg.created_at
                         );
                     }
                 }
@@ -524,8 +525,8 @@
                 }
                 const existing = new Set(wrapper.children);
                 for (const msg of page.messages || []) {
-                    if (msg.role === 'user') addUserMessage(msg.content);
-                    else addAssistantMessage(msg.content, msg.sources || [], false, true, msg.metadata || {});
+                    if (msg.role === 'user') addUserMessage(msg.content, msg.created_at);
+                    else addAssistantMessage(msg.content, msg.sources || [], false, true, msg.metadata || {}, msg.created_at);
                 }
                 const fragment = document.createDocumentFragment();
                 for (const child of Array.from(wrapper.children)) {
@@ -753,10 +754,10 @@
     }
 
     // ===== MESSAGE RENDERING =====
-    function addUserMessage(text) {
+    function addUserMessage(text, createdAt = null) {
         if (!window.JurixChatRenderer) return;
         document.getElementById('welcome-state')?.classList.add('is-hidden');
-        window.JurixChatRenderer.addUserMessage(text, { scrollToBottom, renderMarkdown, escapeHtml });
+        window.JurixChatRenderer.addUserMessage(text, { scrollToBottom, renderMarkdown, escapeHtml, createdAt });
     }
 
     function addLoadingMessage() {
@@ -774,7 +775,8 @@
         sources,
         showRegenerate = false,
         skipStreaming = false,
-        metadata = {}
+        metadata = {},
+        createdAt = null
     ) {
         const messagesWrapper = document.getElementById('messages-wrapper');
         if (!messagesWrapper) return;
@@ -782,7 +784,7 @@
 
         const interrupted = metadata && metadata.interrupted === true;
 
-        const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const timestamp = window.JurixChatRenderer?.formatTimestamp(createdAt) || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         const uid = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
         const messageId = 'msg-' + uid;
         const sourcesId = 'sources-' + uid;
