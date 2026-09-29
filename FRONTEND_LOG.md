@@ -866,3 +866,38 @@ improvements. The two directories still have matching 30-image sets.
 Next action: Audit keyboard traversal, visible focus, Escape behavior and
 reduced-motion on the remaining shell controls, then exercise real assistant,
 history, collections and settings interactions before the final audit.
+
+## Cycle 19 — 2026-09-29
+
+Area: Revalidation of reported UI regressions U1–U7 against the current checkout.
+
+Result: The supplied screenshots/issues describe an earlier UI state. No new
+reproducible defect from U1–U7 remains in the current working tree, so this
+verification cycle intentionally makes no application-code changes.
+
+Checks performed: Opened `/assistente/`, `/normas/`, `/colecoes/`,
+`/pesquisa/`, and `/configuracoes/` in the local app. Ctrl+K opened the palette;
+its navigation icons rendered as SVGs rather than text. `/normas/` and the
+workspace routes exposed the same sidebar/topbar structure. The active chat
+also exposed Configurações and Busca rápida. Norm cards showed the law title
+above secondary 9px labels/12px values. Collections separated the empty state,
+account limitation, public exploration CTA, and resource indicators. The
+settings model select displayed a visible blue chevron. Legal-search empty
+state used the compact 28px/20px padding rule.
+
+Automated validation: `node --test tests/js/norma_ui_v3.test.mjs
+tests/js/real.browser.test.mjs` passed all 25 tests, including a real-Chromium
+assertion that SVG markup is not visible text and structural checks for U2–U7.
+
+Architecture note: The assistant template retains its chat-specific session
+list and CSS shell rather than extending `workspace/base.html`; its sidebar
+still includes the shared navigation destinations, settings, quick search,
+and the shared topbar partial. This is an implementation difference, but the
+reported missing controls and visual split are not present in the live UI.
+Replacing the chat shell solely to erase that implementation difference would
+risk its session-specific behavior without fixing a reproduced user-facing
+failure.
+
+Next action: Continue the full application interaction audit across assistant,
+history, collections, search, settings, norms, detail, comparison, and tree;
+prioritize reproducible keyboard, responsive, and cross-route state bugs.
