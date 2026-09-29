@@ -1214,6 +1214,26 @@ test('real browser: command palette keeps compact icons and focuses search on mo
     const page = await browser.newPage();
     await page.setViewport({ width: 390, height: 844 });
     await page.goto(`http://127.0.0.1:${port}/assistente/`, { waitUntil: 'domcontentloaded' });
+    const mobileSearchControls = await page.$$eval('#hero-search-form .figma-search-dropdown', (items) => items.map((item) => {
+      const bounds = item.getBoundingClientRect();
+      return { x: bounds.x, right: bounds.right, y: bounds.y, width: bounds.width, height: bounds.height };
+    }));
+    assert.equal(mobileSearchControls.length, 4);
+    assert.ok(mobileSearchControls[0].y === mobileSearchControls[1].y, `Os dois primeiros filtros devem compartilhar a primeira linha: ${JSON.stringify(mobileSearchControls)}`);
+    assert.ok(mobileSearchControls[2].y === mobileSearchControls[3].y, `Os dois últimos filtros devem compartilhar a segunda linha: ${JSON.stringify(mobileSearchControls)}`);
+    assert.ok(mobileSearchControls.every(({ x, right, width }) => width >= 100 && x >= 0 && right <= 390), JSON.stringify(mobileSearchControls));
+    const scopeSelector = '#hero-search-form .figma-search-dropdown';
+    await page.click(scopeSelector);
+    await page.waitForSelector('#hero-search-form [data-jurix-control-menu] [role="menuitemradio"]');
+    assert.equal(await page.$eval(scopeSelector, (element) => element.getAttribute('aria-expanded')), 'true');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#hero-search-form [data-jurix-control-menu]'));
+    assert.equal(await page.$eval(scopeSelector, (element) => element.getAttribute('aria-expanded')), 'false');
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('data-control')), 'norma_status');
+    await page.click(scopeSelector);
+    await page.waitForSelector('#hero-search-form [data-jurix-control-menu]');
+    await page.click(scopeSelector);
+    assert.equal(await page.$eval(scopeSelector, (element) => element.getAttribute('aria-expanded')), 'false', 'Clicar no filtro aberto deve recolher o menu');
     await page.keyboard.down('Control');
     await page.keyboard.press('k');
     await page.keyboard.up('Control');

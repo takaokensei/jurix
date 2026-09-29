@@ -468,3 +468,31 @@ below 481px.
 
 Next action: Continue the keyboard and narrow-screen audit of assistant
 composer controls, then verify the same flow at tablet and desktop widths.
+
+## Cycle 10 — 2026-09-29
+
+Area: Welcome-search controls and keyboard interaction.
+
+Observed problems: On a phone viewport the four search filters wrapped into an
+unbalanced stack with inconsistent widths. In live interaction, opening the
+scope menu and pressing Escape did not close it; clicking the active control
+again also left the menu open. The menu exposed no expanded state or radio-item
+semantics to assistive technology.
+
+Changes made: The welcome filters now form a two-column grid below 641px with
+bounded text and stable hit targets. Search menus now toggle on the active
+control, close on Escape, return focus to their trigger, and publish
+`aria-haspopup`, `aria-expanded`, `aria-controls`, and checked menu-item state.
+Added unit coverage for keyboard open/Escape/focus/toggle and Chromium mobile
+coverage for filter geometry plus the complete Escape-and-toggle flow.
+
+Tests: Full `npm test` passed (including all 10 real-browser cases and the new
+search-controls unit test). Ruff, design-token guard, architecture budget,
+Django system check, JavaScript syntax checks, and `git diff --check` passed.
+
+Regressions: None observed; filters keep the existing option values and event
+contract, with no backend changes.
+
+Next action: Exercise selecting each search option and check that focus,
+announcements, persisted preferences, and composer-vs-home control state stay
+consistent; then inspect file-attachment UX without uploading user documents.

@@ -1518,6 +1518,28 @@ body.figma-theme:has(#messages-wrapper .message) #conversation-input-bar {
   .figma-theme .figma-middle-hero { width: 100%; }
   .figma-theme .figma-hero-section { gap: 12px; }
 
+  .figma-theme #hero-search-form .figma-filters-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .figma-theme #hero-search-form .figma-search-dropdown {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    justify-content: space-between;
+    gap: 6px;
+    padding-inline: 9px;
+    font-size: 12px;
+  }
+
+  .figma-theme #hero-search-form .figma-search-dropdown span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .figma-theme .messages-wrapper { padding-bottom: 260px; }
 
   .figma-theme .figma-sidebar ~ .figma-main .figma-floating-input-bar {

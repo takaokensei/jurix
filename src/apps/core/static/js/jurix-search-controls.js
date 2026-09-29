@@ -62,9 +62,13 @@
     ],
   };
 
-  function closeAll(except) {
+  function closeAll(except, restoreFocus = false) {
     document.querySelectorAll('[data-jurix-control-menu]').forEach(menu => {
-      if (menu !== except) menu.remove();
+      if (menu === except) return;
+      const control = menu.closest('.figma-search-dropdown');
+      menu.remove();
+      control?.setAttribute('aria-expanded', 'false');
+      if (restoreFocus) control?.focus();
     });
   }
 
@@ -78,7 +82,14 @@
     if (label && map[key]) label.textContent = map[key];
   }
 
-  function renderMenu(control, key) {
+  function renderMenu(control, key, focusFirst = false) {
+    const existingMenu = control.querySelector('[data-jurix-control-menu]');
+    if (existingMenu) {
+      existingMenu.remove();
+      control.setAttribute('aria-expanded', 'false');
+      control.focus();
+      return;
+    }
     closeAll();
     if (key === 'attachment') {
       ensureFileInput().click();
@@ -86,24 +97,32 @@
     }
     const menu = document.createElement('div');
     menu.dataset.jurixControlMenu = 'true';
+    menu.id = `jurix-control-menu-${key}-${controls().indexOf(control)}`;
     menu.className = 'jurix-control-menu';
+    menu.setAttribute('role', 'menu');
     options[key].forEach(([value, text]) => {
       const item = document.createElement('button');
       item.type = 'button';
       item.className = 'jurix-control-option';
       item.textContent = text;
-      item.setAttribute('aria-pressed', String(state[key] === value));
+      item.setAttribute('role', 'menuitemradio');
+      item.setAttribute('aria-checked', String(state[key] === value));
       item.onclick = () => {
         state[key] = value;
         save();
         buttonLabel(control, key);
         menu.remove();
+        control.setAttribute('aria-expanded', 'false');
+        control.focus();
         window.dispatchEvent(new CustomEvent('jurix:search-options-changed', { detail: getPayload() }));
       };
       menu.appendChild(item);
     });
     control.classList.add('jurix-control-positioned');
+    control.setAttribute('aria-controls', menu.id);
+    control.setAttribute('aria-expanded', 'true');
     control.appendChild(menu);
+    if (focusFirst) menu.querySelector('button')?.focus();
   }
 
   function ensureFileInput() {
@@ -127,6 +146,8 @@
       control.dataset.control = key;
       control.setAttribute('role', 'button');
       control.setAttribute('tabindex', '0');
+      control.setAttribute('aria-haspopup', 'menu');
+      control.setAttribute('aria-expanded', 'false');
       control.addEventListener('click', event => {
         event.preventDefault();
         event.stopPropagation();
@@ -135,7 +156,7 @@
       control.addEventListener('keydown', event => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          renderMenu(control, key);
+          renderMenu(control, key, true);
         }
       });
       buttonLabel(control, key);
@@ -222,6 +243,13 @@
   document.addEventListener('click', event => {
     if (!event.target.closest('.figma-search-dropdown')) closeAll();
   });
+
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || !document.querySelector('[data-jurix-control-menu]')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    closeAll(null, true);
+  }, true);
 
   document.addEventListener('change', event => {
     if (event.target?.id !== 'jurix-document-input') return;
