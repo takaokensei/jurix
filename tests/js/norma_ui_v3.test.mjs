@@ -120,6 +120,8 @@ test('legal search does not force mobile autofocus and uses a compact empty stat
   const styles = await read('src/apps/core/static/css/workspace.css');
   assert.doesNotMatch(template, /autofocus/);
   assert.match(template, /workspace-empty-state workspace-search-empty/);
+  assert.match(template, /Buscar no acervo normativo/);
+  assert.match(template, /norma_list' %\}\?q=\{\{ query\|urlencode \}\}&amp;tipo=\{\{ norma_type\|urlencode \}\}&amp;ano=\{\{ year\|urlencode \}\}/);
   assert.match(styles, /\.workspace-search-empty \{ padding: 28px 20px; \}/);
   assert.match(styles, /\.workspace-field input, \.workspace-field select, \.workspace-search-panel input, \.workspace-search-panel select \{ box-sizing: border-box;/);
   assert.match(styles, /\.workspace-dialog input, \.workspace-dialog textarea \{ box-sizing: border-box;/);

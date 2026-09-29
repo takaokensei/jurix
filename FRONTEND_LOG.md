@@ -1609,6 +1609,32 @@ structural tests, 15 streaming/persistence tests, and contrast checks.
 Next action: Continue with root route keyboard paths and initial-paint checks
 across light/dark/system preference states.
 
+## Cycle 42 — 2026-09-29
+
+Area: Recovery path from an empty semantic search to direct norm lookup.
+
+Observed problem: On the actual local database, semantic searches for `7982`
+and `7982/2025` returned zero while `Lei 7.982/2025` returned results. The
+empty state offered no way to switch to the separate `/normas/` catalog, whose
+existing search supports number, type and ementa. The corpus currently has only
+10 consolidated norms, so the specific 2025 law may not be present locally.
+
+Changes made: Added a clear direct-catalog CTA to semantic no-result states,
+preserving query, type and year in the link. Added structural coverage; no
+backend, RAG, model or API contract was changed.
+
+Browser validation: Real 390px `/pesquisa/` rendered the CTA without horizontal
+overflow and produced `/normas/?q=7982&tipo=1&ano=2025`. The linked route
+returned HTTP 200 with those filters. This is a discoverable fallback, not a
+claim that a missing norm exists in the local corpus.
+
+Tests: Focused empty-state contract passed. The full frontend suite passed with
+17 real-Chromium scenarios, 19 structural tests, 15 streaming/persistence
+tests, and contrast checks. `git diff --check` passed.
+
+Next action: Continue route-level keyboard verification and audit no-results,
+empty and error states across the primary product surfaces.
+
 ## Cycle 37 — 2026-09-29
 
 Area: Theme consistency between workspace and assistant/public shells.

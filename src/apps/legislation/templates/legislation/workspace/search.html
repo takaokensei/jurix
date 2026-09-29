@@ -44,7 +44,11 @@
         {% endfor %}
     </div>
     {% elif query %}
-    <div class="workspace-empty-state workspace-search-empty"><strong>Nenhuma correspondência encontrada.</strong><p>Tente um termo mais amplo ou reduza o limiar de relevância.</p></div>
+    <div class="workspace-empty-state workspace-search-empty">
+        <strong>Nenhuma correspondência semântica encontrada.</strong>
+        <p>Tente um termo mais amplo ou reduza o limiar. Para localizar uma norma específica por número ou ementa, use a busca direta no acervo.</p>
+        <a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_list' %}?q={{ query|urlencode }}&amp;tipo={{ norma_type|urlencode }}&amp;ano={{ year|urlencode }}">Buscar no acervo normativo</a>
+    </div>
     {% else %}
     <div class="workspace-empty-state workspace-search-empty"><strong>Pesquise por conceito ou dispositivo.</strong><p>Exemplos: “parcelamento do solo”, “licenciamento ambiental” ou “IPTU progressivo”.</p></div>
     {% endif %}
