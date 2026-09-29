@@ -1881,3 +1881,43 @@ the failure test explicitly uses the authenticated API path.
 
 Next action: Test reduced-motion computed behavior on actual assistant and
 workspace components, then continue the phase-E cross-route audit.
+
+## Cycle 48 — 2026-09-29
+
+Area: Reduced-motion behavior in assistant and shared workspace shell.
+
+Goal: Verify the user preference changes rendered animation/transition values,
+not merely that stylesheets contain a media query.
+
+Observed problems: The CSS already supplied global reduced-motion rules, but
+the existing checks were largely structural and did not establish the computed
+duration of live components in both shell families.
+
+Changes made: Added a real-Chromium scenario emulating
+`prefers-reduced-motion: reduce`, creating/closing the actual sources drawer,
+and measuring drawer and workspace-sidebar computed transitions/animations.
+No styling or runtime behavior changed.
+
+Browser validation: At 390×844, Chromium confirmed the preference matches in
+both routes and all computed transition/animation duration values are below
+1ms for the assistant evidence drawer and workspace sidebar. The 30-view route
+capture reported zero views needing review.
+
+Tests: Full `npm test` passed: 19 real-Chromium scenarios, 19 structural
+contracts, 15 streaming/persistence tests, composer lifecycle and contrast
+checks. The focused reduced-motion browser test also passed independently.
+`git diff --check` passed.
+
+Console: No new browser errors from reduced-motion emulation.
+
+Responsive validation: Runtime check at 390×844; screenshot capture covered
+390×844, 1280×800 and 1440×900.
+
+Visual score: No appearance changes; reduced-motion preference is now verified
+against computed runtime styles in both product shells.
+
+Regressions: None observed.
+
+Next action: Continue the phase-E pass through route error/empty states and
+keyboard paths on Norma detail, comparison, tree and workspace forms; identify
+any remaining user-visible failure before considering completion.

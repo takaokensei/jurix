@@ -403,6 +403,49 @@ test('real browser: delete confirmation traps focus, cancels safely, and announc
   }
 });
 
+test('real browser: reduced-motion preference suppresses assistant and workspace transitions', async () => {
+  const server = createTestServer();
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 390, height: 844 });
+    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+    await page.goto(`http://127.0.0.1:${port}/assistente/`, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      window.JurixRagUI.openSourcesDrawer([]);
+      window.JurixRagUI.closeSourcesDrawer();
+    });
+    const assistantMotion = await page.$eval('#jurix-sources-drawer-panel', (element) => ({
+      reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      transition: getComputedStyle(element).transitionDuration,
+      animation: getComputedStyle(element).animationDuration,
+    }));
+    assert.equal(assistantMotion.reduced, true);
+    assert.ok(assistantMotion.transition.split(',').every((value) => parseFloat(value) < 0.001), JSON.stringify(assistantMotion));
+    assert.ok(assistantMotion.animation.split(',').every((value) => parseFloat(value) < 0.001), JSON.stringify(assistantMotion));
+
+    await page.goto(`http://127.0.0.1:${port}/workspace-shell-test/`, { waitUntil: 'domcontentloaded' });
+    const workspaceMotion = await page.$eval('#sidebar', (element) => ({
+      reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      transition: getComputedStyle(element).transitionDuration,
+      animation: getComputedStyle(element).animationDuration,
+    }));
+    assert.equal(workspaceMotion.reduced, true);
+    assert.ok(workspaceMotion.transition.split(',').every((value) => parseFloat(value) < 0.001), JSON.stringify(workspaceMotion));
+    assert.ok(workspaceMotion.animation.split(',').every((value) => parseFloat(value) < 0.001), JSON.stringify(workspaceMotion));
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
 test('real browser: settings report when browser storage rejects preferences', async () => {
   const server = createTestServer();
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
