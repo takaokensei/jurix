@@ -346,7 +346,7 @@
 
     <!-- Sources Drawer (Slide-over side sheet) -->
     <div class="jurix-sources-drawer-backdrop" id="jurix-sources-drawer-backdrop" aria-hidden="true"></div>
-    <aside class="jurix-sources-drawer-panel" id="jurix-sources-drawer-panel" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="sources-drawer-title">
+    <aside class="jurix-sources-drawer-panel" id="jurix-sources-drawer-panel" aria-hidden="true" inert role="dialog" aria-modal="false" aria-labelledby="sources-drawer-title">
         <div class="jurix-sources-drawer-header">
             <div class="jurix-sources-drawer-title-group">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2">
@@ -374,7 +374,7 @@
     <!-- Jurix Configuration: read from data-* attributes on <body> by config.js (CSP: no inline script) -->
     <script src="{% static 'js/config.js' %}"></script>
     <script src="{% static 'js/jurix-markdown.js' %}"></script>
-    <script src="{% static 'js/jurix-rag.js' %}?v=20260929-evidence-groups3"></script>
+    <script src="{% static 'js/jurix-rag.js' %}?v=20260929-drawer-inert1"></script>
     <script src="{% static 'js/jurix-anonymous-history.js' %}"></script>
     <script src="{% static 'js/jurix-chat-api.js' %}?v=20260929-settings-payload1"></script>
     <script src="{% static 'js/jurix-api-reliability-overlay.js' %}"></script>

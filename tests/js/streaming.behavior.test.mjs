@@ -157,9 +157,12 @@ test('empty source drawer has a focusable dialog fallback', () => {
   const panel = w.document.getElementById('jurix-sources-drawer-panel');
   assert.equal(panel?.getAttribute('tabindex'), '-1');
   assert.equal(panel?.getAttribute('aria-hidden'), 'false');
+  assert.equal(panel?.inert, false);
   assert.match(panel?.textContent || '', /evidências não estão disponíveis/i);
   assert.ok(panel?.querySelector('.jurix-sources-empty-retry'));
   w.JurixRagUI.closeSourcesDrawer();
+  assert.equal(panel?.inert, true);
+  assert.equal(panel?.getAttribute('aria-modal'), 'false');
   dom.window.close();
 });
 

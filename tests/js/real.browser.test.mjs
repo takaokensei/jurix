@@ -1983,6 +1983,27 @@ test('real browser: evidence drawer groups same-norm citations without hiding ar
     });
     await page.goto(`http://127.0.0.1:${port}/assistente/`, { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => {
+      window.JurixRagUI.openSourcesDrawer([]);
+      window.JurixRagUI.closeSourcesDrawer();
+    });
+    const closedDrawer = await page.evaluate(() => {
+      const panel = document.getElementById('jurix-sources-drawer-panel');
+      const closeButton = document.getElementById('jurix-sources-drawer-close');
+      closeButton.focus();
+      return {
+        inert: panel.inert,
+        hidden: panel.getAttribute('aria-hidden'),
+        modal: panel.getAttribute('aria-modal'),
+        closeButtonReceivedFocus: document.activeElement === closeButton,
+      };
+    });
+    assert.deepEqual(closedDrawer, {
+      inert: true,
+      hidden: 'true',
+      modal: 'false',
+      closeButtonReceivedFocus: false,
+    }, 'A closed evidence drawer must not expose its controls to keyboard focus');
+    await page.evaluate(() => {
       const trigger = document.createElement('button');
       trigger.id = 'test-source-trigger';
       trigger.textContent = 'Ver fontes';
@@ -1994,6 +2015,7 @@ test('real browser: evidence drawer groups same-norm citations without hiding ar
         { norma: 'Lei nº 8205/2026', dispositivo_ref: 'Art. 1º', text: 'Outra norma.', similarity_score: 0.83 },
       ]);
     });
+    await new Promise((resolve) => setTimeout(resolve, 350));
 
     const mobile = await page.evaluate(() => {
       const panel = document.getElementById('jurix-sources-drawer-panel');
@@ -2032,6 +2054,7 @@ test('real browser: evidence drawer groups same-norm citations without hiding ar
 
     await page.click('#jurix-sources-drawer-close');
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'test-source-trigger');
+    assert.equal(await page.$eval('#jurix-sources-drawer-panel', (panel) => panel.inert), true);
     assert.deepEqual(browserErrors, [], `Evidence drawer should not produce browser errors: ${browserErrors.join('; ')}`);
   } finally {
     await browser.close();

@@ -1711,3 +1711,46 @@ Regressions: None observed.
 
 Next action: Continue the final cross-route audit for issues outside U1–U7,
 prioritizing functional inconsistencies and accessibility over cosmetic churn.
+
+## Cycle 44 — 2026-09-29
+
+Area: Keyboard and accessibility state of the assistant evidence drawer.
+
+Goal: Ensure a visually closed drawer cannot receive keyboard focus or be
+announced as an active modal.
+
+Observed problems: Reproduced on the real assistant conversation: pressing Tab
+through the page eventually focused “Fechar painel de fontes” while the drawer
+was translated entirely outside the viewport. `aria-hidden="true"` did not
+remove its descendants from the browser's sequential focus navigation.
+
+Changes made: The drawer starts with `inert` and `aria-modal="false"`. Opening
+removes `inert` and activates modal semantics; closing restores `inert`, hides
+the drawer and disables modal semantics before returning focus to the trigger.
+Added assertions for initial/open/closed state and the real-Chromium focus path;
+updated the static asset cache key.
+
+Browser validation: Repeated Tab navigation on the live `/assistente/<session>/`
+page through 40 focus moves; none entered the closed drawer. The Chromium test
+also attempts to focus the close control while closed (focus is rejected),
+opens the drawer, verifies the content, closes it, checks trigger focus return,
+and confirms it is inert again. Re-captured 30 audit views; zero need review.
+
+Tests: Full `npm test` passed: 17 real-Chromium scenarios, 19 structural
+contracts, 15 streaming/persistence tests, composer lifecycle and contrast
+checks. `git diff --check` passed. An early test run exposed fixture setup and
+transition-timing assumptions; the fixture now initializes the dynamic drawer
+and the geometry assertion waits for its 300ms transition.
+
+Console: No errors in the drawer browser scenario.
+
+Responsive validation: Drawer browser coverage exercises mobile and desktop
+viewport bounds; 390×844 is used for the mobile evidence-card check.
+
+Visual score: No visual change; keyboard behavior and modal semantics are now
+consistent with the drawer's visible state.
+
+Regressions: None observed.
+
+Next action: Continue the final accessibility pass across overlays and other
+off-canvas controls, then reassess remaining phase-E gaps.

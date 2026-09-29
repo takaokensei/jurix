@@ -317,8 +317,9 @@
             panel.id = 'jurix-sources-drawer-panel';
             panel.className = 'jurix-sources-drawer-panel';
             panel.setAttribute('aria-hidden', 'true');
+            panel.setAttribute('inert', '');
             panel.setAttribute('role', 'dialog');
-            panel.setAttribute('aria-modal', 'true');
+            panel.setAttribute('aria-modal', 'false');
             panel.setAttribute('tabindex', '-1');
             panel.setAttribute('aria-labelledby', 'sources-drawer-title');
             panel.setAttribute('aria-describedby', 'sources-drawer-subtitle');
@@ -440,7 +441,9 @@
         }
 
         panel.classList.add('is-open');
+        panel.inert = false;
         panel.setAttribute('aria-hidden', 'false');
+        panel.setAttribute('aria-modal', 'true');
         if (backdrop) {
             backdrop.classList.add('is-open');
             backdrop.setAttribute('aria-hidden', 'false');
@@ -456,7 +459,9 @@
         const panel = document.getElementById('jurix-sources-drawer-panel');
         if (panel) {
             panel.classList.remove('is-open');
+            panel.inert = true;
             panel.setAttribute('aria-hidden', 'true');
+            panel.setAttribute('aria-modal', 'false');
         }
         if (backdrop) {
             backdrop.classList.remove('is-open');
