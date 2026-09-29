@@ -1786,6 +1786,13 @@ test('real browser: command palette keeps compact icons and focuses search on mo
     assert.ok(palette.dialogWidth <= 358, 'A paleta deve caber na largura mobile com gutters laterais');
     assert.equal(palette.svgMarkupVisible, false, 'O SVG deve ser renderizado como ícone, nunca como texto');
 
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'command-palette-input', 'Tab must stay within the command palette');
+    await page.keyboard.down('Shift');
+    await page.keyboard.press('Tab');
+    await page.keyboard.up('Shift');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'command-palette-input', 'Shift+Tab must stay within the command palette');
+
     await page.keyboard.press('ArrowDown');
     const movedSelection = await page.evaluate(() => {
       const input = document.getElementById('command-palette-input');

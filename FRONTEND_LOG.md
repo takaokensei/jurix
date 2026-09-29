@@ -1754,3 +1754,42 @@ Regressions: None observed.
 
 Next action: Continue the final accessibility pass across overlays and other
 off-canvas controls, then reassess remaining phase-E gaps.
+
+## Cycle 45 — 2026-09-29
+
+Area: Command-palette focus containment on mobile.
+
+Goal: Verify that quick navigation behaves as a modal for keyboard users in the
+assistant and shared workspace shell.
+
+Observed problems: No focus escape reproduced. The existing palette handler
+wraps both Tab and Shift+Tab to its search combobox, and Escape closes it and
+restores the previously focused control. The prior browser scenario checked
+open/search/selection/escape but did not explicitly assert both focus-wrap
+directions.
+
+Changes made: Strengthened the existing real-Chromium regression test to assert
+that Tab and Shift+Tab remain in the palette. No application behavior changed.
+
+Browser validation: Opened Ctrl+K in the live assistant and confirmed the
+palette contents and visible focus; then opened the palette from its keyboard
+shortcut in the shared Normas shell. The Chromium mobile scenario exercises
+Tab, Shift+Tab, keyboard selection, Escape and focus return at 390×844.
+
+Tests: Full `npm test` passed: 17 real-Chromium scenarios (including the added
+focus-wrap assertions), 19 structural contracts, 15 streaming/persistence
+tests, composer lifecycle and contrast checks. The focused palette test also
+passed independently. `git diff --check` passed.
+
+Console: No palette-specific errors observed in the real-browser test.
+
+Responsive validation: Re-captured 30 route/viewport views at 1440×900,
+1280×800 and 390×844; zero views need review.
+
+Visual score: Palette layout unchanged; keyboard modal behavior is explicitly
+protected from regression.
+
+Regressions: None observed.
+
+Next action: Continue final pass through route-level feedback/error states and
+reduced-motion behavior; verify that UI claims match actual actions.
