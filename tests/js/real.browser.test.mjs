@@ -290,8 +290,18 @@ test('real browser: collection dialog preserves focus for keyboard and mobile us
   }
 });
 
-test('real browser: delete confirmation is modal, traps focus, and cancels without deleting', async () => {
-  const server = createTestServer();
+test('real browser: delete confirmation traps focus, cancels safely, and announces request failure', async () => {
+  const server = createTestServer({
+    isAuthenticated: () => true,
+    '/api/v1/chat/sessions/fixture-no-delete/': (req, res) => {
+      if (req.method === 'DELETE') {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ detail: 'Falha simulada para teste.' }));
+      }
+      res.writeHead(404);
+      return res.end();
+    },
+  });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const port = server.address().port;
   const browser = await puppeteer.launch({
@@ -302,6 +312,13 @@ test('real browser: delete confirmation is modal, traps focus, and cancels witho
 
   try {
     const page = await browser.newPage();
+    const deleteRequestTrace = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/api/v1/chat/sessions/')) deleteRequestTrace.push(`${request.method()} ${request.url()}`);
+    });
+    page.on('console', (message) => {
+      if (message.type() === 'error') deleteRequestTrace.push(`console: ${message.text()}`);
+    });
     await page.setViewport({ width: 390, height: 844 });
     await page.goto(`http://127.0.0.1:${port}/assistente/`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => typeof window.jurixChat?.deleteSession === 'function');
@@ -353,6 +370,33 @@ test('real browser: delete confirmation is modal, traps focus, and cancels witho
     await page.click('#delete-modal-cancel');
     assert.equal(await page.evaluate(() => document.activeElement.id), 'test-delete-trigger');
     assert.equal(await page.$eval('#delete-session-modal', (modal) => modal.inert), true);
+
+    await page.evaluate(() => window.jurixChat.deleteSession('fixture-no-delete'));
+    await page.waitForFunction(() => document.querySelector('#delete-session-modal')?.classList.contains('active'));
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    await Promise.all([
+      page.waitForFunction(() => document.querySelector('#chat-toast-notification')?.textContent.includes('Erro ao deletar conversa'), { timeout: 5000 }),
+      page.click('#delete-modal-confirm'),
+    ]).catch(async (error) => {
+      const state = await page.evaluate(() => ({
+        modal: document.querySelector('#delete-session-modal')?.className,
+        focus: document.activeElement?.id,
+        toast: document.querySelector('#chat-toast-notification')?.textContent,
+      }));
+      throw new Error(`${error.message}; delete state: ${JSON.stringify(state)}; trace: ${JSON.stringify(deleteRequestTrace)}`);
+    });
+    const failureNotice = await page.$eval('#chat-toast-notification', (toast) => ({
+      role: toast.getAttribute('role'),
+      live: toast.getAttribute('aria-live'),
+      atomic: toast.getAttribute('aria-atomic'),
+      text: toast.textContent,
+    }));
+    assert.deepEqual(failureNotice, {
+      role: 'alert',
+      live: 'assertive',
+      atomic: 'true',
+      text: 'Erro ao deletar conversa. Tente novamente.',
+    });
   } finally {
     await browser.close();
     server.close();

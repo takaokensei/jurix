@@ -804,9 +804,16 @@
             toast.className = 'chat-toast-notification';
             document.body.appendChild(toast);
         }
+        const isError = type === 'error';
+        toast.setAttribute('role', isError ? 'alert' : 'status');
+        toast.setAttribute('aria-live', isError ? 'assertive' : 'polite');
+        toast.setAttribute('aria-atomic', 'true');
         toast.classList.toggle('is-error', type === 'error');
         toast.classList.toggle('is-success', type !== 'error');
-        toast.textContent = message;
+        toast.textContent = '';
+        window.requestAnimationFrame(() => {
+            toast.textContent = message;
+        });
         toast.classList.remove('is-dismissed');
         setTimeout(() => {
             toast.classList.add('is-dismissed');

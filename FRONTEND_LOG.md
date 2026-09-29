@@ -1837,3 +1837,47 @@ Regressions: None observed; confirmation still requires the explicit
 
 Next action: Continue auditing error and success announcements, then verify
 reduced-motion behavior across assistant and workspace route families.
+
+## Cycle 47 — 2026-09-29
+
+Area: Accessible announcement for failed chat-history deletion.
+
+Goal: Ensure users, including screen-reader users, receive an immediate and
+programmatically announced failure when a delete request is rejected.
+
+Observed problems: The visual error toast created after a failed deletion had
+no live-region semantics, so assistive technology was not required to announce
+the failure. The first test attempt used the anonymous fixture, whose expected
+behavior is local deletion and therefore correctly made no HTTP request.
+
+Changes made: Error notifications now use `role="alert"`, assertive live
+announcement and atomic message updates. Success notifications use
+`role="status"` and polite announcement. Clearing and re-setting the toast text
+ensures an identical repeated message still produces a live-region change. The
+chat static cache key was updated. The test fixture now uses the authenticated
+path and intercepts a simulated 500 response without contacting a real API or
+database.
+
+Browser validation: Real Chromium opened the confirmation, cancelled without
+request, reopened it, confirmed the test-only operation against a local 500
+handler, and verified the resulting announcement role, live priority and exact
+message. Captured 30 route/viewport views; zero need review.
+
+Tests: Full `npm test` passed: 18 real-Chromium scenarios, 19 structural
+contracts, 15 streaming/persistence tests, composer lifecycle and contrast
+checks. `git diff --check` passed.
+
+Console: The deliberate 500 is handled by the app's expected error path; no
+uncaught runtime error was reported in the test.
+
+Responsive validation: Failure-feedback scenario runs at 390×844; the full
+capture set also covers 1280×800 and 1440×900.
+
+Visual score: Toast appearance is unchanged; status is now accessible to
+assistive technology and repeat failures are announced again.
+
+Regressions: None observed. Anonymous history continues to use local deletion;
+the failure test explicitly uses the authenticated API path.
+
+Next action: Test reduced-motion computed behavior on actual assistant and
+workspace components, then continue the phase-E cross-route audit.
