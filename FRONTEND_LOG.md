@@ -1189,3 +1189,36 @@ visibility issues.
 Next action: Continue the outstanding keyboard/focus and mobile reading-flow
 checks across comparison, history, collections, and settings; fix the next
 demonstrable issue rather than assuming these routes are complete.
+
+## Cycle 26 — 2026-09-29
+
+Area: Shared workspace mobile navigation accessibility.
+
+Goal: Ensure the off-canvas sidebar does not expose invisible links to keyboard
+users and that opening/closing it gives predictable focus feedback.
+
+Observed problems: On the actual `/historico/` and `/colecoes/` pages at 390px,
+Tab moved focus through sidebar links whose right edge was at -15px. They were
+outside the viewport but remained in the keyboard order.
+
+Changes made: `workspace.js` now marks a closed mobile sidebar `inert` and
+`aria-hidden`, clears those states while open, moves focus to its first link
+when opened, returns focus to the menu toggle on Escape, and restores normal
+desktop navigation after resizing above 900px. Added a cache key for the
+shared script and a real-Chromium regression test for mobile closed/open,
+Escape, and desktop resize states. No backend changes.
+
+Browser validation: Reproduced on both real workspace routes. Added isolated
+Chromium coverage proving Tab skips the offscreen links, opening enters the
+menu, subsequent Tab reaches the next item, Escape restores the trigger, and
+desktop resize removes inert/hidden state. Full frontend suite passed: 13/13
+real-Chromium browser tests plus all structural, security, persistence, and
+streaming test groups. `git diff --check` passed.
+
+Screenshots: This is an accessibility-state-only change with no intended
+visual delta; the verified 30-view before/after set from Cycle 25 remains the
+current visual baseline.
+
+Next action: Audit the comparison and norm-reading routes for keyboard access
+to dense legal text, then exercise the history and collection controls at
+mobile widths and in reduced-motion mode.

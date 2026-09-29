@@ -73,6 +73,21 @@ function createTestServer(handlers = {}) {
       return res.end(html);
     }
 
+    if (url.pathname === '/workspace-shell-test/') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(`<!doctype html><html lang="pt-BR"><head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="/static/css/jurix-figma.css">
+        <link rel="stylesheet" href="/static/css/workspace.css">
+      </head><body class="figma-theme workspace-page"><div class="workspace-shell">
+        <aside id="sidebar" class="workspace-sidebar" data-workspace-sidebar aria-label="Navegação principal">
+          <nav><a href="#assistant">Assistente</a><a href="#norms">Normas</a></nav>
+        </aside><main class="workspace-main"><header class="workspace-topbar">
+          <button id="toggle-sidebar" data-workspace-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Abrir menu">Menu</button>
+        </header><div class="workspace-content" id="main-content"><a href="#content">Conteúdo</a></div></main>
+      </div><script src="/static/js/workspace.js"></script></body></html>`);
+    }
+
     if (url.pathname === '/tree-test/') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(`<!doctype html><html lang="pt-BR"><head>
@@ -127,6 +142,46 @@ function createTestServer(handlers = {}) {
 
   return server;
 }
+
+test('real browser: closed mobile workspace navigation is removed from keyboard focus', async () => {
+  const server = createTestServer();
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 390, height: 844 });
+    await page.goto(`http://127.0.0.1:${port}/workspace-shell-test/`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => document.querySelector('#sidebar')?.inert === true);
+    assert.equal(await page.$eval('#sidebar', (sidebar) => sidebar.getAttribute('aria-hidden')), 'true');
+
+    await page.focus('#toggle-sidebar');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement.textContent), 'Conteúdo', 'Tab must skip the offscreen sidebar and continue into the page');
+
+    await page.click('#toggle-sidebar');
+    await page.waitForFunction(() => document.activeElement?.textContent === 'Assistente');
+    assert.equal(await page.$eval('#sidebar', (sidebar) => sidebar.inert), false);
+    assert.equal(await page.$eval('#sidebar', (sidebar) => sidebar.getAttribute('aria-hidden')), 'false');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'Normas');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'toggle-sidebar');
+    assert.equal(await page.$eval('#sidebar', (sidebar) => sidebar.inert), true);
+
+    await page.setViewport({ width: 1280, height: 800 });
+    await page.waitForFunction(() => document.querySelector('#sidebar')?.inert === false);
+    assert.equal(await page.$eval('#sidebar', (sidebar) => sidebar.getAttribute('aria-hidden')), 'false');
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
 
 test('real browser: anonymous history survives reload (F5) and direct URL navigation', async () => {
   const sseEvents = [
