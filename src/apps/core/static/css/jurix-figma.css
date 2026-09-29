@@ -31,6 +31,7 @@
   --figma-purple: #A78BFA;
 
   --figma-text-white: #F8FAFC;
+  --figma-text-on-accent: #FFFFFF;
   --figma-text-muted: #94A3B8;
   --figma-text-dim: #7788A0;
   --figma-text-body: #E2E8F0;
@@ -39,6 +40,8 @@
   --figma-light-text-body: #334155;
   --figma-light-muted: #64748B;
   --figma-light-pale: #EEF3F9;
+  --figma-bg-muted: #F1F5F9;
+  --figma-blue-readable: #1E3A8A;
 
   /* Product tokens shared by the assistant, evidence and norma surfaces. */
   --jurix-space-1: 4px;
@@ -56,6 +59,90 @@
 
   --font-serif: 'Lora', Georgia, serif;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* The settings screen exposes a persisted light/system theme. Keep the same
+   semantic token API so every workspace surface can honor that preference. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --figma-bg-root: #F7F9FC;
+  --figma-bg-sidebar: #FFFFFF;
+  --figma-bg-surface: #FFFFFF;
+  --figma-bg-button: #EAF0F8;
+  --figma-bg-dropdown: #FFFFFF;
+  --figma-border: #D7E0EC;
+  --figma-border-strong: #AAB8CA;
+  --figma-blue-primary: #1D4ED8;
+  --figma-blue-dark: #1E40AF;
+  --figma-blue-light: #1D4ED8;
+  --figma-blue-pale: #1E40AF;
+  --figma-green: #047857;
+  --figma-amber: #92400E;
+  --figma-red: #B91C1C;
+  --figma-red-soft: #991B1B;
+  --figma-blue-soft: #1E40AF;
+  --figma-blue-deep: #DBEAFE;
+  --figma-green-soft: #166534;
+  --figma-green-deep: #DCFCE7;
+  --figma-amber-soft: #92400E;
+  --figma-amber-deep: #FEF3C7;
+  --figma-red-deep: #FEE2E2;
+  --figma-source-hover: #EAF2FF;
+  --figma-purple: #6D28D9;
+  --figma-text-white: #0F172A;
+  --figma-text-on-accent: #FFFFFF;
+  --figma-text-muted: #475569;
+  --figma-text-dim: #64748B;
+  --figma-text-body: #334155;
+  --jurix-focus-ring: 0 0 0 3px rgba(37, 99, 235, .2);
+  --jurix-surface-elevated: rgba(255, 255, 255, .97);
+}
+
+:root[data-theme="light"] .figma-sidebar {
+  background: var(--figma-bg-sidebar);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, .06);
+}
+:root[data-theme="light"] .figma-logo-icon {
+  border-color: color-mix(in srgb, var(--figma-blue-primary) 22%, var(--figma-border));
+  background: color-mix(in srgb, var(--figma-blue-primary) 8%, var(--figma-bg-surface));
+  box-shadow: none;
+}
+:root[data-theme="light"] .figma-logo-group:hover .figma-logo-icon {
+  border-color: var(--figma-blue-light);
+  box-shadow: 0 3px 12px rgba(15, 23, 42, .08);
+}
+:root[data-theme="light"] .figma-sidebar-item:hover {
+  background: rgba(15, 23, 42, .045);
+}
+:root[data-theme="light"] .figma-sidebar-item.item-nova-pesquisa,
+:root[data-theme="light"] .figma-sidebar-item.active {
+  background: rgba(37, 99, 235, .08);
+  border-color: rgba(37, 99, 235, .16);
+}
+:root[data-theme="light"] .figma-header-row {
+  border-bottom-color: var(--figma-border);
+  background: rgba(255, 255, 255, .92);
+}
+:root[data-theme="light"] .figma-system-search {
+  background: rgba(15, 23, 42, .025);
+}
+:root[data-theme="light"] .figma-floating-input-bar {
+  background: linear-gradient(to top, var(--figma-bg-root) 74%, color-mix(in srgb, var(--figma-bg-root) 92%, transparent) 48%, transparent 100%);
+}
+:root[data-theme="light"] .figma-theme .message-user .message-body {
+  border-color: rgba(37, 99, 235, .18);
+  background: color-mix(in srgb, var(--figma-blue-primary) 8%, var(--figma-bg-surface));
+  color: var(--figma-text-white);
+}
+:root[data-theme="light"] .figma-theme .message-body code,
+:root[data-theme="light"] .figma-theme .message-body pre {
+  border: 1px solid var(--figma-border);
+  background: var(--figma-bg-muted);
+  color: var(--figma-blue-readable);
+}
+:root[data-theme="light"] .figma-theme .message-body blockquote {
+  border-left-color: var(--figma-blue-primary);
+  background: rgba(37, 99, 235, .06);
 }
 
 body.figma-theme {

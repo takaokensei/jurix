@@ -33,6 +33,16 @@ test('theme preference is applied from the document head before page styles pain
   }
 });
 
+test('light theme maps semantic tokens and workspace surfaces instead of leaving dark surfaces behind', async () => {
+  const tokens = await read('src/apps/core/static/css/jurix-figma.css');
+  const workspace = await read('src/apps/core/static/css/workspace.css');
+  const detail = await read('src/apps/core/static/css/jurix-legal-detail.css');
+  assert.match(tokens, /:root\[data-theme="light"\]\s*\{[\s\S]*?--figma-bg-root: #F7F9FC;[\s\S]*?--figma-text-white: #0F172A;[\s\S]*?--figma-text-on-accent: #FFFFFF;/);
+  assert.match(workspace, /:root\[data-theme="light"\][\s\S]*?\.workspace-card[\s\S]*?background: var\(--figma-bg-surface\)/);
+  assert.match(workspace, /\.workspace-button-primary[^}]*color: var\(--figma-text-on-accent\)/);
+  assert.match(detail, /\.legal-detail-actions \.btn[^}]*color:var\(--figma-text-on-accent\)/);
+});
+
 test('dynamic suggestions controller uses the corpus API', async () => {
   const source = await read('src/apps/core/static/js/jurix-dynamic-suggestions.js');
   assert.match(source, /\/api\/v1\/suggestions\//);
@@ -143,8 +153,8 @@ test('mobile workspace search stays a compact 44px icon button when its label is
   const chat = await read('src/apps/legislation/templates/legislation/chatbot.html');
   const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
   assert.match(styles, /@media \(max-width:\s*640px\)[\s\S]*?\.workspace-topbar \.workspace-top-search\s*\{[^}]*flex:\s*0 0 44px;[^}]*width:\s*44px;[^}]*min-width:\s*44px;/);
-  assert.match(chat, /css\/workspace\.css['"] %\}\?v=20260929-mobile-search/);
-  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260929-error-state-layout1/);
+  assert.match(chat, /css\/workspace\.css['"] %\}\?v=20260929-light-theme2/);
+  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260929-light-theme2/);
 });
 
 test('workspace selects use a clearly visible chevron and norm facts stay secondary', async () => {
@@ -185,7 +195,7 @@ test('norm actions use a responsive grid instead of stranding the official sourc
   assert.match(styles, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(100%,\s*15rem\),\s*1fr\)\)/);
   assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*justify-content:\s*center/);
   assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*min-height:\s*44px/);
-  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260929-detail-collapsible-text1/);
+  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260929-light-theme1/);
 });
 
 test('norm consolidated text stays available but does not duplicate every device on initial view', async () => {
@@ -201,7 +211,7 @@ test('mobile norm detail keeps secondary metrics compact without squeezing text 
   const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
   assert.match(styles, /@media \(max-width:640px\)[\s\S]*?\.legal-detail-card \.stats-grid \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\); \}/);
   assert.match(styles, /\.legal-detail-card \.stats-grid \.stat-card:last-child \{ grid-column:1 \/ -1; \}/);
-  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260929-detail-collapsible-text1/);
+  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260929-light-theme1/);
 });
 
 test('version comparison exposes both texts as labelled stacked evidence on mobile', async () => {

@@ -733,3 +733,34 @@ button.jurix-sources-pill-btn:hover,
 
     .sources-grid .source-card { transition: none; transform: none; }
 }
+
+:root[data-theme="light"] .jurix-sources-drawer-panel {
+    border-left-color: var(--figma-border) !important;
+    box-shadow: -12px 0 36px rgba(15, 23, 42, .16) !important;
+}
+:root[data-theme="light"] .jurix-sources-drawer-header {
+    border-bottom-color: var(--figma-border) !important;
+    background: var(--figma-bg-surface) !important;
+}
+:root[data-theme="light"] .jurix-sources-drawer-close:hover {
+    background: rgba(15, 23, 42, .05) !important;
+}
+:root[data-theme="light"] .jurix-rag-source__contribution {
+    border-left-color: color-mix(in srgb, var(--figma-blue-primary) 60%, transparent);
+    color: var(--figma-text-body);
+    background: color-mix(in srgb, var(--figma-blue-primary) 7%, var(--figma-bg-surface));
+}
+:root[data-theme="light"] .jurix-rag-source__contribution-label {
+    color: var(--figma-blue-readable);
+}
+:root[data-theme="light"] .jurix-sources-empty {
+    border-color: var(--figma-border);
+    color: var(--figma-text-body);
+    background: var(--figma-bg-surface);
+}
+:root[data-theme="light"] .jurix-sources-empty p {
+    color: var(--figma-text-muted);
+}
+:root[data-theme="light"] .jurix-sources-empty-retry {
+    color: var(--figma-text-on-accent);
+}

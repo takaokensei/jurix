@@ -6,7 +6,7 @@
 .legal-detail-ementa { margin:20px 0; padding:16px 18px; background:color-mix(in srgb, var(--figma-blue-primary) 8%, transparent); border:1px solid color-mix(in srgb, var(--figma-blue-light) 22%, transparent); border-left:4px solid var(--figma-blue-light); border-radius:8px; color:var(--figma-text-white); line-height:1.65; }
 .legal-detail-ementa strong { color:var(--figma-blue-soft); margin-right:4px; }
 .legal-detail-actions { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr)); gap:10px; margin:20px 0 4px; }
-.legal-detail-actions .btn { display:inline-flex; align-items:center; justify-content:center; min-width:0; min-height:44px; padding:8px 14px; border-radius:8px; background:var(--figma-blue-primary); border:1px solid var(--figma-blue-primary); color:var(--figma-text-white); text-align:center; text-decoration:none; }
+.legal-detail-actions .btn { display:inline-flex; align-items:center; justify-content:center; min-width:0; min-height:44px; padding:8px 14px; border-radius:8px; background:var(--figma-blue-primary); border:1px solid var(--figma-blue-primary); color:var(--figma-text-on-accent); text-align:center; text-decoration:none; }
 .legal-detail-actions .btn:hover { background:var(--figma-blue-dark); }
 .legal-detail-actions .btn-secondary { background:rgba(255,255,255,.04); border-color:var(--figma-border); color:var(--figma-text-white); }
 .legal-detail-card .stats-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:20px 0; }

@@ -2323,3 +2323,51 @@ Next action: Continue the acceptance audit on settings, collections and search
 at narrow viewport widths; keep structural chat-shell consolidation and
 backend-generated answer quality as separate open items if further evidence
 shows material inconsistency.
+
+## Cycle 58 — 2026-09-29
+
+Area: Theme preference, especially the previously non-functional light theme.
+
+Goal: Make the existing Claro preference render as a coherent light interface
+through the shared workspace, assistant, evidence drawer and normative detail,
+without changing the production backend or default dark appearance.
+
+Observed problem: The settings UI exposed a light option and persisted it, but
+large parts of the product retained dark surfaces and light-theme foreground
+tokens. This caused mixed-theme pages and, on blue primary actions, low
+contrast labels. The light theme was therefore a misleading product setting.
+
+Changes made: Added semantic light palette values and targeted light surfaces
+for the shared workspace shell, assistant sidebar/header/composer/user
+messages, legal detail actions, anonymous notice and evidence drawer. Primary
+action labels now use the accent-appropriate foreground token. Updated
+cache-busted stylesheet references and extended real-browser theme coverage to
+assert key surface colors and WCAG AA action-label contrast. Updated static
+contracts for the new cache key and valid foreground token. No backend or API
+behavior changed.
+
+Browser validation: Inspected the running app at 390×844 for settings,
+collections, legal search, norm list/detail, assistant and source drawer.
+Appearance was coherent in light mode and no horizontal overflow was found.
+Restored the user's browser preference to Escuro through the settings UI and
+reset the temporary viewport override.
+
+Automated visual validation: Refreshed `docs/ui-audit/after` with 30 views
+(10 routes × 1440×900, 1280×800 and 390×844). All 30 returned HTTP 200, had a
+visible main region, no horizontal overflow, no console errors, no failed
+requests and no HTTP error responses.
+
+Tests: `npm test` passed, including 20 real Chromium scenarios, 23 norm/UI
+contracts, 15 streaming/persistence scenarios and 2 visual contrast contracts.
+Focused Python tests passed (29 tests); design-token guard passed; `git diff
+--check` passed. One initial run exposed stale static expectations for a
+versioned stylesheet URL and the light/dark foreground token; both tests were
+updated to assert the current contract and the full suite passed afterward.
+
+Remaining boundary: This closes the light-theme rendering defect only.
+Answer grounding/relevance, corpus completeness and other backend/RAG issues
+remain outside this frontend cycle and are still tracked separately.
+
+Next action: Continue visual and interaction audits from the remaining
+acceptance criteria, prioritizing any reproducible user-facing issue and
+retaining screenshots/tests as evidence.

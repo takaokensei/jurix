@@ -37,5 +37,5 @@ test('primary action buttons meet WCAG AA contrast with the default text color',
   assert.ok(ratio >= 4.5, `${foreground} on ${background} is ${ratio.toFixed(2)}:1; button labels require 4.5:1`);
 
   const workspace = await readFile(new URL('src/apps/core/static/css/workspace.css', root), 'utf8');
-  assert.match(workspace, /\.workspace-button-primary\s*\{[^}]*background:\s*var\(--figma-blue-primary\)[^}]*color:\s*var\(--figma-text-white\)/s);
+  assert.match(workspace, /\.workspace-button-primary\s*\{[^}]*background:\s*var\(--figma-blue-primary\)[^}]*color:\s*var\(--figma-text-(?:white|on-accent)\)/s);
 });

@@ -55,7 +55,7 @@
 .workspace-fieldset label { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .workspace-form-actions { display: flex; align-items: center; gap: 10px; }
 .workspace-button { min-height: 40px; padding: 0 15px; border-radius: 9px; border: 1px solid var(--figma-border); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
-.workspace-button-primary { background: var(--figma-blue-primary); color: var(--figma-text-white); border-color: var(--figma-blue-primary); }
+.workspace-button-primary { background: var(--figma-blue-primary); color: var(--figma-text-on-accent); border-color: var(--figma-blue-primary); }
 .workspace-button-primary:hover { background: var(--figma-blue-dark); }
 .workspace-button-secondary { background: rgba(255,255,255,.035); color: var(--figma-text-body); border-color: var(--figma-border-strong); }
 .workspace-button-secondary:hover { background: rgba(96,165,250,.08); color: var(--figma-text-white); border-color: var(--figma-blue-light); }
@@ -164,6 +164,81 @@
   outline-offset: 2px;
 }
 .workspace-alert { color: var(--figma-amber-soft); }
+
+/* Light theme support for the workspace surfaces (the preference is exposed
+   in Configurações and must change the actual canvas, not only the root attr). */
+:root[data-theme="light"] .workspace-sidebar {
+  background: rgba(255, 255, 255, .96);
+  backdrop-filter: blur(18px);
+}
+:root[data-theme="light"] .workspace-logo {
+  border-color: rgba(37, 99, 235, .18);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--figma-blue-light) 8%, var(--figma-bg-surface)), var(--figma-bg-root));
+  box-shadow: 0 2px 10px rgba(15, 23, 42, .08);
+}
+:root[data-theme="light"] .workspace-new-action,
+:root[data-theme="light"] .workspace-nav-item.is-active {
+  background: rgba(37, 99, 235, .08);
+  border-color: rgba(37, 99, 235, .16);
+}
+:root[data-theme="light"] .workspace-nav-item:hover {
+  background: rgba(15, 23, 42, .045);
+}
+:root[data-theme="light"] .workspace-topbar {
+  background: rgba(255, 255, 255, .9);
+  backdrop-filter: blur(15px);
+}
+:root[data-theme="light"] .workspace-top-search {
+  background: rgba(15, 23, 42, .025);
+}
+:root[data-theme="light"] :is(
+  .workspace-card,
+  .workspace-search-panel,
+  .workspace-result-card,
+  .workspace-history-card,
+  .command-palette
+) {
+  border-color: var(--figma-border);
+  background: var(--figma-bg-surface);
+  box-shadow: 0 12px 34px rgba(15, 23, 42, .07);
+}
+:root[data-theme="light"] .workspace-card-muted {
+  background: color-mix(in srgb, var(--figma-bg-root) 70%, var(--figma-bg-surface));
+}
+:root[data-theme="light"] :is(.workspace-field input, .workspace-field select, .workspace-search-panel input, .workspace-search-panel select, .workspace-dialog input, .workspace-dialog textarea) {
+  border-color: var(--figma-border-strong);
+  background-color: var(--figma-bg-surface);
+  color: var(--figma-text-white);
+}
+:root[data-theme="light"] .workspace-field select {
+  background-image: linear-gradient(45deg, transparent 50%, var(--figma-blue-light) 50%), linear-gradient(135deg, var(--figma-blue-light) 50%, transparent 50%);
+}
+:root[data-theme="light"] .workspace-search-caveat {
+  background: color-mix(in srgb, var(--figma-amber-deep) 24%, var(--figma-bg-root));
+}
+:root[data-theme="light"] .workspace-auth-notice {
+  background: color-mix(in srgb, var(--figma-amber-deep) 24%, var(--figma-bg-root));
+  border-color: color-mix(in srgb, var(--figma-amber-soft) 30%, var(--figma-border));
+}
+:root[data-theme="light"] .workspace-empty-state {
+  border-color: var(--figma-border-strong);
+}
+:root[data-theme="light"] .workspace-dialog {
+  background: var(--figma-bg-surface);
+  box-shadow: 0 24px 64px rgba(15, 23, 42, .18);
+}
+:root[data-theme="light"] .workspace-dialog::backdrop,
+:root[data-theme="light"] .command-palette-overlay {
+  background: rgba(15, 23, 42, .42);
+}
+:root[data-theme="light"] .workspace-top-search:hover,
+:root[data-theme="light"] .workspace-result-card:hover,
+:root[data-theme="light"] .workspace-history-card:hover {
+  background: var(--figma-bg-root);
+}
+:root[data-theme="light"] .workspace-empty-stats span {
+  background: rgba(255, 255, 255, .8);
+}
 
 @media (max-width: 900px) {
   .workspace-sidebar { z-index: 40; }

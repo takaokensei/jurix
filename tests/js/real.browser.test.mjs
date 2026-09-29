@@ -111,8 +111,17 @@ function createTestServer(handlers = {}) {
       return res.end(`<!doctype html><html lang="pt-BR" data-theme="dark"><head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="/static/css/jurix-figma.css">
+        <link rel="stylesheet" href="/static/css/workspace.css">
+        <link rel="stylesheet" href="/static/css/jurix-legal-detail.css">
         <link rel="stylesheet" href="/static/css/jurix-chat-shell.css">
-      </head><body class="figma-theme"><button id="theme-toggle" type="button" aria-pressed="false">Alternar tema</button>
+        <link rel="stylesheet" href="/static/css/jurix-rag.css">
+        <link rel="stylesheet" href="/static/css/jurix-components.css">
+      </head><body class="figma-theme workspace-page"><button id="theme-toggle" type="button" aria-pressed="false">Alternar tema</button>
+        <section class="workspace-card"><h1>Superfície clara</h1><button class="workspace-button workspace-button-primary">Ação</button></section>
+        <div class="legal-detail-actions"><a class="btn" href="#">Abrir norma</a></div>
+        <div class="jurix-anonymous-banner">Consulta pública</div>
+        <div class="message message-user"><div class="message-body">Pergunta do usuário</div></div>
+        <aside class="jurix-sources-drawer-panel"><header class="jurix-sources-drawer-header"><div class="jurix-sources-drawer-title-group"><h3>Fontes Consultadas</h3></div></header><div class="jurix-rag-source__contribution"><span class="jurix-rag-source__contribution-label">Contribuição</span>Trecho de dispositivo</div></aside>
         <div class="messages-wrapper"><div class="message"><div class="message-body"><p>Texto de teste.</p></div></div></div>
         <script src="/static/js/theme.js"></script></body></html>`);
     }
@@ -544,6 +553,39 @@ test('real browser: theme preference stays synchronized with the legacy toggle',
     await page.reload({ waitUntil: 'domcontentloaded' });
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light');
     assert.equal(await page.evaluate(() => localStorage.getItem('jurix-theme')), 'light');
+    const lightSurfaces = await page.evaluate(() => {
+      const colors = (element) => ({
+        color: getComputedStyle(element).color,
+        background: getComputedStyle(element).backgroundColor,
+      });
+      return {
+        body: getComputedStyle(document.body).backgroundColor,
+        card: colors(document.querySelector('.workspace-card')),
+        primary: colors(document.querySelector('.workspace-button-primary')),
+        normAction: colors(document.querySelector('.legal-detail-actions .btn')),
+        banner: colors(document.querySelector('.jurix-anonymous-banner')),
+        userBubble: colors(document.querySelector('.message-user .message-body')),
+        sourceHeader: colors(document.querySelector('.jurix-sources-drawer-header')),
+        contribution: colors(document.querySelector('.jurix-rag-source__contribution')),
+      };
+    });
+    assert.equal(lightSurfaces.body, 'rgb(247, 249, 252)');
+    assert.equal(lightSurfaces.card.background, 'rgb(255, 255, 255)');
+    const contrast = (foreground, background) => {
+      const luminance = (color) => {
+        const channels = color.match(/\d+/g).slice(0, 3).map((channel) => Number(channel) / 255)
+          .map((channel) => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+        return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+      };
+      const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+      return (values[0] + 0.05) / (values[1] + 0.05);
+    };
+    assert.ok(contrast(lightSurfaces.primary.color, lightSurfaces.primary.background) >= 4.5, JSON.stringify(lightSurfaces.primary));
+    assert.ok(contrast(lightSurfaces.normAction.color, lightSurfaces.normAction.background) >= 4.5, JSON.stringify(lightSurfaces.normAction));
+    assert.equal(lightSurfaces.banner.background, 'rgb(255, 255, 255)');
+    assert.equal(lightSurfaces.userBubble.color, 'rgb(15, 23, 42)');
+    assert.equal(lightSurfaces.sourceHeader.background, 'rgb(255, 255, 255)');
+    assert.equal(lightSurfaces.contribution.color, 'rgb(51, 65, 85)');
     assert.deepEqual(await page.evaluate(() => ({
       density: document.documentElement.dataset.density,
       bodyPadding: getComputedStyle(document.querySelector('.message-body')).padding,
