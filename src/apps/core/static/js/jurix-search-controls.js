@@ -10,6 +10,7 @@
     mode: 'hybrid',
     attachment_ids: [],
   };
+  const MAX_ATTACHMENTS = 5;
   let state = { ...defaults };
 
   try {
@@ -248,11 +249,36 @@
     if (!chatApi?.uploadAttachment) {
       throw new Error('API de anexos indisponível.');
     }
-    const merged = [...state.attachments];
-    for (const file of Array.from(files || []).slice(0, 5 - state.attachments.length)) {
-      const item = await chatApi.uploadAttachment(file);
-      merged.push(item);
+    const selectedFiles = Array.from(files || []);
+    const availableSlots = Math.max(0, MAX_ATTACHMENTS - state.attachments.length);
+    if (selectedFiles.length > availableSlots) {
+      throw new Error(`É possível anexar até ${MAX_ATTACHMENTS} documentos por pesquisa. Remova um documento ou selecione menos arquivos.`);
     }
+    const merged = [...state.attachments];
+    const uploaded = [];
+    try {
+      for (const file of selectedFiles) {
+        const item = await chatApi.uploadAttachment(file);
+        if (!item?.id) throw new Error('O servidor não confirmou o documento anexado.');
+        uploaded.push(item);
+      }
+    } catch (error) {
+      const cleanupFailures = [];
+      for (const item of uploaded) {
+        try {
+          if (typeof chatApi.deleteAttachment !== 'function') throw new Error('API de remoção de anexos indisponível.');
+          await chatApi.deleteAttachment(item.id);
+        } catch (_) {
+          cleanupFailures.push(item);
+        }
+      }
+      if (cleanupFailures.length) {
+        setAttachments([...state.attachments, ...cleanupFailures]);
+        throw new Error(`${error.message || 'O upload falhou.'} Um ou mais documentos enviados permaneceram vinculados à pesquisa para que possam ser removidos.`);
+      }
+      throw error;
+    }
+    merged.push(...uploaded);
     setAttachments(merged);
   }
 

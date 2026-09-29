@@ -555,3 +555,32 @@ file was uploaded during validation. No API changes.
 Next action: Continue end-to-end testing of attachment removal/reset with fake
 in-memory records, then verify menu placement and keyboard order at tablet and
 desktop widths.
+
+## Cycle 13 — 2026-09-29
+
+Area: Attachment limits, partial failure recovery, and conversation lifecycle.
+
+Observed problems: The picker accepted multiple formats, but selecting more
+than the five-file limit silently uploaded only the first five. A later upload
+failure could leave earlier files on the server without a visible local
+reference; if cleanup also failed, those files disappeared from the UI and
+could not be removed by the user.
+
+Changes made: The controller now rejects over-limit selections before issuing
+any upload, cleans up successful earlier uploads when a subsequent upload
+fails, and keeps any unremovable partial uploads visible with a recoverable
+remove action and an explicit error. Added isolated API-mock tests for
+over-limit rejection, successful rollback, failed rollback recovery, removal,
+and new-conversation cleanup. No real file chooser was submitted and no user
+document was uploaded.
+
+Tests: Full `npm test` passed, including all 10 Chromium scenarios. Attachment
+storage and workspace route tests: 21 passed. Ruff, design-token guard,
+architecture budget, Django system check, JavaScript syntax, and `git diff
+--check` passed.
+
+Regressions: None observed; backend interfaces are unchanged.
+
+Next action: Continue responsive and keyboard traversal through the command
+palette, sidebar, active composer, and legal-search screens at phone, tablet,
+and desktop widths; then investigate another high-impact usability issue.

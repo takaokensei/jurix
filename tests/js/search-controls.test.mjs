@@ -7,11 +7,13 @@ import { JSDOM } from 'jsdom';
 const ROOT = path.resolve(import.meta.dirname, '../..');
 const SCRIPT = path.join(ROOT, 'src/apps/core/static/js/jurix-search-controls.js');
 
-test('search option menu toggles, closes with Escape, and returns keyboard focus', () => {
+test('search controls preserve keyboard semantics and handle attachment lifecycle safely', async () => {
   const dom = new JSDOM(`<!doctype html><html><body>
     <div class="figma-search-dropdown" data-control="norma_status" tabindex="0">
       <span data-control-label>Pesquisa normativa</span>
     </div>
+    <div id="jurix-attachment-previews" hidden></div>
+    <span class="jurix-attachment-count"></span>
     <div class="figma-search-dropdown" data-control="attachment" tabindex="0">
       <span data-control-label>Anexar documento</span>
     </div>
@@ -66,5 +68,57 @@ test('search option menu toggles, closes with Escape, and returns keyboard focus
   fileInput.addEventListener('click', () => { pickerRequests += 1; });
   window.document.querySelector('[data-control="attachment"]').click();
   assert.equal(pickerRequests, 1, 'The attachment control opens the chooser without uploading a file');
+
+  const uploadCalls = [];
+  const deletedIds = [];
+  let failCleanupFor = null;
+  window.JurixChatAPI = {
+    async uploadAttachment(file) {
+      uploadCalls.push(file.name);
+      if (file.name === 'fail.txt') throw new Error('Falha simulada de upload');
+      return { id: `fake-${file.name}`, name: file.name, size: file.size, content_type: file.type };
+    },
+    async deleteAttachment(id) {
+      if (id === failCleanupFor) {
+        failCleanupFor = null;
+        throw new Error('Falha simulada de limpeza');
+      }
+      deletedIds.push(id);
+    },
+  };
+  const sixFiles = Array.from({ length: 6 }, (_, index) => new window.File(['x'], `file-${index}.pdf`, { type: 'application/pdf' }));
+  await assert.rejects(window.JurixSearchControls.upload(sixFiles), /até 5 documentos/i);
+  assert.equal(uploadCalls.length, 0, 'A seleção acima do limite deve ser recusada antes de qualquer upload');
+
+  await assert.rejects(window.JurixSearchControls.upload([
+    new window.File(['x'], 'first.pdf', { type: 'application/pdf' }),
+    new window.File(['x'], 'fail.txt', { type: 'text/plain' }),
+  ]), /Falha simulada/);
+  assert.deepEqual(deletedIds, ['fake-first.pdf'], 'Uploads parciais devem ser removidos se um arquivo posterior falhar');
+  assert.deepEqual([...window.JurixSearchControls.getPayload().attachment_ids], []);
+
+  failCleanupFor = 'fake-orphan.pdf';
+  await assert.rejects(window.JurixSearchControls.upload([
+    new window.File(['x'], 'orphan.pdf', { type: 'application/pdf' }),
+    new window.File(['x'], 'fail.txt', { type: 'text/plain' }),
+  ]), /permaneceram vinculados/i);
+  assert.deepEqual([...window.JurixSearchControls.getPayload().attachment_ids], ['fake-orphan.pdf'], 'Uploads que não puderam ser removidos continuam visíveis para recuperação');
+  window.document.querySelector('.jurix-attachment-remove').click();
+  await new Promise(resolve => window.setTimeout(resolve, 0));
+  assert.deepEqual([...window.JurixSearchControls.getPayload().attachment_ids], []);
+
+  await window.JurixSearchControls.upload([new window.File(['x'], 'ok.pdf', { type: 'application/pdf' })]);
+  assert.deepEqual([...window.JurixSearchControls.getPayload().attachment_ids], ['fake-ok.pdf']);
+  const removeButton = window.document.querySelector('.jurix-attachment-remove');
+  removeButton.click();
+  await new Promise(resolve => window.setTimeout(resolve, 0));
+  assert.deepEqual([...window.JurixSearchControls.getPayload().attachment_ids], []);
+  assert.deepEqual(deletedIds, ['fake-first.pdf', 'fake-orphan.pdf', 'fake-ok.pdf']);
+
+  window.JurixSearchControls.setAttachments([{ id: 'conversation-file', name: 'temporary.pdf' }]);
+  window.document.dispatchEvent(new window.CustomEvent('jurix:new-conversation'));
+  await new Promise(resolve => window.setTimeout(resolve, 0));
+  assert.deepEqual([...window.JurixSearchControls.getPayload().attachment_ids], []);
+  assert.deepEqual(deletedIds, ['fake-first.pdf', 'fake-orphan.pdf', 'fake-ok.pdf', 'conversation-file']);
   dom.window.close();
 });
