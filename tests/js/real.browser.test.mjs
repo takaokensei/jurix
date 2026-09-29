@@ -117,6 +117,18 @@ function createTestServer(handlers = {}) {
         <script src="/static/js/theme.js"></script></body></html>`);
     }
 
+    if (url.pathname === '/history-page-test/') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(`<!doctype html><html lang="pt-BR"><head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="/static/css/jurix-figma.css">
+        <link rel="stylesheet" href="/static/css/workspace.css">
+      </head><body class="figma-theme workspace-page"><main class="workspace-content">
+        <section class="workspace-empty-state" data-anonymous-history></section>
+      </main><script src="/static/js/jurix-anonymous-history.js"></script>
+        <script src="/static/js/jurix-anonymous-history-page.js"></script></body></html>`);
+    }
+
     if (url.pathname === '/collection-dialog-test/') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(`<!doctype html><html lang="pt-BR"><head>
@@ -491,6 +503,65 @@ test('real browser: anonymous history survives reload (F5) and direct URL naviga
     const directNavMessageTimes = await page2.$$eval('.message-time', (nodes) => nodes.map((node) => node.textContent));
     assert.deepEqual(directNavMessageTimes, expectedMessageTimes, 'Direct URL restoration must preserve persisted times');
     await page2.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: keyboard navigation from anonymous history restores the selected chat', async () => {
+  const server = createTestServer({ isAuthenticated: () => false });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 390, height: 844 });
+    await page.goto(`http://127.0.0.1:${port}/history-page-test/`, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      const timestamp = new Date().toISOString();
+      localStorage.setItem('jurix:anonymous-history:v2', JSON.stringify({
+        schema: 2,
+        sessions: [{
+          id: 'local-keyboard-history-01',
+          title: 'Prazo de licença municipal',
+          created_at: timestamp,
+          updated_at: timestamp,
+          messages: [
+            { role: 'user', content: 'Qual o prazo da licença?', created_at: timestamp, sources: [] },
+            { role: 'assistant', content: 'A norma prevê 30 dias.', created_at: timestamp, sources: [] },
+          ],
+        }],
+      }));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    assert.equal(await page.$eval('.workspace-history-card h2', (el) => el.textContent), 'Prazo de licença municipal');
+    assert.equal(await page.$eval('.workspace-history-card', (el) => el.getAttribute('href')), '/assistente/local-keyboard-history-01/');
+
+    await page.focus('.workspace-history-card');
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+      page.keyboard.press('Enter'),
+    ]);
+    await page.waitForSelector('.message-assistant .message-body');
+    const conversation = await page.evaluate(() => ({
+      path: location.pathname,
+      text: document.querySelector('#messages-container')?.innerText || '',
+      width: document.documentElement.scrollWidth,
+      viewport: innerWidth,
+    }));
+    assert.equal(conversation.path, '/assistente/local-keyboard-history-01/');
+    assert.match(conversation.text, /Qual o prazo da licença\?/);
+    assert.match(conversation.text, /A norma prevê 30 dias\./);
+    assert.equal(conversation.width, conversation.viewport);
+
+    await page.goBack({ waitUntil: 'domcontentloaded' });
+    assert.equal(await page.$eval('.workspace-history-card h2', (el) => el.textContent), 'Prazo de licença municipal');
   } finally {
     await browser.close();
     server.close();

@@ -1563,6 +1563,29 @@ frontend suite. The previous Chromium unsafe-port failure did not recur.
 Next action: If the complete run stays green, continue with history navigation
 and mobile density checks.
 
+## Cycle 40 — 2026-09-29
+
+Area: Keyboard navigation from the anonymous History page into a restored chat.
+
+Observed coverage gap: History persistence and direct assistant reload were
+tested separately, but the production anonymous-history renderer had no browser
+test for activating a conversation card with the keyboard, restoring the exact
+conversation, and returning with browser Back.
+
+Changes made: Added a fixture around the production anonymous history store and
+history-page renderer. The Chromium scenario seeds a two-message conversation,
+reloads History, opens its card using Enter, checks both messages and mobile
+width, then uses Back and verifies the card remains available.
+
+Browser validation: Focused 390px Chromium flow passed end-to-end.
+
+Tests: Focused history transition test passed. The complete suite passed with
+17 real-Chromium scenarios, 18 structural tests, 15 streaming/persistence
+tests, and contrast checks. `git diff --check` passed.
+
+Next action: Continue route-level keyboard checks for search, collections and
+norm detail, preserving the existing capture baseline.
+
 ## Cycle 37 — 2026-09-29
 
 Area: Theme consistency between workspace and assistant/public shells.
