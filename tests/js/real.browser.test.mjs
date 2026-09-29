@@ -870,8 +870,34 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
       () => document.querySelector('.jurix-sources-pill-btn')?._sourcesData?.length > 0,
       { timeout: 6000 }
     );
+    await page.evaluate(() => {
+      window.__drawerOpenCalls = 0;
+      const openDrawer = window.JurixRagUI.openSourcesDrawer;
+      window.JurixRagUI.openSourcesDrawer = (...args) => {
+        window.__drawerOpenCalls += 1;
+        return openDrawer(...args);
+      };
+    });
     await page.click('.jurix-sources-pill-btn');
-    await page.waitForSelector('.jurix-sources-drawer-panel.is-open .source-card, .jurix-sources-drawer-panel.is-open .jurix-rag-source', { timeout: 6000 });
+    try {
+      await page.waitForSelector('.jurix-sources-drawer-panel.is-open .source-card, .jurix-sources-drawer-panel.is-open .jurix-rag-source', { timeout: 6000 });
+    } catch (error) {
+      const diagnostic = await page.evaluate(() => {
+        const pill = document.querySelector('.jurix-sources-pill-btn');
+        const rect = pill?.getBoundingClientRect();
+        const hit = rect && document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+        const panel = document.querySelector('.jurix-sources-drawer-panel');
+        return {
+          drawerOpenCalls: window.__drawerOpenCalls,
+          pillSources: pill?._sourcesData?.length,
+          pillRect: rect && { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+          centerHit: hit?.outerHTML?.slice(0, 180),
+          panelClass: panel?.className,
+          panelBody: document.querySelector('#jurix-sources-drawer-body')?.innerHTML?.slice(0, 300),
+        };
+      });
+      throw new Error(`${error.message}; drawer diagnostic: ${JSON.stringify(diagnostic)}`);
+    }
     const drawerSourceTexts = await page.$$eval(
       '.jurix-sources-drawer-panel.is-open .source-card, .jurix-sources-drawer-panel.is-open .jurix-rag-source',
       (els) => els.map((el) => el.textContent)

@@ -6,7 +6,7 @@
         {{ node.dispositivo.texto|truncatewords:30 }}
     </div>
     <div class="node-meta">
-        Tipo: {{ node.dispositivo.get_tipo_display }} | Ordem: {{ node.dispositivo.ordem }} | Confiança: {{ node.dispositivo.segmentation_confidence|floatformat:2 }}
+        Tipo: {{ node.dispositivo.get_tipo_display }}
     </div>
     
     {% if node.children %}

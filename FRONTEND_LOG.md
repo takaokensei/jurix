@@ -253,3 +253,52 @@ rerun successfully using the repository `.venv`.
 Next action: Continue manual interaction and accessibility review across the
 norm detail, compare, tree, history and collection routes; assess whether
 segmentation confidence adds trustworthy, interpretable value to the tree UI.
+
+## Cycle 5 — 2026-09-29
+
+Area: Norma tree disclosure and mobile review of remaining workspace pages.
+
+Goal: Remove low-value internal metadata from the public-facing legal structure
+view and check consistency across collections, history, settings and search.
+
+Observed problems: The device tree repeated a technical segmentation score of
+`1.00` and an internal ordering index in every node. The label “Confiança” was
+unqualified and could be read as legal confidence rather than regex extraction
+confidence. Mobile screenshots also showed this metadata as repetitive noise.
+
+Changes made: Simplified recursive tree-node metadata to show only the legal
+device type. Kept extraction internals in the data/model layer unchanged; this
+is a presentation-only change. Added a regression assertion preventing the
+public template from rendering the internal confidence or ordinal index.
+
+Browser validation: At 390px, re-opened `/normas/3/tree/` and confirmed the
+node cards now show only “Artigo” or “Inciso” metadata, reducing noise and
+improving space for the legal text. Visually reviewed `/colecoes/`,
+`/historico/`, `/configuracoes/`, and `/pesquisa/` at the same viewport. The
+collection empty state has distinct empty/account/public-exploration sections;
+history clearly distinguishes an anonymous browser session; settings controls
+fit the viewport and the model selector chevron is visible; search filters
+remain readable and within their panel.
+
+Tests: Norma UI test file passed (11 tests), workspace route tests passed (18),
+Ruff passed, and `git diff --check` passed. Full `npm test` passed after this
+cycle’s final edits, including all 10 real-browser tests. The streaming/drawer
+test intermittently failed in an earlier complete run, so it now captures
+post-click diagnostics (drawer invocation count, hit target, and panel content)
+if it fails again; subsequent isolated and full runs passed.
+
+Console: No visible app error observed on the manually reviewed routes.
+
+Responsive validation: Collection, history, settings, search, and tree pages
+were inspected in the live browser at 390px without horizontal overflow or
+clipped controls in the visible areas.
+
+Visual score: Tree readability 8.5/10 mobile; collections 8/10; history 8/10;
+settings 8/10; search 7.5/10. The search empty-state card is text-heavy and the
+below-fold guidance could be more compact; keep it on the audit backlog.
+
+Regressions: None found. Frontend-only markup change; no backend contract or
+stored data was changed.
+
+Next action: Continue detailed assistant interaction review (composer, answer
+actions, retry/error handling) and check keyboard/focus behavior across routes.

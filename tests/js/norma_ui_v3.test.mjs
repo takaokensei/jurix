@@ -89,3 +89,10 @@ test('version comparison exposes both texts as labelled stacked evidence on mobi
   assert.match(styles, /\.compare-diff-row > code::before \{ content: attr\(data-label\)/);
 });
 
+test('public device tree does not present internal extraction confidence as legal certainty', async () => {
+  const template = await read('src/apps/legislation/templates/legislation/tree_node.html');
+  assert.match(template, /Tipo: \{\{ node\.dispositivo\.get_tipo_display \}\}/);
+  assert.doesNotMatch(template, /segmentation_confidence|Confiança:/);
+  assert.doesNotMatch(template, /Ordem: \{\{ node\.dispositivo\.ordem \}\}/);
+});
+
