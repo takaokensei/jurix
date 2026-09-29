@@ -1793,3 +1793,47 @@ Regressions: None observed.
 
 Next action: Continue final pass through route-level feedback/error states and
 reduced-motion behavior; verify that UI claims match actual actions.
+
+## Cycle 46 — 2026-09-29
+
+Area: Chat-history deletion confirmation accessibility and safety feedback.
+
+Goal: Make the destructive-action confirmation understandable and fully
+operable with keyboard without allowing accidental background actions.
+
+Observed problems: The dynamically created “Deletar conversa” confirmation
+had no dialog semantics, initial focus, Escape handling, focus containment or
+background isolation. Its cancel/backdrop paths only removed a CSS class, so
+focus could remain in an invisible overlay.
+
+Changes made: Added labelled/described dialog semantics, `aria-hidden` and
+`aria-modal` state, `inert` state for the dialog and underlying app shell,
+initial focus on the non-destructive Cancel action, Tab/Shift+Tab wrapping,
+Escape/backdrop cancellation and focus restoration. After a successful
+deletion, focus moves to “Nova pesquisa” rather than a removed history row.
+Updated the chat script cache key.
+
+Browser validation: At 390×844 in real Chromium, opened the modal through the
+chat UI API with a fixture trigger, verified its accessible name/description,
+background inertness and Cancel initial focus; exercised both Tab directions,
+Escape, focus return, reopen and Cancel. The fixture performed no delete
+request. Desktop/mobile capture set completed with 30 views and zero review
+flags.
+
+Tests: Full `npm test` passed with 18 real-Chromium scenarios, 19 structural
+contracts, 15 streaming/persistence tests, composer lifecycle and contrast
+checks. `git diff --check` passed.
+
+Console: The focused browser test reported no modal-specific runtime errors.
+
+Responsive validation: Modal keyboard test uses 390×844; screenshot capture
+covered 1440×900, 1280×800 and 390×844.
+
+Visual score: No new visual treatment; this closes a critical accessibility
+and interaction gap in a destructive flow.
+
+Regressions: None observed; confirmation still requires the explicit
+“Deletar” action, and the added test cancels without calling the deletion API.
+
+Next action: Continue auditing error and success announcements, then verify
+reduced-motion behavior across assistant and workspace route families.

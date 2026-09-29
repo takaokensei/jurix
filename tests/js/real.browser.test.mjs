@@ -290,6 +290,75 @@ test('real browser: collection dialog preserves focus for keyboard and mobile us
   }
 });
 
+test('real browser: delete confirmation is modal, traps focus, and cancels without deleting', async () => {
+  const server = createTestServer();
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 390, height: 844 });
+    await page.goto(`http://127.0.0.1:${port}/assistente/`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.jurixChat?.deleteSession === 'function');
+    await page.evaluate(() => {
+      const trigger = document.createElement('button');
+      trigger.id = 'test-delete-trigger';
+      trigger.textContent = 'Deletar conversa de teste';
+      document.querySelector('.figma-workspace').appendChild(trigger);
+      trigger.focus();
+      window.jurixChat.deleteSession('fixture-no-delete');
+    });
+    await page.waitForFunction(() => document.querySelector('#delete-session-modal')?.classList.contains('active'));
+
+    const opened = await page.evaluate(() => ({
+      role: document.querySelector('#delete-session-modal').getAttribute('role'),
+      modal: document.querySelector('#delete-session-modal').getAttribute('aria-modal'),
+      hidden: document.querySelector('#delete-session-modal').getAttribute('aria-hidden'),
+      labelledBy: document.querySelector('#delete-session-modal').getAttribute('aria-labelledby'),
+      describedBy: document.querySelector('#delete-session-modal').getAttribute('aria-describedby'),
+      shellInert: document.querySelector('.figma-workspace').inert,
+      focus: document.activeElement.id,
+    }));
+    assert.deepEqual(opened, {
+      role: 'dialog',
+      modal: 'true',
+      hidden: 'false',
+      labelledBy: 'delete-modal-title',
+      describedBy: 'delete-modal-description',
+      shellInert: true,
+      focus: 'delete-modal-cancel',
+    });
+
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'delete-modal-confirm');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'delete-modal-cancel');
+    await page.keyboard.down('Shift');
+    await page.keyboard.press('Tab');
+    await page.keyboard.up('Shift');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'delete-modal-confirm');
+
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.querySelector('#delete-session-modal')?.getAttribute('aria-hidden') === 'true');
+    assert.equal(await page.evaluate(() => document.querySelector('.figma-workspace').inert), false);
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'test-delete-trigger');
+
+    await page.evaluate(() => window.jurixChat.deleteSession('fixture-no-delete'));
+    await page.waitForFunction(() => document.querySelector('#delete-session-modal')?.classList.contains('active'));
+    await page.click('#delete-modal-cancel');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'test-delete-trigger');
+    assert.equal(await page.$eval('#delete-session-modal', (modal) => modal.inert), true);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
 test('real browser: settings report when browser storage rejects preferences', async () => {
   const server = createTestServer();
   await new Promise((r) => server.listen(0, '127.0.0.1', r));

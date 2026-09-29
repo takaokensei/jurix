@@ -46,6 +46,7 @@
     let isStreamingGreeting = false;
     let navSeq = 0;
     let retryingExistingQuestion = null;
+    let deleteModalTrigger = null;
 
     // ===== UTILITIES =====
     function escapeHtml(text) {
@@ -666,7 +667,25 @@
 
     function deleteSession(sessionId, event) {
         if (!sessionId) return;
+        deleteModalTrigger = event?.target?.closest?.('[data-delete-session-id]') ||
+            (document.activeElement instanceof HTMLElement ? document.activeElement : null);
         showDeleteModal(sessionId);
+    }
+
+    function closeDeleteModal(modalOverlay, restoreFocus = true) {
+        if (!modalOverlay) return;
+        modalOverlay.classList.remove('active');
+        modalOverlay.inert = true;
+        modalOverlay.setAttribute('aria-hidden', 'true');
+        modalOverlay.setAttribute('aria-modal', 'false');
+        const appShell = document.querySelector('.figma-workspace');
+        if (appShell) appShell.inert = false;
+
+        const trigger = deleteModalTrigger;
+        deleteModalTrigger = null;
+        if (!restoreFocus) return;
+        if (trigger?.isConnected) trigger.focus();
+        else document.getElementById('new-chat-button')?.focus();
     }
 
     function showDeleteModal(sessionId) {
@@ -675,13 +694,19 @@
             modalOverlay = document.createElement('div');
             modalOverlay.id = 'delete-session-modal';
             modalOverlay.className = 'delete-modal-overlay';
+            modalOverlay.setAttribute('role', 'dialog');
+            modalOverlay.setAttribute('aria-modal', 'false');
+            modalOverlay.setAttribute('aria-hidden', 'true');
+            modalOverlay.setAttribute('aria-labelledby', 'delete-modal-title');
+            modalOverlay.setAttribute('aria-describedby', 'delete-modal-description');
+            modalOverlay.inert = true;
             modalOverlay.innerHTML = `
                 <div class="delete-modal">
                     <div class="delete-modal-header">
-                        <h3>Deletar Conversa</h3>
+                        <h3 id="delete-modal-title">Deletar conversa</h3>
                     </div>
                     <div class="delete-modal-body">
-                        <p>Tem certeza que deseja deletar esta conversa? Esta ação não pode ser desfeita.</p>
+                        <p id="delete-modal-description">Tem certeza que deseja deletar esta conversa? Esta ação não pode ser desfeita.</p>
                     </div>
                     <div class="delete-modal-footer">
                         <button class="delete-modal-cancel" id="delete-modal-cancel">Cancelar</button>
@@ -691,23 +716,57 @@
             `;
             document.body.appendChild(modalOverlay);
 
-            document.getElementById('delete-modal-cancel').addEventListener('click', () => {
-                modalOverlay.classList.remove('active');
+            document.getElementById('delete-modal-cancel').addEventListener('click', (event) => {
+                event.preventDefault();
+                closeDeleteModal(modalOverlay);
             });
 
             modalOverlay.addEventListener('click', (e) => {
-                if (e.target === modalOverlay) modalOverlay.classList.remove('active');
+                if (e.target === modalOverlay) closeDeleteModal(modalOverlay);
+            });
+
+            modalOverlay.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    closeDeleteModal(modalOverlay);
+                    return;
+                }
+                if (event.key !== 'Tab') return;
+
+                const focusable = [...modalOverlay.querySelectorAll(
+                    'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+                )].filter((element) => element.getClientRects().length > 0);
+                if (!focusable.length) {
+                    event.preventDefault();
+                    modalOverlay.querySelector('.delete-modal')?.focus();
+                    return;
+                }
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                if (event.shiftKey && document.activeElement === first) {
+                    event.preventDefault();
+                    last.focus();
+                } else if (!event.shiftKey && document.activeElement === last) {
+                    event.preventDefault();
+                    first.focus();
+                }
             });
         }
 
         const confirmBtn = document.getElementById('delete-modal-confirm');
         confirmBtn.onclick = async () => {
-            modalOverlay.classList.remove('active');
+            closeDeleteModal(modalOverlay);
             await performDeleteSession(sessionId);
         };
 
+        modalOverlay.inert = false;
+        modalOverlay.setAttribute('aria-hidden', 'false');
+        modalOverlay.setAttribute('aria-modal', 'true');
+        const appShell = document.querySelector('.figma-workspace');
+        if (appShell) appShell.inert = true;
         requestAnimationFrame(() => {
             modalOverlay.classList.add('active');
+            document.getElementById('delete-modal-cancel')?.focus();
         });
     }
 
@@ -730,6 +789,7 @@
             }
 
             await loadChatSessions();
+            document.getElementById('new-chat-button')?.focus();
         } catch (error) {
             console.error('Error deleting session:', error);
             showNotification('Erro ao deletar conversa. Tente novamente.', 'error');
