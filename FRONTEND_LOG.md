@@ -2122,3 +2122,53 @@ Regressions: None observed.
 
 Next action: Continue real-browser checks for settings preference persistence,
 history restoration, and collection empty-state actions across viewport sizes.
+
+## Cycle 54 — 2026-09-29
+
+Area: Production 404/500 recovery screens.
+
+Goal: Verify invalid routes and unexpected server failures provide a usable,
+non-technical recovery path when production error handling is active.
+
+Observed problems: The live 8004 development server has `DEBUG=True`, so an
+invalid norm URL displayed Django's technical 404 page with URL patterns and
+view details. This is a development-mode behavior, but production needed a
+designed 404 page. A first 500-template attempt also failed because Django's
+default 500 handler renders without a `request` context; that was corrected by
+making the 500 page standalone and request-independent.
+
+Changes made: Added an app-discovered branded 404 template with navigation,
+clear explanation and links back to norms/assistant. Added a standalone 500
+template with retry navigation and no exception output. Centered the 500
+recovery state using existing workspace styles and bumped the shared CSS cache
+key. Added structural assertions preventing technical-detail leakage.
+
+Browser/runtime validation: A temporary local runserver with `DEBUG=False`
+served `/normas/999999/` as the styled 404 page; its live screenshot showed the
+shared shell and usable recovery links. Django's test client returned 404 with
+the custom message and no `Request URL` details. A synthetic uncaught runtime
+exception rendered status 500 with the friendly message and did not include
+the sentinel exception text. The temporary server was stopped afterward.
+
+Tests: Full `npm test` passed: 20 real-Chromium scenarios, 22 structural
+contracts, 15 streaming/persistence checks, composer lifecycle and contrast
+checks. `git diff --check` passed. Django runtime smoke checks verified both
+custom response bodies.
+
+Console: The production-mode 404 loaded all shell assets successfully (200).
+Automated route capture completed 30 views with zero needing review.
+
+Responsive validation: Global capture covered 390×844, 1280×800 and
+1440×900. Error page visually checked in the production-mode browser; no
+layout overflow observed.
+
+Visual score: Invalid links now return users to the product rather than a
+framework diagnostic. Unexpected failures have a compact, branded recovery
+screen without exposing exception text.
+
+Regressions: None observed. The 8004 development server will continue to show
+Django diagnostics while DEBUG is enabled; production mode uses the new page.
+
+Next action: Finish the remaining manual checks on settings, local history and
+collection paths; then review the full acceptance checklist and unresolved
+backend-only risks without changing out-of-scope services.

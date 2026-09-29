@@ -1,0 +1,17 @@
+{% extends "legislation/workspace/base.html" %}
+
+{% block title %}Página não encontrada — Jurix{% endblock %}
+{% block section_name %}Página não encontrada{% endblock %}
+{% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Página não encontrada' %}{% endblock %}
+
+{% block content %}
+<section class="workspace-empty-state workspace-empty-state-large" aria-labelledby="not-found-title">
+    <span class="workspace-eyebrow">Erro 404</span>
+    <h1 id="not-found-title">Não encontramos esta página</h1>
+    <p>O endereço pode ter mudado ou não existe. Você pode voltar ao acervo ou iniciar uma nova pesquisa.</p>
+    <div class="workspace-dialog-actions">
+        <a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_list' %}">Explorar normas</a>
+        <a class="workspace-button workspace-button-primary" href="{% url 'workspace:assistant' %}">Ir ao assistente</a>
+    </div>
+</section>
+{% endblock %}

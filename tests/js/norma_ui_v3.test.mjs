@@ -142,7 +142,7 @@ test('mobile workspace search stays a compact 44px icon button when its label is
   const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
   assert.match(styles, /@media \(max-width:\s*640px\)[\s\S]*?\.workspace-topbar \.workspace-top-search\s*\{[^}]*flex:\s*0 0 44px;[^}]*width:\s*44px;[^}]*min-width:\s*44px;/);
   assert.match(chat, /css\/workspace\.css['"] %\}\?v=20260929-mobile-search/);
-  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260929-sidebar-flow1/);
+  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260929-error-state-layout1/);
 });
 
 test('workspace selects use a clearly visible chevron and norm facts stay secondary', async () => {
@@ -159,6 +159,21 @@ test('workspace sidebar groups primary navigation below branding and anchors uti
   assert.match(styles, /\.workspace-sidebar \{[^}]*justify-content:\s*flex-start/);
   assert.match(styles, /\.workspace-nav \{[^}]*flex:\s*1;[^}]*align-content:\s*start/);
   assert.match(styles, /\.workspace-sidebar-bottom \{[^}]*margin-top:\s*auto/);
+});
+
+test('production error pages are human-readable, recoverable and do not expose exception details', async () => {
+  const notFound = await read('src/apps/core/templates/404.html');
+  const serverError = await read('src/apps/core/templates/500.html');
+  const styles = await read('src/apps/core/static/css/workspace.css');
+  assert.match(notFound, /extends "legislation\/workspace\/base\.html"/);
+  assert.match(notFound, /Não encontramos esta página/);
+  assert.match(notFound, /legislation:norma_list/);
+  assert.match(notFound, /workspace:assistant/);
+  assert.match(serverError, /Não foi possível carregar esta página/);
+  assert.match(serverError, /workspace:assistant/);
+  assert.doesNotMatch(serverError, /request\.path|extends "legislation\/workspace\/base\.html"/);
+  assert.doesNotMatch(`${notFound}\n${serverError}`, /\{\{\s*exception|technical_500|Request URL|Traceback/);
+  assert.match(styles, /\.error-page-content \{[^}]*min-height:\s*100vh;[^}]*place-items:\s*center/);
 });
 
 test('norm actions use a responsive grid instead of stranding the official source link', async () => {

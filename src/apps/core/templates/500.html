@@ -1,0 +1,25 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>Erro temporário — Jurix</title>
+    <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20260929-color-contrast-aa">
+    <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20260929-error-state-layout1">
+</head>
+<body class="figma-theme workspace-page">
+<main class="workspace-content error-page-content" id="main-content">
+<section class="workspace-empty-state workspace-empty-state-large" aria-labelledby="server-error-title">
+    <span class="workspace-eyebrow">Erro temporário</span>
+    <h1 id="server-error-title">Não foi possível carregar esta página</h1>
+    <p>Ocorreu uma falha inesperada. Tente novamente em instantes ou continue sua pesquisa em outra área do Jurix.</p>
+    <div class="workspace-dialog-actions">
+        <a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_list' %}">Explorar normas</a>
+        <a class="workspace-button workspace-button-primary" href="{% url 'workspace:assistant' %}">Ir ao assistente</a>
+    </div>
+</section>
+</main>
+</body>
+</html>
