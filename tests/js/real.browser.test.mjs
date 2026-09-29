@@ -1026,3 +1026,61 @@ test('real browser: sidebar items stay inside the shell and fully offscreen when
     server.close();
   }
 });
+
+test('real browser: command palette keeps compact icons and focuses search on mobile', async () => {
+  const server = createTestServer();
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 390, height: 844 });
+    await page.goto(`http://127.0.0.1:${port}/assistente/`, { waitUntil: 'domcontentloaded' });
+    await page.keyboard.down('Control');
+    await page.keyboard.press('k');
+    await page.keyboard.up('Control');
+    await page.waitForFunction(() => {
+      const overlay = document.getElementById('command-palette-overlay');
+      return overlay?.getAttribute('aria-hidden') === 'false' &&
+        document.activeElement?.id === 'command-palette-input';
+    });
+
+    const palette = await page.evaluate(() => {
+      const overlay = document.getElementById('command-palette-overlay');
+      const dialog = document.querySelector('.command-palette');
+      const items = [...document.querySelectorAll('.command-palette-item')];
+      const icons = [...document.querySelectorAll('.command-palette-item-icon svg')];
+      return {
+        hidden: overlay.getAttribute('aria-hidden'),
+        focus: document.activeElement.id,
+        itemCount: items.length,
+        iconBounds: icons.map((icon) => {
+          const bounds = icon.getBoundingClientRect();
+          return { width: bounds.width, height: bounds.height };
+        }),
+        itemHeights: items.map((item) => item.getBoundingClientRect().height),
+        dialogWidth: dialog.getBoundingClientRect().width,
+        svgMarkupVisible: document.getElementById('command-palette-results').innerText.includes('viewBox'),
+      };
+    });
+
+    assert.equal(palette.hidden, 'false');
+    assert.equal(palette.focus, 'command-palette-input');
+    assert.ok(palette.itemCount >= 8, 'A busca rápida deve exibir os comandos de navegação e ação');
+    assert.ok(palette.iconBounds.every(({ width, height }) => width <= 20 && height <= 20));
+    assert.ok(palette.itemHeights.every((height) => height < 80));
+    assert.ok(palette.dialogWidth <= 358, 'A paleta deve caber na largura mobile com gutters laterais');
+    assert.equal(palette.svgMarkupVisible, false, 'O SVG deve ser renderizado como ícone, nunca como texto');
+
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.getElementById('command-palette-overlay')?.getAttribute('aria-hidden') === 'true');
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});

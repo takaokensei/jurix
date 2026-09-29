@@ -79,3 +79,50 @@ Regressions: None found in the full JavaScript suite or the route smoke audit.
 Next action: Fix the command palette's oversized SVG result icon, then audit the
 other interactive and empty states for similar omissions from the canonical
 workspace stylesheet.
+
+## Cycle 2 — 2026-09-29
+
+Area: Command palette result rendering and mobile usability.
+
+Goal: Make the global Ctrl+K navigation palette usable in the Figma chat shell,
+including on a narrow mobile viewport.
+
+Observed problems: On `/assistente/` the palette appeared with enormous SVGs
+covering its first result. The SVG markup itself was valid and sanitized; the
+chat shell's `workspace.css` defined the palette container but omitted styles
+for result rows, icon wrappers, titles and descriptions. The icon wrapper
+therefore expanded to the SVG's intrinsic size (roughly 341px square).
+
+Changes made: Added compact flex result rows, fixed 20px icon slots and 18px
+SVGs, readable title/description hierarchy, command-specific icon colors and a
+clear empty-search state in `workspace.css`. Added a Puppeteer real-browser
+regression test that opens the palette at 390×844, verifies focus, item count,
+icon and row bounds, markup visibility, and Escape dismissal.
+
+Browser validation: Opened the palette in Chromium at the 390px in-app viewport.
+All results remain readable, the icon marks are compact and the panel fits the
+screen; opening focuses the search field and Escape dismisses the overlay.
+Visually inspected the screenshot. The normal in-app keyboard shortcut did not
+open reliably through CUA's keyboard bridge, so the palette was opened through
+its visible toolbar button; the real-browser regression test exercises Ctrl+K.
+
+Tests: Full JavaScript test suite passed, including all 9 real-browser tests and
+the new palette regression. Ruff passed; design-token guard passed with zero
+legacy hex values; architecture budget passed with no findings; Django system
+check passed; `git diff --check` passed. The targeted palette browser test also
+passed independently.
+
+Console: No palette-specific console errors were observed in Chromium. The JS
+suite emitted only the expected simulated storage quota warnings from tests.
+
+Responsive validation: Palette test uses 390×844 and asserts it stays within the
+viewport, SVGs are at most 20px, and result rows remain below 80px. The manual
+Chromium viewport was the existing 390px mobile viewport.
+
+Visual score: Command palette 8.5/10 after correction; full assistant mobile
+workspace remains 7.5/10 and requires broader interaction and visual passes.
+
+Regressions: None found in the full JavaScript suite or static guards.
+
+Next action: Continue auditing the remaining root routes and interactive
+components for shell-specific style omissions and inconsistent hierarchy.
