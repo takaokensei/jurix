@@ -1,7 +1,7 @@
 {
   "phase": "after",
   "baseUrl": "http://127.0.0.1:8004",
-  "capturedAt": "2026-09-29T20:43:48.015Z",
+  "capturedAt": "2026-09-29T20:55:23.430Z",
   "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "results": [
     {
@@ -321,7 +321,7 @@
       "url": "http://127.0.0.1:8004/normas/3/compare/",
       "viewportWidth": 390,
       "documentWidth": 390,
-      "documentHeight": 14029,
+      "documentHeight": 16345,
       "mainVisible": true,
       "horizontalOverflow": false,
       "consoleErrors": [],

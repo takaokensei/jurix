@@ -1672,6 +1672,8 @@ test('real browser: norm comparison stacks both labelled versions on mobile with
       documentWidth: document.documentElement.scrollWidth,
       headerDisplay: getComputedStyle(document.querySelector('.compare-diff-header')).display,
       gridColumns: getComputedStyle(document.querySelector('.compare-diff-row')).gridTemplateColumns,
+      legalTextSize: getComputedStyle(document.querySelector('.compare-diff-row code')).fontSize,
+      legalLabelSize: getComputedStyle(document.querySelector('.compare-diff-row code'), '::before').fontSize,
       labels: [...document.querySelectorAll('.compare-diff-row code')].map((cell) =>
         getComputedStyle(cell, '::before').content
       ),
@@ -1686,6 +1688,8 @@ test('real browser: norm comparison stacks both labelled versions on mobile with
     assert.equal(mobile.documentWidth, mobile.viewportWidth);
     assert.equal(mobile.headerDisplay, 'none');
     assert.equal(mobile.gridColumns.split(' ').length, 1);
+    assert.equal(mobile.legalTextSize, '14px');
+    assert.equal(mobile.legalLabelSize, '10px');
     assert.deepEqual(mobile.labels, [
       '"Original (OCR) · linha 1"',
       '"Consolidado · linha 1"',
@@ -1703,9 +1707,11 @@ test('real browser: norm comparison stacks both labelled versions on mobile with
     const desktop = await page.evaluate(() => ({
       headerDisplay: getComputedStyle(document.querySelector('.compare-diff-header')).display,
       columnCount: getComputedStyle(document.querySelector('.compare-diff-row')).gridTemplateColumns.split(' ').length,
+      legalTextSize: getComputedStyle(document.querySelector('.compare-diff-row code')).fontSize,
     }));
     assert.notEqual(desktop.headerDisplay, 'none');
     assert.equal(desktop.columnCount, 5);
+    assert.equal(desktop.legalTextSize, '12px');
   } finally {
     await browser.close();
     server.close();

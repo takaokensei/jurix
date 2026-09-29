@@ -1384,3 +1384,29 @@ remains current.
 
 Next action: Continue verifying legal comparison keyboard reading and reduced
 motion, then re-audit settings and history interaction states.
+
+## Cycle 32 — 2026-09-29
+
+Area: Mobile readability in the normative version comparison.
+
+Observed problem: The stacked mobile comparison reduced legal body text to
+12px and the generated version/line labels to 9px. That made side-by-side
+reading technically fit the viewport but unnecessarily difficult for long
+legal excerpts.
+
+Changes made: Raised mobile comparison text to 14px with 1.65 line-height and
+labels to 10px/1.4, keeping the existing 12px desktop density. Updated the
+stylesheet cache key and extended the real-browser test to assert both mobile
+and desktop typography contracts.
+
+Browser validation: The focused Chromium comparison test passed at 390px and
+1280px. It continues to verify stacked labelled versions and no horizontal
+overflow. The refreshed route capture contains 30/30 successful views; both
+before/after manifests report zero flagged issues.
+
+Tests: Focused comparison test passed. Complete `npm test` passed with all 14
+real-Chromium scenarios, 17 structural tests, 15 streaming/persistence tests,
+and contrast contracts green. `git diff --check` passed.
+
+Next action: Continue with settings and history interaction states, then
+revisit remaining route-level usability gaps.
