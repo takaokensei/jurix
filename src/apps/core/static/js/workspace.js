@@ -108,7 +108,10 @@
             } catch (_) {
                 removed = false;
             }
-            const resetSettings = { ...DEFAULTS, model: modelField?.options[0]?.value || 'llama3' };
+            const configuredDefaultModel = modelField?.querySelector('option[selected]')?.value
+                || modelField?.options[0]?.value
+                || 'llama3';
+            const resetSettings = { ...DEFAULTS, model: configuredDefaultModel };
             if (modelField) modelField.value = resetSettings.model;
             if (temperatureField) temperatureField.value = resetSettings.temperature;
             if (sourcesField) sourcesField.value = resetSettings.sources;

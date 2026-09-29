@@ -23,7 +23,7 @@
             <label class="workspace-field workspace-field-wide">
                 <span>Modelo</span>
                 <select name="model">
-                    {% for model in ollama_models %}<option value="{{ model }}">{{ model }}</option>{% endfor %}
+                    {% for model in ollama_models %}<option value="{{ model }}"{% if model == default_model %} selected{% endif %}>{{ model }}</option>{% endfor %}
                 </select>
                 <small>Somente modelos permitidos pelo servidor aparecem aqui.</small>
             </label>

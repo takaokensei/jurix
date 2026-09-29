@@ -96,7 +96,7 @@ function createTestServer(handlers = {}) {
         <link rel="stylesheet" href="/static/css/workspace.css">
       </head><body class="figma-theme workspace-page"><main class="workspace-content">
         <form class="workspace-stack" data-settings-form>
-          <label class="workspace-field"><span>Modelo</span><select name="model"><option value="llama3">llama3</option></select></label>
+          <label class="workspace-field"><span>Modelo</span><select name="model"><option value="qwen2.5">qwen2.5</option><option value="llama3" selected>llama3</option></select></label>
           <label class="workspace-field"><span>Temperatura</span><input name="temperature" type="number" value="0.3"></label>
           <label class="workspace-field"><span>Fontes</span><input name="sources" type="number" value="5"></label>
           <fieldset><label><input type="radio" name="theme" value="dark" checked>Escuro</label><label><input type="radio" name="theme" value="light">Claro</label><label><input type="radio" name="theme" value="system">Sistema</label></fieldset>
@@ -273,7 +273,7 @@ test('real browser: settings report when browser storage rejects preferences', a
     await page.goto(`http://127.0.0.1:${port}/settings-test/`, { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => {
       localStorage.setItem('jurix-preferences', JSON.stringify({
-        model: 'llama3', temperature: 0.8, sources: 3, theme: 'light', density: 'compact',
+        model: 'qwen2.5', temperature: 0.8, sources: 3, theme: 'light', density: 'compact',
       }));
       Storage.prototype.setItem = function setItem() {
         throw new DOMException('Storage quota exceeded', 'QuotaExceededError');
@@ -300,15 +300,18 @@ test('real browser: settings report when browser storage rejects preferences', a
     const reset = await page.evaluate(() => ({
       theme: document.documentElement.dataset.theme,
       checkedTheme: document.querySelector('input[name="theme"]:checked')?.value,
+      model: document.querySelector('[name="model"]').value,
       status: document.querySelector('[data-settings-status]').textContent,
       warning: document.querySelector('[data-settings-status]').classList.contains('is-warning'),
       stored: JSON.parse(localStorage.getItem('jurix-preferences')),
     }));
     assert.equal(reset.theme, 'dark');
     assert.equal(reset.checkedTheme, 'dark');
+    assert.equal(reset.model, 'llama3', 'reset must use the server-selected model, not the first option');
     assert.match(reset.status, /não foi possível remover as preferências salvas/);
     assert.equal(reset.warning, true);
     assert.equal(reset.stored.theme, 'light', 'failed removal must not pretend the stored preference was cleared');
+    assert.equal(reset.stored.model, 'qwen2.5');
   } finally {
     await browser.close();
     server.close();

@@ -1492,3 +1492,29 @@ streaming/persistence tests, and contrast checks. `git diff --check` passed.
 
 Next action: Continue auditing authenticated and anonymous history transitions
 and the remaining settings controls for mismatches between UI and behavior.
+
+## Cycle 36 — 2026-09-29
+
+Area: Respecting the backend-configured default LLM model.
+
+Observed problem: The view passed `default_model` to the settings template, but
+the model `<select>` never used it. Since allowed models are sorted, an
+untouched form could save a different model than the server default. Reset
+also chose the first option rather than the configured default.
+
+Changes made: The template now marks the configured model as selected, and the
+reset path resolves that exact selected option. Added a structural contract
+plus a Chromium regression fixture where the default (`llama3`) is deliberately
+the second option and a different model was previously saved.
+
+Browser validation: Focused settings browser flow passed, including failure to
+clear browser storage while restoring the server default in the visible form.
+The production Django route continues to exercise normally after the reset
+changes.
+
+Tests: Focused structural and browser settings tests passed. The full frontend
+suite passed with 15 real-Chromium scenarios, 18 structural tests, 15
+streaming/persistence tests, and contrast checks. `git diff --check` passed.
+
+Next action: Re-audit route navigation and history-to-assistant transitions,
+including viewport and focus behavior on mobile.

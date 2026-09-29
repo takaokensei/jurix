@@ -12,6 +12,13 @@ test('chat no longer owns a hardcoded suggestion catalog', async () => {
   assert.equal(source.includes('fetchDynamicSuggestions'), false);
 });
 
+test('settings select the server-configured model and reset to that exact option', async () => {
+  const template = await read('src/apps/legislation/templates/legislation/workspace/settings.html');
+  const workspace = await read('src/apps/core/static/js/workspace.js');
+  assert.match(template, /option value="\{\{ model \}\}"\{% if model == default_model %\} selected\{% endif %\}/);
+  assert.match(workspace, /querySelector\('option\[selected\]'\)/);
+});
+
 test('dynamic suggestions controller uses the corpus API', async () => {
   const source = await read('src/apps/core/static/js/jurix-dynamic-suggestions.js');
   assert.match(source, /\/api\/v1\/suggestions\//);
