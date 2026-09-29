@@ -1586,6 +1586,29 @@ tests, and contrast checks. `git diff --check` passed.
 Next action: Continue route-level keyboard checks for search, collections and
 norm detail, preserving the existing capture baseline.
 
+## Cycle 41 — 2026-09-29
+
+Area: Preventing theme flash during initial page render.
+
+Observed problem: `theme.js` contains anti-FOUC logic, but the assistant loaded
+it at the end of `<body>` and the workspace shell only applied preferences from
+its bottom-loaded controller. With a saved light theme, the document could
+paint dark first and then switch after the page content was already present.
+
+Changes made: Moved the shared theme controller into `<head>` before stylesheets
+in both the assistant and workspace shells. It now applies theme and density
+before the browser paints CSS; the assistant no longer loads it a second time.
+Added a structural contract for placement and single loading.
+
+Validation: Focused template-order test passed for both shells.
+
+Tests: The complete frontend suite passed with 17 real-Chromium scenarios, 19
+structural tests, 15 streaming/persistence tests, and contrast checks.
+`git diff --check` passed.
+
+Next action: Continue with root route keyboard paths and initial-paint checks
+across light/dark/system preference states.
+
 ## Cycle 37 — 2026-09-29
 
 Area: Theme consistency between workspace and assistant/public shells.

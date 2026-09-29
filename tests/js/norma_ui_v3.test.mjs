@@ -19,6 +19,20 @@ test('settings select the server-configured model and reset to that exact option
   assert.match(workspace, /querySelector\('option\[selected\]'\)/);
 });
 
+test('theme preference is applied from the document head before page styles paint', async () => {
+  for (const path of [
+    'src/apps/legislation/templates/legislation/chatbot.html',
+    'src/apps/legislation/templates/legislation/workspace/base.html',
+  ]) {
+    const template = await read(path);
+    const headEnd = template.indexOf('</head>');
+    const themeScript = template.indexOf("js/theme.js");
+    const firstStylesheet = template.indexOf('css/');
+    assert.ok(themeScript >= 0 && themeScript < firstStylesheet && themeScript < headEnd, `${path} must apply theme before styles`);
+    assert.equal(template.indexOf("js/theme.js", themeScript + 1), -1, `${path} should load the controller once`);
+  }
+});
+
 test('dynamic suggestions controller uses the corpus API', async () => {
   const source = await read('src/apps/core/static/js/jurix-dynamic-suggestions.js');
   assert.match(source, /\/api\/v1\/suggestions\//);
