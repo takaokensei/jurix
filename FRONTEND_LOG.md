@@ -1355,3 +1355,32 @@ contracts. No timeout increase, skip, or weakened assertion was used.
 Next action: Run the full suite, then finish the collection-dialog and legal
 comparison keyboard/reduced-motion checks before selecting the next remaining
 product issue.
+
+## Cycle 31 — 2026-09-29
+
+Area: Authenticated collection creation dialog accessibility.
+
+Goal: Exercise the modal workflow that anonymous navigation cannot reach,
+without changing account flows or server behavior.
+
+Observed problems: The existing collection dialog used native `<dialog>` and
+had close/focus-return code, but no browser regression covered keyboard
+opening, Escape, Cancelar, or phone-sized bounds.
+
+Changes made: Added a real-Chromium test page that loads the project's actual
+`workspace.css` and `jurix-collections.js`, then exercises the production
+dialog structure. No production change was needed.
+
+Browser validation: At 390×844, opening focuses the name field, the dialog
+stays within the viewport with no document overflow, Escape closes it and
+returns focus to the opener, and Cancelar closes it with the same focus return.
+
+Tests: Focused dialog test passed. Full `npm test` passed, including all 14
+real-Chromium scenarios and both contrast contracts. `git diff --check`
+passed.
+
+Screenshots: No visual delta; Cycle 29's 30-route before/after capture set
+remains current.
+
+Next action: Continue verifying legal comparison keyboard reading and reduced
+motion, then re-audit settings and history interaction states.

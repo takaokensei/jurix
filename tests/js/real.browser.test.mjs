@@ -88,6 +88,22 @@ function createTestServer(handlers = {}) {
       </div><script src="/static/js/workspace.js"></script></body></html>`);
     }
 
+    if (url.pathname === '/collection-dialog-test/') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(`<!doctype html><html lang="pt-BR"><head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="/static/css/jurix-figma.css">
+        <link rel="stylesheet" href="/static/css/workspace.css">
+      </head><body class="figma-theme workspace-page">
+        <button id="open-collection" data-open-collection-form>Nova coleção</button>
+        <dialog class="workspace-dialog" data-collection-dialog aria-labelledby="collection-dialog-title">
+          <form class="workspace-form"><h2 id="collection-dialog-title">Nova coleção</h2>
+            <label>Nome<input name="name" required></label>
+            <div class="workspace-dialog-actions"><button type="button" data-close-collection-form>Cancelar</button><button type="submit">Salvar</button></div>
+          </form>
+        </dialog><script src="/static/js/jurix-collections.js"></script></body></html>`);
+    }
+
     if (url.pathname === '/tree-test/') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(`<!doctype html><html lang="pt-BR"><head>
@@ -177,6 +193,46 @@ test('real browser: closed mobile workspace navigation is removed from keyboard 
     await page.setViewport({ width: 1280, height: 800 });
     await page.waitForFunction(() => document.querySelector('#sidebar')?.inert === false);
     assert.equal(await page.$eval('#sidebar', (sidebar) => sidebar.getAttribute('aria-hidden')), 'false');
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: collection dialog preserves focus for keyboard and mobile use', async () => {
+  const server = createTestServer();
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 390, height: 844 });
+    await page.goto(`http://127.0.0.1:${port}/collection-dialog-test/`, { waitUntil: 'domcontentloaded' });
+    await page.click('#open-collection');
+    await page.waitForFunction(() => document.querySelector('[data-collection-dialog]')?.open === true);
+    const opened = await page.evaluate(() => ({
+      focusedField: document.activeElement.getAttribute('name'),
+      bounds: document.querySelector('[data-collection-dialog]').getBoundingClientRect().toJSON(),
+      documentWidth: document.documentElement.scrollWidth,
+      viewportWidth: document.documentElement.clientWidth,
+    }));
+    assert.equal(opened.focusedField, 'name');
+    assert.ok(opened.bounds.left >= 0 && opened.bounds.right <= opened.viewportWidth, JSON.stringify(opened));
+    assert.equal(opened.documentWidth, opened.viewportWidth);
+
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.querySelector('[data-collection-dialog]')?.open === false);
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'open-collection');
+
+    await page.click('#open-collection');
+    await page.click('[data-close-collection-form]');
+    await page.waitForFunction(() => document.querySelector('[data-collection-dialog]')?.open === false);
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'open-collection');
   } finally {
     await browser.close();
     server.close();
