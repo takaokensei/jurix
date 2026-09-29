@@ -73,6 +73,25 @@ function createTestServer(handlers = {}) {
       return res.end(html);
     }
 
+    if (url.pathname === '/compare/') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(`<!doctype html><html lang="pt-BR"><head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="/static/css/jurix-figma.css">
+        <link rel="stylesheet" href="/static/css/jurix-legacy-shell.css">
+      </head><body class="figma-theme"><main class="compare-container"><section class="compare-panel original-text">
+        <h3>Diferenças linha a linha</h3><div class="compare-diff" role="table">
+          <div class="compare-diff-header" role="row"><span role="columnheader">Original (OCR)</span><span role="columnheader">Consolidado</span></div>
+          <div class="compare-diff-row compare-diff-changed" role="row">
+            <span class="compare-line-number" aria-hidden="true">1</span>
+            <code class="compare-original-text" role="cell" data-label="Original (OCR)">Texto original da norma</code>
+            <span class="compare-diff-marker" aria-hidden="true">−</span>
+            <span class="compare-line-number" aria-hidden="true">1</span>
+            <code class="compare-consolidated-text" role="cell" data-label="Consolidado">Texto consolidado da norma</code>
+          </div>
+        </div></section></main></body></html>`);
+    }
+
     res.writeHead(404);
     res.end('Not found');
   });
@@ -1115,6 +1134,54 @@ test('real browser: command palette keeps compact icons and focuses search on mo
 
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => document.getElementById('command-palette-overlay')?.getAttribute('aria-hidden') === 'true');
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: norm comparison stacks both labelled versions on mobile without overflow', async () => {
+  const server = createTestServer();
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 390, height: 844 });
+    await page.goto(`http://127.0.0.1:${port}/compare/`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() =>
+      window.matchMedia('(max-width: 720px)').matches &&
+      getComputedStyle(document.querySelector('.compare-diff-header')).display === 'none'
+    );
+    const mobile = await page.evaluate(() => ({
+      viewportWidth: document.documentElement.clientWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      headerDisplay: getComputedStyle(document.querySelector('.compare-diff-header')).display,
+      gridColumns: getComputedStyle(document.querySelector('.compare-diff-row')).gridTemplateColumns,
+      labels: [...document.querySelectorAll('.compare-diff-row code')].map((cell) =>
+        getComputedStyle(cell, '::before').content
+      ),
+      versions: [...document.querySelectorAll('.compare-diff-row code')].map((cell) => cell.innerText),
+    }));
+    assert.equal(mobile.documentWidth, mobile.viewportWidth);
+    assert.equal(mobile.headerDisplay, 'none');
+    assert.equal(mobile.gridColumns.split(' ').length, 1);
+    assert.deepEqual(mobile.labels, ['"Original (OCR)"', '"Consolidado"']);
+    assert.ok(mobile.versions.every((text) => text.length > 0));
+
+    await page.setViewport({ width: 1280, height: 800 });
+    await page.waitForFunction(() => !window.matchMedia('(max-width: 720px)').matches);
+    const desktop = await page.evaluate(() => ({
+      headerDisplay: getComputedStyle(document.querySelector('.compare-diff-header')).display,
+      columnCount: getComputedStyle(document.querySelector('.compare-diff-row')).gridTemplateColumns.split(' ').length,
+    }));
+    assert.notEqual(desktop.headerDisplay, 'none');
+    assert.equal(desktop.columnCount, 5);
   } finally {
     await browser.close();
     server.close();

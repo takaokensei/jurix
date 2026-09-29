@@ -42,6 +42,7 @@ footer p { margin-bottom: var(--jurix-space-1); }
 .compare-diff-row.compare-diff-added .compare-diff-marker { color: var(--figma-green-soft); }
 .compare-diff-row.compare-diff-changed { background: color-mix(in srgb, var(--figma-amber-deep) 14%, var(--figma-bg-root)); }
 .compare-diff-row.compare-diff-changed .compare-diff-marker { color: var(--figma-amber-soft); }
+.compare-side-empty { color: var(--figma-text-muted); font-style: italic; }
 .compare-empty { padding: 20px; color: var(--figma-text-muted); }
 .tree { margin-top: 20px; }
 .tree-node { margin-left: 20px; margin-bottom: 10px; padding: 12px; background: var(--figma-bg-surface); border: 1px solid var(--figma-border); border-left: 3px solid var(--figma-blue-light); border-radius: 10px; color: var(--figma-text-body); }
@@ -53,4 +54,13 @@ footer p { margin-bottom: var(--jurix-space-1); }
 .node-text { color: var(--figma-text-body); font-size: 14px; line-height: 1.55; padding-left: 16px; }
 .node-meta { font-size: 12px; color: var(--figma-text-muted); margin-top: 4px; }
 @media (max-width:860px) { .compare-container { grid-template-columns: 1fr; } }
+@media (max-width:720px) {
+  .compare-diff { overflow: visible; gap: 10px; border: 0; background: transparent; }
+  .compare-diff-header { display: none; }
+  .compare-diff-row { min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 10px; border: 1px solid var(--figma-border); border-radius: 10px; }
+  .compare-diff-row > .compare-line-number,
+  .compare-diff-row > .compare-diff-marker { display: none; }
+  .compare-diff-row > code { min-width: 0; padding: 9px 10px; border: 1px solid var(--figma-border); border-radius: 8px; background: var(--figma-bg-root) !important; }
+  .compare-diff-row > code::before { content: attr(data-label); display: block; margin-bottom: 6px; color: var(--figma-text-muted); font: 700 9px/1.3 Inter, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+}
 @media (max-width:640px) { .tree-node { margin-left:8px; padding: 8px; } .tree-node-children { margin-top: 8px; } .node-text { padding-left: 8px; } }

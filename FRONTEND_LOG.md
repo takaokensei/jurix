@@ -195,5 +195,61 @@ Regressions: No Python, static-check, or final JavaScript regressions. One
 JavaScript real-browser timing failure was not reproducible in isolation or in
 the subsequent full rerun. Simulated quota warnings are expected test cases.
 
-Next action: Check the updated source/diff and browser console across routes,
-then continue the broader root-route interaction audit.
+Next action: Continue the broader root-route interaction audit.
+
+## Cycle 4 — 2026-09-29
+
+Area: Norm version comparison, responsive evidence presentation, and broader
+norm-route review.
+
+Observed problems: At a 390px viewport, `/normas/3/compare/` used a five-column
+line-diff grid with a 680px minimum width. The consolidated text could sit
+outside the visible viewport, with no mobile labels to identify either version.
+On desktop, the compact side-by-side diff remains appropriate. During broader
+route inspection, `/normas/3/tree/` was also found to repeat `Confiança: 1,00`
+for every extracted device; this reflects current segmentation values, but is
+low-information UI and remains a candidate for a separate semantics review.
+
+Changes made: At widths up to 720px, each diff row now stacks the original and
+consolidated text in separately labelled blocks; line numbers and the desktop
+marker are hidden, blank sides explicitly say “Sem linha correspondente”, and
+the row no longer enforces the desktop minimum width. Desktop retains the
+five-column comparison. Added template/CSS assertions and a Puppeteer test for
+both mobile and desktop layouts. The browser test now waits for responsive CSS
+to settle before asserting computed layout, avoiding a stylesheet timing race.
+
+Browser validation: Inspected `/normas/`, `/normas/3/tree/`, `/normas/3/`
+and `/normas/3/compare/` using the running Django app. The accessibility tree
+confirmed the common shell, links and labelled tree hierarchy. At 390×844,
+the comparison shows both labelled texts in sequence with no document
+horizontal overflow; desktop retains the side-by-side five-column diff. This
+browser surface does not support saving screenshots to files.
+
+Tests: `npm test` passed (all JS suites, including 10 real-browser tests).
+Targeted Python route/UI tests passed (24 tests). Ruff, design-token guard,
+architecture budget, `manage.py check` and `git diff --check` passed. A prior
+full JS run exposed a timing-sensitive assertion in the comparison browser
+test; it was reproduced, fixed by waiting for the responsive stylesheet state,
+and the subsequent complete run passed. Another run of the established stream
+drawer test also passed, confirming its earlier intermittent failure did not
+recur.
+
+Console: No new app console issue was observed while reviewing the listed
+routes. Simulated storage-quota warnings in the JS suite are intentional test
+cases.
+
+Responsive validation: Verified the mobile labels, stacked version text, and
+absence of horizontal document overflow at 390px; verified the desktop header
+and five-column layout at 1280px through the real-browser test.
+
+Visual score: Norm version comparison 8/10 mobile and 8/10 desktop after the
+change. The overall product remains in active visual iteration.
+
+Regressions: No regressions in the full JS suite, targeted Python tests, lint,
+design-token/architecture checks, or Django system check. Existing project
+environment lacks global `ruff`, `pytest`, and Django commands; checks were
+rerun successfully using the repository `.venv`.
+
+Next action: Continue manual interaction and accessibility review across the
+norm detail, compare, tree, history and collection routes; assess whether
+segmentation confidence adds trustworthy, interpretable value to the tree UI.

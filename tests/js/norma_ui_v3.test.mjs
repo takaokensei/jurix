@@ -79,3 +79,13 @@ test('workspace selects use a clearly visible chevron and norm facts stay second
   assert.match(normaStyles, /\.jurix-norma-card-title[\s\S]*?font: 700 clamp\(18px/);
 });
 
+test('version comparison exposes both texts as labelled stacked evidence on mobile', async () => {
+  const template = await read('src/apps/legislation/templates/legislation/norma_compare.html');
+  const styles = await read('src/apps/core/static/css/jurix-legacy-shell.css');
+  assert.match(template, /class="compare-original-text" role="cell" data-label="Original \(OCR\)"/);
+  assert.match(template, /class="compare-consolidated-text" role="cell" data-label="Consolidado"/);
+  assert.match(template, /Sem linha correspondente/);
+  assert.match(styles, /@media \(max-width:720px\)[\s\S]*?\.compare-diff-header \{ display: none; \}/);
+  assert.match(styles, /\.compare-diff-row > code::before \{ content: attr\(data-label\)/);
+});
+
