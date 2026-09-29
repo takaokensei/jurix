@@ -1259,7 +1259,13 @@
                 document.body.classList.toggle('sidebar-open', open);
                 toggleSidebarBtn.setAttribute('aria-expanded', String(open));
                 toggleSidebarBtn.setAttribute('aria-label', open ? 'Fechar menu' : 'Abrir menu');
+                const hidden = isMobileSidebar() && !open;
+                sidebar.inert = hidden;
+                sidebar.setAttribute('aria-hidden', String(hidden));
+                if (open) sidebar.querySelector('a, button, [tabindex]:not([tabindex="-1"])')?.focus();
             };
+
+            setMobileSidebarOpen(false);
 
             toggleSidebarBtn.addEventListener('click', () => {
                 if (isMobileSidebar()) {
@@ -1292,7 +1298,7 @@
             let wasMobileSidebar = isMobileSidebar();
             window.addEventListener('resize', () => {
                 const mobileNow = isMobileSidebar();
-                if (wasMobileSidebar && !mobileNow) {
+                if (wasMobileSidebar !== mobileNow) {
                     setMobileSidebarOpen(false);
                 }
                 wasMobileSidebar = mobileNow;

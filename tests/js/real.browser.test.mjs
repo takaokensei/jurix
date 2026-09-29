@@ -1274,6 +1274,11 @@ test('real browser: sidebar items stay inside the shell and fully offscreen when
       measurements.navItems.every((item) => item.right <= 0),
       `Itens da sidebar fechada não devem vazar no viewport: ${JSON.stringify(measurements.navItems)}`
     );
+    assert.equal(await page.$eval('#sidebar', (sidebar) => sidebar.inert), true, 'Links fora do viewport devem estar inertes no mobile');
+    assert.equal(await page.$eval('#sidebar', (sidebar) => sidebar.getAttribute('aria-hidden')), 'true');
+    await page.focus('#toggle-sidebar');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement.closest('#sidebar')), null, 'Tab não deve focar link invisível da sidebar');
 
     const toggle = page.locator('#toggle-sidebar');
     await toggle.click();
@@ -1281,6 +1286,7 @@ test('real browser: sidebar items stay inside the shell and fully offscreen when
       const sidebar = document.getElementById('sidebar');
       return sidebar?.classList.contains('is-open') && sidebar.getBoundingClientRect().right >= 239;
     });
+    await page.waitForFunction(() => document.activeElement?.closest('#sidebar')?.getBoundingClientRect().left >= 0);
     const openState = await page.evaluate(() => ({
       sidebarRight: document.getElementById('sidebar').getBoundingClientRect().right,
       sidebarClasses: document.getElementById('sidebar').className,
@@ -1291,12 +1297,16 @@ test('real browser: sidebar items stay inside the shell and fully offscreen when
     assert.ok(openState.sidebarRight >= 239, JSON.stringify(openState));
     assert.equal(openState.expanded, 'true');
     assert.equal(openState.bodyBackdrop, 'block');
+    assert.equal(await page.$eval('#sidebar', (sidebar) => sidebar.inert), false);
+    assert.ok(await page.evaluate(() => document.activeElement.closest('#sidebar')), 'Abrir a sidebar deve levar o foco a um item visível');
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => {
       const sidebar = document.getElementById('sidebar');
       return !sidebar?.classList.contains('is-open') && sidebar.getBoundingClientRect().right <= 0;
     });
     assert.equal(await page.$eval('#toggle-sidebar', (button) => button.getAttribute('aria-expanded')), 'false');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'toggle-sidebar');
+    assert.equal(await page.$eval('#sidebar', (sidebar) => sidebar.inert), true);
 
     await toggle.click();
     await page.waitForFunction(() => {
@@ -1312,6 +1322,7 @@ test('real browser: sidebar items stay inside the shell and fully offscreen when
     assert.equal(closedByBackdrop.buttonExpanded, 'false');
 
     await page.setViewport({ width: 1280, height: 800 });
+    await page.waitForFunction(() => document.querySelector('#sidebar')?.inert === false);
     const desktopBounds = await page.evaluate(() => {
       const sidebar = document.getElementById('sidebar').getBoundingClientRect();
       const items = [...document.querySelectorAll('#sidebar .figma-sidebar-item')];

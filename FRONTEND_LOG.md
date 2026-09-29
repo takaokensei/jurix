@@ -1222,3 +1222,38 @@ current visual baseline.
 Next action: Audit the comparison and norm-reading routes for keyboard access
 to dense legal text, then exercise the history and collection controls at
 mobile widths and in reduced-motion mode.
+
+## Cycle 27 — 2026-09-29
+
+Area: Assistant conversation sidebar keyboard access.
+
+Goal: Apply the same mobile focus contract to the assistant shell, which is a
+separate template and JavaScript path from the workspace shell.
+
+Observed problems: The workspace fix did not cover `/assistente/`. At 390px,
+the chatbot sidebar links, settings action, and quick-search action were still
+reachable by Tab while translated to x=-224..-17px.
+
+Changes made: The chat sidebar now toggles `inert` and `aria-hidden` with its
+mobile open state, moves focus into the visible sidebar on open, and restores
+the normal focusable state when crossing the 768px breakpoint. Escape already
+returned focus to the trigger and continues to do so. Updated the chat script
+cache key and strengthened the real-Chromium test to assert focus exclusion,
+open focus visibility, Escape restoration, and desktop reactivation.
+
+Browser validation: Reproduced the invisible Tab stops on the actual Django
+assistant page. After the change, Tab skips the closed sidebar; opening moves
+focus to the visible brand link, Escape returns focus to the menu toggle, and
+the sidebar is no longer inert on desktop. Focused Chromium test passed.
+
+Tests: One full-suite run had a transient failure in the pre-existing stream
+interruption/retry browser scenario (first attempt was preserved, but retry
+did not dispatch in that run); the isolated scenario passed on retry, and a
+second complete `npm test` passed, including 13/13 browser tests. No failure
+was observed in the navigation test. `git diff --check` passed.
+
+Screenshots: No intended visual change; Cycle 25's 30-route visual captures
+remain applicable.
+
+Next action: Keep auditing actual routes for keyboard/reduced-motion issues,
+then add accessibility checks for collection dialogs and comparison reading.
