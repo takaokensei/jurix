@@ -302,3 +302,54 @@ stored data was changed.
 
 Next action: Continue detailed assistant interaction review (composer, answer
 actions, retry/error handling) and check keyboard/focus behavior across routes.
+
+## Cycle 6 — 2026-09-29
+
+Area: Assistant welcome-state suggestion motion and layout stability.
+
+Goal: Verify that dynamic corpus suggestions arrive quickly and present complete
+questions without an artificial typewriter or progressive layout shift.
+
+Observed problems: On the live mobile assistant, the suggestion title revealed
+character-by-character after API load, including a blinking block cursor. This
+made a navigation prompt look like a streaming legal answer and changed the
+card height while its text wrapped. In the in-app browser the reveal took
+several seconds, even though a direct same-origin API check returned HTTP 200
+in about 144ms; animation cadence depends on browser frame scheduling and
+should not delay access to the prompt.
+
+Changes made: Removed the JavaScript typewriter and cursor from suggestion
+cards. The complete question is now rendered immediately, while the card uses
+a single 160ms opacity/translate entrance animation (the design token already
+defined by the design system). The existing global `prefers-reduced-motion`
+rule disables that motion. Expanded the dynamic suggestions regression test to
+require the full visible question and prevent reintroduction of the typewriter.
+
+Browser validation: On `/assistente/` at 390×844, reloaded the page and verified
+the suggestion appeared as complete text after the corpus response, without a
+blinking cursor or character reveal. Accessibility tree exposes the same full
+question as the button label and visible content. The card now reaches its final
+height in one short entrance instead of growing line-by-line.
+
+Tests: Dynamic suggestion tests passed (2); full `npm test` passed, including
+all 10 real-browser tests. Ruff, design-token guard, architecture budget, and
+`git diff --check` passed. Quota errors logged by storage-failure tests are
+intentional fixtures.
+
+Console: No new runtime error observed. Dynamic suggestion endpoint responded
+successfully; no failed requests were observed in this interaction.
+
+Responsive validation: Mobile 390px screen inspected; full title wraps to its
+final 3-line layout without progressive vertical movement. Reduced motion is
+covered by the global Figma-theme motion rule.
+
+Visual score: Welcome suggestion clarity 8.5/10 mobile. The composer still
+shows four separate dropdown/actions in a tall stack at 390px; this is usable
+but remains a density/priority opportunity for a later assistant pass.
+
+Regressions: None found in the complete JavaScript suite. Streaming typewriter
+behavior for assistant answers was not changed; only home-page suggestion
+animation was simplified.
+
+Next action: Audit real assistant answer actions and keyboard reachability,
+then review composer controls/overflow at tablet and desktop widths.

@@ -537,6 +537,15 @@ body.figma-theme :is(button, a, input, textarea, select, summary):focus-visible 
   overflow: hidden;
 }
 
+.jurix-dynamic-suggestion-card {
+  animation: jurix-suggestion-enter var(--jurix-motion-fast, 160ms ease) both;
+}
+
+@keyframes jurix-suggestion-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .figma-suggestion-card:hover {
   transform: translateY(-2px);
   border-color: rgba(56, 189, 248, 0.5);
@@ -577,21 +586,6 @@ body.figma-theme :is(button, a, input, textarea, select, summary):focus-visible 
   line-height: 1.45;
   word-break: break-word;
   letter-spacing: -0.01em;
-}
-
-.jurix-streaming-text::after {
-  content: '▋';
-  display: inline-block;
-  margin-left: 3px;
-  color: #38BDF8;
-  font-size: 13px;
-  animation: jurixCursorBlink 0.5s infinite alternate;
-  vertical-align: baseline;
-}
-
-@keyframes jurixCursorBlink {
-  0% { opacity: 1; }
-  100% { opacity: 0.2; }
 }
 
 .figma-suggestion-arrow {

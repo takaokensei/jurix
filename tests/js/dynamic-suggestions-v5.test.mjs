@@ -58,5 +58,7 @@ test('dynamic module renders API-provided questions', async () => {
   const cards = [...window.document.querySelectorAll('#figma-suggestions-cards [data-question]')];
   assert.equal(cards.length, 2);
   assert.equal(cards[0].dataset.question, 'O que a Lei 123/2024 estabelece sobre transporte público?');
+  assert.equal(cards[0].querySelector('.figma-suggestion-title').textContent, cards[0].dataset.question);
+  assert.doesNotMatch(read(JS), /jurix-streaming-text|jurixCursorBlink|setTimeout\(tick/);
   dom.window.close();
 });

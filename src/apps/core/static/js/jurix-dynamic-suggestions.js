@@ -105,34 +105,6 @@
                 </button>`;
         }).join('');
 
-        // Fast typewriter streaming in visual browser environment
-        if (
-            typeof window.requestAnimationFrame === 'function' &&
-            typeof process === 'undefined' &&
-            !window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
-        ) {
-            root.querySelectorAll('.figma-suggestion-title').forEach((titleEl) => {
-                const full = titleEl.getAttribute('data-full-text') || titleEl.textContent;
-                if (!full) return;
-                titleEl.textContent = '';
-                titleEl.classList.add('jurix-streaming-text');
-                let idx = 0;
-                const total = full.length;
-                const step = Math.max(1, Math.ceil(total / 40));
-                function tick() {
-                    idx = Math.min(total, idx + step);
-                    titleEl.textContent = full.slice(0, idx);
-                    if (idx < total) {
-                        requestAnimationFrame(() => setTimeout(tick, 10));
-                    } else {
-                        titleEl.textContent = full;
-                        titleEl.classList.remove('jurix-streaming-text');
-                    }
-                }
-                tick();
-            });
-        }
-
         if (chips) {
             chips.innerHTML = normalized.slice(0, 3).map((item) => {
                 const question = item.question.trim();
