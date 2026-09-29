@@ -788,7 +788,7 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
       res.write(
         `data: ${JSON.stringify({
           type: 'sources',
-          sources: [{ id: 99, tipo: 'Lei', norma: 'Lei nº 8.206/2026', text: 'Texto integral da Lei 8206 de Natal.' }],
+          sources: [{ id: 99, tipo: 'Lei', norma: 'Lei nº 8.206/2026', text: 'Texto integral da Lei 8206 de Natal.', similarity_score: 0.7 }],
         })}\n\n`
       );
 
@@ -825,6 +825,7 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
 
   try {
     const page = await browser.newPage();
+    await page.setViewport({ width: 390, height: 844 });
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
 
     // Set up mutation observer to capture initial opacity on card insertion
@@ -870,6 +871,23 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
       () => document.querySelector('.jurix-sources-pill-btn')?._sourcesData?.length > 0,
       { timeout: 6000 }
     );
+    const mobileSourcesLayout = await page.evaluate(() => {
+      const rect = (selector) => {
+        const element = document.querySelector(selector);
+        const bounds = element?.getBoundingClientRect();
+        return bounds ? { x: bounds.x, right: bounds.right, width: bounds.width, height: bounds.height } : null;
+      };
+      return {
+        viewportWidth: innerWidth,
+        button: rect('.jurix-sources-pill-btn'),
+        count: rect('.jurix-sources-pill-btn > span:not(.jurix-sources-pill-badge):not(.jurix-sources-pill-action)'),
+        confidence: rect('.jurix-sources-pill-badge'),
+        action: rect('.jurix-sources-pill-action'),
+      };
+    });
+    assert.ok(mobileSourcesLayout.count?.height < 22, `Source count should stay on one line on mobile: ${JSON.stringify(mobileSourcesLayout)}`);
+    assert.ok(mobileSourcesLayout.action?.height < 22, `Source action should stay on one line on mobile: ${JSON.stringify(mobileSourcesLayout)}`);
+    assert.ok(mobileSourcesLayout.confidence?.height < 22, `Confidence label should stay on one line on mobile: ${JSON.stringify(mobileSourcesLayout)}`);
     await page.evaluate(() => {
       window.__drawerOpenCalls = 0;
       const openDrawer = window.JurixRagUI.openSourcesDrawer;
@@ -986,6 +1004,8 @@ test('real browser: stream interruption preserves partial text and user question
 
   try {
     const page = await browser.newPage();
+    const pageErrors = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
 
     await page.waitForSelector('#hero-search-input');
@@ -1015,7 +1035,19 @@ test('real browser: stream interruption preserves partial text and user question
     const retryButton = await page.waitForSelector('.jurix-rag-retry', { timeout: 5000 });
     assert.ok(retryButton, 'O erro deve oferecer uma ação de retry funcional');
     await retryButton.click();
-    await page.waitForFunction(() => document.body.textContent.includes('Resposta recuperada com sucesso.'), { timeout: 6000 });
+    try {
+      await page.waitForFunction(() => document.body.textContent.includes('Resposta recuperada com sucesso.'), { timeout: 6000 });
+    } catch (error) {
+      const diagnostic = await page.evaluate(() => ({
+        url: location.href,
+        textarea: document.querySelector('#question-textarea')?.value,
+        sendDisabled: document.querySelector('#send-button')?.disabled,
+        state: window.JurixChatState?.snapshot?.(),
+        messages: [...document.querySelectorAll('.message')].map((el) => ({ className: el.className, text: el.textContent.slice(0, 180) })),
+        history: JSON.parse(localStorage.getItem('jurix:anonymous-history:v2') || '{"sessions":[]}'),
+      }));
+      throw new Error(`${error.message}; attempts=${streamAttempts}; pageErrors=${JSON.stringify(pageErrors)}; state=${JSON.stringify(diagnostic)}`);
+    }
     const retryResult = await page.evaluate(() => ({
       userMessages: document.querySelectorAll('.message-user').length,
       assistantMessages: document.querySelectorAll('.message-assistant').length,

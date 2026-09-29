@@ -515,6 +515,32 @@ button.jurix-sources-pill-btn:hover,
     gap: 2px !important;
 }
 
+@media (max-width: 480px) {
+    .jurix-sources-pill-btn {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex-wrap: wrap !important;
+        justify-content: flex-start !important;
+        gap: 6px !important;
+        padding: 8px 10px !important;
+    }
+
+    .jurix-sources-pill-btn > span:not(.jurix-sources-pill-badge):not(.jurix-sources-pill-action) {
+        white-space: nowrap !important;
+    }
+
+    .jurix-sources-pill-action {
+        margin-left: auto !important;
+        white-space: nowrap !important;
+    }
+
+    .jurix-sources-pill-badge {
+        order: 1 !important;
+        margin-left: 20px !important;
+        white-space: nowrap !important;
+    }
+}
+
 /* Slide-over Side Drawer */
 .jurix-sources-drawer-backdrop {
     position: fixed !important;

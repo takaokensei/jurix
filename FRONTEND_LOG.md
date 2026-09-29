@@ -444,3 +444,27 @@ continues to use its existing regeneration contract.
 Next action: Continue auditing the assistant's error, retry and composer states
 across authenticated/anonymous and narrow/wide layouts, then inspect another
 high-impact interaction in the workspace.
+
+## Cycle 9 — 2026-09-29
+
+Area: Mobile evidence affordance in the assistant response.
+
+Observed problem: At 390px, the source-count label, semantic correspondence
+badge, and “Ver fontes” action competed on one compressed flex row; all three
+labels wrapped, making the control visually noisy and harder to scan.
+
+Changes made: On narrow screens, the source count and action now remain on the
+first line while the full correspondence badge moves to a second line. The
+source control uses the available message width and preserves the existing
+button semantics and click target. The real Chromium streaming test now runs at
+390px with a scored source and asserts that all three labels fit on one line.
+
+Tests: Full `npm test` passed, including all 10 real-browser tests and the new
+390px geometry assertions. Ruff, design-token guard, architecture budget,
+Django system check, JavaScript syntax check, and `git diff --check` passed.
+
+Regressions: None observed; the change is restricted to the source affordance
+below 481px.
+
+Next action: Continue the keyboard and narrow-screen audit of assistant
+composer controls, then verify the same flow at tablet and desktop widths.
