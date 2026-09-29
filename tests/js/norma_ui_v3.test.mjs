@@ -104,6 +104,15 @@ test('legal search does not force mobile autofocus and uses a compact empty stat
   assert.match(styles, /\.workspace-dialog input, \.workspace-dialog textarea \{ box-sizing: border-box;/);
 });
 
+test('mobile workspace search stays a compact 44px icon button when its label is hidden', async () => {
+  const styles = await read('src/apps/core/static/css/workspace.css');
+  const chat = await read('src/apps/legislation/templates/legislation/chatbot.html');
+  const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
+  assert.match(styles, /@media \(max-width:\s*640px\)[\s\S]*?\.workspace-topbar \.workspace-top-search\s*\{[^}]*flex:\s*0 0 44px;[^}]*width:\s*44px;[^}]*min-width:\s*44px;/);
+  assert.match(chat, /css\/workspace\.css['"] %\}\?v=20260929-mobile-search/);
+  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260929-mobile-search/);
+});
+
 test('workspace selects use a clearly visible chevron and norm facts stay secondary', async () => {
   const workspaceStyles = await read('src/apps/core/static/css/workspace.css');
   const normaStyles = await read('src/apps/core/static/css/jurix-norma-list.css');

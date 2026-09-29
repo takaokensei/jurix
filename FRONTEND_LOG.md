@@ -1010,3 +1010,53 @@ zero overflow, errors, failed requests, or bad responses.
 Next action: Audit the mobile workspace header/composer and norm reading flow
 for clipping and awkward density; then continue remaining interaction paths
 in history, collections, settings and document comparison.
+
+## Cycle 22 — 2026-09-29
+
+Area: Compact mobile global-search control in shared topbars.
+
+Goal: Preserve clear search affordance on narrow screens without allowing a
+label-hidden control to consume the remaining header width.
+
+Observed problems: At widths up to 640px, the shared component hid the search
+label and shortcut, but the workspace's `flex: 1` rule still stretched the
+header button. It looked like a wide, empty input in the assistant and the
+workspace despite retaining an accessible name.
+
+Changes made: Constrained `.workspace-top-search` to a 44×44px icon button at
+the compact breakpoint, centered its icon, and preserved the existing
+`aria-label`. Versioned `workspace.css` in both shared-workspace and assistant
+templates so browsers receive the updated responsive rule. Added a structural
+regression test. No interaction or route contract changed.
+
+Browser validation: Tested the real `/assistente/` and `/configuracoes/`
+pages in Chromium at 390px, 640px and 641px. At 390/640, the control measured
+44×44px and its accessible name remained “Abrir busca rápida (Ctrl K)”; at
+641px the visible search label returned and the control expanded to fill the
+available header space. All six route/viewport checks had zero overflow and
+zero page/console errors. Refreshed captures visibly confirm the compact icon
+button in all mobile routes and readable page headings.
+
+Tests: `norma_ui_v3.test.mjs` passed 16/16; `git diff --check` passed. Both
+before and after manifests contain 30 screenshots with zero HTTP, visibility,
+overflow, console, failed-request, or bad-response issues.
+
+Console: No browser errors on either live route at any of the tested widths.
+
+Responsive validation: Breakpoint edge explicitly tested at 640px and 641px;
+390px mobile document width remains exact. Search control stays above the
+44px touch-target minimum.
+
+Visual score: Mobile shared header 8.9/10 after this cycle (estimated 7.3/10
+before); the icon affordance is compact rather than resembling an empty text
+field, and the route label retains its own space.
+
+Regressions: None observed in route tests or capture manifests.
+
+Screenshots: Refreshed `docs/ui-audit/after/` (30 route/viewport images); all
+mobile topbars show the same compact control while desktop captures remain
+unchanged apart from dynamic chat content.
+
+Next action: Review the assistant composer and long legal-text reading on
+mobile for clipping, overly tall controls, and keyboard/focus inconsistencies;
+then move on to document comparison, history and collection action flows.
