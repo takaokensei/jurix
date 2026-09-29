@@ -178,6 +178,9 @@ test('version comparison exposes both texts as labelled stacked evidence on mobi
   const styles = await read('src/apps/core/static/css/jurix-legacy-shell.css');
   assert.match(template, /class="compare-original-text" role="cell" data-label="Original \(OCR\)"/);
   assert.match(template, /class="compare-consolidated-text" role="cell" data-label="Consolidado"/);
+  assert.match(template, /class="compare-method-note" role="note"/);
+  assert.match(template, /podem gerar diferenças sem representar uma alteração jurídica/);
+  assert.match(styles, /\.compare-method-note \{[^}]*border-left:\s*3px solid/);
   assert.match(template, /data-line="\{\{ row\.original_number\|default:'—' \}\}"/);
   assert.match(template, /data-line="\{\{ row\.consolidated_number\|default:'—' \}\}"/);
   const missingSideMarkup = template.match(

@@ -1963,3 +1963,43 @@ Regressions: None observed.
 Next action: Continue the phase-E cross-route audit through comparison, device
 tree, workspace forms and route error states; inspect keyboard and recovery
 paths for concrete user-visible failures.
+
+## Cycle 50 — 2026-09-29
+
+Area: Norm version comparison and legal-device tree.
+
+Goal: Audit whether comparison output communicates its evidentiary limits and
+whether the hierarchy remains operable with a keyboard.
+
+Observed problems: On a real norm with OCR page markers, the comparison showed
+many apparent row changes and unmatched lines. The screen called this “Diferenças
+linha a linha” without explaining that the alignment is automatic and textual;
+users could mistake OCR/layout noise for a substantive legal amendment.
+
+Changes made: Renamed the section to “Comparação textual por linhas” and added
+a visible, accessible method note explaining OCR/layout limitations and asking
+the reader to verify the full text and normative events. No backend comparison
+logic or legal inference was changed.
+
+Browser validation: The note was present in the live accessibility tree on
+`/normas/3/compare/`. On `/normas/3/tree/`, pressing Enter on “Recolher Art. 2º”
+collapsed its child devices, updated the control label/state and retained focus.
+
+Tests: Full `npm test` passed, including 19 real-Chromium scenarios, 20
+workspace/norm structural contracts, 15 streaming/persistence checks, composer
+lifecycle and contrast checks. The comparison-specific structural check passed.
+`git diff --check` passed.
+
+Console: Route capture completed 30 views with zero needing review.
+
+Responsive validation: Capture covered 390×844, 1280×800 and 1440×900; no
+horizontal overflow or navigation failures were reported.
+
+Visual score: Comparison methodology is now stated before the diff, reducing
+the chance that textual mismatches are presented as legal conclusions.
+
+Regressions: None observed. A genuinely semantic/legal diff would require
+backend comparison work and remains outside this frontend-only cycle.
+
+Next action: Continue through empty/error routes and workspace forms, testing
+submission, validation recovery, focus return and mobile layout in the live app.

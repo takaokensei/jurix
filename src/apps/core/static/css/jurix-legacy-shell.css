@@ -22,6 +22,7 @@ footer p { margin-bottom: var(--jurix-space-1); }
 .compare-summary .badge-info { color: var(--figma-blue-soft); background: var(--figma-blue-deep); }
 .compare-summary .badge-success { color: var(--figma-green-soft); background: var(--figma-green-deep); }
 .compare-summary .badge-warning { color: var(--figma-amber-soft); background: var(--figma-amber-deep); }
+.compare-method-note { margin: 12px 0 0; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--figma-amber-soft) 24%, var(--figma-border)); border-left: 3px solid var(--figma-amber-soft); border-radius: var(--jurix-radius-sm); background: color-mix(in srgb, var(--figma-amber-deep) 24%, var(--figma-bg-root)); color: var(--figma-text-body); font-size: .86rem; line-height: 1.6; }
 .compare-panel pre { max-width: 100%; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; overflow-x: auto; color: inherit; background: var(--figma-bg-root); border: 1px solid var(--figma-border); border-radius: var(--jurix-radius-sm); padding: 14px; }
 .compare-diff-row code { background: transparent !important; color: var(--figma-blue-soft); }
 .compare-diff { display: grid; gap: 1px; overflow-x: auto; border: 1px solid var(--figma-border); border-radius: var(--jurix-radius-sm); background: var(--figma-border); }
