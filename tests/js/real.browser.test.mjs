@@ -84,10 +84,17 @@ function createTestServer(handlers = {}) {
           <div class="compare-diff-header" role="row"><span role="columnheader">Original (OCR)</span><span role="columnheader">Consolidado</span></div>
           <div class="compare-diff-row compare-diff-changed" role="row">
             <span class="compare-line-number" aria-hidden="true">1</span>
-            <code class="compare-original-text" role="cell" data-label="Original (OCR)">Texto original da norma</code>
+            <code class="compare-original-text" role="cell" data-label="Original (OCR)" data-line="1">Texto original da norma</code>
             <span class="compare-diff-marker" aria-hidden="true">−</span>
             <span class="compare-line-number" aria-hidden="true">1</span>
-            <code class="compare-consolidated-text" role="cell" data-label="Consolidado">Texto consolidado da norma</code>
+            <code class="compare-consolidated-text" role="cell" data-label="Consolidado" data-line="1">Texto consolidado da norma</code>
+          </div>
+          <div class="compare-diff-row compare-diff-added" role="row">
+            <span class="compare-line-number" aria-hidden="true"></span>
+            <code class="compare-original-text" role="cell" data-label="Original (OCR)" data-line="—"><span class="compare-side-empty" role="note" aria-label="Sem linha correspondente" title="Sem linha correspondente">Sem correspondente</span></code>
+            <span class="compare-diff-marker" aria-hidden="true">+</span>
+            <span class="compare-line-number" aria-hidden="true">2</span>
+            <code class="compare-consolidated-text" role="cell" data-label="Consolidado" data-line="2">Novo dispositivo</code>
           </div>
         </div></section></main></body></html>`);
     }
@@ -1361,12 +1368,27 @@ test('real browser: norm comparison stacks both labelled versions on mobile with
         getComputedStyle(cell, '::before').content
       ),
       versions: [...document.querySelectorAll('.compare-diff-row code')].map((cell) => cell.innerText),
+      missingSide: {
+        label: document.querySelector('.compare-side-empty')?.getAttribute('aria-label'),
+        visibleText: document.querySelector('.compare-side-empty')?.innerText,
+        fontSize: getComputedStyle(document.querySelector('.compare-side-empty')).fontSize,
+        whiteSpace: getComputedStyle(document.querySelector('.compare-side-empty')).whiteSpace,
+      },
     }));
     assert.equal(mobile.documentWidth, mobile.viewportWidth);
     assert.equal(mobile.headerDisplay, 'none');
     assert.equal(mobile.gridColumns.split(' ').length, 1);
-    assert.deepEqual(mobile.labels, ['"Original (OCR)"', '"Consolidado"']);
+    assert.deepEqual(mobile.labels, [
+      '"Original (OCR) · linha 1"',
+      '"Consolidado · linha 1"',
+      '"Original (OCR) · linha —"',
+      '"Consolidado · linha 2"',
+    ]);
     assert.ok(mobile.versions.every((text) => text.length > 0));
+    assert.equal(mobile.missingSide.label, 'Sem linha correspondente');
+    assert.equal(mobile.missingSide.visibleText, 'Sem correspondente');
+    assert.equal(mobile.missingSide.whiteSpace, 'nowrap');
+    assert.ok(Number.parseFloat(mobile.missingSide.fontSize) < 12);
 
     await page.setViewport({ width: 1280, height: 800 });
     await page.waitForFunction(() => !window.matchMedia('(max-width: 720px)').matches);

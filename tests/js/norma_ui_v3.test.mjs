@@ -106,9 +106,15 @@ test('version comparison exposes both texts as labelled stacked evidence on mobi
   const styles = await read('src/apps/core/static/css/jurix-legacy-shell.css');
   assert.match(template, /class="compare-original-text" role="cell" data-label="Original \(OCR\)"/);
   assert.match(template, /class="compare-consolidated-text" role="cell" data-label="Consolidado"/);
-  assert.match(template, /Sem linha correspondente/);
+  assert.match(template, /data-line="\{\{ row\.original_number\|default:'—' \}\}"/);
+  assert.match(template, /data-line="\{\{ row\.consolidated_number\|default:'—' \}\}"/);
+  const missingSideMarkup = template.match(
+    /class="compare-side-empty" role="note" aria-label="Sem linha correspondente" title="Sem linha correspondente">Sem correspondente<\/span>/g,
+  );
+  assert.equal(missingSideMarkup?.length, 2);
+  assert.match(styles, /\.compare-side-empty \{[^}]*font: 600 \.68rem\/1\.4 Inter, system-ui, sans-serif/);
   assert.match(styles, /@media \(max-width:720px\)[\s\S]*?\.compare-diff-header \{ display: none; \}/);
-  assert.match(styles, /\.compare-diff-row > code::before \{ content: attr\(data-label\)/);
+  assert.match(styles, /\.compare-diff-row > code::before \{ content: attr\(data-label\) " · linha " attr\(data-line\)/);
 });
 
 test('public device tree does not present internal extraction confidence as legal certainty', async () => {

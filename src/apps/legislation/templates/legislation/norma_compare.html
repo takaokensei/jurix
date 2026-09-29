@@ -6,7 +6,7 @@
 
 {% block extra_css %}
 {% load static %}
-<link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}">
+<link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}?v=20260929-compare-missing-side1">
 {% endblock %}
 
 {% block content %}
@@ -34,10 +34,10 @@
             {% for row in diff_rows %}
             <div class="compare-diff-row compare-diff-{{ row.kind }}" role="row">
                 <span class="compare-line-number" aria-hidden="true">{{ row.original_number|default:"" }}</span>
-                <code class="compare-original-text" role="cell" data-label="Original (OCR)">{% if row.original %}{{ row.original }}{% else %}<span class="compare-side-empty">Sem linha correspondente</span>{% endif %}</code>
+                <code class="compare-original-text" role="cell" data-label="Original (OCR)" data-line="{{ row.original_number|default:'—' }}">{% if row.original %}{{ row.original }}{% else %}<span class="compare-side-empty" role="note" aria-label="Sem linha correspondente" title="Sem linha correspondente">Sem correspondente</span>{% endif %}</code>
                 <span class="compare-diff-marker" aria-hidden="true">{% if row.kind == "removed" or row.kind == "changed" %}−{% else %} {% endif %}</span>
                 <span class="compare-line-number" aria-hidden="true">{{ row.consolidated_number|default:"" }}</span>
-                <code class="compare-consolidated-text" role="cell" data-label="Consolidado">{% if row.consolidated %}{{ row.consolidated }}{% else %}<span class="compare-side-empty">Sem linha correspondente</span>{% endif %}</code>
+                <code class="compare-consolidated-text" role="cell" data-label="Consolidado" data-line="{{ row.consolidated_number|default:'—' }}">{% if row.consolidated %}{{ row.consolidated }}{% else %}<span class="compare-side-empty" role="note" aria-label="Sem linha correspondente" title="Sem linha correspondente">Sem correspondente</span>{% endif %}</code>
             </div>
             {% empty %}
             <p class="compare-empty">Nenhum texto disponível para comparação.</p>

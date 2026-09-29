@@ -740,3 +740,67 @@ screenshots for the required full route matrix remain outstanding.
 Next action: Continue with the answer reading hierarchy and the complete
 desktop/mobile route audit, then close the screenshot artifact gap during the
 final pass.
+
+## Cycle 17 — 2026-09-29
+
+Area: Mobile legal-version comparison and repeatable visual evidence.
+
+Goal: Make each side of the mobile line-by-line comparison auditable without
+repeating a long placeholder in every unmatched row, and establish persistent
+before/after evidence for the actual Django routes.
+
+Observed problems: At 390px, the comparison stacked each source line into two
+cards but hid the line numbers. This removed a key citation aid on the smallest
+viewport. Unmatched sides repeated “Sem linha correspondente” in every row,
+visually competing with the legal text. The audit also had no saved screenshot
+files, despite previous visual inspections.
+
+Changes made: Mobile comparison labels now show the source and its original or
+consolidated line number. Unmatched sides display the shorter “Sem
+correspondente” while retaining the complete accessible name and tooltip. The
+empty-side treatment uses a compact token-based visual style. Added an
+executable route/viewport screenshot capturer that also reports HTTP failures,
+console errors, failed requests, main-content visibility, and horizontal
+overflow. No backend, API, model, or diff-generation changes.
+
+Browser validation: On the live Django app, manually executed a legal search
+for “servidor educação”; it returned three result cards, highlighted both
+terms, and preserved the query and filters in the URL. Inspected the live
+comparison accessibility tree and verified the full missing-side name remains
+available. Before and after captures cover the same ten views—assistant,
+empty/results search, norms, norm detail, comparison, device tree, collections,
+history, and settings—at 1440×900, 1280×800, and 390×844. Both manifests report
+30/30 HTTP 200, main content visible, zero horizontal overflow, zero console
+errors, zero failed requests, and identical screenshot filenames. The
+before/after comparison screenshot visibly confirms mobile line references.
+
+Tests: The focused structural and Chromium browser tests passed (24/24); the
+full `npm test` suite passed. `manage.py check`, the design-token gate,
+JavaScript syntax checks, both screenshot-manifest audits, and `git diff
+--check` passed. The screenshot evidence totals about 8.0 MB.
+
+Console: No console errors or failed requests in the 60 captured real-route
+views. The full JavaScript suite emitted only its existing intentional storage
+quota fault-injection logs.
+
+Responsive validation: All ten route/query variants fit the exact 390px
+document width; comparison at 390px now identifies the source line in each
+card label. The same route set remains overflow-free at both desktop sizes.
+
+Visual score: Mobile version comparison 8.2/10 after this cycle (estimated
+7.6/10 before). The line-reference hierarchy is clearer, but OCR formatting
+and alignment remain visible content-quality limitations; they are not
+modified because diff generation is outside this frontend-only goal.
+
+Regressions: None in the 24 focused tests or full JavaScript suite. Desktop
+five-column comparison and mobile single-column layout are both retained.
+
+Screenshots: `docs/ui-audit/before/` and `docs/ui-audit/after/` now contain
+matching 30-image route/viewport sets and manifests. Reproduce with
+`node tests/js/capture-ui-audit.mjs before` and `node
+tests/js/capture-ui-audit.mjs after` while the local app is running at
+`127.0.0.1:8004` (or set `JURIX_UI_AUDIT_URL`).
+
+Next action: Continue the full route interaction audit, prioritizing the norm
+detail/timeline and device-tree reading experience; then verify keyboard and
+reduced-motion behavior across the shared shell.
