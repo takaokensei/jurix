@@ -102,11 +102,30 @@
 
         const reset = form.querySelector('[data-settings-reset]');
         reset?.addEventListener('click', () => {
+            let removed = true;
             try {
                 localStorage.removeItem(SETTINGS_KEY);
-            } catch (_) {}
-            Object.assign(DEFAULTS, { model: modelField?.options[0]?.value || 'llama3' });
-            window.location.reload();
+            } catch (_) {
+                removed = false;
+            }
+            const resetSettings = { ...DEFAULTS, model: modelField?.options[0]?.value || 'llama3' };
+            if (modelField) modelField.value = resetSettings.model;
+            if (temperatureField) temperatureField.value = resetSettings.temperature;
+            if (sourcesField) sourcesField.value = resetSettings.sources;
+            const resetTheme = form.querySelector(`[name="theme"][value="${resetSettings.theme}"]`);
+            const resetDensity = form.querySelector(`[name="density"][value="${resetSettings.density}"]`);
+            if (resetTheme) resetTheme.checked = true;
+            if (resetDensity) resetDensity.checked = true;
+            applyAppearance(resetSettings);
+
+            const status = form.querySelector('[data-settings-status]');
+            if (status) {
+                status.classList.toggle('is-warning', !removed);
+                status.textContent = removed
+                    ? 'Preferências padrão restauradas.'
+                    : 'Padrões aplicados nesta página, mas não foi possível remover as preferências salvas. Elas podem voltar após recarregar.';
+            }
+            if (removed) window.location.reload();
         });
     }
 

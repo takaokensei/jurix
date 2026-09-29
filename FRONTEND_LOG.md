@@ -1466,3 +1466,29 @@ streaming/persistence tests, and contrast checks. `git diff --check` passed.
 
 Next action: Continue examining history/session state and settings reset for
 additional behavior that diverges from what the interface promises.
+
+## Cycle 35 — 2026-09-29
+
+Area: Settings reset behavior when local storage is unavailable.
+
+Observed problem: “Restaurar padrão” ignored `removeItem` failures and reloaded
+the page. When storage was blocked, the original preferences remained saved and
+were reapplied, with no feedback to explain why reset did not stick.
+
+Changes made: Reset now updates all controls and appearance to defaults in the
+current document. It reloads only after successful removal; on failure it
+preserves the page and announces that stored preferences may return after a
+reload. Added a real-browser failure-path assertion, including proof that the
+old stored value was not falsely reported as cleared.
+
+Browser validation: Exercised the actual `/configuracoes/` route at 390px.
+Normal save/reload persisted the selected theme/density; normal reset removed
+the key and restored dark/comfortable defaults. Chromium also verified blocked
+removal keeps the user on the page and announces the limitation.
+
+Tests: Focused storage-failure/reset test passed. The complete frontend suite
+passed with 15 real-Chromium scenarios, 17 structural tests, 15
+streaming/persistence tests, and contrast checks. `git diff --check` passed.
+
+Next action: Continue auditing authenticated and anonymous history transitions
+and the remaining settings controls for mismatches between UI and behavior.

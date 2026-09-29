@@ -101,6 +101,7 @@ function createTestServer(handlers = {}) {
           <label class="workspace-field"><span>Fontes</span><input name="sources" type="number" value="5"></label>
           <fieldset><label><input type="radio" name="theme" value="dark" checked>Escuro</label><label><input type="radio" name="theme" value="light">Claro</label><label><input type="radio" name="theme" value="system">Sistema</label></fieldset>
           <fieldset><label><input type="radio" name="density" value="comfortable" checked>Confortável</label><label><input type="radio" name="density" value="compact">Compacta</label></fieldset>
+          <button type="button" data-settings-reset>Restaurar padrão</button>
           <button type="submit">Salvar preferências</button><span data-settings-status role="status" aria-live="polite"></span>
         </form></main><script src="/static/js/workspace.js"></script></body></html>`);
     }
@@ -271,6 +272,9 @@ test('real browser: settings report when browser storage rejects preferences', a
     await page.setViewport({ width: 390, height: 844 });
     await page.goto(`http://127.0.0.1:${port}/settings-test/`, { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => {
+      localStorage.setItem('jurix-preferences', JSON.stringify({
+        model: 'llama3', temperature: 0.8, sources: 3, theme: 'light', density: 'compact',
+      }));
       Storage.prototype.setItem = function setItem() {
         throw new DOMException('Storage quota exceeded', 'QuotaExceededError');
       };
@@ -286,6 +290,25 @@ test('real browser: settings report when browser storage rejects preferences', a
     assert.equal(result.theme, 'light', 'the selected theme still applies in the current page');
     assert.match(result.status, /aplicadas, mas não foi possível salvá-las/);
     assert.equal(result.warning, true);
+
+    await page.evaluate(() => {
+      Storage.prototype.removeItem = function removeItem() {
+        throw new DOMException('Storage is blocked', 'SecurityError');
+      };
+    });
+    await page.click('[data-settings-reset]');
+    const reset = await page.evaluate(() => ({
+      theme: document.documentElement.dataset.theme,
+      checkedTheme: document.querySelector('input[name="theme"]:checked')?.value,
+      status: document.querySelector('[data-settings-status]').textContent,
+      warning: document.querySelector('[data-settings-status]').classList.contains('is-warning'),
+      stored: JSON.parse(localStorage.getItem('jurix-preferences')),
+    }));
+    assert.equal(reset.theme, 'dark');
+    assert.equal(reset.checkedTheme, 'dark');
+    assert.match(reset.status, /não foi possível remover as preferências salvas/);
+    assert.equal(reset.warning, true);
+    assert.equal(reset.stored.theme, 'light', 'failed removal must not pretend the stored preference was cleared');
   } finally {
     await browser.close();
     server.close();
