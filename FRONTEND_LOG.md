@@ -1060,3 +1060,50 @@ unchanged apart from dynamic chat content.
 Next action: Review the assistant composer and long legal-text reading on
 mobile for clipping, overly tall controls, and keyboard/focus inconsistencies;
 then move on to document comparison, history and collection action flows.
+
+## Cycle 23 — 2026-09-29
+
+Area: Mobile norm-detail information density.
+
+Goal: Reduce scroll consumed by secondary count cards before the legal device
+hierarchy, without making metric labels too narrow to read.
+
+Observed problems: At 390px, all three detail metrics were stacked at full
+width even though their labels and values were short; this added roughly one
+card row of unnecessary scrolling before the article tree.
+
+Changes made: At widths up to 640px, the metric grid now uses two columns and
+the final metric spans the full row. Desktop remains three columns. Bumped the
+detail stylesheet cache key and added a regression test. No legal content or
+backend logic changed.
+
+Browser validation: Measured the actual `/normas/3/` page in Chromium at
+320px, 390px, 640px, and 641px. It resolves to two columns through 640px and
+three columns above the breakpoint; at 390px the third card spans the row.
+At 320px, the longer “Eventos de Alteração” label wraps but remains readable.
+All widths had zero horizontal overflow, page errors, or console errors. The
+390px after-capture shows the three metrics using two rows rather than three.
+
+Tests: Focused `norma_ui_v3.test.mjs` passed 17/17; `git diff --check` passed.
+Both screenshot manifests still have 30 views and zero issues.
+
+Console: No errors on the real route at all four widths.
+
+Responsive validation: Explicitly checked 320, 390, 640, and 641px, including
+the breakpoint transition and label wrapping at the narrowest width.
+
+Visual score: Mobile metric block 8.8/10 after this cycle (estimated 7.4/10
+before); secondary information takes less vertical space and retains readable
+labels.
+
+Regressions: A structural assertion still expected the prior stylesheet
+cache-key string; it failed during validation, was updated to the new key, and
+the complete focused suite then passed.
+
+Screenshots: Refreshed all 30 `after/` images. The mobile norm-detail image
+confirms the compact 2+1 layout; baseline and after manifests retain identical
+route/viewport coverage.
+
+Next action: Continue testing the assistant's mobile composer and keyboard
+submission, then inspect reading density and focus behavior in comparison,
+history, and collection flows.

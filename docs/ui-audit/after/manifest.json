@@ -1,7 +1,7 @@
 {
   "phase": "after",
   "baseUrl": "http://127.0.0.1:8004",
-  "capturedAt": "2026-09-29T19:47:06.863Z",
+  "capturedAt": "2026-09-29T19:50:58.268Z",
   "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "results": [
     {
@@ -267,7 +267,7 @@
       "url": "http://127.0.0.1:8004/normas/3/",
       "viewportWidth": 390,
       "documentWidth": 390,
-      "documentHeight": 6617,
+      "documentHeight": 6525,
       "mainVisible": true,
       "horizontalOverflow": false,
       "consoleErrors": [],

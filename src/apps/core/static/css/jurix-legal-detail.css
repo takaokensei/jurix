@@ -60,5 +60,9 @@
 .legal-detail-actions .is-copied { background: rgba(52,211,153,.18); border-color: rgba(52,211,153,.45); color: var(--figma-green-soft); }
 .jurix-copy-fallback { position: fixed; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 .tree-node-children { margin-top:10px; }
-@media (max-width:640px) { .legal-detail-card .stats-grid { grid-template-columns:1fr; } .legal-detail-card { padding:16px; } }
+@media (max-width:640px) {
+  .legal-detail-card .stats-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .legal-detail-card .stats-grid .stat-card:last-child { grid-column:1 / -1; }
+  .legal-detail-card { padding:16px; }
+}
 @media (max-width:640px) { .legal-detail-collection-form { align-items:stretch; flex-direction:column; } .legal-detail-collection-form select, .legal-detail-collection-form .btn { width:100%; max-width:none; } .norma-timeline-item { grid-template-columns:1fr; gap:8px; } }

@@ -129,7 +129,15 @@ test('norm actions use a responsive grid instead of stranding the official sourc
   assert.match(styles, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(100%,\s*15rem\),\s*1fr\)\)/);
   assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*justify-content:\s*center/);
   assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*min-height:\s*44px/);
-  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260929-action-grid2/);
+  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260929-detail-mobile-metrics/);
+});
+
+test('mobile norm detail keeps secondary metrics compact without squeezing text labels', async () => {
+  const styles = await read('src/apps/core/static/css/jurix-legal-detail.css');
+  const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
+  assert.match(styles, /@media \(max-width:640px\)[\s\S]*?\.legal-detail-card \.stats-grid \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\); \}/);
+  assert.match(styles, /\.legal-detail-card \.stats-grid \.stat-card:last-child \{ grid-column:1 \/ -1; \}/);
+  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260929-detail-mobile-metrics/);
 });
 
 test('version comparison exposes both texts as labelled stacked evidence on mobile', async () => {
