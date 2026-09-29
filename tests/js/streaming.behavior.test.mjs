@@ -64,6 +64,32 @@ test('sources are deferred until the done callback and scroll is wired after ren
   assert.match(rag, /window\.scrollToBottomIfAtBottom\(\)/);
 });
 
+test('copy answer falls back when Clipboard API is unavailable and announces success', async () => {
+  const dom = new JSDOM('<!doctype html><html><body><button class="copy-response-button" aria-label="Copiar resposta em Markdown" title="Copiar resposta"><svg class="copy-icon"></svg><svg class="check-icon is-hidden"></svg></button></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously', pretendToBeVisual: true,
+  });
+  const { window: w } = dom;
+  let copiedText = '';
+  w.document.execCommand = (command) => {
+    assert.equal(command, 'copy');
+    copiedText = w.document.querySelector('.jurix-clipboard-fallback')?.value || '';
+    return true;
+  };
+  w.eval(read('jurix-chat-renderer.js'));
+  const button = w.document.querySelector('.copy-response-button');
+  button.focus();
+  const copied = await w.JurixChatRenderer.copyResponseToClipboard('Art. 8º entra em vigor na publicação.', button);
+  assert.equal(copied, true);
+  assert.equal(copiedText, 'Art. 8º entra em vigor na publicação.');
+  assert.equal(button.getAttribute('aria-label'), 'Resposta copiada');
+  assert.equal(button.getAttribute('title'), 'Resposta copiada');
+  assert.equal(w.document.activeElement, button);
+  assert.ok(button.classList.contains('copied'));
+  assert.equal(button.querySelector('.check-icon').classList.contains('is-hidden'), false);
+  assert.equal(w.document.querySelector('.jurix-clipboard-fallback'), null);
+  w.close();
+});
+
 test('interrupted assistant messages are visibly labelled when history is restored', () => {
   const chat = read('chat.js');
   assert.match(chat, /metadata\.interrupted === true/);

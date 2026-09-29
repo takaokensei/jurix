@@ -1518,6 +1518,21 @@ body.figma-theme:has(#messages-wrapper .message) #conversation-input-bar {
   .figma-theme .figma-middle-hero { width: 100%; }
   .figma-theme .figma-hero-section { gap: 12px; }
 
+  .figma-theme .messages-wrapper { padding-bottom: 260px; }
+
+  .figma-theme .figma-sidebar ~ .figma-main .figma-floating-input-bar {
+    left: 0;
+    right: 0;
+    box-sizing: border-box;
+    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+  }
+
+  .figma-theme .figma-sidebar ~ .figma-main .figma-floating-input-bar .figma-smart-search-panel {
+    box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
+  }
+
   /* Touch targets remain usable when the assistant collapses to a phone-sized
      viewport.  Keep the visual icon compact while expanding its hit area. */
   .figma-theme #toggle-sidebar,

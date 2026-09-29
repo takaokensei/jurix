@@ -940,24 +940,11 @@
     }
 
     function copyResponseToClipboard(markdownText, button) {
-        if (!markdownText) return;
-        navigator.clipboard
-            .writeText(markdownText)
-            .then(() => {
-                const copyIcon = button.querySelector('.copy-icon');
-                const checkIcon = button.querySelector('.check-icon');
-                if (copyIcon && checkIcon) {
-                    copyIcon.classList.add('is-hidden');
-                    checkIcon.classList.remove('is-hidden');
-                    button.classList.add('copied');
-                    setTimeout(() => {
-                        copyIcon.classList.remove('is-hidden');
-                        checkIcon.classList.add('is-hidden');
-                        button.classList.remove('copied');
-                    }, 2000);
-                }
-            })
-            .catch((err) => console.error('Failed to copy:', err));
+        const renderer = window.JurixChatRenderer;
+        if (renderer && typeof renderer.copyResponseToClipboard === 'function') {
+            return renderer.copyResponseToClipboard(markdownText, button);
+        }
+        return Promise.resolve(false);
     }
 
     function showSourcesGradually(container, sources, animated = true, answerText = '') {

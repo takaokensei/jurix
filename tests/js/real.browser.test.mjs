@@ -1023,6 +1023,31 @@ test('real browser: sidebar items stay inside the shell and fully offscreen when
     await page.goto(`http://127.0.0.1:${port}/assistente/`, { waitUntil: 'domcontentloaded' });
     await new Promise((resolve) => setTimeout(resolve, 300));
 
+    await page.evaluate(() => {
+      const message = document.createElement('div');
+      message.className = 'message';
+      message.innerHTML = '<div style="height: 900px"></div><div class="sources-section"><button type="button" class="jurix-sources-pill-btn">2 fontes consultadas · Ver fontes</button></div>';
+      document.getElementById('welcome-state').remove();
+      const wrapper = document.getElementById('messages-wrapper');
+      wrapper.style.minHeight = '1000px';
+      wrapper.append(message);
+      const bar = document.getElementById('conversation-input-bar');
+      bar.classList.remove('is-hidden');
+      bar.style.display = 'flex';
+      const scroll = document.getElementById('messages-container');
+      scroll.scrollTop = scroll.scrollHeight;
+    });
+    const mobileComposer = await page.evaluate(() => {
+      const bar = document.getElementById('conversation-input-bar').getBoundingClientRect();
+      const form = document.getElementById('chat-form').getBoundingClientRect();
+      const sources = document.querySelector('.jurix-sources-pill-btn').getBoundingClientRect();
+      return { barLeft: bar.left, barRight: bar.right, barTop: bar.top, barWidth: bar.width, formLeft: form.left, formRight: form.right, formWidth: form.width, sourcesBottom: sources.bottom };
+    });
+    assert.equal(mobileComposer.barLeft, 0, `Composer mobile deve alinhar ao viewport: ${JSON.stringify(mobileComposer)}`);
+    assert.equal(mobileComposer.barWidth, 390, `Composer mobile deve ocupar a largura útil: ${JSON.stringify(mobileComposer)}`);
+    assert.ok(mobileComposer.formWidth >= 320 && mobileComposer.formRight <= 390, `Formulário mobile não pode ficar estreito ou sair do viewport: ${JSON.stringify(mobileComposer)}`);
+    assert.ok(mobileComposer.sourcesBottom < mobileComposer.barTop, `O botão de fontes deve permanecer acessível acima do composer: ${JSON.stringify(mobileComposer)}`);
+
     const measurements = await page.evaluate(() => {
       const sidebar = document.getElementById('sidebar');
       const sidebarBounds = sidebar.getBoundingClientRect();
@@ -1102,6 +1127,13 @@ test('real browser: sidebar items stay inside the shell and fully offscreen when
       'border-box',
       'A navegação do shell workspace também precisa incluir padding na largura declarada'
     );
+    const desktopComposer = await page.evaluate(() => {
+      const bar = document.getElementById('conversation-input-bar').getBoundingClientRect();
+      const form = document.getElementById('chat-form').getBoundingClientRect();
+      return { barLeft: bar.left, barRight: bar.right, formWidth: form.width };
+    });
+    assert.ok(desktopComposer.barLeft >= 0 && desktopComposer.barRight <= 1280, JSON.stringify(desktopComposer));
+    assert.ok(desktopComposer.formWidth <= 1200, JSON.stringify(desktopComposer));
   } finally {
     await browser.close();
     server.close();

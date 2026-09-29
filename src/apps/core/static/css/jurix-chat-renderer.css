@@ -9,6 +9,17 @@
     pointer-events: none;
 }
 
+.jurix-clipboard-fallback {
+    position: fixed;
+    inset: 0 auto auto 0;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
 .message,
 .copy-response-button,
 .regenerate-button {

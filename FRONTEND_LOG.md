@@ -353,3 +353,63 @@ animation was simplified.
 
 Next action: Audit real assistant answer actions and keyboard reachability,
 then review composer controls/overflow at tablet and desktop widths.
+
+## Cycle 7 — 2026-09-29
+
+Area: Active assistant composer, evidence access, and answer-copy feedback.
+
+Goal: Exercise an end-to-end legal question on the running app and fix concrete
+mobile interaction failures found after the first response.
+
+Observed problems: At 390px, the active fixed composer retained the desktop
+sidebar offset (`left: 240px`), leaving only a narrow vertical strip and
+covering the source affordance beneath it. The 120px message bottom padding was
+also insufficient for the mobile composer’s height. The answer-copy action
+depended solely on the Clipboard API, gave no failure feedback when unavailable,
+and did not consistently announce success across its duplicated handlers.
+
+Changes made: On mobile, the active composer now spans the viewport, uses
+box-sizing-safe gutters plus the device safe-area inset, and its form remains
+full-width. Increased mobile conversation tail space so the sources pill stays
+above the fixed composer when scrolled to the end. Centralized copy handling
+through `JurixChatRenderer`; it now falls back to a temporary, offscreen
+textarea and `execCommand('copy')`, preserves focus, swaps to a check icon,
+updates the accessible label/title on success, and reports failure accessibly.
+Added browser geometry assertions for composer and sources at 390px and a
+renderer fallback test.
+
+Browser validation: Submitted “O que prevê o art. 8º da Lei nº 8206/2026?” in
+the actual local assistant. It returned the publication-date rule with two
+sources. Before the CSS fix, the composer rendered vertically at the right and
+obscured “Ver fontes”; after reload it spans the bottom of the viewport and the
+source button is fully exposed above it. Opened the source drawer, confirmed
+both Art. 8º and Art. 7º records and SAPL links, closed via Escape and verified
+focus returned to “Ver fontes”. Clicked “Copiar resposta” and observed the
+accessible label change to “Resposta copiada”.
+
+Tests: Full `npm test` passed, including all 10 real-browser tests. The added
+mobile browser assertions verify composer width, visible sources affordance,
+sidebar geometry, and desktop viewport containment. The copy fallback unit
+test passed (including focus retention). Ruff, design-token guard, architecture
+budget, Django `manage.py check`, and `git diff --check` passed. Existing
+storage-quota console output in one unit test is intentional.
+
+Console: No browser warning/error entries after the real question, drawer open/
+Escape cycle, reload, and copy interaction.
+
+Responsive validation: The actual 390×844 conversation now has a full-width
+composer and an independently clickable sources pill. The real-browser suite
+also checks the desktop viewport does not overflow; its exact left edge adapts
+to whether the sidebar is collapsed.
+
+Visual score: Active chat composition 8/10 mobile after correction; evidence
+access 8.5/10; copy affordance/feedback 8/10. More answer-side actions and
+composer-state cases remain for the assistant audit.
+
+Regressions: None in the completed full JavaScript suite or static/Django
+checks. Only assistant presentation and clipboard interaction code changed;
+no API or persistence contract changed.
+
+Next action: Continue assistant interactions (new conversation, retry/error,
+input limits, keyboard order), then test the same active chat at tablet and
+desktop sizes.

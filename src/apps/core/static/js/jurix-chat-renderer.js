@@ -100,28 +100,78 @@
         window.setTimeout(() => node.remove(), 140);
     }
 
-    function copyResponseToClipboard(markdownText, button) {
-        if (!markdownText || !button || !navigator.clipboard) return Promise.resolve(false);
-        return navigator.clipboard.writeText(markdownText).then(() => {
+    function copyWithDocumentCommand(markdownText) {
+        if (typeof document.execCommand !== 'function') return false;
+        const previousFocus = document.activeElement;
+        const field = document.createElement('textarea');
+        field.className = 'jurix-clipboard-fallback';
+        field.value = markdownText;
+        field.setAttribute('readonly', '');
+        field.setAttribute('aria-hidden', 'true');
+        field.tabIndex = -1;
+        document.body.appendChild(field);
+        field.focus();
+        field.select();
+        let copied = false;
+        try {
+            copied = document.execCommand('copy') === true;
+        } catch (_) {
+            copied = false;
+        }
+        field.remove();
+        if (previousFocus instanceof HTMLElement && document.contains(previousFocus)) {
+            previousFocus.focus({ preventScroll: true });
+        }
+        return copied;
+    }
+
+    async function copyResponseToClipboard(markdownText, button) {
+        if (!markdownText || !button) return false;
+        let copied = false;
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(markdownText);
+                copied = true;
+            }
+        } catch (_) {
+            copied = false;
+        }
+        if (!copied) copied = copyWithDocumentCommand(markdownText);
+        if (!copied) {
+            button.setAttribute('aria-label', 'Não foi possível copiar a resposta');
+            button.setAttribute('title', 'Não foi possível copiar a resposta');
+            window.setTimeout(() => {
+                button.setAttribute('aria-label', 'Copiar resposta em Markdown');
+                button.setAttribute('title', 'Copiar resposta');
+            }, 2200);
+            return false;
+        }
+
+        {
             const copyIcon = button.querySelector('.copy-icon');
             const checkIcon = button.querySelector('.check-icon');
             if (copyIcon && checkIcon) {
                 button.classList.add('copied');
+                copyIcon.classList.add('is-hidden');
+                checkIcon.classList.remove('is-hidden');
                 copyIcon.hidden = true;
                 checkIcon.hidden = false;
                 window.setTimeout(() => {
                     copyIcon.hidden = false;
                     checkIcon.hidden = true;
+                    copyIcon.classList.remove('is-hidden');
+                    checkIcon.classList.add('is-hidden');
                     button.classList.remove('copied');
                 }, 2000);
             }
             button.setAttribute('aria-label', 'Resposta copiada');
-            window.setTimeout(() => button.setAttribute('aria-label', 'Copiar resposta em Markdown'), 2000);
+            button.setAttribute('title', 'Resposta copiada');
+            window.setTimeout(() => {
+                button.setAttribute('aria-label', 'Copiar resposta em Markdown');
+                button.setAttribute('title', 'Copiar resposta');
+            }, 2000);
             return true;
-        }).catch((e) => {
-            console.error('Jurix: clipboard failed', e);
-            return false;
-        });
+        }
     }
 
     // Export public API
