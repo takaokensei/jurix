@@ -32,10 +32,26 @@
         return theme === 'light' ? 'light' : 'dark';
     }
 
+    function getStoredDensity() {
+        try {
+            var preferences = JSON.parse(localStorage.getItem('jurix-preferences') || '{}');
+            if (preferences && typeof preferences === 'object' && !Array.isArray(preferences)
+                && ['compact', 'comfortable'].includes(preferences.density)) {
+                return preferences.density;
+            }
+        } catch (e) {}
+        return 'comfortable';
+    }
+
+    function applyDensity() {
+        document.documentElement.setAttribute('data-density', getStoredDensity());
+    }
+
     function setTheme(theme) {
         var preference = ['dark', 'light', 'system'].includes(theme) ? theme : 'dark';
         var resolvedTheme = resolveTheme(preference);
         document.documentElement.setAttribute('data-theme', resolvedTheme);
+        applyDensity();
         try {
             localStorage.setItem('jurix-theme', preference);
             var preferences = JSON.parse(localStorage.getItem('jurix-preferences') || '{}');
@@ -78,6 +94,7 @@
     // ── Anti-FOUC: apply theme immediately before DOM paint ──
     var _stored = getStoredTheme();
     document.documentElement.setAttribute('data-theme', resolveTheme(_stored || 'system'));
+    applyDensity();
 
     // ── Wire toggle buttons once DOM is ready ──
     function onReady() {

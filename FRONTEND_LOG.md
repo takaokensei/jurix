@@ -1519,6 +1519,50 @@ streaming/persistence tests, and contrast checks. `git diff --check` passed.
 Next action: Re-audit route navigation and history-to-assistant transitions,
 including viewport and focus behavior on mobile.
 
+## Cycle 38 — 2026-09-29
+
+Area: Applying density preferences to assistant conversations.
+
+Observed problem: The Compacta preference only had CSS consumers in workspace
+cards. The assistant's separate chat shell neither loaded `data-density` from
+the shared preference nor changed message spacing, so the setting had no
+visible effect where users spend most of their time.
+
+Changes made: The shared theme controller now applies the validated density
+preference to legacy shell pages before paint. Added restrained compact rules
+for chat message gaps, avatar spacing, body padding and paragraph rhythm, and
+bumped the chat-shell stylesheet cache key.
+
+Browser validation: Extended the real-Chromium shared-preference test to assert
+computed message padding in Compacta (12px 16px) and Confortável (16px 20px),
+while continuing to verify light/dark/system preference synchronization.
+
+Tests: Focused density/theme browser test passed. After the harness port fix in
+Cycle 39, the complete suite passed with 16 real-Chromium scenarios, 18
+structural tests, 15 streaming/persistence tests, and contrast checks.
+`git diff --check` passed.
+
+Next action: Continue testing history-to-chat navigation and responsive message
+readability with both density modes.
+
+## Cycle 39 — 2026-09-29
+
+Area: Deterministic safe ports for Chromium test servers.
+
+Observed problem: The real-browser harness bound fixtures to OS-selected
+ephemeral ports. Chromium rejects a small reserved set, so one full suite run
+failed nondeterministically when Windows selected port 1719.
+
+Changes made: `createTestServer` now remaps ephemeral requests to a process-local
+high port range known to be accepted by Chromium, keeping the test setup and
+browser origin otherwise unchanged.
+
+Validation: The rerun passed all 16 real-Chromium scenarios and the complete
+frontend suite. The previous Chromium unsafe-port failure did not recur.
+
+Next action: If the complete run stays green, continue with history navigation
+and mobile density checks.
+
 ## Cycle 37 — 2026-09-29
 
 Area: Theme consistency between workspace and assistant/public shells.

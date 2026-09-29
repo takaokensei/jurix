@@ -110,7 +110,10 @@ function createTestServer(handlers = {}) {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(`<!doctype html><html lang="pt-BR" data-theme="dark"><head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
-      </head><body><button id="theme-toggle" type="button" aria-pressed="false">Alternar tema</button>
+        <link rel="stylesheet" href="/static/css/jurix-figma.css">
+        <link rel="stylesheet" href="/static/css/jurix-chat-shell.css">
+      </head><body class="figma-theme"><button id="theme-toggle" type="button" aria-pressed="false">Alternar tema</button>
+        <div class="messages-wrapper"><div class="message"><div class="message-body"><p>Texto de teste.</p></div></div></div>
         <script src="/static/js/theme.js"></script></body></html>`);
     }
 
@@ -182,6 +185,16 @@ function createTestServer(handlers = {}) {
     res.end('Not found');
   });
 
+  // Chromium blocks a small set of otherwise valid HTTP ports (including
+  // 1719). Keep browser fixtures in a high, safe range instead of allowing
+  // listen(0) to occasionally select one of those ports.
+  const nativeListen = server.listen.bind(server);
+  let portOffset = 0;
+  const safePortBase = 30000 + (process.pid % 10000);
+  server.listen = (port, ...args) => nativeListen(
+    port === 0 ? safePortBase + portOffset++ : port,
+    ...args
+  );
   return server;
 }
 
@@ -341,12 +354,16 @@ test('real browser: theme preference stays synchronized with the legacy toggle',
     await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
     await page.goto(`http://127.0.0.1:${port}/theme-preference-test/`, { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => {
-      localStorage.setItem('jurix-preferences', JSON.stringify({ theme: 'light', density: 'comfortable' }));
+      localStorage.setItem('jurix-preferences', JSON.stringify({ theme: 'light', density: 'compact' }));
       localStorage.setItem('jurix-theme', 'dark');
     });
     await page.reload({ waitUntil: 'domcontentloaded' });
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light');
     assert.equal(await page.evaluate(() => localStorage.getItem('jurix-theme')), 'light');
+    assert.deepEqual(await page.evaluate(() => ({
+      density: document.documentElement.dataset.density,
+      bodyPadding: getComputedStyle(document.querySelector('.message-body')).padding,
+    })), { density: 'compact', bodyPadding: '12px 16px' });
 
     await page.click('#theme-toggle');
     assert.deepEqual(await page.evaluate(() => ({
@@ -358,6 +375,7 @@ test('real browser: theme preference stays synchronized with the legacy toggle',
     await page.evaluate(() => {
       const settings = JSON.parse(localStorage.getItem('jurix-preferences'));
       settings.theme = 'system';
+      settings.density = 'comfortable';
       localStorage.setItem('jurix-preferences', JSON.stringify(settings));
       localStorage.setItem('jurix-theme', 'light');
     });
@@ -365,7 +383,9 @@ test('real browser: theme preference stays synchronized with the legacy toggle',
     assert.deepEqual(await page.evaluate(() => ({
       theme: document.documentElement.dataset.theme,
       preference: JSON.parse(localStorage.getItem('jurix-preferences')).theme,
-    })), { theme: 'dark', preference: 'system' });
+      density: document.documentElement.dataset.density,
+      bodyPadding: getComputedStyle(document.querySelector('.message-body')).padding,
+    })), { theme: 'dark', preference: 'system', density: 'comfortable', bodyPadding: '16px 20px' });
   } finally {
     await browser.close();
     server.close();

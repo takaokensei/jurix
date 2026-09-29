@@ -3,6 +3,12 @@
  * Composer, connectivity and accessibility presentation primitives.
  */
 
+/* Honor the workspace density preference in the assistant's legacy shell. */
+[data-density="compact"] .figma-theme .messages-wrapper { gap: 10px; }
+[data-density="compact"] .figma-theme .message { gap: 12px; margin-bottom: 8px; }
+[data-density="compact"] .figma-theme .message-body { padding: 12px 16px; line-height: 1.5; }
+[data-density="compact"] .figma-theme .message-body p { margin-bottom: 8px; }
+
 .jurix-network-status {
     position: fixed;
     top: 6.5rem;
