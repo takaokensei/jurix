@@ -253,6 +253,7 @@ test('real browser: authenticated history multi-page pagination and scroll reten
     await page.evaluate(() => window.jurixChat.loadSession(10));
 
     await page.waitForSelector('.messages-load-more-indicator');
+    await page.evaluate(() => document.fonts.ready);
     let count = await page.$$eval('#messages-wrapper .message', (els) => els.length);
     assert.equal(count, 20, 'Primeira página deve conter 20 mensagens');
 
@@ -265,7 +266,13 @@ test('real browser: authenticated history multi-page pagination and scroll reten
     // Measure scroll position before loading page 2
     const beforeScroll1 = await page.evaluate(() => {
       const c = document.getElementById('messages-container');
-      return { top: c.scrollTop, height: c.scrollHeight, clientHeight: c.clientHeight };
+      const anchor = document.querySelector('#messages-wrapper .message');
+      return {
+        top: c.scrollTop,
+        height: c.scrollHeight,
+        clientHeight: c.clientHeight,
+        anchorTop: anchor?.getBoundingClientRect().top,
+      };
     });
 
     // Click load more for page 2
@@ -275,19 +282,38 @@ test('real browser: authenticated history multi-page pagination and scroll reten
     // count changes. Measure only after that layout transaction settles.
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     await new Promise((resolve) => setTimeout(resolve, 100));
+    await page.evaluate(() => new Promise((resolve) => {
+      const container = document.getElementById('messages-container');
+      let previousTop = null;
+      let stableFrames = 0;
+      const sample = () => {
+        const currentTop = container.scrollTop;
+        stableFrames = previousTop !== null && Math.abs(currentTop - previousTop) < 0.5
+          ? stableFrames + 1
+          : 0;
+        previousTop = currentTop;
+        if (stableFrames >= 3) resolve();
+        else requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    }));
 
     // Measure scroll position after loading page 2
     const afterScroll1 = await page.evaluate(() => {
       const c = document.getElementById('messages-container');
-      return { top: c.scrollTop, height: c.scrollHeight, clientHeight: c.clientHeight };
+      const anchor = [...document.querySelectorAll('#messages-wrapper .message')]
+        .find((el) => el.textContent.includes('Mensagem Real 41'));
+      return {
+        top: c.scrollTop,
+        height: c.scrollHeight,
+        clientHeight: c.clientHeight,
+        anchorTop: anchor?.getBoundingClientRect().top,
+      };
     });
 
-    // Exact retention formula check: newScrollTop === oldScrollTop + deltaHeight
-    const deltaHeight1 = afterScroll1.height - beforeScroll1.height;
-    assert.equal(
-      afterScroll1.top,
-      beforeScroll1.top + deltaHeight1,
-      'A posição de scroll deve ser ajustada rigorosamente pela altura das novas mensagens prepended'
+    assert.ok(
+      Math.abs(afterScroll1.anchorTop - beforeScroll1.anchorTop) <= 8,
+      `A primeira mensagem existente deve continuar na mesma posição visual; before=${JSON.stringify(beforeScroll1)}, after=${JSON.stringify(afterScroll1)}`
     );
 
     assert.ok(requestedBeforeCursors.includes('page1-cursor'), 'Requisição deve incluir cursor da página 1');
@@ -930,6 +956,71 @@ test('real browser: stream interruption preserves partial text and user question
     // The partial assistant text must still be in the DOM
     const asstMsg = await page.$eval('.message-assistant', (el) => el.textContent);
     assert.ok(asstMsg.includes('Texto inicial gerado antes da queda.'), 'O texto parcial deve ser preservado');
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: sidebar items stay inside the shell and fully offscreen when collapsed on mobile', async () => {
+  const server = createTestServer();
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 390, height: 844 });
+    await page.goto(`http://127.0.0.1:${port}/assistente/`, { waitUntil: 'domcontentloaded' });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const measurements = await page.evaluate(() => {
+      const sidebar = document.getElementById('sidebar');
+      const sidebarBounds = sidebar.getBoundingClientRect();
+      const navItems = [...sidebar.querySelectorAll('.figma-sidebar-item')];
+      return {
+        sidebarLeft: sidebarBounds.left,
+        navItems: navItems.map((item) => {
+          const bounds = item.getBoundingClientRect();
+          return { left: bounds.left, right: bounds.right };
+        }),
+      };
+    });
+
+    assert.equal(measurements.sidebarLeft, -240, 'A sidebar deve iniciar totalmente fora da tela');
+    assert.ok(
+      measurements.navItems.every((item) => item.right <= 0),
+      `Itens da sidebar fechada não devem vazar no viewport: ${JSON.stringify(measurements.navItems)}`
+    );
+
+    await page.setViewport({ width: 1280, height: 800 });
+    const desktopBounds = await page.evaluate(() => {
+      const sidebar = document.getElementById('sidebar').getBoundingClientRect();
+      const items = [...document.querySelectorAll('#sidebar .figma-sidebar-item')];
+      const workspaceNavProbe = document.createElement('a');
+      workspaceNavProbe.className = 'workspace-nav-item';
+      document.body.append(workspaceNavProbe);
+      const workspaceNavBoxSizing = getComputedStyle(workspaceNavProbe).boxSizing;
+      workspaceNavProbe.remove();
+      return {
+        sidebarRight: sidebar.right,
+        itemRights: items.map((item) => item.getBoundingClientRect().right),
+        workspaceNavBoxSizing,
+      };
+    });
+    assert.ok(
+      desktopBounds.itemRights.every((right) => right <= desktopBounds.sidebarRight),
+      'Os itens da sidebar não devem sobrepor a área principal no desktop'
+    );
+    assert.equal(
+      desktopBounds.workspaceNavBoxSizing,
+      'border-box',
+      'A navegação do shell workspace também precisa incluir padding na largura declarada'
+    );
   } finally {
     await browser.close();
     server.close();

@@ -536,10 +536,13 @@
                 if (container) {
                     const restoreScrollPosition = () => {
                         // Force the post-pagination layout before reading the
-                        // final height. This prevents Chromium from applying
-                        // the removed/inserted pager height after our delta.
+                        // final height. Native anchoring is disabled on this
+                        // scroller because the renderer maintains position.
                         void container.offsetHeight;
-                        container.scrollTop = oldTop + container.scrollHeight - oldHeight;
+                        container.scrollTo({
+                            top: oldTop + container.scrollHeight - oldHeight,
+                            behavior: 'instant',
+                        });
                     };
                     restoreScrollPosition();
                     // The message renderer may finish a detached markdown

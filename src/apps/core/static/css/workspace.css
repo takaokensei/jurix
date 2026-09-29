@@ -9,7 +9,7 @@
 .workspace-new-action { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; border: 1px solid rgba(96,165,250,.24); border-radius: 9px; color: var(--figma-text-white); background: rgba(59,130,246,.1); text-decoration: none; font-size: 13px; font-weight: 600; }
 .workspace-new-action:hover { border-color: var(--figma-blue-light); background: rgba(59,130,246,.16); }
 .workspace-nav { display: grid; gap: 4px; margin-top: 8px; }
-.workspace-nav-item { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 0 11px; border: 1px solid transparent; border-radius: 8px; color: var(--figma-text-muted); background: transparent; text-decoration: none; font: inherit; text-align: left; cursor: pointer; }
+.workspace-nav-item { box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 0 11px; border: 1px solid transparent; border-radius: 8px; color: var(--figma-text-muted); background: transparent; text-decoration: none; font: inherit; text-align: left; cursor: pointer; }
 .workspace-nav-item:hover { color: var(--figma-text-white); background: rgba(255,255,255,.045); }
 .workspace-nav-item.is-active { color: var(--figma-blue-light); background: rgba(59,130,246,.11); border-color: rgba(96,165,250,.14); }
 .workspace-nav-item kbd { margin-left: auto; font-size: 10px; opacity: .6; }

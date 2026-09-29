@@ -161,6 +161,7 @@ body.figma-theme :is(button, a, input, textarea, select, summary):focus-visible 
 }
 
 .figma-sidebar-item {
+  box-sizing: border-box;
   height: 42px;
   border-radius: 8px;
   padding: 12px 20px;
@@ -282,6 +283,7 @@ body.figma-theme :is(button, a, input, textarea, select, summary):focus-visible 
 .figma-scroll-container {
   flex: 1;
   overflow-y: auto;
+  overflow-anchor: none;
   padding: 24px 40px 80px 40px;
 }
 
