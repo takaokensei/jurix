@@ -83,12 +83,20 @@
                 theme: String(formData.get('theme') || DEFAULTS.theme),
                 density: String(formData.get('density') || DEFAULTS.density),
             };
+            let saved = true;
             try {
                 localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-            } catch (_) {}
+            } catch (_) {
+                saved = false;
+            }
             applyAppearance(settings);
             const status = form.querySelector('[data-settings-status]');
-            if (status) status.textContent = 'Preferências salvas neste navegador.';
+            if (status) {
+                status.classList.toggle('is-warning', !saved);
+                status.textContent = saved
+                    ? 'Preferências salvas neste navegador.'
+                    : 'Preferências aplicadas, mas não foi possível salvá-las neste navegador.';
+            }
             window.dispatchEvent(new CustomEvent('jurix:preferences-changed', { detail: settings }));
         });
 

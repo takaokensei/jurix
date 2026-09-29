@@ -110,7 +110,7 @@ test('mobile workspace search stays a compact 44px icon button when its label is
   const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
   assert.match(styles, /@media \(max-width:\s*640px\)[\s\S]*?\.workspace-topbar \.workspace-top-search\s*\{[^}]*flex:\s*0 0 44px;[^}]*width:\s*44px;[^}]*min-width:\s*44px;/);
   assert.match(chat, /css\/workspace\.css['"] %\}\?v=20260929-mobile-search/);
-  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260929-mobile-search/);
+  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260929-settings-warning1/);
 });
 
 test('workspace selects use a clearly visible chevron and norm facts stay secondary', async () => {

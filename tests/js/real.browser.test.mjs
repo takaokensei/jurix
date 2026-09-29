@@ -88,6 +88,23 @@ function createTestServer(handlers = {}) {
       </div><script src="/static/js/workspace.js"></script></body></html>`);
     }
 
+    if (url.pathname === '/settings-test/') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(`<!doctype html><html lang="pt-BR"><head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="/static/css/jurix-figma.css">
+        <link rel="stylesheet" href="/static/css/workspace.css">
+      </head><body class="figma-theme workspace-page"><main class="workspace-content">
+        <form class="workspace-stack" data-settings-form>
+          <label class="workspace-field"><span>Modelo</span><select name="model"><option value="llama3">llama3</option></select></label>
+          <label class="workspace-field"><span>Temperatura</span><input name="temperature" type="number" value="0.3"></label>
+          <label class="workspace-field"><span>Fontes</span><input name="sources" type="number" value="5"></label>
+          <fieldset><label><input type="radio" name="theme" value="dark" checked>Escuro</label><label><input type="radio" name="theme" value="light">Claro</label><label><input type="radio" name="theme" value="system">Sistema</label></fieldset>
+          <fieldset><label><input type="radio" name="density" value="comfortable" checked>Confortável</label><label><input type="radio" name="density" value="compact">Compacta</label></fieldset>
+          <button type="submit">Salvar preferências</button><span data-settings-status role="status" aria-live="polite"></span>
+        </form></main><script src="/static/js/workspace.js"></script></body></html>`);
+    }
+
     if (url.pathname === '/collection-dialog-test/') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(`<!doctype html><html lang="pt-BR"><head>
@@ -233,6 +250,42 @@ test('real browser: collection dialog preserves focus for keyboard and mobile us
     await page.click('[data-close-collection-form]');
     await page.waitForFunction(() => document.querySelector('[data-collection-dialog]')?.open === false);
     assert.equal(await page.evaluate(() => document.activeElement.id), 'open-collection');
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: settings report when browser storage rejects preferences', async () => {
+  const server = createTestServer();
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 390, height: 844 });
+    await page.goto(`http://127.0.0.1:${port}/settings-test/`, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      Storage.prototype.setItem = function setItem() {
+        throw new DOMException('Storage quota exceeded', 'QuotaExceededError');
+      };
+    });
+    await page.click('input[name="theme"][value="light"]');
+    await page.click('button[type="submit"]');
+
+    const result = await page.evaluate(() => ({
+      theme: document.documentElement.dataset.theme,
+      status: document.querySelector('[data-settings-status]').textContent,
+      warning: document.querySelector('[data-settings-status]').classList.contains('is-warning'),
+    }));
+    assert.equal(result.theme, 'light', 'the selected theme still applies in the current page');
+    assert.match(result.status, /aplicadas, mas não foi possível salvá-las/);
+    assert.equal(result.warning, true);
   } finally {
     await browser.close();
     server.close();

@@ -1410,3 +1410,32 @@ and contrast contracts green. `git diff --check` passed.
 
 Next action: Continue with settings and history interaction states, then
 revisit remaining route-level usability gaps.
+
+## Cycle 33 — 2026-09-29
+
+Area: Honest feedback when saving workspace preferences fails.
+
+Observed problem: If browser storage rejects `localStorage.setItem` (privacy
+settings, disabled storage, or quota), the chosen appearance is applied in the
+current document but the UI still claimed it had been saved. A reload then
+discarded the change without warning.
+
+Changes made: Settings now distinguish durable save success from a current-page
+appearance change that could not be persisted. The latter receives an explicit
+warning style and accurate live-region message. Updated JS/CSS cache keys and
+added a real-Chromium test that forces `QuotaExceededError` at 390px.
+
+Browser validation: On the actual local Django app, `/configuracoes/` loaded
+successfully at 390px and 1280px without horizontal overflow. Changing theme
+and density applied immediately and survived reload. The new failure-path
+browser test confirms the theme still applies but reports the inability to
+save instead of claiming persistence. `/historico/` also loaded successfully.
+
+Tests: Focused storage-failure Chromium test passed. The full frontend suite
+passed with 15 real-Chromium scenarios, 17 structural tests, 15
+streaming/persistence tests, and contrast contracts. The cache-key contract was
+updated to follow the intentional stylesheet version bump; `git diff --check`
+passed.
+
+Next action: Continue testing settings reset and history interactions, then
+inspect the remaining primary routes for concrete usability regressions.
