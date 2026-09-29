@@ -45,6 +45,7 @@
 
 ## Staging
 
+- [ ] repository staging contract: `python scripts/validate_staging_contract.py`;
 - [ ] web health;
 - [ ] queue health;
 - [ ] Ollama reachability;
