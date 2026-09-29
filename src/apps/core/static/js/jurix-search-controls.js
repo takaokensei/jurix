@@ -67,6 +67,7 @@
       if (menu === except) return;
       const control = menu.closest('.figma-search-dropdown');
       menu.remove();
+      control?.classList.remove('jurix-control-menu-above', 'jurix-control-menu-align-end');
       control?.setAttribute('aria-expanded', 'false');
       if (restoreFocus) control?.focus();
     });
@@ -125,9 +126,18 @@
       menu.appendChild(item);
     });
     control.classList.add('jurix-control-positioned');
+    control.classList.remove('jurix-control-menu-above', 'jurix-control-menu-align-end');
     control.setAttribute('aria-controls', menu.id);
     control.setAttribute('aria-expanded', 'true');
     control.appendChild(menu);
+    const controlBounds = control.getBoundingClientRect();
+    const menuBounds = menu.getBoundingClientRect();
+    if (controlBounds.bottom + menuBounds.height + 8 > window.innerHeight && controlBounds.top > window.innerHeight - controlBounds.bottom) {
+      control.classList.add('jurix-control-menu-above');
+    }
+    if (controlBounds.right + menuBounds.width > window.innerWidth - 8) {
+      control.classList.add('jurix-control-menu-align-end');
+    }
     if (focusFirst) menu.querySelector('button')?.focus();
   }
 

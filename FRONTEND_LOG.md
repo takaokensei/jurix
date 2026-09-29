@@ -525,3 +525,33 @@ unchanged.
 Next action: Audit attachment selection, removal, and conversation-reset states
 using disposable test fixtures only, then test keyboard traversal at phone and
 desktop widths.
+
+## Cycle 12 — 2026-09-29
+
+Area: Popover placement and attachment-control clarity.
+
+Observed problems: The active composer sits at the viewport bottom, but its
+search-mode menu opened downward and was clipped on phones. Right-side filters
+could also open menus past the viewport edge. The composer labelled its
+attachment control “Anexar PDF” even though the picker accepts PDF, TXT, MD,
+CSV, JSON, and DOCX. The retry browser diagnostic additionally exposed a real
+race: a just-rendered retry button could be clicked before chat state became
+idle, causing the request to be ignored.
+
+Changes made: Menus now measure available space, open upward when needed, align
+to the trigger's right edge when needed, and constrain their dimensions to the
+viewport. The selected radio item retains its visible highlight with the new
+ARIA state. Attachment copy now says “Anexar documento” and the picker contract
+is covered without selecting or uploading a file. Retry explicitly releases
+the terminal busy state before invoking regeneration/resubmission.
+
+Tests: Full `npm test` passed, including the browser retry race and mobile menu
+geometry. Route tests: 18 passed. Ruff, design-token guard, architecture budget,
+Django system check, JavaScript syntax checks, and `git diff --check` passed.
+
+Regressions: None observed; attachment selection remains user-initiated and no
+file was uploaded during validation. No API changes.
+
+Next action: Continue end-to-end testing of attachment removal/reset with fake
+in-memory records, then verify menu placement and keyboard order at tablet and
+desktop widths.

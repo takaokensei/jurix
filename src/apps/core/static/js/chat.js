@@ -1581,6 +1581,9 @@
                             window.JurixRagUI.setStreamingState(streamElements.messageBody, false);
                             window.JurixRagUI.renderErrorState(errorBox, streamError, () => {
                                 errorBox.remove();
+                                if (chatState && typeof chatState.isBusy === 'function' && chatState.isBusy()) {
+                                    chatState.transition('idle');
+                                }
                                 if (typeof currentSessionId === 'number') {
                                     regenerateLastResponse(currentSessionId, streamElements.messageDiv, streamElements.sourcesContainer);
                                     return;

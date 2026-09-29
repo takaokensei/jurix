@@ -12,6 +12,9 @@ test('search option menu toggles, closes with Escape, and returns keyboard focus
     <div class="figma-search-dropdown" data-control="norma_status" tabindex="0">
       <span data-control-label>Pesquisa normativa</span>
     </div>
+    <div class="figma-search-dropdown" data-control="attachment" tabindex="0">
+      <span data-control-label>Anexar documento</span>
+    </div>
     <div class="figma-search-dropdown" data-control="norma_status" tabindex="0">
       <span data-control-label>Pesquisa normativa</span>
     </div>
@@ -55,5 +58,13 @@ test('search option menu toggles, closes with Escape, and returns keyboard focus
   assert.equal(window.JurixSearchControls.getPayload().norma_status, 'all');
   assert.equal(changedPayload.norma_status, 'all');
   assert.equal(JSON.parse(window.localStorage.getItem('jurix:search-options:v1')).norma_status, 'all');
+
+  const fileInput = window.document.getElementById('jurix-document-input');
+  assert.equal(fileInput.accept, '.pdf,.txt,.md,.csv,.json,.docx');
+  assert.equal(fileInput.multiple, true);
+  let pickerRequests = 0;
+  fileInput.addEventListener('click', () => { pickerRequests += 1; });
+  window.document.querySelector('[data-control="attachment"]').click();
+  assert.equal(pickerRequests, 1, 'The attachment control opens the chooser without uploading a file');
   dom.window.close();
 });

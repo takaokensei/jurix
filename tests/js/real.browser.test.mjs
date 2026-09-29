@@ -953,6 +953,20 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
 
     const codeText = await page.$eval('.message-assistant pre code', (el) => el.textContent);
     assert.ok(codeText.includes('def verificar_prazo(dias):'));
+
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('.jurix-sources-drawer-panel.is-open'));
+    const modeControl = '#chat-form .figma-search-dropdown[data-control="mode"]';
+    await page.focus(modeControl);
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('#chat-form [data-jurix-control-menu]');
+    const composerMenuBounds = await page.$eval(modeControl, (control) => {
+      const button = control.getBoundingClientRect();
+      const menu = control.querySelector('[data-jurix-control-menu]').getBoundingClientRect();
+      return { button: { top: button.top, bottom: button.bottom }, menu: { top: menu.top, bottom: menu.bottom, left: menu.left, right: menu.right }, viewport: { width: innerWidth, height: innerHeight } };
+    });
+    assert.ok(composerMenuBounds.menu.bottom <= composerMenuBounds.button.top, `O menu do composer deve abrir acima do controle perto do rodapé: ${JSON.stringify(composerMenuBounds)}`);
+    assert.ok(composerMenuBounds.menu.top >= 0 && composerMenuBounds.menu.right <= composerMenuBounds.viewport.width, JSON.stringify(composerMenuBounds));
   } finally {
     await browser.close();
     server.close();
@@ -1226,6 +1240,11 @@ test('real browser: command palette keeps compact icons and focuses search on mo
     await page.click(scopeSelector);
     await page.waitForSelector('#hero-search-form [data-jurix-control-menu] [role="menuitemradio"]');
     assert.equal(await page.$eval(scopeSelector, (element) => element.getAttribute('aria-expanded')), 'true');
+    const filterMenuBounds = await page.$eval(scopeSelector, (control) => {
+      const menu = control.querySelector('[data-jurix-control-menu]').getBoundingClientRect();
+      return { left: menu.left, right: menu.right, width: menu.width, viewportWidth: innerWidth };
+    });
+    assert.ok(filterMenuBounds.left >= 0 && filterMenuBounds.right <= filterMenuBounds.viewportWidth, JSON.stringify(filterMenuBounds));
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('#hero-search-form [data-jurix-control-menu]'));
     assert.equal(await page.$eval(scopeSelector, (element) => element.getAttribute('aria-expanded')), 'false');
