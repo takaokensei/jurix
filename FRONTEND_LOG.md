@@ -584,3 +584,33 @@ Regressions: None observed; backend interfaces are unchanged.
 Next action: Continue responsive and keyboard traversal through the command
 palette, sidebar, active composer, and legal-search screens at phone, tablet,
 and desktop widths; then investigate another high-impact usability issue.
+
+## Cycle 14 — 2026-09-29
+
+Area: Regression audit of the seven reported UI findings across assistant,
+workspace routes, settings, collections, legal search, and norm catalog.
+
+Observed: The current implementation already prevents SVG source from leaking
+into the command palette and its browser test verifies rendered icon bounds and
+absence of visible SVG markup. The norm catalog inherits the shared workspace
+shell. The active assistant template retains both Settings and Quick Search in
+its sidebar. Norm metadata is visually subordinate to titles; collections
+separate the empty state, account limitation, and public catalog CTA; settings
+show a visible blue select chevron; legal search has a compact empty state.
+Manual mobile checks confirmed the palette opens/closes with Escape, the
+settings chevron is visible, and `/normas/` uses the same sidebar/topbar shell.
+
+Changes made: Added explicit regression assertions that the norm catalog must
+inherit the workspace base and that the assistant sidebar retains its settings
+route and shared navigation shell. No production UI code needed alteration for
+these seven findings because they were already fixed in the current tree.
+
+Tests: `node --test tests/js/norma_ui_v3.test.mjs` passed (12/12). Full
+`npm test` passed from `tests/js`, including 10 real Chromium browser scenarios
+and the command-palette check that visible SVG source markup is absent.
+
+Regressions: None observed. No backend/API changes.
+
+Next action: Continue end-to-end checks on actual conversation routes and
+keyboard navigation across viewport sizes, then fix the next reproducible UI
+or usability issue.

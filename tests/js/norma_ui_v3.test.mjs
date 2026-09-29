@@ -48,8 +48,19 @@ test('chat sidebar exposes the same quick-search action as the workspace shell',
   const topbar = await read('src/apps/legislation/templates/legislation/workspace/_topbar.html');
   assert.match(source, /class="figma-sidebar-item workspace-palette-trigger" data-open-command-palette/);
   assert.match(source, /Busca rápida/);
+  assert.match(source, /workspace:settings/);
+  assert.match(source, /<aside[^>]+id="sidebar"/);
   assert.match(workspace, /<aside class="workspace-sidebar" id="sidebar"/);
   assert.match(topbar, /aria-controls="sidebar"[\s\S]*aria-expanded="false"/);
+});
+
+test('norm catalog uses the shared workspace shell instead of the legacy navbar', async () => {
+  const template = await read('src/apps/legislation/templates/legislation/norma_list.html');
+  const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
+  assert.match(template, /extends ['"]legislation\/workspace\/base\.html['"]/);
+  assert.match(template, /block topbar/);
+  assert.match(workspace, /workspace-nav-item\{% if active_nav == 'normas' %\} is-active/);
+  assert.doesNotMatch(template, /navbar-container|theme-toggle-navbar/);
 });
 
 test('collection empty state separates account limitation from public exploration', async () => {
