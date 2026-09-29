@@ -2214,3 +2214,52 @@ Regressions: None observed after updating the stale expectations.
 Next action: Continue the user-requested final pass across settings, history,
 collection actions and command-palette interactions; keep any RAG relevance
 or ranking findings documented as backend-only follow-up.
+
+## Cycle 56 — 2026-09-29
+
+Area: Real assistant journey — submit, stream completion, evidence drawer and
+reload persistence.
+
+Goal: Validate the principal chat workflow in the running Django application,
+not only through the isolated browser fixtures.
+
+Observed problems: A direct question about Lei nº 8206/2026 returned the right
+Art. 8º evidence, but the generated answer repeated signatures/authorship
+metadata and lacked an explicit citation marker. An earlier query about a
+different available law had returned “Evidência insuficiente”. These point to
+retrieval/generation quality, not a frontend presentation defect.
+
+Changes made: No production code changed. This was an end-to-end audit cycle;
+backend/RAG behavior remains outside the frontend-only work contract.
+
+Browser validation: In the live `/assistente/` flow, Enter submitted the
+question and the composer returned to its ready state after generation. The
+completed answer exposed a sources pill; opening it showed two grouped
+evidences from Lei nº 8206/2026 (Arts. 8º and 7º), contribution labels and
+SAPL links. Escape closed the drawer. Reloading the stable conversation URL
+restored both the new question, answer and source summary.
+
+Tests: Full Python suite passed in Cycle 55 (652 passed, 6 skipped). Full
+frontend `npm test` passed in Cycle 54 (20 real Chromium, 22 structural,
+15 streaming/persistence, composer and contrast checks). No code changed since
+those runs.
+
+Console: The live interaction completed and rendered both source links; route
+capture in the preceding cycle found no failed assets or unexpected console
+errors. This manual CUA pass did not collect a separate console trace.
+
+Responsive validation: The live chat was inspected at the current desktop
+viewport; responsive assistant states are covered by the 390×844 browser and
+capture checks in prior cycles.
+
+Visual score: The composer, completed response and source drawer are coherent
+and legible. The answer's legal-content quality and explicit citation
+relationship remain materially below the UI's evidence presentation.
+
+Regressions: No UI regression observed. The test query was appended to the
+currently active local anonymous conversation; it remained after reload, as
+intended by the persistence test.
+
+Next action: Continue the final audit through direct settings and history
+recovery, then classify remaining acceptance items as verified, open frontend
+defect, or backend-only dependency without expanding into backend changes.
