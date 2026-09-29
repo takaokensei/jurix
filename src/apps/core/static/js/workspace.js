@@ -24,6 +24,7 @@
             : settings.theme;
         document.documentElement.setAttribute('data-theme', theme);
         document.documentElement.setAttribute('data-density', settings.density || DEFAULTS.density);
+        try { localStorage.setItem('jurix-theme', settings.theme || DEFAULTS.theme); } catch (_) {}
     }
 
     function initSidebar() {

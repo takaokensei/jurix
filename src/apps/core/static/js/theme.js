@@ -14,22 +14,46 @@
     }
 
     function getStoredTheme() {
-        try { return localStorage.getItem('jurix-theme'); } catch (e) { return null; }
+        try {
+            var preferences = JSON.parse(localStorage.getItem('jurix-preferences') || '{}');
+            if (preferences && typeof preferences === 'object' && !Array.isArray(preferences)
+                && ['dark', 'light', 'system'].includes(preferences.theme)) {
+                return preferences.theme;
+            }
+        } catch (e) {}
+        try {
+            var legacyTheme = localStorage.getItem('jurix-theme');
+            return ['dark', 'light', 'system'].includes(legacyTheme) ? legacyTheme : null;
+        } catch (e) { return null; }
+    }
+
+    function resolveTheme(theme) {
+        if (theme === 'system') return getSystemThemePreference();
+        return theme === 'light' ? 'light' : 'dark';
     }
 
     function setTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
-        try { localStorage.setItem('jurix-theme', theme); } catch (e) {}
+        var preference = ['dark', 'light', 'system'].includes(theme) ? theme : 'dark';
+        var resolvedTheme = resolveTheme(preference);
+        document.documentElement.setAttribute('data-theme', resolvedTheme);
+        try {
+            localStorage.setItem('jurix-theme', preference);
+            var preferences = JSON.parse(localStorage.getItem('jurix-preferences') || '{}');
+            if (preferences && typeof preferences === 'object' && !Array.isArray(preferences)) {
+                preferences.theme = preference;
+                localStorage.setItem('jurix-preferences', JSON.stringify(preferences));
+            }
+        } catch (e) {}
 
         // Sidebar toggle (workspace pages)
         var sidebarToggle = document.getElementById('theme-toggle');
         if (sidebarToggle) {
-            sidebarToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+            sidebarToggle.setAttribute('aria-pressed', resolvedTheme === 'dark' ? 'true' : 'false');
         }
         // Navbar toggle (public/legacy pages)
         var navbarToggle = document.getElementById('theme-toggle-navbar');
         if (navbarToggle) {
-            navbarToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+            navbarToggle.setAttribute('aria-pressed', resolvedTheme === 'dark' ? 'true' : 'false');
         }
     }
 
@@ -40,21 +64,20 @@
 
     function initTheme() {
         var stored = getStoredTheme();
-        var theme = stored || getSystemThemePreference();
+        var theme = stored || 'system';
         setTheme(theme);
 
         // Follow system preference when no manual override is stored.
         if (!stored && window.matchMedia) {
             window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
-                if (!getStoredTheme()) { setTheme(e.matches ? 'dark' : 'light'); }
+                if (!getStoredTheme()) { setTheme('system'); }
             });
         }
     }
 
     // ── Anti-FOUC: apply theme immediately before DOM paint ──
     var _stored = getStoredTheme();
-    var _dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.setAttribute('data-theme', _stored || (_dark ? 'dark' : 'light'));
+    document.documentElement.setAttribute('data-theme', resolveTheme(_stored || 'system'));
 
     // ── Wire toggle buttons once DOM is ready ──
     function onReady() {

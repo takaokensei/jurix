@@ -1518,3 +1518,30 @@ streaming/persistence tests, and contrast checks. `git diff --check` passed.
 
 Next action: Re-audit route navigation and history-to-assistant transitions,
 including viewport and focus behavior on mobile.
+
+## Cycle 37 — 2026-09-29
+
+Area: Theme consistency between workspace and assistant/public shells.
+
+Observed problem: `/configuracoes/` stores theme in `jurix-preferences`, while
+the assistant's legacy `theme.js` read only `jurix-theme`. A live-browser route
+walk reproduced the mismatch: saving Light left `/assistente/` Dark. The legacy
+toggle also changed only its old key, so workspace pages could revert it.
+
+Changes made: Theme resolution now prioritizes the shared workspace preference,
+supports the `system` mode without converting it into a fixed color, and keeps
+the legacy key synchronized for older routes. Workspace appearance application
+also updates that compatibility key. Cache keys were bumped on both templates
+that load the shared theme controller.
+
+Browser validation: Reproduced the old cross-route mismatch on the local Django
+app. Added Chromium coverage for conflicting old/new keys, toggle synchronization,
+and system-dark behavior with the system preference preserved. Focused test
+passed.
+
+Tests: Focused theme integration Chromium test passed. The full frontend suite
+passed with 16 real-Chromium scenarios, 18 structural tests, 15
+streaming/persistence tests, and contrast checks. `git diff --check` passed.
+
+Next action: Continue with keyboard and route transitions from History into
+conversation pages, including browser back/forward and mobile navigation.

@@ -106,6 +106,14 @@ function createTestServer(handlers = {}) {
         </form></main><script src="/static/js/workspace.js"></script></body></html>`);
     }
 
+    if (url.pathname === '/theme-preference-test/') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(`<!doctype html><html lang="pt-BR" data-theme="dark"><head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+      </head><body><button id="theme-toggle" type="button" aria-pressed="false">Alternar tema</button>
+        <script src="/static/js/theme.js"></script></body></html>`);
+    }
+
     if (url.pathname === '/collection-dialog-test/') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(`<!doctype html><html lang="pt-BR"><head>
@@ -312,6 +320,52 @@ test('real browser: settings report when browser storage rejects preferences', a
     assert.equal(reset.warning, true);
     assert.equal(reset.stored.theme, 'light', 'failed removal must not pretend the stored preference was cleared');
     assert.equal(reset.stored.model, 'qwen2.5');
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: theme preference stays synchronized with the legacy toggle', async () => {
+  const server = createTestServer();
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+    await page.goto(`http://127.0.0.1:${port}/theme-preference-test/`, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      localStorage.setItem('jurix-preferences', JSON.stringify({ theme: 'light', density: 'comfortable' }));
+      localStorage.setItem('jurix-theme', 'dark');
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light');
+    assert.equal(await page.evaluate(() => localStorage.getItem('jurix-theme')), 'light');
+
+    await page.click('#theme-toggle');
+    assert.deepEqual(await page.evaluate(() => ({
+      theme: document.documentElement.dataset.theme,
+      preference: JSON.parse(localStorage.getItem('jurix-preferences')).theme,
+      legacy: localStorage.getItem('jurix-theme'),
+    })), { theme: 'dark', preference: 'dark', legacy: 'dark' });
+
+    await page.evaluate(() => {
+      const settings = JSON.parse(localStorage.getItem('jurix-preferences'));
+      settings.theme = 'system';
+      localStorage.setItem('jurix-preferences', JSON.stringify(settings));
+      localStorage.setItem('jurix-theme', 'light');
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    assert.deepEqual(await page.evaluate(() => ({
+      theme: document.documentElement.dataset.theme,
+      preference: JSON.parse(localStorage.getItem('jurix-preferences')).theme,
+    })), { theme: 'dark', preference: 'system' });
   } finally {
     await browser.close();
     server.close();
