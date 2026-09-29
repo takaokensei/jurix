@@ -24,6 +24,8 @@
 <section class="workspace-results-section" aria-live="polite">
     <div class="workspace-section-heading"><div><span class="workspace-eyebrow">Resultados</span><h2>{% if query %}{{ result_count }} resultados{% else %}Comece uma pesquisa{% endif %}</h2></div>{% if query %}<span class="workspace-badge">Modo: {{ search_mode }}</span>{% endif %}</div>
 
+    {% if query %}<p class="workspace-search-caveat" role="note">A relevância é uma estimativa automática de recuperação, não uma conclusão jurídica. Confira o dispositivo e a fonte normativa antes de usar ou citar um resultado.</p>{% endif %}
+
     {% if query and results %}
     <div class="workspace-result-list">
         {% for result in results %}

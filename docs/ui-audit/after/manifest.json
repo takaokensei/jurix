@@ -1,7 +1,7 @@
 {
   "phase": "after",
   "baseUrl": "http://127.0.0.1:8004",
-  "capturedAt": "2026-09-29T22:52:03.193Z",
+  "capturedAt": "2026-09-29T22:57:21.830Z",
   "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "results": [
     {
@@ -123,7 +123,7 @@
       "url": "http://127.0.0.1:8004/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
       "viewportWidth": 1440,
       "documentWidth": 1440,
-      "documentHeight": 1095,
+      "documentHeight": 1143,
       "mainVisible": true,
       "horizontalOverflow": false,
       "consoleErrors": [],
@@ -141,7 +141,7 @@
       "url": "http://127.0.0.1:8004/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
       "viewportWidth": 1280,
       "documentWidth": 1280,
-      "documentHeight": 1117,
+      "documentHeight": 1164,
       "mainVisible": true,
       "horizontalOverflow": false,
       "consoleErrors": [],
@@ -159,7 +159,7 @@
       "url": "http://127.0.0.1:8004/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
       "viewportWidth": 390,
       "documentWidth": 390,
-      "documentHeight": 1454,
+      "documentHeight": 1540,
       "mainVisible": true,
       "horizontalOverflow": false,
       "consoleErrors": [],

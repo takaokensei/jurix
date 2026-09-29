@@ -2044,3 +2044,42 @@ Regressions: None observed.
 
 Next action: Continue cross-route testing on settings, collection forms,
 history recovery and legal search; inspect direct URLs and mobile input states.
+
+## Cycle 52 — 2026-09-29
+
+Area: Legal search result interpretation and user-facing confidence language.
+
+Goal: Keep search-result relevance from being mistaken for legal certainty.
+
+Observed problems: A live query for “Lei nº 8206/2026 art. 8º” produced a
+“Boa correspondência” result label. That label comes from automatic retrieval;
+it does not establish legal pertinence, validity or authority. The current
+search page did not explain this distinction near the result list.
+
+Changes made: Added a concise, accessible note on queried search pages stating
+that relevance is an automatic retrieval estimate and that the user should
+verify the device and normative source before citing. Added restrained styling,
+updated shared workspace CSS cache-busting and structural assertions. Search
+ranking/API behavior was not changed.
+
+Browser validation: The live `/pesquisa/` query rendered the note before the
+results while preserving the query, filters, result count and links. Live
+inspection also confirmed empty-state examples appear only before a query.
+
+Tests: Full `npm test` passed: 20 real-Chromium scenarios, 20 structural
+contracts, 15 streaming/persistence checks, composer lifecycle and contrast
+checks. `git diff --check` passed.
+
+Console: Route capture completed 30 views with zero needing review.
+
+Responsive validation: Capture covered 390×844, 1280×800 and 1440×900; no
+horizontal overflow or navigation failures were reported.
+
+Visual score: The evidence/relevance boundary is now explained exactly where
+users inspect results, without adding a heavy component or blocking workflow.
+
+Regressions: None observed. Search ranking precision is a backend/RAG issue
+and remains outside this frontend-only track.
+
+Next action: Continue a live pass through settings persistence/reset,
+collection and history routes, plus keyboard-only navigation and direct URLs.
