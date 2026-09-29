@@ -13,6 +13,7 @@
 .workspace-nav-item:hover { color: var(--figma-text-white); background: rgba(255,255,255,.045); }
 .workspace-nav-item.is-active { color: var(--figma-blue-light); background: rgba(59,130,246,.11); border-color: rgba(96,165,250,.14); }
 .workspace-nav-item kbd { margin-left: auto; font-size: 10px; opacity: .6; }
+.figma-sidebar-item kbd { margin-left: auto; color: inherit; font-size: 10px; opacity: .65; white-space: nowrap; }
 .workspace-sidebar-bottom { display: grid; gap: 3px; }
 .workspace-main { min-width: 0; min-height: 100vh; background: radial-gradient(circle at top right, rgba(59,130,246,.06), transparent 28%), var(--figma-bg-root); }
 .workspace-topbar { height: 64px; display: flex; align-items: center; gap: 18px; padding: 0 28px; border-bottom: 1px solid var(--figma-border); background: rgba(8,18,32,.74); backdrop-filter: blur(15px); position: sticky; top: 0; z-index: 15; }
@@ -38,8 +39,8 @@
 .workspace-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; }
 .workspace-field { display: grid; gap: 8px; color: var(--figma-text-muted); font-size: 12px; font-weight: 600; }
 .workspace-field-wide { grid-column: 1 / -1; }
-.workspace-field input, .workspace-field select, .workspace-search-panel input, .workspace-search-panel select { width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--figma-border); border-radius: 9px; background: rgba(7,13,24,.72); color: var(--figma-text-white); font: inherit; }
-.workspace-field select { appearance: none; padding-right: 40px; background-image: linear-gradient(45deg, transparent 50%, var(--figma-blue-soft) 50%), linear-gradient(135deg, var(--figma-blue-soft) 50%, transparent 50%); background-position: calc(100% - 18px) 18px, calc(100% - 12px) 18px; background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; cursor: pointer; }
+.workspace-field input, .workspace-field select, .workspace-search-panel input, .workspace-search-panel select { box-sizing: border-box; width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--figma-border); border-radius: 9px; background: rgba(7,13,24,.72); color: var(--figma-text-white); font: inherit; }
+.workspace-field select { appearance: none; padding-right: 40px; background-image: linear-gradient(45deg, transparent 50%, var(--figma-blue-light) 50%), linear-gradient(135deg, var(--figma-blue-light) 50%, transparent 50%); background-position: calc(100% - 19px) 18px, calc(100% - 12px) 18px; background-size: 7px 7px, 7px 7px; background-repeat: no-repeat; cursor: pointer; }
 .workspace-field select:focus-visible { outline: 2px solid var(--figma-blue-light); outline-offset: 2px; }
 .workspace-empty-state-auth { min-height: 248px; gap: 10px; }
 .workspace-empty-state-auth .workspace-empty-stats { margin-top: 8px; }
@@ -64,7 +65,7 @@
 .workspace-dialog .workspace-form { display: grid; gap: 16px; padding: 24px; }
 .workspace-dialog label { display: grid; gap: 7px; color: var(--figma-text-body); font-size: .9rem; }
 .workspace-dialog label span { color: var(--figma-text-muted); font-weight: 400; }
-.workspace-dialog input, .workspace-dialog textarea { width: 100%; border: 1px solid var(--figma-border-strong); border-radius: 9px; background: var(--figma-bg-dropdown); color: var(--figma-text-white); padding: 10px 12px; font: inherit; }
+.workspace-dialog input, .workspace-dialog textarea { box-sizing: border-box; width: 100%; border: 1px solid var(--figma-border-strong); border-radius: 9px; background: var(--figma-bg-dropdown); color: var(--figma-text-white); padding: 10px 12px; font: inherit; }
 .workspace-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .workspace-button-ghost { background: transparent; color: var(--figma-text-muted); }
 .workspace-button:disabled { opacity: .45; cursor: default; }
@@ -90,9 +91,15 @@
 .workspace-empty-state strong { color: var(--figma-text-white); font-size: 15px; }
 .workspace-empty-state h2 { margin: 2px 0; color: var(--figma-text-white); font-size: 22px; }
 .workspace-empty-state p { max-width: 640px; margin: 0 auto 10px; line-height: 1.7; }
+.workspace-search-empty { padding: 28px 20px; }
+.workspace-search-empty p { margin-bottom: 0; }
 .workspace-empty-icon { width: 52px; height: 52px; display: grid; place-items: center; border: 1px solid var(--figma-border); border-radius: 14px; color: var(--figma-blue-light); background: rgba(59,130,246,.08); font-size: 22px; }
 .workspace-empty-stats { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .workspace-empty-stats span { padding: 7px 9px; border-radius: 999px; border: 1px solid var(--figma-border); font-size: 10px; }
+.workspace-auth-notice { display: grid; justify-items: center; gap: 8px; max-width: 520px; padding: 14px 18px; border: 1px solid rgba(245,158,11,.2); border-radius: 12px; color: var(--figma-text-muted); background: rgba(245,158,11,.045); text-align: center; }
+.workspace-auth-notice strong { color: var(--figma-amber-soft); font-size: 12px; }
+.workspace-auth-notice span { font-size: 12px; line-height: 1.55; }
+.workspace-empty-state-auth .workspace-empty-stats { margin-top: 2px; }
 .workspace-history-card { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 24px; padding: 18px; color: inherit; text-decoration: none; transition: transform .16s ease,border-color .16s ease,background .16s ease; }
 .workspace-pagination { display:flex; align-items:center; justify-content:center; gap:14px; margin:24px 0 8px; color:var(--figma-text-muted); font-size:.88rem; }
 .workspace-pagination .workspace-button { min-height:40px; }

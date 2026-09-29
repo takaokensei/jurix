@@ -27,9 +27,15 @@
     <div class="workspace-empty-icon" aria-hidden="true">▱</div>
     <span class="workspace-eyebrow">Sem coleções ainda</span>
     <h2>{% if user.is_authenticated %}Crie seu primeiro dossiê jurídico{% else %}Coleções persistentes para seu trabalho jurídico{% endif %}</h2>
-    <p>{% if user.is_authenticated %}Crie uma coleção para reunir normas e evidências de um mesmo assunto jurídico.{% else %}Entre na sua conta para criar dossiês persistentes.{% endif %}</p>
-    {% if not user.is_authenticated %}<span class="workspace-auth-note" role="status">A autenticação será habilitada nesta instalação.</span>{% endif %}
-    <div class="workspace-empty-stats"><span><strong>{{ norma_count }}</strong> normas disponíveis</span><span>Pesquisa semântica integrada</span><span>Histórico de conversas disponível</span></div>
+    <p>{% if user.is_authenticated %}Reúna normas e evidências relacionadas para acompanhar um assunto jurídico.{% else %}Dossiês mantêm normas e evidências organizadas por assunto.{% endif %}</p>
+    {% if not user.is_authenticated %}
+    <div class="workspace-auth-notice" role="note">
+        <strong>Criação de coleções indisponível</strong>
+        <span>Esta instalação ainda não oferece acesso por conta. Você pode consultar o acervo público enquanto isso.</span>
+        <a class="workspace-button workspace-button-ghost" href="{% url 'legislation:norma_list' %}">Explorar normas</a>
+    </div>
+    {% endif %}
+    <div class="workspace-empty-stats" aria-label="Recursos disponíveis"><span><strong>{{ norma_count }}</strong> normas no acervo</span><span>Pesquisa semântica</span><span>Histórico de conversas</span></div>
 </section>
 {% endif %}
 

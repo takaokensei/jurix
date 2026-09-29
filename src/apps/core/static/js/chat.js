@@ -1258,10 +1258,54 @@
         const newChatBtn = document.getElementById('new-chat-button');
         const toggleSidebarBtn = document.getElementById('toggle-sidebar');
         const sidebar = document.getElementById('sidebar');
+        const sidebarBackdrop = document.getElementById('jurix-sidebar-backdrop');
 
         if (toggleSidebarBtn && sidebar) {
+            const isMobileSidebar = () => window.matchMedia
+                ? window.matchMedia('(max-width: 768px)').matches
+                : window.innerWidth <= 768;
+            const setMobileSidebarOpen = (open) => {
+                sidebar.classList.toggle('is-open', open);
+                document.body.classList.toggle('sidebar-open', open);
+                toggleSidebarBtn.setAttribute('aria-expanded', String(open));
+                toggleSidebarBtn.setAttribute('aria-label', open ? 'Fechar menu' : 'Abrir menu');
+            };
+
             toggleSidebarBtn.addEventListener('click', () => {
+                if (isMobileSidebar()) {
+                    setMobileSidebarOpen(!sidebar.classList.contains('is-open'));
+                    return;
+                }
                 sidebar.classList.toggle('collapsed');
+            });
+
+            if (sidebarBackdrop) {
+                sidebarBackdrop.addEventListener('click', () => {
+                    if (isMobileSidebar()) setMobileSidebarOpen(false);
+                });
+            }
+
+            document.addEventListener('click', (event) => {
+                if (isMobileSidebar() && sidebar.classList.contains('is-open') &&
+                    !sidebar.contains(event.target) && !toggleSidebarBtn.contains(event.target)) {
+                    setMobileSidebarOpen(false);
+                }
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && sidebar.classList.contains('is-open')) {
+                    setMobileSidebarOpen(false);
+                    toggleSidebarBtn.focus();
+                }
+            });
+
+            let wasMobileSidebar = isMobileSidebar();
+            window.addEventListener('resize', () => {
+                const mobileNow = isMobileSidebar();
+                if (wasMobileSidebar && !mobileNow) {
+                    setMobileSidebarOpen(false);
+                }
+                wasMobileSidebar = mobileNow;
             });
         }
 

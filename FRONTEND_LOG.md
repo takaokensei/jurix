@@ -126,3 +126,74 @@ Regressions: None found in the full JavaScript suite or static guards.
 
 Next action: Continue auditing the remaining root routes and interactive
 components for shell-specific style omissions and inconsistent hierarchy.
+
+## Cycle 3 — 2026-09-29
+
+Area: Workspace parity, responsive navigation, empty states and form geometry.
+
+Goal: Address confirmed remaining items from the supplied UI audit and inspect
+related mobile behavior in the running application.
+
+Observed problems: `/normas/` already extends the shared workspace base in the
+current checkout, with the global sidebar, mobile topbar and command palette;
+the dedicated page CSS only styles its content. The norma cards already give
+their title more weight than publication/vigency metadata (18–22px title vs
+9px labels and 12px values), so the old screenshot issue was already addressed.
+The chat shell still lacked the workspace's sidebar quick-search shortcut. More
+importantly, its hamburger toggled only the desktop `collapsed` state, while
+mobile CSS required `is-open`, making navigation unreachable from that button.
+The shared workspace hamburger also changed the CSS class without updating its
+ARIA state or supporting Escape-to-close, and its `aria-controls` target did not
+exist on workspace pages.
+The search field forced autofocus on mobile, its 100%-width form controls could
+overflow due to content-box sizing, and the collections empty state invited a
+login despite no user-facing login route being available.
+
+Changes made: Added the quick-search trigger to the chat sidebar footer and
+aligned its keyboard hint. Implemented distinct mobile-open and desktop-collapse
+sidebar states, accessible `aria-expanded`/`aria-controls` labels, Escape and
+outside-click closure, and a real backdrop button. Revised collections copy to
+separate the empty state, account limitation and public-norms action without a
+dead login promise. Removed forced search autofocus, tightened the search empty
+state, emphasized select chevrons, and applied border-box sizing to workspace
+search/settings/dialog controls. Gave the shared sidebar a stable `id` and
+updated workspace menu state, Escape handling, focus return, and resize cleanup.
+
+Browser validation: On the live Django app at 390×844, opened `/assistente/`,
+verified the hamburger exposes settings and quick search, the palette opens
+from the footer button and focus enters the search field. Verified the backdrop
+and Escape close the mobile sidebar. Inspected `/colecoes/`, `/pesquisa/` and
+`/configuracoes/`: the revised empty-state hierarchy is legible, search inputs
+stay within their panel, and the model select chevron is clearly visible.
+The workspace sidebar also opens on mobile and closes with Escape.
+`/normas/` already uses the common sidebar/topbar shell; list content remains
+purposefully specialized. Desktop/mobile screenshots were inspected in
+Chromium; this browser surface does not support saving screenshots to files.
+
+Tests: Full Python suite: `652 passed, 6 skipped, 7 warnings` (SQLite; baseline
+count unchanged). Ruff, design-token guard, architecture budget and `manage.py
+check` passed. The real-browser sidebar test now covers open, Escape close,
+backdrop close, ARIA state, and desktop geometry. One unrelated drawer/streaming
+browser test failed once in the full JS run, then passed isolated and in the
+fresh complete rerun. The full JS suite passed, including all 9 real-browser
+tests. `git diff --check` passed before final edits and will be repeated.
+
+Console: No visible app errors on the manually inspected pages. A missing
+`matchMedia` API in JSDOM was found by existing JS tests after the responsive
+logic was added; production now falls back to viewport width and this was fixed
+before rerunning.
+
+Responsive validation: 390×844 mobile menu is fully off-canvas when closed,
+opens to the 240px rail with a dimmed backdrop, and closes through Escape or an
+outside click. Workspace forms stay within their panels. Existing browser test
+also rechecks sidebar item geometry at 1280×800.
+
+Visual score: Chat navigation 8.5/10; search/settings controls 8/10; collections
+empty state 8/10. The complete app remains in active visual iteration.
+
+Regressions: No Python, static-check, or final JavaScript regressions. One
+JavaScript real-browser timing failure was not reproducible in isolation or in
+the subsequent full rerun. Simulated quota warnings are expected test cases.
+
+Next action: Check the updated source/diff and browser console across routes,
+then continue the broader root-route interaction audit.

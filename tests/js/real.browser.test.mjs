@@ -997,6 +997,42 @@ test('real browser: sidebar items stay inside the shell and fully offscreen when
       `Itens da sidebar fechada não devem vazar no viewport: ${JSON.stringify(measurements.navItems)}`
     );
 
+    const toggle = page.locator('#toggle-sidebar');
+    await toggle.click();
+    await page.waitForFunction(() => {
+      const sidebar = document.getElementById('sidebar');
+      return sidebar?.classList.contains('is-open') && sidebar.getBoundingClientRect().right >= 239;
+    });
+    const openState = await page.evaluate(() => ({
+      sidebarRight: document.getElementById('sidebar').getBoundingClientRect().right,
+      sidebarClasses: document.getElementById('sidebar').className,
+      sidebarTransform: getComputedStyle(document.getElementById('sidebar')).transform,
+      expanded: document.getElementById('toggle-sidebar').getAttribute('aria-expanded'),
+      bodyBackdrop: getComputedStyle(document.getElementById('jurix-sidebar-backdrop')).display,
+    }));
+    assert.ok(openState.sidebarRight >= 239, JSON.stringify(openState));
+    assert.equal(openState.expanded, 'true');
+    assert.equal(openState.bodyBackdrop, 'block');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => {
+      const sidebar = document.getElementById('sidebar');
+      return !sidebar?.classList.contains('is-open') && sidebar.getBoundingClientRect().right <= 0;
+    });
+    assert.equal(await page.$eval('#toggle-sidebar', (button) => button.getAttribute('aria-expanded')), 'false');
+
+    await toggle.click();
+    await page.waitForFunction(() => {
+      const sidebar = document.getElementById('sidebar');
+      return sidebar?.classList.contains('is-open') && sidebar.getBoundingClientRect().right >= 239;
+    });
+    await page.mouse.click(350, 200);
+    const closedByBackdrop = await page.evaluate(() => ({
+      open: document.getElementById('sidebar').classList.contains('is-open'),
+      buttonExpanded: document.getElementById('toggle-sidebar').getAttribute('aria-expanded'),
+    }));
+    assert.equal(closedByBackdrop.open, false, JSON.stringify(closedByBackdrop));
+    assert.equal(closedByBackdrop.buttonExpanded, 'false');
+
     await page.setViewport({ width: 1280, height: 800 });
     const desktopBounds = await page.evaluate(() => {
       const sidebar = document.getElementById('sidebar').getBoundingClientRect();

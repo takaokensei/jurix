@@ -10,7 +10,7 @@
 </section>
 
 <form class="workspace-search-panel" method="get" role="search" aria-label="Pesquisa jurídica">
-    <label class="workspace-search-input"><span class="sr-only">Consulta</span><input name="q" value="{{ query }}" placeholder="Ex.: regularização de edificações, zoneamento, desapropriação…" autofocus></label>
+    <label class="workspace-search-input"><span class="sr-only">Consulta</span><input name="q" value="{{ query }}" placeholder="Ex.: regularização de edificações, zoneamento, desapropriação…"></label>
     <button class="workspace-button workspace-button-primary" type="submit">Pesquisar</button>
     <div class="workspace-filter-row">
         <label>Tipo<select name="tipo"><option value="">Todos os tipos</option>{% for item in types %}<option value="{{ item.value }}"{% if norma_type == item.value %} selected{% endif %}>{{ item.label }}</option>{% endfor %}</select></label>
@@ -44,9 +44,9 @@
         {% endfor %}
     </div>
     {% elif query %}
-    <div class="workspace-empty-state"><strong>Nenhuma correspondência encontrada.</strong><p>Tente um termo mais amplo ou reduza o limiar de relevância.</p></div>
+    <div class="workspace-empty-state workspace-search-empty"><strong>Nenhuma correspondência encontrada.</strong><p>Tente um termo mais amplo ou reduza o limiar de relevância.</p></div>
     {% else %}
-    <div class="workspace-empty-state"><strong>Pesquise por conceito ou dispositivo.</strong><p>Exemplos: “parcelamento do solo”, “licenciamento ambiental” ou “IPTU progressivo”.</p></div>
+    <div class="workspace-empty-state workspace-search-empty"><strong>Pesquise por conceito ou dispositivo.</strong><p>Exemplos: “parcelamento do solo”, “licenciamento ambiental” ou “IPTU progressivo”.</p></div>
     {% endif %}
 </section>
 {% endblock %}

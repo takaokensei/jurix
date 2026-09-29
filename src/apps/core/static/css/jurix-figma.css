@@ -1472,6 +1472,14 @@ body.figma-theme:has(#messages-wrapper .message) #conversation-input-bar {
     left: 0;
     transform: translateX(0);
   }
+  body.figma-theme.sidebar-open .jurix-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 19;
+    border: 0;
+    background: rgba(2, 6, 23, .58);
+  }
   .figma-header-row {
     padding: 12px 16px;
   }
@@ -1479,6 +1487,7 @@ body.figma-theme:has(#messages-wrapper .message) #conversation-input-bar {
     padding: 16px;
   }
 }
+.jurix-sidebar-backdrop { display: none; }
 
 /* ==========================================================================
    JURIX SEMANTIC TOKEN OVERRIDES

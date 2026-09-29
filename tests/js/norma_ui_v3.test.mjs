@@ -42,3 +42,40 @@ test('norma template exposes semantic filters and no hardcoded suggestion cards'
   assert.match(source, /jurix-norma-list.js/);
 });
 
+test('chat sidebar exposes the same quick-search action as the workspace shell', async () => {
+  const source = await read('src/apps/legislation/templates/legislation/chatbot.html');
+  const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
+  const topbar = await read('src/apps/legislation/templates/legislation/workspace/_topbar.html');
+  assert.match(source, /class="figma-sidebar-item workspace-palette-trigger" data-open-command-palette/);
+  assert.match(source, /Busca rápida/);
+  assert.match(workspace, /<aside class="workspace-sidebar" id="sidebar"/);
+  assert.match(topbar, /aria-controls="sidebar"[\s\S]*aria-expanded="false"/);
+});
+
+test('collection empty state separates account limitation from public exploration', async () => {
+  const source = await read('src/apps/legislation/templates/legislation/workspace/collections.html');
+  assert.match(source, /workspace-auth-notice/);
+  assert.match(source, /Criação de coleções indisponível/);
+  assert.match(source, /Explorar normas/);
+  assert.doesNotMatch(source, /Entre na sua conta/);
+});
+
+test('legal search does not force mobile autofocus and uses a compact empty state', async () => {
+  const template = await read('src/apps/legislation/templates/legislation/workspace/search.html');
+  const styles = await read('src/apps/core/static/css/workspace.css');
+  assert.doesNotMatch(template, /autofocus/);
+  assert.match(template, /workspace-empty-state workspace-search-empty/);
+  assert.match(styles, /\.workspace-search-empty \{ padding: 28px 20px; \}/);
+  assert.match(styles, /\.workspace-field input, \.workspace-field select, \.workspace-search-panel input, \.workspace-search-panel select \{ box-sizing: border-box;/);
+  assert.match(styles, /\.workspace-dialog input, \.workspace-dialog textarea \{ box-sizing: border-box;/);
+});
+
+test('workspace selects use a clearly visible chevron and norm facts stay secondary', async () => {
+  const workspaceStyles = await read('src/apps/core/static/css/workspace.css');
+  const normaStyles = await read('src/apps/core/static/css/jurix-norma-list.css');
+  assert.match(workspaceStyles, /linear-gradient\(45deg, transparent 50%, var\(--figma-blue-light\) 50%\)/);
+  assert.match(normaStyles, /\.jurix-norma-fact-label[\s\S]*?font-size: 9px/);
+  assert.match(normaStyles, /\.jurix-norma-fact-value[\s\S]*?font-size: 12px/);
+  assert.match(normaStyles, /\.jurix-norma-card-title[\s\S]*?font: 700 clamp\(18px/);
+});
+

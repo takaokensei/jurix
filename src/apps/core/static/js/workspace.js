@@ -30,10 +30,24 @@
         const sidebar = document.querySelector('[data-workspace-sidebar]');
         const toggle = document.querySelector('[data-workspace-toggle]');
         if (!sidebar || !toggle) return;
-        toggle.addEventListener('click', () => sidebar.classList.toggle('is-open'));
+        const setOpen = (open) => {
+            sidebar.classList.toggle('is-open', open);
+            toggle.setAttribute('aria-expanded', String(open));
+            toggle.setAttribute('aria-label', open ? 'Fechar menu' : 'Abrir menu');
+        };
+        toggle.addEventListener('click', () => setOpen(!sidebar.classList.contains('is-open')));
         document.addEventListener('click', (event) => {
             if (window.innerWidth > 900 || !sidebar.classList.contains('is-open')) return;
-            if (!sidebar.contains(event.target) && !toggle.contains(event.target)) sidebar.classList.remove('is-open');
+            if (!sidebar.contains(event.target) && !toggle.contains(event.target)) setOpen(false);
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && sidebar.classList.contains('is-open')) {
+                setOpen(false);
+                toggle.focus();
+            }
+        });
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 900 && sidebar.classList.contains('is-open')) setOpen(false);
         });
     }
 
