@@ -72,14 +72,18 @@
     });
   }
 
-  function buttonLabel(control, key) {
+  function buttonLabel(key) {
     const map = {
-      norma_status: state.norma_status === 'all' ? 'Todas as normas' : 'Normativas',
+      norma_status: state.norma_status === 'all' ? 'Todas as normas' : 'Pesquisa normativa',
       source_scope: state.source_scope === 'all' ? 'Todas as fontes' : 'Legislação municipal',
       mode: state.mode === 'lexical' ? 'Pesquisa textual' : state.mode === 'semantic' ? 'Pesquisa semântica' : 'Pesquisa híbrida',
     };
-    const label = control.querySelector('[data-control-label]');
-    if (label && map[key]) label.textContent = map[key];
+    if (!map[key]) return;
+    controls().forEach(control => {
+      if (control.dataset.control !== key) return;
+      const label = control.querySelector('[data-control-label]');
+      if (label) label.textContent = map[key];
+    });
   }
 
   function renderMenu(control, key, focusFirst = false) {
@@ -107,10 +111,12 @@
       item.textContent = text;
       item.setAttribute('role', 'menuitemradio');
       item.setAttribute('aria-checked', String(state[key] === value));
-      item.onclick = () => {
+      item.onclick = event => {
+        event.preventDefault();
+        event.stopPropagation();
         state[key] = value;
         save();
-        buttonLabel(control, key);
+        buttonLabel(key);
         menu.remove();
         control.setAttribute('aria-expanded', 'false');
         control.focus();
@@ -159,7 +165,7 @@
           renderMenu(control, key, true);
         }
       });
-      buttonLabel(control, key);
+      buttonLabel(key);
     });
   }
 

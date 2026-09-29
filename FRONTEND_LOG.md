@@ -496,3 +496,32 @@ contract, with no backend changes.
 Next action: Exercise selecting each search option and check that focus,
 announcements, persisted preferences, and composer-vs-home control state stay
 consistent; then inspect file-attachment UX without uploading user documents.
+
+## Cycle 11 — 2026-09-29
+
+Area: Search-filter selection and state synchronization.
+
+Observed problems: Selecting a menu option bubbled the click back to its trigger,
+which immediately reopened the menu. The welcome controls also lacked the
+`data-control-label` hooks used by the controller, so their visible captions
+could not follow the persisted selection. Finally, changing the shared source
+scope updated only the clicked control, leaving the composer caption stale.
+
+Changes made: Menu option clicks now stop propagation and restore focus after
+selection. Added label hooks to the four welcome controls, preserved the
+descriptive default label, and made the controller update every matching
+control instance. Unit and real-browser tests select “Todas as fontes” and
+verify both home and composer labels, stored preference, collapsed menu, and
+focus return.
+
+Tests: Full `npm test` passed (all 10 browser tests, search control and streaming
+unit coverage). The route suite passed (18 tests). Ruff, design-token guard,
+architecture budget, Django system check, JavaScript syntax checks, and
+`git diff --check` passed.
+
+Regressions: None observed; option keys, payload shape, and backend remain
+unchanged.
+
+Next action: Audit attachment selection, removal, and conversation-reset states
+using disposable test fixtures only, then test keyboard traversal at phone and
+desktop widths.

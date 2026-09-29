@@ -12,6 +12,9 @@ test('search option menu toggles, closes with Escape, and returns keyboard focus
     <div class="figma-search-dropdown" data-control="norma_status" tabindex="0">
       <span data-control-label>Pesquisa normativa</span>
     </div>
+    <div class="figma-search-dropdown" data-control="norma_status" tabindex="0">
+      <span data-control-label>Pesquisa normativa</span>
+    </div>
   </body></html>`, {
     url: 'http://localhost/assistente/',
     runScripts: 'dangerously',
@@ -39,5 +42,18 @@ test('search option menu toggles, closes with Escape, and returns keyboard focus
   control.click();
   assert.equal(control.getAttribute('aria-expanded'), 'false');
   assert.equal(window.document.querySelector('[data-jurix-control-menu]'), null);
+
+  let changedPayload = null;
+  window.addEventListener('jurix:search-options-changed', (event) => { changedPayload = event.detail; });
+  control.click();
+  const allNorms = [...window.document.querySelectorAll('.jurix-control-option')].find((item) => item.textContent === 'Todas as normas indexadas');
+  allNorms.click();
+  assert.equal(control.getAttribute('aria-expanded'), 'false');
+  assert.equal(window.document.activeElement, control);
+  assert.equal(control.querySelector('[data-control-label]').textContent, 'Todas as normas');
+  assert.equal(window.document.querySelectorAll('[data-control="norma_status"] [data-control-label]')[1].textContent, 'Todas as normas');
+  assert.equal(window.JurixSearchControls.getPayload().norma_status, 'all');
+  assert.equal(changedPayload.norma_status, 'all');
+  assert.equal(JSON.parse(window.localStorage.getItem('jurix:search-options:v1')).norma_status, 'all');
   dom.window.close();
 });

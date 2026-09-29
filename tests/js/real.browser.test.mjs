@@ -1222,18 +1222,35 @@ test('real browser: command palette keeps compact icons and focuses search on mo
     assert.ok(mobileSearchControls[0].y === mobileSearchControls[1].y, `Os dois primeiros filtros devem compartilhar a primeira linha: ${JSON.stringify(mobileSearchControls)}`);
     assert.ok(mobileSearchControls[2].y === mobileSearchControls[3].y, `Os dois últimos filtros devem compartilhar a segunda linha: ${JSON.stringify(mobileSearchControls)}`);
     assert.ok(mobileSearchControls.every(({ x, right, width }) => width >= 100 && x >= 0 && right <= 390), JSON.stringify(mobileSearchControls));
-    const scopeSelector = '#hero-search-form .figma-search-dropdown';
+    const scopeSelector = '#hero-search-form .figma-search-dropdown:nth-child(2)';
     await page.click(scopeSelector);
     await page.waitForSelector('#hero-search-form [data-jurix-control-menu] [role="menuitemradio"]');
     assert.equal(await page.$eval(scopeSelector, (element) => element.getAttribute('aria-expanded')), 'true');
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('#hero-search-form [data-jurix-control-menu]'));
     assert.equal(await page.$eval(scopeSelector, (element) => element.getAttribute('aria-expanded')), 'false');
-    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('data-control')), 'norma_status');
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('data-control')), 'source_scope');
     await page.click(scopeSelector);
     await page.waitForSelector('#hero-search-form [data-jurix-control-menu]');
     await page.click(scopeSelector);
     assert.equal(await page.$eval(scopeSelector, (element) => element.getAttribute('aria-expanded')), 'false', 'Clicar no filtro aberto deve recolher o menu');
+    await page.click(scopeSelector);
+    await page.click('#hero-search-form [role="menuitemradio"]:nth-child(2)');
+    await page.waitForFunction(() => !document.querySelector('#hero-search-form [data-jurix-control-menu]'));
+    const selectedScope = await page.evaluate(() => ({
+      label: document.querySelector('#hero-search-form .figma-search-dropdown:nth-child(2) [data-control-label]')?.textContent,
+      composerLabel: document.querySelector('#chat-form .figma-search-dropdown[data-control="source_scope"] [data-control-label]')?.textContent,
+      focus: document.activeElement?.getAttribute('data-control'),
+      expanded: document.querySelector('#hero-search-form .figma-search-dropdown:nth-child(2)')?.getAttribute('aria-expanded'),
+      status: JSON.parse(localStorage.getItem('jurix:search-options:v1') || '{}').source_scope,
+    }));
+    assert.deepEqual(selectedScope, {
+      label: 'Todas as fontes',
+      composerLabel: 'Todas as fontes',
+      focus: 'source_scope',
+      expanded: 'false',
+      status: 'all',
+    });
     await page.keyboard.down('Control');
     await page.keyboard.press('k');
     await page.keyboard.up('Control');
