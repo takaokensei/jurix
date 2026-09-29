@@ -1439,3 +1439,30 @@ passed.
 
 Next action: Continue testing settings reset and history interactions, then
 inspect the remaining primary routes for concrete usability regressions.
+
+## Cycle 34 — 2026-09-29
+
+Area: Applying assistant preferences to the actual streaming request.
+
+Observed problem: Browser inspection of the live SSE request showed that the
+saved model and source count never reached the API, and temperature was also
+absent. The settings UI persisted these values, but chat requests silently
+used retrieval/generation defaults. The API already accepts these fields, so
+this was a client integration gap rather than a backend contract change.
+
+Changes made: The shared chat API now reads and validates the browser preference
+object at request time, maps `sources` to `max_sources`, and sends model and
+temperature with bounded numeric fallbacks. The chat page no longer duplicates
+preference mapping. Malformed or non-object stored JSON safely falls back.
+
+Browser validation: Extended the real-Chromium streaming scenario to set model,
+3 sources, and temperature 0.7 in local storage, then inspect the request body
+received by the mock SSE endpoint. All three values arrive as expected while
+existing stream/source timing checks remain active.
+
+Tests: Focused request-payload Chromium test passed. The complete frontend
+suite passed, including 15 real-Chromium scenarios, 17 structural tests, 15
+streaming/persistence tests, and contrast checks. `git diff --check` passed.
+
+Next action: Continue examining history/session state and settings reset for
+additional behavior that diverges from what the interface promises.

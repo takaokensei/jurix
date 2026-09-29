@@ -125,6 +125,13 @@
         try {
             let response;
             try {
+                let preferences = {};
+                try {
+                    const stored = JSON.parse(localStorage.getItem('jurix-preferences') || '{}');
+                    if (stored && typeof stored === 'object' && !Array.isArray(stored)) preferences = stored;
+                } catch (_) {}
+                const preferredTemperature = Number(preferences.temperature);
+                const preferredSources = Number(preferences.sources);
                 response = await fetch('/api/v1/search/answer/stream/', {
                     method: 'POST',
                     credentials: 'same-origin',
@@ -134,6 +141,13 @@
                         question,
                         session_id: sessionId,
                         ...searchOptions,
+                        ...(preferences.model ? { model: preferences.model } : {}),
+                        max_sources: Number.isFinite(preferredSources)
+                            ? Math.max(1, Math.min(10, preferredSources))
+                            : (searchOptions.max_sources || 5),
+                        temperature: Number.isFinite(preferredTemperature)
+                            ? Math.max(0, Math.min(1, preferredTemperature))
+                            : (searchOptions.temperature ?? 0.3),
                     }),
                 });
             } catch (error) {

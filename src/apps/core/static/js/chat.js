@@ -1461,16 +1461,7 @@
     }
 
     async function streamAssistantResponse(question, sessionId, onChunk, onSources, onDone, onError, onStatus, retryExistingQuestion = false) {
-        let preferences = {};
-        try {
-            preferences = JSON.parse(localStorage.getItem('jurix-preferences') || '{}');
-        } catch (_) {}
         const controls = window.JurixSearchControls?.getPayload?.() || {};
-        const searchOptions = {
-            ...controls,
-            max_sources: Number(preferences.sources || 5),
-            model: preferences.model || undefined,
-        };
         return chatAPI.streamAnswer(question, sessionId, {
             onSession(data) {
                 currentSessionId = data.session_id;
@@ -1483,7 +1474,7 @@
             onError,
             onStatus,
             retryExistingQuestion,
-            searchOptions,
+            searchOptions: controls,
         });
     }
 

@@ -979,6 +979,9 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
     '```\n';
 
   let releaseDone = null;
+  let receivedPayload = null;
+  let resolvePayload = null;
+  const payloadPromise = new Promise((resolve) => { resolvePayload = resolve; });
   const donePromise = new Promise((resolve) => {
     releaseDone = resolve;
   });
@@ -991,6 +994,12 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
       res.end(JSON.stringify({ ok: true }));
     },
     '/api/v1/search/answer/stream/': async (req, res) => {
+      let requestBody = '';
+      req.on('data', (chunk) => { requestBody += chunk; });
+      req.on('end', () => {
+        receivedPayload = JSON.parse(requestBody);
+        resolvePayload(receivedPayload);
+      });
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -1040,6 +1049,9 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
     const page = await browser.newPage();
     await page.setViewport({ width: 390, height: 844 });
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => localStorage.setItem('jurix-preferences', JSON.stringify({
+      model: 'llama3', sources: 3, temperature: 0.7, theme: 'dark', density: 'comfortable',
+    })));
 
     // Set up mutation observer to capture initial opacity on card insertion
     await page.evaluate(() => {
@@ -1069,6 +1081,12 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
       (els) => els.length
     );
     assert.equal(sourcesBeforeDone, 0, 'As fontes NÃO podem estar renderizadas antes do evento done');
+    await payloadPromise;
+    assert.deepEqual(
+      { temperature: receivedPayload?.temperature, max_sources: receivedPayload?.max_sources, model: receivedPayload?.model },
+      { temperature: 0.7, max_sources: 3, model: 'llama3' },
+      `saved assistant preferences must reach the streaming API payload; received ${JSON.stringify(receivedPayload)}`
+    );
 
     // Libera a barreira para o servidor emitir o done
     await page.evaluate(() => fetch('/api/test/release-done/'));
