@@ -1602,6 +1602,33 @@ body.figma-theme:has(#messages-wrapper .message) #conversation-input-bar {
     width: 100%;
   }
 
+  .figma-theme #conversation-input-bar .jurix-composer-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
+  }
+
+  .figma-theme #conversation-input-bar .jurix-composer-filters > .figma-search-dropdown {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+    padding-inline: 9px;
+    justify-content: flex-start;
+  }
+
+  .figma-theme #conversation-input-bar .jurix-composer-filters > .figma-search-dropdown:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .figma-theme #conversation-input-bar .jurix-composer-filters [data-control-label] {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   /* Touch targets remain usable when the assistant collapses to a phone-sized
      viewport.  Keep the visual icon compact while expanding its hit area. */
   .figma-theme #toggle-sidebar,

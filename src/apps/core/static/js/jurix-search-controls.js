@@ -132,13 +132,15 @@
     control.setAttribute('aria-expanded', 'true');
     control.appendChild(menu);
     const controlBounds = control.getBoundingClientRect();
-    const menuBounds = menu.getBoundingClientRect();
-    if (controlBounds.bottom + menuBounds.height + 8 > window.innerHeight && controlBounds.top > window.innerHeight - controlBounds.bottom) {
+    const initialMenuBounds = menu.getBoundingClientRect();
+    const isFixedComposerControl = Boolean(control.closest('#conversation-input-bar'));
+    if (isFixedComposerControl || (controlBounds.bottom + initialMenuBounds.height + 8 > window.innerHeight && controlBounds.top > window.innerHeight - controlBounds.bottom)) {
       control.classList.add('jurix-control-menu-above');
     }
-    if (controlBounds.right + menuBounds.width > window.innerWidth - 8) {
-      control.classList.add('jurix-control-menu-align-end');
-    }
+    const menuWidth = menu.getBoundingClientRect().width;
+    const viewportLeft = Math.max(8, Math.min(controlBounds.left, window.innerWidth - menuWidth - 8));
+    menu.style.left = `${viewportLeft - controlBounds.left}px`;
+    menu.style.right = 'auto';
     if (focusFirst) menu.querySelector('button')?.focus();
   }
 

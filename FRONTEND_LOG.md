@@ -1152,3 +1152,40 @@ shows the full “Pergunte sobre leis…” hint.
 Next action: Continue the remaining mobile assistant composer interaction
 states, then exercise comparison, history, collections, settings, and reading
 flow focus/keyboard behavior.
+
+## Cycle 25 — 2026-09-29
+
+Area: Active assistant composer controls and mobile menu positioning.
+
+Goal: Keep the composer filters readable and their menus usable on narrow
+screens, especially when the composer is fixed to the bottom of the viewport.
+
+Observed problems: At 320–390px, three composer controls shared one row and
+their labels were clipped. Opening the mode menu at 390px then showed a second
+issue: the menu opened below the fixed composer and extended outside the left
+viewport edge.
+
+Changes made: Mobile composer filters now use a two-column grid, with the
+attachment action on a full-width second row; controls retain 44px targets and
+labels truncate explicitly. Menus belonging to the fixed composer open above
+it and calculate a viewport-safe horizontal offset. Updated cache keys for
+both changed assets. No backend behavior changed.
+
+Browser validation: Tested the real Django `/assistente/` page at 320, 390,
+640, and 641px. At <=640px, controls form a 2+1 layout, all hit areas are at
+least 44px, document width equals viewport, and the menu at 390px stays within
+the viewport and above its trigger. At 641px, the desktop layout is preserved.
+No console or page errors occurred.
+
+Tests: Full `npm test` passed, including all 12 real-Chromium browser tests;
+the search-control unit test passed. `git diff --check` passed. The first full
+run surfaced the menu-placement bug, which was fixed and then revalidated by
+the focused browser test and second complete run.
+
+Screenshots: Refreshed the 30-view `after/` set. Before and after manifests
+both have 30 views and zero flagged route, overflow, console, request, or
+visibility issues.
+
+Next action: Continue the outstanding keyboard/focus and mobile reading-flow
+checks across comparison, history, collections, and settings; fix the next
+demonstrable issue rather than assuming these routes are complete.
