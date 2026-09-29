@@ -1664,3 +1664,50 @@ tests, and contrast checks. `git diff --check` passed.
 
 Next action: Continue route-level keyboard verification and audit no-results,
 empty and error states across the primary product surfaces.
+
+## Cycle 43 — 2026-09-29
+
+Area: Revalidation of reported shell, palette and empty-state defects (U1–U7).
+
+Goal: Reproduce the reported issues against the current checkout before making
+further UI changes.
+
+Observed problems: None of U1–U7 reproduced. The current tree already contains
+the earlier fixes: the palette renders actual SVG nodes; `/normas/` uses the
+shared workspace shell; the active chat sidebar includes Settings and Quick
+Search; norm metadata is secondary; the collections empty state distinguishes
+empty, account-unavailable and public-catalog actions; the model select has a
+visible chevron; and legal-search's initial empty state is compact.
+
+Changes made: No application code changed. This cycle records an evidence-based
+recheck rather than reapplying fixes already present.
+
+Browser validation: On the live local app, opened Ctrl+K, searched “normas”
+and confirmed accessible results (“Pesquisa Jurídica” and “Normas
+Consolidadas”) with rendered icons and visible keyboard focus; no SVG source
+markup appeared. Inspected `/normas/`, `/colecoes/`, `/pesquisa/`, and
+`/configuracoes/`; each showed the shared sidebar/topbar. The active assistant
+conversation retained Configurações and Busca rápida. The settings model
+select visibly displays its chevron. Re-captured the 30-view audit set at
+1440×900, 1280×800, and 390×844; the capture runner reported zero views needing
+review.
+
+Tests: Full `npm test` passed, including 17 real-Chromium scenarios, 19
+structural contracts, 15 streaming/persistence tests, one composer lifecycle
+test, and contrast checks. `git diff --check` passed. The first capture
+invocation used the wrong script path and made no changes; rerun from
+`tests/js/capture-ui-audit.mjs` succeeded.
+
+Console: No palette-related browser errors observed during the live interaction.
+
+Responsive validation: Captured all 30 configured route/viewport views with no
+review flags; existing browser tests verify mobile palette, shell, collections
+dialog, and norm/search interactions.
+
+Visual score: These seven reported items are resolved in the current UI; no
+new issue from this list warrants a code change.
+
+Regressions: None observed.
+
+Next action: Continue the final cross-route audit for issues outside U1–U7,
+prioritizing functional inconsistencies and accessibility over cosmetic churn.
