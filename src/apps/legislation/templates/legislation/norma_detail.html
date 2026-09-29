@@ -6,7 +6,7 @@
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Norma' %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20260929-detail-mobile-metrics">
+<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20260929-detail-collapsible-text1">
 <link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}">
 {% endblock %}
 
@@ -198,10 +198,13 @@
 {% endif %}
 
 <div class="card legal-detail-card">
-    <h2>Texto Consolidado</h2>
+    <h2>Texto integral consolidado</h2>
     
     {% if consolidated_text %}
-    <pre>{{ consolidated_text }}</pre>
+    <details class="legal-consolidated-details">
+        <summary>Exibir o texto completo da norma</summary>
+        <pre>{{ consolidated_text }}</pre>
+    </details>
     {% else %}
     <div class="alert alert-info">
         <p>Texto consolidado não disponível para esta norma.</p>

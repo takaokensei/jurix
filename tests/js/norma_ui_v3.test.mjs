@@ -154,7 +154,15 @@ test('norm actions use a responsive grid instead of stranding the official sourc
   assert.match(styles, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(100%,\s*15rem\),\s*1fr\)\)/);
   assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*justify-content:\s*center/);
   assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*min-height:\s*44px/);
-  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260929-detail-mobile-metrics/);
+  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260929-detail-collapsible-text1/);
+});
+
+test('norm consolidated text stays available but does not duplicate every device on initial view', async () => {
+  const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
+  const styles = await read('src/apps/core/static/css/jurix-legal-detail.css');
+  assert.match(template, /<details class="legal-consolidated-details">\s*<summary>Exibir o texto completo da norma<\/summary>\s*<pre>\{\{ consolidated_text \}\}<\/pre>\s*<\/details>/);
+  assert.match(styles, /\.legal-consolidated-details > summary\s*\{[^}]*min-height:44px/);
+  assert.match(styles, /\.legal-consolidated-details > summary:focus-visible/);
 });
 
 test('mobile norm detail keeps secondary metrics compact without squeezing text labels', async () => {
@@ -162,7 +170,7 @@ test('mobile norm detail keeps secondary metrics compact without squeezing text 
   const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
   assert.match(styles, /@media \(max-width:640px\)[\s\S]*?\.legal-detail-card \.stats-grid \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\); \}/);
   assert.match(styles, /\.legal-detail-card \.stats-grid \.stat-card:last-child \{ grid-column:1 \/ -1; \}/);
-  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260929-detail-mobile-metrics/);
+  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260929-detail-collapsible-text1/);
 });
 
 test('version comparison exposes both texts as labelled stacked evidence on mobile', async () => {

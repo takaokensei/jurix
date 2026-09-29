@@ -1921,3 +1921,45 @@ Regressions: None observed.
 Next action: Continue the phase-E pass through route error/empty states and
 keyboard paths on Norma detail, comparison, tree and workspace forms; identify
 any remaining user-visible failure before considering completion.
+
+## Cycle 49 — 2026-09-29
+
+Area: Norma detail reading hierarchy and full-text disclosure.
+
+Goal: Reduce repeated content on the consolidated norm page without removing
+access to its complete source text.
+
+Observed problems: A live Chromium inspection of Lei nº 8206/2026 showed all
+24 structured devices followed by a second, full-text rendering of the same
+norm, including decorative separator lines and consolidation metadata. This
+made the page unusually long and obscured the article-by-article reading path.
+
+Changes made: Kept the full consolidated text but placed it in a native,
+keyboard-operable `<details>` disclosure, renamed the section to distinguish
+it from the structured devices, provided a 44px summary target and an explicit
+visible keyboard focus ring. Updated the stylesheet cache key and added a
+regression contract for the disclosure and CSS.
+
+Browser validation: At `/normas/3/`, the live accessibility tree exposed all
+24 devices while the duplicate text stayed collapsed. Pressing Enter on the
+summary expanded the full text. The disclosure is native HTML, so it retains
+standard keyboard and assistive-technology semantics.
+
+Tests: Full `npm test` passed, including 19 real-Chromium scenarios, 20
+workspace/norm structural contracts, 15 streaming/persistence checks, composer
+lifecycle and contrast checks. `git diff --check` passed.
+
+Console: No new browser errors observed. Route capture completed 30 views with
+zero needing review.
+
+Responsive validation: Browser capture covered 390×844, 1280×800 and
+1440×900; no overflow or navigation failures were reported.
+
+Visual score: The initial legal reading path is shorter and less repetitive;
+the complete source remains available on demand.
+
+Regressions: None observed.
+
+Next action: Continue the phase-E cross-route audit through comparison, device
+tree, workspace forms and route error states; inspect keyboard and recovery
+paths for concrete user-visible failures.

@@ -19,6 +19,14 @@
 .legal-detail-card .temporal-disclaimer { display:block; margin-top:5px; color:var(--figma-text-muted); font-size:.76rem; line-height:1.4; }
 .legal-detail-card .badge-neutral { display:inline-flex; padding:4px 9px; border-radius:999px; background:rgba(148,163,184,.14); color:var(--figma-text-body); }
 .legal-detail-card pre { max-width:100%; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; background:var(--figma-bg-sidebar); color:var(--figma-text-white); border:1px solid var(--figma-border); border-radius:8px; padding:16px; line-height:1.65; }
+.legal-consolidated-details { overflow:hidden; border:1px solid var(--figma-border); border-radius:10px; background:color-mix(in srgb, var(--figma-bg-sidebar) 70%, transparent); }
+.legal-consolidated-details > summary { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; padding:10px 14px; color:var(--figma-text-body); cursor:pointer; font-size:.9rem; font-weight:600; list-style:none; }
+.legal-consolidated-details > summary:focus-visible { outline:2px solid var(--figma-blue-light); outline-offset:2px; }
+.legal-consolidated-details > summary::-webkit-details-marker { display:none; }
+.legal-consolidated-details > summary::after { content:"＋"; color:var(--figma-blue-light); font-size:1.1rem; }
+.legal-consolidated-details[open] > summary { border-bottom:1px solid var(--figma-border); }
+.legal-consolidated-details[open] > summary::after { content:"−"; }
+.legal-consolidated-details > pre { margin:0; border:0; border-radius:0; background:transparent; }
 .legal-detail-back { margin-top:20px; }
 .legal-detail-collection-form { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-top:16px; padding-top:16px; border-top:1px solid var(--figma-border); }
 .legal-detail-collection-form label { color:var(--figma-text-muted); font-size:.85rem; }
