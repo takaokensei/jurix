@@ -146,6 +146,40 @@ test('empty source drawer has a focusable dialog fallback', () => {
   dom.window.close();
 });
 
+test('source drawer groups repeated norms without merging article evidence or citation targets', () => {
+  const dom = new JSDOM('<!doctype html><html><body><button id="open-sources">Ver fontes</button></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+    pretendToBeVisual: true,
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-rag.js'));
+  w.document.getElementById('open-sources').focus();
+  w.JurixRagUI.openSourcesDrawer([
+    { norma: 'Lei nº 8206/2026', dispositivo_ref: 'Art. 8º', text: 'Vigência na publicação.', similarity_score: 0.98 },
+    { norma: 'Lei nº 8.206/2026', dispositivo_ref: 'Art. 7º', text: 'Execução orçamentária.', similarity_score: 0.97 },
+    { norma: 'Lei nº 8205/2026', dispositivo_ref: 'Art. 1º', text: 'Outra norma.', similarity_score: 0.83 },
+  ]);
+
+  const panel = w.document.getElementById('jurix-sources-drawer-panel');
+  const groups = [...panel.querySelectorAll('.jurix-source-group')];
+  assert.equal(groups.length, 2, 'Equivalent number formatting should group the same norm');
+  assert.equal(groups[0].querySelectorAll('.source-card').length, 2);
+  assert.equal(groups[0].querySelectorAll('[data-evidence-rank]').length, 2);
+  assert.deepEqual([...groups[0].querySelectorAll('.jurix-rag-score-meter')].map((meter) => meter.value), [98, 97]);
+  assert.match(groups[0].textContent, /Art\. 8º[\s\S]*Art\. 7º/);
+  assert.equal(panel.querySelectorAll('.source-title').length, 0, 'The norm title should appear once in its group heading');
+  assert.match(panel.querySelector('#sources-drawer-subtitle').textContent, /3 evidências em 2 normas/);
+  assert.match(groups[0].querySelector('h4')?.textContent || '', /Lei nº 8206\/2026/);
+  assert.equal(groups[1].querySelector('.jurix-rag-score-meter')?.value, 83);
+  const zeroScore = w.document.createElement('div');
+  zeroScore.innerHTML = w.JurixRagUI.renderEvidenceCard({ norma: 'Lei nº 1/2000', similarity_score: 0 }, 3);
+  assert.equal(zeroScore.querySelector('.jurix-rag-score-meter')?.value, 0);
+
+  w.JurixRagUI.closeSourcesDrawer();
+  dom.window.close();
+});
+
 function guestWindow(saved, events = []) {
   const dom = new JSDOM('<body data-authenticated="false"><div id="messages-container"><div id="messages-wrapper"><div id="welcome-state"></div></div></div><div id="chat-sessions-list"></div><form id="chat-form"><textarea id="question-textarea"></textarea><button id="send-button"></button></form>', {
     url: 'http://localhost/assistente/', runScripts: 'dangerously', pretendToBeVisual: true,

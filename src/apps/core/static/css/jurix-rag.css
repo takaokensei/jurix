@@ -126,11 +126,47 @@
     gap: 0.45rem;
 }
 
+.jurix-rag-source .source-score {
+    display: grid;
+    grid-template-columns: minmax(36px, 1fr) auto;
+    align-items: center;
+    gap: 4px 8px;
+    flex: 0 1 156px;
+    max-width: 156px;
+    min-width: 0;
+}
+
 .jurix-rag-score-label {
     color: var(--figma-text-muted);
     font-size: 0.65rem;
     white-space: nowrap;
 }
+
+.jurix-rag-source .jurix-rag-score-label {
+    grid-column: 1 / -1;
+}
+
+.jurix-rag-score-meter {
+    display: block;
+    width: 44px;
+    height: 5px;
+    margin: 0;
+    overflow: hidden;
+    appearance: none;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--jurix-evidence-muted) 25%, transparent);
+}
+.jurix-rag-score-meter::-webkit-progress-bar {
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--jurix-evidence-muted) 25%, transparent);
+}
+.jurix-rag-score-meter--high::-webkit-progress-value { background: var(--jurix-evidence-positive); }
+.jurix-rag-score-meter--high::-moz-progress-bar { background: var(--jurix-evidence-positive); }
+.jurix-rag-score-meter--medium::-webkit-progress-value { background: var(--jurix-evidence-warning); }
+.jurix-rag-score-meter--medium::-moz-progress-bar { background: var(--jurix-evidence-warning); }
+.jurix-rag-score-meter--low::-webkit-progress-value { background: var(--jurix-evidence-muted); }
+.jurix-rag-score-meter--low::-moz-progress-bar { background: var(--jurix-evidence-muted); }
 
 .score-fill-high,
 .score-fill-medium,
@@ -414,10 +450,12 @@
     color: var(--jurix-evidence-text-secondary);
 }
 .jurix-rag-source .jurix-rag-score-text {
-    min-width: 2.4rem;
+    min-width: 0;
     text-align: right;
     color: currentColor;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    font-size: 0.68rem;
 }
 
 @media (max-width: 720px) {

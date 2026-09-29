@@ -614,3 +614,71 @@ Regressions: None observed. No backend/API changes.
 Next action: Continue end-to-end checks on actual conversation routes and
 keyboard navigation across viewport sizes, then fix the next reproducible UI
 or usability issue.
+
+## Cycle 15 — 2026-09-29
+
+Area: Source drawer information hierarchy, evidence grouping, relevance
+indicator accuracy, and static asset freshness.
+
+Goal: Make repeated evidence from one law easier to audit without collapsing
+article-level citations or implying that retrieval similarity is legal
+certainty.
+
+Observed problems: The live persisted conversation rendered two cards with the
+same law title, forcing users to rediscover the shared instrument. The drawer
+subtitle described every source as a “dispositivo” and did not state the number
+of represented norms. Its similarity meter rendered coarse fixed widths by
+band instead of the actual score; the drawer showed relevance labels wrapped
+onto two lines in the 480px panel. After the initial edit, the long-running
+browser retained old static URLs and continued rendering the previous version.
+
+Changes made: Group evidence by normalized norm title while preserving each
+article card, rank, source link, and citation target. Unknown norm names remain
+separate to avoid asserting a relationship without evidence. The drawer now
+reports evidence and norm counts and renders a single norm heading per group.
+Replaced the coarse CSS meter with a native progress element driven by the
+actual bounded recovery score; the screen-reader description continues to
+identify it as a technical retrieval score. Added cache-busting versions to
+the shared visual CSS, RAG CSS, and RAG script URLs so open clients fetch the
+updated components. No backend, API, or corpus changes.
+
+Browser validation: On the real local assistant conversation, confirmed the
+drawer displays one “Lei nº 8206/2026” group with two distinct article cards,
+individual excerpts and SAPL links, plus “2 evidências em 1 norma”. The
+relevance label is now a single line and its meter reflects the actual 98% and
+97% values. At 390×844 and 1440×900, the real-Chromium test checks group bounds,
+article ranks, score values, and focus return after close. The in-app browser
+reloaded the versioned assets and visually confirmed the revised drawer.
+
+Tests: Focused source drawer tests passed (14/14). New real-browser source
+drawer test passed, with no page or console errors after stubbing the unrelated
+fixture-only suggestions module. Full `npm test` passed, including all 11 real
+Chromium scenarios. Ruff, Django system check, design token guard, architecture
+budget, JavaScript syntax, and `git diff --check` passed.
+
+Console: No page errors or console errors in the focused Chromium interaction.
+The fixture emits an expected missing-suggestions error without the explicit
+stub; the test isolates that unrelated fixture condition instead of hiding
+application errors.
+
+Responsive validation: Evidence groups remain fully inside the drawer at
+390px and 1440px. Relevance labels remain single-line; article order and
+citation ranks stay unchanged.
+
+Visual score: Evidence drawer 8.8/10 after this cycle; remaining concerns are
+the model-provided answer's redundant introduction/conclusion and the second
+retrieved source (Art. 7º) appearing alongside a question specifically about
+Art. 8º. The latter may be retrieval relevance rather than a UI defect and is
+not changed because this frontend goal explicitly excludes backend/RAG edits.
+
+Regressions: None observed; all evidence remains individually navigable and
+the keyboard close/focus-return behavior is preserved.
+
+Screenshots: The app was visually inspected in the in-app browser and captured
+by the test runner's live DOM measurements. Persistent before/after screenshot
+files are still absent; the current in-app screenshot API does not save to the
+repository. Establish a reproducible capture path during the final audit.
+
+Next action: Continue the full route and keyboard audit, focusing on the
+assistant answer reading hierarchy and the active-conversation shell; then
+establish saved screenshot evidence for the final route matrix.

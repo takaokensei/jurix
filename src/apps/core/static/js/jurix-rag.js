@@ -188,7 +188,7 @@
         const normalized = Math.max(0, Math.min(1, Number.parseFloat(rawScore) || 0));
         return {
             normalized,
-            percent: Math.max(1, Math.min(100, Math.round(normalized * 100))),
+            percent: Math.max(0, Math.min(100, Math.round(normalized * 100))),
         };
     }
 
@@ -207,7 +207,7 @@
         return 'Fonte normativa relacionada';
     }
 
-    function renderEvidenceCard(source, index = 0) {
+    function renderEvidenceCard(source, index = 0, options = {}) {
         const safeSource = source || {};
         const { normalized, percent } = getSourceScore(safeSource);
         const band = normalized >= 0.8 ? 'high' : normalized >= 0.6 ? 'medium' : 'low';
@@ -252,12 +252,10 @@
                 ${linkUrl ? `data-url="${escapeHtml(linkUrl)}"` : ''}
             >
                 <div class="source-card-header">
-                    <div class="source-title">${escapeHtml(normaRef)}</div>
+                    ${options.showNormTitle === false ? '' : `<div class="source-title">${escapeHtml(normaRef)}</div>`}
                     <div class="source-score" aria-label="${escapeHtml(relevanceLabel)}. Pontuação técnica: ${percent}%">
                         <span class="jurix-rag-score-label">Relevância</span>
-                        <div class="score-bar" aria-hidden="true">
-                            <div class="score-fill score-fill-${band}"></div>
-                        </div>
+                        <progress class="jurix-rag-score-meter jurix-rag-score-meter--${band}" max="100" value="${percent}" aria-hidden="true"></progress>
                         <span class="jurix-rag-score-text">${escapeHtml(relevanceLabel)}</span>
                     </div>
                 </div>
@@ -367,25 +365,67 @@
         };
     }
 
+    function groupEvidenceByNorm(sources) {
+        const groups = [];
+        const groupsByKey = new Map();
+
+        sources.forEach((source, index) => {
+            const normName = String(source?.norma || source?.norma_ref || '').trim();
+            const normalizedName = normName
+                .normalize('NFKD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, '');
+            // Unknown titles are kept separate: grouping them could imply that
+            // unrelated evidence belongs to the same legal instrument.
+            const key = normalizedName || `unknown-source-${index}`;
+            let group = groupsByKey.get(key);
+            if (!group) {
+                group = { key, title: normName || 'Norma não identificada', sources: [] };
+                groupsByKey.set(key, group);
+                groups.push(group);
+            }
+            group.sources.push({ source, index });
+        });
+
+        return groups;
+    }
+
     function openSourcesDrawer(sources = [], title = 'Fontes Consultadas') {
         const dom = ensureDrawerDOM();
         const { backdrop, panel, body, titleEl, subtitleEl } = dom;
         if (!panel || !body) return;
         lastSourceTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
-        const count = Array.isArray(sources) ? sources.length : 0;
+        const safeSources = Array.isArray(sources) ? sources : [];
+        const count = safeSources.length;
+        const groups = groupEvidenceByNorm(safeSources);
         if (titleEl) titleEl.textContent = `${title} (${count})`;
         if (subtitleEl) {
-            subtitleEl.textContent = `${count} ${count === 1 ? 'dispositivo recuperado' : 'dispositivos recuperados'} do corpus municipal de Natal.`;
+            const evidenceLabel = count === 1 ? 'evidência' : 'evidências';
+            const normLabel = groups.length === 1 ? 'norma' : 'normas';
+            subtitleEl.textContent = `${count} ${evidenceLabel} em ${groups.length} ${normLabel} do corpus municipal de Natal.`;
         }
 
         body.innerHTML = '';
-        if (Array.isArray(sources)) {
-            sources.forEach((source, index) => {
-                const cardHtml = renderEvidenceCard(source, index);
-                body.insertAdjacentHTML('beforeend', cardHtml);
+        groups.forEach((group, groupIndex) => {
+            const groupSection = document.createElement('section');
+            groupSection.className = 'jurix-source-group';
+            groupSection.setAttribute('aria-labelledby', `jurix-source-group-title-${groupIndex}`);
+            const evidenceLabel = group.sources.length === 1 ? '1 evidência' : `${group.sources.length} evidências`;
+            groupSection.innerHTML = `
+                <header class="jurix-source-group__header">
+                    <h4 class="jurix-source-group__title" id="jurix-source-group-title-${groupIndex}">${escapeHtml(group.title)}</h4>
+                    <span class="jurix-source-group__count">${evidenceLabel}</span>
+                </header>
+                <div class="jurix-source-group__cards"></div>
+            `;
+            const cards = groupSection.querySelector('.jurix-source-group__cards');
+            group.sources.forEach(({ source, index }) => {
+                cards.insertAdjacentHTML('beforeend', renderEvidenceCard(source, index, { showNormTitle: false }));
             });
-        }
+            body.appendChild(groupSection);
+        });
         if (!body.children.length) {
             body.innerHTML = `
                 <div class="jurix-sources-empty" role="status">

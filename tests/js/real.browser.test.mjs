@@ -1361,3 +1361,82 @@ test('real browser: norm comparison stacks both labelled versions on mobile with
     server.close();
   }
 });
+
+test('real browser: evidence drawer groups same-norm citations without hiding article detail', async () => {
+  const server = createTestServer();
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    const browserErrors = [];
+    page.on('pageerror', (error) => browserErrors.push(error.message));
+    page.on('console', (message) => {
+      if (message.type() === 'error') browserErrors.push(message.text());
+    });
+    await page.setViewport({ width: 390, height: 844 });
+    await page.evaluateOnNewDocument(() => {
+      window.JurixDynamicSuggestions = { refresh: async () => {} };
+    });
+    await page.goto(`http://127.0.0.1:${port}/assistente/`, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      const trigger = document.createElement('button');
+      trigger.id = 'test-source-trigger';
+      trigger.textContent = 'Ver fontes';
+      document.body.appendChild(trigger);
+      trigger.focus();
+      window.JurixRagUI.openSourcesDrawer([
+        { norma: 'Lei nº 8206/2026', dispositivo_ref: 'Art. 8º', text: 'Vigência na publicação.', similarity_score: 0.98 },
+        { norma: 'Lei nº 8.206/2026', dispositivo_ref: 'Art. 7º', text: 'Execução orçamentária.', similarity_score: 0.97 },
+        { norma: 'Lei nº 8205/2026', dispositivo_ref: 'Art. 1º', text: 'Outra norma.', similarity_score: 0.83 },
+      ]);
+    });
+
+    const mobile = await page.evaluate(() => {
+      const panel = document.getElementById('jurix-sources-drawer-panel');
+      const rect = (element) => {
+        const box = element.getBoundingClientRect();
+        return { left: box.left, right: box.right, width: box.width };
+      };
+      return {
+        groups: [...panel.querySelectorAll('.jurix-source-group')].map((group) => ({
+          title: group.querySelector('h4')?.textContent,
+          cards: group.querySelectorAll('.source-card').length,
+          ranks: [...group.querySelectorAll('[data-evidence-rank]')].map((card) => card.dataset.evidenceRank),
+          scores: [...group.querySelectorAll('.jurix-rag-score-meter')].map((meter) => meter.value),
+          scoreHeights: [...group.querySelectorAll('.jurix-rag-score-text')].map((text) => text.getBoundingClientRect().height),
+          bounds: rect(group),
+        })),
+        subtitle: panel.querySelector('#sources-drawer-subtitle')?.textContent,
+        width: innerWidth,
+      };
+    });
+    assert.equal(mobile.groups.length, 2);
+    assert.equal(mobile.groups[0].cards, 2);
+    assert.deepEqual(mobile.groups[0].ranks, ['1', '2']);
+    assert.deepEqual(mobile.groups[0].scores, [98, 97]);
+    assert.deepEqual(mobile.groups[1].scores, [83]);
+    assert.ok(mobile.groups.every((group) => group.scoreHeights.every((height) => height < 24)), 'Relevance labels must stay on one line');
+    assert.match(mobile.subtitle, /3 evidências em 2 normas/);
+    assert.ok(mobile.groups.every((group) => group.bounds.left >= 0 && group.bounds.right <= mobile.width));
+
+    await page.setViewport({ width: 1440, height: 900 });
+    const desktopBounds = await page.$eval('.jurix-sources-drawer-panel.is-open .jurix-source-group', (group) => {
+      const { left, right } = group.getBoundingClientRect();
+      return { left, right, width: innerWidth };
+    });
+    assert.ok(desktopBounds.left >= 0 && desktopBounds.right <= desktopBounds.width);
+
+    await page.click('#jurix-sources-drawer-close');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'test-source-trigger');
+    assert.deepEqual(browserErrors, [], `Evidence drawer should not produce browser errors: ${browserErrors.join('; ')}`);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});

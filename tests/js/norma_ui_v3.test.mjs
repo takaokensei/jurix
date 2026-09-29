@@ -63,6 +63,15 @@ test('norm catalog uses the shared workspace shell instead of the legacy navbar'
   assert.doesNotMatch(template, /navbar-container|theme-toggle-navbar/);
 });
 
+test('changed assistant and workspace visual assets use cache-busted URLs', async () => {
+  const chat = await read('src/apps/legislation/templates/legislation/chatbot.html');
+  const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
+  assert.match(chat, /css\/jurix-figma\.css['"] %\}\?v=/);
+  assert.match(chat, /css\/jurix-rag\.css['"] %\}\?v=/);
+  assert.match(chat, /js\/jurix-rag\.js['"] %\}\?v=/);
+  assert.match(workspace, /css\/jurix-figma\.css['"] %\}\?v=/);
+});
+
 test('collection empty state separates account limitation from public exploration', async () => {
   const source = await read('src/apps/legislation/templates/legislation/workspace/collections.html');
   assert.match(source, /workspace-auth-notice/);
