@@ -2263,3 +2263,63 @@ intended by the persistence test.
 Next action: Continue the final audit through direct settings and history
 recovery, then classify remaining acceptance items as verified, open frontend
 defect, or backend-only dependency without expanding into backend changes.
+
+## Cycle 57 — 2026-09-29
+
+Area: Recheck of reported palette, shell consistency, norm metadata and empty
+states.
+
+Goal: Verify each item in the latest UI issue list against current templates,
+styles and the running application; fix any residual frontend defects.
+
+Observed problems: The `/normas/` page already extends the shared workspace
+base and the command palette already renders trusted SVG markup as actual SVG
+elements. The collections page already separates empty state, account
+availability and public-corpus action. Settings already has a visible blue
+select chevron, and legal-search empty state uses compact padding. In the norm
+card stylesheet, however, a later duplicate rule overrode earlier secondary
+metadata styling: labels remained 9px and values 12px. The chat sidebar had
+the same navigation and utility actions as the shared shell, but placed Normas
+before Pesquisa Jurídica.
+
+Changes made: Corrected the effective norm metadata rules to 10px labels with
+less tracking and 13px/600 values, keeping publication and validity subordinate
+to the 18–22px norm title. Aligned chat navigation order with the shared shell
+and added a cache-busted stylesheet URL. Updated the existing UI contracts to
+assert the effective metadata hierarchy and menu ordering. No backend code or
+API behavior changed.
+
+Browser validation: Opened the live `/normas/` page and confirmed the common
+sidebar, topbar, filters and result cards. Opened `/assistente/` and confirmed
+the same nav ordering, settings and quick-search actions remain available in
+the active conversation layout. The active answer still contains irrelevant
+signatory boilerplate; this is the previously recorded backend/RAG quality
+issue and is outside the frontend-only contract.
+
+Tests: Frontend `npm test` passed: 22 structural contracts, 20 real Chromium
+scenarios, 15 streaming/persistence checks, security/CSP, settings and
+contrast tests. The SVG visibility regression explicitly asserts the raw
+`viewBox` string is not visible in palette text. The first run caught the new
+menu-order assertion checking URL occurrences outside the nav; the assertion
+was narrowed to the nav markup and passed on rerun. Full Python suite remains
+green from Cycle 55 (652 passed, 6 skipped); this cycle changes only CSS,
+templates and frontend test assertions.
+
+Console: No failed requests or unexpected console errors observed during the
+live route inspection.
+
+Responsive validation: Existing Chromium suite covers 390px mobile, compact
+sidebar, command palette, and norm-list filter clearing. Norm cards use the
+same responsive layout with improved readable metadata.
+
+Visual score: Norm title now has a clearer typographic lead over dates while
+retaining enough contrast and size for secondary data. Workspace and assistant
+nav content/order are aligned. The assistant keeps its specialized
+conversation canvas, but shared topbar and navigation behavior are consistent.
+
+Regressions: None observed after the complete frontend suite passed.
+
+Next action: Continue the acceptance audit on settings, collections and search
+at narrow viewport widths; keep structural chat-shell consolidation and
+backend-generated answer quality as separate open items if further evidence
+shows material inconsistency.

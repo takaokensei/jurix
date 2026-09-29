@@ -444,8 +444,6 @@
 }
 
 .jurix-norma-card-facts { opacity: .86; }
-.jurix-norma-fact-label { font-size: 9px; letter-spacing: .12em; }
-.jurix-norma-fact-value { font-size: 12px; font-weight: 500; }
 
 .jurix-norma-card-ementa {
     margin: 0;
@@ -477,19 +475,19 @@
     display: block;
     margin-bottom: 4px;
     color: var(--norma-text-muted);
-    font-size: 9px;
+    font-size: 10px;
     line-height: 1.2;
-    font-weight: 800;
-    letter-spacing: 0.1em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
 }
 
 .jurix-norma-fact-value {
     display: block;
     color: var(--norma-text-soft);
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.4;
-    font-weight: 650;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

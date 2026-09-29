@@ -64,7 +64,7 @@ test('norma template exposes semantic filters and no hardcoded suggestion cards'
   assert.match(source, /name="ordenar"/);
   assert.match(source, /jurix-norma-grid/);
   assert.match(source, /jurix-norma-list\.js['"] %\}\?v=20260929-search-reset1/);
-  assert.match(source, /jurix-norma-list\.css['"] %\}\?v=20260929-search-reset1/);
+  assert.match(source, /jurix-norma-list\.css['"] %\}\?v=20260929-metadata-hierarchy1/);
 });
 
 test('chat sidebar exposes the same quick-search action as the workspace shell', async () => {
@@ -75,6 +75,8 @@ test('chat sidebar exposes the same quick-search action as the workspace shell',
   assert.match(source, /Busca rápida/);
   assert.match(source, /workspace:settings/);
   assert.match(source, /<aside[^>]+id="sidebar"/);
+  const nav = source.slice(source.indexOf('class="figma-nav-list"'), source.indexOf('<!-- Sidebar Footer -->'));
+  assert.ok(nav.indexOf("workspace:legal_search") < nav.indexOf("legislation:norma_list"), 'Chat navigation should follow the shared shell order');
   assert.match(workspace, /<aside class="workspace-sidebar" id="sidebar"/);
   assert.match(topbar, /aria-controls="sidebar"[\s\S]*aria-expanded="false"/);
 });
@@ -149,8 +151,8 @@ test('workspace selects use a clearly visible chevron and norm facts stay second
   const workspaceStyles = await read('src/apps/core/static/css/workspace.css');
   const normaStyles = await read('src/apps/core/static/css/jurix-norma-list.css');
   assert.match(workspaceStyles, /linear-gradient\(45deg, transparent 50%, var\(--figma-blue-light\) 50%\)/);
-  assert.match(normaStyles, /\.jurix-norma-fact-label[\s\S]*?font-size: 9px/);
-  assert.match(normaStyles, /\.jurix-norma-fact-value[\s\S]*?font-size: 12px/);
+  assert.match(normaStyles, /\.jurix-norma-fact-label\s*\{[\s\S]*?font-size: 10px;[\s\S]*?letter-spacing: 0\.08em;/);
+  assert.match(normaStyles, /\.jurix-norma-fact-value\s*\{[\s\S]*?font-size: 13px;[\s\S]*?font-weight: 600;/);
   assert.match(normaStyles, /\.jurix-norma-card-title[\s\S]*?font: 700 clamp\(18px/);
 });
 
