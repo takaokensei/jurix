@@ -1257,3 +1257,38 @@ remain applicable.
 
 Next action: Keep auditing actual routes for keyboard/reduced-motion issues,
 then add accessibility checks for collection dialogs and comparison reading.
+
+## Cycle 28 — 2026-09-29
+
+Area: Assistant navigation focus parity and production dark-text contrast.
+
+Goal: Check the assistant's separate sidebar implementation and verify the
+small, secondary text used on legal evidence surfaces against measurable
+contrast requirements.
+
+Observed problems: The assistant shell had the same hidden-tab-stop issue as
+the workspace shell: its collapsed sidebar items were at x=-224..-17px but
+still keyboard reachable. Separately, `--figma-text-dim` measured 3.73:1 on
+the main graphite surface, below WCAG AA for normal-sized text; the token is
+used by the source-drawer subtitle and legal comparison metadata.
+
+Changes made: Applied inert/aria-hidden and focus-entry behavior to the
+assistant sidebar, with breakpoint restoration and real-browser assertions.
+Raised the dim-text token to `#7788A0`, which preserves its secondary role
+while exceeding 4.5:1 on the root, card, and control surfaces. Added a
+contrast-contract test and bumped the shared stylesheet cache key.
+
+Browser validation: Reproduced invisible focus stops on the real Django
+assistant route. The strengthened Chromium scenario passes. Updated the 30
+`after/` screenshots and confirmed both before/after manifests have zero
+flagged routes, errors, failed requests, or overflows.
+
+Tests: Contrast contract passed; full frontend suite passed once after the
+assistant-sidebar changes, including 13/13 browser tests. One unrelated
+stream-interruption/retry browser case intermittently times out while its
+submit event is being processed; it passes on isolated reruns, so it remains
+on the investigation list rather than being hidden by a larger timeout.
+`git diff --check` passed.
+
+Next action: Audit the retry race with deterministic instrumentation, then
+continue mobile dialog and comparison-reading accessibility checks.
