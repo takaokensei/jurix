@@ -2003,3 +2003,44 @@ backend comparison work and remains outside this frontend-only cycle.
 
 Next action: Continue through empty/error routes and workspace forms, testing
 submission, validation recovery, focus return and mobile layout in the live app.
+
+## Cycle 51 — 2026-09-29
+
+Area: Norma search empty state, clear controls and filter recovery.
+
+Goal: Ensure clearing a search restores results instead of only changing the
+input text, while preserving the user's other filters.
+
+Observed problems: A live search for an impossible term returned zero norms.
+Pressing Escape or activating “Limpar pesquisa” cleared the visible input but
+left stale zero-result content and the old query in the URL. Separately, the
+clear button's author `display:grid` rule overrode the native `hidden` state,
+so an empty search still exposed a purposeless clear control.
+
+Changes made: Escape and the clear button now submit the filter form with the
+search field excluded from submission, preserving type/year/order filters and
+returning to a clean query URL. Added an explicit `[hidden]` CSS rule, cache
+busting for both changed frontend assets, and a real-Chromium test that checks
+button and keyboard clearing, results recovery and preserved filters.
+
+Browser validation: On the live `/normas/` route, an impossible query showed
+the empty state. Clearing via Escape restored 10 results while retaining the
+selected type filter. A fresh unfiltered page no longer exposes the empty clear
+button. The same click and Escape cases passed in a real Chromium test fixture.
+
+Tests: Full `npm test` passed, including 20 real-Chromium scenarios, 20
+structural contracts, 15 streaming/persistence checks, composer lifecycle and
+contrast checks. `git diff --check` passed.
+
+Console: Route capture completed 30 views with zero needing review.
+
+Responsive validation: Capture covered 390×844, 1280×800 and 1440×900; no
+horizontal overflow or navigation failures were reported.
+
+Visual score: Clear-search affordance now appears only when useful; the empty
+state has a working recovery path and filter state remains predictable.
+
+Regressions: None observed.
+
+Next action: Continue cross-route testing on settings, collection forms,
+history recovery and legal search; inspect direct URLs and mobile input states.

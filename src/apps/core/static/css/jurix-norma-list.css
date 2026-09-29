@@ -225,6 +225,7 @@
     background: transparent;
     cursor: pointer;
 }
+.jurix-norma-clear[hidden] { display: none !important; }
 
 .jurix-norma-clear:hover,
 .jurix-norma-clear:focus-visible {

@@ -167,6 +167,22 @@ function createTestServer(handlers = {}) {
       </div></main><script src="/static/js/jurix-legal-tree.js"></script></body></html>`);
     }
 
+    if (url.pathname === '/norma-search-test/') {
+      const query = url.searchParams.get('q') || '';
+      const type = url.searchParams.get('tipo') || '';
+      const escapedQuery = query.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;');
+      const escapedType = type.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;');
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(`<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>
+        <section aria-label="Filtros de normas"><form method="get" id="norma-filter-form">
+          <input id="norma-search-input" type="search" name="q" aria-label="Pesquisar normas" value="${escapedQuery}">
+          <button id="norma-search-clear" type="button" aria-label="Limpar pesquisa" ${query ? '' : 'hidden'}>×</button>
+          <select name="tipo" aria-label="Tipo"><option value="">Todos</option><option value="Lei" ${type === 'Lei' ? 'selected' : ''}>Lei</option></select>
+          <button type="submit">Pesquisar</button>
+        </form></section><p id="results">${query ? '0 resultados' : '3 resultados'}</p>
+        <script src="/static/js/jurix-norma-list.js"></script></body></html>`);
+    }
+
     if (url.pathname === '/compare/') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(`<!doctype html><html lang="pt-BR"><head>
@@ -2219,6 +2235,39 @@ test('real browser: evidence drawer groups same-norm citations without hiding ar
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'test-source-trigger');
     assert.equal(await page.$eval('#jurix-sources-drawer-panel', (panel) => panel.inert), true);
     assert.deepEqual(browserErrors, [], `Evidence drawer should not produce browser errors: ${browserErrors.join('; ')}`);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: clearing a norma search refreshes results and preserves other filters', async () => {
+  const server = createTestServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto(`http://127.0.0.1:${port}/norma-search-test/?q=sem-resultados&tipo=Lei`, { waitUntil: 'domcontentloaded' });
+    await page.click('#norma-search-clear');
+    await page.waitForFunction(() => location.search === '?tipo=Lei');
+    assert.equal(await page.$eval('#norma-search-input', (input) => input.value), '');
+    assert.equal(await page.$eval('#results', (node) => node.textContent), '3 resultados');
+
+    await page.goto(`http://127.0.0.1:${port}/norma-search-test/?q=sem-resultados&tipo=Lei`, { waitUntil: 'domcontentloaded' });
+    await page.focus('#norma-search-input');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => location.search === '?tipo=Lei');
+    assert.equal(await page.$eval('#norma-search-input', (input) => input.value), '');
+    assert.equal(await page.$eval('#results', (node) => node.textContent), '3 resultados');
+    assert.deepEqual(errors, []);
   } finally {
     await browser.close();
     server.close();

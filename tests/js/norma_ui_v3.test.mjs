@@ -45,6 +45,8 @@ test('norma list controller persists the selected presentation mode', async () =
   assert.match(source, /jurix:norma-view/);
   assert.match(source, /aria-pressed/);
   assert.match(source, /prefers-reduced-motion/);
+  assert.match(source, /function submitSearchReset\(\)/);
+  assert.match(source, /search\.disabled = true;[\s\S]*filterForm\.requestSubmit\(\)/);
 });
 
 test('norma list stylesheet contains mobile, reduced motion and print rules', async () => {
@@ -52,6 +54,7 @@ test('norma list stylesheet contains mobile, reduced motion and print rules', as
   assert.match(source, /@media \(max-width: 720px\)/);
   assert.match(source, /prefers-reduced-motion/);
   assert.match(source, /@media print/);
+  assert.match(source, /\.jurix-norma-clear\[hidden\] \{ display: none !important; \}/);
 });
 
 test('norma template exposes semantic filters and no hardcoded suggestion cards', async () => {
@@ -60,7 +63,8 @@ test('norma template exposes semantic filters and no hardcoded suggestion cards'
   assert.match(source, /name="ano"/);
   assert.match(source, /name="ordenar"/);
   assert.match(source, /jurix-norma-grid/);
-  assert.match(source, /jurix-norma-list.js/);
+  assert.match(source, /jurix-norma-list\.js['"] %\}\?v=20260929-search-reset1/);
+  assert.match(source, /jurix-norma-list\.css['"] %\}\?v=20260929-search-reset1/);
 });
 
 test('chat sidebar exposes the same quick-search action as the workspace shell', async () => {

@@ -7,7 +7,7 @@
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Normas' %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jurix-norma-list.css' %}">
+<link rel="stylesheet" href="{% static 'css/jurix-norma-list.css' %}?v=20260929-search-reset1">
 {% endblock %}
 
 {% block content %}
@@ -181,5 +181,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/jurix-norma-list.js' %}"></script>
+<script src="{% static 'js/jurix-norma-list.js' %}?v=20260929-search-reset1"></script>
 {% endblock %}

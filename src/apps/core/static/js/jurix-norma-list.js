@@ -17,6 +17,14 @@
     const mobileFilterToggle = document.getElementById('norma-filter-toggle');
     const filterGrid = document.getElementById('norma-filter-grid');
 
+    function submitSearchReset() {
+        if (!filterForm || !search) return;
+        // Exclude the cleared field so the URL returns to a genuinely clean query
+        // while retaining type/year/order filters selected by the user.
+        search.disabled = true;
+        filterForm.requestSubmit();
+    }
+
     function setView(view, persist = true) {
         if (!list || !['grid', 'list'].includes(view)) return;
         list.classList.toggle('is-list', view === 'list');
@@ -55,7 +63,7 @@
                 event.preventDefault();
                 search.value = '';
                 syncClear();
-                search.focus();
+                submitSearchReset();
             }
             if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
                 event.preventDefault();
@@ -69,8 +77,8 @@
     clear?.addEventListener('click', () => {
         if (!search) return;
         search.value = '';
-        search.focus();
         clear.hidden = true;
+        submitSearchReset();
     });
 
     mobileFilterToggle?.addEventListener('click', () => {
