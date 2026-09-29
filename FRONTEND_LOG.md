@@ -1292,3 +1292,66 @@ on the investigation list rather than being hidden by a larger timeout.
 
 Next action: Audit the retry race with deterministic instrumentation, then
 continue mobile dialog and comparison-reading accessibility checks.
+
+## Cycle 29 — 2026-09-29
+
+Area: Primary-action contrast on dark surfaces.
+
+Goal: Extend the measurable contrast audit beyond muted metadata to the main
+actions that carry the core legal research workflows.
+
+Observed problems: The white text on the existing primary blue (`#3B82F6`)
+measured only 3.52:1 with the interface's actual near-white text, below the
+4.5:1 AA requirement for normal button labels. This affected prominent actions
+such as “Perguntar sobre esta norma” and the workspace primary CTAs.
+
+Changes made: Darkened the shared primary action color to `#2563EB`, preserving
+the blue visual identity while measuring 4.94:1 against `#F8FAFC`. Added a
+regression check for both the numeric ratio and the workspace button token
+mapping. Cache-busted the common stylesheet for assistant and workspace pages.
+
+Browser validation: Refreshed all 30 after captures and visually compared the
+mobile norm detail: the primary action remains clear, still visually primary,
+and has stronger label contrast. Both before/after manifests remain at 30
+views with zero flagged issues.
+
+Tests: Both automated contrast contracts pass; `git diff --check` passes. The
+broader browser suite still has an intermittent pre-existing retry-stream
+failure under investigation; no test was skipped or weakened.
+
+Next action: Continue the independent retry investigation and the planned
+dialog/comparison keyboard flow checks; keep the full suite green as a release
+gate rather than treating capture success as completion.
+
+## Cycle 30 — 2026-09-29
+
+Area: Streaming error recovery and retry action reachability.
+
+Goal: Resolve the intermittent browser retry failure without widening timeouts
+or weakening the expected recovery behavior.
+
+Observed problems: On intermittent runs, the first partial answer remained
+intact but the retry did not produce a second stream request (`streamAttempts`
+stayed at 1). The retry control is appended after the streaming answer while a
+fixed composer occupies the viewport bottom, so the UI did not guarantee the
+recovery action was brought into the visible interaction area.
+
+Changes made: After rendering the retryable error state, the assistant now
+scrolls its message viewport to the newest content on the next animation
+frame. The real-browser test checks that the retry button is fully inside the
+viewport and receives the pointer at its center before clicking; it still
+asserts successful retry and no duplicate user message.
+
+Browser validation: The strengthened streaming-interruption test passed
+three consecutive isolated Chromium runs. Each verified the visible/uncovered
+retry hit target, second stream response, preserved question, and no duplicate
+messages. This replaces the earlier intermittent retry failure with an
+explicitly tested visibility contract.
+
+Tests: Focused retry scenario passed 3/3. The complete frontend suite then
+passed, including all 13 real-Chromium browser scenarios and both contrast
+contracts. No timeout increase, skip, or weakened assertion was used.
+
+Next action: Run the full suite, then finish the collection-dialog and legal
+comparison keyboard/reduced-motion checks before selecting the next remaining
+product issue.

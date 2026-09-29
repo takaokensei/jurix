@@ -1152,6 +1152,17 @@ test('real browser: stream interruption preserves partial text and user question
 
     const retryButton = await page.waitForSelector('.jurix-rag-retry', { timeout: 5000 });
     assert.ok(retryButton, 'O erro deve oferecer uma ação de retry funcional');
+    const retryHitTarget = await page.$eval('.jurix-rag-retry', (button) => {
+      const rect = button.getBoundingClientRect();
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return {
+        visible: rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= innerHeight,
+        receivesPointer: hit === button || button.contains(hit),
+        rect: { top: rect.top, bottom: rect.bottom },
+        viewportHeight: innerHeight,
+      };
+    });
+    assert.ok(retryHitTarget.visible && retryHitTarget.receivesPointer, `A ação de retry deve estar visível e não obstruída: ${JSON.stringify(retryHitTarget)}`);
     await retryButton.click();
     try {
       await page.waitForFunction(() => document.body.textContent.includes('Resposta recuperada com sucesso.'), { timeout: 6000 });

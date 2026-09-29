@@ -1603,6 +1603,7 @@
                                 if (typeof chatForm.requestSubmit === 'function') chatForm.requestSubmit();
                                 else chatForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
                             });
+                            window.requestAnimationFrame(scrollToBottom);
                         } else {
                             addErrorMessage('Não foi possível concluir a pesquisa.');
                         }
