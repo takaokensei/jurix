@@ -102,7 +102,7 @@ def test_norma_compare_renders_aligned_diff_and_explicit_missing_effective_date(
     norma.save(update_fields=["data_publicacao"])
     response = Client().get(f"/normas/{norma.pk}/compare/")
     body = response.content.decode()
-    assert "Diferenças linha a linha" in body
+    assert "Comparação textual por linhas" in body
     assert "Original (OCR)" in body
     assert "Consolidado" in body
     assert "Art. 1º Texto." in body

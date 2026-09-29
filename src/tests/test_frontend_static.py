@@ -45,8 +45,9 @@ def test_streaming_request_forwards_persisted_search_preferences():
     assert "searchOptions = {}" in api
     assert "...searchOptions" in api
     assert "JurixSearchControls?.getPayload?.()" in chat
-    assert "localStorage.getItem('jurix-preferences')" in chat
-    assert "max_sources: Number(preferences.sources || 5)" in chat
+    assert "localStorage.getItem('jurix-preferences')" in api
+    assert "const preferredSources = Number(preferences.sources)" in api
+    assert "max_sources: Number.isFinite(preferredSources)" in api
 
 
 def test_no_frontend_file_builds_javascript_urls_or_string_evals():

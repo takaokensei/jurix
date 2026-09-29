@@ -2172,3 +2172,45 @@ Django diagnostics while DEBUG is enabled; production mode uses the new page.
 Next action: Finish the remaining manual checks on settings, local history and
 collection paths; then review the full acceptance checklist and unresolved
 backend-only risks without changing out-of-scope services.
+
+## Cycle 55 — 2026-09-29
+
+Area: Full-repository regression suite after frontend template updates.
+
+Goal: Verify the complete Python/Django suite as well as the frontend suite,
+and distinguish product regressions from stale static assertions.
+
+Observed problems: The first full pytest run reported 650 passed, 6 skipped
+and 2 failures. One workspace-route test still expected the old comparison
+heading after the user-facing label was clarified. A frontend static guard
+looked for persisted preference parsing inside `chat.js`, although that
+responsibility is already in `jurix-chat-api.js` and the chat correctly passes
+search controls separately.
+
+Changes made: Updated those two assertions to the current UI wording and actual
+module boundary. No runtime production logic changed in this cycle.
+
+Browser validation: Previous cycles in this run exercised the live norms,
+comparison, tree, collections, history, settings and search routes; the
+production-mode 404 was also opened in the browser. This cycle was test-only.
+
+Tests: Full Python suite passed: 652 passed, 6 skipped, 7 expected
+`DATABASES` override warnings. Frontend `npm test` had passed in Cycle 54:
+20 real-Chromium scenarios, 22 structural contracts, 15 streaming/persistence
+checks, composer lifecycle and contrast checks. Focused tests for the two
+updated assertions passed; `git diff --check` passed.
+
+Console: No runtime code changed; prior route captures reported no unexpected
+console errors or failed requests.
+
+Responsive validation: No visual changes in this test-only cycle. Existing
+capture set covers 390×844, 1280×800 and 1440×900.
+
+Visual score: No visual change. Test guardrails now match the user-visible
+copy and the current modular frontend architecture.
+
+Regressions: None observed after updating the stale expectations.
+
+Next action: Continue the user-requested final pass across settings, history,
+collection actions and command-palette interactions; keep any RAG relevance
+or ranking findings documented as backend-only follow-up.
