@@ -73,6 +73,28 @@ function createTestServer(handlers = {}) {
       return res.end(html);
     }
 
+    if (url.pathname === '/tree-test/') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(`<!doctype html><html lang="pt-BR"><head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" href="data:,">
+        <link rel="stylesheet" href="/static/css/jurix-figma.css">
+        <link rel="stylesheet" href="/static/css/jurix-legacy-shell.css">
+      </head><body class="figma-theme"><main><div class="tree" role="tree" aria-label="Árvore de teste">
+        <div id="article-1" class="tree-node level-0" role="treeitem" aria-level="1" aria-label="Artigo 1" tabindex="-1" aria-expanded="true">
+          <div class="node-header"><span class="node-title">Artigo 1</span><button class="tree-node-toggle" type="button" data-tree-toggle aria-expanded="true" aria-label="Recolher Artigo 1" tabindex="-1"><span aria-hidden="true"></span></button></div>
+          <div class="tree-node-children" role="group">
+            <div id="article-2" class="tree-node level-1" role="treeitem" aria-level="2" aria-label="Artigo 2" tabindex="-1" aria-expanded="true">
+              <div class="node-header"><span class="node-title">Artigo 2</span><button class="tree-node-toggle" type="button" data-tree-toggle aria-expanded="true" aria-label="Recolher Artigo 2" tabindex="-1"><span aria-hidden="true"></span></button></div>
+              <div class="tree-node-children" role="group"><div id="item-I" class="tree-node level-2" role="treeitem" aria-level="3" aria-label="Inciso I" tabindex="-1"><div class="node-header"><span class="node-title">Inciso I</span></div></div></div>
+            </div>
+            <div id="article-3" class="tree-node level-1" role="treeitem" aria-level="2" aria-label="Artigo 3" tabindex="-1"><div class="node-header"><span class="node-title">Artigo 3</span></div></div>
+          </div>
+        </div>
+        <div id="article-4" class="tree-node level-0" role="treeitem" aria-level="1" aria-label="Artigo 4" tabindex="-1"><div class="node-header"><span class="node-title">Artigo 4</span></div></div>
+      </div></main><script src="/static/js/jurix-legal-tree.js"></script></body></html>`);
+    }
+
     if (url.pathname === '/compare/') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(`<!doctype html><html lang="pt-BR"><head>
@@ -1335,6 +1357,80 @@ test('real browser: command palette keeps compact icons and focuses search on mo
 
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => document.getElementById('command-palette-overlay')?.getAttribute('aria-hidden') === 'true');
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: legal device tree supports keyboard and pointer expansion', async () => {
+  const server = createTestServer();
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    const browserErrors = [];
+    page.on('pageerror', (error) => browserErrors.push(error.message));
+    page.on('console', (message) => {
+      if (message.type() === 'error') browserErrors.push(message.text());
+    });
+    await page.setViewport({ width: 390, height: 844 });
+    await page.goto(`http://127.0.0.1:${port}/tree-test/`, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => document.querySelector('#article-1').focus());
+
+    await page.keyboard.press('ArrowRight');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'article-2');
+    await page.keyboard.press('ArrowRight');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'item-I');
+    await page.keyboard.press('ArrowLeft');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'article-2');
+    await page.keyboard.press('ArrowLeft');
+    const collapsedChild = await page.evaluate(() => ({
+      focused: document.activeElement.id,
+      expanded: document.querySelector('#article-2').getAttribute('aria-expanded'),
+      hidden: document.querySelector('#article-2 > [role="group"]').hidden,
+      label: document.querySelector('#article-2 [data-tree-toggle]').getAttribute('aria-label'),
+    }));
+    assert.deepEqual(collapsedChild, {
+      focused: 'article-2',
+      expanded: 'false',
+      hidden: true,
+      label: 'Expandir Artigo 2',
+    });
+
+    await page.keyboard.press('ArrowLeft');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'article-1');
+    await page.keyboard.press('End');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'article-4');
+    await page.keyboard.press('Home');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'article-1');
+
+    const touchTarget = await page.$eval('#article-1 [data-tree-toggle]', (button) => {
+      const rect = button.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    });
+    assert.deepEqual(touchTarget, { width: 44, height: 44 });
+    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+    const reducedMotionDurations = await page.$eval('#article-1 [data-tree-toggle]', (button) => [
+      getComputedStyle(button).transitionDuration,
+      getComputedStyle(button.querySelector('span')).transitionDuration,
+    ]);
+    assert.ok(reducedMotionDurations.every((duration) => Number.parseFloat(duration) <= 0.00001));
+    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
+    await page.click('#article-1 [data-tree-toggle]');
+    const collapsedRoot = await page.evaluate(() => ({
+      focused: document.activeElement.id,
+      expanded: document.querySelector('#article-1').getAttribute('aria-expanded'),
+      hidden: document.querySelector('#article-1 > [role="group"]').hidden,
+    }));
+    assert.deepEqual(collapsedRoot, { focused: 'article-1', expanded: 'false', hidden: true });
+    assert.deepEqual(browserErrors, []);
   } finally {
     await browser.close();
     server.close();

@@ -1,7 +1,7 @@
 {
   "phase": "after",
   "baseUrl": "http://127.0.0.1:8004",
-  "capturedAt": "2026-09-29T18:58:43.155Z",
+  "capturedAt": "2026-09-29T19:16:53.896Z",
   "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "results": [
     {
@@ -339,7 +339,7 @@
       "url": "http://127.0.0.1:8004/normas/3/tree/",
       "viewportWidth": 1440,
       "documentWidth": 1440,
-      "documentHeight": 2971,
+      "documentHeight": 3019,
       "mainVisible": true,
       "horizontalOverflow": false,
       "consoleErrors": [],
@@ -357,7 +357,7 @@
       "url": "http://127.0.0.1:8004/normas/3/tree/",
       "viewportWidth": 1280,
       "documentWidth": 1280,
-      "documentHeight": 2971,
+      "documentHeight": 3019,
       "mainVisible": true,
       "horizontalOverflow": false,
       "consoleErrors": [],
@@ -375,7 +375,7 @@
       "url": "http://127.0.0.1:8004/normas/3/tree/",
       "viewportWidth": 390,
       "documentWidth": 390,
-      "documentHeight": 3404,
+      "documentHeight": 3476,
       "mainVisible": true,
       "horizontalOverflow": false,
       "consoleErrors": [],

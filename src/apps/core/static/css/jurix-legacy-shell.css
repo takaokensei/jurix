@@ -51,6 +51,14 @@ footer p { margin-bottom: var(--jurix-space-1); }
 .tree-node.level-2 { border-left-color: var(--figma-green); background: color-mix(in srgb, var(--figma-green-deep) 18%, transparent); }
 .tree-node.level-3 { border-left-color: var(--figma-blue-light); background: color-mix(in srgb, var(--figma-blue-deep) 18%, transparent); }
 .node-header { font-weight: 600; color: var(--figma-text-white); margin-bottom: 5px; }
+.tree-node[aria-expanded] > .node-header { display: flex; align-items: center; gap: 10px; }
+.tree-node[aria-expanded] > .node-header .node-title { min-width: 0; flex: 1; }
+.tree-node-toggle { display: inline-grid; width: 36px; min-width: 36px; height: 36px; place-items: center; padding: 0; border: 1px solid var(--figma-border-strong); border-radius: 8px; background: var(--figma-bg-button); color: var(--figma-blue-soft); cursor: pointer; transition: background-color var(--jurix-motion-fast), border-color var(--jurix-motion-fast); }
+.tree-node-toggle:hover { border-color: var(--figma-blue-light); background: var(--figma-source-hover); }
+.tree-node-toggle:focus-visible { outline: 2px solid var(--figma-blue-light); outline-offset: 2px; }
+.tree-node-toggle > span { width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translate(-1px, -1px); transition: transform var(--jurix-motion-fast); }
+.tree-node-toggle[aria-expanded="false"] > span { transform: rotate(-45deg) translate(-1px, -1px); }
+.tree-node-children[hidden] { display: none; }
 .node-text { color: var(--figma-text-body); font-size: 14px; line-height: 1.55; padding-left: 16px; }
 .node-meta { font-size: 12px; color: var(--figma-text-muted); margin-top: 4px; }
 @media (max-width:860px) { .compare-container { grid-template-columns: 1fr; } }
@@ -63,4 +71,4 @@ footer p { margin-bottom: var(--jurix-space-1); }
   .compare-diff-row > code { min-width: 0; padding: 9px 10px; border: 1px solid var(--figma-border); border-radius: 8px; background: var(--figma-bg-root) !important; }
   .compare-diff-row > code::before { content: attr(data-label) " · linha " attr(data-line); display: block; margin-bottom: 6px; color: var(--figma-text-muted); font: 700 9px/1.3 Inter, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
 }
-@media (max-width:640px) { .tree-node { margin-left:8px; padding: 8px; } .tree-node-children { margin-top: 8px; } .node-text { padding-left: 8px; } }
+@media (max-width:640px) { .tree-node { margin-left:8px; padding: 8px; } .tree-node-children { margin-top: 8px; } .node-text { padding-left: 8px; } .tree-node-toggle { width: 44px; min-width: 44px; height: 44px; } }

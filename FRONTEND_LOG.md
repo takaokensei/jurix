@@ -804,3 +804,65 @@ tests/js/capture-ui-audit.mjs after` while the local app is running at
 Next action: Continue the full route interaction audit, prioritizing the norm
 detail/timeline and device-tree reading experience; then verify keyboard and
 reduced-motion behavior across the shared shell.
+
+## Cycle 18 — 2026-09-29
+
+Area: Accessible device-tree interaction and responsive affordance.
+
+Goal: Make the normative device tree behave like the ARIA tree widget it
+advertises, including keyboard operation, visible disclosure state, and
+mobile-sized pointer targets.
+
+Observed problems: The real `/normas/3/tree/` accessibility tree exposed
+`role=tree` and `role=treeitem`, but all items were `tabindex=-1`; no script
+handled arrow keys, expansion, or collapse. This left the main legal
+hierarchy unusable from the keyboard and misleading to assistive technology.
+
+Changes made: Added roving focus and Arrow Up/Down/Left/Right plus Home/End
+navigation, Enter/Space expansion, and a visible disclosure control for nodes
+with children. Parent and control `aria-expanded`/labels remain synchronized;
+child groups are hidden when collapsed. Disclosure targets are 44×44px on
+mobile, use existing design tokens and global reduced-motion rules, and do
+not remove device IDs or deep-link targets. No backend or API changes.
+
+Browser validation: Opened the actual Django tree in Chromium; the AX tree now
+reports expandable rows and controls such as “Recolher Art. 2º”. Used Arrow
+Down to focus Art. 2º, Enter to collapse it (its child rows disappear from the
+AX tree and the control changes to “Expandir”), and Arrow Right to restore its
+children. The selected article retains a visible focus ring. The mobile
+before/after capture shows the 44px chevron aligned with the article heading.
+All 30 after-capture views across ten routes at 1440×900, 1280×800, and
+390×844 returned HTTP 200 with visible main content, no horizontal overflow,
+no console errors, no failed requests, and matching filenames to `before/`.
+
+Tests: Full JavaScript suite passed, including 12 real Chromium cases. The new
+tree interaction test covers keyboard navigation, disclosure state, pointer
+activation, mobile target dimensions, reduced-motion duration, and browser
+errors. Full Python suite: 652 passed, 6 skipped, 7 existing Django setting
+override warnings. `manage.py check`, design-token gate, JavaScript syntax,
+route-manifest audit, and `git diff --check` passed.
+
+Console: No application errors on the live route or in the tree interaction
+test. Expected quota-failure logging remains in its dedicated fault-injection
+JavaScript test.
+
+Responsive validation: Tree route remains within 390px document width; the
+disclosure button is 44×44px at 390px and 36×36px on desktop. Nested content
+retains indentation and can be progressively hidden to shorten long statutes.
+
+Visual score: Device tree 8.8/10 after this cycle (estimated 7.7/10 before).
+The hierarchy now communicates depth, focus and expanded/collapsed state;
+copy quality in OCR-derived text remains a corpus limitation rather than a UI
+change.
+
+Regressions: None in the full 652-test Python suite, full JavaScript suite, or
+the 18 Django workspace-route tests. Existing deep-link IDs and the visual
+tree remain intact.
+
+Screenshots: Replaced only the `after/` route images and manifest for this
+cycle; `before/` remains the fixed baseline from before the comparison/tree
+improvements. The two directories still have matching 30-image sets.
+
+Next action: Audit keyboard traversal, visible focus, Escape behavior and
+reduced-motion on the remaining shell controls, then exercise real assistant,
+history, collections and settings interactions before the final audit.

@@ -1,12 +1,16 @@
 {% extends 'legislation/workspace/base.html' %}
+{% load static %}
 
 {% block title %}Estrutura Hierárquica - {{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }}{% endblock %}
 {% block section_name %}Estrutura da norma{% endblock %}
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Estrutura da norma' %}{% endblock %}
 
 {% block extra_css %}
-{% load static %}
-<link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}">
+<link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}?v=20260929-tree-interactions1">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/jurix-legal-tree.js' %}?v=20260929-tree-interactions1" defer></script>
 {% endblock %}
 
 {% block content %}

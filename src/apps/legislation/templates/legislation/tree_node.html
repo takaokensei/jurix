@@ -1,6 +1,11 @@
-<div id="dispositivo-{{ node.dispositivo.pk }}" class="tree-node level-{{ level }}" role="treeitem" aria-level="{{ level|add:1 }}" aria-label="{{ node.dispositivo }}" tabindex="-1">
+<div id="dispositivo-{{ node.dispositivo.pk }}" class="tree-node level-{{ level }}" role="treeitem" aria-level="{{ level|add:1 }}" aria-label="{{ node.dispositivo }}" tabindex="-1"{% if node.children %} aria-expanded="true"{% endif %}>
     <div class="node-header">
-        {{ node.dispositivo }}
+        <span class="node-title">{{ node.dispositivo }}</span>
+        {% if node.children %}
+        <button class="tree-node-toggle" type="button" data-tree-toggle aria-expanded="true" aria-label="Recolher {{ node.dispositivo }}" tabindex="-1">
+            <span aria-hidden="true"></span>
+        </button>
+        {% endif %}
     </div>
     <div class="node-text">
         {{ node.dispositivo.texto|truncatewords:30 }}
@@ -10,7 +15,7 @@
     </div>
     
     {% if node.children %}
-    <div class="tree-node-children">
+    <div class="tree-node-children" role="group">
         {% for child in node.children %}
             {% include 'legislation/tree_node.html' with node=child level=level|add:1 %}
         {% endfor %}

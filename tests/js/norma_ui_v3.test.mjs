@@ -119,7 +119,16 @@ test('version comparison exposes both texts as labelled stacked evidence on mobi
 
 test('public device tree does not present internal extraction confidence as legal certainty', async () => {
   const template = await read('src/apps/legislation/templates/legislation/tree_node.html');
+  const page = await read('src/apps/legislation/templates/legislation/norma_tree.html');
+  const behavior = await read('src/apps/core/static/js/jurix-legal-tree.js');
   assert.match(template, /Tipo: \{\{ node\.dispositivo\.get_tipo_display \}\}/);
+  assert.match(template, /aria-expanded="true"/);
+  assert.match(template, /role="group"/);
+  assert.match(template, /data-tree-toggle/);
+  assert.match(page, /js\/jurix-legal-tree\.js/);
+  for (const key of ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End']) {
+    assert.ok(behavior.includes(`'${key}'`), `tree keyboard behavior must include ${key}`);
+  }
   assert.doesNotMatch(template, /segmentation_confidence|Confiança:/);
   assert.doesNotMatch(template, /Ordem: \{\{ node\.dispositivo\.ordem \}\}/);
 });
