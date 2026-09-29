@@ -1,7 +1,7 @@
 {
   "phase": "after",
   "baseUrl": "http://127.0.0.1:8004",
-  "capturedAt": "2026-09-29T19:16:53.896Z",
+  "capturedAt": "2026-09-29T19:32:34.122Z",
   "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "results": [
     {
@@ -231,7 +231,7 @@
       "url": "http://127.0.0.1:8004/normas/3/",
       "viewportWidth": 1440,
       "documentWidth": 1440,
-      "documentHeight": 3572,
+      "documentHeight": 3666,
       "mainVisible": true,
       "horizontalOverflow": false,
       "consoleErrors": [],
@@ -249,7 +249,7 @@
       "url": "http://127.0.0.1:8004/normas/3/",
       "viewportWidth": 1280,
       "documentWidth": 1280,
-      "documentHeight": 3685,
+      "documentHeight": 3729,
       "mainVisible": true,
       "horizontalOverflow": false,
       "consoleErrors": [],
@@ -267,7 +267,7 @@
       "url": "http://127.0.0.1:8004/normas/3/",
       "viewportWidth": 390,
       "documentWidth": 390,
-      "documentHeight": 6483,
+      "documentHeight": 6617,
       "mainVisible": true,
       "horizontalOverflow": false,
       "consoleErrors": [],

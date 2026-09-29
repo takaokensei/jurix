@@ -101,6 +101,16 @@ test('workspace selects use a clearly visible chevron and norm facts stay second
   assert.match(normaStyles, /\.jurix-norma-card-title[\s\S]*?font: 700 clamp\(18px/);
 });
 
+test('norm actions use a responsive grid instead of stranding the official source link', async () => {
+  const styles = await read('src/apps/core/static/css/jurix-legal-detail.css');
+  const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
+  assert.match(styles, /\.legal-detail-actions\s*\{[^}]*display:\s*grid/);
+  assert.match(styles, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(100%,\s*15rem\),\s*1fr\)\)/);
+  assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*justify-content:\s*center/);
+  assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*min-height:\s*44px/);
+  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260929-action-grid2/);
+});
+
 test('version comparison exposes both texts as labelled stacked evidence on mobile', async () => {
   const template = await read('src/apps/legislation/templates/legislation/norma_compare.html');
   const styles = await read('src/apps/core/static/css/jurix-legacy-shell.css');

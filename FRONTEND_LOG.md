@@ -901,3 +901,57 @@ failure.
 Next action: Continue the full application interaction audit across assistant,
 history, collections, search, settings, norms, detail, comparison, and tree;
 prioritize reproducible keyboard, responsive, and cross-route state bugs.
+
+## Cycle 20 — 2026-09-29
+
+Area: Norm detail action hierarchy and responsive layout.
+
+Goal: Remove the visually stranded official-source action on `/normas/<id>/`
+without changing legal content or application behavior.
+
+Observed problems: At the 1280px browser viewport, the detail header actions
+used wrapping flex layout. Five actions occupied the first row while “Abrir
+fonte oficial no SAPL” appeared alone in the second row. The CSS file was not
+versioned in the template, so browser cache could also retain the previous
+layout after deploy.
+
+Changes made: Replaced the wrapping action row with a responsive CSS grid
+using existing button colors and surfaces; actions align consistently and
+retain centered labels and 44px minimum target height. Added a cache-busting
+version to `jurix-legal-detail.css`. Added a structural regression assertion.
+No backend, model, API, or legal text changed.
+
+Browser validation: Inspected the real `/normas/3/` route in Chromium and
+iterated from an initial 4+2 layout with wrapped primary labels to a balanced
+3×2 grid at 1280px. At 1440px it displays as 4+2; at 390px as one column.
+Measured six controls at 44px or larger, zero document horizontal overflow,
+and no console errors or failed requests at all three widths.
+
+Tests: `npm test` passed, including 12 real Chromium tests and the new
+norm-detail action-grid regression test (14 focused UI tests passed).
+Updated `docs/ui-audit/after/` captures: 30 views across ten routes and three
+viewports, zero views flagged. The before/after manifests still contain
+matching route/view filenames; all 60 views report HTTP 200, visible main
+content, no horizontal overflow, no console errors, failed requests, or bad
+responses. `git diff --check` passed.
+
+Console: No browser console errors on the live norm-detail route at desktop or
+mobile widths.
+
+Responsive validation: The grid resolves to four columns at 1440px, three at
+1280px, and one at 390px. The page document remains within viewport width at
+each size; every action remains reachable and has an adequate hit area.
+
+Visual score: Norm detail action group 8.9/10 after this cycle (estimated
+7.8/10 before); standalone wrapping and variable action placement are gone.
+This score applies only to the action group, not the entire application.
+
+Regressions: None observed in the full JavaScript suite or the live route.
+
+Screenshots: Refreshed all 30 files in `docs/ui-audit/after/`; the norm detail
+captures show balanced actions at desktop widths and stacked actions on mobile.
+
+Next action: Continue remaining UI/UX audit across the norm reading content,
+comparison, search filters/results, history and collection interactions; use
+new-cycle evidence rather than treating the passing route screenshot gate as
+proof that the full product is complete.
