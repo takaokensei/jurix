@@ -3056,3 +3056,27 @@ real-browser interaction. Initial runs exposed an expected-label mismatch in
 the updated partial-state scenario and a stale stylesheet cache-bust assertion;
 both were corrected and the complete suite re-run successfully. `git diff
 --check` passes.
+
+## Cycle 84 — repair persisted legal closing metadata
+
+The source parser already excluded a corroborated SAPL session/signature footer
+from the last article and extracted the official Diário date, but existing
+database rows were never re-segmented after that behavior was introduced. A
+read-only audit found the defect persisted in Lei 8206/2026 (Art. 8º), Lei
+8204/2026 (Art. 4º), and Lei 8201/2026 (Art. 8º): footer/signatures remained
+inside the article and effective date was null.
+
+Added `repair_legal_colophons`, an idempotent management command with a dry-run
+default and explicit `--apply`. It surgically updates the existing final
+article row (stable PKs preserve alteration-event references), fills missing
+publication metadata, infers effective date only for an explicit “entra em
+vigor na data de sua publicação” clause, rebuilds consolidated text, and bumps
+the RAG corpus cache. Applying it to those three records removed the footer;
+effective dates now equal official publication dates (21/09/2026, 21/09/2026,
+and 09/09/2026). A second dry-run found zero remaining corrections.
+
+Added a Django regression covering dry-run, apply, preserved event/device
+reference, article body, publication/effective date, rebuilt text, and
+idempotence. Validation: Python suite 666 passed, 6 skipped, 7 warnings;
+JavaScript suite 131/131; targeted Ruff, `manage.py check`, and `git diff
+--check` passed.

@@ -549,3 +549,71 @@ def test_publication_metadata_does_not_invent_dates():
         "Sala das Sessões, em Natal, 20 de agosto de 2026."
     )
     assert metadata == {"data_publicacao": None, "vigencia_na_publicacao": True}
+
+
+@pytest.mark.django_db
+def test_repair_existing_legal_colophon_preserves_device_references_and_dates():
+    from datetime import date
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
+
+    original = """Art. 1º Objeto da Lei.
+Art. 2º Disposições gerais.
+Art. 3º O Poder Executivo regulamentará esta Lei, estabelecendo normas necessárias.
+Art. 4º Esta Lei entra em vigor na data de sua publicação. Sala das Sessões, em Natal,
+20 de agosto de 2026. Eriko Jácome - Presidente Kleber Fernandes - Primeiro Secretário
+Camila Araújo - Segunda Secretária Publicada no Diário Oficial do Município em:
+21/9/2026 Autoria: Hermes Câmara. ESTADO DO RIO GRANDE DO NORTE
+CÂMARA MUNICIPAL DE NATAL"""
+    norma = Norma.objects.create(
+        tipo="Lei", numero="8204", ano=2026, texto_original=original, status="consolidated"
+    )
+    article = Dispositivo.objects.create(
+        norma=norma,
+        tipo="artigo",
+        numero="4º",
+        texto=(
+            "Esta Lei entra em vigor na data de sua publicação. Sala das Sessões, em Natal, "
+            "20 de agosto de 2026. Eriko Jácome - Presidente Kleber Fernandes - Primeiro "
+            "Secretário Camila Araújo - Segunda Secretária Publicada no Diário Oficial do "
+            "Município em: 21/9/2026 Autoria: Hermes Câmara. ESTADO DO RIO GRANDE DO NORTE "
+            "CÂMARA MUNICIPAL DE NATAL"
+        ),
+        ordem=4,
+    )
+    other_norma = Norma.objects.create(tipo="Lei", numero="9000", ano=2026)
+    source = Dispositivo.objects.create(
+        norma=other_norma, tipo="artigo", numero="1º", texto="Referência.", ordem=1
+    )
+    event = EventoAlteracao.objects.create(
+        dispositivo_fonte=source,
+        acao="REFERENCIA",
+        target_text="Art. 4º",
+        norma_alvo=norma,
+        dispositivo_alvo=article,
+    )
+
+    preview = StringIO()
+    call_command("repair_legal_colophons", "--norma-id", str(norma.pk), stdout=preview)
+    article.refresh_from_db()
+    norma.refresh_from_db()
+    assert "Correção disponível" in preview.getvalue()
+    assert "Sala das Sessões" in article.texto
+    assert norma.data_vigencia is None
+
+    call_command("repair_legal_colophons", "--norma-id", str(norma.pk), "--apply", stdout=StringIO())
+    article.refresh_from_db()
+    norma.refresh_from_db()
+    event.refresh_from_db()
+    assert article.texto == "Esta Lei entra em vigor na data de sua publicação."
+    assert norma.data_publicacao == date(2026, 9, 21)
+    assert norma.data_vigencia == date(2026, 9, 21)
+    assert "Sala das Sessões" not in norma.texto_consolidado
+    assert event.dispositivo_alvo_id == article.pk
+
+    rerun = StringIO()
+    call_command("repair_legal_colophons", "--norma-id", str(norma.pk), "--apply", stdout=rerun)
+    assert "correções aplicadas: 0" in rerun.getvalue()
