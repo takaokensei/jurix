@@ -657,7 +657,7 @@
 @media (max-width: 620px) {
     .jurix-normas-page .container { width: min(100% - 20px, 540px); padding-bottom: 42px; }
     .jurix-norma-shell { gap: 18px; padding-top: 22px; }
-    .jurix-norma-title { font-size: clamp(30px, 11vw, 44px); }
+    .jurix-norma-title { font-size: clamp(30px, 11vw, 44px); line-height: 1.12; }
     .jurix-norma-subtitle { font-size: 14px; line-height: 1.62; }
     .jurix-norma-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
     .jurix-norma-stat { min-height: 82px; padding: 12px 13px; }
@@ -887,7 +887,7 @@
 @media (max-width: 620px) {
     .jurix-normas-page .container { width: min(100% - 20px, 540px); padding-bottom: 42px; }
     .jurix-norma-shell { gap: 18px; padding-top: 22px; }
-    .jurix-norma-title { font-size: clamp(30px, 11vw, 44px); }
+    .jurix-norma-title { font-size: clamp(30px, 11vw, 44px); line-height: 1.12; }
     .jurix-norma-subtitle { font-size: 14px; line-height: 1.62; }
     .jurix-norma-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
     .jurix-norma-page-link,

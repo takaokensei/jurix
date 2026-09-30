@@ -117,7 +117,7 @@ test('norma template exposes semantic filters and no hardcoded suggestion cards'
   assert.match(source, /jurix-norma-grid/);
   assert.match(source, /placeholder="Número, tipo ou ementa…"/);
   assert.match(source, /jurix-norma-list\.js['"] %\}\?v=20260929-identifier-search1/);
-  assert.match(source, /jurix-norma-list\.css['"] %\}\?v=20260930-status-contrast1/);
+  assert.match(source, /jurix-norma-list\.css['"] %\}\?v=20260930-mobile-title-rhythm1/);
 });
 
 test('legal search placeholder stays concise while examples remain available in the empty state', async () => {
@@ -406,6 +406,13 @@ test('norma detail gives legal devices clear document hierarchy and readable bod
   assert.match(styles, /\.dispositivo-text\s*\{[^}]*max-width:88ch[^}]*text-align:left[^}]*line-height:1\.75/);
   assert.match(styles, /\.dispositivo-node\[data-level="4"\]/);
   assert.match(styles, /@media \(max-width:640px\)[\s\S]*?\.dispositivo-node\[data-level="4"\]\s*\{[^}]*margin-inline-start:24px/);
+});
+
+test('norm list mobile title keeps comfortable line spacing when it wraps', async () => {
+  const styles = await read('src/apps/core/static/css/jurix-norma-list.css');
+  const template = await read('src/apps/legislation/templates/legislation/norma_list.html');
+  assert.equal((styles.match(/\.jurix-norma-title \{ font-size: clamp\(30px, 11vw, 44px\); line-height: 1\.12; \}/g) || []).length, 2);
+  assert.match(template, /jurix-norma-list\.css['"] %\}\?v=20260930-mobile-title-rhythm1/);
 });
 
 test('quill identity is cache-busted and source reveal animates only on expansion', async () => {

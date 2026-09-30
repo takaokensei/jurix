@@ -37,6 +37,7 @@ if (!browserPath) throw new Error('Chrome/Edge executable not found.');
 
 const routes = [
   ['assistant', '/assistente/'],
+  ['source-drawer', '/assistente/'],
   ['command-palette', '/normas/'],
   ['search-empty', '/pesquisa/'],
   ['search-results', '/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0'],
@@ -113,6 +114,33 @@ try {
           await page.click('#command-palette-trigger');
           await page.type('#command-palette-input', 'normas');
           await page.waitForSelector('.command-palette-item[data-command-id="norms"][aria-selected="true"]');
+        }
+        if (routeName === 'source-drawer') {
+          await page.evaluate(() => {
+            window.JurixRagUI.openSourcesDrawer([
+              { norma: 'Lei nº 8204/2026', dispositivo_ref: 'Art. 1º', full_text: 'Fica instituída a Política de Combate a Imóveis Abandonados Causadores de Degradação Urbana (PCIA) no Município de Natal, com o objetivo de identificar, notificar, recuperar e reutilizar imóveis abandonados a fim de promover a revitalização urbana.', pdf_url: 'https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2026/9385/lei_no_8.204_2026.pdf', similarity_score: 0.98 },
+              { norma: 'Lei nº 8204/2026', dispositivo_ref: 'Art. 4º', full_text: 'Esta Lei entra em vigor na data de sua publicação.', pdf_url: 'https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2026/9385/lei_no_8.204_2026.pdf', similarity_score: 0.94 },
+              { norma: 'Lei nº 8205/2026', dispositivo_ref: 'Art. 1º', full_text: 'Fica instituído, no Calendário Oficial de Eventos do Município de Natal, o Dia da Educação Popular, a ser celebrado anualmente em 2 de abril, em referência à conclusão da experiência de alfabetização das “40 Horas de Angicos”, realizada em 1963 sob coordenação de Paulo Freire.', pdf_url: 'https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2026/9386/lei_no_8.205_2026.pdf', similarity_score: 0.83 },
+            ]);
+          });
+          await page.waitForSelector('.jurix-sources-drawer-panel.is-open .jurix-source-group');
+          await page.click('.jurix-source-group__header');
+          await page.waitForFunction(() => document.querySelector('.jurix-source-group')?.open);
+          const partialState = await page.$eval('.jurix-source-group-toggle-all', (button) => button.dataset.state);
+          if (partialState !== 'partially-open') throw new Error(`Expected partial evidence state, got ${partialState}`);
+          await page.click('.jurix-source-group-toggle-all');
+          await page.waitForFunction(() => [...document.querySelectorAll('.jurix-source-group')].every((group) => group.open));
+          await new Promise((resolve) => setTimeout(resolve, 220));
+          interactionChecks.push({
+            control: 'evidence drawer (local sample data)',
+            groups: await page.$$eval('.jurix-source-group', (groups) => groups.map((group) => ({
+              title: group.querySelector('.jurix-source-group__title')?.textContent.trim(),
+              evidenceCount: group.querySelectorAll('.source-card').length,
+              open: group.open,
+            }))),
+            expandAllState: await page.$eval('.jurix-source-group-toggle-all', (button) => button.dataset.state),
+            noHorizontalOverflow: await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+          });
         }
         if (routeName === 'norm-detail') {
           const disclosure = await page.$('.legal-detail-ementa--expandable');

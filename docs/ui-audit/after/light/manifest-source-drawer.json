@@ -1,0 +1,197 @@
+{
+  "phase": "after",
+  "theme": "light",
+  "routeFilter": [
+    "source-drawer"
+  ],
+  "baseUrl": "http://127.0.0.1:8004",
+  "capturedAt": "2026-09-30T17:58:20.915Z",
+  "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "results": [
+    {
+      "route": "source-drawer",
+      "requestedPath": "/assistente/",
+      "viewport": "1440x900",
+      "screenshot": "source-drawer-1440x900.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Assistente Jurídico - Jurix",
+      "url": "http://127.0.0.1:8004/assistente/",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "documentHeight": 900,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "evidence drawer (local sample data)",
+          "groups": [
+            {
+              "title": "Lei nº 8204/2026",
+              "evidenceCount": 2,
+              "open": true
+            },
+            {
+              "title": "Lei nº 8205/2026",
+              "evidenceCount": 1,
+              "open": true
+            }
+          ],
+          "expandAllState": "all-open",
+          "noHorizontalOverflow": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "source-drawer",
+      "requestedPath": "/assistente/",
+      "viewport": "1024x768",
+      "screenshot": "source-drawer-1024x768.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Assistente Jurídico - Jurix",
+      "url": "http://127.0.0.1:8004/assistente/",
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "documentHeight": 768,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "evidence drawer (local sample data)",
+          "groups": [
+            {
+              "title": "Lei nº 8204/2026",
+              "evidenceCount": 2,
+              "open": true
+            },
+            {
+              "title": "Lei nº 8205/2026",
+              "evidenceCount": 1,
+              "open": true
+            }
+          ],
+          "expandAllState": "all-open",
+          "noHorizontalOverflow": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "source-drawer",
+      "requestedPath": "/assistente/",
+      "viewport": "768x1024",
+      "screenshot": "source-drawer-768x1024.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Assistente Jurídico - Jurix",
+      "url": "http://127.0.0.1:8004/assistente/",
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "documentHeight": 1024,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "evidence drawer (local sample data)",
+          "groups": [
+            {
+              "title": "Lei nº 8204/2026",
+              "evidenceCount": 2,
+              "open": true
+            },
+            {
+              "title": "Lei nº 8205/2026",
+              "evidenceCount": 1,
+              "open": true
+            }
+          ],
+          "expandAllState": "all-open",
+          "noHorizontalOverflow": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "source-drawer",
+      "requestedPath": "/assistente/",
+      "viewport": "1280x800",
+      "screenshot": "source-drawer-1280x800.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Assistente Jurídico - Jurix",
+      "url": "http://127.0.0.1:8004/assistente/",
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "documentHeight": 800,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "evidence drawer (local sample data)",
+          "groups": [
+            {
+              "title": "Lei nº 8204/2026",
+              "evidenceCount": 2,
+              "open": true
+            },
+            {
+              "title": "Lei nº 8205/2026",
+              "evidenceCount": 1,
+              "open": true
+            }
+          ],
+          "expandAllState": "all-open",
+          "noHorizontalOverflow": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "source-drawer",
+      "requestedPath": "/assistente/",
+      "viewport": "390x844",
+      "screenshot": "source-drawer-390x844.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Assistente Jurídico - Jurix",
+      "url": "http://127.0.0.1:8004/assistente/",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "documentHeight": 844,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "evidence drawer (local sample data)",
+          "groups": [
+            {
+              "title": "Lei nº 8204/2026",
+              "evidenceCount": 2,
+              "open": true
+            },
+            {
+              "title": "Lei nº 8205/2026",
+              "evidenceCount": 1,
+              "open": true
+            }
+          ],
+          "expandAllState": "all-open",
+          "noHorizontalOverflow": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    }
+  ]
+}

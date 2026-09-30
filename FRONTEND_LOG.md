@@ -3156,3 +3156,33 @@ No API or backend behavior changed.
 Visual score: familiarity 9, disclosure feedback 9, reduced-motion support 9.
 Next: audit the sources drawer and assistant controls end-to-end at mobile and
 desktop, then return to unresolved cross-route interactions.
+
+## Cycle 88 — evidence drawer visual audit and norm-title rhythm
+
+Added a reproducible open-drawer state to the browser audit. It uses local
+sample records with the known SAPL PDF URLs for Lei 8204/2026 and Lei 8205/2026,
+groups the two Lei 8204 devices, opens one group, then expands all. The captured
+drawer makes the official-source action visible instead of auditing cards with
+missing link metadata. The real-browser drawer test also confirms same-law
+grouping, partial/all expansion state, focus restoration, and no browser errors.
+
+The cross-route review caught a compact two-line heading on `/normas/` at
+390px (`line-height: 1.02`), where the serif glyphs nearly touched. Increased
+mobile title leading to 1.12 and refreshed the stylesheet URL. The result now
+has a clear title/subtitle gap in both dark and light mode.
+
+Captured `/assistente/` with the drawer open and `/normas/` at 1440x900,
+1280x800, 1024x768, 768x1024, and 390x844 in both themes. Across all four route
+manifests, each route has 5/5 HTTP 200, zero overflow, zero console errors, and
+zero failed requests. The drawer interaction report confirms two expanded
+groups with 2+1 citations and `all-open` state.
+
+Validation: complete JavaScript suite 135/135; focused norm UI tests 40/40;
+frontend static tests 11/11; Django check and `git diff --check` passed. The
+design-token guard exposed five existing, unbaselined red/white literals in
+`workspace.css` (not introduced by this cycle); cleaning those semantic danger
+colors is the next focused design-system task.
+
+Visual score: source drawer 9, mobile title typography 9, theme parity 9.
+Next: remove the five legacy hardcoded danger colors through explicit semantic
+tokens, then continue the cross-route dialog/settings and history audit.
