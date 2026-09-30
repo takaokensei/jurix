@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="{% static 'js/theme.js' %}?v=20260930-persist-sidebar1"></script>
-    <link rel="icon" type="image/svg+xml" href="{% static 'img/logo-icon.svg' %}">
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/logo-icon.svg' %}?v=20260930-quill1">
     <title>{{ page_title|default:"Jurix - Inteligência Jurídica" }}</title>
     
     <!-- Content Security Policy -->
@@ -16,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
     <!-- Stylesheets -->
-    <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20260930-light-suggestions1">
+    <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20260930-quill-evidence-motion1">
     <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20260930-history-search-provider2">
     <link rel="stylesheet" href="{% static 'css/jurix-rag.css' %}?v=20260930-citation-actions2">
     <link rel="stylesheet" href="{% static 'css/jurix-markdown.css' %}">
@@ -32,7 +32,7 @@
 <body class="figma-theme workspace-page"
       data-chatbot-url="{% url 'workspace:assistant' %}"
       data-norma-list-url="{% url 'legislation:norma_list' %}"
-      data-logo-icon-url="{% static 'img/logo-icon.svg' %}"
+      data-logo-icon-url="{% static 'img/logo-icon.svg' %}?v=20260930-quill1"
       data-user-name="{{ request.user.first_name|default:request.user.username|title }}">
     <!-- Skip link for keyboard accessibility -->
     <a href="#messages-container" class="skip-link jurix-skip-link">Pular para a pesquisa</a>
@@ -44,7 +44,7 @@
                 <!-- Brand / Logo Group -->
                     <a href="{% url 'workspace:assistant' %}" class="figma-logo-group" aria-label="Jurix — Assistente" title="Jurix — Assistente">
                     <div class="figma-logo-icon">
-                        <img class="figma-logo-image" src="{% static 'img/logo-icon.svg' %}" alt="Logo Jurix">
+                        <img class="figma-logo-image" src="{% static 'img/logo-icon.svg' %}?v=20260930-quill1" alt="Logo Jurix">
                     </div>
                     <span class="figma-logo-text">Jurix</span>
                 </a>

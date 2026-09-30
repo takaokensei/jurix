@@ -408,3 +408,14 @@ test('norma detail gives legal devices clear document hierarchy and readable bod
   assert.match(styles, /@media \(max-width:640px\)[\s\S]*?\.dispositivo-node\[data-level="4"\]\s*\{[^}]*margin-inline-start:24px/);
 });
 
+test('quill identity is cache-busted and source reveal animates only on expansion', async () => {
+  const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
+  const chatbot = await read('src/apps/legislation/templates/legislation/chatbot.html');
+  const publicBase = await read('src/apps/legislation/templates/legislation/base.html');
+  const styles = await read('src/apps/core/static/css/jurix-figma.css');
+  assert.match(workspace, /logo-icon\.svg['"] %\}\?v=20260930-quill1/);
+  assert.match(chatbot, /data-logo-icon-url="\{\% static 'img\/logo-icon\.svg' \%\}\?v=20260930-quill1/);
+  assert.match(publicBase, /apple-touch-icon[^\n]*logo-icon\.png['"] %\}\?v=20260930-quill1/);
+  assert.match(styles, /\.jurix-source-group\[open\] \.jurix-source-group__cards-inner \{ animation: jurix-evidence-reveal 180ms ease-out both; \}/);
+});
+

@@ -998,8 +998,8 @@ html[data-sidebar-collapsed="true"] .figma-sidebar .figma-nav-list { gap: 7px; }
   display: grid;
   gap: 9px;
   min-width: 0;
-  animation: jurix-evidence-reveal 180ms ease-out both;
 }
+.jurix-source-group[open] .jurix-source-group__cards-inner { animation: jurix-evidence-reveal 180ms ease-out both; }
 @keyframes jurix-evidence-reveal {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }

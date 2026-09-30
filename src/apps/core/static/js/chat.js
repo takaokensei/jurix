@@ -10,7 +10,7 @@
     // ===== CONFIGURATION =====
     const config = window.JURIX_CONFIG || {
         chatbotUrl: '/assistente/',
-        logoIconUrl: '/static/img/logo-icon.svg',
+        logoIconUrl: '/static/img/logo-icon.svg?v=20260930-quill1',
         userName: 'Admin',
     };
     const SIDEBAR_COLLAPSED_KEY = 'jurix-sidebar-collapsed';

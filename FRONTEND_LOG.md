@@ -3132,3 +3132,27 @@ behavior changed.
 Visual score for this component: hierarchy 9, keyboard flow 9, mobile layout 9,
 clarity 9. Next: resume the remaining norm timeline/tree and broader cross-route
 interaction audit.
+
+## Cycle 87 — refresh the legal quill mark and evidence reveal motion
+
+The requested writing mark is already a quill in the current SVG, but its
+unchanged static URL could leave the earlier cached mark visible; the legacy
+PNG touch icon also remains a separate fallback. Added a versioned SVG URL to
+the workspace, assistant, public shell, favicon, and rendered assistant avatar
+so clients refresh the current legal mark. The existing compose icon remains
+the same familiar square-and-pencil affordance used for “new chat”.
+
+Moved the evidence-card entrance animation from component creation to the open
+state, so it runs when a law group actually expands. The native disclosure's
+`toggle` handler continues synchronizing “expand all” for zero, partial, and
+all-open states, and reduced-motion still suppresses the animation. Verified
+the actual same-norm evidence group browser flow and captured the assistant in
+both themes at five viewport sizes; all captures passed with no review flags.
+
+Validation: complete JavaScript suite 134/134; focused workspace UI tests
+39/39; frontend static Python tests 11/11; Django check and diff check passed.
+No API or backend behavior changed.
+
+Visual score: familiarity 9, disclosure feedback 9, reduced-motion support 9.
+Next: audit the sources drawer and assistant controls end-to-end at mobile and
+desktop, then return to unresolved cross-route interactions.
