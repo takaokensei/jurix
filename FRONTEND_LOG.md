@@ -2988,3 +2988,20 @@ returned all HTTP 200 with no failed requests, console errors, or overflow.
 
 Validation: full JavaScript suite passed, including the real-browser collapse
 interaction; Django system check and `git diff --check` passed.
+
+## Cycle 80 — light-theme contrast for norm status
+
+The light-theme pass measured the “Consolidado” label at RGB 220, 252, 231
+against white—a low-contrast pale green intended as a surface token, not text.
+Changed the light-theme status foreground to the existing dark green text
+token and versioned the norma-list stylesheet. The status remains semantically
+green and keeps its separate dot indicator.
+
+Captured `/normas/` before/after at 1440x900 and after at 1280x800 and 390x844.
+Live Chromium measured the new foreground as RGB 4, 120, 87 and a 5.20:1
+contrast ratio against the page surface; all three widths returned HTTP 200,
+had no horizontal overflow or page errors, and displayed the same status text.
+Added a CSS contract regression assertion. All 130 JavaScript tests passed on
+the diagnostic rerun, Django system check passed, and `git diff --check`
+passed. A prior dot-reporter run had one transient failure; its isolated
+browser suite (26/26) and subsequent full named run (130/130) passed.

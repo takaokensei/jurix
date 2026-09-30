@@ -102,6 +102,7 @@ test('norma list recognizes an exact number/year identifier as separate server f
 
 test('norma list stylesheet contains mobile, reduced motion and print rules', async () => {
   const source = await read('src/apps/core/static/css/jurix-norma-list.css');
+  assert.match(source, /\[data-theme="light"\] \.jurix-norma-status \{\s*color: var\(--figma-green\);/);
   assert.match(source, /@media \(max-width: 720px\)/);
   assert.match(source, /prefers-reduced-motion/);
   assert.match(source, /@media print/);
@@ -116,7 +117,7 @@ test('norma template exposes semantic filters and no hardcoded suggestion cards'
   assert.match(source, /jurix-norma-grid/);
   assert.match(source, /placeholder="Número, tipo ou ementa…"/);
   assert.match(source, /jurix-norma-list\.js['"] %\}\?v=20260929-identifier-search1/);
-  assert.match(source, /jurix-norma-list\.css['"] %\}\?v=20260929-metadata-hierarchy1/);
+  assert.match(source, /jurix-norma-list\.css['"] %\}\?v=20260930-status-contrast1/);
 });
 
 test('legal search placeholder stays concise while examples remain available in the empty state', async () => {
