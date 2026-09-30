@@ -2958,3 +2958,14 @@ overflow or browser errors. The light-theme CSS contract was added to the
 frontend tests.
 Validation: complete JavaScript suite passed (129/129), Django system check
 passed, and `git diff --check` passed.
+
+## Cycle 78 — fresh cross-route visual and HTTP audit
+
+Re-captured the canonical UI audit after the interaction, responsive-copy, and
+light-theme fixes. Exercised the assistant, palette, empty/results search,
+norm list, exact number/year search, detail, comparison, tree, collections,
+history, and settings at 1440x900, 1280x800, and 390x844. All 36 navigations
+returned HTTP 200, each main region was visible, and the browser audit found
+zero navigation errors, failed requests, HTTP errors, console errors, or
+horizontal overflow. Refreshed `docs/ui-audit/after/` captures and manifest to
+preserve the current rendered state.
