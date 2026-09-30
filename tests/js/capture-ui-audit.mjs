@@ -45,6 +45,7 @@ const routes = [
   ['norm-number-year', '/normas/?q=8205&tipo=&ano=2026&ordenar=recentes'],
   ['norm-detail', '/normas/3/'],
   ['norm-full-text', '/normas/3/'],
+  ['norm-timeline-status', '/normas/3/'],
   ['norm-device-reading', '/normas/3/'],
   ['norm-compare', '/normas/3/compare/'],
   ['norm-tree', '/normas/3/tree/'],
@@ -609,6 +610,45 @@ try {
             throw new Error(`Consolidated full text is clipped or not in a readable document style: ${JSON.stringify(readerState)}`);
           }
           interactionChecks.push({ control: 'consolidated full-text disclosure', keyboardExpanded: true, ...readerState });
+        }
+        if (routeName === 'norm-timeline-status') {
+          const timeline = await page.$('.norma-timeline');
+          if (!timeline) throw new Error('Norm detail has no temporal timeline to show its status');
+          await timeline.evaluate((element) => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
+          if (phase === 'before') {
+            // Recreate the pre-cycle utility badge classes while preserving
+            // current route data and layout for an isolated visual comparison.
+            await page.$eval('.timeline-status', (badge) => { badge.className = 'badge badge-success'; });
+          }
+          const statusSelector = phase === 'before'
+            ? '.norma-timeline .timeline-header .badge-success'
+            : '.timeline-status';
+          const statusState = await page.$eval(statusSelector, (badge) => {
+            const style = getComputedStyle(badge);
+            const bounds = badge.getBoundingClientRect();
+            return {
+              label: badge.textContent.trim(),
+              display: style.display,
+              borderRadius: style.borderRadius,
+              background: style.backgroundColor,
+              color: style.color,
+              width: bounds.width,
+              right: bounds.right,
+              viewportWidth: document.documentElement.clientWidth,
+              parent: badge.parentElement?.className,
+              noHorizontalOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+            };
+          });
+          if (phase === 'after' && (
+            !statusState.label
+            || !['flex', 'inline-flex'].includes(statusState.display)
+            || Number.parseFloat(statusState.borderRadius) < 10
+            || statusState.right > statusState.viewportWidth
+            || !statusState.noHorizontalOverflow
+          )) {
+            throw new Error(`Timeline status is not a visible, contained badge: ${JSON.stringify(statusState)}`);
+          }
+          interactionChecks.push({ control: 'timeline semantic status badge', ...statusState });
         }
         if (routeName === 'search-results') {
           await page.focus('.workspace-search-panel input[name="q"]');

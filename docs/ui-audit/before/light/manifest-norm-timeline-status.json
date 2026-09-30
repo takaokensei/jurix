@@ -1,0 +1,177 @@
+{
+  "phase": "before",
+  "theme": "light",
+  "routeFilter": [
+    "norm-timeline-status"
+  ],
+  "baseUrl": "http://127.0.0.1:8005",
+  "capturedAt": "2026-09-30T22:58:10.882Z",
+  "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "results": [
+    {
+      "route": "norm-timeline-status",
+      "requestedPath": "/normas/3/",
+      "viewport": "1440x900",
+      "screenshot": "norm-timeline-status-1440x900.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8005/normas/3/",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "documentHeight": 6257,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "timeline semantic status badge",
+          "label": "vigente",
+          "display": "block",
+          "borderRadius": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(15, 23, 42)",
+          "width": 55.875,
+          "right": 1388,
+          "viewportWidth": 1440,
+          "parent": "timeline-header",
+          "noHorizontalOverflow": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-timeline-status",
+      "requestedPath": "/normas/3/",
+      "viewport": "1024x768",
+      "screenshot": "norm-timeline-status-1024x768.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8005/normas/3/",
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "documentHeight": 6462,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "timeline semantic status badge",
+          "label": "vigente",
+          "display": "block",
+          "borderRadius": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(15, 23, 42)",
+          "width": 55.875,
+          "right": 993.28125,
+          "viewportWidth": 1024,
+          "parent": "timeline-header",
+          "noHorizontalOverflow": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-timeline-status",
+      "requestedPath": "/normas/3/",
+      "viewport": "768x1024",
+      "screenshot": "norm-timeline-status-768x1024.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8005/normas/3/",
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "documentHeight": 6474,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "timeline semantic status badge",
+          "label": "vigente",
+          "display": "block",
+          "borderRadius": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(15, 23, 42)",
+          "width": 55.875,
+          "right": 744.96875,
+          "viewportWidth": 768,
+          "parent": "timeline-header",
+          "noHorizontalOverflow": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-timeline-status",
+      "requestedPath": "/normas/3/",
+      "viewport": "1280x800",
+      "screenshot": "norm-timeline-status-1280x800.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8005/normas/3/",
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "documentHeight": 6257,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "timeline semantic status badge",
+          "label": "vigente",
+          "display": "block",
+          "borderRadius": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(15, 23, 42)",
+          "width": 55.875,
+          "right": 1241.609375,
+          "viewportWidth": 1280,
+          "parent": "timeline-header",
+          "noHorizontalOverflow": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-timeline-status",
+      "requestedPath": "/normas/3/",
+      "viewport": "390x844",
+      "screenshot": "norm-timeline-status-390x844.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8005/normas/3/",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "documentHeight": 7812,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "timeline semantic status badge",
+          "label": "vigente",
+          "display": "block",
+          "borderRadius": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(15, 23, 42)",
+          "width": 55.875,
+          "right": 85.875,
+          "viewportWidth": 390,
+          "parent": "timeline-header",
+          "noHorizontalOverflow": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    }
+  ]
+}

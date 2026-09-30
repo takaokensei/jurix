@@ -3855,3 +3855,40 @@ consistency 9. The next observed finish issue is the timeline status label
 wrapping as a bare “vigente” word instead of a compact status badge on narrow
 screens; inspect and fix as a separate cycle. Section-17 completion remains
 unproven.
+
+## Cycle 109 — anchor timeline status as a semantic badge — 2026-09-30
+
+Area: legal norm timeline heading and temporal status across responsive themes.
+
+The detail route placed its vigência state as unstyled text after the timeline
+intro. At 390px it appeared detached from the heading and was easy to miss.
+Reused the existing green/amber/neutral semantic tokens to give the timeline
+state a compact pill surface, a status dot, readable type and safe wrapping;
+the status remains textual, so meaning does not depend on color. Added distinct
+styles for vigente, revogada and unregistered/indeterminate states.
+
+The route capture now tests a representative temporal badge at desktop/tablet/
+mobile widths in dark and light themes and checks rendered label, rounded
+surface, containment and no horizontal overflow. The before images emulate the
+previous bare utility badge using the same route/data; after images use the new
+semantic treatment.
+
+Browser validation: `/normas/3/` loaded on a fresh local QA server at
+`127.0.0.1:8005`; existing `:8004` served a stale pre-change template, so it
+was left untouched. Before/after capture completed for 1440×900, 1280×800,
+1024×768, 768×1024 and 390×844 in both themes. All 20 states returned HTTP
+200 with no console errors, failed requests, route errors or horizontal
+overflow. The 390px screenshot now shows a green “vigente” pill rather than
+an isolated word.
+
+Verification: `norma_ui_v3.test.mjs` passed 43/43 and full `npm test` passed,
+including 29 real-browser scenarios, 22 streaming behavior checks, XSS/CSP,
+history, and contrast coverage. The visual audit reported zero review states
+for all four theme/phase captures; `git diff --check` passed. Corrected one
+pre-existing static assertion to tolerate the template's line break between
+an `elif` and its badge. No API or backend behavior changed.
+
+Visual score: timeline status recognition 9, mobile hierarchy 9,
+dark/light semantic consistency 9. Continue the section-17 pass with the
+remaining route-specific states and keyboard checks; do not treat this local
+polish cycle as overall completion.

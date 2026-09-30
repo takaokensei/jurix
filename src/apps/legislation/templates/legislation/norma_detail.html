@@ -6,7 +6,7 @@
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Norma' %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20260930-fulltext-reader1">
+<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20260930-timeline-status1">
 <link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}">
 {% endblock %}
 
@@ -150,7 +150,7 @@
             <h2 id="timeline-title">Linha do tempo normativa</h2>
             <p class="timeline-intro">Datas e eventos visíveis no corpus. Inferências são sinalizadas para revisão.</p>
         </div>
-            <span class="badge {% if temporal_status == 'revogada' %}badge-warning{% elif not norma.data_vigencia %}badge-neutral{% else %}badge-success{% endif %}">{% if temporal_status == 'revogada' or norma.data_vigencia %}{{ temporal_status }}{% else %}Vigência não registrada{% endif %}</span>
+                <span class="badge timeline-status {% if temporal_status == 'revogada' %}timeline-status--warning{% elif not norma.data_vigencia %}timeline-status--neutral{% else %}timeline-status--success{% endif %}">{% if temporal_status == 'revogada' or norma.data_vigencia %}{{ temporal_status }}{% else %}Vigência não registrada{% endif %}</span>
     </div>
     <ol class="timeline-list">
         {% for item in timeline %}

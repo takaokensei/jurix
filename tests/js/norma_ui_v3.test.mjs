@@ -319,7 +319,7 @@ test('norm actions use a responsive grid instead of stranding the official sourc
   assert.match(styles, /@media \(max-width:520px\) \{ \.legal-detail-actions \{ grid-template-columns:minmax\(0,1fr\); \} \}/);
   assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*justify-content:\s*center/);
   assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*min-height:\s*44px/);
-  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260930-fulltext-reader1/);
+  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260930-timeline-status1/);
 });
 
 test('missing effective date is not presented as legal certainty in norm list or detail', async () => {
@@ -328,7 +328,7 @@ test('missing effective date is not presented as legal certainty in norm list or
   assert.match(list, /data_vigencia\|date:'d\/m\/Y'\|default:'Não registrada no corpus'/);
   assert.match(detail, /badge badge-neutral">Data de vigência não registrada no corpus/);
   assert.match(detail, /Confirme a vigência na fonte oficial; o corpus não informa uma data específica\./);
-  assert.match(detail, /elif not norma\.data_vigencia %\}badge-neutral/);
+  assert.match(detail, /elif not norma\.data_vigencia %\}[\s\S]*?badge-neutral/);
   assert.doesNotMatch(detail, /Vigente desde a publicação\*/);
 });
 
@@ -340,6 +340,10 @@ test('norm consolidated text stays available but does not duplicate every device
   assert.match(styles, /\.legal-consolidated-details > summary:focus-visible/);
   assert.match(styles, /\.legal-consolidated-details > pre\s*\{[^}]*font-family:var\(--font-sans/);
   assert.match(styles, /\.legal-consolidated-details > pre\s*\{[^}]*font-size:\.94rem[^}]*line-height:1\.75/);
+  assert.match(template, /class="badge timeline-status[^"]*timeline-status--success/);
+  assert.match(styles, /\.timeline-status\s*\{[^}]*display:inline-flex[^}]*border-radius:999px/);
+  assert.match(styles, /\.timeline-status--warning\s*\{/);
+  assert.match(styles, /\.timeline-status--neutral\s*\{/);
 });
 
 test('long norm ementa uses a native disclosure while keeping a readable preview', async () => {
@@ -357,7 +361,7 @@ test('mobile norm detail keeps secondary metrics compact without squeezing text 
   const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
   assert.match(styles, /@media \(max-width:640px\)[\s\S]*?\.legal-detail-card \.stats-grid \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\); \}/);
   assert.match(styles, /\.legal-detail-card \.stats-grid \.stat-card:last-child \{ grid-column:1 \/ -1; \}/);
-  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260930-fulltext-reader1/);
+  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260930-timeline-status1/);
 });
 
 test('version comparison exposes both texts as labelled stacked evidence on mobile', async () => {
@@ -417,7 +421,7 @@ test('norma detail gives legal devices clear document hierarchy and readable bod
 test('norm detail actions keep a balanced responsive grid at desktop, tablet and phone widths', async () => {
   const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
   const styles = await read('src/apps/core/static/css/jurix-legal-detail.css');
-  assert.match(template, /jurix-legal-detail\.css['"] %\}\?v=20260930-fulltext-reader1/);
+  assert.match(template, /jurix-legal-detail\.css['"] %\}\?v=20260930-timeline-status1/);
   assert.match(styles, /\.legal-detail-actions \{ display:grid; grid-template-columns:repeat\(3,minmax\(0,1fr\)\);/);
   assert.match(styles, /@media \(max-width:900px\) \{ \.legal-detail-actions \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\); \} \}/);
   assert.match(styles, /@media \(max-width:520px\) \{ \.legal-detail-actions \{ grid-template-columns:minmax\(0,1fr\); \} \}/);
