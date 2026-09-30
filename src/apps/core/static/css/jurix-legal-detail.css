@@ -37,6 +37,11 @@
 .dispositivos-index-link { display:inline-flex; margin:0 8px 6px 0; }
 .dispositivos-index-link { color:var(--figma-blue-light); font-size:.78rem; text-decoration:none; }
 .dispositivos-index-link:hover { color:var(--figma-text-white); text-decoration:underline; }
+.dispositivo-expand { display:inline-flex; align-items:center; gap:9px; min-height:38px; margin-top:10px; padding:0 12px; border:1px solid var(--figma-border-strong); border-radius:8px; background:var(--figma-bg-button); color:var(--figma-blue-soft); font:600 .8rem/1.2 var(--font-sans, Inter, sans-serif); cursor:pointer; transition:background-color var(--jurix-motion-fast), border-color var(--jurix-motion-fast), color var(--jurix-motion-fast); }
+.dispositivo-expand::after { width:6px; height:6px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; content:""; transform:translateY(-2px) rotate(45deg); transition:transform var(--jurix-motion-fast); }
+.dispositivo-expand[aria-expanded="true"]::after { transform:translateY(2px) rotate(225deg); }
+.dispositivo-expand:hover { border-color:var(--figma-blue-light); background:var(--figma-source-hover); color:var(--figma-text-white); }
+.dispositivo-expand:focus-visible { outline:2px solid var(--figma-blue-light); outline-offset:3px; }
 .dispositivo-node:target { scroll-margin-top:84px; outline:2px solid var(--figma-blue-light); outline-offset:4px; }
 .norma-timeline li { min-width:0; }
 .timeline-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }

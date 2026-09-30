@@ -1,7 +1,10 @@
 /* Jurix product workspace: shared shell for dedicated Phase 1 surfaces. */
 .workspace-page { min-height: 100vh; background: var(--figma-bg-root); color: var(--figma-text-white); }
-.workspace-shell { min-height: 100vh; display: grid; grid-template-columns: 240px minmax(0,1fr); }
-.workspace-sidebar { box-sizing: border-box; position: sticky; top: 0; height: 100vh; min-height: 0; padding: 18px 14px; display: flex; flex-direction: column; justify-content: flex-start; overflow: hidden; background: rgba(10,16,29,.94); border-right: 1px solid var(--figma-border); backdrop-filter: blur(18px); z-index: 20; }
+/* Workspace documents scroll naturally; the assistant keeps its fixed streaming frame. */
+body.figma-theme.workspace-document { height: auto; min-height: 100vh; overflow-x: hidden; overflow-y: auto; scrollbar-color: var(--figma-border-strong) var(--figma-bg-root); }
+.workspace-shell { min-height: 100vh; display: grid; grid-template-columns: 240px minmax(0,1fr); transition: grid-template-columns var(--jurix-motion-normal, 220ms) var(--jurix-ease-standard, ease); }
+.workspace-shell.is-sidebar-collapsed { grid-template-columns: 72px minmax(0,1fr); }
+.workspace-sidebar { box-sizing: border-box; position: sticky; top: 0; width: 100%; min-width: 0; height: 100vh; min-height: 0; padding: 18px 14px; display: flex; flex-direction: column; justify-content: flex-start; overflow: hidden; background: rgba(10,16,29,.94); border-right: 1px solid var(--figma-border); backdrop-filter: blur(18px); z-index: 20; }
 .workspace-brand-block { display: grid; gap: 18px; }
 .workspace-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--figma-text-white); font-weight: 700; font-size: 17px; text-decoration: none; }
 .workspace-logo { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid rgba(103, 232, 249, 0.3); border-radius: 10px; background: linear-gradient(135deg, rgba(30, 58, 138, 0.45), rgba(15, 23, 42, 0.85)); box-shadow: 0 0 14px rgba(6, 182, 212, 0.15); }
@@ -21,7 +24,8 @@
 .workspace-sidebar-bottom { display: grid; flex: 0 0 auto; gap: 3px; margin-top: auto; }
 .workspace-main { min-width: 0; min-height: 100vh; background: radial-gradient(circle at top right, rgba(59,130,246,.06), transparent 28%), var(--figma-bg-root); }
 .workspace-topbar { height: 64px; display: flex; align-items: center; gap: 18px; padding: 0 28px; border-bottom: 1px solid var(--figma-border); background: rgba(8,18,32,.74); backdrop-filter: blur(15px); position: sticky; top: 0; z-index: 15; }
-.workspace-mobile-toggle { display: none; border: 0; background: transparent; color: var(--figma-text-muted); cursor: pointer; font-size: 18px; }
+.workspace-mobile-toggle { display: inline-flex; width: 42px; min-width: 42px; height: 42px; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--figma-text-muted); cursor: pointer; font-size: 18px; transition: background-color var(--jurix-motion-fast), border-color var(--jurix-motion-fast), color var(--jurix-motion-fast); }
+.workspace-mobile-toggle:hover { border-color: var(--figma-border); background: var(--figma-bg-button); color: var(--figma-text-white); }
 .workspace-breadcrumb { display: flex; align-items: center; gap: 9px; min-width: 0; color: var(--figma-text-muted); font-size: 12px; }
 .workspace-breadcrumb strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--figma-text-white); font-weight: 600; }
 .workspace-top-search { min-width: 0; margin-left: auto; width: min(420px, 52vw); display: flex; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid var(--figma-border); border-radius: 9px; color: var(--figma-text-muted); background: rgba(255,255,255,.025); cursor: pointer; text-align: left; }
@@ -169,6 +173,20 @@
 }
 .workspace-alert { color: var(--figma-amber-soft); }
 
+.workspace-shell.is-sidebar-collapsed .workspace-sidebar { padding-right: 9px; padding-left: 9px; }
+.workspace-shell.is-sidebar-collapsed .workspace-brand { justify-content: center; }
+.workspace-shell.is-sidebar-collapsed .workspace-brand > span:not(.workspace-logo),
+.workspace-shell.is-sidebar-collapsed .workspace-nav-item > span:not([aria-hidden="true"]),
+.workspace-shell.is-sidebar-collapsed .workspace-nav-item kbd { display: none; }
+.workspace-shell.is-sidebar-collapsed .workspace-new-action,
+.workspace-shell.is-sidebar-collapsed .workspace-nav-item { justify-content: center; gap: 0; padding-right: 0; padding-left: 0; }
+.workspace-shell.is-sidebar-collapsed .workspace-new-action { width: 44px; margin: 0 auto; font-size: 0; }
+.workspace-shell.is-sidebar-collapsed .workspace-new-action > span[aria-hidden="true"] { font-size: 17px; }
+.workspace-shell.is-sidebar-collapsed .workspace-nav-item { min-height: 42px; }
+.workspace-shell.is-sidebar-collapsed .workspace-nav-item > span[aria-hidden="true"] { font-size: 17px; }
+.workspace-shell.is-sidebar-collapsed .workspace-nav { gap: 7px; }
+@media (prefers-reduced-motion: reduce) { .workspace-shell { transition: none; } }
+
 /* Light theme support for the workspace surfaces (the preference is exposed
    in Configurações and must change the actual canvas, not only the root attr). */
 :root[data-theme="light"] .workspace-sidebar {
@@ -248,4 +266,18 @@
   .workspace-sidebar { z-index: 40; }
   .workspace-main { width: 100%; }
   .workspace-content { overflow-x: hidden; }
+}
+
+@media (max-width: 900px) {
+  .workspace-shell,
+  .workspace-shell.is-sidebar-collapsed { grid-template-columns: 1fr; }
+  .workspace-shell.is-sidebar-collapsed .workspace-sidebar { padding: 18px 14px; }
+  .workspace-shell.is-sidebar-collapsed .workspace-brand { justify-content: flex-start; }
+  .workspace-shell.is-sidebar-collapsed .workspace-brand > span:not(.workspace-logo),
+  .workspace-shell.is-sidebar-collapsed .workspace-nav-item > span:not([aria-hidden="true"]),
+  .workspace-shell.is-sidebar-collapsed .workspace-nav-item kbd { display: initial; }
+  .workspace-shell.is-sidebar-collapsed .workspace-new-action,
+  .workspace-shell.is-sidebar-collapsed .workspace-nav-item { width: 100%; justify-content: flex-start; gap: 10px; padding: 0 11px; margin: 0; font-size: inherit; }
+  .workspace-shell.is-sidebar-collapsed .workspace-nav-item { min-height: 44px; }
+  .workspace-shell.is-sidebar-collapsed .workspace-new-action { min-height: 44px; }
 }

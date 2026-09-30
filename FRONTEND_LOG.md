@@ -2723,3 +2723,40 @@ flows. `git diff --check` passed. No backend, API or model behavior changed.
 
 Next action: continue the cross-route visual audit, prioritizing remaining
 interactive affordances and content hierarchy across the workspace shells.
+
+## Cycle 67 — cross-route navigation, legal text and source deep links
+
+Fixed the shared workspace shell so `/normas/`, norm details and
+`/configuracoes/` scroll at document level; the assistant retains its dedicated
+streaming frame. Desktop collapse now persists as a 72px icon rail on both
+shells, with icons visible, accessible names/tooltips retained, and mobile
+navigation continuing to behave as an off-canvas drawer. Removed the duplicate
+device-type label that made hierarchy read as “Art. 2º > Inciso IV Inciso”.
+The norm-detail control now expands/collapses the actual full device text with
+keyboard focus retained and an explicit `aria-expanded` state; its appearance
+matches the workspace design system.
+
+Official PDF links in evidence cards now use the full source text (the API's
+`text` field is only a 200-character preview ending in an ellipsis). Longer
+devices use text-fragment start/end anchors so the link remains short and does
+not include an incomplete final word. Non-PDF SAPL links remain unchanged;
+unsafe URL protocols remain rejected. If a browser/PDF viewer cannot resolve a
+text fragment, its standard fallback is the document itself.
+
+Cross-route UI capture uncovered an asynchronous race in the command palette:
+if recent-history loading completed after typing, it replaced filtered results
+with the unfiltered list. The palette now rerenders using the current query when
+the request completes. Added a delayed-response Chromium regression test.
+Strengthened light-mode contrast for the source-summary control, which had been
+overridden by higher-priority legacy CSS.
+
+Validation: full `npm test` passed (26 real Chromium scenarios plus unit,
+security, persistence, streaming and accessibility tests); `npm run
+test:responsive` passed all 22 route/viewport checks; `manage.py check` passed;
+the local visual audit captured 36 desktop/mobile views with zero items needing
+review; `git diff --check` passed. No backend source, API contract, model, RAG
+pipeline or Celery behavior was changed. Static assets were recollected for the
+running local app.
+
+Next action: continue cross-route usability testing and audit the actual SAPL
+PDF navigation behavior against representative long and short legal devices.

@@ -2,6 +2,7 @@
     'use strict';
 
     const SETTINGS_KEY = 'jurix-preferences';
+    const SIDEBAR_COLLAPSED_KEY = 'jurix-sidebar-collapsed';
     const DEFAULTS = {
         model: document.querySelector('[name="model"]')?.value || 'llama3',
         temperature: 0.3,
@@ -31,17 +32,40 @@
         const sidebar = document.querySelector('[data-workspace-sidebar]');
         const toggle = document.querySelector('[data-workspace-toggle]');
         if (!sidebar || !toggle) return;
+        const shell = sidebar.closest('.workspace-shell');
+        const isMobile = () => window.innerWidth <= 900;
+        const readCollapsed = () => {
+            try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'; } catch (_) { return false; }
+        };
+        const setCollapsed = (collapsed) => {
+            shell?.classList.toggle('is-sidebar-collapsed', collapsed);
+            toggle.setAttribute('aria-expanded', String(!collapsed));
+            toggle.setAttribute('aria-label', collapsed ? 'Expandir navegação' : 'Recolher navegação');
+            toggle.title = collapsed ? 'Expandir navegação' : 'Recolher navegação';
+            sidebar.inert = false;
+            sidebar.setAttribute('aria-hidden', 'false');
+            try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed)); } catch (_) {}
+        };
         const setOpen = (open, focusFirst = false) => {
             sidebar.classList.toggle('is-open', open);
             toggle.setAttribute('aria-expanded', String(open));
             toggle.setAttribute('aria-label', open ? 'Fechar menu' : 'Abrir menu');
-            const hidden = window.innerWidth <= 900 && !open;
+            toggle.title = open ? 'Fechar menu' : 'Abrir menu';
+            const hidden = isMobile() && !open;
             sidebar.inert = hidden;
             sidebar.setAttribute('aria-hidden', String(hidden));
             if (open && focusFirst) sidebar.querySelector('a, button, [tabindex]:not([tabindex="-1"])')?.focus();
         };
-        setOpen(false);
-        toggle.addEventListener('click', () => setOpen(!sidebar.classList.contains('is-open'), !sidebar.classList.contains('is-open')));
+        if (isMobile()) setOpen(false);
+        else setCollapsed(readCollapsed());
+        toggle.addEventListener('click', () => {
+            if (isMobile()) {
+                const opening = !sidebar.classList.contains('is-open');
+                setOpen(opening, opening);
+                return;
+            }
+            setCollapsed(!shell?.classList.contains('is-sidebar-collapsed'));
+        });
         document.addEventListener('click', (event) => {
             if (window.innerWidth > 900 || !sidebar.classList.contains('is-open')) return;
             if (!sidebar.contains(event.target) && !toggle.contains(event.target)) setOpen(false);
@@ -53,7 +77,8 @@
             }
         });
         window.addEventListener('resize', () => {
-            if (window.innerWidth > 900) setOpen(false);
+            setOpen(false);
+            if (!isMobile()) setCollapsed(readCollapsed());
         });
     }
 

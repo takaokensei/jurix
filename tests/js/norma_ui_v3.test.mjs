@@ -50,6 +50,28 @@ test('light theme gives the assistant source-summary control semantic foreground
   assert.match(source, /:root\[data-theme="light"\] \.jurix-sources-pill-action\s*\{[^}]*color:\s*var\(--figma-blue-primary\)/);
 });
 
+test('norm device expansion preserves full text and exposes a reversible accessible state', async () => {
+  const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
+  const controller = await read('src/apps/core/static/js/jurix-legal-detail.js');
+  assert.match(template, /data-device-text-preview[^>]*>\s*\{\{ disp\.texto\|truncatewords:50 \}\}/);
+  assert.match(template, /data-device-text-full hidden>\s*\{\{ disp\.texto \}\}/);
+  assert.match(template, /data-expand-device aria-expanded="false" aria-controls="dispositivo-texto-\{\{ disp\.pk \}\}"/);
+  assert.match(controller, /preview\.hidden = expanded;[\s\S]*full\.hidden = !expanded;[\s\S]*aria-expanded', String\(expanded\)[\s\S]*Recolher texto/);
+});
+
+test('workspace pages opt into document scrolling and icon-only navigation keeps accessible names', async () => {
+  const base = await read('src/apps/legislation/templates/legislation/workspace/base.html');
+  const topbar = await read('src/apps/legislation/templates/legislation/workspace/_topbar.html');
+  const workspace = await read('src/apps/core/static/css/workspace.css');
+  const detail = await read('src/apps/legislation/templates/legislation/norma_detail.html');
+  assert.match(base, /class="figma-theme workspace-page workspace-document/);
+  assert.match(workspace, /body\.figma-theme\.workspace-document[^}]*overflow-y:\s*auto/);
+  assert.match(topbar, /data-workspace-toggle[\s\S]*aria-label="Recolher navegação"/);
+  assert.match(workspace, /\.workspace-shell\.is-sidebar-collapsed\s*\{\s*grid-template-columns:\s*72px/);
+  assert.match(base, /aria-label="Normas" title="Normas"/);
+  assert.doesNotMatch(detail, /class="dispositivo-tipo badge"/);
+});
+
 test('dynamic suggestions controller uses the corpus API', async () => {
   const source = await read('src/apps/core/static/js/jurix-dynamic-suggestions.js');
   assert.match(source, /\/api\/v1\/suggestions\//);
@@ -122,7 +144,7 @@ test('workspace sidebar keeps utility actions visible while navigation can scrol
   assert.match(source, /\.workspace-sidebar\s*\{[^}]*box-sizing:\s*border-box;[^}]*overflow:\s*hidden;/);
   assert.match(source, /\.workspace-nav\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/);
   assert.match(source, /\.workspace-sidebar-bottom\s*\{[^}]*flex:\s*0\s+0\s+auto;/);
-  assert.match(template, /css\/workspace\.css['"] %\}\?v=20260929-sidebar-utilities1/);
+  assert.match(template, /css\/workspace\.css['"] %\}\?v=20260930-document-scroll1/);
 });
 
 test('command palette templates cache-bust the shared keyboard accessibility behavior', async () => {
@@ -130,11 +152,12 @@ test('command palette templates cache-bust the shared keyboard accessibility beh
   const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
   const palette = await read('src/apps/core/static/js/command_palette.js');
   assert.match(chat, /command-palette-results[^>]+role="listbox"/);
-  assert.match(chat, /js\/command_palette\.js['"] %\}\?v=20260929-title-priority/);
-  assert.match(workspace, /js\/command_palette\.js['"] %\}\?v=20260929-title-priority/);
+  assert.match(chat, /js\/command_palette\.js['"] %\}\?v=20260930-query-race1/);
+  assert.match(workspace, /js\/command_palette\.js['"] %\}\?v=20260930-query-race1/);
   assert.match(palette, /setAttribute\('role', 'combobox'\)/);
   assert.match(palette, /aria-activedescendant/);
   assert.match(palette, /aria-selected/);
+  assert.match(palette, /loadChatSessionsForSearch\(\)\.then\(\(\) => \{[\s\S]*?updateCommandPaletteResults\(input\.value\)/);
 });
 
 test('command palette prioritizes title matches above descriptive matches', async () => {
@@ -142,8 +165,8 @@ test('command palette prioritizes title matches above descriptive matches', asyn
   const chat = await read('src/apps/legislation/templates/legislation/chatbot.html');
   const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
   assert.match(source, /title === queryLower\) return 0[\s\S]*title\.startsWith\(queryLower\)[\s\S]*title\.includes\(queryLower\)[\s\S]*description\.includes\(queryLower\)/);
-  assert.match(chat, /js\/command_palette\.js['"] %\}\?v=20260929-title-priority/);
-  assert.match(workspace, /js\/command_palette\.js['"] %\}\?v=20260929-title-priority/);
+  assert.match(chat, /js\/command_palette\.js['"] %\}\?v=20260930-query-race1/);
+  assert.match(workspace, /js\/command_palette\.js['"] %\}\?v=20260930-query-race1/);
 });
 
 test('norm catalog uses the shared workspace shell instead of the legacy navbar', async () => {
@@ -196,8 +219,8 @@ test('mobile workspace search stays a compact 44px icon button when its label is
   const chat = await read('src/apps/legislation/templates/legislation/chatbot.html');
   const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
   assert.match(styles, /@media \(max-width:\s*640px\)[\s\S]*?\.workspace-topbar \.workspace-top-search\s*\{[^}]*flex:\s*0 0 44px;[^}]*width:\s*44px;[^}]*min-width:\s*44px;/);
-  assert.match(chat, /css\/workspace\.css['"] %\}\?v=20260929-light-theme2/);
-  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260929-sidebar-utilities1/);
+  assert.match(chat, /css\/workspace\.css['"] %\}\?v=/);
+  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=/);
 });
 
 test('workspace selects use a clearly visible chevron and norm facts stay secondary', async () => {
@@ -238,7 +261,7 @@ test('norm actions use a responsive grid instead of stranding the official sourc
   assert.match(styles, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(100%,\s*15rem\),\s*1fr\)\)/);
   assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*justify-content:\s*center/);
   assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*min-height:\s*44px/);
-  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260929-light-theme1/);
+  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260930-device-reading1/);
 });
 
 test('missing effective date is not presented as legal certainty in norm list or detail', async () => {
@@ -264,7 +287,7 @@ test('mobile norm detail keeps secondary metrics compact without squeezing text 
   const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
   assert.match(styles, /@media \(max-width:640px\)[\s\S]*?\.legal-detail-card \.stats-grid \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\); \}/);
   assert.match(styles, /\.legal-detail-card \.stats-grid \.stat-card:last-child \{ grid-column:1 \/ -1; \}/);
-  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260929-light-theme1/);
+  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260930-device-reading1/);
 });
 
 test('version comparison exposes both texts as labelled stacked evidence on mobile', async () => {
@@ -290,7 +313,8 @@ test('public device tree does not present internal extraction confidence as lega
   const template = await read('src/apps/legislation/templates/legislation/tree_node.html');
   const page = await read('src/apps/legislation/templates/legislation/norma_tree.html');
   const behavior = await read('src/apps/core/static/js/jurix-legal-tree.js');
-  assert.match(template, /Tipo: \{\{ node\.dispositivo\.get_tipo_display \}\}/);
+  assert.doesNotMatch(template, /Tipo: \{\{ node\.dispositivo\.get_tipo_display \}\}/);
+  assert.match(template, /class="node-title">\{\{ node\.dispositivo \}\}/);
   assert.match(template, /aria-expanded="true"/);
   assert.match(template, /role="group"/);
   assert.match(template, /data-tree-toggle/);

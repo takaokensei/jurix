@@ -180,6 +180,43 @@
         }
     }
 
+    function buildSourceUrl(source = {}) {
+        const pdfUrl = safeHttpUrl(source.pdf_url);
+        const url = pdfUrl || safeHttpUrl(source.sapl_url);
+        if (!url) return null;
+
+        const isPdf = Boolean(pdfUrl) || new URL(url).pathname.toLowerCase().endsWith('.pdf');
+        // `text` is only a 200-character display preview from the API and ends in
+        // "...". Use the exact full device text whenever it is available.
+        const excerpt = String(source.full_text || source.text || '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .replace(/(?:…|\.{3,})\s*$/, '')
+            .trim();
+        if (!isPdf || !excerpt) return url;
+
+        // Long devices use exact beginning/end anchors. This keeps the URL short while
+        // preventing a truncated preview or partial final word from breaking the match.
+        const takeStart = (value, limit) => {
+            let result = value.slice(0, limit);
+            const boundary = result.lastIndexOf(' ');
+            if (boundary > limit * 0.55) result = result.slice(0, boundary);
+            return result.trim();
+        };
+        const takeEnd = (value, limit) => {
+            let result = value.slice(-limit);
+            const boundary = result.indexOf(' ');
+            if (boundary >= 0 && boundary < limit * 0.45) result = result.slice(boundary + 1);
+            return result.trim();
+        };
+        const fragment = excerpt.length > 190
+            ? `${encodeURIComponent(takeStart(excerpt, 100))},${encodeURIComponent(takeEnd(excerpt, 90))}`
+            : encodeURIComponent(excerpt);
+        const target = new URL(url);
+        target.hash = `:~:text=${fragment}`;
+        return target.href;
+    }
+
     function getSourceScore(source) {
         let rawScore = source?.similarity_score;
         if (rawScore === undefined || rawScore === null) {
@@ -219,7 +256,7 @@
         const sourceType = safeSource.source_type || safeSource.tipo || safeSource.type || '';
         const status = safeSource.status_label || safeSource.vigencia || safeSource.situacao || '';
         const snippet = String(safeSource.text || safeSource.full_text || '').trim();
-        const linkUrl = safeHttpUrl(safeSource.pdf_url) || safeHttpUrl(safeSource.sapl_url);
+        const linkUrl = buildSourceUrl(safeSource);
         const cardLabel = `Fonte jurídica ${index + 1}: ${normaRef}`;
 
         const meta = [
@@ -547,6 +584,7 @@
         enhanceSources,
         announce,
         renderEvidenceCard,
+        buildSourceUrl,
         focusEvidence,
         openSourcesDrawer,
         closeSourcesDrawer,

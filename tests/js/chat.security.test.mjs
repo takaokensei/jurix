@@ -249,9 +249,41 @@ test('source card: a legitimate https URL (with & and query) still opens in a ne
   const { opened, card } = await renderWithSource(source({ pdf_url: url }));
   card.click();
   assert.equal(opened.length, 1);
-  assert.equal(opened[0][0], url);
+  assert.equal(opened[0][0], `${url}#:~:text=texto`);
   assert.equal(opened[0][1], '_blank');
   assert.match(String(opened[0][2] || ''), /noopener/, 'the new tab must not get window.opener');
+});
+
+test('source card: PDF link opens at the cited excerpt using a safe UTF-8 text fragment', async () => {
+  const excerpt = 'Fica instituído, no Calendário Oficial de Eventos do Município de Natal, o Dia da Educação Popular.';
+  const url = 'https://sapl.natal.rn.leg.br/media/lei.pdf';
+  const { card } = await renderWithSource(source({ pdf_url: url, text: excerpt, full_text: excerpt }));
+  const link = card.querySelector('.jurix-rag-source__open');
+  assert.equal(link.href, `${url}#:~:text=${encodeURIComponent(excerpt)}`);
+  assert.equal(link.target, '_blank');
+});
+
+test('source card: full device text anchors the start and end instead of a truncated preview', async () => {
+  const fullText = `${'Fica instituída a Política Municipal de Proteção e Valorização dos Direitos da Pessoa. '.repeat(5)}Este texto termina com redação completa e verificável.`;
+  const preview = `${fullText.slice(0, 200)}...`;
+  const { card } = await renderWithSource(source({
+    pdf_url: 'https://sapl.natal.rn.leg.br/media/lei.pdf',
+    text: preview,
+    full_text: fullText,
+  }));
+  const href = card.querySelector('.jurix-rag-source__open').href;
+  const fragment = new URL(href).hash;
+  assert.match(fragment, /^#:\~:text=[^,]+,[^,]+$/);
+  const anchors = fragment.split('text=')[1].split(',').map(decodeURIComponent);
+  assert.equal(anchors.length, 2);
+  assert.ok(!fragment.includes('...'));
+  assert.ok(anchors[1].includes('Este texto termina com redação completa e verificável.'));
+});
+
+test('source card: non-PDF SAPL page remains an ordinary official link', async () => {
+  const url = 'https://sapl.natal.rn.leg.br/norma/8205';
+  const { card } = await renderWithSource(source({ pdf_url: null, sapl_url: url }));
+  assert.equal(card.querySelector('.jurix-rag-source__open').href, url);
 });
 
 test('source card: a hostile pdf_url falls back to a valid sapl_url', async () => {

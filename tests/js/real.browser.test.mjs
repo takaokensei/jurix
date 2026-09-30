@@ -79,16 +79,16 @@ function createTestServer(handlers = {}) {
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="/static/css/jurix-figma.css">
         <link rel="stylesheet" href="/static/css/workspace.css">
-      </head><body class="figma-theme workspace-page"><div class="workspace-shell">
+      </head><body class="figma-theme workspace-page workspace-document"><div class="workspace-shell">
         <aside id="sidebar" class="workspace-sidebar" data-workspace-sidebar aria-label="Navegação principal">
-          <div class="workspace-brand-block"><a class="workspace-brand" href="#home">Jurix</a><a class="workspace-new-action" href="#new">Nova pesquisa</a></div>
+          <div class="workspace-brand-block"><a class="workspace-brand" href="#home" aria-label="Jurix — Assistente"><span class="workspace-logo"><img src="/static/img/logo-icon.png" alt=""></span><span>Jurix</span></a><a class="workspace-new-action" href="#new" aria-label="Nova pesquisa"><span aria-hidden="true">+</span><span>Nova pesquisa</span></a></div>
           <nav class="workspace-nav" aria-label="Menu principal">
-            ${Array.from({ length: 12 }, (_, index) => `<a class="workspace-nav-item" href="#item-${index}">${index === 0 ? 'Assistente' : index === 1 ? 'Normas' : `Item de navegação ${index + 1}`}</a>`).join('')}
+            ${Array.from({ length: 12 }, (_, index) => { const label = index === 0 ? 'Assistente' : index === 1 ? 'Normas' : `Item de navegação ${index + 1}`; return `<a class="workspace-nav-item" href="#item-${index}" aria-label="${label}" title="${label}"><span aria-hidden="true">${index === 0 ? '◉' : index === 1 ? '▤' : '◷'}</span><span>${label}</span></a>`; }).join('')}
           </nav>
-          <div class="workspace-sidebar-bottom"><a class="workspace-nav-item" href="/configuracoes/">Configurações</a><button class="workspace-nav-item workspace-palette-trigger" data-open-command-palette>Busca rápida</button></div>
+          <div class="workspace-sidebar-bottom"><a class="workspace-nav-item" href="/configuracoes/" aria-label="Configurações" title="Configurações"><span aria-hidden="true">⚙</span><span>Configurações</span></a><button class="workspace-nav-item workspace-palette-trigger" data-open-command-palette aria-label="Busca rápida, Ctrl K" title="Busca rápida, Ctrl K"><span aria-hidden="true">⌘</span><span>Busca rápida</span><kbd>Ctrl K</kbd></button></div>
         </aside><main class="workspace-main"><header class="workspace-topbar">
-          <button id="toggle-sidebar" data-workspace-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Abrir menu">Menu</button>
-        </header><div class="workspace-content" id="main-content"><a href="#content">Conteúdo</a></div></main>
+          <button id="toggle-sidebar" class="workspace-mobile-toggle" data-workspace-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Recolher navegação">Menu</button>
+        </header><div class="workspace-content" id="main-content"><a href="#content">Conteúdo</a><div style="height:1600px"></div></div></main>
       </div><script src="/static/js/workspace.js"></script></body></html>`);
     }
 
@@ -179,6 +179,15 @@ function createTestServer(handlers = {}) {
         </div>
         <div id="article-4" class="tree-node level-0" role="treeitem" aria-level="1" aria-label="Artigo 4" tabindex="-1"><div class="node-header"><span class="node-title">Artigo 4</span></div></div>
       </div></main><script src="/static/js/jurix-legal-tree.js"></script></body></html>`);
+    }
+
+    if (url.pathname === '/device-expansion-test/') {
+      const fullText = 'Texto integral do dispositivo com fundamento, condições, prazos, sujeitos e exceções aplicáveis. '.repeat(8).trim();
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(`<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>
+        <article><div class="dispositivo-text" id="dispositivo-texto-fixture"><span data-device-text-preview>Texto resumido em cinquenta palavras.</span><span data-device-text-full hidden>${fullText}</span></div>
+        <button type="button" data-expand-device aria-expanded="false" aria-controls="dispositivo-texto-fixture">Ver texto completo</button></article>
+        <script src="/static/js/jurix-legal-detail.js"></script></body></html>`);
     }
 
     if (url.pathname === '/norma-search-test/') {
@@ -272,11 +281,11 @@ test('real browser: closed mobile workspace navigation is removed from keyboard 
     assert.equal(await page.evaluate(() => document.activeElement.textContent), 'Conteúdo', 'Tab must skip the offscreen sidebar and continue into the page');
 
     await page.click('#toggle-sidebar');
-    await page.waitForFunction(() => document.activeElement?.textContent === 'Jurix');
+    await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Jurix — Assistente');
     assert.equal(await page.$eval('#sidebar', (sidebar) => sidebar.inert), false);
     assert.equal(await page.$eval('#sidebar', (sidebar) => sidebar.getAttribute('aria-hidden')), 'false');
     await page.keyboard.press('Tab');
-    assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'Nova pesquisa');
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Nova pesquisa');
     await page.keyboard.press('Escape');
     assert.equal(await page.evaluate(() => document.activeElement.id), 'toggle-sidebar');
     assert.equal(await page.$eval('#sidebar', (sidebar) => sidebar.inert), true);
@@ -1729,6 +1738,67 @@ test('real browser: stream interruption preserves partial text and user question
   }
 });
 
+test('real browser: workspace routes scroll naturally and desktop sidebar collapses to a persistent icon rail', async () => {
+  const server = createTestServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 720 });
+    await page.goto(`http://127.0.0.1:${port}/workspace-shell-test/`, { waitUntil: 'domcontentloaded' });
+    const scrollState = await page.evaluate(() => ({
+      overflowY: getComputedStyle(document.body).overflowY,
+      scrollHeight: document.documentElement.scrollHeight,
+      viewportHeight: innerHeight,
+    }));
+    assert.equal(scrollState.overflowY, 'auto');
+    assert.ok(scrollState.scrollHeight > scrollState.viewportHeight, JSON.stringify(scrollState));
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    assert.ok(await page.evaluate(() => window.scrollY > 0), 'workspace documents must reach content below the fold');
+
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.click('#toggle-sidebar');
+    await page.waitForFunction(() => document.querySelector('.workspace-shell')?.classList.contains('is-sidebar-collapsed'));
+    await page.waitForFunction(() => Math.abs(document.querySelector('.workspace-sidebar')?.getBoundingClientRect().width - 72) < 1);
+    const collapsed = await page.evaluate(() => {
+      const sidebar = document.querySelector('.workspace-sidebar');
+      const icon = sidebar.querySelector('.workspace-nav-item > span[aria-hidden="true"]');
+      const label = sidebar.querySelector('.workspace-nav-item > span:not([aria-hidden="true"])');
+      return {
+        sidebarWidth: sidebar.getBoundingClientRect().width,
+        iconDisplay: getComputedStyle(icon).display,
+        labelDisplay: getComputedStyle(label).display,
+        accessibleLabel: sidebar.querySelector('a[aria-label="Normas"]').getAttribute('aria-label'),
+        toggleLabel: document.querySelector('#toggle-sidebar').getAttribute('aria-label'),
+        documentWidth: document.documentElement.scrollWidth,
+      };
+    });
+    assert.ok(Math.abs(collapsed.sidebarWidth - 72) < 1, `icon rail should be 72px wide (got ${collapsed.sidebarWidth})`);
+    assert.notEqual(collapsed.iconDisplay, 'none');
+    assert.equal(collapsed.labelDisplay, 'none');
+    assert.equal(collapsed.accessibleLabel, 'Normas');
+    assert.equal(collapsed.toggleLabel, 'Expandir navegação');
+    assert.equal(collapsed.documentWidth, 1280);
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    assert.ok(await page.$eval('.workspace-shell', (shell) => shell.classList.contains('is-sidebar-collapsed')),
+      'icon-rail preference should survive navigation/reload');
+    await page.click('#toggle-sidebar');
+    await page.waitForFunction(() => !document.querySelector('.workspace-shell')?.classList.contains('is-sidebar-collapsed'));
+    await page.waitForFunction(() => Math.abs(document.querySelector('.workspace-sidebar')?.getBoundingClientRect().width - 240) < 1);
+    assert.ok(Math.abs(await page.$eval('.workspace-sidebar', (sidebar) => sidebar.getBoundingClientRect().width) - 240) < 1);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
 test('real browser: sidebar items stay inside the shell and fully offscreen when collapsed on mobile', async () => {
   const server = createTestServer();
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -1890,6 +1960,32 @@ test('real browser: sidebar items stay inside the shell and fully offscreen when
       'border-box',
       'A navegação do shell workspace também precisa incluir padding na largura declarada'
     );
+    await page.click('#toggle-sidebar');
+    await page.waitForFunction(() => {
+      const sidebar = document.getElementById('sidebar');
+      return sidebar.classList.contains('collapsed') && Math.round(sidebar.getBoundingClientRect().width) === 72;
+    });
+    const assistantRail = await page.evaluate(() => {
+      const sidebar = document.getElementById('sidebar');
+      const navLink = sidebar.querySelector('a[aria-label="Normas"]');
+      return {
+        width: sidebar.getBoundingClientRect().width,
+        iconVisible: getComputedStyle(navLink.querySelector('svg')).display !== 'none',
+        labelHidden: getComputedStyle(navLink.querySelector('span')).display === 'none',
+        accessibleName: navLink.getAttribute('aria-label'),
+        toggleLabel: document.getElementById('toggle-sidebar').getAttribute('aria-label'),
+      };
+    });
+    assert.ok(Math.abs(assistantRail.width - 72) < 1, `icon rail should be 72px wide (got ${assistantRail.width})`);
+    assert.equal(assistantRail.iconVisible, true);
+    assert.equal(assistantRail.labelHidden, true);
+    assert.equal(assistantRail.accessibleName, 'Normas');
+    assert.equal(assistantRail.toggleLabel, 'Expandir navegação');
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    assert.ok(await page.$eval('#sidebar', (sidebar) => sidebar.classList.contains('collapsed')),
+      'A preferência do trilho de ícones deve persistir entre a navegação e o reload');
+    await page.click('#toggle-sidebar');
+    await page.waitForFunction(() => !document.getElementById('sidebar').classList.contains('collapsed'));
     const desktopComposer = await page.evaluate(() => {
       const bar = document.getElementById('conversation-input-bar').getBoundingClientRect();
       const form = document.getElementById('chat-form').getBoundingClientRect();
@@ -2176,6 +2272,57 @@ test('real browser: command palette keeps compact icons and focuses search on mo
   }
 });
 
+test('real browser: command palette keeps the user query while recent-history search is pending', async () => {
+  const server = createTestServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 800 });
+    await page.goto(`http://127.0.0.1:${port}/assistente/`, { waitUntil: 'domcontentloaded' });
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === '/api/v1/chat/sessions/') {
+        setTimeout(() => request.respond({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true, sessions: [], count: 0 }),
+        }), 350);
+      } else {
+        request.continue();
+      }
+    });
+
+    const historyResponse = page.waitForResponse((response) => (
+      new URL(response.url()).pathname === '/api/v1/chat/sessions/'
+    ));
+    await page.click('#command-palette-trigger');
+    await page.waitForFunction(() => document.activeElement?.id === 'command-palette-input');
+    await page.locator('#command-palette-input').fill('normas');
+    await historyResponse;
+    await page.waitForFunction(() => (
+      document.querySelector('.command-palette-item[data-command-id="norms"][aria-selected="true"]')
+    ));
+    const result = await page.evaluate(() => ({
+      firstId: document.querySelector('.command-palette-item')?.dataset.commandId,
+      selectedId: document.querySelector('.command-palette-item[aria-selected="true"]')?.dataset.commandId,
+      visibleCount: document.querySelectorAll('.command-palette-item').length,
+    }));
+    assert.equal(result.firstId, 'norms');
+    assert.equal(result.selectedId, 'norms');
+    assert.ok(result.visibleCount < 8, JSON.stringify(result));
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
 test('real browser: legal device tree supports keyboard and pointer expansion', async () => {
   const server = createTestServer();
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -2447,6 +2594,43 @@ test('real browser: clearing a norma search refreshes results and preserves othe
     await page.waitForFunction(() => location.search === '?tipo=Lei&ano=');
     assert.equal(await page.$eval('#norma-search-input', (input) => input.value), '');
     assert.equal(await page.$eval('#results', (node) => node.textContent), '3 resultados');
+    assert.deepEqual(errors, []);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: legal device full text expands, collapses, and keeps keyboard focus', async () => {
+  const server = createTestServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto(`http://127.0.0.1:${port}/device-expansion-test/`, { waitUntil: 'domcontentloaded' });
+    const fullText = await page.$eval('[data-device-text-full]', (node) => node.textContent.trim());
+    await page.focus('[data-expand-device]');
+    await page.keyboard.press('Enter');
+    assert.equal(await page.$eval('[data-expand-device]', (node) => node.getAttribute('aria-expanded')), 'true');
+    assert.equal(await page.$eval('[data-device-text-preview]', (node) => node.hidden), true);
+    assert.equal(await page.$eval('[data-device-text-full]', (node) => node.hidden), false);
+    assert.equal(await page.$eval('[data-device-text-full]', (node) => node.textContent.trim()), fullText);
+    assert.equal(await page.$eval('[data-expand-device]', (node) => document.activeElement === node), true, 'focus must remain on the reversible toggle');
+    assert.equal(await page.$eval('[data-expand-device]', (node) => node.innerText), 'Recolher texto');
+
+    await page.keyboard.press('Enter');
+    assert.equal(await page.$eval('[data-expand-device]', (node) => node.getAttribute('aria-expanded')), 'false');
+    assert.equal(await page.$eval('[data-device-text-preview]', (node) => node.hidden), false);
+    assert.equal(await page.$eval('[data-device-text-full]', (node) => node.hidden), true);
+    assert.equal(await page.$eval('[data-expand-device]', (node) => node.innerText), 'Ver texto completo');
     assert.deepEqual(errors, []);
   } finally {
     await browser.close();

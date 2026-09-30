@@ -141,8 +141,11 @@
         document.body.classList.add('jurix-command-palette-open');
         input.value = '';
         selectedIndex = -1;
+        updateCommandPaletteResults('');
         loadChatSessionsForSearch().then(() => {
-            updateCommandPaletteResults('');
+            // Session search is asynchronous; keep the query the user has already typed
+            // instead of replacing filtered results with the unfiltered command list.
+            updateCommandPaletteResults(input.value);
         });
         setTimeout(() => {
             input.focus();

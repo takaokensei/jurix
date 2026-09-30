@@ -13,6 +13,7 @@
         logoIconUrl: '/static/img/logo-icon.png',
         userName: 'Admin',
     };
+    const SIDEBAR_COLLAPSED_KEY = 'jurix-sidebar-collapsed';
 
     const chatAPI = window.JurixChatAPI;
 
@@ -1106,7 +1107,9 @@
         const normaRef = source.norma || source.norma_ref || 'Norma';
         const dispositivoRef = source.dispositivo_ref || '';
         const snippet = source.text || source.full_text || '';
-        const linkUrl = safeHttpUrl(source.pdf_url) || safeHttpUrl(source.sapl_url);
+        const linkUrl = window.JurixRagUI?.buildSourceUrl?.(source)
+            || safeHttpUrl(source.pdf_url)
+            || safeHttpUrl(source.sapl_url);
 
         const cardClasses = linkUrl ? 'source-card source-card-clickable jurix-rag-source' : 'source-card jurix-rag-source';
         const dataUrlAttr = linkUrl ? `data-url="${escapeAttr(linkUrl)}"` : '';
@@ -1322,6 +1325,7 @@
                 ? window.matchMedia('(max-width: 768px)').matches
                 : window.innerWidth <= 768;
             const setMobileSidebarOpen = (open) => {
+                if (isMobileSidebar()) sidebar.classList.remove('collapsed');
                 sidebar.classList.toggle('is-open', open);
                 document.body.classList.toggle('sidebar-open', open);
                 toggleSidebarBtn.setAttribute('aria-expanded', String(open));
@@ -1332,14 +1336,28 @@
                 if (open) sidebar.querySelector('a, button, [tabindex]:not([tabindex="-1"])')?.focus();
             };
 
-            setMobileSidebarOpen(false);
+            const setDesktopSidebarCollapsed = (collapsed) => {
+                sidebar.classList.toggle('collapsed', collapsed);
+                sidebar.inert = false;
+                sidebar.setAttribute('aria-hidden', 'false');
+                toggleSidebarBtn.setAttribute('aria-expanded', String(!collapsed));
+                toggleSidebarBtn.setAttribute('aria-label', collapsed ? 'Expandir navegação' : 'Recolher navegação');
+                toggleSidebarBtn.title = collapsed ? 'Expandir navegação' : 'Recolher navegação';
+                try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed)); } catch (_) {}
+            };
+            const readDesktopSidebarCollapsed = () => {
+                try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'; } catch (_) { return false; }
+            };
+
+            if (isMobileSidebar()) setMobileSidebarOpen(false);
+            else setDesktopSidebarCollapsed(readDesktopSidebarCollapsed());
 
             toggleSidebarBtn.addEventListener('click', () => {
                 if (isMobileSidebar()) {
                     setMobileSidebarOpen(!sidebar.classList.contains('is-open'));
                     return;
                 }
-                sidebar.classList.toggle('collapsed');
+                setDesktopSidebarCollapsed(!sidebar.classList.contains('collapsed'));
             });
 
             if (sidebarBackdrop) {
@@ -1366,7 +1384,8 @@
             window.addEventListener('resize', () => {
                 const mobileNow = isMobileSidebar();
                 if (wasMobileSidebar !== mobileNow) {
-                    setMobileSidebarOpen(false);
+                    if (mobileNow) setMobileSidebarOpen(false);
+                    else setDesktopSidebarCollapsed(readDesktopSidebarCollapsed());
                 }
                 wasMobileSidebar = mobileNow;
             });

@@ -16,9 +16,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
     <!-- Stylesheets -->
-    <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20260929-source-pill-contrast1">
-    <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20260929-light-theme2">
-    <link rel="stylesheet" href="{% static 'css/jurix-rag.css' %}?v=20260929-light-theme1">
+    <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20260930-sidebar-rail1">
+    <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20260930-document-scroll1">
+    <link rel="stylesheet" href="{% static 'css/jurix-rag.css' %}?v=20260930-light-source-summary1">
     <link rel="stylesheet" href="{% static 'css/jurix-markdown.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-renderer.css' %}">
@@ -42,7 +42,7 @@
         <aside class="figma-sidebar" id="sidebar" role="complementary" aria-label="Barra lateral de navegação">
             <div class="figma-sidebar-top">
                 <!-- Brand / Logo Group -->
-                <a href="{% url 'workspace:assistant' %}" class="figma-logo-group" aria-label="Jurix Início">
+                    <a href="{% url 'workspace:assistant' %}" class="figma-logo-group" aria-label="Jurix — Assistente" title="Jurix — Assistente">
                     <div class="figma-logo-icon">
                         <img class="figma-logo-image" src="{% static 'img/logo-icon.png' %}" alt="Logo Jurix">
                     </div>
@@ -65,14 +65,14 @@
                 
                 <!-- Primary Navigation -->
                 <nav class="figma-nav-list" role="navigation" aria-label="Menu principal">
-                    <a href="{% url 'workspace:assistant' %}" class="figma-sidebar-item active">
+                    <a href="{% url 'workspace:assistant' %}" class="figma-sidebar-item active" aria-label="Assistente" title="Assistente">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                         </svg>
                         <span>Assistente</span>
                     </a>
                     
-                    <a href="{% url 'workspace:legal_search' %}" class="figma-sidebar-item">
+                    <a href="{% url 'workspace:legal_search' %}" class="figma-sidebar-item" aria-label="Pesquisa jurídica" title="Pesquisa jurídica">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -80,7 +80,7 @@
                         <span>Pesquisa jurídica</span>
                     </a>
 
-                    <a href="{% url 'legislation:norma_list' %}" class="figma-sidebar-item">
+                    <a href="{% url 'legislation:norma_list' %}" class="figma-sidebar-item" aria-label="Normas" title="Normas">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
@@ -88,7 +88,7 @@
                         <span>Normas</span>
                     </a>
                     
-                    <a href="{% url 'workspace:collections' %}" class="figma-sidebar-item">
+                    <a href="{% url 'workspace:collections' %}" class="figma-sidebar-item" aria-label="Coleções" title="Coleções">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
                         </svg>
@@ -110,19 +110,19 @@
             <!-- Sidebar Footer -->
             <div class="figma-sidebar-footer">
                 {% if user.is_authenticated and user.is_staff %}
-                <a href="/admin/" class="figma-sidebar-item">
+                <a href="/admin/" class="figma-sidebar-item" aria-label="Admin" title="Admin">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-6h2zm0-8h-2V7h2z"/></svg>
                     <span>Admin</span>
                 </a>
                 {% endif %}
-                <a href="{% url 'workspace:settings' %}" class="figma-sidebar-item">
+                <a href="{% url 'workspace:settings' %}" class="figma-sidebar-item" aria-label="Configurações" title="Configurações">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3"></circle>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                     </svg>
                     <span>Configurações</span>
                 </a>
-                <button type="button" class="figma-sidebar-item workspace-palette-trigger" data-open-command-palette aria-label="Busca rápida, Ctrl K">
+                <button type="button" class="figma-sidebar-item workspace-palette-trigger" data-open-command-palette aria-label="Busca rápida, Ctrl K" title="Busca rápida, Ctrl K">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="11" cy="11" r="7"></circle>
                         <path d="m20 20-4-4"></path>
@@ -374,7 +374,7 @@
     <!-- Jurix Configuration: read from data-* attributes on <body> by config.js (CSP: no inline script) -->
     <script src="{% static 'js/config.js' %}"></script>
     <script src="{% static 'js/jurix-markdown.js' %}"></script>
-    <script src="{% static 'js/jurix-rag.js' %}?v=20260929-drawer-inert1"></script>
+    <script src="{% static 'js/jurix-rag.js' %}?v=20260930-sapl-text-fragment1"></script>
     <script src="{% static 'js/jurix-anonymous-history.js' %}"></script>
     <script src="{% static 'js/jurix-chat-api.js' %}?v=20260929-settings-payload1"></script>
     <script src="{% static 'js/jurix-api-reliability-overlay.js' %}"></script>
@@ -382,9 +382,9 @@
     <script src="{% static 'js/jurix-chat-state.js' %}"></script>
     <script src="{% static 'js/jurix-chat-renderer.js' %}?v=20260929-message-times1"></script>
     <script src="{% static 'js/jurix-dynamic-suggestions.js' %}"></script>
-    <script src="{% static 'js/chat.js' %}?v=20260929-chat-alert-live1"></script>
+    <script src="{% static 'js/chat.js' %}?v=20260930-sidebar-rail-source-links1"></script>
     <script src="{% static 'js/jurix-chat-controller.js' %}"></script>
-    <script src="{% static 'js/command_palette.js' %}?v=20260929-title-priority"></script>
+    <script src="{% static 'js/command_palette.js' %}?v=20260930-query-race1"></script>
 
     <!-- Synchronizer for Floating Bar and Hero Search State (floating-bar-sync.js; CSP: no inline script) -->
     <script src="{% static 'js/floating-bar-sync.js' %}"></script>

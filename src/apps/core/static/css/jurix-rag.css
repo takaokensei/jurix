@@ -553,6 +553,23 @@ button.jurix-sources-pill-btn:hover,
     gap: 2px !important;
 }
 
+/* Keep the source summary readable in light mode despite legacy !important
+   declarations on the shared button component above. */
+:root[data-theme="light"] button.jurix-sources-pill-btn,
+:root[data-theme="light"] .jurix-sources-pill-btn {
+    background-color: var(--figma-bg-surface) !important;
+    color: var(--figma-text-body) !important;
+    border-color: var(--figma-border-strong) !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
+}
+
+:root[data-theme="light"] button.jurix-sources-pill-btn:hover,
+:root[data-theme="light"] .jurix-sources-pill-btn:hover {
+    background-color: var(--figma-source-hover) !important;
+    color: var(--figma-text-white) !important;
+    border-color: var(--figma-blue-primary) !important;
+}
+
 @media (max-width: 480px) {
     .jurix-sources-pill-btn {
         width: 100% !important;

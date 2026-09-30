@@ -195,11 +195,27 @@ body.figma-theme :is(button, a, input, textarea, select, summary):focus-visible 
   padding: 24px 16px;
   flex-shrink: 0;
   z-index: 20;
-  transition: margin-left 0.25s ease;
+  transition: width var(--jurix-motion-normal, 220ms) var(--jurix-ease-standard, ease), padding var(--jurix-motion-normal, 220ms) var(--jurix-ease-standard, ease);
 }
 
 .figma-sidebar.collapsed {
-  margin-left: -240px;
+  width: 72px;
+  margin-left: 0;
+  padding: 18px 10px;
+}
+
+.figma-sidebar.collapsed .figma-sidebar-top { align-items: center; gap: 16px; }
+.figma-sidebar.collapsed .figma-logo-group { justify-content: center; width: 100%; }
+.figma-sidebar.collapsed .figma-logo-text,
+.figma-sidebar.collapsed .figma-sidebar-item > span,
+.figma-sidebar.collapsed .figma-sidebar-item kbd,
+.figma-sidebar.collapsed .workspace-sidebar-section { display: none; }
+.figma-sidebar.collapsed .figma-sidebar-item { justify-content: center; width: 44px; min-width: 44px; height: 44px; margin: 0 auto; padding: 0; gap: 0; }
+.figma-sidebar.collapsed .figma-sidebar-footer { width: 100%; align-items: center; gap: 6px; }
+.figma-sidebar.collapsed .figma-nav-list { width: 100%; gap: 7px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .figma-sidebar { transition: none; }
 }
 
 .figma-sidebar-top {

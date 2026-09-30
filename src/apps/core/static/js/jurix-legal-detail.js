@@ -44,7 +44,13 @@
         const trigger = event.target.closest('[data-expand-device]');
         if (!trigger) return;
         const text = trigger.previousElementSibling;
-        if (text) text.classList.add('is-expanded');
-        trigger.hidden = true;
+        const preview = text?.querySelector('[data-device-text-preview]');
+        const full = text?.querySelector('[data-device-text-full]');
+        if (!preview || !full) return;
+        const expanded = trigger.getAttribute('aria-expanded') !== 'true';
+        preview.hidden = expanded;
+        full.hidden = !expanded;
+        trigger.setAttribute('aria-expanded', String(expanded));
+        trigger.textContent = expanded ? 'Recolher texto' : 'Ver texto completo';
     });
 })();

@@ -11,41 +11,41 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20260929-source-pill-contrast1">
-    <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20260929-sidebar-utilities1">
+    <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20260930-sidebar-rail1">
+    <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20260930-document-scroll1">
     <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
-<body class="figma-theme workspace-page{% block body_class %}{% endblock %}" data-chatbot-url="{% url 'workspace:assistant' %}" data-norma-list-url="{% url 'legislation:norma_list' %}" data-logo-icon-url="{% static 'img/logo-icon.png' %}" data-user-name="{{ request.user.first_name|default:request.user.username|title }}">
+<body class="figma-theme workspace-page workspace-document{% block body_class %}{% endblock %}" data-chatbot-url="{% url 'workspace:assistant' %}" data-norma-list-url="{% url 'legislation:norma_list' %}" data-logo-icon-url="{% static 'img/logo-icon.png' %}" data-user-name="{{ request.user.first_name|default:request.user.username|title }}">
     <a class="skip-link jurix-skip-link" href="#main-content">Pular para o conteúdo principal</a>
 
     <div class="workspace-shell">
         <aside class="workspace-sidebar" id="sidebar" data-workspace-sidebar aria-label="Navegação principal">
             <div class="workspace-brand-block">
-                <a href="{% url 'workspace:assistant' %}" class="workspace-brand" aria-label="Jurix — Assistente">
+                <a href="{% url 'workspace:assistant' %}" class="workspace-brand" aria-label="Jurix — Assistente" title="Jurix — Assistente">
                     <span class="workspace-logo"><img src="{% static 'img/logo-icon.png' %}" alt=""></span>
                     <span>Jurix</span>
                 </a>
-                <a href="{% url 'workspace:assistant' %}" class="workspace-new-action">
+                <a href="{% url 'workspace:assistant' %}" class="workspace-new-action" aria-label="Nova pesquisa" title="Nova pesquisa">
                     <span aria-hidden="true">+</span>
                     <span>Nova pesquisa</span>
                 </a>
             </div>
 
             <nav class="workspace-nav" aria-label="Menu principal">
-                <a href="{% url 'workspace:assistant' %}" class="workspace-nav-item{% if active_nav == 'assistant' %} is-active{% endif %}">
+                <a href="{% url 'workspace:assistant' %}" class="workspace-nav-item{% if active_nav == 'assistant' %} is-active{% endif %}" aria-label="Assistente" title="Assistente">
                     <span aria-hidden="true">◉</span><span>Assistente</span>
                 </a>
-                <a href="{% url 'workspace:legal_search' %}" class="workspace-nav-item{% if active_nav == 'search' %} is-active{% endif %}">
+                <a href="{% url 'workspace:legal_search' %}" class="workspace-nav-item{% if active_nav == 'search' %} is-active{% endif %}" aria-label="Pesquisa jurídica" title="Pesquisa jurídica">
                     <span aria-hidden="true">⌕</span><span>Pesquisa jurídica</span>
                 </a>
-                <a href="{% url 'legislation:norma_list' %}" class="workspace-nav-item{% if active_nav == 'normas' %} is-active{% endif %}">
+                <a href="{% url 'legislation:norma_list' %}" class="workspace-nav-item{% if active_nav == 'normas' %} is-active{% endif %}" aria-label="Normas" title="Normas">
                     <span aria-hidden="true">▤</span><span>Normas</span>
                 </a>
-                <a href="{% url 'workspace:collections' %}" class="workspace-nav-item{% if active_nav == 'collections' %} is-active{% endif %}">
+                <a href="{% url 'workspace:collections' %}" class="workspace-nav-item{% if active_nav == 'collections' %} is-active{% endif %}" aria-label="Coleções" title="Coleções">
                     <span aria-hidden="true">▱</span><span>Coleções</span>
                 </a>
-                <a href="{% url 'workspace:history' %}" class="workspace-nav-item{% if active_nav == 'history' %} is-active{% endif %}">
+                <a href="{% url 'workspace:history' %}" class="workspace-nav-item{% if active_nav == 'history' %} is-active{% endif %}" aria-label="Histórico" title="Histórico">
                     <span aria-hidden="true">◷</span><span>Histórico</span>
                 </a>
             </nav>
@@ -54,10 +54,10 @@
                 {% if user.is_authenticated and user.is_staff %}
                 <a href="/admin/" class="workspace-nav-item"><span aria-hidden="true">⚙</span><span>Admin</span></a>
                 {% endif %}
-                <a href="{% url 'workspace:settings' %}" class="workspace-nav-item{% if active_nav == 'settings' %} is-active{% endif %}">
+                <a href="{% url 'workspace:settings' %}" class="workspace-nav-item{% if active_nav == 'settings' %} is-active{% endif %}" aria-label="Configurações" title="Configurações">
                     <span aria-hidden="true">⚙</span><span>Configurações</span>
                 </a>
-                <button type="button" class="workspace-nav-item workspace-palette-trigger" data-open-command-palette>
+                <button type="button" class="workspace-nav-item workspace-palette-trigger" data-open-command-palette aria-label="Busca rápida, Ctrl K" title="Busca rápida, Ctrl K">
                     <span aria-hidden="true">⌘</span><span>Busca rápida</span><kbd>Ctrl K</kbd>
                 </button>
             </div>
@@ -86,8 +86,8 @@
     </div>
 
     <script src="{% static 'js/config.js' %}"></script>
-    <script src="{% static 'js/workspace.js' %}?v=20260929-settings-default-model1"></script>
-    <script src="{% static 'js/command_palette.js' %}?v=20260929-title-priority"></script>
+    <script src="{% static 'js/workspace.js' %}?v=20260930-sidebar-rail1"></script>
+    <script src="{% static 'js/command_palette.js' %}?v=20260930-query-race1"></script>
     <script src="{% static 'js/jurix-anonymous-history.js' %}"></script>
     {% block extra_js %}{% endblock %}
 </body>

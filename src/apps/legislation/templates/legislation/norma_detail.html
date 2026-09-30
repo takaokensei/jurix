@@ -6,7 +6,7 @@
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Norma' %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20260929-light-theme1">
+<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20260930-device-reading1">
 <link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}">
 {% endblock %}
 
@@ -86,13 +86,13 @@
         <article id="dispositivo-{{ disp.pk }}" class="dispositivo-node" data-level="{{ disp.get_nivel }}" tabindex="-1">
             <div class="dispositivo-header">
                 <span class="dispositivo-label">{{ disp.get_full_identifier }}</span>
-                <span class="dispositivo-tipo badge">{{ disp.get_tipo_display }}</span>
             </div>
-            <div class="dispositivo-text">
-                {{ disp.texto|truncatewords:50 }}
+            <div class="dispositivo-text" id="dispositivo-texto-{{ disp.pk }}">
+                <span data-device-text-preview>{{ disp.texto|truncatewords:50 }}</span>
+                <span data-device-text-full hidden>{{ disp.texto }}</span>
             </div>
             {% if disp.texto|wordcount > 50 %}
-            <button type="button" class="dispositivo-expand" data-expand-device>
+            <button type="button" class="dispositivo-expand" data-expand-device aria-expanded="false" aria-controls="dispositivo-texto-{{ disp.pk }}">
                 Ver texto completo
             </button>
             {% endif %}
@@ -218,5 +218,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/jurix-legal-detail.js' %}" defer></script>
+<script src="{% static 'js/jurix-legal-detail.js' %}?v=20260930-device-expand1" defer></script>
 {% endblock %}
