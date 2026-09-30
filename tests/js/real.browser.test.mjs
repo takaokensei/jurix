@@ -2557,15 +2557,17 @@ test('real browser: evidence drawer groups same-norm citations without hiding ar
     assert.ok(mobile.groups.every((group) => group.bounds.left >= 0 && group.bounds.right <= mobile.width));
     await page.evaluate(() => window.JurixRagUI.focusEvidence(1));
     assert.equal(await page.$eval('[data-evidence-rank="1"]', (card) => card.closest('details').open), true, 'Following an in-answer citation should reveal its collapsed source group');
-    assert.equal(await page.$eval('.jurix-source-group-toggle-all', (button) => button.textContent), 'Expandir todas as evidências', 'Manual expansion must keep the all-groups control synchronized');
+    await page.waitForFunction(() => document.querySelector('.jurix-source-group-toggle-all')?.textContent === 'Expandir restantes (1 de 2 abertas)');
+    assert.equal(await page.$eval('.jurix-source-group-toggle-all', (button) => button.dataset.state), 'partially-open', 'Opening a single law group must expose the partial-expansion state');
     await page.click('.jurix-source-group-toggle-all');
     assert.deepEqual(await page.$$eval('.jurix-source-group', (groups) => groups.map((group) => group.open)), [true, true]);
     assert.equal(await page.$eval('.jurix-source-group-toggle-all', (button) => button.textContent), 'Recolher todas as evidências');
     await page.click('.jurix-source-group__header');
-    await page.waitForFunction(() => document.querySelector('.jurix-source-group-toggle-all')?.textContent === 'Expandir todas as evidências');
-    assert.equal(await page.$eval('.jurix-source-group-toggle-all', (button) => button.textContent), 'Expandir todas as evidências', 'Collapsing one group must clear the all-expanded state');
+    await page.waitForFunction(() => document.querySelector('.jurix-source-group-toggle-all')?.textContent === 'Expandir restantes (1 de 2 abertas)');
+    assert.deepEqual(await page.$$eval('.jurix-source-group', (groups) => groups.map((group) => group.open)), [false, true]);
     await page.evaluate(() => window.JurixRagUI.focusEvidence(1));
     assert.equal(await page.$eval('[data-evidence-rank="1"]', (card) => card.closest('details').open), true);
+    await page.waitForFunction(() => document.querySelector('.jurix-source-group-toggle-all')?.textContent === 'Recolher todas as evidências');
 
     await page.setViewport({ width: 1440, height: 900 });
     const desktopBounds = await page.$eval('.jurix-sources-drawer-panel.is-open .jurix-source-group', (group) => {

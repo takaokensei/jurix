@@ -200,6 +200,23 @@ test('source drawer groups repeated norms without merging article evidence or ci
   dom.window.close();
 });
 
+test('generic fetch failures do not claim the user has lost internet connectivity', () => {
+  const dom = new JSDOM('<!doctype html><html><body><div id="error"></div></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously',
+  });
+  const { window: w } = dom;
+  Object.defineProperty(w.navigator, 'onLine', { configurable: true, value: true });
+  w.eval(read('jurix-rag.js'));
+  w.JurixRagUI.renderErrorState(w.document.querySelector('#error'), new TypeError('Failed to fetch'));
+  assert.match(w.document.querySelector('[role="alert"]').textContent, /Falha na comunicação/);
+  assert.doesNotMatch(w.document.querySelector('[role="alert"]').textContent, /Sem conexão com a internet|Conexão indisponível/);
+
+  Object.defineProperty(w.navigator, 'onLine', { configurable: true, value: false });
+  w.JurixRagUI.renderErrorState(w.document.querySelector('#error'), new TypeError('Failed to fetch'));
+  assert.match(w.document.querySelector('[role="alert"]').textContent, /Sem conexão com a internet/);
+  w.close();
+});
+
 function guestWindow(saved, events = []) {
   const dom = new JSDOM('<body data-authenticated="false"><div id="messages-container"><div id="messages-wrapper"><div id="welcome-state"></div></div></div><div id="chat-sessions-list"></div><form id="chat-form"><textarea id="question-textarea"></textarea><button id="send-button"></button></form>', {
     url: 'http://localhost/assistente/', runScripts: 'dangerously', pretendToBeVisual: true,

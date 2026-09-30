@@ -3033,3 +3033,26 @@ At 768x1024, interacted with the actual workspace drawer on
 sets `aria-expanded=true`, closes on Escape, resets `aria-expanded=false`,
 and never creates horizontal overflow. Saved the open-drawer screenshot as
 `workspace-drawer-768x1024.png`. `node --check` and `git diff --check` pass.
+
+## Cycle 83 — compose affordance, evidence partial state, and network errors
+
+Aligned “Nova pesquisa” with the familiar compose-square/pencil action while
+retaining the Jurix quill mark as the product identity. In the evidence drawer,
+opening a single norm now changes the global action to “Expandir restantes
+(n de total abertas)”; opening every group switches it to “Recolher todas”.
+Closing an individual group updates the label and `data-state`/`aria-expanded`
+asynchronously with the native disclosure state. The real-browser regression
+covers source navigation, partial expansion, expand-all, manual collapse, and
+re-opening from a citation.
+
+Also stopped mapping every generic `fetch` failure to a definitive lost-
+internet message. If the browser explicitly reports offline, the UI says so;
+otherwise it reports a communication failure without blaming the user's
+connection. Added a JS regression for both online/offline cases.
+
+Validation: targeted evidence-drawer browser test passed; streaming behavior
+tests passed (19/19); the complete JavaScript suite passed (131/131), including
+real-browser interaction. Initial runs exposed an expected-label mismatch in
+the updated partial-state scenario and a stale stylesheet cache-bust assertion;
+both were corrected and the complete suite re-run successfully. `git diff
+--check` passes.

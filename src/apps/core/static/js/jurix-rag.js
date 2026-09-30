@@ -111,10 +111,17 @@
             };
         }
         if (error?.code === 'NETWORK_ERROR' || /^(?:failed to fetch|networkerror when attempting to fetch resource\.?|load failed|network request failed|err_network)/i.test(String(error?.message || '').trim())) {
+            if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+                return {
+                    title: 'Sem conexão com a internet',
+                    detail: 'Reconecte-se à internet e tente novamente.',
+                    tone: 'error'
+                };
+            }
             return {
-                title: 'Conexão indisponível',
-                detail: 'Verifique sua conexão e tente novamente.',
-                tone: 'error'
+                title: 'Falha na comunicação',
+                detail: 'Não foi possível concluir a solicitação. O serviço pode estar temporariamente indisponível; tente novamente.',
+                tone: 'warning'
             };
         }
         return {
@@ -547,9 +554,15 @@
             groupsContainer.className = 'jurix-source-groups';
             syncToggleAll = () => {
                 const groups = [...groupsContainer.querySelectorAll('details.jurix-source-group')];
-                const allOpen = groups.length > 0 && groups.every((group) => group.open);
+                const openCount = groups.filter((group) => group.open).length;
+                const allOpen = groups.length > 0 && openCount === groups.length;
                 toggleAll.setAttribute('aria-expanded', String(allOpen));
-                toggleAll.textContent = allOpen ? 'Recolher todas as evidências' : 'Expandir todas as evidências';
+                toggleAll.textContent = allOpen
+                    ? 'Recolher todas as evidências'
+                    : openCount
+                        ? `Expandir restantes (${openCount} de ${groups.length} abertas)`
+                        : 'Expandir todas as evidências';
+                toggleAll.dataset.state = allOpen ? 'all-open' : openCount ? 'partially-open' : 'all-closed';
             };
             toggleAll.addEventListener('click', () => {
                 const expand = toggleAll.getAttribute('aria-expanded') !== 'true';
