@@ -2940,3 +2940,21 @@ The existing `search-empty-390x844.png` is the baseline; updated 390x844 and
 returned HTTP 200, the complete placeholder measures 266px against 298px
 available at mobile width, and there is no page overflow or browser error.
 `norma_ui_v3` tests and `git diff --check` pass.
+
+## Cycle 77 — light-theme suggestion card consistency
+
+The cross-route light-theme audit found the assistant's dynamic legal
+suggestion retained its dark slate card, white text and pale-blue source badge
+against the otherwise light workspace. Added explicit light-theme surface,
+hover, title, icon, arrow, and source-badge treatments using existing
+semantic tokens; disabled the dark blur/shadow treatment in this theme. No
+suggestion content or interaction changed.
+
+Captured before/after in `assistant-light-suggestions-1440x900.png` under the
+respective audit folders. Live `/assistente/` returned HTTP 200 in light mode;
+the suggestion is now white (`rgb(255, 255, 255)`), title ink is
+`rgb(15, 23, 42)`, badge uses the readable blue token, and the page has no
+overflow or browser errors. The light-theme CSS contract was added to the
+frontend tests.
+Validation: complete JavaScript suite passed (129/129), Django system check
+passed, and `git diff --check` passed.

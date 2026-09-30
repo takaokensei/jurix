@@ -41,6 +41,9 @@ test('light theme maps semantic tokens and workspace surfaces instead of leaving
   assert.match(workspace, /:root\[data-theme="light"\][\s\S]*?\.workspace-card[\s\S]*?background: var\(--figma-bg-surface\)/);
   assert.match(workspace, /\.workspace-button-primary[^}]*color: var\(--figma-text-on-accent\)/);
   assert.match(detail, /\.legal-detail-actions \.btn[^}]*color:var\(--figma-text-on-accent\)/);
+  assert.match(tokens, /:root\[data-theme="light"\] \.figma-suggestion-card \{[^}]*background-color: var\(--figma-bg-surface\)/);
+  assert.match(tokens, /:root\[data-theme="light"\] \.figma-suggestion-title \{ color: var\(--figma-text-white\); \}/);
+  assert.match(tokens, /:root\[data-theme="light"\] \.jurix-suggestion-source-badge,[\s\S]*?color: var\(--figma-blue-dark\) !important/);
 });
 
 test('light theme gives the assistant source-summary control semantic foregrounds and surfaces', async () => {

@@ -144,6 +144,28 @@
   border-left-color: var(--figma-blue-primary);
   background: rgba(37, 99, 235, .06);
 }
+:root[data-theme="light"] .figma-suggestion-card {
+  border-color: var(--figma-border);
+  background-color: var(--figma-bg-surface);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .06);
+  backdrop-filter: none;
+}
+:root[data-theme="light"] .figma-suggestion-card:hover {
+  border-color: color-mix(in srgb, var(--figma-blue-primary) 42%, var(--figma-border));
+  background-color: var(--figma-source-hover);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, .1);
+}
+:root[data-theme="light"] .figma-suggestion-title { color: var(--figma-text-white); }
+:root[data-theme="light"] .figma-suggestion-grok-icon,
+:root[data-theme="light"] .figma-suggestion-arrow { color: var(--figma-blue-primary); }
+:root[data-theme="light"] .figma-suggestion-card:hover .figma-suggestion-arrow { color: var(--figma-blue-dark); }
+:root[data-theme="light"] .jurix-suggestion-source-badge,
+:root[data-theme="light"] .jurix-suggestion-source {
+  border-color: color-mix(in srgb, var(--figma-blue-primary) 24%, var(--figma-border)) !important;
+  background-color: color-mix(in srgb, var(--figma-blue-primary) 9%, var(--figma-bg-surface)) !important;
+  box-shadow: none;
+  color: var(--figma-blue-dark) !important;
+}
 
 body.figma-theme {
   background-color: var(--figma-bg-root) !important;
