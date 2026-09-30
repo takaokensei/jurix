@@ -149,6 +149,27 @@ function createTestServer(handlers = {}) {
         <script src="/static/js/jurix-anonymous-history-page.js"></script></body></html>`);
     }
 
+    if (url.pathname === '/history-actions-test/') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(`<!doctype html><html lang="pt-BR"><head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" href="data:,">
+        <link rel="stylesheet" href="/static/css/jurix-figma.css">
+        <link rel="stylesheet" href="/static/css/workspace.css">
+      </head><body class="figma-theme workspace-page"><main class="workspace-content">
+        <section class="workspace-history-list" aria-label="Histórico local de teste">
+          <article class="workspace-history-card" data-history-card data-session-id="local-a">
+            <div class="workspace-history-card__surface"><a class="workspace-history-card__link" href="#a"><div class="workspace-history-main"><span class="workspace-eyebrow">Conversa</span><h2>Consulta sobre a Lei nº 8204/2026</h2></div></a></div>
+            <button type="button" class="workspace-history-delete" data-history-delete aria-label="Excluir conversa: Lei nº 8204/2026">Excluir</button>
+          </article>
+          <article class="workspace-history-card" data-history-card data-session-id="local-b">
+            <div class="workspace-history-card__surface"><a class="workspace-history-card__link" href="#b"><div class="workspace-history-main"><span class="workspace-eyebrow">Conversa</span><h2>Consulta sobre o Plano Diretor</h2></div></a></div>
+            <button type="button" class="workspace-history-delete" data-history-delete aria-label="Excluir conversa: Plano Diretor">Excluir</button>
+          </article>
+        </section>
+      </main></body></html>`);
+    }
+
     if (url.pathname === '/collection-dialog-test/') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(`<!doctype html><html lang="pt-BR"><head>
@@ -453,6 +474,85 @@ test('real browser: delete confirmation traps focus, cancels safely, and announc
       atomic: 'true',
       text: 'Erro ao deletar conversa. Tente novamente.',
     });
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: history deletion keeps keyboard focus on the next conversation', async () => {
+  const server = createTestServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 390, height: 844 });
+    const consoleErrors = [];
+    page.on('pageerror', (error) => consoleErrors.push(error.message));
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+    const response = await page.goto(`http://127.0.0.1:${port}/history-actions-test/`, { waitUntil: 'domcontentloaded' });
+    assert.equal(response.status(), 200);
+    await page.evaluate(() => {
+      window.__deleteRequests = [];
+      window.JurixChatAPI = { deleteSession: async (id) => window.__deleteRequests.push(id) };
+    });
+    await page.addScriptTag({ url: `/static/js/jurix-history-actions.js?v=20260930-post-delete-focus1` });
+
+    const trigger = '[data-history-card][data-session-id="local-a"] [data-history-delete]';
+    await page.focus(trigger);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"][aria-hidden="false"]')
+      && document.activeElement?.hasAttribute('data-history-cancel'));
+    const dialog = await page.evaluate(() => ({
+      modal: document.querySelector('[role="dialog"]').getAttribute('aria-modal'),
+      label: document.querySelector('[role="dialog"]').getAttribute('aria-labelledby'),
+      focus: document.activeElement.getAttribute('data-history-cancel') !== null,
+    }));
+    assert.deepEqual(dialog, { modal: 'true', label: 'history-delete-title', focus: true });
+
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement.hasAttribute('data-history-confirm')), true);
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement.hasAttribute('data-history-cancel')), true);
+    await page.keyboard.down('Shift');
+    await page.keyboard.press('Tab');
+    await page.keyboard.up('Shift');
+    assert.equal(await page.evaluate(() => document.activeElement.hasAttribute('data-history-confirm')), true);
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]')?.getAttribute('aria-hidden') === 'true');
+    assert.equal(await page.evaluate(() => document.activeElement.matches('[data-history-card] [data-history-delete]')), true);
+
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"][aria-hidden="false"]')
+      && document.activeElement?.hasAttribute('data-history-cancel'));
+    await page.click('[data-history-confirm]');
+    await page.waitForFunction(() => document.querySelectorAll('[data-history-card]').length === 1);
+    const afterDelete = await page.evaluate(() => ({
+      remainingId: document.querySelector('[data-history-card]')?.dataset.sessionId,
+      focusedTag: document.activeElement?.tagName,
+      focusedText: document.activeElement?.textContent.trim(),
+      focusedSessionId: document.activeElement?.closest('[data-history-card]')?.dataset.sessionId,
+      dialogHidden: document.querySelector('[role="dialog"]').getAttribute('aria-hidden'),
+      deleteRequests: window.__deleteRequests,
+      viewportWidth: document.documentElement.clientWidth,
+      documentWidth: document.documentElement.scrollWidth,
+    }));
+    assert.equal(afterDelete.remainingId, 'local-b');
+    assert.equal(afterDelete.focusedTag, 'A');
+    assert.equal(afterDelete.focusedSessionId, 'local-b');
+    assert.equal(afterDelete.dialogHidden, 'true');
+    assert.equal(afterDelete.viewportWidth, 390);
+    assert.equal(afterDelete.documentWidth, 390);
+    assert.deepEqual(afterDelete.deleteRequests, ['local-a']);
+    assert.deepEqual(consoleErrors, []);
   } finally {
     await browser.close();
     server.close();

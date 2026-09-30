@@ -3633,3 +3633,34 @@ layout 9. No production defect was found in this flow. Section-17 completion
 remains unproven. Next: continue the route-level keyboard audit through
 history deletion/search and norma source actions, then check live runtime and
 performance acceptance gaps.
+
+## Cycle 103 — preserve keyboard position after history deletion — 2026-09-30
+
+Area: `/historico/`, destructive-action accessibility, and mobile keyboard UX.
+Manual Chromium inspection found that deleting one conversation while other
+history cards remained removed the focused delete trigger and left focus on
+`body`. This made continued keyboard navigation unpredictable. After a
+successful deletion, focus now moves to the next conversation link (or the
+previous one when deleting the last card); deleting the final conversation
+continues to use the existing empty-history reload behavior. The history page
+cache key was updated.
+
+Added a real Chromium regression using two isolated local fixture cards. It
+checks the delete dialog's accessible modal/name attributes, initial focus,
+Tab/Shift+Tab trap, Escape restoration, and focus handoff after the confirmed
+delete, plus a 390px viewport, no horizontal overflow, and no browser console
+errors. The test stubs the delete API locally; no user history is changed.
+Swipe deletion behavior remains covered by the existing JS behavior suite.
+
+Verification: `npm test` passed, including all 29 real Chromium scenarios;
+`python -m pytest src/tests/test_frontend_static.py
+src/tests/test_workspace_routes.py -q` passed (32 tests) using the repository
+`.venv`; `manage.py check`, the design-token guard, and `git diff --check`
+passed. The system Python lacks Django, so Python verification was run with
+the project virtual environment. This focus-only behavior change does not
+alter visuals and did not require new screenshots.
+
+Visual score: history keyboard continuity 9.5, deletion recovery 9.5, mobile
+history behavior 9. Section-17 completion remains unproven. Next: continue
+auditing remaining route interactions and operational acceptance evidence;
+the broad UI/UX goal is still active.

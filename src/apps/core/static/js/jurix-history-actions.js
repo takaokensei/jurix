@@ -54,11 +54,18 @@
     confirm.textContent = 'Excluindo…';
     error.hidden = true;
     try {
+      const cards = [...document.querySelectorAll('[data-history-card]')];
+      const cardIndex = cards.indexOf(card);
+      const adjacentCard = cards[cardIndex + 1] || cards[cardIndex - 1];
+      const nextFocusTarget = adjacentCard?.querySelector(
+        '.workspace-history-card__link, [data-history-delete], a[href], button:not([disabled])',
+      );
       await window.JurixChatAPI.deleteSession(sessionId);
       closeDialog(false);
       card.remove();
       const remaining = document.querySelectorAll('[data-history-card]').length;
       if (!remaining) window.location.reload();
+      else nextFocusTarget?.focus({ preventScroll: true });
     } catch (_) {
       // A failed delete can be caused by permissions, server errors or a lost
       // connection. Do not claim the browser is offline unless that is known.
