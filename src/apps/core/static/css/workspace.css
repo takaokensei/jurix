@@ -31,8 +31,8 @@ html[data-sidebar-collapsed="true"] .workspace-nav-item > span:not(:first-child)
 html[data-sidebar-collapsed="true"] .workspace-nav-item kbd { display: none; }
 html[data-sidebar-collapsed="true"] .workspace-new-action,
 html[data-sidebar-collapsed="true"] .workspace-nav-item { justify-content: center; width: 44px; min-width: 44px; margin-inline: auto; padding-inline: 0; }
-.workspace-nav-item kbd { margin-left: auto; font-size: 10px; opacity: .6; }
-.figma-sidebar-item kbd { margin-left: auto; color: inherit; font-size: 10px; opacity: .65; white-space: nowrap; }
+.workspace-nav-item kbd { margin-left: auto; font-size: 10px; opacity: 1; }
+.figma-sidebar-item kbd { margin-left: auto; color: inherit; font-size: 10px; opacity: 1; white-space: nowrap; }
 .workspace-sidebar-bottom { display: grid; flex: 0 0 auto; gap: 3px; margin-top: auto; }
 .workspace-main { min-width: 0; min-height: 100vh; background: radial-gradient(circle at top right, rgba(59,130,246,.06), transparent 28%), var(--figma-bg-root); }
 .workspace-topbar { height: 64px; display: flex; align-items: center; gap: 18px; padding: 0 28px; border-bottom: 1px solid var(--figma-border); background: rgba(8,18,32,.74); backdrop-filter: blur(15px); position: sticky; top: 0; z-index: 15; }

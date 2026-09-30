@@ -6,12 +6,12 @@
 
 {% block extra_css %}
 {% load static %}
-<link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}?v=20260930-compare-summary2">
+<link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}?v=20260930-axe-heading1">
 {% endblock %}
 
 {% block content %}
 <div class="card">
-    <h2>Comparação de Versões - {{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }}</h2>
+    <h1 class="legal-page-heading">Comparação de Versões - {{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }}</h1>
     <p class="compare-intro">
         Compare o texto original extraído por OCR com o texto consolidado disponível no sistema.
     </p>
@@ -34,7 +34,7 @@
 
 <div class="compare-container" aria-label="Comparação linha a linha das versões">
     <div class="compare-panel original-text">
-        <h3>📑 Comparação textual por linhas</h3>
+        <h2>📑 Comparação textual por linhas</h2>
         <div class="compare-diff" role="table" aria-label="Diferenças entre texto original e consolidado">
             <div class="compare-diff-header" role="row">
                 <span role="columnheader">Original (OCR)</span>

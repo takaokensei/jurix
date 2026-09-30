@@ -13,9 +13,10 @@ footer p { margin-bottom: var(--jurix-space-1); }
 .stat-card { background: linear-gradient(135deg, var(--figma-blue-primary), var(--figma-bg-button)); color: var(--figma-text-white); padding: var(--jurix-space-4); border-radius: var(--jurix-radius-md); text-align: center; box-shadow: 0 18px 50px color-mix(in srgb, var(--figma-bg-root) 45%, transparent); }
 .stat-card h3 { font-size: 36px; margin-bottom: var(--jurix-space-1); font-weight: 700; }
 .stat-card p { font-size: 12px; opacity: .95; margin: 0; }
+.legal-page-heading { margin: 0 0 12px; color: var(--figma-text-white); font-family: var(--font-serif, Lora, Georgia, serif); font-size: clamp(24px, 3vw, 32px); line-height: 1.2; letter-spacing: -.02em; }
 .compare-container { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; min-width: 0; width: 100%; }
 .compare-panel { background: var(--figma-bg-surface); color: var(--figma-text-white); border: 1px solid var(--figma-border); border-radius: var(--jurix-radius-md); padding: 20px; min-width: 0; overflow: hidden; }
-.compare-panel h3 { color: var(--figma-text-white); margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--figma-border); }
+.compare-panel h2 { color: var(--figma-text-white); margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--figma-border); }
 .original-text { border-left: 4px solid var(--figma-text-muted); }
 .consolidated-text { border-left: 4px solid var(--figma-green); }
 .compare-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 18px 0 2px; }

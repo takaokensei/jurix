@@ -188,7 +188,7 @@ test('workspace sidebar keeps utility actions visible while navigation can scrol
   assert.match(source, /\.workspace-sidebar\s*\{[^}]*box-sizing:\s*border-box;[^}]*overflow:\s*hidden;/);
   assert.match(source, /\.workspace-nav\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/);
   assert.match(source, /\.workspace-sidebar-bottom\s*\{[^}]*flex:\s*0\s+0\s+auto;/);
-  assert.match(template, /css\/workspace\.css['"] %\}\?v=20260930-collection-remove-confirm1/);
+  assert.match(template, /css\/workspace\.css['"] %\}\?v=20260930-axe-kbd-contrast1/);
 });
 
 test('assistant and workspace navigation share accessible outline SVG icons', async () => {
@@ -319,7 +319,7 @@ test('norm actions use a responsive grid instead of stranding the official sourc
   assert.match(styles, /@media \(max-width:520px\) \{ \.legal-detail-actions \{ grid-template-columns:minmax\(0,1fr\); \} \}/);
   assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*justify-content:\s*center/);
   assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*min-height:\s*44px/);
-  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260930-action-grid1/);
+  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260930-axe-heading1/);
 });
 
 test('missing effective date is not presented as legal certainty in norm list or detail', async () => {
@@ -355,7 +355,7 @@ test('mobile norm detail keeps secondary metrics compact without squeezing text 
   const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
   assert.match(styles, /@media \(max-width:640px\)[\s\S]*?\.legal-detail-card \.stats-grid \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\); \}/);
   assert.match(styles, /\.legal-detail-card \.stats-grid \.stat-card:last-child \{ grid-column:1 \/ -1; \}/);
-  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260930-action-grid1/);
+  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260930-axe-heading1/);
 });
 
 test('version comparison exposes both texts as labelled stacked evidence on mobile', async () => {
@@ -373,7 +373,7 @@ test('version comparison exposes both texts as labelled stacked evidence on mobi
   assert.match(styles, /\.compare-metric \{[^}]*min-height: 66px/);
   assert.match(styles, /\.compare-metric-consolidated \{ border-inline-start: 3px solid var\(--figma-purple\); \}/);
   assert.match(styles, /@media \(max-width:720px\) \{ \.compare-summary \{ grid-template-columns: 1fr;/);
-  assert.match(template, /css\/jurix-legacy-shell\.css['"] %\}\?v=20260930-compare-summary2/);
+  assert.match(template, /css\/jurix-legacy-shell\.css['"] %\}\?v=20260930-axe-heading1/);
   assert.match(template, /data-line="\{\{ row\.original_number\|default:'—' \}\}"/);
   assert.match(template, /data-line="\{\{ row\.consolidated_number\|default:'—' \}\}"/);
   const missingSideMarkup = template.match(
@@ -415,7 +415,7 @@ test('norma detail gives legal devices clear document hierarchy and readable bod
 test('norm detail actions keep a balanced responsive grid at desktop, tablet and phone widths', async () => {
   const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
   const styles = await read('src/apps/core/static/css/jurix-legal-detail.css');
-  assert.match(template, /jurix-legal-detail\.css['"] %\}\?v=20260930-action-grid1/);
+  assert.match(template, /jurix-legal-detail\.css['"] %\}\?v=20260930-axe-heading1/);
   assert.match(styles, /\.legal-detail-actions \{ display:grid; grid-template-columns:repeat\(3,minmax\(0,1fr\)\);/);
   assert.match(styles, /@media \(max-width:900px\) \{ \.legal-detail-actions \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\); \} \}/);
   assert.match(styles, /@media \(max-width:520px\) \{ \.legal-detail-actions \{ grid-template-columns:minmax\(0,1fr\); \} \}/);
@@ -457,7 +457,7 @@ test('destructive workspace states use theme-aware semantic danger tokens', asyn
   assert.match(workspaceStyles, /\.workspace-button-danger[^}]*background:\s*var\(--figma-red-action\)/);
   assert.match(workspaceStyles, /\.workspace-confirm-icon[^}]*color:\s*var\(--figma-red-soft\)/);
   assert.match(workspaceStyles, /\.workspace-confirm-error[^}]*color:\s*var\(--figma-red\)/);
-  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260930-collection-remove-confirm1/);
+  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260930-axe-kbd-contrast1/);
   for (const value of ['#fff', '#b42332', '#a92332', '#fecaca', '#fca5a5']) {
     assert.doesNotMatch(workspaceStyles.toLowerCase(), new RegExp(value.replace('#', '\\#')));
   }

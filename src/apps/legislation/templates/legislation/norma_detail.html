@@ -6,7 +6,7 @@
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Norma' %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20260930-action-grid1">
+<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20260930-axe-heading1">
 <link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}">
 {% endblock %}
 
@@ -35,15 +35,15 @@
     
     <div class="stats-grid">
         <div class="stat-card">
-            <h3>{{ stats.total_dispositivos }}</h3>
+            <span class="legal-stat-value">{{ stats.total_dispositivos }}</span>
             <p>Dispositivos</p>
         </div>
         <div class="stat-card">
-            <h3>{{ stats.total_eventos }}</h3>
+            <span class="legal-stat-value">{{ stats.total_eventos }}</span>
             <p>Eventos de Alteração</p>
         </div>
         <div class="stat-card">
-            <h3>{{ stats.total_chars }}</h3>
+            <span class="legal-stat-value">{{ stats.total_chars }}</span>
             <p>Caracteres</p>
         </div>
     </div>

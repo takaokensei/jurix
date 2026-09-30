@@ -6,7 +6,7 @@
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Estrutura da norma' %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}?v=20260929-tree-interactions1">
+<link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}?v=20260930-axe-heading1">
 {% endblock %}
 
 {% block extra_js %}
@@ -15,7 +15,7 @@
 
 {% block content %}
 <div class="card">
-    <h2>Estrutura Hierárquica - {{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }}</h2>
+    <h1 class="legal-page-heading">Estrutura Hierárquica - {{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }}</h1>
     <p class="tree-intro">
         Visualização em árvore da estrutura hierárquica dos dispositivos legais.
     </p>

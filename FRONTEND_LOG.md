@@ -3664,3 +3664,52 @@ Visual score: history keyboard continuity 9.5, deletion recovery 9.5, mobile
 history behavior 9. Section-17 completion remains unproven. Next: continue
 auditing remaining route interactions and operational acceptance evidence;
 the broad UI/UX goal is still active.
+
+## Cycle 104 — cross-route automated accessibility pass — 2026-09-30
+
+Area: workspace landmark semantics, keyboard-shortcut contrast, and normative
+document heading hierarchy.
+
+An Axe Core scan of nine real routes in dark and light themes (18 page/theme
+states; WCAG 2.0/2.1/2.2 A/AA plus best-practice rules) exposed a serious
+contrast failure on the assistant's `Ctrl K` hint, a nested banner landmark,
+and heading hierarchy issues on norm detail, comparison, and tree pages.
+The shortcut opacity is now fully opaque in both assistant/workspace sidebar
+variants. The shared topbar is a labelled region rather than an invalid
+banner nested inside the assistant's main landmark. Comparison/tree pages now
+have a single page-level H1; norm statistics are values rather than false
+H3 section headings. Their visual size/spacing was retained using existing
+design-system styles, and changed static assets are cache-busted.
+
+Added Python static regression guards for the two keyboard-hint styles, the
+named topbar region, and the normative heading/value hierarchy. Updated
+existing CSS cache-key expectations. The Axe package was used only as a
+temporary test tool and removed by restoring `tests/js` from its lockfile;
+no application dependency or lockfile was added or changed.
+
+Browser evidence: Axe reported zero violations on 18/18 states after fixes.
+The updated Django process on isolated port 8007 served the changed templates;
+the user-facing 8004 process and Docker app on 8000 were left untouched.
+Captured and visually reviewed 40 after states across the assistant and norm
+detail/comparison/tree routes at 1440×900, 1280×800, 1024×768, 768×1024, and
+390×844 in both themes. Manifests show 20/20 views per theme, HTTP 200, zero
+horizontal overflow, console errors, failed requests, bad responses, and
+review-needed states.
+
+Verification: full `npm test` passed, including 29 real Chromium scenarios;
+focused Python suites passed 35/35; `manage.py check`, design-token guard, and
+`git diff --check` passed. `npm ci` restored the exact committed test
+dependency tree after the temporary scanner use.
+
+Dependency note: `npm audit` reports three high findings in the isolated
+browser-test toolchain (`puppeteer-core` 24.43.1 / `@puppeteer/browsers` /
+`extract-zip`); the reported automatic fix requires Puppeteer Core 25.12.0,
+a breaking major while this package declares Node >=20.11. No dependency or
+engine change was bundled into this accessibility/UI cycle; review a
+compatible test-runner upgrade separately.
+
+Visual score: shortcut contrast 9.5, heading hierarchy/readability 9,
+cross-route accessibility 9.5. Section-17 completion remains unproven; this
+does not close the broader product-quality goal. Next: continue the final
+interaction audit on live assistant/evidence and production-style runtime
+behavior, then re-evaluate all remaining section-17 criteria.
