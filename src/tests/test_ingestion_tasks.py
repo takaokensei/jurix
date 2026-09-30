@@ -6,6 +6,7 @@ Verifies:
 - Asynchronous dispatch in bulk_ingest_normas_task using .delay()
 """
 
+from datetime import date
 from unittest.mock import Mock, patch
 
 import pytest
@@ -240,6 +241,38 @@ def test_no_bare_except_in_production_code():
             if isinstance(node, ast.ExceptHandler) and node.type is None:
                 offenders.append(f"{path.relative_to(src)}:{node.lineno}")
     assert offenders == []
+
+
+@pytest.mark.django_db
+def test_segmentation_persists_publication_and_effective_dates_from_legal_colophon():
+    from src.apps.ingestion.segmentation_tasks import segment_text_task
+    from src.apps.legislation.models import Dispositivo
+
+    norma = Norma.objects.create(
+        tipo="Lei",
+        numero="8204",
+        ano=2026,
+        texto_original=(
+            "Art. 1º Objeto da Lei.\n"
+            "Art. 2º Disposições gerais.\n"
+            "Art. 3º O Poder Executivo regulamentará esta Lei.\n"
+            "Art. 4º\nEsta Lei entra em vigor na data de sua publicação.\n"
+            "Sala das Sessões, em Natal, 20 de agosto de 2026. Eriko Jácome - Presidente\n"
+            "Kleber Fernandes - Primeiro Secretário Camila Araújo - Segunda Secretária\n"
+            "Publicada no Diário Oficial do Município em: 21/9/2026 Autoria: Hermes Câmara.\n"
+            "ESTADO DO RIO GRANDE DO NORTE"
+        ),
+    )
+
+    with patch("src.apps.ingestion.segmentation_tasks._invalidate_rag_cache"):
+        result = segment_text_task.run(norma.id)
+
+    assert result["success"] is True
+    norma.refresh_from_db()
+    assert norma.data_publicacao == date(2026, 9, 21)
+    assert norma.data_vigencia == date(2026, 9, 21)
+    article_four = Dispositivo.objects.get(norma=norma, tipo="artigo", numero="4º")
+    assert article_four.texto == "Esta Lei entra em vigor na data de sua publicação."
 
 
 @pytest.mark.django_db

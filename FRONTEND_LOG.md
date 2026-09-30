@@ -2854,3 +2854,14 @@ and doctrine collections that are not part of this search experience.
 Validation: the full static frontend suite passes (11/11), all `norma_ui_v3`
 tests pass (33/33), and live Chromium returns HTTP 200 with the updated copy,
 no JavaScript console errors, and no horizontal overflow at 1440px.
+
+## Cycle 72 — persisted legal publication metadata
+
+Added a Django-backed segmentation regression test for the concrete Lei
+8204/2026 closing-text shape. It runs the actual Celery task synchronously,
+then verifies that the final article excludes signatures/editorial matter and
+that the Diário Oficial date is persisted as publication/effective date only
+under the explicit “entra em vigor na data de sua publicação” clause.
+
+Validation: the new task integration test passes against the test database;
+Ruff on the test module and `git diff --check` pass.
