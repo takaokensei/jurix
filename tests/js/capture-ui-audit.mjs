@@ -48,6 +48,8 @@ const routes = [
   ['norm-compare', '/normas/3/compare/'],
   ['norm-tree', '/normas/3/tree/'],
   ['collections', '/colecoes/'],
+  ['collections-populated', '/colecoes/'],
+  ['collection-detail-populated', '/colecoes/'],
   ['history', '/historico/'],
   ['history-populated', '/historico/'],
   ['history-delete-dialog', '/historico/'],
@@ -233,6 +235,144 @@ try {
           });
           await page.waitForFunction(() => document.querySelectorAll('.workspace-history-card').length === 2);
           interactionChecks.push({ control: 'anonymous history populated/search state (local sample)', initialCards, filteredTitle, noBackendWrites: true });
+        }
+        if (routeName === 'collections-populated') {
+          const state = await page.evaluate(() => {
+            const emptyState = document.querySelector('.workspace-empty-state');
+            if (!emptyState) throw new Error('Expected the anonymous collections empty state before applying the local preview');
+            const grid = document.createElement('section');
+            grid.className = 'workspace-card-grid';
+            grid.setAttribute('aria-label', 'Prévia local de coleções preenchidas');
+            const samples = [
+              { title: 'Imóveis abandonados e requalificação urbana', description: 'Normas municipais sobre identificação, notificação e reaproveitamento de imóveis sem uso.', count: '4 normas' },
+              { title: 'Saúde pública e acesso hospitalar', description: 'Referências sobre atendimento, serviços municipais e direitos dos usuários da rede pública.', count: '7 normas' },
+              { title: 'Educação popular em Natal', description: 'Legislação e evidências relacionadas à educação comunitária e às políticas locais.', count: '2 normas' },
+            ];
+            for (const sample of samples) {
+              const card = document.createElement('article');
+              card.className = 'workspace-card';
+              const eyebrow = document.createElement('span');
+              eyebrow.className = 'workspace-eyebrow';
+              eyebrow.textContent = 'Dossiê jurídico';
+              const heading = document.createElement('h2');
+              const link = document.createElement('a');
+              link.href = '/colecoes/preview/';
+              link.textContent = sample.title;
+              heading.append(link);
+              const description = document.createElement('p');
+              description.textContent = sample.description;
+              const count = document.createElement('span');
+              count.className = 'workspace-muted';
+              count.textContent = sample.count;
+              card.append(eyebrow, heading, description, count);
+              grid.append(card);
+            }
+            emptyState.replaceWith(grid);
+            const cards = [...grid.querySelectorAll('.workspace-card')];
+            const firstLink = cards[0]?.querySelector('h2 a');
+            const defaultLink = firstLink && getComputedStyle(firstLink);
+            return {
+              cards: cards.map((card) => ({
+                title: card.querySelector('h2')?.textContent.trim(),
+                height: Math.round(card.getBoundingClientRect().height),
+                right: Math.round(card.getBoundingClientRect().right),
+                linkLabel: card.querySelector('h2 a')?.textContent.trim(),
+                countVisible: Boolean(card.querySelector('.workspace-muted')?.getClientRects().length),
+              })),
+              viewportWidth: document.documentElement.clientWidth,
+              documentWidth: document.documentElement.scrollWidth,
+              expectedLinkColor: cards[0] ? getComputedStyle(cards[0].querySelector('h2')).color : null,
+              firstLinkColor: defaultLink?.color,
+              firstLinkDecoration: defaultLink?.textDecorationLine,
+            };
+          });
+          await page.hover('.workspace-card h2 a');
+          const hoverLink = await page.$eval('.workspace-card h2 a', (link) => ({
+            color: getComputedStyle(link).color,
+            decoration: getComputedStyle(link).textDecorationLine,
+          }));
+          await page.mouse.move(0, 0);
+          if (
+            state.cards.length !== 3
+            || state.documentWidth > state.viewportWidth
+            || state.cards.some((card) => !card.countVisible || card.right > state.viewportWidth)
+            || state.firstLinkColor !== state.expectedLinkColor
+            || state.firstLinkDecoration !== 'none'
+            || hoverLink.color === state.firstLinkColor
+            || !hoverLink.decoration.includes('underline')
+          ) {
+            throw new Error(`Populated collection cards overflow or lose metadata: ${JSON.stringify(state)}`);
+          }
+          interactionChecks.push({ control: 'populated collection cards (local visual sample)', ...state, hoverLink, noBackendWrites: true });
+        }
+        if (routeName === 'collection-detail-populated') {
+          const state = await page.evaluate(() => {
+            const main = document.querySelector('.workspace-content');
+            if (!main?.querySelector('.workspace-empty-state')) throw new Error('Expected the anonymous collection list before applying the detail preview');
+            main.replaceChildren();
+            const header = document.createElement('section');
+            header.className = 'workspace-page-header';
+            const headingBlock = document.createElement('div');
+            const back = document.createElement('a');
+            back.className = 'workspace-eyebrow';
+            back.href = '/colecoes/';
+            back.textContent = '← Todas as coleções';
+            const title = document.createElement('h1');
+            title.textContent = 'Imóveis abandonados e requalificação urbana';
+            const description = document.createElement('p');
+            description.textContent = 'Normas municipais sobre identificação, notificação, recuperação e reaproveitamento de imóveis sem uso.';
+            headingBlock.append(back, title, description);
+            const total = document.createElement('span');
+            total.className = 'workspace-muted';
+            total.textContent = '3 normas';
+            header.append(headingBlock, total);
+            const grid = document.createElement('section');
+            grid.className = 'workspace-card-grid';
+            grid.setAttribute('aria-label', 'Normas desta coleção');
+            const norms = [
+              { label: 'Lei municipal · 2026', title: 'Lei nº 8.204/2026', description: 'Institui a Política de Combate a Imóveis Abandonados Causadores de Degradação Urbana no Município de Natal.' },
+              { label: 'Lei municipal · 2024', title: 'Lei nº 7.410/2024', description: 'Dispõe sobre a função social da propriedade urbana e instrumentos de fiscalização municipal.' },
+              { label: 'Decreto municipal · 2023', title: 'Decreto nº 12.180/2023', description: 'Regulamenta procedimentos de notificação e vistoria de imóveis em situação de abandono.' },
+            ];
+            for (const norm of norms) {
+              const card = document.createElement('article');
+              card.className = 'workspace-card';
+              const eyebrow = document.createElement('span');
+              eyebrow.className = 'workspace-eyebrow';
+              eyebrow.textContent = norm.label;
+              const heading = document.createElement('h2');
+              const link = document.createElement('a');
+              link.href = '/normas/3/';
+              link.textContent = norm.title;
+              heading.append(link);
+              const excerpt = document.createElement('p');
+              excerpt.textContent = norm.description;
+              const remove = document.createElement('button');
+              remove.type = 'button';
+              remove.className = 'workspace-button workspace-button-ghost';
+              remove.textContent = 'Remover';
+              remove.setAttribute('aria-label', `Remover ${norm.title} da prévia local`);
+              card.append(eyebrow, heading, excerpt, remove);
+              grid.append(card);
+            }
+            main.append(header, grid);
+            const cards = [...grid.querySelectorAll('.workspace-card')];
+            return {
+              count: cards.length,
+              cards: cards.map((card) => ({
+                title: card.querySelector('h2 a')?.textContent.trim(),
+                right: Math.round(card.getBoundingClientRect().right),
+                removeHeight: Math.round(card.querySelector('button')?.getBoundingClientRect().height || 0),
+                titleColor: getComputedStyle(card.querySelector('h2 a')).color,
+              })),
+              viewportWidth: document.documentElement.clientWidth,
+              documentWidth: document.documentElement.scrollWidth,
+            };
+          });
+          if (state.count !== 3 || state.documentWidth > state.viewportWidth || state.cards.some((card) => card.right > state.viewportWidth || card.removeHeight < 40)) {
+            throw new Error(`Populated collection detail clips content or actions: ${JSON.stringify(state)}`);
+          }
+          interactionChecks.push({ control: 'populated collection detail (local visual sample)', ...state, noBackendWrites: true });
         }
         if (routeName === 'settings-provider') {
           await page.select('select[name="llm_provider"]', 'compatible');

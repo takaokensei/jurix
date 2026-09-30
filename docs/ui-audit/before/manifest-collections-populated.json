@@ -1,0 +1,257 @@
+{
+  "phase": "before",
+  "theme": "dark",
+  "routeFilter": [
+    "collections-populated"
+  ],
+  "baseUrl": "http://127.0.0.1:8004",
+  "capturedAt": "2026-09-30T19:43:14.136Z",
+  "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "results": [
+    {
+      "route": "collections-populated",
+      "requestedPath": "/colecoes/",
+      "viewport": "1440x900",
+      "screenshot": "collections-populated-1440x900.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Coleções — Jurix",
+      "url": "http://127.0.0.1:8004/colecoes/",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "documentHeight": 900,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "populated collection cards (local visual sample)",
+          "cards": [
+            {
+              "title": "Imóveis abandonados e requalificação urbana",
+              "height": 228,
+              "right": 554,
+              "linkLabel": "Imóveis abandonados e requalificação urbana",
+              "countVisible": true
+            },
+            {
+              "title": "Saúde pública e acesso hospitalar",
+              "height": 228,
+              "right": 832,
+              "linkLabel": "Saúde pública e acesso hospitalar",
+              "countVisible": true
+            },
+            {
+              "title": "Educação popular em Natal",
+              "height": 228,
+              "right": 1110,
+              "linkLabel": "Educação popular em Natal",
+              "countVisible": true
+            }
+          ],
+          "viewportWidth": 1440,
+          "documentWidth": 1440,
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "collections-populated",
+      "requestedPath": "/colecoes/",
+      "viewport": "1024x768",
+      "screenshot": "collections-populated-1024x768.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Coleções — Jurix",
+      "url": "http://127.0.0.1:8004/colecoes/",
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "documentHeight": 768,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "populated collection cards (local visual sample)",
+          "cards": [
+            {
+              "title": "Imóveis abandonados e requalificação urbana",
+              "height": 206,
+              "right": 624,
+              "linkLabel": "Imóveis abandonados e requalificação urbana",
+              "countVisible": true
+            },
+            {
+              "title": "Saúde pública e acesso hospitalar",
+              "height": 206,
+              "right": 993,
+              "linkLabel": "Saúde pública e acesso hospitalar",
+              "countVisible": true
+            },
+            {
+              "title": "Educação popular em Natal",
+              "height": 165,
+              "right": 624,
+              "linkLabel": "Educação popular em Natal",
+              "countVisible": true
+            }
+          ],
+          "viewportWidth": 1024,
+          "documentWidth": 1024,
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "collections-populated",
+      "requestedPath": "/colecoes/",
+      "viewport": "768x1024",
+      "screenshot": "collections-populated-768x1024.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Coleções — Jurix",
+      "url": "http://127.0.0.1:8004/colecoes/",
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "documentHeight": 1024,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "populated collection cards (local visual sample)",
+          "cards": [
+            {
+              "title": "Imóveis abandonados e requalificação urbana",
+              "height": 206,
+              "right": 376,
+              "linkLabel": "Imóveis abandonados e requalificação urbana",
+              "countVisible": true
+            },
+            {
+              "title": "Saúde pública e acesso hospitalar",
+              "height": 206,
+              "right": 745,
+              "linkLabel": "Saúde pública e acesso hospitalar",
+              "countVisible": true
+            },
+            {
+              "title": "Educação popular em Natal",
+              "height": 165,
+              "right": 376,
+              "linkLabel": "Educação popular em Natal",
+              "countVisible": true
+            }
+          ],
+          "viewportWidth": 768,
+          "documentWidth": 768,
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "collections-populated",
+      "requestedPath": "/colecoes/",
+      "viewport": "1280x800",
+      "screenshot": "collections-populated-1280x800.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Coleções — Jurix",
+      "url": "http://127.0.0.1:8004/colecoes/",
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "documentHeight": 800,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "populated collection cards (local visual sample)",
+          "cards": [
+            {
+              "title": "Imóveis abandonados e requalificação urbana",
+              "height": 206,
+              "right": 589,
+              "linkLabel": "Imóveis abandonados e requalificação urbana",
+              "countVisible": true
+            },
+            {
+              "title": "Saúde pública e acesso hospitalar",
+              "height": 206,
+              "right": 915,
+              "linkLabel": "Saúde pública e acesso hospitalar",
+              "countVisible": true
+            },
+            {
+              "title": "Educação popular em Natal",
+              "height": 206,
+              "right": 1242,
+              "linkLabel": "Educação popular em Natal",
+              "countVisible": true
+            }
+          ],
+          "viewportWidth": 1280,
+          "documentWidth": 1280,
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "collections-populated",
+      "requestedPath": "/colecoes/",
+      "viewport": "390x844",
+      "screenshot": "collections-populated-390x844.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Coleções — Jurix",
+      "url": "http://127.0.0.1:8004/colecoes/",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "documentHeight": 855,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "populated collection cards (local visual sample)",
+          "cards": [
+            {
+              "title": "Imóveis abandonados e requalificação urbana",
+              "height": 185,
+              "right": 376,
+              "linkLabel": "Imóveis abandonados e requalificação urbana",
+              "countVisible": true
+            },
+            {
+              "title": "Saúde pública e acesso hospitalar",
+              "height": 165,
+              "right": 376,
+              "linkLabel": "Saúde pública e acesso hospitalar",
+              "countVisible": true
+            },
+            {
+              "title": "Educação popular em Natal",
+              "height": 165,
+              "right": 376,
+              "linkLabel": "Educação popular em Natal",
+              "countVisible": true
+            }
+          ],
+          "viewportWidth": 390,
+          "documentWidth": 390,
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    }
+  ]
+}

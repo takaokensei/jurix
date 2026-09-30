@@ -3455,3 +3455,44 @@ focus visibility 9. No visual regression or CSS alteration. Next: complete the
 remaining reduced-motion/focus checks, validate populated collections with
 isolated account fixtures where available, and measure actual production-style
 compressed assets; section-17 completion remains unproven.
+
+## Cycle 98 — populated collections visual state and title-link polish — 2026-09-30
+
+Area: collections workspace, card affordance, and visual evidence coverage.
+Added a local-only populated-collections state to the screenshot harness; it
+reuses the production workspace-card classes and does not write to the app
+database. The new view exposed the browser's default visited-link purple and
+underline on collection titles, visually conflicting with both Jurix themes.
+Workspace card headings now use the semantic text token at rest/visited and the
+existing blue focus/action token with a restrained underline on hover/focus.
+The workspace stylesheet URL was cache-busted.
+
+Captured before/after screenshots for populated collection cards and a populated
+collection detail state at all five viewports in dark and light themes (20
+screenshots per phase; 40 total). Reviewed phone and desktop captures in both
+themes: title hierarchy is consistent, long names wrap cleanly, descriptions
+and norm counts remain secondary, and no card or document overflows
+horizontally. The browser harness checks card bounds, title-link color and
+resting decoration, hover color/underline, metadata visibility, 40px removal
+actions, HTTP/console/request errors, and that the sample is local-only.
+
+Performance follow-up measured all 30 assistant CSS/JS assets directly from
+the local server's source responses: 418,782 bytes raw, 105,544 bytes with
+gzip level 9, and 90,469 bytes with Brotli quality 11 (estimate; Brotli is not
+installed in this environment). WhiteNoise's compressed manifest storage is
+already configured outside DEBUG; the DEBUG server itself delivered the raw
+files. The compressed estimate does not justify speculative code splitting;
+the collected production static root was left untouched because it already
+exists locally.
+
+Validation: populated collection capture passed at 5/5 viewports in dark and
+light, with zero items needing review; prior full JavaScript suite passed
+141/141 and frontend static Python checks passed 11/11. Production storage
+configuration was inspected; no collection records or user accounts were
+created. `git diff --check` passes.
+
+Visual score: populated-card title affordance 9, mobile wrapping 9, theme
+parity 9. Next: exercise a populated collection detail state and its remove/
+source navigation affordances using isolated fixtures, then finish remaining
+keyboard/reduced-motion and production-resource closeout. Section-17 completion
+remains unproven.

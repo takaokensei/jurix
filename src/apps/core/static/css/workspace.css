@@ -82,6 +82,10 @@ html[data-sidebar-collapsed="true"] .workspace-nav-item { justify-content: cente
 .workspace-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
 .workspace-card { padding: 22px; border: 1px solid var(--figma-border); border-radius: 14px; background: var(--figma-bg-surface); }
 .workspace-card h2 { margin: 8px 0; font-size: 1.05rem; }
+.workspace-card h2 a,
+.workspace-card h2 a:visited { color: var(--figma-text-white); text-decoration: none; text-underline-offset: 3px; transition: color var(--jurix-motion-fast, 140ms) var(--jurix-ease-standard, ease); }
+.workspace-card h2 a:hover,
+.workspace-card h2 a:focus-visible { color: var(--figma-blue-light); text-decoration: underline; }
 .workspace-card p { color: var(--figma-text-muted); min-height: 42px; }
 .workspace-muted { color: var(--figma-text-muted); font-size: .84rem; }
 .workspace-dialog { width: min(480px, calc(100vw - 32px)); border: 1px solid var(--figma-border); border-radius: 16px; background: var(--figma-bg-surface); color: var(--figma-text-white); padding: 0; box-shadow: 0 24px 80px rgb(0 0 0 / .45); }
