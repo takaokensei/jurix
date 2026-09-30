@@ -2647,3 +2647,51 @@ Regressions: None observed.
 
 Next action: Continue the route-by-route product audit at narrow and short
 viewports, then verify the remaining acceptance criteria in GOAL.md.
+
+## Cycle 65 — 2026-09-29
+
+Area: Shared workspace sidebar height and utility navigation.
+
+Goal: Ensure `/normas/`, search, history, collections and settings keep their
+utility actions visible on shorter screens, just as the assistant now does.
+
+Observed problems: The common workspace sidebar had the same content-box
+height overflow, measuring 756px in a 720px viewport. On `/normas/`, the
+Configurações and Busca rápida footer controls were clipped at the bottom.
+
+Changes made: Set the workspace sidebar to border-box viewport sizing and
+bounded its navigation as the independently scrollable flex region. The
+utility footer no longer shrinks or moves offscreen. Added matching subtle
+scrollbar styling, refreshed the workspace stylesheet cache key, and extended
+the real-browser shell fixture with a long navigation list and persistent
+footer actions. Updated keyboard expectations to reflect the now-real brand
+and new-research links in that fixture.
+
+Browser validation: On the live `/normas/` route, verified at 1280×720 and
+1280×600 that the sidebar exactly fits the viewport and both footer actions
+remain fully visible. In the expanded browser fixture, the navigation scrolls
+while both utility actions remain inside the 600px viewport. The existing
+mobile open/close/focus flow also passes.
+
+Tests: Full `npm test` passed (111 tests across the frontend suites, including
+23 real-Chromium scenarios); `npm run test:responsive` passed all 22 route /
+tablet combinations. Focused short-height checks passed for both shell
+variants, and `git diff --check` passed. An initial fixture expectation still
+assumed the first focusable item was the first nav link; it now correctly
+accounts for the brand and new-research links. No backend or API code changed.
+
+Console: No new route errors observed.
+
+Responsive validation: Browser screenshots and geometry checks at 1280×600
+and 1280×720 show the footer in view; tablet and mobile breakpoint sweep from
+Cycle 64 remains green.
+
+Visual score: Both shell variants now preserve the same clear rule at short
+heights: primary navigation scrolls, global utility actions stay anchored.
+
+Regressions: No product behavior regression observed; the initial failing
+keyboard assertion was a stale test-fixture expectation and now reflects the
+brand-first focus order.
+
+Next action: Repeat the full frontend suite, responsive route sweep and
+cross-route visual audit before selecting the next highest-impact defect.

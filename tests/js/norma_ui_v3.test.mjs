@@ -109,6 +109,15 @@ test('assistant sidebar keeps its utility footer fixed while the navigation regi
   assert.match(template, /css\/jurix-chat-shell\.css['"] %\}\?v=20260929-sidebar-utilities1/);
 });
 
+test('workspace sidebar keeps utility actions visible while navigation can scroll', async () => {
+  const source = await read('src/apps/core/static/css/workspace.css');
+  const template = await read('src/apps/legislation/templates/legislation/workspace/base.html');
+  assert.match(source, /\.workspace-sidebar\s*\{[^}]*box-sizing:\s*border-box;[^}]*overflow:\s*hidden;/);
+  assert.match(source, /\.workspace-nav\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/);
+  assert.match(source, /\.workspace-sidebar-bottom\s*\{[^}]*flex:\s*0\s+0\s+auto;/);
+  assert.match(template, /css\/workspace\.css['"] %\}\?v=20260929-sidebar-utilities1/);
+});
+
 test('command palette templates cache-bust the shared keyboard accessibility behavior', async () => {
   const chat = await read('src/apps/legislation/templates/legislation/chatbot.html');
   const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
@@ -181,7 +190,7 @@ test('mobile workspace search stays a compact 44px icon button when its label is
   const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
   assert.match(styles, /@media \(max-width:\s*640px\)[\s\S]*?\.workspace-topbar \.workspace-top-search\s*\{[^}]*flex:\s*0 0 44px;[^}]*width:\s*44px;[^}]*min-width:\s*44px;/);
   assert.match(chat, /css\/workspace\.css['"] %\}\?v=20260929-light-theme2/);
-  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260929-light-theme2/);
+  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260929-sidebar-utilities1/);
 });
 
 test('workspace selects use a clearly visible chevron and norm facts stay secondary', async () => {

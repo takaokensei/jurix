@@ -1,20 +1,24 @@
 /* Jurix product workspace: shared shell for dedicated Phase 1 surfaces. */
 .workspace-page { min-height: 100vh; background: var(--figma-bg-root); color: var(--figma-text-white); }
 .workspace-shell { min-height: 100vh; display: grid; grid-template-columns: 240px minmax(0,1fr); }
-.workspace-sidebar { position: sticky; top: 0; height: 100vh; padding: 18px 14px; display: flex; flex-direction: column; justify-content: flex-start; background: rgba(10,16,29,.94); border-right: 1px solid var(--figma-border); backdrop-filter: blur(18px); z-index: 20; }
+.workspace-sidebar { box-sizing: border-box; position: sticky; top: 0; height: 100vh; min-height: 0; padding: 18px 14px; display: flex; flex-direction: column; justify-content: flex-start; overflow: hidden; background: rgba(10,16,29,.94); border-right: 1px solid var(--figma-border); backdrop-filter: blur(18px); z-index: 20; }
 .workspace-brand-block { display: grid; gap: 18px; }
 .workspace-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--figma-text-white); font-weight: 700; font-size: 17px; text-decoration: none; }
 .workspace-logo { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid rgba(103, 232, 249, 0.3); border-radius: 10px; background: linear-gradient(135deg, rgba(30, 58, 138, 0.45), rgba(15, 23, 42, 0.85)); box-shadow: 0 0 14px rgba(6, 182, 212, 0.15); }
 .workspace-logo img { width: 28px; height: 28px; object-fit: contain; filter: drop-shadow(0 0 3px rgba(103, 232, 249, 0.45)); }
 .workspace-new-action { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; border: 1px solid rgba(96,165,250,.24); border-radius: 9px; color: var(--figma-text-white); background: rgba(59,130,246,.1); text-decoration: none; font-size: 13px; font-weight: 600; }
 .workspace-new-action:hover { border-color: var(--figma-blue-light); background: rgba(59,130,246,.16); }
-.workspace-nav { display: grid; flex: 1; align-content: start; gap: 4px; margin-top: 8px; }
+.workspace-nav { display: grid; flex: 1; min-height: 0; align-content: start; gap: 4px; margin-top: 8px; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--figma-border) transparent; scrollbar-width: thin; }
+.workspace-nav::-webkit-scrollbar { width: 6px; }
+.workspace-nav::-webkit-scrollbar-track { background: transparent; }
+.workspace-nav::-webkit-scrollbar-thumb { background: var(--figma-border); border-radius: 3px; }
+.workspace-nav::-webkit-scrollbar-thumb:hover { background: var(--figma-border-strong); }
 .workspace-nav-item { box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 0 11px; border: 1px solid transparent; border-radius: 8px; color: var(--figma-text-muted); background: transparent; text-decoration: none; font: inherit; text-align: left; cursor: pointer; }
 .workspace-nav-item:hover { color: var(--figma-text-white); background: rgba(255,255,255,.045); }
 .workspace-nav-item.is-active { color: var(--figma-blue-light); background: rgba(59,130,246,.11); border-color: rgba(96,165,250,.14); }
 .workspace-nav-item kbd { margin-left: auto; font-size: 10px; opacity: .6; }
 .figma-sidebar-item kbd { margin-left: auto; color: inherit; font-size: 10px; opacity: .65; white-space: nowrap; }
-.workspace-sidebar-bottom { display: grid; gap: 3px; margin-top: auto; }
+.workspace-sidebar-bottom { display: grid; flex: 0 0 auto; gap: 3px; margin-top: auto; }
 .workspace-main { min-width: 0; min-height: 100vh; background: radial-gradient(circle at top right, rgba(59,130,246,.06), transparent 28%), var(--figma-bg-root); }
 .workspace-topbar { height: 64px; display: flex; align-items: center; gap: 18px; padding: 0 28px; border-bottom: 1px solid var(--figma-border); background: rgba(8,18,32,.74); backdrop-filter: blur(15px); position: sticky; top: 0; z-index: 15; }
 .workspace-mobile-toggle { display: none; border: 0; background: transparent; color: var(--figma-text-muted); cursor: pointer; font-size: 18px; }

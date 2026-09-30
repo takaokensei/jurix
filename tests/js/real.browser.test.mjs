@@ -81,7 +81,11 @@ function createTestServer(handlers = {}) {
         <link rel="stylesheet" href="/static/css/workspace.css">
       </head><body class="figma-theme workspace-page"><div class="workspace-shell">
         <aside id="sidebar" class="workspace-sidebar" data-workspace-sidebar aria-label="Navegação principal">
-          <nav><a href="#assistant">Assistente</a><a href="#norms">Normas</a></nav>
+          <div class="workspace-brand-block"><a class="workspace-brand" href="#home">Jurix</a><a class="workspace-new-action" href="#new">Nova pesquisa</a></div>
+          <nav class="workspace-nav" aria-label="Menu principal">
+            ${Array.from({ length: 12 }, (_, index) => `<a class="workspace-nav-item" href="#item-${index}">${index === 0 ? 'Assistente' : index === 1 ? 'Normas' : `Item de navegação ${index + 1}`}</a>`).join('')}
+          </nav>
+          <div class="workspace-sidebar-bottom"><a class="workspace-nav-item" href="/configuracoes/">Configurações</a><button class="workspace-nav-item workspace-palette-trigger" data-open-command-palette>Busca rápida</button></div>
         </aside><main class="workspace-main"><header class="workspace-topbar">
           <button id="toggle-sidebar" data-workspace-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Abrir menu">Menu</button>
         </header><div class="workspace-content" id="main-content"><a href="#content">Conteúdo</a></div></main>
@@ -249,9 +253,17 @@ test('real browser: closed mobile workspace navigation is removed from keyboard 
 
   try {
     const page = await browser.newPage();
+    const pageErrors = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
     await page.setViewport({ width: 390, height: 844 });
     await page.goto(`http://127.0.0.1:${port}/workspace-shell-test/`, { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => document.querySelector('#sidebar')?.inert === true);
+    const initialSidebarState = await page.evaluate(() => ({
+      viewportWidth: innerWidth,
+      inert: document.querySelector('#sidebar')?.inert,
+      ariaHidden: document.querySelector('#sidebar')?.getAttribute('aria-hidden'),
+      scriptLoaded: [...document.scripts].some((script) => script.src.endsWith('/static/js/workspace.js')),
+    }));
+    assert.equal(initialSidebarState.inert, true, JSON.stringify({ initialSidebarState, pageErrors }));
     assert.equal(await page.$eval('#sidebar', (sidebar) => sidebar.getAttribute('aria-hidden')), 'true');
 
     await page.focus('#toggle-sidebar');
@@ -259,11 +271,11 @@ test('real browser: closed mobile workspace navigation is removed from keyboard 
     assert.equal(await page.evaluate(() => document.activeElement.textContent), 'Conteúdo', 'Tab must skip the offscreen sidebar and continue into the page');
 
     await page.click('#toggle-sidebar');
-    await page.waitForFunction(() => document.activeElement?.textContent === 'Assistente');
+    await page.waitForFunction(() => document.activeElement?.textContent === 'Jurix');
     assert.equal(await page.$eval('#sidebar', (sidebar) => sidebar.inert), false);
     assert.equal(await page.$eval('#sidebar', (sidebar) => sidebar.getAttribute('aria-hidden')), 'false');
     await page.keyboard.press('Tab');
-    assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'Normas');
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'Nova pesquisa');
     await page.keyboard.press('Escape');
     assert.equal(await page.evaluate(() => document.activeElement.id), 'toggle-sidebar');
     assert.equal(await page.$eval('#sidebar', (sidebar) => sidebar.inert), true);
@@ -1942,6 +1954,52 @@ test('real browser: assistant utility navigation stays visible in a short deskto
     assert.equal(layout.topOverflowY, 'auto', JSON.stringify(layout));
     assert.ok(layout.settings.top >= 0 && layout.settings.bottom <= layout.viewportHeight, JSON.stringify(layout));
     assert.ok(layout.quickSearch.top >= 0 && layout.quickSearch.bottom <= layout.viewportHeight, JSON.stringify(layout));
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: workspace utility navigation stays visible in a short desktop viewport', async () => {
+  const server = createTestServer();
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 600 });
+    await page.goto(`http://127.0.0.1:${port}/workspace-shell-test/`, { waitUntil: 'domcontentloaded' });
+    const layout = await page.evaluate(() => {
+      const sidebar = document.querySelector('.workspace-sidebar');
+      const nav = document.querySelector('.workspace-nav');
+      const footer = document.querySelector('.workspace-sidebar-bottom');
+      const rect = (element) => {
+        const bounds = element.getBoundingClientRect();
+        return { top: bounds.top, bottom: bounds.bottom };
+      };
+      return {
+        viewportHeight: innerHeight,
+        sidebar: rect(sidebar),
+        nav: rect(nav),
+        navScrollHeight: nav.scrollHeight,
+        navClientHeight: nav.clientHeight,
+        navOverflowY: getComputedStyle(nav).overflowY,
+        footer: rect(footer),
+        utilities: [...footer.querySelectorAll('a, button')].map(rect),
+      };
+    });
+
+    assert.equal(layout.sidebar.top, 0, JSON.stringify(layout));
+    assert.ok(layout.sidebar.bottom <= layout.viewportHeight, JSON.stringify(layout));
+    assert.ok(layout.navScrollHeight > layout.navClientHeight, JSON.stringify(layout));
+    assert.equal(layout.navOverflowY, 'auto', JSON.stringify(layout));
+    assert.ok(layout.utilities.length >= 2, JSON.stringify(layout));
+    assert.ok(layout.utilities.every((item) => item.top >= 0 && item.bottom <= layout.viewportHeight), JSON.stringify(layout));
   } finally {
     await browser.close();
     server.close();
