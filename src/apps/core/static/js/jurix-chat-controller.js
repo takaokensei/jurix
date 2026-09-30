@@ -78,6 +78,9 @@
             indicator.dataset.state = snapshot.status;
             indicator.textContent = STATUS_COPY[snapshot.status] || '';
             indicator.toggleAttribute('hidden', !STATUS_COPY[snapshot.status]);
+            if (!snapshot.busy) {
+                delete indicator.dataset.pipelineStatus;
+            }
         }
     }
 

@@ -3713,3 +3713,43 @@ cross-route accessibility 9.5. Section-17 completion remains unproven; this
 does not close the broader product-quality goal. Next: continue the final
 interaction audit on live assistant/evidence and production-style runtime
 behavior, then re-evaluate all remaining section-17 criteria.
+
+## Cycle 105 — expose live RAG pipeline progress — 2026-09-30
+
+Area: assistant processing feedback and SSE status presentation.
+
+During a live query, the API emitted distinct `queued`, `retrieving`,
+`reranking`, `grounding`, `generating`, `insufficient_evidence`, and
+`finalizing` states, but the visible status stayed at the generic “Gerando
+resposta…” copy; the detailed labels were only sent to the separate
+announcement helper. The assistant now writes each known server status into
+the existing visible `role="status"` indicator, marks its current pipeline
+stage in `data-pipeline-status`, and removes that stage when the chat returns
+to idle. This reuses the existing accessible live region and avoids duplicate
+screen-reader announcements. No backend, RAG, model, or API contract changed.
+
+Added a deterministic Chromium regression that holds the stream at retrieval,
+asserts the visible accessible copy and hidden sources, advances through
+reranking/grounding/generation, then verifies the status clears at completion
+and citations stay deferred until `done`.
+
+Browser validation: Django from this worktree ran on `127.0.0.1:8008`; tested
+at 390×844 against the real local Ollama service. The visible retrieval stage
+appeared and the request completed without console errors or horizontal
+overflow (document width 390px). The local corpus returned one citation but
+insufficient evidence for the test question; that is a corpus/RAG result, not
+a frontend failure and was not changed. Captured
+`docs/ui-audit/after/assistant-stream-status-390x844.png`. The app remains
+open on port 8008 for hands-on review; the Docker app on 8000 was not altered.
+The live service still supplied its answer as a single final chunk in this
+run, so progressive token cadence remains limited by the existing backend
+stream contract and is explicitly not simulated by the frontend.
+
+Verification: focused browser regression passed; full `npm test` passed,
+including 29 real Chromium scenarios; focused Python suites passed 35/35;
+`manage.py check`, design-token guard, and `git diff --check` passed.
+
+Visual score: visible progress feedback 9, mobile processing-state clarity
+9, status cleanup 9. Section-17 completion remains unproven. Next: continue
+the broad route and interaction audit; preserve the backend streaming-contract
+limitation as a separate out-of-scope finding.

@@ -1671,8 +1671,11 @@
                                 finalizing: 'Finalizando resposta…',
                                 insufficient_evidence: 'Evidências insuficientes para uma conclusão segura.',
                             };
-                            if (window.JurixRagUI && labels[status]) {
-                                window.JurixRagUI.announce(labels[status]);
+                            const indicator = document.getElementById('chat-state-indicator');
+                            if (indicator && labels[status]) {
+                                indicator.textContent = labels[status];
+                                indicator.dataset.pipelineStatus = status;
+                                indicator.removeAttribute('hidden');
                             }
                         },
                         isRetry

@@ -1584,15 +1584,22 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
     '```\n';
 
   let releaseDone = null;
+  let releaseProgress = null;
   let receivedPayload = null;
   let resolvePayload = null;
   const payloadPromise = new Promise((resolve) => { resolvePayload = resolve; });
+  const progressPromise = new Promise((resolve) => { releaseProgress = resolve; });
   const donePromise = new Promise((resolve) => {
     releaseDone = resolve;
   });
 
   const server = createTestServer({
     isAuthenticated: () => false,
+    '/api/test/release-progress/': (req, res) => {
+      if (releaseProgress) releaseProgress();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    },
     '/api/test/release-done/': (req, res) => {
       if (releaseDone) releaseDone();
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -1610,6 +1617,12 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
       });
+
+      res.write(`data: ${JSON.stringify({ type: 'status', status: 'retrieving' })}\n\n`);
+      await progressPromise;
+      for (const status of ['reranking', 'grounding', 'generating']) {
+        res.write(`data: ${JSON.stringify({ type: 'status', status })}\n\n`);
+      }
 
       // 1. Sources event arrives first
       res.write(
@@ -1657,6 +1670,13 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
     await page.evaluate(() => localStorage.setItem('jurix-preferences', JSON.stringify({
       model: 'llama3', sources: 3, temperature: 0.7, theme: 'dark', density: 'comfortable',
     })));
+    await page.evaluate(() => {
+      window.__pipelineStatuses = [];
+      const indicator = document.getElementById('chat-state-indicator');
+      new MutationObserver(() => {
+        if (indicator.dataset.pipelineStatus) window.__pipelineStatuses.push(indicator.dataset.pipelineStatus);
+      }).observe(indicator, { attributes: true, childList: true, characterData: true, subtree: true });
+    });
 
     // Set up mutation observer to capture initial opacity on card insertion
     await page.evaluate(() => {
@@ -1674,6 +1694,25 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
     await page.waitForSelector('#hero-search-input');
     await page.type('#hero-search-input', 'Gerar tabela e código');
     await page.keyboard.press('Enter');
+
+    const retrievingIndicator = await page.waitForFunction(() => {
+      const indicator = document.getElementById('chat-state-indicator');
+      return indicator?.dataset.pipelineStatus === 'retrieving' ? {
+        text: indicator.textContent,
+        hidden: indicator.hidden,
+        live: indicator.getAttribute('aria-live'),
+      } : false;
+    }, { timeout: 6000 });
+    assert.deepEqual(await retrievingIndicator.jsonValue(), {
+      text: 'Buscando normas relevantes…', hidden: false, live: 'polite',
+    }, 'retrieval must be presented as a visible accessible pipeline state');
+    assert.equal(await page.$$('.sources-section, .source-card, .evidence-card, .jurix-rag-source').then((els) => els.length), 0);
+    await page.evaluate(() => fetch('/api/test/release-progress/'));
+    const generatingIndicator = await page.waitForFunction(() => {
+      const indicator = document.getElementById('chat-state-indicator');
+      return indicator?.dataset.pipelineStatus === 'generating' ? indicator.textContent : false;
+    }, { timeout: 6000 });
+    assert.equal(await generatingIndicator.jsonValue(), 'Gerando resposta…');
 
     // Wait for markdown table to start rendering in the stream
     await page.waitForSelector('.message-assistant table', { timeout: 6000 });
@@ -1698,6 +1737,10 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
 
     // VERIFICAÇÃO RIGOROSA 2: Aguardar renderização das fontes
     await page.waitForSelector('.sources-section', { timeout: 6000 });
+    await page.waitForFunction(() => document.getElementById('chat-state-indicator')?.hidden === true, { timeout: 6000 });
+    assert.equal(await page.$eval('#chat-state-indicator', (el) => el.dataset.pipelineStatus || null), null);
+    const observedStatuses = await page.evaluate(() => [...new Set(window.__pipelineStatuses)]);
+    assert.deepEqual(observedStatuses, ['retrieving', 'reranking', 'grounding', 'generating']);
     const sourceTexts = await page.$$eval('.sources-section', (els) => els.map((el) => el.textContent));
     assert.ok(
       sourceTexts.some((t) => t.includes('fontes consultadas') || t.includes('Ver fontes')),
