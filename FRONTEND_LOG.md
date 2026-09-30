@@ -3411,3 +3411,47 @@ navigation states 9. Next: perform the final keyboard/focus and reduced-motion
 audit on any remaining high-risk controls, check the authenticated collection
 path only through isolated test data if available, then measure bundle/resource
 weight and close remaining gaps. The section-17 closeout is still outstanding.
+
+## Cycle 97 — evidence drawer keyboard containment — 2026-09-30
+
+Area: assistant evidence drawer accessibility and responsive interaction.
+The keyboard trap's focusable-element list omitted native `<summary>` controls.
+Adding them alone was not sufficient: Chromium reports layout rectangles for
+interactive descendants inside a closed parent `<details>`, even though those
+descendants cannot receive focus. The trap now includes visible disclosure
+labels while excluding controls hidden by any closed disclosure ancestor. This
+keeps Shift+Tab/Tab cycling on real, reachable controls rather than a hidden
+copy or excerpt action.
+
+Extended the Chromium drawer scenario to verify the collapsed-group boundary
+wrap in both directions, Escape close, trigger focus restoration, drawer
+inertness after close, and phone-width bounds for the expand/collapse control.
+At 390px the control is wholly inside the drawer (187px wide; right edge 368px
+in a 390px viewport); the suspected clipping was not reproducible, so no CSS
+change was made. A local browser capture with focus on the last law disclosure
+was visually reviewed; its focus indicator is visible and the viewport has no
+horizontal overflow.
+
+Validation: full JavaScript suite 141/141, including the real Chromium set
+26/26; frontend static Python checks 11/11; `manage.py check` reports no
+issues; `git diff --check` passes. The first full JavaScript attempt had a
+transient streaming-interruption timeout; that scenario passed in isolation
+and the subsequent complete run passed. On the live local app at 390×844, the
+drawer route returned HTTP 200 with no page/console errors, `scrollWidth` did
+not exceed the viewport, and Shift+Tab landed on the final law summary.
+
+Performance baseline for the next pass: `/assistente/` loaded 30 CSS/JS
+resources totaling 418.4 KB of uncompressed response bodies (427.4 KB including
+transfer overhead) in the local DEBUG server; largest assets were `chat.js`
+83.5 KB, `jurix-figma.css` 48.3 KB, `marked.min.js` 40.0 KB and `jurix-rag.js`
+34.4 KB. All nine checked routes returned 200 with no page errors or horizontal
+overflow at 1440×900. This is a development-server baseline, not production
+compressed transfer size; production uses WhiteNoise compressed manifest
+storage, so the next pass should measure collected/compressed assets before
+proposing code splitting or dependency changes.
+
+Visual score: drawer keyboard containment 9, responsive drawer controls 9,
+focus visibility 9. No visual regression or CSS alteration. Next: complete the
+remaining reduced-motion/focus checks, validate populated collections with
+isolated account fixtures where available, and measure actual production-style
+compressed assets; section-17 completion remains unproven.

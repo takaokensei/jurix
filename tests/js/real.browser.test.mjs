@@ -2542,6 +2542,8 @@ test('real browser: evidence drawer groups same-norm citations without hiding ar
           scoreHeights: [...group.querySelectorAll('.jurix-rag-score-text')].map((text) => text.getBoundingClientRect().height),
           bounds: rect(group),
         })),
+        toggleBounds: rect(panel.querySelector('.jurix-source-group-toggle-all')),
+        panelBounds: rect(panel),
         subtitle: panel.querySelector('#sources-drawer-subtitle')?.textContent,
         width: innerWidth,
       };
@@ -2555,6 +2557,12 @@ test('real browser: evidence drawer groups same-norm citations without hiding ar
     assert.ok(mobile.groups.every((group) => group.scoreHeights.every((height) => height < 24)), 'Relevance labels must stay on one line');
     assert.match(mobile.subtitle, /3 evidências em 2 normas/);
     assert.ok(mobile.groups.every((group) => group.bounds.left >= 0 && group.bounds.right <= mobile.width));
+    assert.ok(
+      mobile.toggleBounds.left >= mobile.panelBounds.left
+        && mobile.toggleBounds.right <= mobile.panelBounds.right
+        && mobile.toggleBounds.right <= mobile.width,
+      'Expand/collapse control must remain fully visible inside the phone-sized source drawer'
+    );
     await page.evaluate(() => window.JurixRagUI.focusEvidence(1));
     assert.equal(await page.$eval('[data-evidence-rank="1"]', (card) => card.closest('details').open), true, 'Following an in-answer citation should reveal its collapsed source group');
     await page.waitForFunction(() => document.querySelector('.jurix-source-group-toggle-all')?.textContent === 'Expandir restantes (1 de 2 abertas)');
@@ -2576,6 +2584,46 @@ test('real browser: evidence drawer groups same-norm citations without hiding ar
     });
     assert.ok(desktopBounds.left >= 0 && desktopBounds.right <= desktopBounds.width);
 
+    await page.click('.jurix-source-group-toggle-all');
+    assert.deepEqual(await page.$$eval('.jurix-source-group', (groups) => groups.map((group) => group.open)), [false, false]);
+    await page.focus('#jurix-sources-drawer-close');
+    await page.keyboard.down('Shift');
+    await page.keyboard.press('Tab');
+    await page.keyboard.up('Shift');
+    const focusAfterWrap = await page.evaluate(() => {
+      const panel = document.getElementById('jurix-sources-drawer-panel');
+      const candidates = [...panel.querySelectorAll('button:not([disabled]), a[href], summary')].filter((element) => {
+        let ancestor = element.parentElement;
+        while (ancestor && ancestor !== panel) {
+          if (ancestor.matches('details:not([open])') && ancestor.querySelector(':scope > summary') !== element) return false;
+          ancestor = ancestor.parentElement;
+        }
+        return element.getClientRects().length > 0;
+      });
+      return {
+        isFinalLawSummary: document.activeElement?.matches('.jurix-source-group:last-of-type > summary'),
+        active: `${document.activeElement?.tagName}.${document.activeElement?.className}#${document.activeElement?.id}`,
+        candidates: candidates.map((element) => `${element.tagName}.${element.className}:${element.textContent.trim().slice(0, 16)}`),
+      };
+    });
+    assert.equal(focusAfterWrap.isFinalLawSummary, true, `Shift+Tab should wrap to the last disclosure: ${JSON.stringify(focusAfterWrap)}`);
+    await page.keyboard.press('Tab');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.id),
+      'jurix-sources-drawer-close',
+      'Tab from the final disclosure must wrap to the first drawer control'
+    );
+    await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'test-source-trigger');
+    assert.equal(await page.$eval('#jurix-sources-drawer-panel', (panel) => panel.inert), true);
+
+    await page.evaluate(() => {
+      document.getElementById('test-source-trigger').focus();
+      window.JurixRagUI.openSourcesDrawer([
+        { norma: 'Lei nº 8206/2026', dispositivo_ref: 'Art. 8º', text: 'Vigência na publicação.', similarity_score: 0.98 },
+      ]);
+    });
+    await page.waitForFunction(() => document.activeElement?.id === 'jurix-sources-drawer-close');
     await page.click('#jurix-sources-drawer-close');
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'test-source-trigger');
     assert.equal(await page.$eval('#jurix-sources-drawer-panel', (panel) => panel.inert), true);

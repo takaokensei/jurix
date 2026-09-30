@@ -698,8 +698,17 @@
         if (!panel || panel.getAttribute('aria-hidden') === 'true') return;
 
         const focusable = [...panel.querySelectorAll(
-            'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        )].filter((element) => element.getClientRects().length > 0);
+            'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])'
+        )].filter((element) => {
+            let ancestor = element.parentElement;
+            while (ancestor && ancestor !== panel) {
+                if (ancestor.matches('details:not([open])') && ancestor.querySelector(':scope > summary') !== element) {
+                    return false;
+                }
+                ancestor = ancestor.parentElement;
+            }
+            return element.getClientRects().length > 0;
+        });
         if (!focusable.length) {
             event.preventDefault();
             panel.focus();
