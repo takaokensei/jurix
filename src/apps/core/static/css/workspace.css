@@ -136,20 +136,20 @@ html[data-sidebar-collapsed="true"] .workspace-nav-item { justify-content: cente
 .workspace-history-card { position: relative; display: block; overflow: hidden; padding: 0; }
 .workspace-history-card__surface { transition: transform 180ms ease; }
 .workspace-history-card__link { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 24px; padding: 18px; color: inherit; text-decoration: none; }
-.workspace-history-delete { position: absolute; inset: 0 0 0 auto; width: 92px; border: 0; color: #fff; background: #b42332; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; opacity: 0; transform: translateX(100%); transition: transform 180ms ease,opacity 180ms ease; }
+.workspace-history-delete { position: absolute; inset: 0 0 0 auto; width: 92px; border: 0; color: var(--figma-text-on-accent); background: var(--figma-red-action); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; opacity: 0; transform: translateX(100%); transition: transform 180ms ease,opacity 180ms ease; }
 .workspace-history-card.is-delete-revealed .workspace-history-card__surface { transform: translateX(-92px); }
 .workspace-history-card.is-delete-revealed .workspace-history-delete,
 .workspace-history-delete:focus-visible { opacity: 1; transform: translateX(0); }
 .workspace-history-delete:focus-visible { outline: 2px solid var(--figma-blue-light); outline-offset: -4px; }
-.workspace-button-danger { border-color: rgba(248,113,113,.28) !important; color: #fff !important; background: #a92332 !important; }
+.workspace-button-danger { border-color: color-mix(in srgb,var(--figma-red) 28%,transparent) !important; color: var(--figma-text-on-accent) !important; background: var(--figma-red-action) !important; }
 .workspace-confirm-backdrop { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 20px; background: rgba(3,8,18,.62); opacity: 0; pointer-events: none; transition: opacity 180ms ease; backdrop-filter: blur(5px); }
 .workspace-confirm-backdrop.is-open { opacity: 1; pointer-events: auto; }
 .workspace-confirm-dialog { width: min(440px,100%); box-sizing: border-box; padding: 28px; border: 1px solid var(--figma-border); border-radius: 20px; color: var(--figma-text-white); background: var(--figma-bg-surface); box-shadow: 0 28px 90px rgba(0,0,0,.42); animation: history-dialog-in 200ms ease both; }
-.workspace-confirm-icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; color: #fecaca; background: rgba(239,68,68,.14); font-weight: 800; }
+.workspace-confirm-icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; color: var(--figma-red-soft); background: color-mix(in srgb,var(--figma-red) 14%,transparent); font-weight: 800; }
 .workspace-confirm-dialog h2 { margin: 18px 0 8px; font-size: 20px; }
 .workspace-confirm-dialog p { color: var(--figma-text-muted); line-height: 1.6; }
 .workspace-confirm-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
-.workspace-confirm-error { color: #fca5a5 !important; }
+.workspace-confirm-error { color: var(--figma-red) !important; }
 @keyframes history-dialog-in { from { opacity: .7; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .jurix-provisional-notice { width: fit-content; max-width: 100%; margin: 0 0 8px; padding: 6px 10px; border: 1px solid rgba(245,158,11,.25); border-radius: 999px; color: var(--figma-amber-soft); background: rgba(245,158,11,.07); font-size: 11px; line-height: 1.5; }
 .jurix-provisional-notice[hidden] { display: none; }

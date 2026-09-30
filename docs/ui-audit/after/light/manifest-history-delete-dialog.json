@@ -1,0 +1,162 @@
+{
+  "phase": "after",
+  "theme": "light",
+  "routeFilter": [
+    "history-delete-dialog"
+  ],
+  "baseUrl": "http://127.0.0.1:8004",
+  "capturedAt": "2026-09-30T18:07:15.538Z",
+  "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "results": [
+    {
+      "route": "history-delete-dialog",
+      "requestedPath": "/historico/",
+      "viewport": "1440x900",
+      "screenshot": "history-delete-dialog-1440x900.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "documentHeight": 900,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "history delete confirmation (local preview)",
+          "theme": "light",
+          "background": "rgb(180, 35, 50)",
+          "foreground": "rgb(255, 255, 255)",
+          "iconColor": "rgb(153, 27, 27)",
+          "radius": "20px",
+          "focus": "cancel",
+          "escapeRestoredFocus": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-delete-dialog",
+      "requestedPath": "/historico/",
+      "viewport": "1024x768",
+      "screenshot": "history-delete-dialog-1024x768.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "documentHeight": 768,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "history delete confirmation (local preview)",
+          "theme": "light",
+          "background": "rgb(180, 35, 50)",
+          "foreground": "rgb(255, 255, 255)",
+          "iconColor": "rgb(153, 27, 27)",
+          "radius": "20px",
+          "focus": "cancel",
+          "escapeRestoredFocus": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-delete-dialog",
+      "requestedPath": "/historico/",
+      "viewport": "768x1024",
+      "screenshot": "history-delete-dialog-768x1024.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "documentHeight": 1024,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "history delete confirmation (local preview)",
+          "theme": "light",
+          "background": "rgb(180, 35, 50)",
+          "foreground": "rgb(255, 255, 255)",
+          "iconColor": "rgb(153, 27, 27)",
+          "radius": "20px",
+          "focus": "cancel",
+          "escapeRestoredFocus": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-delete-dialog",
+      "requestedPath": "/historico/",
+      "viewport": "1280x800",
+      "screenshot": "history-delete-dialog-1280x800.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "documentHeight": 800,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "history delete confirmation (local preview)",
+          "theme": "light",
+          "background": "rgb(180, 35, 50)",
+          "foreground": "rgb(255, 255, 255)",
+          "iconColor": "rgb(153, 27, 27)",
+          "radius": "20px",
+          "focus": "cancel",
+          "escapeRestoredFocus": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-delete-dialog",
+      "requestedPath": "/historico/",
+      "viewport": "390x844",
+      "screenshot": "history-delete-dialog-390x844.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "documentHeight": 844,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "history delete confirmation (local preview)",
+          "theme": "light",
+          "background": "rgb(180, 35, 50)",
+          "foreground": "rgb(255, 255, 255)",
+          "iconColor": "rgb(153, 27, 27)",
+          "radius": "20px",
+          "focus": "cancel",
+          "escapeRestoredFocus": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    }
+  ]
+}

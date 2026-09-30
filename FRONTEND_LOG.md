@@ -3186,3 +3186,31 @@ colors is the next focused design-system task.
 Visual score: source drawer 9, mobile title typography 9, theme parity 9.
 Next: remove the five legacy hardcoded danger colors through explicit semantic
 tokens, then continue the cross-route dialog/settings and history audit.
+
+## Cycle 89 — semantic danger colors and history confirmation audit
+
+The design-token gate found five unbaselined hardcoded colors in workspace
+delete/confirmation states. Added theme-aware `--figma-red-action` tokens and
+replaced literals for swipe-delete, confirm, warning icon, and error text with
+semantic palette variables. Both shared-shell stylesheet URLs now refresh the
+token changes. The design-token guard passes; one unrelated historical literal
+remains explicitly tracked in its baseline.
+
+Added a reproducible history-delete-dialog state to the browser auditor by
+injecting a clearly local-only demo card into `/historico/`. The real route
+opens the actual confirmation component; the runner verifies the rounded
+dialog, theme, danger-button colors, focus placement, Escape dismissal, and
+focus restoration, then captures the open state. Dark and light screenshots
+were reviewed at five viewports. Contrast/appearance remained consistent, the
+dialog is 20px rounded, and no actual delete request is sent by the audit.
+
+Validation: complete JavaScript suite 136/136; focused confirmation browser
+test passed; frontend static tests 11/11; Django check; design-token gate (pass,
+1 known baseline literal); `git diff --check`. The five-view manifests for
+`/historico/` and its local dialog state report HTTP 200, no overflow, no console
+errors, and no failed requests in both themes.
+
+Visual score: destructive action clarity 9, dialog hierarchy 9, light/dark
+parity 9, keyboard behavior 9. Next: continue history/settings interaction
+audit and then check the remaining high-priority assistant flows for keyboard,
+loading/error states, and responsive regressions.

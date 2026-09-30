@@ -48,6 +48,7 @@ const routes = [
   ['norm-tree', '/normas/3/tree/'],
   ['collections', '/colecoes/'],
   ['history', '/historico/'],
+  ['history-delete-dialog', '/historico/'],
   ['settings', '/configuracoes/'],
 ];
 const selectedRoutes = routeFilter.size ? routes.filter(([name]) => routeFilter.has(name)) : routes;
@@ -141,6 +142,40 @@ try {
             expandAllState: await page.$eval('.jurix-source-group-toggle-all', (button) => button.dataset.state),
             noHorizontalOverflow: await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
           });
+        }
+        if (routeName === 'history-delete-dialog') {
+          await page.evaluate(() => {
+            const card = document.createElement('article');
+            card.className = 'workspace-history-card';
+            card.dataset.historyCard = '';
+            card.dataset.sessionId = 'local-preview';
+            card.innerHTML = '<div class="workspace-history-card__surface"><span class="workspace-history-main"><span class="workspace-eyebrow">Prévia local</span><strong>Conversa de demonstração</strong></span></div><button type="button" class="workspace-history-delete" data-history-delete aria-label="Excluir conversa de demonstração">Excluir</button>';
+            document.querySelector('.workspace-content').prepend(card);
+            card.querySelector('[data-history-delete]').click();
+          });
+          await page.waitForSelector('.workspace-confirm-backdrop.is-open');
+          const dialogState = await page.evaluate(() => {
+            const dialog = document.querySelector('.workspace-confirm-backdrop');
+            const panel = dialog.querySelector('.workspace-confirm-dialog');
+            const danger = dialog.querySelector('[data-history-confirm]');
+            const icon = dialog.querySelector('.workspace-confirm-icon');
+            return {
+              theme: document.documentElement.dataset.theme,
+              background: getComputedStyle(danger).backgroundColor,
+              foreground: getComputedStyle(danger).color,
+              iconColor: getComputedStyle(icon).color,
+              radius: getComputedStyle(panel).borderRadius,
+              focus: document.activeElement?.hasAttribute('data-history-cancel') ? 'cancel' : document.activeElement?.textContent.trim(),
+            };
+          });
+          if (dialogState.radius === '0px') throw new Error('History delete confirmation must have rounded corners');
+          await page.keyboard.press('Escape');
+          await page.waitForFunction(() => document.querySelector('.workspace-confirm-backdrop')?.getAttribute('aria-hidden') === 'true');
+          const escapeRestoredFocus = await page.evaluate(() => document.activeElement?.hasAttribute('data-history-delete') === true);
+          if (!escapeRestoredFocus) throw new Error('Escape must close the history dialog and restore focus');
+          await page.evaluate(() => document.querySelector('[data-history-delete]').click());
+          await page.waitForSelector('.workspace-confirm-backdrop.is-open');
+          interactionChecks.push({ control: 'history delete confirmation (local preview)', ...dialogState, escapeRestoredFocus });
         }
         if (routeName === 'norm-detail') {
           const disclosure = await page.$('.legal-detail-ementa--expandable');

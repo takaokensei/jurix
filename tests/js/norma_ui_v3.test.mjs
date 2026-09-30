@@ -186,7 +186,7 @@ test('workspace sidebar keeps utility actions visible while navigation can scrol
   assert.match(source, /\.workspace-sidebar\s*\{[^}]*box-sizing:\s*border-box;[^}]*overflow:\s*hidden;/);
   assert.match(source, /\.workspace-nav\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/);
   assert.match(source, /\.workspace-sidebar-bottom\s*\{[^}]*flex:\s*0\s+0\s+auto;/);
-  assert.match(template, /css\/workspace\.css['"] %\}\?v=20260930-search-flow1/);
+  assert.match(template, /css\/workspace\.css['"] %\}\?v=20260930-danger-tokens1/);
 });
 
 test('assistant and workspace navigation share accessible outline SVG icons', async () => {
@@ -424,5 +424,21 @@ test('quill identity is cache-busted and source reveal animates only on expansio
   assert.match(chatbot, /data-logo-icon-url="\{\% static 'img\/logo-icon\.svg' \%\}\?v=20260930-quill1/);
   assert.match(publicBase, /apple-touch-icon[^\n]*logo-icon\.png['"] %\}\?v=20260930-quill1/);
   assert.match(styles, /\.jurix-source-group\[open\] \.jurix-source-group__cards-inner \{ animation: jurix-evidence-reveal 180ms ease-out both; \}/);
+});
+
+test('destructive workspace states use theme-aware semantic danger tokens', async () => {
+  const tokens = await read('src/apps/core/static/css/jurix-figma.css');
+  const workspaceStyles = await read('src/apps/core/static/css/workspace.css');
+  const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
+  assert.match(tokens, /--figma-red-action:\s*#B42332/);
+  assert.match(tokens, /:root\[data-theme="light"\][\s\S]*?--figma-red-action:\s*#B42332/);
+  assert.match(workspaceStyles, /\.workspace-history-delete[^}]*color:\s*var\(--figma-text-on-accent\)[^}]*background:\s*var\(--figma-red-action\)/);
+  assert.match(workspaceStyles, /\.workspace-button-danger[^}]*background:\s*var\(--figma-red-action\)/);
+  assert.match(workspaceStyles, /\.workspace-confirm-icon[^}]*color:\s*var\(--figma-red-soft\)/);
+  assert.match(workspaceStyles, /\.workspace-confirm-error[^}]*color:\s*var\(--figma-red\)/);
+  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260930-danger-tokens1/);
+  for (const value of ['#fff', '#b42332', '#a92332', '#fecaca', '#fca5a5']) {
+    assert.doesNotMatch(workspaceStyles.toLowerCase(), new RegExp(value.replace('#', '\\#')));
+  }
 });
 
