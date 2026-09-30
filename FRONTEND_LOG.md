@@ -2760,3 +2760,71 @@ running local app.
 
 Next action: continue cross-route usability testing and audit the actual SAPL
 PDF navigation behavior against representative long and short legal devices.
+
+## Cycle 68 — stream continuity, conversation memory and provider controls
+
+Restored visible provisional streaming while keeping unverified draft text out
+of saved history. The SSE client now continues reading after the final-answer
+event so a locally generated conversation title can arrive independently;
+anonymous and authenticated history use a concise Ollama-generated title with
+a deterministic short fallback. The history subtitle now shows answer content
+instead of repeating the opening question/title.
+
+Short article follow-ups inherit only a legal citation explicitly present in
+the last five user questions. The history search now ranks matches using a
+bounded weighted bag-of-words score over titles and recent message text;
+anonymous browser history has a client-side relevance search as well.
+
+Added generation-provider selection for Ollama, OpenAI, Gemini, Anthropic,
+OpenRouter, Groq, and OpenAI-compatible local endpoints (including LiteLLM or
+AirLLM deployments). Embeddings/retrieval remain local. API credentials are
+kept in tab-scoped `sessionStorage`, are never written to localStorage/history,
+and are sent only when a chat request is made. Custom compatible endpoints are
+restricted to approved local hostnames and redirects are disabled. README and
+settings explain that remote providers receive the question and retrieved
+passages.
+
+Cross-route browser inspection found `/normas/` still rendered the persisted
+legacy SAPL detail URL even though chat sources had been canonicalized. Norma
+cards now normalize that route too; Lei 8206/2026 points to `/norma/9387/`.
+Also retained history swipe-to-delete confirmation, grouped source evidence,
+clickable answer citations and consistent citation-copy controls from the
+preceding iteration.
+
+Validation: full Python suite passed (661 passed, 6 skipped); focused rerun
+after the final URL/provider changes passed (61 passed); JavaScript suite passed
+all groups (120 tests, including 26 Chromium scenarios); `manage.py check`,
+Ruff and `git diff --check` passed. The configured local Ollama endpoint
+responded to its health/version request. Browser inspection confirmed the
+assistant, `/normas/`, `/pesquisa/`, `/historico/` and `/configuracoes/` routes
+render, and the corrected SAPL destination is present in the norm cards.
+
+Next action: test a real local-model follow-up exchange and verify each
+third-party provider against credentials/accounts supplied by the project
+owner; no external API key was available or transmitted in this cycle.
+
+## Cycle 69 — evidence UX, stream completion, and closing legal metadata
+
+Replaced the app's cup glyph with the Jurix quill SVG across the shared shell,
+assistant and response renderer. Evidence groups now animate in gently, and
+the expand/collapse-all control reflects individual group state changes.
+
+Separated successful SSE completion from secondary UI refresh failures so a
+history/title callback or reader shutdown cannot render a false “connection
+unavailable” alert over a delivered answer. Network messaging is reserved for
+explicit transport errors rather than every JavaScript `TypeError`.
+
+The legal parser now excludes a corroborated signature/publication colophon
+from the final article while preserving the original OCR. It extracts the
+publication date from the Diário Oficial and fills effective date only when
+the statute explicitly makes publication the effective date; a session date
+is never used as a substitute. Regression cases cover Art. 4 and both positive
+and negative effective-date scenarios.
+
+Cycle 69 validation: full pytest passed (664 passed, 6 skipped); all JavaScript
+suites passed (125/125, including 26 Chromium scenarios). The isolated Chromium
+evidence-drawer scenario verifies manual expansion, expand-all, collapse-all,
+and their synchronized accessible label. Django system checks, Ruff on the
+modified parser/task modules, and `git diff --check` passed. The live assistant
+accessibility tree confirms the shared navigation, quill-backed brand image,
+completed response and sources control are present in the running app.

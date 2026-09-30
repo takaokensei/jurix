@@ -1,9 +1,11 @@
 /* Jurix product workspace: shared shell for dedicated Phase 1 surfaces. */
+[hidden] { display: none !important; }
 .workspace-page { min-height: 100vh; background: var(--figma-bg-root); color: var(--figma-text-white); }
 /* Workspace documents scroll naturally; the assistant keeps its fixed streaming frame. */
 body.figma-theme.workspace-document { height: auto; min-height: 100vh; overflow-x: hidden; overflow-y: auto; scrollbar-color: var(--figma-border-strong) var(--figma-bg-root); }
 .workspace-shell { min-height: 100vh; display: grid; grid-template-columns: 240px minmax(0,1fr); transition: grid-template-columns var(--jurix-motion-normal, 220ms) var(--jurix-ease-standard, ease); }
 .workspace-shell.is-sidebar-collapsed { grid-template-columns: 72px minmax(0,1fr); }
+html[data-sidebar-collapsed="true"] .workspace-shell { grid-template-columns: 72px minmax(0,1fr); }
 .workspace-sidebar { box-sizing: border-box; position: sticky; top: 0; width: 100%; min-width: 0; height: 100vh; min-height: 0; padding: 18px 14px; display: flex; flex-direction: column; justify-content: flex-start; overflow: hidden; background: rgba(10,16,29,.94); border-right: 1px solid var(--figma-border); backdrop-filter: blur(18px); z-index: 20; }
 .workspace-brand-block { display: grid; gap: 18px; }
 .workspace-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--figma-text-white); font-weight: 700; font-size: 17px; text-decoration: none; }
@@ -19,6 +21,14 @@ body.figma-theme.workspace-document { height: auto; min-height: 100vh; overflow-
 .workspace-nav-item { box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 0 11px; border: 1px solid transparent; border-radius: 8px; color: var(--figma-text-muted); background: transparent; text-decoration: none; font: inherit; text-align: left; cursor: pointer; }
 .workspace-nav-item:hover { color: var(--figma-text-white); background: rgba(255,255,255,.045); }
 .workspace-nav-item.is-active { color: var(--figma-blue-light); background: rgba(59,130,246,.11); border-color: rgba(96,165,250,.14); }
+html[data-sidebar-collapsed="true"] .workspace-sidebar { padding-inline: 10px; }
+html[data-sidebar-collapsed="true"] .workspace-brand-block { justify-items: center; }
+html[data-sidebar-collapsed="true"] .workspace-brand > span:not(.workspace-logo),
+html[data-sidebar-collapsed="true"] .workspace-new-action > span:not(:first-child),
+html[data-sidebar-collapsed="true"] .workspace-nav-item > span:not(:first-child),
+html[data-sidebar-collapsed="true"] .workspace-nav-item kbd { display: none; }
+html[data-sidebar-collapsed="true"] .workspace-new-action,
+html[data-sidebar-collapsed="true"] .workspace-nav-item { justify-content: center; width: 44px; min-width: 44px; margin-inline: auto; padding-inline: 0; }
 .workspace-nav-item kbd { margin-left: auto; font-size: 10px; opacity: .6; }
 .figma-sidebar-item kbd { margin-left: auto; color: inherit; font-size: 10px; opacity: .65; white-space: nowrap; }
 .workspace-sidebar-bottom { display: grid; flex: 0 0 auto; gap: 3px; margin-top: auto; }
@@ -85,6 +95,10 @@ body.figma-theme.workspace-document { height: auto; min-height: 100vh; overflow-
 .workspace-save-status { color: var(--figma-green); font-size: 12px; }
 .workspace-save-status.is-warning { color: var(--figma-amber-light, #fbbf24); }
 .workspace-search-panel { padding: 18px; display: grid; gap: 14px; margin-bottom: 28px; }
+.workspace-history-search { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: end; gap: 12px; max-width: 860px; margin: 0 0 22px; }
+.workspace-history-search .workspace-field { margin: 0; }
+.workspace-history-search input { box-sizing: border-box; width: 100%; min-height: 44px; padding: 0 13px; border: 1px solid var(--figma-border-strong); border-radius: 9px; color: var(--figma-text-white); background: var(--figma-bg-surface); font: inherit; }
+.workspace-history-search input:focus-visible { outline: 2px solid var(--figma-blue-light); outline-offset: 2px; }
 .workspace-search-input input { min-height: 48px; font-size: 15px; }
 .workspace-filter-row { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
 .workspace-filter-row label { display: grid; gap: 6px; color: var(--figma-text-muted); font-size: 11px; font-weight: 600; }
@@ -114,6 +128,26 @@ body.figma-theme.workspace-document { height: auto; min-height: 100vh; overflow-
 .workspace-auth-notice span { font-size: 12px; line-height: 1.55; }
 .workspace-empty-state-auth .workspace-empty-stats { margin-top: 2px; }
 .workspace-history-card { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 24px; padding: 18px; color: inherit; text-decoration: none; transition: transform .16s ease,border-color .16s ease,background .16s ease; }
+.workspace-history-card { position: relative; display: block; overflow: hidden; padding: 0; }
+.workspace-history-card__surface { transition: transform 180ms ease; }
+.workspace-history-card__link { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 24px; padding: 18px; color: inherit; text-decoration: none; }
+.workspace-history-delete { position: absolute; inset: 0 0 0 auto; width: 92px; border: 0; color: #fff; background: #b42332; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; opacity: 0; transform: translateX(100%); transition: transform 180ms ease,opacity 180ms ease; }
+.workspace-history-card.is-delete-revealed .workspace-history-card__surface { transform: translateX(-92px); }
+.workspace-history-card.is-delete-revealed .workspace-history-delete,
+.workspace-history-delete:focus-visible { opacity: 1; transform: translateX(0); }
+.workspace-history-delete:focus-visible { outline: 2px solid var(--figma-blue-light); outline-offset: -4px; }
+.workspace-button-danger { border-color: rgba(248,113,113,.28) !important; color: #fff !important; background: #a92332 !important; }
+.workspace-confirm-backdrop { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 20px; background: rgba(3,8,18,.62); opacity: 0; pointer-events: none; transition: opacity 180ms ease; backdrop-filter: blur(5px); }
+.workspace-confirm-backdrop.is-open { opacity: 1; pointer-events: auto; }
+.workspace-confirm-dialog { width: min(440px,100%); box-sizing: border-box; padding: 28px; border: 1px solid var(--figma-border); border-radius: 20px; color: var(--figma-text-white); background: var(--figma-bg-surface); box-shadow: 0 28px 90px rgba(0,0,0,.42); animation: history-dialog-in 200ms ease both; }
+.workspace-confirm-icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; color: #fecaca; background: rgba(239,68,68,.14); font-weight: 800; }
+.workspace-confirm-dialog h2 { margin: 18px 0 8px; font-size: 20px; }
+.workspace-confirm-dialog p { color: var(--figma-text-muted); line-height: 1.6; }
+.workspace-confirm-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.workspace-confirm-error { color: #fca5a5 !important; }
+@keyframes history-dialog-in { from { opacity: .7; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.jurix-provisional-notice { width: fit-content; max-width: 100%; margin: 0 0 8px; padding: 6px 10px; border: 1px solid rgba(245,158,11,.25); border-radius: 999px; color: var(--figma-amber-soft); background: rgba(245,158,11,.07); font-size: 11px; line-height: 1.5; }
+.jurix-provisional-notice[hidden] { display: none; }
 .workspace-pagination { display:flex; align-items:center; justify-content:center; gap:14px; margin:24px 0 8px; color:var(--figma-text-muted); font-size:.88rem; }
 .workspace-pagination .workspace-button { min-height:40px; }
 .workspace-history-main { min-width: 0; }
@@ -142,7 +176,8 @@ body.figma-theme.workspace-document { height: auto; min-height: 100vh; overflow-
 .command-palette-empty { padding: 24px 16px; color: var(--figma-text-muted); font-size: 13px; text-align: center; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 [data-density="compact"] .workspace-card, [data-density="compact"] .workspace-result-card, [data-density="compact"] .workspace-history-card { padding: 15px; }
-@media (max-width: 900px) { .workspace-shell { grid-template-columns: 1fr; } .workspace-sidebar { position: fixed; left: 0; top: 0; width: 240px; box-sizing: border-box; transform: translateX(-100%); transition: transform .2s ease; } .workspace-sidebar.is-open { transform: translateX(0); } .workspace-mobile-toggle { display: inline-flex; } .workspace-content { padding-top: 28px; } .workspace-form-grid, .workspace-option-grid, .workspace-filter-row { grid-template-columns: 1fr; } .workspace-field-wide { grid-column: auto; } .workspace-page-header { align-items: flex-start; flex-direction: column; } .workspace-history-card { grid-template-columns: 1fr; } .workspace-history-meta { align-items: flex-start; flex-direction: row; } .workspace-top-search { width: auto; flex: 1; } }
+@media (max-width: 900px) { .workspace-shell, html[data-sidebar-collapsed="true"] .workspace-shell { grid-template-columns: 1fr; } .workspace-sidebar { position: fixed; left: 0; top: 0; width: 240px; box-sizing: border-box; transform: translateX(-100%); transition: transform .2s ease; } .workspace-sidebar.is-open { transform: translateX(0); } html[data-sidebar-collapsed="true"] .workspace-sidebar { padding-inline: 14px; } html[data-sidebar-collapsed="true"] .workspace-brand-block { justify-items: stretch; } html[data-sidebar-collapsed="true"] .workspace-brand > span:not(.workspace-logo), html[data-sidebar-collapsed="true"] .workspace-new-action > span:not(:first-child), html[data-sidebar-collapsed="true"] .workspace-nav-item > span:not(:first-child), html[data-sidebar-collapsed="true"] .workspace-nav-item kbd { display: initial; } html[data-sidebar-collapsed="true"] .workspace-new-action, html[data-sidebar-collapsed="true"] .workspace-nav-item { justify-content: flex-start; width: 100%; min-width: 0; margin-inline: 0; padding-inline: 11px; } .workspace-mobile-toggle { display: inline-flex; } .workspace-content { padding-top: 28px; } .workspace-form-grid, .workspace-option-grid, .workspace-filter-row { grid-template-columns: 1fr; } .workspace-field-wide { grid-column: auto; } .workspace-page-header { align-items: flex-start; flex-direction: column; } .workspace-history-card__link { grid-template-columns: 1fr; } .workspace-history-meta { align-items: flex-start; flex-direction: row; } .workspace-top-search { width: auto; flex: 1; } }
+@media (max-width: 560px) { .workspace-history-search { grid-template-columns: 1fr; } .workspace-history-search button { width: 100%; } }
 @media (max-width: 560px) { .workspace-topbar { padding: 0 14px; gap: 10px; } .workspace-breadcrumb span:first-child, .workspace-top-search kbd { display: none; } .workspace-content { padding-left: 14px; padding-right: 14px; } }
 @media (max-width: 640px) {
   .workspace-topbar .workspace-top-search {
@@ -161,7 +196,7 @@ body.figma-theme.workspace-document { height: auto; min-height: 100vh; overflow-
   .workspace-button, .workspace-nav-item { min-height: 44px; }
   .workspace-brand { min-height: 44px; }
 }
-@media (prefers-reduced-motion: reduce) { .workspace-nav-item, .workspace-result-card, .workspace-history-card, .workspace-sidebar, .workspace-top-search { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .workspace-nav-item, .workspace-result-card, .workspace-history-card, .workspace-sidebar, .workspace-top-search, .workspace-history-card__surface, .workspace-history-delete, .workspace-confirm-backdrop { transition: none; } .workspace-confirm-dialog { animation: none; } }
 
 /* Shared product guardrails: keep every workspace surface readable and shrinkable. */
 .workspace-shell, .workspace-main, .workspace-content, .workspace-card, .workspace-result-card,

@@ -5,25 +5,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="dark light">
-    <script src="{% static 'js/theme.js' %}?v=20260929-shared-preference1"></script>
-    <link rel="icon" type="image/png" href="{% static 'img/logo-icon.png' %}">
+    <script src="{% static 'js/theme.js' %}?v=20260930-persist-sidebar1"></script>
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/logo-icon.svg' %}">
     <title>{% block title %}Jurix{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20260930-sidebar-rail1">
-    <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20260930-document-scroll1">
+    <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20260930-source-groups-composer1">
+    <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20260930-history-search-provider2">
     <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
-<body class="figma-theme workspace-page workspace-document{% block body_class %}{% endblock %}" data-chatbot-url="{% url 'workspace:assistant' %}" data-norma-list-url="{% url 'legislation:norma_list' %}" data-logo-icon-url="{% static 'img/logo-icon.png' %}" data-user-name="{{ request.user.first_name|default:request.user.username|title }}">
+<body class="figma-theme workspace-page workspace-document{% block body_class %}{% endblock %}" data-chatbot-url="{% url 'workspace:assistant' %}" data-norma-list-url="{% url 'legislation:norma_list' %}" data-logo-icon-url="{% static 'img/logo-icon.svg' %}" data-user-name="{{ request.user.first_name|default:request.user.username|title }}">
     <a class="skip-link jurix-skip-link" href="#main-content">Pular para o conteúdo principal</a>
 
     <div class="workspace-shell">
         <aside class="workspace-sidebar" id="sidebar" data-workspace-sidebar aria-label="Navegação principal">
             <div class="workspace-brand-block">
                 <a href="{% url 'workspace:assistant' %}" class="workspace-brand" aria-label="Jurix — Assistente" title="Jurix — Assistente">
-                    <span class="workspace-logo"><img src="{% static 'img/logo-icon.png' %}" alt=""></span>
+                    <span class="workspace-logo"><img src="{% static 'img/logo-icon.svg' %}" alt=""></span>
                     <span>Jurix</span>
                 </a>
                 <a href="{% url 'workspace:assistant' %}" class="workspace-new-action" aria-label="Nova pesquisa" title="Nova pesquisa">
@@ -86,7 +86,7 @@
     </div>
 
     <script src="{% static 'js/config.js' %}"></script>
-    <script src="{% static 'js/workspace.js' %}?v=20260930-sidebar-rail1"></script>
+    <script src="{% static 'js/workspace.js' %}?v=20260930-provider-settings2"></script>
     <script src="{% static 'js/command_palette.js' %}?v=20260930-query-race1"></script>
     <script src="{% static 'js/jurix-anonymous-history.js' %}"></script>
     {% block extra_js %}{% endblock %}

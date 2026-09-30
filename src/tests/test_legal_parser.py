@@ -7,7 +7,7 @@ import textwrap
 
 import pytest
 
-from src.processing.legal_parser import LegalTextParser
+from src.processing.legal_parser import LegalTextParser, extract_publication_metadata
 
 
 @pytest.fixture
@@ -508,3 +508,44 @@ def test_capitulo_unico_and_roman_lowercase_headings_do_not_crash(parser):
     parser.build_hierarchy(
         parser.parse_legal_text("CAPÍTULO ÚNICO\nArt. 1º Texto.\nCapítulo iii - x\nArt. 2º T.")
     )
+
+
+def test_last_article_excludes_session_signature_and_publication_colophon(parser):
+    text = """Art. 1º Objeto da Lei.
+Art. 2º Disposições gerais.
+Art. 3º O Poder Executivo regulamentará esta Lei.
+Art. 4º
+Esta Lei entra em vigor na data de sua publicação.
+Sala das Sessões, em Natal, 20 de agosto de 2026. Eriko Jácome - Presidente
+Kleber Fernandes - Primeiro Secretário Camila Araújo - Segunda Secretária
+Publicada no Diário Oficial do Município em: 21/9/2026 Autoria: Hermes Câmara.
+ESTADO DO RIO GRANDE DO NORTE
+"""
+    articles = [item for item in parser.parse_legal_text(text) if item["tipo"] == "artigo"]
+    assert articles[-1]["numero"] == "4º"
+    assert articles[-1]["texto"].strip() == "Esta Lei entra em vigor na data de sua publicação."
+
+
+def test_publication_metadata_uses_diario_date_only_for_explicit_publication_effective_clause():
+    metadata = extract_publication_metadata(
+        "Art. 4º Esta Lei entra em vigor na data de sua publicação. "
+        "Sala das Sessões, em Natal, 20 de agosto de 2026. "
+        "Publicada no Diário Oficial do Município em: 21/9/2026 Autoria: Hermes Câmara."
+    )
+    assert metadata["data_publicacao"].isoformat() == "2026-09-21"
+    assert metadata["vigencia_na_publicacao"] is True
+
+    no_publication_clause = extract_publication_metadata(
+        "Art. 4º Esta Lei entra em vigor 30 dias após a publicação. "
+        "Publicada no Diário Oficial do Município em: 21/9/2026"
+    )
+    assert no_publication_clause["data_publicacao"].isoformat() == "2026-09-21"
+    assert no_publication_clause["vigencia_na_publicacao"] is False
+
+
+def test_publication_metadata_does_not_invent_dates():
+    metadata = extract_publication_metadata(
+        "Art. 4º Esta Lei entra em vigor na data de sua publicação. "
+        "Sala das Sessões, em Natal, 20 de agosto de 2026."
+    )
+    assert metadata == {"data_publicacao": None, "vigencia_na_publicacao": True}

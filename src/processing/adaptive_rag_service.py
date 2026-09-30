@@ -353,6 +353,7 @@ class AdaptiveRAGService(RAGService):
         model=None,
         temperature: float = 0.3,
         options: RetrievalOptions | None = None,
+        text_provider: dict[str, Any] | None = None,
     ):
         previous = getattr(self, "_jurix_retrieval_options", None)
         self._jurix_retrieval_options = options or RetrievalOptions(max_sources=k)
@@ -362,6 +363,7 @@ class AdaptiveRAGService(RAGService):
                 k=k,
                 model=model,
                 temperature=temperature,
+                text_provider=text_provider,
                 retrieval_fingerprint=self._options().fingerprint(),
             )
         finally:

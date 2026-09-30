@@ -47,6 +47,14 @@
         document.documentElement.setAttribute('data-density', getStoredDensity());
     }
 
+    function applySidebarPreference() {
+        try {
+            document.documentElement.setAttribute('data-sidebar-collapsed', localStorage.getItem('jurix-sidebar-collapsed') === 'true' ? 'true' : 'false');
+        } catch (e) {
+            document.documentElement.setAttribute('data-sidebar-collapsed', 'false');
+        }
+    }
+
     function setTheme(theme) {
         var preference = ['dark', 'light', 'system'].includes(theme) ? theme : 'dark';
         var resolvedTheme = resolveTheme(preference);
@@ -95,6 +103,7 @@
     var _stored = getStoredTheme();
     document.documentElement.setAttribute('data-theme', resolveTheme(_stored || 'system'));
     applyDensity();
+    applySidebarPreference();
 
     // ── Wire toggle buttons once DOM is ready ──
     function onReady() {

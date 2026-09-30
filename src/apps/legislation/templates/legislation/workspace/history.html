@@ -6,9 +6,15 @@
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Histórico' %}{% endblock %}
 
 {% block content %}
+<form class="sr-only" aria-hidden="true">{% csrf_token %}</form>
 <section class="workspace-page-header">
     <div><span class="workspace-eyebrow">Memória</span><h1>Histórico</h1><p>Conversas e consultas anteriores em um único lugar.</p></div>
 </section>
+
+<form class="workspace-history-search" method="get" role="search" data-history-search>
+    <label class="workspace-field workspace-field-wide" for="history-query"><span>Buscar nas conversas</span><input id="history-query" name="q" type="search" value="{{ history_query }}" placeholder="Assunto, norma, artigo ou trecho da conversa" maxlength="120"></label>
+    <button class="workspace-button workspace-button-secondary" type="submit">Pesquisar</button>
+</form>
 
 {% if not request.user.is_authenticated %}
 <section class="workspace-empty-state workspace-empty-state-large" id="anonymous-history-root" data-anonymous-history>
@@ -21,20 +27,25 @@
 {% elif sessions %}
 <section class="workspace-history-list">
     {% for session in sessions %}
-    <a class="workspace-history-card" href="{% url 'workspace:assistant_session' session.slug %}">
-        <div class="workspace-history-main"><span class="workspace-eyebrow">Conversa</span><h2>{{ session.title|default:"Conversa sem título" }}</h2><p>{{ session.primary_query|truncatechars:220 }}</p></div>
-        <div class="workspace-history-meta"><span>{{ session.message_count }} mensagens</span><time datetime="{{ session.updated_at|date:'c' }}">{{ session.updated_at|date:'d/m/Y H:i' }}</time></div>
-    </a>
+    <article class="workspace-history-card" data-history-card data-session-id="{{ session.pk }}">
+        <div class="workspace-history-card__surface">
+            <a class="workspace-history-card__link" href="{% url 'workspace:assistant_session' session.slug %}">
+                <div class="workspace-history-main"><span class="workspace-eyebrow">Conversa</span><h2>{{ session.title|default:"Conversa sem título" }}</h2><p>{% if session.primary_query != session.title %}{{ session.primary_query|truncatechars:220 }}{% else %}{{ session.message_count }} mensagens nesta conversa{% endif %}</p></div>
+                <div class="workspace-history-meta"><span>{{ session.message_count }} mensagens</span><time datetime="{{ session.updated_at|date:'c' }}">{{ session.updated_at|date:'d/m/Y H:i' }}</time></div>
+            </a>
+        </div>
+        <button type="button" class="workspace-history-delete" data-history-delete aria-label="Excluir conversa: {{ session.title|default:'Conversa sem título' }}" title="Excluir conversa">Excluir</button>
+    </article>
     {% endfor %}
 </section>
 {% if history_page and history_page.has_other_pages %}
 <nav class="workspace-pagination" aria-label="Paginação do histórico">
     {% if history_page.has_previous %}
-    <a class="workspace-button workspace-button-secondary" href="?page={{ history_page.previous_page_number }}">Anterior</a>
+    <a class="workspace-button workspace-button-secondary" href="?page={{ history_page.previous_page_number }}&q={{ history_query|urlencode }}">Anterior</a>
     {% endif %}
     <span aria-current="page">Página {{ history_page.number }} de {{ history_page.paginator.num_pages }}</span>
     {% if history_page.has_next %}
-    <a class="workspace-button workspace-button-secondary" href="?page={{ history_page.next_page_number }}">Próxima</a>
+    <a class="workspace-button workspace-button-secondary" href="?page={{ history_page.next_page_number }}&q={{ history_query|urlencode }}">Próxima</a>
     {% endif %}
 </nav>
 {% endif %}
@@ -43,4 +54,4 @@
 {% endif %}
 {% endblock %}
 
-{% block extra_js %}<script src="{% static 'js/jurix-anonymous-history-page.js' %}"></script>{% endblock %}
+{% block extra_js %}<script src="{% static 'js/jurix-chat-api.js' %}?v=20260930-provider-context2"></script><script src="{% static 'js/jurix-history-actions.js' %}?v=20260930-swipe-delete1"></script><script src="{% static 'js/jurix-anonymous-history-page.js' %}?v=20260930-history-search2"></script>{% endblock %}

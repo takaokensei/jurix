@@ -24,7 +24,7 @@ from src.clients.sapl.sapl_client import SaplAPIClient
 from src.llm_engine.ollama_service import OllamaService
 from src.processing.cache_service import get_cache_service
 from src.processing.consolidation_engine import ConsolidationEngine
-from src.processing.legal_parser import LegalTextParser
+from src.processing.legal_parser import LegalTextParser, extract_publication_metadata
 from src.processing.ner_extractor import LegalNERExtractor
 
 from .task_support import _invalidate_rag_cache, _mark_norma_failed
@@ -81,9 +81,26 @@ def segment_text_task(self, norma_id: int) -> dict[str, Any]:
             norma.save(update_fields=["needs_review", "processing_error", "updated_at"])
             return {"success": False, "error": error_msg, "norma_id": norma_id}
 
+        # Preserve official publication metadata found in the OCR colophon.
+        # Effective date is inferred only when the law explicitly says it
+        # enters into force on publication; the session/signature date is not
+        # an effective date.
+        metadata = extract_publication_metadata(norma.texto_original)
+        metadata_fields = []
+        if metadata["data_publicacao"] and not norma.data_publicacao:
+            norma.data_publicacao = metadata["data_publicacao"]
+            metadata_fields.append("data_publicacao")
+        if (
+            metadata["vigencia_na_publicacao"]
+            and norma.data_publicacao
+            and not norma.data_vigencia
+        ):
+            norma.data_vigencia = norma.data_publicacao
+            metadata_fields.append("data_vigencia")
+
         # Mark as processing
         norma.status = "segmentation_processing"
-        norma.save(update_fields=["status", "updated_at"])
+        norma.save(update_fields=["status", "updated_at", *metadata_fields])
 
         logger.info(f"[Task {task_id}] Parsing legal text ({len(norma.texto_original)} chars)")
 

@@ -394,7 +394,8 @@
 .jurix-rag-source__actions {
     justify-content: flex-end;
 }
-.jurix-rag-source__open {
+.jurix-rag-source__open,
+.jurix-rag-source__copy {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
@@ -407,17 +408,22 @@
     text-decoration: none;
     font-size: 0.72rem;
     font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
     transition:
         border-color var(--jurix-motion-fast),
         background-color var(--jurix-motion-fast),
         color var(--jurix-motion-fast);
 }
-.jurix-rag-source__open:hover {
+.jurix-rag-source__open:hover,
+.jurix-rag-source__copy:hover,
+.jurix-rag-source__copy.is-copied {
     border-color: var(--jurix-evidence-accent);
     background: var(--jurix-evidence-surface-hover);
     color: var(--jurix-evidence-accent);
 }
 .jurix-rag-source__open:focus-visible,
+.jurix-rag-source__copy:focus-visible,
 .jurix-rag-source__details summary:focus-visible {
     outline: 2px solid var(--jurix-evidence-focus);
     outline-offset: 2px;

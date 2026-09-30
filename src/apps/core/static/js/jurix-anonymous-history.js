@@ -194,6 +194,18 @@
     return session ? JSON.parse(JSON.stringify(session)) : null;
   }
 
+  function setTitle(id, title) {
+    const clean = String(title || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 70);
+    if (!clean) return false;
+    const state = read();
+    const session = state.sessions.find(item => String(item.id) === String(id));
+    if (!session) return false;
+    session.title = clean;
+    session.updated_at = now();
+    write(state);
+    return true;
+  }
+
   function remove(id) {
     const state = read();
     const session = state.sessions.find(item => String(item.id) === String(id));
@@ -217,6 +229,7 @@
     prepareRetry,
     list,
     get,
+    setTitle,
     remove,
     clear,
   };

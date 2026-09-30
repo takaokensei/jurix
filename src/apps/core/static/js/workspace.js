@@ -39,6 +39,7 @@
         };
         const setCollapsed = (collapsed) => {
             shell?.classList.toggle('is-sidebar-collapsed', collapsed);
+            document.documentElement.setAttribute('data-sidebar-collapsed', String(collapsed));
             toggle.setAttribute('aria-expanded', String(!collapsed));
             toggle.setAttribute('aria-label', collapsed ? 'Expandir navegação' : 'Recolher navegação');
             toggle.title = collapsed ? 'Expandir navegação' : 'Recolher navegação';
@@ -56,7 +57,10 @@
             sidebar.setAttribute('aria-hidden', String(hidden));
             if (open && focusFirst) sidebar.querySelector('a, button, [tabindex]:not([tabindex="-1"])')?.focus();
         };
-        if (isMobile()) setOpen(false);
+        if (isMobile()) {
+            document.documentElement.setAttribute('data-sidebar-collapsed', 'false');
+            setOpen(false);
+        }
         else setCollapsed(readCollapsed());
         toggle.addEventListener('click', () => {
             if (isMobile()) {
@@ -79,6 +83,7 @@
         window.addEventListener('resize', () => {
             setOpen(false);
             if (!isMobile()) setCollapsed(readCollapsed());
+            else document.documentElement.setAttribute('data-sidebar-collapsed', 'false');
         });
     }
 
@@ -90,6 +95,26 @@
         const modelField = form.querySelector('[name="model"]');
         const temperatureField = form.querySelector('[name="temperature"]');
         const sourcesField = form.querySelector('[name="sources"]');
+        const providerField = form.querySelector('[name="llm_provider"]');
+        const providerStorageKey = 'jurix-llm-session-config';
+        const externalModelField = form.querySelector('[name="external_model"]');
+        const endpointField = form.querySelector('[name="llm_endpoint"]');
+        const apiKeyField = form.querySelector('[name="llm_api_key"]');
+        let providerSettings = {};
+        try { providerSettings = JSON.parse(sessionStorage.getItem(providerStorageKey) || '{}'); } catch (_) {}
+        if (providerField && providerSettings.provider) providerField.value = providerSettings.provider;
+        if (externalModelField) externalModelField.value = providerSettings.model || '';
+        if (endpointField) endpointField.value = providerSettings.endpoint || '';
+        if (apiKeyField) apiKeyField.value = providerSettings.api_key || '';
+        const updateProviderFields = () => {
+            const external = providerField?.value && providerField.value !== 'ollama';
+            form.querySelectorAll('[data-external-llm-field]').forEach(field => { field.hidden = !external; });
+            form.querySelectorAll('[data-compatible-endpoint-field]').forEach(field => { field.hidden = providerField?.value !== 'compatible'; });
+            const ollamaField = form.querySelector('[data-ollama-model]')?.closest('.workspace-field');
+            if (ollamaField) ollamaField.hidden = Boolean(external);
+        };
+        providerField?.addEventListener('change', updateProviderFields);
+        updateProviderFields();
         if (modelField) modelField.value = defaults.model;
         if (temperatureField) temperatureField.value = defaults.temperature;
         if (sourcesField) sourcesField.value = defaults.sources;
@@ -109,6 +134,22 @@
                 theme: String(formData.get('theme') || DEFAULTS.theme),
                 density: String(formData.get('density') || DEFAULTS.density),
             };
+            const selectedProvider = String(formData.get('llm_provider') || 'ollama');
+            const providerConfig = selectedProvider === 'ollama' ? { provider: 'ollama' } : {
+                provider: selectedProvider,
+                model: String(formData.get('external_model') || '').trim(),
+                endpoint: String(formData.get('llm_endpoint') || '').trim(),
+                api_key: String(formData.get('llm_api_key') || '').trim(),
+            };
+            const status = form.querySelector('[data-settings-status]');
+            if (selectedProvider !== 'ollama' && (!providerConfig.model || !providerConfig.api_key || (selectedProvider === 'compatible' && !providerConfig.endpoint))) {
+                if (status) {
+                    status.classList.add('is-warning');
+                    status.textContent = 'Informe modelo, chave de API e, para endpoint compatível, a URL local.';
+                }
+                (externalModelField?.value ? apiKeyField : externalModelField)?.focus();
+                return;
+            }
             let saved = true;
             try {
                 localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
@@ -116,7 +157,7 @@
                 saved = false;
             }
             applyAppearance(settings);
-            const status = form.querySelector('[data-settings-status]');
+            try { sessionStorage.setItem(providerStorageKey, JSON.stringify(providerConfig)); } catch (_) { saved = false; }
             if (status) {
                 status.classList.toggle('is-warning', !saved);
                 status.textContent = saved
@@ -131,6 +172,7 @@
             let removed = true;
             try {
                 localStorage.removeItem(SETTINGS_KEY);
+                sessionStorage.removeItem(providerStorageKey);
             } catch (_) {
                 removed = false;
             }
@@ -157,6 +199,13 @@
             if (removed) window.location.reload();
         });
     }
+
+    document.addEventListener('click', (event) => {
+        const link = event.target.closest?.('a[href]');
+        if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        const target = new URL(link.href, window.location.href);
+        if (target.origin === window.location.origin && target.pathname.replace(/\/$/, '') === window.location.pathname.replace(/\/$/, '') && target.search === window.location.search && !target.hash) event.preventDefault();
+    });
 
     applyAppearance(readSettings());
     initSidebar();

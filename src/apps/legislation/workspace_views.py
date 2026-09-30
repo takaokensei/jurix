@@ -1,7 +1,9 @@
 """Product-workspace views: assistant, search, collections, history and settings."""
 
 import logging
+import math
 import re
+from collections import Counter
 
 from django.conf import settings
 from django.contrib import messages
@@ -30,6 +32,40 @@ def _highlight_search_text(text, query):
         escaped = conditional_escape(chunk)
         rendered.append(f"<mark>{escaped}</mark>" if index % 2 else escaped)
     return mark_safe("".join(rendered))
+
+
+_HISTORY_STOPWORDS = {"para", "como", "sobre", "entre", "pela", "pelo", "uma", "que", "qual", "quais", "com", "dos", "das", "artigo", "art", "lei"}
+
+
+def _history_tokens(value):
+    return [token.casefold() for token in re.findall(r"[\wÀ-ÿ]{2,}", str(value or "")) if token.casefold() not in _HISTORY_STOPWORDS]
+
+
+def _rank_history(sessions, query):
+    """Rank matching sessions by weighted bag-of-words relevance, not recency alone."""
+    query_terms = list(dict.fromkeys(_history_tokens(query)))
+    if not query_terms:
+        return sessions
+    tokenized = []
+    for session in sessions:
+        title_tokens = _history_tokens(session.title)
+        body_tokens = []
+        for message in session.history_messages:
+            body_tokens.extend(_history_tokens(str(message.content or "")[:3000]))
+        tokenized.append((session, Counter(title_tokens), Counter(body_tokens), len(body_tokens)))
+    doc_freq = {term: sum(1 for _, title, body, _ in tokenized if title[term] or body[term]) for term in query_terms}
+    total = max(len(tokenized), 1)
+    scored = []
+    for session, title, body, length in tokenized:
+        score = 0.0
+        for term in query_terms:
+            idf = math.log(1 + (total - doc_freq[term] + 0.5) / (doc_freq[term] + 0.5))
+            frequency = body[term]
+            body_score = frequency * 2.2 / (frequency + 1.2 * (0.25 + 0.75 * length / 700))
+            score += idf * (title[term] * 2.8 + body_score)
+        if score:
+            scored.append((score, session.updated_at, session))
+    return [row[2] for row in sorted(scored, key=lambda row: (row[0], row[1]), reverse=True)]
 
 
 def _relevance_label(score):
@@ -328,31 +364,40 @@ def history_view(request):
     """Unified history built from the durable chat session/message model."""
     sessions = []
     page_obj = None
+    query = str(request.GET.get("q", "")).strip()[:120]
     if request.user.is_authenticated:
-        user_messages = Prefetch(
+        history_messages = Prefetch(
             "messages",
-            queryset=ChatMessage.objects.filter(role="user").order_by("created_at"),
-            to_attr="history_user_messages",
+            queryset=ChatMessage.objects.filter(role__in=("user", "assistant")).only("session_id", "role", "content", "created_at").order_by("-created_at")[:20],
+            to_attr="history_messages",
         )
         try:
             page_number = max(int(request.GET.get("page", 1)), 1)
         except (TypeError, ValueError):
             page_number = 1
-        paginator = Paginator(
-            ChatSession.objects.filter(user=request.user)
-            .annotate(message_count=Count("messages"))
-            .prefetch_related(user_messages)
-            .order_by("-updated_at", "-id"),
-            20,
+        queryset = ChatSession.objects.filter(user=request.user)
+        if query:
+            terms = _history_tokens(query)
+            matches = Q(title__icontains=query)
+            for term in terms[:8]:
+                matches |= Q(title__icontains=term) | Q(messages__content__icontains=term)
+            queryset = queryset.filter(matches).distinct()
+        candidates = list(
+            queryset
+            .annotate(message_count=Count("messages", distinct=True))
+            .prefetch_related(history_messages)
+            .order_by("-updated_at", "-id")[:500]
         )
+        if query:
+            candidates = _rank_history(candidates, query)
+        paginator = Paginator(candidates, 20)
         page_obj = paginator.get_page(page_number)
         sessions = list(page_obj)
         for session in sessions:
-            session.primary_query = (
-                session.history_user_messages[0].content
-                if session.history_user_messages
-                else "Sem consulta registrada"
-            )
+            recent_messages = sorted(session.history_messages, key=lambda message: message.created_at)
+            first_user = next((m for m in recent_messages if m.role == "user"), None)
+            first_answer = next((m for m in recent_messages if m.role == "assistant"), None)
+            session.primary_query = first_answer.content if first_answer else (first_user.content if first_user else "Sem consulta registrada")
 
     return render(
         request,
@@ -361,5 +406,6 @@ def history_view(request):
             "sessions": sessions,
             "history_page": page_obj,
             "active_nav": "history",
+            "history_query": query,
         },
     )

@@ -29,6 +29,7 @@ from .models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norm
 from .serializers import (
     serialize_dispositivo_source,
 )
+from .source_urls import canonical_norma_url
 
 logger = logging.getLogger(__name__)
 
@@ -123,11 +124,14 @@ class NormaListView(ListView):
             "data_publicacao",
             "data_vigencia",
             "sapl_id",
+            "sapl_url",
         )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["active_nav"] = "normas"
+        for norma in context.get("normas", []):
+            norma.sapl_url = canonical_norma_url(norma)
         context["search_query"] = _normalize_norma_query(self.request.GET.get("q"))
         context["selected_type"] = _normalize_norma_query(self.request.GET.get("tipo"))
         selected_year = self.request.GET.get("ano", "").strip()

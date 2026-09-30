@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="{% static 'js/theme.js' %}?v=20260929-shared-preference1"></script>
-    <link rel="icon" type="image/png" href="{% static 'img/logo-icon.png' %}">
+    <script src="{% static 'js/theme.js' %}?v=20260930-persist-sidebar1"></script>
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/logo-icon.svg' %}">
     <title>{{ page_title|default:"Jurix - Inteligência Jurídica" }}</title>
     
     <!-- Content Security Policy -->
@@ -16,9 +16,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
     <!-- Stylesheets -->
-    <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20260930-sidebar-rail1">
-    <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20260930-document-scroll1">
-    <link rel="stylesheet" href="{% static 'css/jurix-rag.css' %}?v=20260930-light-source-summary1">
+    <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20260930-source-groups-composer1">
+    <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20260930-history-search-provider2">
+    <link rel="stylesheet" href="{% static 'css/jurix-rag.css' %}?v=20260930-citation-actions2">
     <link rel="stylesheet" href="{% static 'css/jurix-markdown.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-renderer.css' %}">
@@ -32,7 +32,7 @@
 <body class="figma-theme workspace-page"
       data-chatbot-url="{% url 'workspace:assistant' %}"
       data-norma-list-url="{% url 'legislation:norma_list' %}"
-      data-logo-icon-url="{% static 'img/logo-icon.png' %}"
+      data-logo-icon-url="{% static 'img/logo-icon.svg' %}"
       data-user-name="{{ request.user.first_name|default:request.user.username|title }}">
     <!-- Skip link for keyboard accessibility -->
     <a href="#messages-container" class="skip-link jurix-skip-link">Pular para a pesquisa</a>
@@ -44,7 +44,7 @@
                 <!-- Brand / Logo Group -->
                     <a href="{% url 'workspace:assistant' %}" class="figma-logo-group" aria-label="Jurix — Assistente" title="Jurix — Assistente">
                     <div class="figma-logo-icon">
-                        <img class="figma-logo-image" src="{% static 'img/logo-icon.png' %}" alt="Logo Jurix">
+                        <img class="figma-logo-image" src="{% static 'img/logo-icon.svg' %}" alt="Logo Jurix">
                     </div>
                     <span class="figma-logo-text">Jurix</span>
                 </a>
@@ -374,15 +374,15 @@
     <!-- Jurix Configuration: read from data-* attributes on <body> by config.js (CSP: no inline script) -->
     <script src="{% static 'js/config.js' %}"></script>
     <script src="{% static 'js/jurix-markdown.js' %}"></script>
-    <script src="{% static 'js/jurix-rag.js' %}?v=20260930-sapl-text-fragment1"></script>
+    <script src="{% static 'js/jurix-rag.js' %}?v=20260930-citations-copy2"></script>
     <script src="{% static 'js/jurix-anonymous-history.js' %}"></script>
-    <script src="{% static 'js/jurix-chat-api.js' %}?v=20260929-settings-payload1"></script>
-    <script src="{% static 'js/jurix-api-reliability-overlay.js' %}"></script>
+    <script src="{% static 'js/jurix-chat-api.js' %}?v=20260930-provider-context2"></script>
+    <script src="{% static 'js/jurix-api-reliability-overlay.js' %}?v=20260930-local-context-title2"></script>
     <script src="{% static 'js/jurix-chat-sessions.js' %}"></script>
     <script src="{% static 'js/jurix-chat-state.js' %}"></script>
     <script src="{% static 'js/jurix-chat-renderer.js' %}?v=20260929-message-times1"></script>
     <script src="{% static 'js/jurix-dynamic-suggestions.js' %}"></script>
-    <script src="{% static 'js/chat.js' %}?v=20260930-sidebar-rail-source-links1"></script>
+    <script src="{% static 'js/chat.js' %}?v=20260930-provisional-stream-sidebar1"></script>
     <script src="{% static 'js/jurix-chat-controller.js' %}"></script>
     <script src="{% static 'js/command_palette.js' %}?v=20260930-query-race1"></script>
 

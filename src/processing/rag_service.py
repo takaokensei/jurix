@@ -528,6 +528,7 @@ class RAGService:
         model: str | None = None,
         retrieval_fingerprint: str = "",
         temperature: float = 0.3,
+        text_provider: dict[str, Any] | None = None,
     ) -> Generator[dict[str, Any], None, None]:
         """
         Stream answer generation for legal question using RAG.
@@ -539,6 +540,8 @@ class RAGService:
         """
         clean_question = question.strip()
         model = model or settings.OLLAMA_MODEL
+        if text_provider and text_provider.get("provider") != "ollama":
+            model = f"{text_provider.get('provider')}:{text_provider.get('model', 'unknown')}"
         temperature = max(0.0, min(float(temperature), 1.0))
         corpus_version = self.cache.get_corpus_version() if (self.use_cache and self.cache) else 0
 
@@ -680,9 +683,17 @@ class RAGService:
                     "no contexto. Entregue somente a resposta factual curta e cite o dispositivo."
                 )
             chunks = []
-            for chunk in self.ollama.stream_text(
-                attempt_prompt, model=model, temperature=temperature, max_tokens=2048
-            ):
+            if text_provider and text_provider.get("provider") != "ollama":
+                from src.processing.llm_provider import stream_text as stream_external_text
+
+                generation_stream = stream_external_text(
+                    attempt_prompt, text_provider, temperature=temperature, max_tokens=2048
+                )
+            else:
+                generation_stream = self.ollama.stream_text(
+                    attempt_prompt, model=model, temperature=temperature, max_tokens=2048
+                )
+            for chunk in generation_stream:
                 chunks.append(chunk)
                 if stream_provisional and attempt == 0:
                     yield {"event": "chunk", "chunk": chunk, "provisional": True}

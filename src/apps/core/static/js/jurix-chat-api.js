@@ -108,7 +108,7 @@
     async function streamAnswer(
         question,
         sessionId,
-        { onChunk, onSources, onDone, onError, onSession, onStatus, searchOptions = {} } = {}
+        { onChunk, onSources, onDone, onError, onSession, onStatus, onTitle, searchOptions = {} } = {}
     ) {
         if (!question || !String(question).trim()) {
             throw new Error('question is required');
@@ -121,6 +121,7 @@
         const controller = new AbortController();
         activeStreamController = controller;
         let reader;
+        let completed = false;
 
         try {
             let response;
@@ -129,6 +130,11 @@
                 try {
                     const stored = JSON.parse(localStorage.getItem('jurix-preferences') || '{}');
                     if (stored && typeof stored === 'object' && !Array.isArray(stored)) preferences = stored;
+                } catch (_) {}
+                let providerConfig = { provider: 'ollama' };
+                try {
+                    const configuredProvider = JSON.parse(sessionStorage.getItem('jurix-llm-session-config') || '{}');
+                    if (configuredProvider && typeof configuredProvider === 'object' && !Array.isArray(configuredProvider)) providerConfig = configuredProvider;
                 } catch (_) {}
                 const preferredTemperature = Number(preferences.temperature);
                 const preferredSources = Number(preferences.sources);
@@ -140,7 +146,10 @@
                     body: JSON.stringify({
                         question,
                         session_id: sessionId,
+                        ...(searchOptions.previous_question ? { previous_question: searchOptions.previous_question } : {}),
+                        ...(searchOptions.client_session_id ? { client_session_id: searchOptions.client_session_id } : {}),
                         ...searchOptions,
+                        llm_provider: providerConfig,
                         ...(preferences.model ? { model: preferences.model } : {}),
                         max_sources: Number.isFinite(preferredSources)
                             ? Math.max(1, Math.min(10, preferredSources))
@@ -166,8 +175,6 @@
             reader = response.body.getReader();
             const decoder = new TextDecoder('utf-8');
             let buffer = '';
-            let completed = false;
-
             const handleEvent = async (rawEvent) => {
                 const dataLines = String(rawEvent || '')
                     .split(/\r?\n/)
@@ -187,10 +194,16 @@
                 } else if (eventData.type === 'sources' && onSources) {
                     await onSources(eventData.sources, eventData.confidence);
                 } else if (eventData.type === 'chunk' && onChunk) {
-                    await onChunk(eventData.chunk);
+                    await onChunk(eventData.chunk, eventData);
                 } else if (eventData.type === 'done') {
                     completed = true;
-                    if (onDone) await onDone(eventData);
+                    if (onDone) {
+                        try { await onDone(eventData); }
+                        catch (error) { console.error('[Jurix] Falha em atualização secundária após resposta concluída.', error); }
+                    }
+                } else if (eventData.type === 'title' && onTitle) {
+                    try { await onTitle(eventData); }
+                    catch (error) { console.error('[Jurix] Falha ao atualizar título da conversa.', error); }
                 } else if (eventData.type === 'error') {
                     const error = new Error(eventData.error || 'RAG stream error');
                     error.code = 'RAG_STREAM_ERROR';
@@ -209,21 +222,20 @@
                 const parts = buffer.split(/\r?\n\r?\n/);
                 buffer = parts.pop() || '';
 
-                for (const part of parts) {
-                    await handleEvent(part.trim());
-                    if (completed) return;
-                }
+                for (const part of parts) await handleEvent(part.trim());
             }
 
             // A valid SSE stream may end immediately after the JSON payload,
             // without a final blank line. Do not lose that terminal event.
-            if (!completed && buffer.trim()) {
-                await handleEvent(buffer.trim());
-            }
+            if (buffer.trim()) await handleEvent(buffer.trim());
             if (!completed) {
                 throw Object.assign(new Error('A resposta foi interrompida antes de terminar.'), { code: 'INCOMPLETE_STREAM' });
             }
         } catch (error) {
+            if (completed) {
+                console.error('[Jurix] A resposta foi concluída; erro ao finalizar a leitura do stream ignorado.', error);
+                return;
+            }
             if (onError) await onError(error);
             throw error;
         } finally {

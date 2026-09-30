@@ -238,7 +238,7 @@ test('guest identity and message contract survive a fresh page', async () => {
   } finally { w.close(); }
 });
 
-test('EOF without done reports interruption and preserves guest partial text', async () => {
+test('EOF without done preserves verified guest partial text', async () => {
   const w = guestWindow(null, [{ type: 'chunk', chunk: 'Parcial' }]);
   try {
     let error;
@@ -249,17 +249,54 @@ test('EOF without done reports interruption and preserves guest partial text', a
   } finally { w.close(); }
 });
 
-test('SSE parser accepts fragmented data lines and a terminal event without a blank line', async () => {
+test('unverified streaming draft is not persisted as a guest answer after interruption', async () => {
+  const w = guestWindow(null, [{ type: 'chunk', chunk: 'Rascunho não verificado', provisional: true }]);
+  try {
+    await assert.rejects(w.JurixChatAPI.streamAnswer('Pergunta', null, {}), /interrompida/);
+    const session = w.JurixAnonymousHistory.list()[0];
+    const restored = await w.JurixChatAPI.getSession(session.id);
+    assert.equal(restored.messages.length, 1, 'Only the user message should remain; no ungrounded assistant draft is stored');
+  } finally { w.close(); }
+});
+
+test('history swipe reveals a delete action and deletion waits for confirmation', async () => {
+  const dom = new JSDOM('<!doctype html><html><body><article class="workspace-history-card" data-history-card data-session-id="17"><div class="workspace-history-card__surface"><a href="/assistente/17/">Consulta</a></div><button data-history-delete>Excluir</button></article><article data-history-card data-session-id="18"></article></body></html>', {
+    url: 'http://localhost/historico/', runScripts: 'dangerously',
+  });
+  const { window } = dom;
+  let deleted = false;
+  window.requestAnimationFrame = (callback) => callback();
+  window.JurixChatAPI = { deleteSession: async (id) => { assert.equal(id, '17'); deleted = true; } };
+  window.eval(read('jurix-history-actions.js'));
+  const card = window.document.querySelector('[data-history-card]');
+  const pointer = (type, x) => {
+    const event = new window.MouseEvent(type, { bubbles: true, clientX: x, clientY: 20 });
+    card.querySelector('.workspace-history-card__surface').dispatchEvent(event);
+  };
+  pointer('pointerdown', 160);
+  pointer('pointermove', 90);
+  assert.equal(card.classList.contains('is-delete-revealed'), true);
+  window.document.querySelector('[data-history-delete]').click();
+  assert.equal(deleted, false, 'The swipe action must not immediately delete the conversation');
+  window.document.querySelector('[data-history-confirm]').click();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(deleted, true);
+  assert.equal(window.document.querySelector('[data-session-id="17"]'), null);
+  dom.window.close();
+});
+
+test('SSE parser accepts fragmented data, done before title, and terminal event without a blank line', async () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     url: 'http://localhost/assistente/', runScripts: 'dangerously',
   });
   const { window } = dom;
   window.TextDecoder = TextDecoder;
-  const terminal = `data: {"type":"done","answer":"Resposta final."}`;
+  const terminal = `data: {"type":"done","answer":"Resposta final."}\r\n\r\n`;
   const chunks = [
     new TextEncoder().encode('data: {"type":"chunk","chunk":"Res'),
-    new TextEncoder().encode('posta"}\r\n\r\n'),
+    new TextEncoder().encode('posta","provisional":true}\r\n\r\n'),
     new TextEncoder().encode(terminal),
+    new TextEncoder().encode('data: {"type":"title","title":"Pesquisa jurídica"}'),
   ];
   let index = 0;
   window.fetch = async () => ({
@@ -273,13 +310,43 @@ test('SSE parser accepts fragmented data lines and a terminal event without a bl
   });
   window.eval(read('jurix-chat-api.js'));
   const received = [];
+  const provisionalStates = [];
   let done;
+  let title;
   await window.JurixChatAPI.streamAnswer('Pergunta', null, {
-    onChunk: (chunk) => received.push(chunk),
+    onChunk: (chunk, metadata) => { received.push(chunk); provisionalStates.push(metadata.provisional); },
     onDone: (event) => { done = event.answer; },
+    onTitle: (event) => { title = event.title; },
   });
   assert.deepEqual(received, ['Resposta']);
+  assert.deepEqual(provisionalStates, [true]);
   assert.equal(done, 'Resposta final.');
+  assert.equal(title, 'Pesquisa jurídica');
+  dom.window.close();
+});
+
+test('post-completion UI callback failures never become connection errors', async () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously',
+  });
+  const { window } = dom;
+  window.TextDecoder = TextDecoder;
+  const chunks = [new TextEncoder().encode('data: {"type":"done","answer":"Resposta final."}\n\n')];
+  let index = 0;
+  window.fetch = async () => ({
+    ok: true,
+    status: 200,
+    body: { getReader: () => ({
+      read: async () => index < chunks.length ? { done: false, value: chunks[index++] } : { done: true },
+    }) },
+  });
+  window.eval(read('jurix-chat-api.js'));
+  let errors = 0;
+  await window.JurixChatAPI.streamAnswer('Pergunta', null, {
+    onDone: async () => { throw new TypeError('Falha numa atualização local do histórico'); },
+    onError: () => { errors += 1; },
+  });
+  assert.equal(errors, 0);
   dom.window.close();
 });
 

@@ -280,6 +280,40 @@ test('source card: full device text anchors the start and end instead of a trunc
   assert.ok(anchors[1].includes('Este texto termina com redação completa e verificável.'));
 });
 
+test('assistant references to a sourced law article link directly to the official cited excerpt', async () => {
+  const sourceText = 'O prazo previsto neste artigo será de quinze dias, contados da publicação oficial.';
+  const { window, card } = await renderWithSource(source({
+    norma_ref: 'Lei nº 8198/2026', dispositivo_ref: 'Art. 1º',
+    pdf_url: 'https://sapl.natal.rn.leg.br/media/lei.pdf', text: sourceText, full_text: sourceText,
+  }));
+  const body = window.document.createElement('div');
+  body.innerHTML = window.JurixMarkdown.render('Conforme **Lei nº 8198/2026, Art. 1º**, aplica-se a regra.');
+  window.JurixRagUI.linkLegalReferences(body, [source({
+    norma_ref: 'Lei nº 8198/2026', dispositivo_ref: 'Art. 1º',
+    pdf_url: 'https://sapl.natal.rn.leg.br/media/lei.pdf', text: sourceText, full_text: sourceText,
+  })]);
+  const link = body.querySelector('.jurix-legal-reference-link');
+  assert.ok(link);
+  assert.equal(link.target, '_blank');
+  assert.equal(link.rel, 'noopener noreferrer');
+  assert.ok(link.href.includes(encodeURIComponent(sourceText)));
+  window.close();
+});
+
+test('source citation copy control matches the card action and copies a formatted legal reference', async () => {
+  const { window, card } = await renderWithSource(source({
+    norma_ref: 'Lei nº 8198/2026', dispositivo_ref: 'Art. 1º',
+    pdf_url: 'https://sapl.natal.rn.leg.br/media/lei.pdf',
+  }));
+  let copied = '';
+  Object.defineProperty(window.navigator, 'clipboard', { value: { writeText: async (value) => { copied = value; } } });
+  card.querySelector('[data-copy-legal-citation]').click();
+  await tick();
+  assert.match(copied, /Lei nº 8198\/2026, Art\. 1º/);
+  assert.match(card.querySelector('[data-copy-legal-citation]').textContent, /copiada/i);
+  window.close();
+});
+
 test('source card: non-PDF SAPL page remains an ordinary official link', async () => {
   const url = 'https://sapl.natal.rn.leg.br/norma/8205';
   const { card } = await renderWithSource(source({ pdf_url: null, sapl_url: url }));

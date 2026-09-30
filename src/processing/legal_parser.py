@@ -6,6 +6,7 @@ Regex-based parser to extract hierarchical structure from legal documents.
 
 import logging
 import re
+from datetime import date
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,61 @@ _PAGE_HEADER_LINE_RE = re.compile(
     r")[ \t]*$",
     re.MULTILINE | re.IGNORECASE,
 )
+
+_PUBLICATION_DATE_RE = re.compile(
+    r"\bPublicad[oa]\s+no\s+Di[aá]rio\s+Oficial(?:\s+do\s+Munic[ií]pio)?\s*(?:em|de)?\s*:?\s*(\d{1,2}[/.]\d{1,2}[/.]\d{4}|\d{4}-\d{2}-\d{2})",
+    re.IGNORECASE,
+)
+_EDITORIAL_MARKERS_RE = re.compile(
+    r"\b(?:Sala\s+das\s+Sess(?:ões|oes)|Publicad[oa]\s+no\s+Di[aá]rio\s+Oficial|Autoria\s*:|ESTADO\s+DO\s+RIO\s+GRANDE\s+DO\s+NORTE)\b",
+    re.IGNORECASE,
+)
+_PUBLICATION_EFFECT_RE = re.compile(
+    r"\bentr(?:a|ará)\s+em\s+vigor\s+na\s+data\s+de\s+(?:sua\s+)?publica[çc][ãa]o\b",
+    re.IGNORECASE,
+)
+
+
+def extract_publication_metadata(text: str) -> dict[str, Any]:
+    """Extract official publication date and explicit effective-date wording."""
+    match = _PUBLICATION_DATE_RE.search(text or "")
+    publication_date = None
+    if match:
+        raw_date = match.group(1)
+        try:
+            if "-" in raw_date:
+                publication_date = date.fromisoformat(raw_date)
+            else:
+                day, month, year = (int(part) for part in re.split(r"[/.]", raw_date))
+                publication_date = date(year, month, day)
+        except ValueError:
+            publication_date = None
+    return {
+        "data_publicacao": publication_date,
+        "vigencia_na_publicacao": bool(_PUBLICATION_EFFECT_RE.search(text or "")),
+    }
+
+
+def strip_closing_editorial_metadata(text: str) -> str:
+    """Remove a publication/signature colophon that OCR appended to the last article."""
+    candidates = list(_EDITORIAL_MARKERS_RE.finditer(text or ""))
+    if not candidates:
+        return text
+    last_article = list(LegalTextParser.MARKER_PATTERNS["artigo"].finditer(text))
+    if not last_article:
+        return text
+    for marker in candidates:
+        suffix = text[marker.start():]
+        # A session phrase alone can occur in substantive text; require a
+        # corroborating signature/publication marker in the same closing tail.
+        corroborated = bool(re.search(
+            r"\b(?:Publicad[oa]\s+no\s+Di[aá]rio\s+Oficial|Autoria\s*:|Presidente|Primeiro\s+Secret[aá]rio|Segunda\s+Secret[aá]ria)\b",
+            suffix,
+            re.IGNORECASE,
+        ))
+        if marker.start() > last_article[-1].start() and corroborated:
+            return text[:marker.start()].rstrip()
+    return text
 
 
 class LegalTextParser:
@@ -544,6 +600,7 @@ class LegalTextParser:
         # This prevents page separators and institutional headers from bleeding
         # into the text content of incisos, artigos, etc.
         text = LegalTextParser.strip_page_artifacts(text)
+        text = strip_closing_editorial_metadata(text)
 
         # Find all markers once for efficiency
         all_markers = LegalTextParser._find_all_markers(text)

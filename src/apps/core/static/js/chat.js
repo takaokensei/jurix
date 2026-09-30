@@ -10,12 +10,19 @@
     // ===== CONFIGURATION =====
     const config = window.JURIX_CONFIG || {
         chatbotUrl: '/assistente/',
-        logoIconUrl: '/static/img/logo-icon.png',
+        logoIconUrl: '/static/img/logo-icon.svg',
         userName: 'Admin',
     };
     const SIDEBAR_COLLAPSED_KEY = 'jurix-sidebar-collapsed';
 
     const chatAPI = window.JurixChatAPI;
+
+    document.addEventListener('click', (event) => {
+        const link = event.target.closest?.('a[href]');
+        if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        const target = new URL(link.href, window.location.href);
+        if (target.origin === window.location.origin && target.pathname.replace(/\/$/, '') === window.location.pathname.replace(/\/$/, '') && target.search === window.location.search && !target.hash) event.preventDefault();
+    });
 
     function getSessionSlugFromPath() {
         const pathname = window.location.pathname.replace(/\/+$/, '');
@@ -920,6 +927,7 @@
             // streaming classes that may have survived an interrupted page
             // lifecycle so the caret cannot remain below the answer.
             messageBody?.classList.remove('is-streaming', 'jurix-streaming-text');
+            window.JurixRagUI?.linkLegalReferences?.(messageBody, sources);
             copyButton.classList.add('show');
 
             if (regenerateBtn && currentSessionId && showRegenerate) {
@@ -1338,6 +1346,7 @@
 
             const setDesktopSidebarCollapsed = (collapsed) => {
                 sidebar.classList.toggle('collapsed', collapsed);
+                document.documentElement.setAttribute('data-sidebar-collapsed', String(collapsed));
                 sidebar.inert = false;
                 sidebar.setAttribute('aria-hidden', 'false');
                 toggleSidebarBtn.setAttribute('aria-expanded', String(!collapsed));
@@ -1350,7 +1359,7 @@
             };
 
             if (isMobileSidebar()) setMobileSidebarOpen(false);
-            else setDesktopSidebarCollapsed(readDesktopSidebarCollapsed());
+            else setDesktopSidebarCollapsed(document.documentElement.getAttribute('data-sidebar-collapsed') === 'true' || readDesktopSidebarCollapsed());
 
             toggleSidebarBtn.addEventListener('click', () => {
                 if (isMobileSidebar()) {
@@ -1505,6 +1514,7 @@
                     <span class="message-role">Jurix</span>
                     <span class="message-time">${timestamp}</span>
                 </div>
+                <p class="jurix-provisional-notice" hidden role="status">Rascunho em geração — verificando as afirmações nas fontes antes de concluir.</p>
                 <div class="message-body jurix-rag-answer" id="${messageId}"></div>
                 <div class="message-actions">
                     <button class="regenerate-button is-hidden" id="regenerate-${Date.now()}" aria-label="Tentar novamente" title="Tentar novamente">
@@ -1559,6 +1569,10 @@
             onDone,
             onError,
             onStatus,
+            onTitle(data) {
+                const item = document.querySelector(`[data-session-id="${CSS.escape(String(currentSessionId))}"] .chat-session-title`);
+                if (item && data?.title) item.textContent = data.title;
+            },
             retryExistingQuestion,
             searchOptions: controls,
         });
@@ -1578,9 +1592,11 @@
                     await streamAssistantResponse(
                         question,
                         currentSessionId,
-                        (chunk) => {
+                        (chunk, chunkMetadata = {}) => {
                             accumulatedText += chunk;
                             if (streamElements && streamElements.messageBody) {
+                                const provisionalNotice = streamElements.messageDiv.querySelector('.jurix-provisional-notice');
+                                if (provisionalNotice && chunkMetadata.provisional) provisionalNotice.hidden = false;
                                 if (window.JurixRagUI) {
                                     window.JurixRagUI.setStreamingState(streamElements.messageBody, true);
                                     window.JurixRagUI.scheduleRender(streamElements.messageBody, accumulatedText);
@@ -1598,7 +1614,10 @@
                             doneData = doneData && typeof doneData === 'object' ? doneData : {};
                             const finalAnswer = doneData.answer || accumulatedText;
                             if (streamElements && window.JurixRagUI) {
+                                const provisionalNotice = streamElements.messageDiv.querySelector('.jurix-provisional-notice');
+                                if (provisionalNotice) provisionalNotice.remove();
                                 window.JurixRagUI.flushRender(streamElements.messageBody, finalAnswer);
+                                window.JurixRagUI.linkLegalReferences(streamElements.messageBody, finalSources);
                                 window.JurixRagUI.setStreamingState(streamElements.messageBody, false);
                                 window.JurixRagUI.announce('Resposta concluída.');
                             }

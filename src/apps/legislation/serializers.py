@@ -11,7 +11,7 @@ import logging
 import re
 from typing import Any
 
-from src.apps.legislation.source_urls import canonical_norma_url, public_source_url
+from src.apps.legislation.source_urls import canonical_norma_url, canonical_sapl_url, public_source_url
 from src.processing.temporal_scope import temporal_state_from_dates
 
 logger = logging.getLogger(__name__)
@@ -156,7 +156,7 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
         "dispositivo_ref": source.get("dispositivo_ref", norma_ref),
         "hierarchy": source.get("hierarchy", ""),
         "pdf_url": source.get("pdf_url"),
-        "sapl_url": source.get("sapl_url"),
+        "sapl_url": canonical_sapl_url(source.get("sapl_url"), source.get("sapl_id")),
         "data_publicacao": source.get("data_publicacao"),
         "data_vigencia": source.get("data_vigencia"),
         "temporal_status": source.get("temporal_status", "data_indeterminada"),

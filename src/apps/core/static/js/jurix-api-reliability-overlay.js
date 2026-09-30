@@ -27,6 +27,7 @@
   }
 
   let attachmentMemoryBackup = [];
+  let activeAnonymousSessionId = '';
 
   function attachmentStore() {
     const key = 'jurix:anonymous-attachments:v1';
@@ -73,6 +74,7 @@
             norma_status: selected.norma_status || body.norma_status || 'consolidated',
             source_scope: selected.source_scope || body.source_scope || 'municipal',
             attachment_ids: Array.isArray(selected.attachment_ids) ? selected.attachment_ids : [],
+            ...(activeAnonymousSessionId ? { client_session_id: activeAnonymousSessionId } : {}),
           };
           envelope.body = JSON.stringify(merged);
         } catch (_) {}
@@ -142,16 +144,24 @@
           return originalStream(question, sessionId, callbacks);
         }
         const localId = window.JurixAnonymousHistory.ensureSession(sessionId, question);
+        const history = window.JurixAnonymousHistory.get(localId);
+        const previousQuestion = [...(history?.messages || [])].reverse()
+          .filter(message => message.role === 'user').slice(0, 5).map(message => message.content).join('\n').slice(0, 10000);
         const retryPrepared = retryExistingQuestion === true &&
           window.JurixAnonymousHistory.prepareRetry(localId, question);
         if (!retryPrepared) window.JurixAnonymousHistory.addMessage(localId, 'user', question, []);
         await onSession?.({ session_id: localId, session_slug: localId });
         let answer = '';
+        let verifiedAnswer = '';
         let sources = [];
-        const wrappedChunk = (chunk) => {
-          answer += String(chunk || '');
-          window.JurixAnonymousHistory.updateLastAssistant(localId, answer, sources);
-          return onChunk?.(chunk);
+        const wrappedChunk = (chunk, chunkMetadata) => {
+          const text = String(chunk || '');
+          answer += text;
+          if (!chunkMetadata?.provisional) {
+            verifiedAnswer += text;
+            window.JurixAnonymousHistory.updateLastAssistant(localId, verifiedAnswer, sources);
+          }
+          return onChunk?.(chunk, chunkMetadata);
         };
         const wrappedSources = (items, ...rest) => {
           sources = Array.isArray(items) ? items : [];
@@ -166,17 +176,29 @@
           return onDone?.({ ...doneEvent, answer, session_id: localId, session_slug: localId }, ...rest);
         };
         const wrappedError = (error) => {
-          if (answer.trim()) window.JurixAnonymousHistory.updateLastAssistant(localId, answer, sources);
+          if (verifiedAnswer.trim()) window.JurixAnonymousHistory.updateLastAssistant(localId, verifiedAnswer, sources);
           return onError?.(error);
+        };
+        const wrappedTitle = (event) => {
+          if (event?.title) window.JurixAnonymousHistory.setTitle(localId, event.title);
+          return callbacks.onTitle?.(event);
         };
         // The anonymous DB API intentionally receives no session_id because
         // ChatSession.user is non-null. The local ID remains the UI identity.
-        return originalStream(question, null, {
-          onChunk: wrappedChunk,
-          onSources: wrappedSources,
-          onDone: wrappedDone,
-          onError: wrappedError,
-        });
+        activeAnonymousSessionId = localId;
+        try {
+          return await originalStream(question, null, {
+            ...callbacks,
+            searchOptions: { ...(callbacks.searchOptions || {}), previous_question: previousQuestion, client_session_id: localId },
+            onChunk: wrappedChunk,
+            onSources: wrappedSources,
+            onDone: wrappedDone,
+            onError: wrappedError,
+            onTitle: wrappedTitle,
+          });
+        } finally {
+          activeAnonymousSessionId = '';
+        }
       };
     }
 

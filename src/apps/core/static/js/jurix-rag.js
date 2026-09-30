@@ -110,7 +110,7 @@
                 tone: 'warning'
             };
         }
-        if (error instanceof TypeError || /network|offline|failed to fetch/i.test(String(error?.message || error))) {
+        if (error?.code === 'NETWORK_ERROR' || /^(?:failed to fetch|networkerror when attempting to fetch resource\.?|load failed|network request failed|err_network)/i.test(String(error?.message || '').trim())) {
             return {
                 title: 'Conexão indisponível',
                 detail: 'Verifique sua conexão e tente novamente.',
@@ -278,6 +278,7 @@
                 </a>
             `
             : '';
+        const citationText = `${normaRef}${dispositivoRef ? `, ${dispositivoRef}` : ''}${snippet ? `: “${snippet}”` : ''}`;
 
         return `
             <article
@@ -317,6 +318,7 @@
                 }
 
                 <div class="jurix-rag-source__actions">
+                    <button type="button" class="jurix-rag-source__copy" data-copy-legal-citation="${escapeHtml(citationText)}">Copiar citação</button>
                     ${openAction}
                 </div>
 
@@ -331,12 +333,101 @@
             announce(`Fonte ${Number(index)} não encontrada.`);
             return;
         }
+        const group = target.closest('details.jurix-source-group');
+        if (group) group.open = true;
         if (typeof target.scrollIntoView === 'function') {
             target.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
         target.classList.add('is-citation-target');
         window.setTimeout(() => target.classList.remove('is-citation-target'), 1400);
         announce(`Fonte ${Number(index)} destacada.`);
+    }
+
+    function linkLegalReferences(container, sources = []) {
+        if (!container || !Array.isArray(sources) || !sources.length) return;
+        const references = sources.map((source, index) => {
+            const norm = String(source?.norma || source?.norma_ref || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/\./g, '');
+            const identity = norm.match(/\b(\d+)\s*\/\s*(\d{4})\b/);
+            const article = String(source?.dispositivo_ref || source?.hierarchy || '').match(/\bart\.?\s*(\d+[º°o]?)/i);
+            const href = buildSourceUrl(source);
+            return identity && article && href ? {
+                identity: `${identity[1]}/${identity[2]}`,
+                article: article[1].replace(/[º°o]$/i, ''),
+                href,
+                label: `${identity[1]}/${identity[2]} Art. ${article[1]}`,
+                index,
+            } : null;
+        }).filter(Boolean);
+        if (!references.length) return;
+
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+            acceptNode(node) {
+                if (!node.nodeValue?.trim() || node.parentElement?.closest('a, code, pre, button, script, style')) return NodeFilter.FILTER_REJECT;
+                return NodeFilter.FILTER_ACCEPT;
+            },
+        });
+        const textNodes = [];
+        while (walker.nextNode()) textNodes.push(walker.currentNode);
+        const pattern = /\b(?:Lei|Decreto|Resolução|Portaria)\s+(?:n[º°o.]?\s*)?(\d+)\s*\/\s*(\d{4})\s*,?\s*(?:,\s*)?\bArt\.?\s*(\d+)[º°o]?/gi;
+        textNodes.forEach((node) => {
+            const text = node.nodeValue;
+            pattern.lastIndex = 0;
+            let match;
+            let cursor = 0;
+            const fragment = document.createDocumentFragment();
+            let changed = false;
+            while ((match = pattern.exec(text))) {
+                const [, number, year, article] = match;
+                const reference = references.find((item) => item.identity === `${number}/${year}` && item.article === article);
+                if (!reference) continue;
+                fragment.append(document.createTextNode(text.slice(cursor, match.index)));
+                const anchor = document.createElement('a');
+                anchor.className = 'jurix-legal-reference-link';
+                anchor.href = reference.href;
+                anchor.target = '_blank';
+                anchor.rel = 'noopener noreferrer';
+                anchor.setAttribute('aria-label', `Abrir ${reference.label} na fonte oficial`);
+                anchor.textContent = match[0];
+                fragment.append(anchor);
+                cursor = pattern.lastIndex;
+                changed = true;
+            }
+            if (changed) {
+                fragment.append(document.createTextNode(text.slice(cursor)));
+                node.replaceWith(fragment);
+            }
+        });
+    }
+
+    async function copyLegalCitation(button) {
+        const value = button.dataset.copyLegalCitation || '';
+        if (!value) return;
+        try {
+            if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(value);
+            else {
+                const input = document.createElement('textarea');
+                input.value = value;
+                input.setAttribute('readonly', '');
+                input.style.position = 'fixed';
+                input.style.opacity = '0';
+                document.body.appendChild(input);
+                input.select();
+                const copied = document.execCommand('copy');
+                input.remove();
+                if (!copied) throw new Error('Clipboard unavailable');
+            }
+            button.dataset.originalLabel ||= button.textContent;
+            button.textContent = 'Citação copiada';
+            button.classList.add('is-copied');
+            announce('Citação copiada para a área de transferência.');
+            window.setTimeout(() => {
+                if (!button.isConnected) return;
+                button.textContent = button.dataset.originalLabel || 'Copiar citação';
+                button.classList.remove('is-copied');
+            }, 1800);
+        } catch (_) {
+            announce('Não foi possível copiar. Selecione o texto da citação manualmente.');
+        }
     }
 
     function ensureDrawerDOM() {
@@ -446,23 +537,48 @@
         }
 
         body.innerHTML = '';
+        let syncToggleAll = () => {};
+        if (groups.length) {
+            const controls = document.createElement('div');
+            controls.className = 'jurix-source-group-controls';
+            controls.innerHTML = '<button type="button" class="jurix-source-group-toggle-all" aria-expanded="false">Expandir todas as evidências</button>';
+            const toggleAll = controls.querySelector('button');
+            const groupsContainer = document.createElement('div');
+            groupsContainer.className = 'jurix-source-groups';
+            syncToggleAll = () => {
+                const groups = [...groupsContainer.querySelectorAll('details.jurix-source-group')];
+                const allOpen = groups.length > 0 && groups.every((group) => group.open);
+                toggleAll.setAttribute('aria-expanded', String(allOpen));
+                toggleAll.textContent = allOpen ? 'Recolher todas as evidências' : 'Expandir todas as evidências';
+            };
+            toggleAll.addEventListener('click', () => {
+                const expand = toggleAll.getAttribute('aria-expanded') !== 'true';
+                groupsContainer.querySelectorAll('details.jurix-source-group').forEach((group) => { group.open = expand; });
+                syncToggleAll();
+            });
+            body.appendChild(controls);
+            body.appendChild(groupsContainer);
+        }
         groups.forEach((group, groupIndex) => {
-            const groupSection = document.createElement('section');
+            const groupSection = document.createElement('details');
             groupSection.className = 'jurix-source-group';
+            groupSection.open = false;
             groupSection.setAttribute('aria-labelledby', `jurix-source-group-title-${groupIndex}`);
             const evidenceLabel = group.sources.length === 1 ? '1 evidência' : `${group.sources.length} evidências`;
             groupSection.innerHTML = `
-                <header class="jurix-source-group__header">
+                <summary class="jurix-source-group__header">
+                    <span class="jurix-source-group__disclosure" aria-hidden="true"></span>
                     <h4 class="jurix-source-group__title" id="jurix-source-group-title-${groupIndex}">${escapeHtml(group.title)}</h4>
                     <span class="jurix-source-group__count">${evidenceLabel}</span>
-                </header>
-                <div class="jurix-source-group__cards"></div>
+                </summary>
+                <div class="jurix-source-group__cards"><div class="jurix-source-group__cards-inner"></div></div>
             `;
-            const cards = groupSection.querySelector('.jurix-source-group__cards');
+            const cards = groupSection.querySelector('.jurix-source-group__cards-inner');
+            groupSection.addEventListener('toggle', syncToggleAll);
             group.sources.forEach(({ source, index }) => {
                 cards.insertAdjacentHTML('beforeend', renderEvidenceCard(source, index, { showNormTitle: false }));
             });
-            body.appendChild(groupSection);
+            (body.querySelector('.jurix-source-groups') || body).appendChild(groupSection);
         });
         if (!body.children.length) {
             body.innerHTML = `
@@ -513,6 +629,18 @@
 
     document.addEventListener('click', (event) => {
         if (!event.target || !event.target.closest) return;
+        const copyButton = event.target.closest('[data-copy-legal-citation]');
+        if (copyButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            copyLegalCitation(copyButton);
+            return;
+        }
+        const sourceCard = event.target.closest('.source-card-clickable');
+        if (sourceCard && !event.target.closest('a, button, summary')) {
+            const sourceUrl = safeHttpUrl(sourceCard.dataset.url);
+            if (sourceUrl) window.open(sourceUrl, '_blank', 'noopener,noreferrer');
+        }
         const pill = event.target.closest('.jurix-sources-pill-btn');
         if (pill) {
             event.preventDefault();
@@ -586,6 +714,7 @@
         renderEvidenceCard,
         buildSourceUrl,
         focusEvidence,
+        linkLegalReferences,
         openSourcesDrawer,
         closeSourcesDrawer,
     };

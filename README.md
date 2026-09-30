@@ -533,7 +533,7 @@ Celery workers para <strong>ingestão massiva</strong> de PDFs sem bloquear inte
 <td align="center" width="20%">
 <strong>🤖 IA Local</strong><br/><br/>
 <samp>
-Ollama hospedado localmente. <strong>Zero dependência</strong> de APIs pagas externas.
+Ollama local por padrão; geração também pode usar APIs remotas configuradas pelo usuário. Embeddings e recuperação seguem no pipeline local.
 </samp>
 </td>
 </tr>
@@ -621,10 +621,12 @@ Top-K dispositivos relevantes com hierarquia materializada
     ↓
 Contexto jurídico formatado + Prompt restrito
     ↓
-Ollama (Llama3 via Connection Pool HTTP)
+Ollama local ou provedor remoto escolhido (OpenAI, Gemini, Anthropic, OpenRouter, Groq ou endpoint OpenAI-compatível)
     ↓
 Streaming SSE em tempo real (token-a-token) + Fontes citadas
 ```
+
+Na tela **Configurações**, o provedor de geração pode ser alterado por navegador. Chaves de API ficam apenas no `sessionStorage` da aba e são enviadas ao backend na consulta; nunca são gravadas no histórico nem no `localStorage`. Endpoints compatíveis personalizados são aceitos somente em loopback (`localhost`/`127.0.0.1`/`::1`) para reduzir risco de SSRF. Para provedores remotos, use HTTPS. A recuperação normativa e os embeddings continuam utilizando os componentes locais do Jurix.
 
 <br/>
 

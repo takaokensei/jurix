@@ -70,7 +70,7 @@
         const wrapper = getMessagesWrapper();
         if (!wrapper) return null;
         const loadingId = nextId('loading');
-        const logo = opts.config && opts.config.logoIconUrl ? opts.config.logoIconUrl : '/static/img/logo-icon.png';
+        const logo = opts.config && opts.config.logoIconUrl ? opts.config.logoIconUrl : '/static/img/logo-icon.svg';
         const message = document.createElement('div');
         message.className = 'message message-assistant jurix-message-enter';
         message.id = loadingId;

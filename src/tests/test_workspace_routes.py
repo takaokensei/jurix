@@ -8,9 +8,15 @@ from django.contrib.auth import get_user_model
 from django.test import Client
 
 from src.apps.legislation.models import ChatSession, Dispositivo, Norma
-from src.apps.legislation.workspace_views import _deduplicate_search_results
+from src.apps.legislation.workspace_views import _deduplicate_search_results, _rank_history
 
 pytestmark = pytest.mark.django_db
+
+
+def test_history_search_ranks_bag_of_words_relevance_before_recency():
+    recent_weak = SimpleNamespace(title="Consulta recente", history_messages=[SimpleNamespace(content="Assunto geral")], updated_at=2)
+    relevant_old = SimpleNamespace(title="Política de imóveis abandonados", history_messages=[SimpleNamespace(content="Lei municipal sobre imóveis abandonados e revitalização")], updated_at=1)
+    assert _rank_history([recent_weak, relevant_old], "imóveis abandonados") == [relevant_old]
 
 
 @pytest.fixture
@@ -80,8 +86,10 @@ def test_history_page_paginates_authenticated_sessions():
     second_body = second.content.decode("utf-8")
     assert "Próxima" in first_body
     assert "Anterior" in second_body
-    assert first.content.count(b"workspace-history-card") == 20
-    assert second.content.count(b"workspace-history-card") == 1
+    assert first.content.count(b"data-history-card") == 20
+    assert second.content.count(b"data-history-card") == 1
+    assert b"data-history-delete" in first.content
+    assert "csrftoken" in client.cookies, "History deletion needs the CSRF cookie for its API request"
 
 
 def test_norma_surfaces_expose_consistent_identity(norma):
@@ -103,6 +111,15 @@ def test_norma_list_corpus_total_matches_current_database(norma):
     body = response.content.decode()
     assert 'class="jurix-norma-stat-value">1<' in body
     assert 'class="jurix-norma-stat-label">normas consolidadas<' in body
+
+
+def test_norma_list_rewrites_legacy_sapl_detail_url(norma):
+    norma.sapl_id = 9387
+    norma.sapl_url = "https://sapl.natal.rn.leg.br/norma/normajuridica/9387/"
+    norma.save(update_fields=["sapl_id", "sapl_url"])
+    body = Client().get("/normas/").content.decode()
+    assert 'href="https://sapl.natal.rn.leg.br/norma/9387/"' in body
+    assert "/norma/normajuridica/9387/" not in body
 
 
 def test_norma_compare_renders_aligned_diff_and_explicit_missing_effective_date(norma):

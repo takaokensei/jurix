@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import re
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -40,11 +41,65 @@ from src.apps.legislation.retrieval_api import build_retrieval_options
 from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
 from src.apps.legislation.suggestion_service import build_dynamic_suggestions
 from src.processing.adaptive_rag_service import AdaptiveRAGService
+from src.processing.llm_provider import validate_provider_config
 
 RAGService = AdaptiveRAGService
 from .api_health import _format_error_message, _server_error
 
 logger = logging.getLogger(__name__)
+
+
+_LAW_REFERENCE_RE = re.compile(
+    r"\b(Lei(?:\s+Complementar)?|Decreto|Resolução|Portaria)\s*(?:n[º°o.]?\s*)?(\d{1,7})\s*/\s*(\d{4})\b",
+    re.IGNORECASE,
+)
+_ARTICLE_FOLLOWUP_RE = re.compile(r"\b(?:e\s+)?(?:o\s+)?art(?:igo)?\.?\s*(\d{1,4})\s*[º°o]?\b", re.IGNORECASE)
+
+
+def _resolve_article_followup(question: str, previous_question: str) -> str:
+    """Carry only an explicit law citation into a short article follow-up."""
+    if not previous_question or len(previous_question) > 10000:
+        return question
+    match = _ARTICLE_FOLLOWUP_RE.search(question)
+    law = _LAW_REFERENCE_RE.search(previous_question)
+    if not match or not law or _LAW_REFERENCE_RE.search(question):
+        return question
+    kind = " ".join(law.group(1).split())
+    number, year = law.group(2), law.group(3)
+    return f"O que prevê o art. {match.group(1)} da {kind} nº {number}/{year}?"
+
+
+def _generate_local_conversation_title(question: str) -> str:
+    """Generate a compact title with the configured local Ollama model; fail closed."""
+    try:
+        from src.llm_engine.ollama_service import OllamaService
+
+        generated = OllamaService(model=settings.OLLAMA_MODEL).generate_text(
+            prompt=(
+                "Resuma o tema desta conversa jurídica em um título de 3 a 7 palavras, "
+                "máximo 55 caracteres. Não repita a pergunta inteira. Responda somente o título.\n\n"
+                f"Pergunta: {question[:1500]}"
+            ),
+            model=settings.OLLAMA_MODEL,
+            temperature=0.2,
+            max_tokens=32,
+        )
+        title = " ".join(str(generated or "").replace("\n", " ").strip(" \t\"'`.*#-").split())
+        if title and len(title) <= 70:
+            return title[:55].rstrip(" .,;:!?—-")
+    except Exception:
+        logger.info("Local conversation title generation unavailable", exc_info=True)
+    # A concise fallback is preferable to repeating the same question as title and preview.
+    reference = _LAW_REFERENCE_RE.search(question)
+    remainder = question[reference.end():] if reference else question
+    words = [word for word in re.findall(r"[\wÀ-ÿ]+", remainder) if word.casefold() not in {"o", "a", "os", "as", "que", "sobre", "prevê", "preve", "estabelece", "trata", "da", "do", "de", "um", "uma", "qual"}]
+    topic = " ".join(words[:5]).strip()
+    if reference and topic:
+        kind = "Lei" if reference.group(1).casefold().startswith("lei") else reference.group(1)
+        topic = f"{kind} {reference.group(2)}/{reference.group(3)} — {topic}"
+    if not topic and reference:
+        topic = f"{reference.group(1)} {reference.group(2)}/{reference.group(3)}"
+    return topic[:55].rstrip(" .,;:!?—-") or "Pesquisa jurídica"
 
 
 @require_http_methods(["GET"])
@@ -293,7 +348,10 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
         question, k, model = parse_llm_request(data)
         temperature = parse_temperature(data.get("temperature"))
         retrieval_options = build_retrieval_options(request, data, k)
+        text_provider = validate_provider_config(data.get("llm_provider", {"provider": "ollama"}))
     except InvalidLLMParams as exc:
+        return JsonResponse({"success": False, "error": str(exc)}, status=400)
+    except ValueError as exc:
         return JsonResponse({"success": False, "error": str(exc)}, status=400)
     except (json.JSONDecodeError, UnicodeDecodeError):
         return JsonResponse({"success": False, "error": "Invalid request body"}, status=400)
@@ -305,8 +363,17 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
     if not question:
         return JsonResponse({"success": False, "error": "Question is required"}, status=400)
 
+    previous_question = data.get("previous_question", "")
+    if not isinstance(previous_question, str) or len(previous_question) > 10000:
+        return JsonResponse({"success": False, "error": "Invalid previous_question"}, status=400)
+    client_session_id = data.get("client_session_id", "")
+    if not isinstance(client_session_id, str) or len(client_session_id) > 80:
+        return JsonResponse({"success": False, "error": "Invalid client_session_id"}, status=400)
+
     # Session management
     chat_session = None
+    first_turn = False
+    context_question = previous_question
     if request.user.is_authenticated:
         try:
             with transaction.atomic():
@@ -320,8 +387,15 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                         )
                 if not chat_session:
                     chat_session = ChatSession.objects.create(
-                        user=request.user, title=question[:50], is_active=True
+                        user=request.user, title="Nova pesquisa", is_active=True
                     )
+                prior_user_messages = list(ChatMessage.objects.filter(
+                    session=chat_session, role="user"
+                ).order_by("-created_at", "-id").values_list("content", flat=True)[:5])
+                if prior_user_messages:
+                    context_question = "\n".join(prior_user_messages)
+                else:
+                    first_turn = True
                 ChatMessage.objects.create(session=chat_session, role="user", content=question)
                 ChatSession.objects.filter(pk=chat_session.pk).update(updated_at=timezone.now())
         except Exception as e:
@@ -337,8 +411,10 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
             if chat_session:
                 yield f"data: {json.dumps({'type': 'session', 'session_id': chat_session.id, 'session_slug': chat_session.slug})}\n\n"
             rag_service = RAGService()
+            retrieval_question = _resolve_article_followup(question, context_question)
             stream_gen = rag_service.stream_answer_question(
-                question, k=k, model=model, temperature=temperature, options=retrieval_options
+                retrieval_question, k=k, model=model, temperature=temperature, options=retrieval_options,
+                text_provider=text_provider,
             )
 
             for item in stream_gen:
@@ -370,8 +446,17 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     }
                     yield f"data: {json.dumps(payload)}\n\n"
                 elif ev_type == "chunk":
-                    accumulated_answer += item.get("chunk", "") or ""
-                    payload = {"type": "chunk", "chunk": item.get("chunk", "")}
+                    chunk_text = item.get("chunk", "") or ""
+                    provisional = bool(item.get("provisional", False))
+                    # Unverified draft output is streamed to the UI but must not
+                    # become a persisted answer if the client disconnects.
+                    if not provisional:
+                        accumulated_answer += chunk_text
+                    payload = {
+                        "type": "chunk",
+                        "chunk": chunk_text,
+                        "provisional": provisional,
+                    }
                     yield f"data: {json.dumps(payload)}\n\n"
                 elif ev_type == "done":
                     final_answer = item.get("answer", "")
@@ -404,6 +489,13 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     }
                     yield f"data: {json.dumps({'type': 'status', 'status': 'completed'})}\n\n"
                     yield f"data: {json.dumps(payload)}\n\n"
+                    if first_turn and chat_session:
+                        title = _generate_local_conversation_title(question)
+                        ChatSession.objects.filter(pk=chat_session.pk).update(title=title)
+                        yield f"data: {json.dumps({'type': 'title', 'title': title})}\n\n"
+                    elif not request.user.is_authenticated and client_session_id.startswith("local-") and not context_question:
+                        title = _generate_local_conversation_title(question)
+                        yield f"data: {json.dumps({'type': 'title', 'title': title, 'client_session_id': client_session_id})}\n\n"
         except Exception as e:
             logger.error(f"Error in chatbot_stream_api stream: {e}", exc_info=True)
             yield f"data: {json.dumps({'type': 'status', 'status': 'failed'})}\n\n"
