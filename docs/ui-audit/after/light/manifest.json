@@ -3,7 +3,7 @@
   "theme": "light",
   "routeFilter": [],
   "baseUrl": "http://127.0.0.1:8004",
-  "capturedAt": "2026-09-30T18:39:06.594Z",
+  "capturedAt": "2026-09-30T19:17:41.438Z",
   "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "results": [
     {
@@ -827,6 +827,55 @@
       "horizontalOverflow": false,
       "interactionChecks": [
         {
+          "control": "norma secondary actions",
+          "columns": 3,
+          "buttons": [
+            {
+              "left": 292,
+              "right": 650.65625,
+              "top": 383.28125,
+              "bottom": 445.28125
+            },
+            {
+              "left": 660.65625,
+              "right": 1019.328125,
+              "top": 383.28125,
+              "bottom": 445.28125
+            },
+            {
+              "left": 1029.328125,
+              "right": 1387.984375,
+              "top": 383.28125,
+              "bottom": 445.28125
+            },
+            {
+              "left": 292,
+              "right": 650.65625,
+              "top": 455.28125,
+              "bottom": 517.28125
+            },
+            {
+              "left": 660.65625,
+              "right": 1019.328125,
+              "top": 455.28125,
+              "bottom": 517.28125
+            },
+            {
+              "left": 1029.328125,
+              "right": 1387.984375,
+              "top": 455.28125,
+              "bottom": 517.28125
+            }
+          ],
+          "noDocumentOverflow": true,
+          "screenshot": "norm-detail-actions-1440x900.png"
+        },
+        {
+          "control": "normative timeline",
+          "rendered": true,
+          "screenshot": "norm-detail-timeline-1440x900.png"
+        },
+        {
           "control": "norma ementa disclosure",
           "collapsedPreviewVisible": true,
           "expandedHeight": 203.5625,
@@ -853,10 +902,59 @@
       "url": "http://127.0.0.1:8004/normas/3/",
       "viewportWidth": 1024,
       "documentWidth": 1024,
-      "documentHeight": 6534,
+      "documentHeight": 6462,
       "mainVisible": true,
       "horizontalOverflow": false,
       "interactionChecks": [
+        {
+          "control": "norma secondary actions",
+          "columns": 3,
+          "buttons": [
+            {
+              "left": 270.71875,
+              "right": 504.90625,
+              "top": 316.875,
+              "bottom": 378.875
+            },
+            {
+              "left": 514.90625,
+              "right": 749.09375,
+              "top": 316.875,
+              "bottom": 378.875
+            },
+            {
+              "left": 759.09375,
+              "right": 993.28125,
+              "top": 316.875,
+              "bottom": 378.875
+            },
+            {
+              "left": 270.71875,
+              "right": 504.90625,
+              "top": 388.875,
+              "bottom": 450.875
+            },
+            {
+              "left": 514.90625,
+              "right": 749.09375,
+              "top": 388.875,
+              "bottom": 450.875
+            },
+            {
+              "left": 759.09375,
+              "right": 993.28125,
+              "top": 388.875,
+              "bottom": 450.875
+            }
+          ],
+          "noDocumentOverflow": true,
+          "screenshot": "norm-detail-actions-1024x768.png"
+        },
+        {
+          "control": "normative timeline",
+          "rendered": true,
+          "screenshot": "norm-detail-timeline-1024x768.png"
+        },
         {
           "control": "norma ementa disclosure",
           "collapsedPreviewVisible": true,
@@ -889,6 +987,55 @@
       "horizontalOverflow": false,
       "interactionChecks": [
         {
+          "control": "norma secondary actions",
+          "columns": 2,
+          "buttons": [
+            {
+              "left": 23.03125,
+              "right": 379,
+              "top": 409.09375,
+              "bottom": 471.09375
+            },
+            {
+              "left": 389,
+              "right": 744.96875,
+              "top": 409.09375,
+              "bottom": 471.09375
+            },
+            {
+              "left": 23.03125,
+              "right": 379,
+              "top": 481.09375,
+              "bottom": 543.09375
+            },
+            {
+              "left": 389,
+              "right": 744.96875,
+              "top": 481.09375,
+              "bottom": 543.09375
+            },
+            {
+              "left": 23.03125,
+              "right": 379,
+              "top": 553.09375,
+              "bottom": 615.09375
+            },
+            {
+              "left": 389,
+              "right": 744.96875,
+              "top": 553.09375,
+              "bottom": 615.09375
+            }
+          ],
+          "noDocumentOverflow": true,
+          "screenshot": "norm-detail-actions-768x1024.png"
+        },
+        {
+          "control": "normative timeline",
+          "rendered": true,
+          "screenshot": "norm-detail-timeline-768x1024.png"
+        },
+        {
           "control": "norma ementa disclosure",
           "collapsedPreviewVisible": true,
           "expandedHeight": 256.34375,
@@ -920,6 +1067,55 @@
       "horizontalOverflow": false,
       "interactionChecks": [
         {
+          "control": "norma secondary actions",
+          "columns": 3,
+          "buttons": [
+            {
+              "left": 278.390625,
+              "right": 592.796875,
+              "top": 333.28125,
+              "bottom": 395.28125
+            },
+            {
+              "left": 602.796875,
+              "right": 917.203125,
+              "top": 333.28125,
+              "bottom": 395.28125
+            },
+            {
+              "left": 927.203125,
+              "right": 1241.609375,
+              "top": 333.28125,
+              "bottom": 395.28125
+            },
+            {
+              "left": 278.390625,
+              "right": 592.796875,
+              "top": 405.28125,
+              "bottom": 467.28125
+            },
+            {
+              "left": 602.796875,
+              "right": 917.203125,
+              "top": 405.28125,
+              "bottom": 467.28125
+            },
+            {
+              "left": 927.203125,
+              "right": 1241.609375,
+              "top": 405.28125,
+              "bottom": 467.28125
+            }
+          ],
+          "noDocumentOverflow": true,
+          "screenshot": "norm-detail-actions-1280x800.png"
+        },
+        {
+          "control": "normative timeline",
+          "rendered": true,
+          "screenshot": "norm-detail-timeline-1280x800.png"
+        },
+        {
           "control": "norma ementa disclosure",
           "collapsedPreviewVisible": true,
           "expandedHeight": 229.953125,
@@ -950,6 +1146,55 @@
       "mainVisible": true,
       "horizontalOverflow": false,
       "interactionChecks": [
+        {
+          "control": "norma secondary actions",
+          "columns": 1,
+          "buttons": [
+            {
+              "left": 30,
+              "right": 360,
+              "top": 219.671875,
+              "bottom": 281.671875
+            },
+            {
+              "left": 30,
+              "right": 360,
+              "top": 291.671875,
+              "bottom": 353.671875
+            },
+            {
+              "left": 30,
+              "right": 360,
+              "top": 363.671875,
+              "bottom": 425.671875
+            },
+            {
+              "left": 30,
+              "right": 360,
+              "top": 435.671875,
+              "bottom": 479.671875
+            },
+            {
+              "left": 30,
+              "right": 360,
+              "top": 489.671875,
+              "bottom": 551.671875
+            },
+            {
+              "left": 30,
+              "right": 360,
+              "top": 561.671875,
+              "bottom": 623.671875
+            }
+          ],
+          "noDocumentOverflow": true,
+          "screenshot": "norm-detail-actions-390x844.png"
+        },
+        {
+          "control": "normative timeline",
+          "rendered": true,
+          "screenshot": "norm-detail-timeline-390x844.png"
+        },
         {
           "control": "norma ementa disclosure",
           "collapsedPreviewVisible": true,
@@ -1007,7 +1252,7 @@
       "url": "http://127.0.0.1:8004/normas/3/",
       "viewportWidth": 1024,
       "documentWidth": 1024,
-      "documentHeight": 6534,
+      "documentHeight": 6462,
       "mainVisible": true,
       "horizontalOverflow": false,
       "interactionChecks": [
@@ -1415,7 +1660,35 @@
       "documentHeight": 900,
       "mainVisible": true,
       "horizontalOverflow": false,
-      "interactionChecks": [],
+      "interactionChecks": [
+        {
+          "control": "anonymous history empty state",
+          "title": "Suas pesquisas aparecerão aqui",
+          "cta": "Abrir Assistente",
+          "misleadingSearchCopy": false,
+          "searchInput": {
+            "x": 292,
+            "y": 275.1875,
+            "width": 736,
+            "height": 44,
+            "top": 275.1875,
+            "right": 1028,
+            "bottom": 319.1875,
+            "left": 292
+          },
+          "searchButton": {
+            "x": 1040,
+            "y": 279.1875,
+            "width": 112,
+            "height": 40,
+            "top": 279.1875,
+            "right": 1152,
+            "bottom": 319.1875,
+            "left": 1040
+          },
+          "viewportWidth": 1440
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -1431,10 +1704,38 @@
       "url": "http://127.0.0.1:8004/historico/",
       "viewportWidth": 1024,
       "documentWidth": 1024,
-      "documentHeight": 768,
+      "documentHeight": 850,
       "mainVisible": true,
       "horizontalOverflow": false,
-      "interactionChecks": [],
+      "interactionChecks": [
+        {
+          "control": "anonymous history empty state",
+          "title": "Suas pesquisas aparecerão aqui",
+          "cta": "Abrir Assistente",
+          "misleadingSearchCopy": false,
+          "searchInput": {
+            "x": 270.71875,
+            "y": 266.1875,
+            "width": 598.5625,
+            "height": 44,
+            "top": 266.1875,
+            "right": 869.28125,
+            "bottom": 310.1875,
+            "left": 270.71875
+          },
+          "searchButton": {
+            "x": 881.28125,
+            "y": 270.1875,
+            "width": 112,
+            "height": 40,
+            "top": 270.1875,
+            "right": 993.28125,
+            "bottom": 310.1875,
+            "left": 881.28125
+          },
+          "viewportWidth": 1024
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -1453,7 +1754,35 @@
       "documentHeight": 1024,
       "mainVisible": true,
       "horizontalOverflow": false,
-      "interactionChecks": [],
+      "interactionChecks": [
+        {
+          "control": "anonymous history empty state",
+          "title": "Suas pesquisas aparecerão aqui",
+          "cta": "Abrir Assistente",
+          "misleadingSearchCopy": false,
+          "searchInput": {
+            "x": 23.03125,
+            "y": 241.1875,
+            "width": 597.9375,
+            "height": 44,
+            "top": 241.1875,
+            "right": 620.96875,
+            "bottom": 285.1875,
+            "left": 23.03125
+          },
+          "searchButton": {
+            "x": 632.96875,
+            "y": 241.1875,
+            "width": 112,
+            "height": 44,
+            "top": 241.1875,
+            "right": 744.96875,
+            "bottom": 285.1875,
+            "left": 632.96875
+          },
+          "viewportWidth": 768
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -1469,10 +1798,38 @@
       "url": "http://127.0.0.1:8004/historico/",
       "viewportWidth": 1280,
       "documentWidth": 1280,
-      "documentHeight": 800,
+      "documentHeight": 859,
       "mainVisible": true,
       "horizontalOverflow": false,
-      "interactionChecks": [],
+      "interactionChecks": [
+        {
+          "control": "anonymous history empty state",
+          "title": "Suas pesquisas aparecerão aqui",
+          "cta": "Abrir Assistente",
+          "misleadingSearchCopy": false,
+          "searchInput": {
+            "x": 278.390625,
+            "y": 275.1875,
+            "width": 736,
+            "height": 44,
+            "top": 275.1875,
+            "right": 1014.390625,
+            "bottom": 319.1875,
+            "left": 278.390625
+          },
+          "searchButton": {
+            "x": 1026.390625,
+            "y": 279.1875,
+            "width": 112,
+            "height": 40,
+            "top": 279.1875,
+            "right": 1138.390625,
+            "bottom": 319.1875,
+            "left": 1026.390625
+          },
+          "viewportWidth": 1280
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -1488,10 +1845,183 @@
       "url": "http://127.0.0.1:8004/historico/",
       "viewportWidth": 390,
       "documentWidth": 390,
-      "documentHeight": 844,
+      "documentHeight": 907,
       "mainVisible": true,
       "horizontalOverflow": false,
-      "interactionChecks": [],
+      "interactionChecks": [
+        {
+          "control": "anonymous history empty state",
+          "title": "Suas pesquisas aparecerão aqui",
+          "cta": "Abrir Assistente",
+          "misleadingSearchCopy": false,
+          "searchInput": {
+            "x": 14,
+            "y": 267.375,
+            "width": 362,
+            "height": 44,
+            "top": 267.375,
+            "right": 376,
+            "bottom": 311.375,
+            "left": 14
+          },
+          "searchButton": {
+            "x": 14,
+            "y": 323.375,
+            "width": 362,
+            "height": 44,
+            "top": 323.375,
+            "right": 376,
+            "bottom": 367.375,
+            "left": 14
+          },
+          "viewportWidth": 390
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-populated",
+      "requestedPath": "/historico/",
+      "viewport": "1440x900",
+      "screenshot": "history-populated-1440x900.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "documentHeight": 900,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "anonymous history populated/search state (local sample)",
+          "initialCards": [
+            "Lei nº 8206/2026 — vigência e artigos",
+            "Prazo para licença municipal"
+          ],
+          "filteredTitle": "Lei nº 8206/2026 — vigência e artigos",
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-populated",
+      "requestedPath": "/historico/",
+      "viewport": "1024x768",
+      "screenshot": "history-populated-1024x768.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "documentHeight": 768,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "anonymous history populated/search state (local sample)",
+          "initialCards": [
+            "Lei nº 8206/2026 — vigência e artigos",
+            "Prazo para licença municipal"
+          ],
+          "filteredTitle": "Lei nº 8206/2026 — vigência e artigos",
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-populated",
+      "requestedPath": "/historico/",
+      "viewport": "768x1024",
+      "screenshot": "history-populated-768x1024.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "documentHeight": 1024,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "anonymous history populated/search state (local sample)",
+          "initialCards": [
+            "Lei nº 8206/2026 — vigência e artigos",
+            "Prazo para licença municipal"
+          ],
+          "filteredTitle": "Lei nº 8206/2026 — vigência e artigos",
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-populated",
+      "requestedPath": "/historico/",
+      "viewport": "1280x800",
+      "screenshot": "history-populated-1280x800.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "documentHeight": 800,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "anonymous history populated/search state (local sample)",
+          "initialCards": [
+            "Lei nº 8206/2026 — vigência e artigos",
+            "Prazo para licença municipal"
+          ],
+          "filteredTitle": "Lei nº 8206/2026 — vigência e artigos",
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-populated",
+      "requestedPath": "/historico/",
+      "viewport": "390x844",
+      "screenshot": "history-populated-390x844.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "documentHeight": 912,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "anonymous history populated/search state (local sample)",
+          "initialCards": [
+            "Lei nº 8206/2026 — vigência e artigos",
+            "Prazo para licença municipal"
+          ],
+          "filteredTitle": "Lei nº 8206/2026 — vigência e artigos",
+          "noBackendWrites": true
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -1627,7 +2157,7 @@
       "url": "http://127.0.0.1:8004/historico/",
       "viewportWidth": 390,
       "documentWidth": 390,
-      "documentHeight": 844,
+      "documentHeight": 934,
       "mainVisible": true,
       "horizontalOverflow": false,
       "interactionChecks": [

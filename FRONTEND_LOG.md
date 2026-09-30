@@ -3376,3 +3376,38 @@ norm action rhythm 9, timeline phone readability 9. Next: continue populated
 collection/history interaction review where authenticated data is available,
 then run the complete keyboard/focus/reduced-motion/performance closeout across
 all real routes. Section-17 completion is not established.
+
+## Cycle 96 — complete cross-route dual-theme visual regression — 2026-09-30
+
+Re-ran the full browser capture matrix after the workspace/history changes:
+17 routes/states × five viewport sizes × dark and light themes (170 captures).
+Both manifests report 85/85 successful states, zero non-200 responses, zero
+navigation errors, zero horizontal overflow, zero console errors, zero failed
+requests, and zero bad responses. All original baseline screenshot filenames
+remain represented in the after directory. The route set includes the
+assistant, grouped sources, command palette, legal search (empty/results),
+norm list/detail, scroll-to-device reading, comparison, tree, collections,
+history (empty/populated/delete dialog), and settings/provider states.
+
+Manually reviewed representative phone captures for the assistant, source
+drawer, settings, comparison, empty/populated history, and normative timeline.
+The source drawer remains navigable at phone width; detail actions and timeline
+stay within the viewport; the history empty copy and populated cards have
+consistent padding and hierarchy. No new visual regression was found. Axe and
+Lighthouse are not installed in this workspace; accessibility evidence remains
+the existing keyboard/focus browser scenarios, reduced-motion checks, contrast
+tests, and route-level semantic assertions. Collection creation remains
+account-gated, so this public-session run cannot verify an authenticated
+populated collection without creating or borrowing account data.
+
+Validation: all 170 full-matrix browser captures passed; full JavaScript suite
+and frontend static Python checks from Cycle 95 remain green, as does
+`manage.py check`. The current manifests were checked directly for status,
+overflow, console, request, and response failures; baseline before/after names
+were compared programmatically.
+
+Visual score: cross-route consistency 9, phone layout 9, dual-theme parity 9,
+navigation states 9. Next: perform the final keyboard/focus and reduced-motion
+audit on any remaining high-risk controls, check the authenticated collection
+path only through isolated test data if available, then measure bundle/resource
+weight and close remaining gaps. The section-17 closeout is still outstanding.
