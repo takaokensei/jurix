@@ -422,8 +422,16 @@ test('quill identity is cache-busted and source reveal animates only on expansio
   const styles = await read('src/apps/core/static/css/jurix-figma.css');
   assert.match(workspace, /logo-icon\.svg['"] %\}\?v=20260930-quill1/);
   assert.match(chatbot, /data-logo-icon-url="\{\% static 'img\/logo-icon\.svg' \%\}\?v=20260930-quill1/);
-  assert.match(publicBase, /apple-touch-icon[^\n]*logo-icon\.png['"] %\}\?v=20260930-quill1/);
+  assert.match(publicBase, /apple-touch-icon[^\n]*logo-icon\.png['"] %\}\?v=20260930-quill-png1/);
   assert.match(styles, /\.jurix-source-group\[open\] \.jurix-source-group__cards-inner \{ animation: jurix-evidence-reveal 180ms ease-out both; \}/);
+});
+
+test('apple touch icon is a compact transparent PNG rendered from the quill mark', async () => {
+  const png = await readFile(new URL('src/apps/core/static/img/logo-icon.png', root));
+  assert.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+  assert.equal(png.readUInt32BE(16), 180);
+  assert.equal(png.readUInt32BE(20), 180);
+  assert.equal(png[25], 6, 'touch icon should retain RGBA transparency');
 });
 
 test('destructive workspace states use theme-aware semantic danger tokens', async () => {

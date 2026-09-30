@@ -3214,3 +3214,23 @@ Visual score: destructive action clarity 9, dialog hierarchy 9, light/dark
 parity 9, keyboard behavior 9. Next: continue history/settings interaction
 audit and then check the remaining high-priority assistant flows for keyboard,
 loading/error states, and responsive regressions.
+
+## Cycle 90 — align the installed-app icon with the quill identity
+
+The public shell's Apple touch icon still pointed to an older column mark while
+the favicon and app shell already used the legal quill. Rendered the canonical
+SVG into a transparent 180×180 RGBA PNG with headless Chrome and updated the
+touch-icon cache key. This removes the last visible fallback with a different
+brand mark without adding an image dependency or replacing the SVG source.
+
+Inspected the resulting raster: the quill is centered, legible, and retains
+transparency. Added a regression for the PNG signature, dimensions, alpha
+channel, and template URL version.
+
+Validation: complete JavaScript suite 137/137; focused UI tests 42/42;
+frontend static tests 11/11; Django check; design-token guard passes with one
+known legacy occurrence in its approved baseline; `git diff --check`.
+
+Visual score: mark consistency 10, small-format legibility 9. Next: continue
+the required final-pass audits of history, settings, assistant loading/error,
+and remaining keyboard paths; the overall objective remains open.
