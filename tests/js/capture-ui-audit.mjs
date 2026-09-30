@@ -6,11 +6,11 @@ const ROOT = path.resolve(import.meta.dirname, '../..');
 const BASE_URL = process.env.JURIX_UI_AUDIT_URL || 'http://127.0.0.1:8004';
 const phase = process.argv[2];
 const theme = process.argv[3] || 'dark';
+const routeFilter = new Set((process.argv[4] || '').split(',').filter(Boolean));
 
 if (!['before', 'after'].includes(phase) || !['dark', 'light'].includes(theme)) {
   throw new Error('Usage: node tests/js/capture-ui-audit.mjs <before|after> [dark|light]');
 }
-
 const browserPaths = [
   process.env.PUPPETEER_EXECUTABLE_PATH,
   process.env.CHROME_BIN,
@@ -49,6 +49,10 @@ const routes = [
   ['history', '/historico/'],
   ['settings', '/configuracoes/'],
 ];
+const selectedRoutes = routeFilter.size ? routes.filter(([name]) => routeFilter.has(name)) : routes;
+if (routeFilter.size && selectedRoutes.length !== routeFilter.size) {
+  throw new Error(`Unknown audit route: ${[...routeFilter].filter((name) => !routes.some(([route]) => route === name)).join(', ')}`);
+}
 const viewports = [
   ['1440x900', 1440, 900],
   ['1024x768', 1024, 768],
@@ -67,12 +71,13 @@ const browser = await puppeteer.launch({
 const results = [];
 
 try {
-  for (const [routeName, routePath] of routes) {
+  for (const [routeName, routePath] of selectedRoutes) {
     for (const [viewportName, width, height] of viewports) {
       const page = await browser.newPage();
       const consoleErrors = [];
       const failedRequests = [];
       const badResponses = [];
+      const interactionChecks = [];
       await page.setViewport({ width, height, deviceScaleFactor: 1 });
       await page.evaluateOnNewDocument((selectedTheme) => {
         try {
@@ -109,6 +114,46 @@ try {
           await page.type('#command-palette-input', 'normas');
           await page.waitForSelector('.command-palette-item[data-command-id="norms"][aria-selected="true"]');
         }
+        if (routeName === 'norm-detail') {
+          const disclosure = await page.$('.legal-detail-ementa--expandable');
+          if (disclosure) {
+            const collapsedPreviewVisible = await disclosure.evaluate((details) => (
+              !details.open && Boolean(details.querySelector('.legal-detail-ementa-preview')?.getClientRects().length)
+            ));
+            await disclosure.$eval('summary', (summary) => summary.click());
+            await page.waitForFunction(() => {
+              const details = document.querySelector('.legal-detail-ementa--expandable');
+              return details?.open && Boolean(details.querySelector('.legal-detail-ementa-full')?.getClientRects().length);
+            });
+            const expandedBounds = await disclosure.evaluate((details) => ({
+              height: details.getBoundingClientRect().height,
+              width: details.scrollWidth,
+              clientWidth: details.clientWidth,
+              collapseLabel: details.querySelector('.legal-detail-ementa-collapse-label')?.textContent.trim(),
+            }));
+            const expandedScreenshot = `norm-detail-ementa-expanded-${viewportName}.png`;
+            await page.screenshot({ path: path.join(outputDir, expandedScreenshot), fullPage: false });
+            await disclosure.$eval('summary', (summary) => summary.click());
+            await page.waitForFunction(() => !document.querySelector('.legal-detail-ementa--expandable')?.open);
+            await disclosure.$eval('summary', (summary) => summary.focus());
+            await page.keyboard.press('Enter');
+            await page.waitForFunction(() => document.querySelector('.legal-detail-ementa--expandable')?.open);
+            const keyboardExpanded = await disclosure.evaluate((details) => details.open);
+            await page.keyboard.press('Enter');
+            await page.waitForFunction(() => !document.querySelector('.legal-detail-ementa--expandable')?.open);
+            interactionChecks.push({
+              control: 'norma ementa disclosure',
+              collapsedPreviewVisible,
+              expandedHeight: expandedBounds.height,
+              noHorizontalOverflow: expandedBounds.width <= expandedBounds.clientWidth,
+              collapseLabel: expandedBounds.collapseLabel,
+              collapsedAgain: true,
+              keyboardExpanded,
+              keyboardCollapsed: true,
+              expandedScreenshot,
+            });
+          }
+        }
       } catch (error) {
         navigationError = error.message;
       }
@@ -132,6 +177,7 @@ try {
         navigationError,
         ...metrics,
         horizontalOverflow: metrics.documentWidth > width,
+        interactionChecks,
         consoleErrors,
         failedRequests,
         badResponses,
@@ -146,13 +192,14 @@ try {
 const manifest = {
   phase,
   theme,
+  routeFilter: [...routeFilter],
   baseUrl: BASE_URL,
   capturedAt: new Date().toISOString(),
   browser: browserPath,
   results,
 };
 await fs.writeFile(
-  path.join(outputDir, 'manifest.json'),
+  path.join(outputDir, routeFilter.size ? `manifest-${[...routeFilter].join('-')}.json` : 'manifest.json'),
   `${JSON.stringify(manifest, null, 2)}\n`,
   'utf8',
 );

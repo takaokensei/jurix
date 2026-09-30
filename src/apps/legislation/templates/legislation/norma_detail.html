@@ -6,7 +6,7 @@
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Norma' %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20260930-device-cards3">
+<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20260930-ementa-disclosure1">
 <link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}">
 {% endblock %}
 
@@ -18,9 +18,19 @@
     </div>
     
     {% if norma.ementa %}
+    {% if norma.ementa|length > 220 %}
+    <details class="legal-detail-ementa legal-detail-ementa--expandable">
+        <summary>
+            <span class="legal-detail-ementa-copy"><strong>EMENTA</strong><span class="legal-detail-ementa-preview">{{ norma.ementa|truncatechars:180 }}</span></span>
+            <span class="legal-detail-ementa-toggle"><span class="legal-detail-ementa-expand-label">Ler ementa completa</span><span class="legal-detail-ementa-collapse-label">Recolher ementa</span></span>
+        </summary>
+        <div class="legal-detail-ementa-full">{{ norma.ementa }}</div>
+    </details>
+    {% else %}
     <div class="legal-detail-ementa">
         <strong>EMENTA:</strong> {{ norma.ementa }}
     </div>
+    {% endif %}
     {% endif %}
     
     <div class="stats-grid">

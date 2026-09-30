@@ -3080,3 +3080,30 @@ reference, article body, publication/effective date, rebuilt text, and
 idempotence. Validation: Python suite 666 passed, 6 skipped, 7 warnings;
 JavaScript suite 131/131; targeted Ruff, `manage.py check`, and `git diff
 --check` passed.
+
+## Cycle 85 — long ementa disclosure on norma detail
+
+Visual review of `/normas/3/` showed its official ementa consuming most of the
+first mobile viewport, delaying the legal structure and article entry points.
+For ementas longer than 220 characters, the detail now shows a three-line
+preview inside a native `<details>` control, with a clear “Ler ementa
+completa”/“Recolher ementa” state. Short ementas retain their original
+presentation, and the complete official wording stays in the document.
+
+Captured before/after at 1440x900, 1280x800, and 390x844; added expanded-state
+captures at all five viewports for both dark and light themes. Interacted with
+the live Django route: pointer expansion/collapse and Enter-key expansion/
+collapse both worked. The two route manifests show 5/5 HTTP 200 per theme, no
+horizontal overflow, no console errors, visible preview, and successful
+keyboard state changes. The mobile collapsed ementa card is about 173px high;
+the previous full ementa was roughly 377px, with all text still available on
+expansion.
+
+Validation: complete JavaScript suite 132/132; frontend static Python tests
+11/11; Django system check, audit-runner `node --check`, and `git diff --check`
+passed. No route/API behavior changed.
+
+Visual score for this component: hierarchy 9, mobile density 9, accessibility
+9, responsive behavior 9. Next: audit the legal-search results/filter flow for
+keyboard clarity and dense result scanning before returning to the remaining
+norm timeline/tree details.

@@ -1,0 +1,167 @@
+{
+  "phase": "after",
+  "theme": "light",
+  "routeFilter": [
+    "norm-detail"
+  ],
+  "baseUrl": "http://127.0.0.1:8004",
+  "capturedAt": "2026-09-30T17:42:19.700Z",
+  "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "results": [
+    {
+      "route": "norm-detail",
+      "requestedPath": "/normas/3/",
+      "viewport": "1440x900",
+      "screenshot": "norm-detail-1440x900.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "documentHeight": 6257,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norma ementa disclosure",
+          "collapsedPreviewVisible": true,
+          "expandedHeight": 203.5625,
+          "noHorizontalOverflow": true,
+          "collapseLabel": "Recolher ementa",
+          "collapsedAgain": true,
+          "keyboardExpanded": true,
+          "keyboardCollapsed": true,
+          "expandedScreenshot": "norm-detail-ementa-expanded-1440x900.png"
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-detail",
+      "requestedPath": "/normas/3/",
+      "viewport": "1024x768",
+      "screenshot": "norm-detail-1024x768.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "documentHeight": 6534,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norma ementa disclosure",
+          "collapsedPreviewVisible": true,
+          "expandedHeight": 256.34375,
+          "noHorizontalOverflow": true,
+          "collapseLabel": "Recolher ementa",
+          "collapsedAgain": true,
+          "keyboardExpanded": true,
+          "keyboardCollapsed": true,
+          "expandedScreenshot": "norm-detail-ementa-expanded-1024x768.png"
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-detail",
+      "requestedPath": "/normas/3/",
+      "viewport": "768x1024",
+      "screenshot": "norm-detail-768x1024.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "documentHeight": 6475,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norma ementa disclosure",
+          "collapsedPreviewVisible": true,
+          "expandedHeight": 256.34375,
+          "noHorizontalOverflow": true,
+          "collapseLabel": "Recolher ementa",
+          "collapsedAgain": true,
+          "keyboardExpanded": true,
+          "keyboardCollapsed": true,
+          "expandedScreenshot": "norm-detail-ementa-expanded-768x1024.png"
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-detail",
+      "requestedPath": "/normas/3/",
+      "viewport": "1280x800",
+      "screenshot": "norm-detail-1280x800.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "documentHeight": 6257,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norma ementa disclosure",
+          "collapsedPreviewVisible": true,
+          "expandedHeight": 229.953125,
+          "noHorizontalOverflow": true,
+          "collapseLabel": "Recolher ementa",
+          "collapsedAgain": true,
+          "keyboardExpanded": true,
+          "keyboardCollapsed": true,
+          "expandedScreenshot": "norm-detail-ementa-expanded-1280x800.png"
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-detail",
+      "requestedPath": "/normas/3/",
+      "viewport": "390x844",
+      "screenshot": "norm-detail-390x844.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "documentHeight": 7811,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norma ementa disclosure",
+          "collapsedPreviewVisible": true,
+          "expandedHeight": 441.078125,
+          "noHorizontalOverflow": true,
+          "collapseLabel": "Recolher ementa",
+          "collapsedAgain": true,
+          "keyboardExpanded": true,
+          "keyboardCollapsed": true,
+          "expandedScreenshot": "norm-detail-ementa-expanded-390x844.png"
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    }
+  ]
+}
