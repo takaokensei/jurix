@@ -3309,3 +3309,32 @@ Visual score: legal-text readability 9, cross-route consistency 9, theme parity
 9, responsive coverage 10. Next: audit lower-page norm actions/timeline and
 collection/history empty and populated states, then complete a final review of
 keyboard/focus and performance. Section-17 completion is not yet established.
+
+## Cycle 94 — history error wording and evidence interaction verification — 2026-09-30
+
+Reviewed the reported connection warning and found the history-delete dialog
+used connectivity-specific wording for every rejected deletion, including
+authorization/server failures. Replaced it with a neutral recoverable message;
+the conversation remains in place and the action can be retried. Added a
+regression test simulating HTTP 403 and asserting that the UI does not claim
+the browser is offline.
+
+Re-verified the evidence groups: opening an individual law updates the
+“Expandir restantes (n de total)” state, expand-all opens every group and
+changes to “Recolher todas”, and manually closing a group restores the partial
+state. The disclosure cards already fade/translate in on expansion and honor
+reduced motion. The `Nova pesquisa` action already uses a lightweight inline
+compose/pencil SVG consistent with a “new chat” affordance; Jurix’s bespoke
+quill mark remains the brand icon rather than copying another product’s logo.
+
+Validation: focused streaming/history suite 20/20; full JavaScript run had one
+unrelated Chromium timeout in the mobile-sidebar test (25/26), then that exact
+test passed on isolated rerun. Other real-browser scenarios in the full run,
+including grouped evidence disclosure and legal-source interactions, passed.
+`git diff --check` passed. Backend/model/RAG scope remains unchanged.
+
+Visual score: history error clarity 9, evidence disclosure behavior 9, icon
+consistency 9. Next: inspect lower-page norm actions/timeline and populated
+history/collections states; investigate whether the lone mobile sidebar timeout
+is environmental before closing out the final keyboard/focus pass. Section-17
+completion is not established.

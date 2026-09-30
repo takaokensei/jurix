@@ -302,6 +302,25 @@ test('history swipe reveals a delete action and deletion waits for confirmation'
   dom.window.close();
 });
 
+test('history delete failure does not incorrectly claim the connection is unavailable', async () => {
+  const dom = new JSDOM('<!doctype html><html><body><article data-history-card data-session-id="17"><button data-history-delete>Excluir</button></article></body></html>', {
+    url: 'http://localhost/historico/', runScripts: 'dangerously',
+  });
+  const { window } = dom;
+  window.requestAnimationFrame = (callback) => callback();
+  window.JurixChatAPI = { deleteSession: async () => { throw new Error('403 Forbidden'); } };
+  window.eval(read('jurix-history-actions.js'));
+  window.document.querySelector('[data-history-delete]').click();
+  window.document.querySelector('[data-history-confirm]').click();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const error = window.document.querySelector('.workspace-confirm-error');
+  assert.equal(error.hidden, false);
+  assert.match(error.textContent, /A exclusão não foi concluída/);
+  assert.doesNotMatch(error.textContent, /conexão|offline|internet/i);
+  assert.equal(window.document.querySelector('[data-history-card]') !== null, true);
+  dom.window.close();
+});
+
 test('SSE parser accepts fragmented data, done before title, and terminal event without a blank line', async () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     url: 'http://localhost/assistente/', runScripts: 'dangerously',

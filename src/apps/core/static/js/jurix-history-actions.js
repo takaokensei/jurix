@@ -60,7 +60,9 @@
       const remaining = document.querySelectorAll('[data-history-card]').length;
       if (!remaining) window.location.reload();
     } catch (_) {
-      error.textContent = 'Não foi possível excluir agora. Verifique sua conexão e tente novamente.';
+      // A failed delete can be caused by permissions, server errors or a lost
+      // connection. Do not claim the browser is offline unless that is known.
+      error.textContent = 'A exclusão não foi concluída. Tente novamente; se continuar, atualize a página.';
       error.hidden = false;
       confirm.disabled = false;
       confirm.textContent = 'Tentar novamente';
