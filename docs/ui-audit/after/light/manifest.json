@@ -1,8 +1,9 @@
 {
   "phase": "after",
   "theme": "light",
+  "routeFilter": [],
   "baseUrl": "http://127.0.0.1:8004",
-  "capturedAt": "2026-09-30T17:02:26.895Z",
+  "capturedAt": "2026-09-30T18:39:06.594Z",
   "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "results": [
     {
@@ -19,6 +20,7 @@
       "documentHeight": 900,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -37,6 +39,7 @@
       "documentHeight": 768,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -55,6 +58,7 @@
       "documentHeight": 1024,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -73,6 +77,7 @@
       "documentHeight": 800,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -91,6 +96,192 @@
       "documentHeight": 844,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "source-drawer",
+      "requestedPath": "/assistente/",
+      "viewport": "1440x900",
+      "screenshot": "source-drawer-1440x900.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Assistente Jurídico - Jurix",
+      "url": "http://127.0.0.1:8004/assistente/",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "documentHeight": 900,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "evidence drawer (local sample data)",
+          "groups": [
+            {
+              "title": "Lei nº 8204/2026",
+              "evidenceCount": 2,
+              "open": true
+            },
+            {
+              "title": "Lei nº 8205/2026",
+              "evidenceCount": 1,
+              "open": true
+            }
+          ],
+          "expandAllState": "all-open",
+          "noHorizontalOverflow": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "source-drawer",
+      "requestedPath": "/assistente/",
+      "viewport": "1024x768",
+      "screenshot": "source-drawer-1024x768.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Assistente Jurídico - Jurix",
+      "url": "http://127.0.0.1:8004/assistente/",
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "documentHeight": 768,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "evidence drawer (local sample data)",
+          "groups": [
+            {
+              "title": "Lei nº 8204/2026",
+              "evidenceCount": 2,
+              "open": true
+            },
+            {
+              "title": "Lei nº 8205/2026",
+              "evidenceCount": 1,
+              "open": true
+            }
+          ],
+          "expandAllState": "all-open",
+          "noHorizontalOverflow": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "source-drawer",
+      "requestedPath": "/assistente/",
+      "viewport": "768x1024",
+      "screenshot": "source-drawer-768x1024.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Assistente Jurídico - Jurix",
+      "url": "http://127.0.0.1:8004/assistente/",
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "documentHeight": 1024,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "evidence drawer (local sample data)",
+          "groups": [
+            {
+              "title": "Lei nº 8204/2026",
+              "evidenceCount": 2,
+              "open": true
+            },
+            {
+              "title": "Lei nº 8205/2026",
+              "evidenceCount": 1,
+              "open": true
+            }
+          ],
+          "expandAllState": "all-open",
+          "noHorizontalOverflow": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "source-drawer",
+      "requestedPath": "/assistente/",
+      "viewport": "1280x800",
+      "screenshot": "source-drawer-1280x800.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Assistente Jurídico - Jurix",
+      "url": "http://127.0.0.1:8004/assistente/",
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "documentHeight": 800,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "evidence drawer (local sample data)",
+          "groups": [
+            {
+              "title": "Lei nº 8204/2026",
+              "evidenceCount": 2,
+              "open": true
+            },
+            {
+              "title": "Lei nº 8205/2026",
+              "evidenceCount": 1,
+              "open": true
+            }
+          ],
+          "expandAllState": "all-open",
+          "noHorizontalOverflow": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "source-drawer",
+      "requestedPath": "/assistente/",
+      "viewport": "390x844",
+      "screenshot": "source-drawer-390x844.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Assistente Jurídico - Jurix",
+      "url": "http://127.0.0.1:8004/assistente/",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "documentHeight": 844,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "evidence drawer (local sample data)",
+          "groups": [
+            {
+              "title": "Lei nº 8204/2026",
+              "evidenceCount": 2,
+              "open": true
+            },
+            {
+              "title": "Lei nº 8205/2026",
+              "evidenceCount": 1,
+              "open": true
+            }
+          ],
+          "expandAllState": "all-open",
+          "noHorizontalOverflow": true
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -109,6 +300,7 @@
       "documentHeight": 2185,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -127,6 +319,7 @@
       "documentHeight": 2712,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -145,6 +338,7 @@
       "documentHeight": 4523,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -163,6 +357,7 @@
       "documentHeight": 2272,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -178,9 +373,10 @@
       "url": "http://127.0.0.1:8004/normas/",
       "viewportWidth": 390,
       "documentWidth": 390,
-      "documentHeight": 5517,
+      "documentHeight": 5526,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -199,6 +395,7 @@
       "documentHeight": 900,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -217,6 +414,7 @@
       "documentHeight": 768,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -235,6 +433,7 @@
       "documentHeight": 1024,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -253,6 +452,7 @@
       "documentHeight": 800,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -268,9 +468,10 @@
       "url": "http://127.0.0.1:8004/pesquisa/",
       "viewportWidth": 390,
       "documentWidth": 390,
-      "documentHeight": 931,
+      "documentHeight": 935,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -286,9 +487,20 @@
       "url": "http://127.0.0.1:8004/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
       "viewportWidth": 1440,
       "documentWidth": 1440,
-      "documentHeight": 1143,
+      "documentHeight": 1089,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "legal search filters",
+          "keyboardOrder": [
+            "tipo",
+            "ano",
+            "similaridade",
+            "Pesquisar"
+          ]
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -304,9 +516,20 @@
       "url": "http://127.0.0.1:8004/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
       "viewportWidth": 1024,
       "documentWidth": 1024,
-      "documentHeight": 1196,
+      "documentHeight": 1142,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "legal search filters",
+          "keyboardOrder": [
+            "tipo",
+            "ano",
+            "similaridade",
+            "Pesquisar"
+          ]
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -322,9 +545,20 @@
       "url": "http://127.0.0.1:8004/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
       "viewportWidth": 768,
       "documentWidth": 768,
-      "documentHeight": 1323,
+      "documentHeight": 1327,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "legal search filters",
+          "keyboardOrder": [
+            "tipo",
+            "ano",
+            "similaridade",
+            "Pesquisar"
+          ]
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -340,9 +574,20 @@
       "url": "http://127.0.0.1:8004/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
       "viewportWidth": 1280,
       "documentWidth": 1280,
-      "documentHeight": 1164,
+      "documentHeight": 1110,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "legal search filters",
+          "keyboardOrder": [
+            "tipo",
+            "ano",
+            "similaridade",
+            "Pesquisar"
+          ]
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -358,9 +603,20 @@
       "url": "http://127.0.0.1:8004/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
       "viewportWidth": 390,
       "documentWidth": 390,
-      "documentHeight": 1540,
+      "documentHeight": 1544,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "legal search filters",
+          "keyboardOrder": [
+            "tipo",
+            "ano",
+            "similaridade",
+            "Pesquisar"
+          ]
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -379,6 +635,7 @@
       "documentHeight": 2185,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -397,6 +654,7 @@
       "documentHeight": 2712,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -415,6 +673,7 @@
       "documentHeight": 4523,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -433,6 +692,7 @@
       "documentHeight": 2272,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -448,9 +708,10 @@
       "url": "http://127.0.0.1:8004/normas/",
       "viewportWidth": 390,
       "documentWidth": 390,
-      "documentHeight": 5517,
+      "documentHeight": 5526,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -469,6 +730,7 @@
       "documentHeight": 1098,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -487,6 +749,7 @@
       "documentHeight": 1260,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -505,6 +768,7 @@
       "documentHeight": 1337,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -523,6 +787,7 @@
       "documentHeight": 1146,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -538,9 +803,10 @@
       "url": "http://127.0.0.1:8004/normas/?q=8205&tipo=&ano=2026&ordenar=recentes",
       "viewportWidth": 390,
       "documentWidth": 390,
-      "documentHeight": 1557,
+      "documentHeight": 1566,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -556,9 +822,22 @@
       "url": "http://127.0.0.1:8004/normas/3/",
       "viewportWidth": 1440,
       "documentWidth": 1440,
-      "documentHeight": 6220,
+      "documentHeight": 6257,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norma ementa disclosure",
+          "collapsedPreviewVisible": true,
+          "expandedHeight": 203.5625,
+          "noHorizontalOverflow": true,
+          "collapseLabel": "Recolher ementa",
+          "collapsedAgain": true,
+          "keyboardExpanded": true,
+          "keyboardCollapsed": true,
+          "expandedScreenshot": "norm-detail-ementa-expanded-1440x900.png"
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -574,9 +853,22 @@
       "url": "http://127.0.0.1:8004/normas/3/",
       "viewportWidth": 1024,
       "documentWidth": 1024,
-      "documentHeight": 6568,
+      "documentHeight": 6534,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norma ementa disclosure",
+          "collapsedPreviewVisible": true,
+          "expandedHeight": 256.34375,
+          "noHorizontalOverflow": true,
+          "collapseLabel": "Recolher ementa",
+          "collapsedAgain": true,
+          "keyboardExpanded": true,
+          "keyboardCollapsed": true,
+          "expandedScreenshot": "norm-detail-ementa-expanded-1024x768.png"
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -592,9 +884,22 @@
       "url": "http://127.0.0.1:8004/normas/3/",
       "viewportWidth": 768,
       "documentWidth": 768,
-      "documentHeight": 6509,
+      "documentHeight": 6475,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norma ementa disclosure",
+          "collapsedPreviewVisible": true,
+          "expandedHeight": 256.34375,
+          "noHorizontalOverflow": true,
+          "collapseLabel": "Recolher ementa",
+          "collapsedAgain": true,
+          "keyboardExpanded": true,
+          "keyboardCollapsed": true,
+          "expandedScreenshot": "norm-detail-ementa-expanded-768x1024.png"
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -610,9 +915,22 @@
       "url": "http://127.0.0.1:8004/normas/3/",
       "viewportWidth": 1280,
       "documentWidth": 1280,
-      "documentHeight": 6220,
+      "documentHeight": 6257,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norma ementa disclosure",
+          "collapsedPreviewVisible": true,
+          "expandedHeight": 229.953125,
+          "noHorizontalOverflow": true,
+          "collapseLabel": "Recolher ementa",
+          "collapsedAgain": true,
+          "keyboardExpanded": true,
+          "keyboardCollapsed": true,
+          "expandedScreenshot": "norm-detail-ementa-expanded-1280x800.png"
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -628,9 +946,172 @@
       "url": "http://127.0.0.1:8004/normas/3/",
       "viewportWidth": 390,
       "documentWidth": 390,
-      "documentHeight": 8094,
+      "documentHeight": 7811,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norma ementa disclosure",
+          "collapsedPreviewVisible": true,
+          "expandedHeight": 441.078125,
+          "noHorizontalOverflow": true,
+          "collapseLabel": "Recolher ementa",
+          "collapsedAgain": true,
+          "keyboardExpanded": true,
+          "keyboardCollapsed": true,
+          "expandedScreenshot": "norm-detail-ementa-expanded-390x844.png"
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-device-reading",
+      "requestedPath": "/normas/3/",
+      "viewport": "1440x900",
+      "screenshot": "norm-device-reading-1440x900.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "documentHeight": 6257,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norm device reading",
+          "heading": "Art. 1º\n            \n            \n                Fica instituído, no âmbito das escolas e",
+          "visible": true,
+          "textStartsTrimmed": true,
+          "viewportWidth": 1440,
+          "documentWidth": 1440,
+          "contentWidth": 1092,
+          "clientWidth": 1092
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-device-reading",
+      "requestedPath": "/normas/3/",
+      "viewport": "1024x768",
+      "screenshot": "norm-device-reading-1024x768.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "documentHeight": 6534,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norm device reading",
+          "heading": "Art. 1º\n            \n            \n                Fica instituído, no âmbito das escolas e",
+          "visible": true,
+          "textStartsTrimmed": true,
+          "viewportWidth": 1024,
+          "documentWidth": 1024,
+          "contentWidth": 719,
+          "clientWidth": 719
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-device-reading",
+      "requestedPath": "/normas/3/",
+      "viewport": "768x1024",
+      "screenshot": "norm-device-reading-768x1024.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "documentHeight": 6475,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norm device reading",
+          "heading": "Art. 1º\n            \n            \n                Fica instituído, no âmbito das escolas e",
+          "visible": true,
+          "textStartsTrimmed": true,
+          "viewportWidth": 768,
+          "documentWidth": 768,
+          "contentWidth": 718,
+          "clientWidth": 718
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-device-reading",
+      "requestedPath": "/normas/3/",
+      "viewport": "1280x800",
+      "screenshot": "norm-device-reading-1280x800.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "documentHeight": 6257,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norm device reading",
+          "heading": "Art. 1º\n            \n            \n                Fica instituído, no âmbito das escolas e",
+          "visible": true,
+          "textStartsTrimmed": true,
+          "viewportWidth": 1280,
+          "documentWidth": 1280,
+          "contentWidth": 959,
+          "clientWidth": 959
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-device-reading",
+      "requestedPath": "/normas/3/",
+      "viewport": "390x844",
+      "screenshot": "norm-device-reading-390x844.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "documentHeight": 7811,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norm device reading",
+          "heading": "Art. 1º\n            \n            \n                Fica instituído, no âmbito das escolas e",
+          "visible": true,
+          "textStartsTrimmed": true,
+          "viewportWidth": 390,
+          "documentWidth": 390,
+          "contentWidth": 326,
+          "clientWidth": 326
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -646,9 +1127,10 @@
       "url": "http://127.0.0.1:8004/normas/3/compare/",
       "viewportWidth": 1440,
       "documentWidth": 1440,
-      "documentHeight": 4493,
+      "documentHeight": 4459,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -664,9 +1146,10 @@
       "url": "http://127.0.0.1:8004/normas/3/compare/",
       "viewportWidth": 1024,
       "documentWidth": 1024,
-      "documentHeight": 5646,
+      "documentHeight": 5573,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -682,9 +1165,10 @@
       "url": "http://127.0.0.1:8004/normas/3/compare/",
       "viewportWidth": 768,
       "documentWidth": 768,
-      "documentHeight": 5634,
+      "documentHeight": 5561,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -700,9 +1184,10 @@
       "url": "http://127.0.0.1:8004/normas/3/compare/",
       "viewportWidth": 1280,
       "documentWidth": 1280,
-      "documentHeight": 4670,
+      "documentHeight": 4635,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -718,9 +1203,10 @@
       "url": "http://127.0.0.1:8004/normas/3/compare/",
       "viewportWidth": 390,
       "documentWidth": 390,
-      "documentHeight": 16677,
+      "documentHeight": 16684,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -736,9 +1222,10 @@
       "url": "http://127.0.0.1:8004/normas/3/tree/",
       "viewportWidth": 1440,
       "documentWidth": 1440,
-      "documentHeight": 2563,
+      "documentHeight": 2542,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -754,9 +1241,10 @@
       "url": "http://127.0.0.1:8004/normas/3/tree/",
       "viewportWidth": 1024,
       "documentWidth": 1024,
-      "documentHeight": 2650,
+      "documentHeight": 2628,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -772,9 +1260,10 @@
       "url": "http://127.0.0.1:8004/normas/3/tree/",
       "viewportWidth": 768,
       "documentWidth": 768,
-      "documentHeight": 2638,
+      "documentHeight": 2616,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -790,9 +1279,10 @@
       "url": "http://127.0.0.1:8004/normas/3/tree/",
       "viewportWidth": 1280,
       "documentWidth": 1280,
-      "documentHeight": 2563,
+      "documentHeight": 2542,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -808,9 +1298,10 @@
       "url": "http://127.0.0.1:8004/normas/3/tree/",
       "viewportWidth": 390,
       "documentWidth": 390,
-      "documentHeight": 3020,
+      "documentHeight": 2977,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -829,6 +1320,7 @@
       "documentHeight": 900,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -847,6 +1339,7 @@
       "documentHeight": 768,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -865,6 +1358,7 @@
       "documentHeight": 1024,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -883,6 +1377,7 @@
       "documentHeight": 800,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -901,6 +1396,7 @@
       "documentHeight": 844,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -919,6 +1415,7 @@
       "documentHeight": 900,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -937,6 +1434,7 @@
       "documentHeight": 768,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -955,6 +1453,7 @@
       "documentHeight": 1024,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -973,6 +1472,7 @@
       "documentHeight": 800,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -991,6 +1491,157 @@
       "documentHeight": 844,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-delete-dialog",
+      "requestedPath": "/historico/",
+      "viewport": "1440x900",
+      "screenshot": "history-delete-dialog-1440x900.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "documentHeight": 900,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "history delete confirmation (local preview)",
+          "theme": "light",
+          "background": "rgb(180, 35, 50)",
+          "foreground": "rgb(255, 255, 255)",
+          "iconColor": "rgb(153, 27, 27)",
+          "radius": "20px",
+          "focus": "cancel",
+          "escapeRestoredFocus": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-delete-dialog",
+      "requestedPath": "/historico/",
+      "viewport": "1024x768",
+      "screenshot": "history-delete-dialog-1024x768.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "documentHeight": 768,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "history delete confirmation (local preview)",
+          "theme": "light",
+          "background": "rgb(180, 35, 50)",
+          "foreground": "rgb(255, 255, 255)",
+          "iconColor": "rgb(153, 27, 27)",
+          "radius": "20px",
+          "focus": "cancel",
+          "escapeRestoredFocus": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-delete-dialog",
+      "requestedPath": "/historico/",
+      "viewport": "768x1024",
+      "screenshot": "history-delete-dialog-768x1024.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "documentHeight": 1024,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "history delete confirmation (local preview)",
+          "theme": "light",
+          "background": "rgb(180, 35, 50)",
+          "foreground": "rgb(255, 255, 255)",
+          "iconColor": "rgb(153, 27, 27)",
+          "radius": "20px",
+          "focus": "cancel",
+          "escapeRestoredFocus": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-delete-dialog",
+      "requestedPath": "/historico/",
+      "viewport": "1280x800",
+      "screenshot": "history-delete-dialog-1280x800.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "documentHeight": 800,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "history delete confirmation (local preview)",
+          "theme": "light",
+          "background": "rgb(180, 35, 50)",
+          "foreground": "rgb(255, 255, 255)",
+          "iconColor": "rgb(153, 27, 27)",
+          "radius": "20px",
+          "focus": "cancel",
+          "escapeRestoredFocus": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-delete-dialog",
+      "requestedPath": "/historico/",
+      "viewport": "390x844",
+      "screenshot": "history-delete-dialog-390x844.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "documentHeight": 844,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "history delete confirmation (local preview)",
+          "theme": "light",
+          "background": "rgb(180, 35, 50)",
+          "foreground": "rgb(255, 255, 255)",
+          "iconColor": "rgb(153, 27, 27)",
+          "radius": "20px",
+          "focus": "cancel",
+          "escapeRestoredFocus": true
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -1009,6 +1660,7 @@
       "documentHeight": 1184,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -1027,6 +1679,7 @@
       "documentHeight": 1188,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -1045,6 +1698,7 @@
       "documentHeight": 1355,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -1063,6 +1717,7 @@
       "documentHeight": 1197,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []
@@ -1081,6 +1736,222 @@
       "documentHeight": 1448,
       "mainVisible": true,
       "horizontalOverflow": false,
+      "interactionChecks": [],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "settings-provider",
+      "requestedPath": "/configuracoes/",
+      "viewport": "1440x900",
+      "screenshot": "settings-provider-1440x900.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Configurações — Jurix",
+      "url": "http://127.0.0.1:8004/configuracoes/",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "documentHeight": 1370,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "LLM provider settings (local-only values)",
+          "requiredFieldsShown": {
+            "model": true,
+            "key": true,
+            "endpoint": true
+          },
+          "invalidSave": {
+            "status": "Informe modelo, chave de API e, para endpoint compatível, a URL local.",
+            "focusedField": "external_model"
+          },
+          "localStorageContainsSecret": false,
+          "sessionSecretStored": true,
+          "reloadRestored": {
+            "provider": "compatible",
+            "providerLabel": "Compatível (LiteLLM, AirLLM, local)",
+            "model": "local-test-model",
+            "endpoint": "http://127.0.0.1:4000/v1",
+            "keyRestored": true,
+            "endpointVisible": true
+          },
+          "externalRequestsMade": false
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "settings-provider",
+      "requestedPath": "/configuracoes/",
+      "viewport": "1024x768",
+      "screenshot": "settings-provider-1024x768.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Configurações — Jurix",
+      "url": "http://127.0.0.1:8004/configuracoes/",
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "documentHeight": 1374,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "LLM provider settings (local-only values)",
+          "requiredFieldsShown": {
+            "model": true,
+            "key": true,
+            "endpoint": true
+          },
+          "invalidSave": {
+            "status": "Informe modelo, chave de API e, para endpoint compatível, a URL local.",
+            "focusedField": "external_model"
+          },
+          "localStorageContainsSecret": false,
+          "sessionSecretStored": true,
+          "reloadRestored": {
+            "provider": "compatible",
+            "providerLabel": "Compatível (LiteLLM, AirLLM, local)",
+            "model": "local-test-model",
+            "endpoint": "http://127.0.0.1:4000/v1",
+            "keyRestored": true,
+            "endpointVisible": true
+          },
+          "externalRequestsMade": false
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "settings-provider",
+      "requestedPath": "/configuracoes/",
+      "viewport": "768x1024",
+      "screenshot": "settings-provider-768x1024.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Configurações — Jurix",
+      "url": "http://127.0.0.1:8004/configuracoes/",
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "documentHeight": 1541,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "LLM provider settings (local-only values)",
+          "requiredFieldsShown": {
+            "model": true,
+            "key": true,
+            "endpoint": true
+          },
+          "invalidSave": {
+            "status": "Informe modelo, chave de API e, para endpoint compatível, a URL local.",
+            "focusedField": "external_model"
+          },
+          "localStorageContainsSecret": false,
+          "sessionSecretStored": true,
+          "reloadRestored": {
+            "provider": "compatible",
+            "providerLabel": "Compatível (LiteLLM, AirLLM, local)",
+            "model": "local-test-model",
+            "endpoint": "http://127.0.0.1:4000/v1",
+            "keyRestored": true,
+            "endpointVisible": true
+          },
+          "externalRequestsMade": false
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "settings-provider",
+      "requestedPath": "/configuracoes/",
+      "viewport": "1280x800",
+      "screenshot": "settings-provider-1280x800.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Configurações — Jurix",
+      "url": "http://127.0.0.1:8004/configuracoes/",
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "documentHeight": 1383,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "LLM provider settings (local-only values)",
+          "requiredFieldsShown": {
+            "model": true,
+            "key": true,
+            "endpoint": true
+          },
+          "invalidSave": {
+            "status": "Informe modelo, chave de API e, para endpoint compatível, a URL local.",
+            "focusedField": "external_model"
+          },
+          "localStorageContainsSecret": false,
+          "sessionSecretStored": true,
+          "reloadRestored": {
+            "provider": "compatible",
+            "providerLabel": "Compatível (LiteLLM, AirLLM, local)",
+            "model": "local-test-model",
+            "endpoint": "http://127.0.0.1:4000/v1",
+            "keyRestored": true,
+            "endpointVisible": true
+          },
+          "externalRequestsMade": false
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "settings-provider",
+      "requestedPath": "/configuracoes/",
+      "viewport": "390x844",
+      "screenshot": "settings-provider-390x844.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Configurações — Jurix",
+      "url": "http://127.0.0.1:8004/configuracoes/",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "documentHeight": 1658,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "LLM provider settings (local-only values)",
+          "requiredFieldsShown": {
+            "model": true,
+            "key": true,
+            "endpoint": true
+          },
+          "invalidSave": {
+            "status": "Informe modelo, chave de API e, para endpoint compatível, a URL local.",
+            "focusedField": "external_model"
+          },
+          "localStorageContainsSecret": false,
+          "sessionSecretStored": true,
+          "reloadRestored": {
+            "provider": "compatible",
+            "providerLabel": "Compatível (LiteLLM, AirLLM, local)",
+            "model": "local-test-model",
+            "endpoint": "http://127.0.0.1:4000/v1",
+            "keyRestored": true,
+            "endpointVisible": true
+          },
+          "externalRequestsMade": false
+        }
+      ],
       "consoleErrors": [],
       "failedRequests": [],
       "badResponses": []

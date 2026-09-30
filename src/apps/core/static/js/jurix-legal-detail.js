@@ -11,6 +11,9 @@
     window.addEventListener('hashchange', focusHashTarget);
     window.addEventListener('DOMContentLoaded', focusHashTarget, { once: true });
     focusHashTarget();
+    document.querySelectorAll('[data-device-text-preview], [data-device-text-full]').forEach((element) => {
+        element.textContent = element.textContent.trim();
+    });
     const writeClipboard = (value) => {
         if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(value);
         const textarea = document.createElement('textarea');

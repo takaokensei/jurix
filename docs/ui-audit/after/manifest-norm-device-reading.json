@@ -1,0 +1,157 @@
+{
+  "phase": "after",
+  "theme": "dark",
+  "routeFilter": [
+    "norm-device-reading"
+  ],
+  "baseUrl": "http://127.0.0.1:8004",
+  "capturedAt": "2026-09-30T18:35:41.364Z",
+  "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "results": [
+    {
+      "route": "norm-device-reading",
+      "requestedPath": "/normas/3/",
+      "viewport": "1440x900",
+      "screenshot": "norm-device-reading-1440x900.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "documentHeight": 6257,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norm device reading",
+          "heading": "Art. 1º\n            \n            \n                Fica instituído, no âmbito das escolas e",
+          "visible": true,
+          "viewportWidth": 1440,
+          "documentWidth": 1440,
+          "contentWidth": 1092,
+          "clientWidth": 1092
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-device-reading",
+      "requestedPath": "/normas/3/",
+      "viewport": "1024x768",
+      "screenshot": "norm-device-reading-1024x768.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "documentHeight": 6534,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norm device reading",
+          "heading": "Art. 1º\n            \n            \n                Fica instituído, no âmbito das escolas e",
+          "visible": true,
+          "viewportWidth": 1024,
+          "documentWidth": 1024,
+          "contentWidth": 719,
+          "clientWidth": 719
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-device-reading",
+      "requestedPath": "/normas/3/",
+      "viewport": "768x1024",
+      "screenshot": "norm-device-reading-768x1024.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "documentHeight": 6475,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norm device reading",
+          "heading": "Art. 1º\n            \n            \n                Fica instituído, no âmbito das escolas e",
+          "visible": true,
+          "viewportWidth": 768,
+          "documentWidth": 768,
+          "contentWidth": 718,
+          "clientWidth": 718
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-device-reading",
+      "requestedPath": "/normas/3/",
+      "viewport": "1280x800",
+      "screenshot": "norm-device-reading-1280x800.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "documentHeight": 6257,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norm device reading",
+          "heading": "Art. 1º\n            \n            \n                Fica instituído, no âmbito das escolas e",
+          "visible": true,
+          "viewportWidth": 1280,
+          "documentWidth": 1280,
+          "contentWidth": 959,
+          "clientWidth": 959
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-device-reading",
+      "requestedPath": "/normas/3/",
+      "viewport": "390x844",
+      "screenshot": "norm-device-reading-390x844.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "documentHeight": 7811,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "norm device reading",
+          "heading": "Art. 1º\n            \n            \n                Fica instituído, no âmbito das escolas e",
+          "visible": true,
+          "viewportWidth": 390,
+          "documentWidth": 390,
+          "contentWidth": 326,
+          "clientWidth": 326
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    }
+  ]
+}

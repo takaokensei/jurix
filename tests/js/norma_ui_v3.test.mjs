@@ -61,6 +61,7 @@ test('norm device expansion preserves full text and exposes a reversible accessi
   assert.match(template, /data-device-text-full hidden>\s*\{\{ disp\.texto \}\}/);
   assert.match(template, /data-expand-device aria-expanded="false" aria-controls="dispositivo-texto-\{\{ disp\.pk \}\}"/);
   assert.match(controller, /preview\.hidden = expanded;[\s\S]*full\.hidden = !expanded;[\s\S]*aria-expanded', String\(expanded\)[\s\S]*Recolher texto/);
+  assert.match(controller, /querySelectorAll\('\[data-device-text-preview\], \[data-device-text-full\]'\)[\s\S]*element\.textContent = element\.textContent\.trim\(\)/);
 });
 
 test('workspace pages opt into document scrolling and icon-only navigation keeps accessible names', async () => {

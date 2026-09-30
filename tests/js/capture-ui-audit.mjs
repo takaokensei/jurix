@@ -44,6 +44,7 @@ const routes = [
   ['norms', '/normas/'],
   ['norm-number-year', '/normas/?q=8205&tipo=&ano=2026&ordenar=recentes'],
   ['norm-detail', '/normas/3/'],
+  ['norm-device-reading', '/normas/3/'],
   ['norm-compare', '/normas/3/compare/'],
   ['norm-tree', '/normas/3/tree/'],
   ['collections', '/colecoes/'],
@@ -268,6 +269,28 @@ try {
               expandedScreenshot,
             });
           }
+        }
+        if (routeName === 'norm-device-reading') {
+          const firstDevice = await page.$('.dispositivo-node');
+          if (!firstDevice) throw new Error('Norm detail has no legal device to inspect');
+          await firstDevice.evaluate((element) => window.scrollTo({
+            top: Math.max(0, window.scrollY + element.getBoundingClientRect().top - 82),
+            behavior: 'instant',
+          }));
+          await new Promise((resolve) => setTimeout(resolve, 180));
+          const readingState = await firstDevice.evaluate((element) => ({
+            heading: element.querySelector('.dispositivo-title, h3, h4')?.textContent.trim() || element.textContent.trim().slice(0, 90),
+            visible: element.getBoundingClientRect().top >= 0 && element.getBoundingClientRect().top < innerHeight,
+            textStartsTrimmed: !/^\s/.test(element.querySelector('[data-device-text-preview]')?.textContent || ''),
+            viewportWidth: document.documentElement.clientWidth,
+            documentWidth: document.documentElement.scrollWidth,
+            contentWidth: element.scrollWidth,
+            clientWidth: element.clientWidth,
+          }));
+          if (!readingState.visible || !readingState.textStartsTrimmed || readingState.documentWidth > readingState.viewportWidth || readingState.contentWidth > readingState.clientWidth) {
+            throw new Error(`Norm device reading is clipped or overflows: ${JSON.stringify(readingState)}`);
+          }
+          interactionChecks.push({ control: 'norm device reading', ...readingState });
         }
         if (routeName === 'search-results') {
           await page.focus('.workspace-search-panel input[name="q"]');

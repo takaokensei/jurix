@@ -3280,3 +3280,32 @@ Visual score: stream readability 9, interruption recovery 9, navigation state
 integrity 9. Next: perform the complete cross-route/dual-theme audit for the
 section-17 closeout, then fix any remaining issues it exposes; do not mark the
 goal complete until that evidence is reviewed.
+
+## Cycle 93 — cross-route dual-theme audit and legal-text alignment — 2026-09-30
+
+The complete Chromium audit now includes 16 real routes/states × five
+viewports × both themes (160 captures). Every route returned HTTP 200; both
+manifests report zero horizontal overflow, console errors, failed requests, or
+bad responses. Interaction checks cover command-palette navigation, search
+keyboard order, long ementa disclosure, grouped source expansion, local-only
+provider settings, and delete-dialog keyboard/focus behavior. All 34 original
+baseline screenshots now have same-name after captures in both themes.
+
+The focused norm-reading screenshot exposed legal text beginning with OCR
+indentation whitespace, which made the first line visibly drift to the right
+while later lines aligned at the card edge. Added a presentation-only trim to
+the preview and full-text nodes in the existing legal-detail controller; the
+stored source text and backend are unchanged. The browser audit asserts the
+rendered text starts without whitespace and remains fully within its device
+card. At 390px, Art. 1º's opening line now shares the same left edge as the
+remaining lines.
+
+Validation: full JavaScript suite 137/137; focused UI tests 42/42; frontend
+static Python tests 11/11; Django system check; design-token guard passes with
+one approved baseline literal; `git diff --check`. The new scroll-state captures
+for `/normas/3/` pass in dark and light at all five viewport sizes.
+
+Visual score: legal-text readability 9, cross-route consistency 9, theme parity
+9, responsive coverage 10. Next: audit lower-page norm actions/timeline and
+collection/history empty and populated states, then complete a final review of
+keyboard/focus and performance. Section-17 completion is not yet established.
