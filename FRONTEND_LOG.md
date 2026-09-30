@@ -3530,3 +3530,40 @@ Visual score: keyboard focus clarity 9, theme parity 9, card-link affordance 9.
 Next: exercise collection-detail actions and navigation in the isolated
 populated fixture, then continue the remaining high-priority interaction and
 production-resource audit. Section-17 completion remains unproven.
+
+## Cycle 100 — safe collection removal confirmation — 2026-09-30
+
+Area: collection detail, destructive action safety, keyboard and motion.
+Removing a norm from a dossier previously submitted the POST immediately. The
+collection detail form now opens a branded confirmation that names the exact
+norm and explains it remains available in the public corpus. Cancel, backdrop,
+and Escape preserve the collection; explicit confirmation alone submits the
+original Django form. The dialog has accessible name/description, an inert
+background, focus containment in both directions, focus restoration, and a
+reduced-motion path. It uses the shared confirmation visual language and 46px
+action buttons; the external collection script is cache-busted only on the
+collection detail page. Template assertions verify the safe form wiring.
+
+Added an isolated browser test that asserts no POST before confirmation,
+keyboard wrap in both directions, Escape cancellation and focus restoration,
+reduced-motion suppression, one exact form submission after explicit
+confirmation, mobile bounds, and no console errors. The audit harness now has
+matching before/after dialog scenarios without touching account or collection
+data. Captures are paired across five viewports and both themes (20 before, 20
+after); every after capture contains the stable, fully animated modal and both
+themes were visually reviewed at desktop and phone widths. Manifests report
+zero items needing review, no request/console errors, and no horizontal
+overflow.
+
+Validation: full JavaScript suite passes (including all 27 Chromium scenarios);
+the new confirmation case also passed in isolation after adding reverse-Tab
+coverage. Frontend Python tests passed 13/13, `manage.py check` reports no
+issues, design-token guard passed with its one known baseline occurrence, and
+`git diff --check` passed. One stale CSS cache-version assertion was updated to
+match the new stylesheet URL. No backend code, models, Celery, or API contracts
+were changed.
+
+Visual score: confirmation clarity 9, light/dark parity 9, phone ergonomics 9.
+Next: return to the broader remaining interaction audit—especially real
+authenticated collection flows and full route accessibility/resource
+closeout. Section-17 completion remains unproven.

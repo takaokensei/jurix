@@ -2745,3 +2745,115 @@ test('real browser: exact norm number/year searches map to the number and year f
     server.close();
   }
 });
+
+test('real browser: collection removal requires confirmation, traps focus, and respects reduced motion', async () => {
+  let postCount = 0;
+  let submittedForm = '';
+  const server = createTestServer({
+    '/collection-remove-test/': (req, res) => {
+      if (req.method === 'POST') {
+        postCount += 1;
+        req.setEncoding('utf8');
+        req.on('data', (chunk) => { submittedForm += chunk; });
+        req.on('end', () => {
+          res.writeHead(204);
+          res.end();
+        });
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(`<!doctype html><html lang="pt-BR" data-theme="dark"><head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="/static/css/jurix-figma.css">
+        <link rel="stylesheet" href="/static/css/workspace.css">
+        <link rel="stylesheet" href="/static/css/jurix-components.css">
+      </head><body class="figma-theme workspace-page workspace-document"><main class="workspace-content">
+        <article class="workspace-card"><h2><a href="#norm">Lei nº 8.204/2026</a></h2>
+          <form method="post" action="/collection-remove-test/" data-collection-remove-form>
+            <input type="hidden" name="norma_id" value="204"><input type="hidden" name="action" value="remove">
+            <button class="workspace-button workspace-button-ghost" type="submit" data-collection-norm="Lei nº 8.204/2026" aria-label="Remover Lei nº 8.204/2026 da coleção">Remover</button>
+          </form>
+        </article></main><script src="/static/js/jurix-collections.js"></script></body></html>`);
+    },
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.setViewport({ width: 390, height: 844 });
+    await page.goto(`http://127.0.0.1:${port}/collection-remove-test/`, { waitUntil: 'domcontentloaded' });
+    await page.focus('[data-collection-remove-form] button[type="submit"]');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]')?.classList.contains('is-open'));
+
+    const opened = await page.evaluate(() => {
+      const dialog = document.querySelector('[role="dialog"]');
+      const buttons = [...dialog.querySelectorAll('button')];
+      const rect = dialog.querySelector('.workspace-confirm-dialog').getBoundingClientRect();
+      return {
+        hidden: dialog.getAttribute('aria-hidden'),
+        inert: dialog.inert,
+        focus: document.activeElement.dataset.collectionRemoveCancel !== undefined,
+        label: dialog.getAttribute('aria-labelledby'),
+        description: dialog.getAttribute('aria-describedby'),
+        text: dialog.innerText,
+        buttonHeights: buttons.map((button) => ({
+          rect: button.getBoundingClientRect().height,
+          minHeight: getComputedStyle(button).minHeight,
+          height: getComputedStyle(button).height,
+        })),
+        viewportWidth: document.documentElement.clientWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        animation: getComputedStyle(dialog.querySelector('.workspace-confirm-dialog')).animationName,
+        rectRight: Math.round(rect.right),
+      };
+    });
+    assert.equal(opened.hidden, 'false');
+    assert.equal(opened.inert, false);
+    assert.equal(opened.focus, true, 'focus should land on the safe cancel action');
+    assert.equal(opened.label, 'collection-remove-title');
+    assert.equal(opened.description, 'collection-remove-description');
+    assert.match(opened.text, /Lei nº 8\.204\/2026/);
+    assert.ok(opened.buttonHeights.every((size) => size.rect >= 44), JSON.stringify(opened));
+    assert.equal(opened.documentWidth, opened.viewportWidth);
+    assert.ok(opened.rectRight <= opened.viewportWidth);
+    assert.equal(opened.animation, 'history-dialog-in');
+    assert.equal(postCount, 0, 'opening confirmation must not submit the removal');
+
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement.dataset.collectionRemoveConfirm !== undefined), true);
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement.dataset.collectionRemoveCancel !== undefined), true);
+    await page.keyboard.down('Shift');
+    await page.keyboard.press('Tab');
+    await page.keyboard.up('Shift');
+    assert.equal(await page.evaluate(() => document.activeElement.dataset.collectionRemoveConfirm !== undefined), true);
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]')?.getAttribute('aria-hidden') === 'true');
+    assert.equal(await page.evaluate(() => document.activeElement.matches('[data-collection-remove-form] button')), true);
+    assert.equal(postCount, 0, 'Escape must cancel without a POST');
+
+    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]')?.classList.contains('is-open'));
+    assert.equal(await page.$eval('.workspace-confirm-dialog', (node) => getComputedStyle(node).animationName), 'none');
+    const responsePromise = page.waitForResponse((response) => response.url().endsWith('/collection-remove-test/') && response.request().method() === 'POST');
+    await page.click('[data-collection-remove-confirm]');
+    assert.equal((await responsePromise).status(), 204);
+    assert.equal(postCount, 1, 'only explicit confirmation may submit the removal');
+    assert.match(submittedForm, /norma_id=204/);
+    assert.match(submittedForm, /action=remove/);
+    assert.deepEqual(errors, []);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});

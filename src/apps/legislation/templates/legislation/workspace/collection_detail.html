@@ -1,4 +1,5 @@
 {% extends "legislation/workspace/base.html" %}
+{% load static %}
 
 {% block title %}{{ collection.name }} — Jurix{% endblock %}
 {% block section_name %}Coleções{% endblock %}
@@ -17,9 +18,9 @@
         <span class="workspace-eyebrow">{{ norma.get_tipo_display_name }} · {{ norma.ano }}</span>
         <h2><a href="{% url 'legislation:norma_detail' norma.pk %}">{{ norma }}</a></h2>
         <p>{{ norma.ementa|default:"Sem ementa cadastrada."|truncatechars:180 }}</p>
-        <form method="post">
+        <form method="post" data-collection-remove-form>
             {% csrf_token %}<input type="hidden" name="norma_id" value="{{ norma.pk }}"><input type="hidden" name="action" value="remove">
-            <button class="workspace-button workspace-button-ghost" type="submit">Remover</button>
+            <button class="workspace-button workspace-button-ghost" type="submit" data-collection-norm="{{ norma }}" aria-label="Remover {{ norma }} da coleção">Remover</button>
         </form>
     </article>
 {% empty %}
@@ -29,4 +30,5 @@
 {% else %}
 <section class="workspace-empty-state workspace-empty-state-large"><span class="workspace-eyebrow">Dossiê vazio</span><h2>Adicione normas a esta coleção</h2><p>Abra uma norma consolidada e use a ação de adicionar à coleção para começar.</p><a class="workspace-button workspace-button-primary" href="{% url 'workspace:legal_search' %}">Pesquisar normas</a></section>
 {% endif %}
+<script src="{% static 'js/jurix-collections.js' %}?v=20260930-remove-confirm1"></script>
 {% endblock %}

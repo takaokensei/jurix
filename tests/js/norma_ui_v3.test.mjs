@@ -188,7 +188,7 @@ test('workspace sidebar keeps utility actions visible while navigation can scrol
   assert.match(source, /\.workspace-sidebar\s*\{[^}]*box-sizing:\s*border-box;[^}]*overflow:\s*hidden;/);
   assert.match(source, /\.workspace-nav\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/);
   assert.match(source, /\.workspace-sidebar-bottom\s*\{[^}]*flex:\s*0\s+0\s+auto;/);
-  assert.match(template, /css\/workspace\.css['"] %\}\?v=20260930-collection-card-links1/);
+  assert.match(template, /css\/workspace\.css['"] %\}\?v=20260930-collection-remove-confirm1/);
 });
 
 test('assistant and workspace navigation share accessible outline SVG icons', async () => {
@@ -457,7 +457,7 @@ test('destructive workspace states use theme-aware semantic danger tokens', asyn
   assert.match(workspaceStyles, /\.workspace-button-danger[^}]*background:\s*var\(--figma-red-action\)/);
   assert.match(workspaceStyles, /\.workspace-confirm-icon[^}]*color:\s*var\(--figma-red-soft\)/);
   assert.match(workspaceStyles, /\.workspace-confirm-error[^}]*color:\s*var\(--figma-red\)/);
-  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260930-collection-card-links1/);
+  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260930-collection-remove-confirm1/);
   for (const value of ['#fff', '#b42332', '#a92332', '#fecaca', '#fca5a5']) {
     assert.doesNotMatch(workspaceStyles.toLowerCase(), new RegExp(value.replace('#', '\\#')));
   }

@@ -155,6 +155,7 @@ html[data-sidebar-collapsed="true"] .workspace-nav-item { justify-content: cente
 .workspace-confirm-dialog h2 { margin: 18px 0 8px; font-size: 20px; }
 .workspace-confirm-dialog p { color: var(--figma-text-muted); line-height: 1.6; }
 .workspace-confirm-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.workspace-confirm-actions > .workspace-button { min-height: 46px; }
 .workspace-confirm-error { color: var(--figma-red) !important; }
 @keyframes history-dialog-in { from { opacity: .7; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .jurix-provisional-notice { width: fit-content; max-width: 100%; margin: 0 0 8px; padding: 6px 10px; border: 1px solid rgba(245,158,11,.25); border-radius: 999px; color: var(--figma-amber-soft); background: rgba(245,158,11,.07); font-size: 11px; line-height: 1.5; }

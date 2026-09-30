@@ -1,0 +1,252 @@
+{
+  "phase": "before",
+  "theme": "dark",
+  "routeFilter": [
+    "collection-remove-confirmation"
+  ],
+  "baseUrl": "http://127.0.0.1:8004",
+  "capturedAt": "2026-09-30T20:26:31.138Z",
+  "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "results": [
+    {
+      "route": "collection-remove-confirmation",
+      "requestedPath": "/colecoes/",
+      "viewport": "1440x900",
+      "screenshot": "collection-remove-confirmation-1440x900.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Coleções — Jurix",
+      "url": "http://127.0.0.1:8004/colecoes/",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "documentHeight": 900,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "populated collection detail (local visual sample)",
+          "count": 3,
+          "cards": [
+            {
+              "title": "Lei nº 8.204/2026",
+              "right": 554,
+              "removeHeight": 40,
+              "titleColor": "rgb(248, 250, 252)"
+            },
+            {
+              "title": "Lei nº 7.410/2024",
+              "right": 832,
+              "removeHeight": 40,
+              "titleColor": "rgb(248, 250, 252)"
+            },
+            {
+              "title": "Decreto nº 12.180/2023",
+              "right": 1110,
+              "removeHeight": 40,
+              "titleColor": "rgb(248, 250, 252)"
+            }
+          ],
+          "viewportWidth": 1440,
+          "documentWidth": 1440,
+          "confirmationEnabled": false,
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "collection-remove-confirmation",
+      "requestedPath": "/colecoes/",
+      "viewport": "1024x768",
+      "screenshot": "collection-remove-confirmation-1024x768.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Coleções — Jurix",
+      "url": "http://127.0.0.1:8004/colecoes/",
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "documentHeight": 794,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "populated collection detail (local visual sample)",
+          "count": 3,
+          "cards": [
+            {
+              "title": "Lei nº 8.204/2026",
+              "right": 624,
+              "removeHeight": 40,
+              "titleColor": "rgb(248, 250, 252)"
+            },
+            {
+              "title": "Lei nº 7.410/2024",
+              "right": 993,
+              "removeHeight": 40,
+              "titleColor": "rgb(248, 250, 252)"
+            },
+            {
+              "title": "Decreto nº 12.180/2023",
+              "right": 624,
+              "removeHeight": 40,
+              "titleColor": "rgb(248, 250, 252)"
+            }
+          ],
+          "viewportWidth": 1024,
+          "documentWidth": 1024,
+          "confirmationEnabled": false,
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "collection-remove-confirmation",
+      "requestedPath": "/colecoes/",
+      "viewport": "768x1024",
+      "screenshot": "collection-remove-confirmation-768x1024.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Coleções — Jurix",
+      "url": "http://127.0.0.1:8004/colecoes/",
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "documentHeight": 1024,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "populated collection detail (local visual sample)",
+          "count": 3,
+          "cards": [
+            {
+              "title": "Lei nº 8.204/2026",
+              "right": 376,
+              "removeHeight": 44,
+              "titleColor": "rgb(248, 250, 252)"
+            },
+            {
+              "title": "Lei nº 7.410/2024",
+              "right": 745,
+              "removeHeight": 44,
+              "titleColor": "rgb(248, 250, 252)"
+            },
+            {
+              "title": "Decreto nº 12.180/2023",
+              "right": 376,
+              "removeHeight": 44,
+              "titleColor": "rgb(248, 250, 252)"
+            }
+          ],
+          "viewportWidth": 768,
+          "documentWidth": 768,
+          "confirmationEnabled": false,
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "collection-remove-confirmation",
+      "requestedPath": "/colecoes/",
+      "viewport": "1280x800",
+      "screenshot": "collection-remove-confirmation-1280x800.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Coleções — Jurix",
+      "url": "http://127.0.0.1:8004/colecoes/",
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "documentHeight": 800,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "populated collection detail (local visual sample)",
+          "count": 3,
+          "cards": [
+            {
+              "title": "Lei nº 8.204/2026",
+              "right": 589,
+              "removeHeight": 40,
+              "titleColor": "rgb(248, 250, 252)"
+            },
+            {
+              "title": "Lei nº 7.410/2024",
+              "right": 915,
+              "removeHeight": 40,
+              "titleColor": "rgb(248, 250, 252)"
+            },
+            {
+              "title": "Decreto nº 12.180/2023",
+              "right": 1242,
+              "removeHeight": 40,
+              "titleColor": "rgb(248, 250, 252)"
+            }
+          ],
+          "viewportWidth": 1280,
+          "documentWidth": 1280,
+          "confirmationEnabled": false,
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "collection-remove-confirmation",
+      "requestedPath": "/colecoes/",
+      "viewport": "390x844",
+      "screenshot": "collection-remove-confirmation-390x844.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Coleções — Jurix",
+      "url": "http://127.0.0.1:8004/colecoes/",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "documentHeight": 1038,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "populated collection detail (local visual sample)",
+          "count": 3,
+          "cards": [
+            {
+              "title": "Lei nº 8.204/2026",
+              "right": 376,
+              "removeHeight": 44,
+              "titleColor": "rgb(248, 250, 252)"
+            },
+            {
+              "title": "Lei nº 7.410/2024",
+              "right": 376,
+              "removeHeight": 44,
+              "titleColor": "rgb(248, 250, 252)"
+            },
+            {
+              "title": "Decreto nº 12.180/2023",
+              "right": 376,
+              "removeHeight": 44,
+              "titleColor": "rgb(248, 250, 252)"
+            }
+          ],
+          "viewportWidth": 390,
+          "documentWidth": 390,
+          "confirmationEnabled": false,
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    }
+  ]
+}

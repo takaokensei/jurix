@@ -50,6 +50,7 @@ const routes = [
   ['collections', '/colecoes/'],
   ['collections-populated', '/colecoes/'],
   ['collection-detail-populated', '/colecoes/'],
+  ['collection-remove-confirmation', '/colecoes/'],
   ['history', '/historico/'],
   ['history-populated', '/historico/'],
   ['history-delete-dialog', '/historico/'],
@@ -320,8 +321,9 @@ try {
           }
           interactionChecks.push({ control: 'populated collection cards (local visual sample)', ...state, hoverLink, keyboardLink, noBackendWrites: true });
         }
-        if (routeName === 'collection-detail-populated') {
-          const state = await page.evaluate(() => {
+        if (routeName === 'collection-detail-populated' || routeName === 'collection-remove-confirmation') {
+          const confirmationEnabled = routeName === 'collection-remove-confirmation' && phase === 'after';
+          const state = await page.evaluate(({ confirmationEnabled }) => {
             const main = document.querySelector('.workspace-content');
             if (!main?.querySelector('.workspace-empty-state')) throw new Error('Expected the anonymous collection list before applying the detail preview');
             main.replaceChildren();
@@ -362,12 +364,18 @@ try {
               heading.append(link);
               const excerpt = document.createElement('p');
               excerpt.textContent = norm.description;
+              const form = document.createElement('form');
+              form.method = 'post';
+              form.action = '/colecoes/preview/';
+              if (confirmationEnabled) form.dataset.collectionRemoveForm = '';
               const remove = document.createElement('button');
-              remove.type = 'button';
+              remove.type = confirmationEnabled ? 'submit' : 'button';
               remove.className = 'workspace-button workspace-button-ghost';
               remove.textContent = 'Remover';
               remove.setAttribute('aria-label', `Remover ${norm.title} da prévia local`);
-              card.append(eyebrow, heading, excerpt, remove);
+              if (confirmationEnabled) remove.dataset.collectionNorm = norm.title;
+              form.append(remove);
+              card.append(eyebrow, heading, excerpt, form);
               grid.append(card);
             }
             main.append(header, grid);
@@ -382,12 +390,48 @@ try {
               })),
               viewportWidth: document.documentElement.clientWidth,
               documentWidth: document.documentElement.scrollWidth,
+              confirmationEnabled,
             };
-          });
+          }, { confirmationEnabled });
           if (state.count !== 3 || state.documentWidth > state.viewportWidth || state.cards.some((card) => card.right > state.viewportWidth || card.removeHeight < 40)) {
             throw new Error(`Populated collection detail clips content or actions: ${JSON.stringify(state)}`);
           }
           interactionChecks.push({ control: 'populated collection detail (local visual sample)', ...state, noBackendWrites: true });
+          if (confirmationEnabled) {
+            await page.addScriptTag({ url: `${BASE_URL}/static/js/jurix-collections.js?v=20260930-remove-confirm1` });
+            await page.click('[data-collection-remove-form] button[type="submit"]');
+            await page.waitForFunction(() => document.querySelector('.workspace-confirm-backdrop[role="dialog"]')?.classList.contains('is-open'));
+            await new Promise((resolve) => setTimeout(resolve, 240));
+            const dialogState = await page.evaluate(() => {
+              const dialog = document.querySelector('.workspace-confirm-backdrop[role="dialog"]');
+              const panel = dialog.querySelector('.workspace-confirm-dialog');
+              const bounds = panel.getBoundingClientRect();
+              return {
+                label: dialog.getAttribute('aria-labelledby'),
+                description: dialog.getAttribute('aria-describedby'),
+                hidden: dialog.getAttribute('aria-hidden'),
+                inert: dialog.inert,
+                focusedSafeAction: document.activeElement.matches('[data-collection-remove-cancel]'),
+                copy: dialog.innerText,
+                bounds: { left: Math.round(bounds.left), right: Math.round(bounds.right), width: Math.round(bounds.width) },
+                viewportWidth: document.documentElement.clientWidth,
+                documentWidth: document.documentElement.scrollWidth,
+                reducedMotionAnimation: getComputedStyle(panel).animationName,
+              };
+            });
+            if (
+              dialogState.hidden !== 'false'
+              || dialogState.inert
+              || !dialogState.focusedSafeAction
+              || !dialogState.copy.includes('Lei nº 8.204/2026')
+              || dialogState.bounds.left < 0
+              || dialogState.bounds.right > dialogState.viewportWidth
+              || dialogState.documentWidth > dialogState.viewportWidth
+            ) {
+              throw new Error(`Collection removal confirmation is clipped or inaccessible: ${JSON.stringify(dialogState)}`);
+            }
+            interactionChecks.push({ control: 'collection removal confirmation (local visual sample)', ...dialogState, noBackendWrites: true });
+          }
         }
         if (routeName === 'settings-provider') {
           await page.select('select[name="llm_provider"]', 'compatible');
