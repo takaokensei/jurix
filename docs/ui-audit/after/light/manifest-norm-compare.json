@@ -1,11 +1,11 @@
 {
   "phase": "after",
-  "theme": "dark",
+  "theme": "light",
   "routeFilter": [
     "norm-compare"
   ],
   "baseUrl": "http://127.0.0.1:8005",
-  "capturedAt": "2026-09-30T20:54:04.908Z",
+  "capturedAt": "2026-09-30T20:54:05.166Z",
   "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "results": [
     {

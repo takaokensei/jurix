@@ -3567,3 +3567,39 @@ Visual score: confirmation clarity 9, light/dark parity 9, phone ergonomics 9.
 Next: return to the broader remaining interaction audit—especially real
 authenticated collection flows and full route accessibility/resource
 closeout. Section-17 completion remains unproven.
+
+## Cycle 101 — light-theme dim-text contrast and test contract — 2026-09-30
+
+Area: cross-route accessibility, norma comparison, and verification reliability.
+The actual light-theme `/normas/3/compare/` render used `--figma-text-dim`
+(`#64748B`) over the button surface (`#EAF0F8`), producing 4.15:1 contrast
+for small line numbers—below WCAG AA's 4.5:1 requirement. The light override is
+now `#53657E`; this gives at least 5.19:1 over the three primary light surfaces
+and leaves dark-theme colors unchanged. The shared stylesheet URL is
+cache-busted in both shells that load it.
+
+Added a regression test for the light dim-text token across root, white, and
+button surfaces. Also corrected a stale assertion in
+`test_norma_api_filters_by_human_type_and_year`: the rendered interface says
+“Busca não executada”, while the test incorrectly expected “Modo: não
+executada”. No runtime route, API, or backend behavior changed.
+
+Browser validation: `/normas/3/compare/` returned HTTP 200 in light mode with
+no console errors or horizontal overflow. Captured all five standard
+viewports in dark and light, zero need-review results; desktop and phone
+captures were visually inspected. Computed line-number foreground is now
+`rgb(83, 101, 126)` against the light comparison surface.
+
+Tests: `npm test` passed, including 27 real Chromium scenarios; Python suite
+passed `666 passed, 6 skipped, 7 warnings`; `manage.py check` and the design
+token guard passed. `ruff check` still reports two import-order findings in
+untouched files (`src/apps/legislation/serializers.py` and
+`src/tests/test_source_urls.py`). The first concurrent full-suite attempt had
+a Windows CPU-limit timing failure that passed when isolated and on the final
+serial run. `git diff --check` passed. Screenshots and focused manifests are in
+`docs/ui-audit/after/` alongside the existing baseline.
+
+Visual score: small-text contrast on light legal comparisons 9.2, theme parity
+9, mobile comparison readability 9. Section-17 completion remains unproven.
+Next: resume the broad keyboard/accessibility and real route-interaction audit;
+do not treat this focused contrast fix as phase-E closeout.

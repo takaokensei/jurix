@@ -28,6 +28,18 @@ test('muted UI text meets WCAG AA contrast on all primary dark surfaces', async 
   }
 });
 
+test('dim UI text meets WCAG AA contrast on all primary light surfaces', async () => {
+  const css = await readFile(new URL('src/apps/core/static/css/jurix-figma.css', root), 'utf8');
+  const lightTokens = css.match(/:root\[data-theme="light"\]\s*\{([^}]+)\}/)?.[1];
+  const foreground = lightTokens?.match(/--figma-text-dim:\s*(#[a-f\d]{6})/i)?.[1];
+  assert.ok(foreground, 'The light-theme dim-text token must be defined in its theme override');
+
+  for (const background of ['#F7F9FC', '#FFFFFF', '#EAF0F8']) {
+    const ratio = contrastRatio(foreground, background);
+    assert.ok(ratio >= 4.5, `${foreground} on ${background} is ${ratio.toFixed(2)}:1; normal text requires 4.5:1`);
+  }
+});
+
 test('primary action buttons meet WCAG AA contrast with the default text color', async () => {
   const css = await readFile(new URL('src/apps/core/static/css/jurix-figma.css', root), 'utf8');
   const background = css.match(/--figma-blue-primary:\s*(#[a-f\d]{6})/i)?.[1];

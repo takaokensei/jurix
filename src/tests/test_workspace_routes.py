@@ -247,7 +247,7 @@ def test_norma_api_filters_by_human_type_and_year():
     assert search_page.status_code == 200
     search_body = search_page.content.decode("utf-8")
     assert "Busca muito longa" in search_body
-    assert "Modo: não executada" in search_body
+    assert "Busca não executada" in search_body
 
 
 def test_norma_api_reports_clamped_page_number():
