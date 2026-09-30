@@ -2865,3 +2865,23 @@ under the explicit “entra em vigor na data de sua publicação” clause.
 
 Validation: the new task integration test passes against the test database;
 Ruff on the test module and `git diff --check` pass.
+
+## Cycle 73 — readable hierarchy for consolidated legal provisions
+
+The live `/normas/3/` page rendered its 24 provisions as a nearly continuous
+text stream. Added token-based provision cards, explicit left-aligned legal
+text, consistent line length and line height, nested indentation by provision
+level, and compact responsive spacing. Updated the page asset version and
+added browser assertions for the real stylesheet, keyboard expansion/focus,
+and mobile overflow.
+
+Before/after captures are saved under `docs/ui-audit/{before,after}/` for
+1440x900 and 390x844. Direct Chromium checks returned HTTP 200, found all 24
+provisions, and reported no console errors or horizontal overflow. The mobile
+cards keep a 10px radius and readable 1.7 line height.
+
+Validation: full Python suite passed (665 passed, 6 skipped). The focused
+norma UI tests passed. A full JavaScript run exposed a brittle contrast check
+that treated a transparent control background as black; it now measures the
+blue action label against the actual page surface. After that correction, all
+JavaScript suites passed (128/128, including real-browser coverage).

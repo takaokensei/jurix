@@ -276,7 +276,7 @@ test('norm actions use a responsive grid instead of stranding the official sourc
   assert.match(styles, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(100%,\s*15rem\),\s*1fr\)\)/);
   assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*justify-content:\s*center/);
   assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*min-height:\s*44px/);
-  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260930-device-reading1/);
+  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260930-device-cards3/);
 });
 
 test('missing effective date is not presented as legal certainty in norm list or detail', async () => {
@@ -302,7 +302,7 @@ test('mobile norm detail keeps secondary metrics compact without squeezing text 
   const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
   assert.match(styles, /@media \(max-width:640px\)[\s\S]*?\.legal-detail-card \.stats-grid \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\); \}/);
   assert.match(styles, /\.legal-detail-card \.stats-grid \.stat-card:last-child \{ grid-column:1 \/ -1; \}/);
-  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260930-device-reading1/);
+  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260930-device-cards3/);
 });
 
 test('version comparison exposes both texts as labelled stacked evidence on mobile', async () => {
@@ -339,5 +339,15 @@ test('public device tree does not present internal extraction confidence as lega
   }
   assert.doesNotMatch(template, /segmentation_confidence|Confiança:/);
   assert.doesNotMatch(template, /Ordem: \{\{ node\.dispositivo\.ordem \}\}/);
+});
+
+test('norma detail gives legal devices clear document hierarchy and readable body text', async () => {
+  const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
+  const styles = await read('src/apps/core/static/css/jurix-legal-detail.css');
+  assert.match(template, /class="dispositivos-tree"[\s\S]*class="dispositivo-node" data-level=/);
+  assert.match(styles, /\.dispositivo-node\s*\{[^}]*border-left:3px solid var\(--figma-blue-primary\)[^}]*border-radius:10px/);
+  assert.match(styles, /\.dispositivo-text\s*\{[^}]*max-width:88ch[^}]*text-align:left[^}]*line-height:1\.75/);
+  assert.match(styles, /\.dispositivo-node\[data-level="4"\]/);
+  assert.match(styles, /@media \(max-width:640px\)[\s\S]*?\.dispositivo-node\[data-level="4"\]\s*\{[^}]*margin-inline-start:24px/);
 });
 

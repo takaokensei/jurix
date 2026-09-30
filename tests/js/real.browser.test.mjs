@@ -184,10 +184,11 @@ function createTestServer(handlers = {}) {
     if (url.pathname === '/device-expansion-test/') {
       const fullText = 'Texto integral do dispositivo com fundamento, condições, prazos, sujeitos e exceções aplicáveis. '.repeat(8).trim();
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      return res.end(`<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>
-        <article><div class="dispositivo-text" id="dispositivo-texto-fixture"><span data-device-text-preview>Texto resumido em cinquenta palavras.</span><span data-device-text-full hidden>${fullText}</span></div>
+      return res.end(`<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="/static/css/jurix-figma.css"><link rel="stylesheet" href="/static/css/jurix-legal-detail.css"></head><body class="figma-theme">
+        <main class="card legal-detail-card"><div class="dispositivos-tree"><article class="dispositivo-node" data-level="2"><div class="dispositivo-header"><span class="dispositivo-label">Art. 2º &gt; Inciso I</span></div><div class="dispositivo-text" id="dispositivo-texto-fixture"><span data-device-text-preview>Texto resumido em cinquenta palavras.</span><span data-device-text-full hidden>${fullText}</span></div>
         <button type="button" data-expand-device aria-expanded="false" aria-controls="dispositivo-texto-fixture">Ver texto completo</button></article>
-        <script src="/static/js/jurix-legal-detail.js"></script></body></html>`);
+        </div></main><script src="/static/js/jurix-legal-detail.js"></script></body></html>`);
     }
 
     if (url.pathname === '/norma-search-test/') {
@@ -611,7 +612,9 @@ test('real browser: theme preference stays synchronized with the legacy toggle',
     assert.ok(contrast(lightSurfaces.normAction.color, lightSurfaces.normAction.background) >= 4.5, JSON.stringify(lightSurfaces.normAction));
     assert.ok(contrast(lightSurfaces.sourcePill.color, lightSurfaces.sourcePill.background) >= 4.5, JSON.stringify(lightSurfaces.sourcePill));
     assert.ok(contrast(lightSurfaces.sourceBadge.color, lightSurfaces.sourceBadge.background) >= 4.5, JSON.stringify(lightSurfaces.sourceBadge));
-    assert.ok(contrast(lightSurfaces.sourceAction.color, lightSurfaces.sourcePill.background) >= 4.5, JSON.stringify(lightSurfaces.sourceAction));
+    // The action label has a transparent background; measure it against the
+    // actual light page surface instead of treating rgba(0, 0, 0, 0) as black.
+    assert.ok(contrast(lightSurfaces.sourceAction.color, lightSurfaces.body) >= 4.5, JSON.stringify(lightSurfaces.sourceAction));
     assert.equal(lightSurfaces.banner.background, 'rgb(255, 255, 255)');
     assert.equal(lightSurfaces.userBubble.color, 'rgb(15, 23, 42)');
     assert.equal(lightSurfaces.sourceHeader.background, 'rgb(255, 255, 255)');
@@ -2626,9 +2629,23 @@ test('real browser: legal device full text expands, collapses, and keeps keyboar
 
   try {
     const page = await browser.newPage();
+    await page.setViewport({ width: 390, height: 844 });
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(`http://127.0.0.1:${port}/device-expansion-test/`, { waitUntil: 'domcontentloaded' });
+    const layout = await page.$eval('.dispositivo-node', (node) => ({
+      width: document.documentElement.scrollWidth,
+      viewport: innerWidth,
+      radius: getComputedStyle(node).borderRadius,
+      indent: getComputedStyle(node).marginInlineStart,
+      bodyLineHeight: getComputedStyle(node.querySelector('.dispositivo-text')).lineHeight,
+      bodyAlignment: getComputedStyle(node.querySelector('.dispositivo-text')).textAlign,
+    }));
+    assert.equal(layout.width, layout.viewport, 'legal-device reading cards must not overflow on mobile');
+    assert.equal(layout.radius, '10px');
+    assert.equal(layout.indent, '12px', 'nested devices should retain a compact, visible mobile hierarchy');
+    assert.equal(layout.bodyAlignment, 'left', 'legal text should follow a stable left-aligned reading edge');
+    assert.notEqual(layout.bodyLineHeight, 'normal');
     const fullText = await page.$eval('[data-device-text-full]', (node) => node.textContent.trim());
     await page.focus('[data-expand-device]');
     await page.keyboard.press('Enter');
