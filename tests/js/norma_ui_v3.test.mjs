@@ -116,6 +116,12 @@ test('norma template exposes semantic filters and no hardcoded suggestion cards'
   assert.match(source, /jurix-norma-list\.css['"] %\}\?v=20260929-metadata-hierarchy1/);
 });
 
+test('legal search placeholder stays concise while examples remain available in the empty state', async () => {
+  const template = await read('src/apps/legislation/templates/legislation/workspace/search.html');
+  assert.match(template, /placeholder="Ex\.: zoneamento ou IPTU progressivo"/);
+  assert.match(template, /Exemplos: “parcelamento do solo”, “licenciamento ambiental” ou “IPTU progressivo”/);
+});
+
 test('chat sidebar exposes the same quick-search action as the workspace shell', async () => {
   const source = await read('src/apps/legislation/templates/legislation/chatbot.html');
   const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');

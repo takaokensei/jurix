@@ -2926,3 +2926,17 @@ The prior collection-title clipping seen in an older capture was checked
 against the live DOM before changing code: the title box starts at the correct
 14px mobile content inset and a fresh screenshot renders it in full. No patch
 was made for that stale visual observation.
+
+## Cycle 76 — concise semantic-search example
+
+The mobile `/pesquisa/` field also clipped its long example before users could
+read the actual subject. Replaced it with “Ex.: zoneamento ou IPTU
+progressivo”; the empty state continues to show the richer set of example
+queries. This keeps guidance in the field while reserving the detailed list
+for the space where it can be read comfortably.
+
+The existing `search-empty-390x844.png` is the baseline; updated 390x844 and
+1440x900 captures are `legal-search-placeholder-*.png`. The live route
+returned HTTP 200, the complete placeholder measures 266px against 298px
+available at mobile width, and there is no page overflow or browser error.
+`norma_ui_v3` tests and `git diff --check` pass.

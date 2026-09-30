@@ -10,7 +10,7 @@
 </section>
 
 <form class="workspace-search-panel" method="get" role="search" aria-label="Pesquisa jurídica">
-    <label class="workspace-search-input"><span class="sr-only">Consulta</span><input name="q" value="{{ query }}" placeholder="Ex.: regularização de edificações, zoneamento, desapropriação…"></label>
+    <label class="workspace-search-input"><span class="sr-only">Consulta</span><input name="q" value="{{ query }}" placeholder="Ex.: zoneamento ou IPTU progressivo"></label>
     <button class="workspace-button workspace-button-primary" type="submit">Pesquisar</button>
     <div class="workspace-filter-row">
         <label>Tipo<select name="tipo"><option value="">Todos os tipos</option>{% for item in types %}<option value="{{ item.value }}"{% if norma_type == item.value %} selected{% endif %}>{{ item.label }}</option>{% endfor %}</select></label>
