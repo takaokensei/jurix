@@ -1884,6 +1884,70 @@ test('real browser: sidebar items stay inside the shell and fully offscreen when
   }
 });
 
+test('real browser: assistant utility navigation stays visible in a short desktop viewport', async () => {
+  const server = createTestServer();
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 600 });
+    await page.goto(`http://127.0.0.1:${port}/assistente/`, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      const list = document.getElementById('chat-sessions-list');
+      for (let index = 0; index < 12; index += 1) {
+        const session = document.createElement('a');
+        session.className = 'chat-session-item';
+        session.textContent = `Conversa longa ${index + 1}`;
+        list.append(session);
+      }
+      const quickSearch = document.createElement('button');
+      quickSearch.className = 'figma-sidebar-item workspace-palette-trigger';
+      quickSearch.dataset.openCommandPalette = '';
+      quickSearch.textContent = 'Busca rápida';
+      document.querySelector('.figma-sidebar-footer').append(quickSearch);
+    });
+
+    const layout = await page.evaluate(() => {
+      const sidebar = document.querySelector('.figma-sidebar');
+      const top = document.querySelector('.figma-sidebar-top');
+      const footer = document.querySelector('.figma-sidebar-footer');
+      const settings = footer.querySelector('a[href*="configuracoes"]');
+      const quickSearch = footer.querySelector('[data-open-command-palette]');
+      const rect = (element) => {
+        const bounds = element.getBoundingClientRect();
+        return { top: bounds.top, bottom: bounds.bottom };
+      };
+      return {
+        viewportHeight: innerHeight,
+        sidebar: rect(sidebar),
+        sidebarScrollHeight: sidebar.scrollHeight,
+        top: rect(top),
+        topOverflowY: getComputedStyle(top).overflowY,
+        topScrollHeight: top.scrollHeight,
+        topClientHeight: top.clientHeight,
+        settings: rect(settings),
+        quickSearch: rect(quickSearch),
+      };
+    });
+
+    assert.equal(layout.sidebar.top, 0, JSON.stringify(layout));
+    assert.ok(layout.sidebar.bottom <= layout.viewportHeight, JSON.stringify(layout));
+    assert.ok(layout.topScrollHeight > layout.topClientHeight, JSON.stringify(layout));
+    assert.equal(layout.topOverflowY, 'auto', JSON.stringify(layout));
+    assert.ok(layout.settings.top >= 0 && layout.settings.bottom <= layout.viewportHeight, JSON.stringify(layout));
+    assert.ok(layout.quickSearch.top >= 0 && layout.quickSearch.bottom <= layout.viewportHeight, JSON.stringify(layout));
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
 test('real browser: command palette keeps compact icons and focuses search on mobile', async () => {
   const server = createTestServer();
   await new Promise((r) => server.listen(0, '127.0.0.1', r));

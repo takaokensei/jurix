@@ -9,6 +9,31 @@
 [data-density="compact"] .figma-theme .message-body { padding: 12px 16px; line-height: 1.5; }
 [data-density="compact"] .figma-theme .message-body p { margin-bottom: 8px; }
 
+/* Keep utility navigation visible when the conversation history fills a short viewport. */
+.figma-theme .figma-sidebar {
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.figma-theme .figma-sidebar-top {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: var(--figma-border) transparent;
+    scrollbar-width: thin;
+}
+
+.figma-theme .figma-sidebar-top::-webkit-scrollbar { width: 6px; }
+.figma-theme .figma-sidebar-top::-webkit-scrollbar-track { background: transparent; }
+.figma-theme .figma-sidebar-top::-webkit-scrollbar-thumb { background: var(--figma-border); border-radius: 3px; }
+.figma-theme .figma-sidebar-top::-webkit-scrollbar-thumb:hover { background: var(--figma-border-strong); }
+
+.figma-theme .figma-sidebar-footer {
+    flex: 0 0 auto;
+}
+
 .jurix-network-status {
     position: fixed;
     top: 6.5rem;

@@ -2601,3 +2601,49 @@ Regressions: None observed.
 
 Next action: Continue the cross-route keyboard/accessibility audit and correct
 any reproducible issue before the final phase assessment.
+
+## Cycle 64 — 2026-09-29
+
+Area: Assistant sidebar utility reachability at short desktop heights.
+
+Goal: Recheck the reported shell inconsistencies and ensure navigation remains
+usable when the viewport is short and the conversation history is long.
+
+Observed problems: The seven reported issues U1–U7 were already resolved in
+the current templates and styles; prior live-browser evidence is recorded in
+Cycles 43 and 57. A separate geometry check at 1280×600 did reproduce a new
+sidebar defect: the assistant sidebar's content-box sizing made it 648px tall
+inside a 600px viewport, placing Settings and Quick Search below the visible
+area. The long history itself was scrollable, but the utility footer was not.
+
+Changes made: The assistant sidebar now stretches to its flex parent's height
+without exceeding it. Its brand, primary navigation and history form a
+bounded, independently scrollable region, while the utility footer remains
+fixed at the bottom. Added a restrained native scrollbar treatment and
+cache-busted the changed stylesheet. Added static and real-Chromium regression
+tests with an expanded history and 1280×600 viewport.
+
+Browser validation: The live app at 1280×600 now reports a 600px sidebar,
+scrollable navigation content (616px content in a 460px viewport), and both
+Settings and Quick Search wholly inside the viewport. The screenshot confirms
+the utilities remain visible while the history region scrolls.
+
+Tests: Full `npm test` passed, including 27 norm/UI contracts, 22 real
+Chromium scenarios, 15 streaming/persistence checks and the security/CSP,
+accessibility and contrast suites. The focused short-viewport Chromium test
+also passed independently. No backend or API code changed.
+
+Console: No new errors in the live route check or Chromium tests.
+
+Responsive validation: Existing mobile sidebar open/close, focus and overflow
+tests continue to pass; the new 1280×600 scenario covers short desktop
+viewports with large history.
+
+Visual score: Utility actions remain predictably anchored and reachable under
+constrained vertical space; the history can scroll without displacing global
+navigation actions.
+
+Regressions: None observed.
+
+Next action: Continue the route-by-route product audit at narrow and short
+viewports, then verify the remaining acceptance criteria in GOAL.md.

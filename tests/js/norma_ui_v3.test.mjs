@@ -100,6 +100,15 @@ test('chat sidebar exposes the same quick-search action as the workspace shell',
   assert.match(topbar, /aria-controls="sidebar"[\s\S]*aria-expanded="false"/);
 });
 
+test('assistant sidebar keeps its utility footer fixed while the navigation region can scroll', async () => {
+  const source = await read('src/apps/core/static/css/jurix-chat-shell.css');
+  const template = await read('src/apps/legislation/templates/legislation/chatbot.html');
+  assert.match(source, /\.figma-sidebar\s*\{[^}]*height:\s*auto;[^}]*overflow:\s*hidden;/);
+  assert.match(source, /\.figma-sidebar-top\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/);
+  assert.match(source, /\.figma-sidebar-footer\s*\{[^}]*flex:\s*0\s+0\s+auto;/);
+  assert.match(template, /css\/jurix-chat-shell\.css['"] %\}\?v=20260929-sidebar-utilities1/);
+});
+
 test('command palette templates cache-bust the shared keyboard accessibility behavior', async () => {
   const chat = await read('src/apps/legislation/templates/legislation/chatbot.html');
   const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
