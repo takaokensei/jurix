@@ -5,7 +5,9 @@ import path from 'node:path';
 import { JSDOM } from 'jsdom';
 
 const JS_DIR = path.resolve(import.meta.dirname, '../../src/apps/core/static/js');
+const TEMPLATE_DIR = path.resolve(import.meta.dirname, '../../src/apps/legislation/templates/legislation/workspace');
 const read = (file) => fs.readFileSync(path.join(JS_DIR, file), 'utf8');
+const readTemplate = (file) => fs.readFileSync(path.join(TEMPLATE_DIR, file), 'utf8');
 
 test('anonymous stream persists the final answer after the API overlay is installed', async () => {
   const dom = new JSDOM(
@@ -300,6 +302,40 @@ test('history swipe reveals a delete action and deletion waits for confirmation'
   assert.equal(deleted, true);
   assert.equal(window.document.querySelector('[data-session-id="17"]'), null);
   dom.window.close();
+});
+
+test('anonymous history distinguishes a genuinely empty history from a search with no matches', () => {
+  const dom = new JSDOM('<!doctype html><html><body><form data-history-search><input name="q"></form><section data-anonymous-history></section></body></html>', {
+    url: 'http://localhost/historico/', runScripts: 'dangerously',
+  });
+  const { window } = dom;
+  window.eval(read('jurix-anonymous-history.js'));
+  window.eval(read('jurix-anonymous-history-page.js'));
+  const root = window.document.querySelector('[data-anonymous-history]');
+  assert.match(root.textContent, /Histórico vazio/);
+  assert.match(root.textContent, /Suas pesquisas aparecerão aqui/);
+  assert.equal(root.querySelector('a[href="/assistente/"]')?.textContent.trim(), 'Abrir Assistente');
+  assert.doesNotMatch(root.textContent, /Nenhuma conversa encontrada/);
+
+  const input = window.document.querySelector('input[name="q"]');
+  input.value = 'lei inexistente';
+  input.dispatchEvent(new window.Event('input', { bubbles: true }));
+  assert.match(root.textContent, /Nenhuma conversa encontrada/);
+  assert.doesNotMatch(root.textContent, /Suas pesquisas aparecerão aqui/);
+
+  input.value = '';
+  input.dispatchEvent(new window.Event('search', { bubbles: true }));
+  assert.match(root.textContent, /Suas pesquisas aparecerão aqui/);
+  dom.window.close();
+});
+
+test('history search stays inline on desktop and anonymous result cards use the shared card interior', () => {
+  const template = readTemplate('history.html');
+  const renderer = read('jurix-anonymous-history-page.js');
+  assert.match(template, /class="workspace-field" for="history-query"/);
+  assert.doesNotMatch(template, /class="workspace-field workspace-field-wide" for="history-query"/);
+  assert.match(renderer, /class="workspace-history-card__surface"><div class="workspace-history-card__link">/);
+  assert.match(renderer, /workspace-history-meta/);
 });
 
 test('history delete failure does not incorrectly claim the connection is unavailable', async () => {

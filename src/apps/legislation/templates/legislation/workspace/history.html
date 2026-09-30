@@ -12,7 +12,7 @@
 </section>
 
 <form class="workspace-history-search" method="get" role="search" data-history-search>
-    <label class="workspace-field workspace-field-wide" for="history-query"><span>Buscar nas conversas</span><input id="history-query" name="q" type="search" value="{{ history_query }}" placeholder="Assunto, norma, artigo ou trecho da conversa" maxlength="120"></label>
+    <label class="workspace-field" for="history-query"><span>Buscar nas conversas</span><input id="history-query" name="q" type="search" value="{{ history_query }}" placeholder="Assunto, norma, artigo ou trecho da conversa" maxlength="120"></label>
     <button class="workspace-button workspace-button-secondary" type="submit">Pesquisar</button>
 </form>
 
@@ -54,4 +54,4 @@
 {% endif %}
 {% endblock %}
 
-{% block extra_js %}<script src="{% static 'js/jurix-chat-api.js' %}?v=20260930-provider-context2"></script><script src="{% static 'js/jurix-history-actions.js' %}?v=20260930-swipe-delete1"></script><script src="{% static 'js/jurix-anonymous-history-page.js' %}?v=20260930-history-search2"></script>{% endblock %}
+{% block extra_js %}<script src="{% static 'js/jurix-chat-api.js' %}?v=20260930-provider-context2"></script><script src="{% static 'js/jurix-history-actions.js' %}?v=20260930-swipe-delete1"></script><script src="{% static 'js/jurix-anonymous-history-page.js' %}?v=20260930-history-search-clear1"></script>{% endblock %}

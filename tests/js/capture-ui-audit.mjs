@@ -49,6 +49,7 @@ const routes = [
   ['norm-tree', '/normas/3/tree/'],
   ['collections', '/colecoes/'],
   ['history', '/historico/'],
+  ['history-populated', '/historico/'],
   ['history-delete-dialog', '/historico/'],
   ['settings', '/configuracoes/'],
   ['settings-provider', '/configuracoes/'],
@@ -90,6 +91,30 @@ try {
           // The audit still runs if browser storage is unavailable; the page reports that state separately.
         }
       }, theme);
+      if (routeName === 'history-populated') {
+        await page.evaluateOnNewDocument(() => {
+          const created = new Date('2026-09-29T17:20:00.000Z').toISOString();
+          localStorage.setItem('jurix:anonymous-history:v2', JSON.stringify({
+            schema: 2,
+            sessions: [
+              {
+                id: 'ui-audit-lei-8206', title: 'Lei nº 8206/2026 — vigência e artigos', created_at: created, updated_at: created,
+                messages: [
+                  { role: 'user', content: 'O que prevê o art. 8º da Lei nº 8206/2026?', created_at: created, sources: [] },
+                  { role: 'assistant', content: 'O art. 8º estabelece a entrada em vigor na data de publicação.', created_at: created, sources: [] },
+                ],
+              },
+              {
+                id: 'ui-audit-licenca', title: 'Prazo para licença municipal', created_at: created, updated_at: created,
+                messages: [
+                  { role: 'user', content: 'Qual é o prazo para análise do pedido de licença?', created_at: created, sources: [] },
+                  { role: 'assistant', content: 'A resposta depende do procedimento e da norma aplicável.', created_at: created, sources: [] },
+                ],
+              },
+            ],
+          }));
+        });
+      }
       page.on('pageerror', (error) => consoleErrors.push(error.message));
       page.on('console', (message) => {
         if (message.type() === 'error') consoleErrors.push(message.text());
@@ -179,6 +204,36 @@ try {
           await page.waitForSelector('.workspace-confirm-backdrop.is-open');
           interactionChecks.push({ control: 'history delete confirmation (local preview)', ...dialogState, escapeRestoredFocus });
         }
+        if (routeName === 'history') {
+          const emptyHistory = await page.evaluate(() => ({
+            title: document.querySelector('[data-anonymous-history] h2')?.textContent.trim(),
+            cta: document.querySelector('[data-anonymous-history] a')?.textContent.trim(),
+            misleadingSearchCopy: /Nenhuma conversa encontrada/.test(document.querySelector('[data-anonymous-history]')?.textContent || ''),
+            searchInput: document.querySelector('.workspace-history-search input')?.getBoundingClientRect().toJSON(),
+            searchButton: document.querySelector('.workspace-history-search button')?.getBoundingClientRect().toJSON(),
+            viewportWidth: innerWidth,
+          }));
+          if (emptyHistory.title !== 'Suas pesquisas aparecerão aqui' || emptyHistory.cta !== 'Abrir Assistente' || emptyHistory.misleadingSearchCopy) {
+            throw new Error(`Anonymous history empty state is unclear: ${JSON.stringify(emptyHistory)}`);
+          }
+          const sameDesktopRow = emptyHistory.searchButton.top >= emptyHistory.searchInput.top && emptyHistory.searchButton.top < emptyHistory.searchInput.bottom;
+          if (emptyHistory.viewportWidth > 560 && !sameDesktopRow) throw new Error(`History search should keep its action beside the input on desktop: ${JSON.stringify(emptyHistory)}`);
+          interactionChecks.push({ control: 'anonymous history empty state', ...emptyHistory });
+        }
+        if (routeName === 'history-populated') {
+          await page.waitForFunction(() => document.querySelectorAll('.workspace-history-card').length === 2);
+          const initialCards = await page.$$eval('.workspace-history-card', (cards) => cards.map((card) => card.querySelector('h2')?.textContent.trim()));
+          await page.locator('input[name="q"]').fill('Lei 8206');
+          await page.waitForFunction(() => document.querySelectorAll('.workspace-history-card').length === 1);
+          const filteredTitle = await page.$eval('.workspace-history-card h2', (heading) => heading.textContent.trim());
+          if (!filteredTitle.includes('8206')) throw new Error(`History word search selected the wrong conversation: ${filteredTitle}`);
+          await page.$eval('input[name="q"]', (input) => {
+            input.value = '';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+          });
+          await page.waitForFunction(() => document.querySelectorAll('.workspace-history-card').length === 2);
+          interactionChecks.push({ control: 'anonymous history populated/search state (local sample)', initialCards, filteredTitle, noBackendWrites: true });
+        }
         if (routeName === 'settings-provider') {
           await page.select('select[name="llm_provider"]', 'compatible');
           const requiredFieldsShown = await page.evaluate(() => ({
@@ -257,6 +312,40 @@ try {
             const keyboardExpanded = await disclosure.evaluate((details) => details.open);
             await page.keyboard.press('Enter');
             await page.waitForFunction(() => !document.querySelector('.legal-detail-ementa--expandable')?.open);
+            const actions = await page.$('.legal-detail-actions');
+            if (actions) {
+              await actions.evaluate((element) => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
+              await new Promise((resolve) => setTimeout(resolve, 180));
+              const actionLayout = await actions.evaluate((element) => {
+                const buttons = [...element.querySelectorAll('.btn')].map((button) => {
+                  const bounds = button.getBoundingClientRect();
+                  return { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom };
+                });
+                return {
+                  columns: getComputedStyle(element).gridTemplateColumns.split(' ').length,
+                  buttons,
+                  noDocumentOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+                };
+              });
+              const viewportWidth = Number(viewportName.split('x')[0]);
+              const expectedColumns = viewportWidth <= 520 ? 1 : viewportWidth <= 900 ? 2 : 3;
+              if (actionLayout.columns !== expectedColumns || !actionLayout.noDocumentOverflow) {
+                throw new Error(`Norma action grid is unbalanced or overflowing: ${JSON.stringify(actionLayout)}`);
+              }
+              const actionScreenshot = `norm-detail-actions-${viewportName}.png`;
+              await page.screenshot({ path: path.join(outputDir, actionScreenshot), fullPage: false });
+              interactionChecks.push({ control: 'norma secondary actions', ...actionLayout, screenshot: actionScreenshot });
+            }
+            const timeline = await page.$('.norma-timeline');
+            if (timeline) {
+              await timeline.evaluate((element) => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
+              await new Promise((resolve) => setTimeout(resolve, 120));
+              const timelineScreenshot = `norm-detail-timeline-${viewportName}.png`;
+              await page.screenshot({ path: path.join(outputDir, timelineScreenshot), fullPage: false });
+              interactionChecks.push({ control: 'normative timeline', rendered: true, screenshot: timelineScreenshot });
+            } else {
+              interactionChecks.push({ control: 'normative timeline', rendered: false, reason: 'No dated timeline data for this norm' });
+            }
             interactionChecks.push({
               control: 'norma ementa disclosure',
               collapsedPreviewVisible,

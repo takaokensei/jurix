@@ -3338,3 +3338,41 @@ consistency 9. Next: inspect lower-page norm actions/timeline and populated
 history/collections states; investigate whether the lone mobile sidebar timeout
 is environmental before closing out the final keyboard/focus pass. Section-17
 completion is not established.
+
+## Cycle 95 — history empty/populated states and norm action hierarchy — 2026-09-30
+
+Cross-route captures exposed a real anonymous-history empty-state bug: an
+actually empty history was presented as a failed search. The view now shows a
+purposeful “Histórico vazio” state with a direct Assistente CTA; a real query
+with no matches retains the distinct search-empty message. Added support for
+the browser-native `search` event so clearing a `type=search` field refreshes
+results. Browser inspection also showed anonymous conversation cards bypassed
+the shared card interior, leaving text flush against their borders; their
+markup now uses the existing padded card surface. The search action now stays
+beside the query field on desktop and stacks on small screens.
+
+The legal-detail action row had four uneven columns with two orphan buttons at
+wide desktop sizes. It now uses a stable 3/2/1-column layout (desktop/tablet/
+phone), with explicit 44px hit targets retained. Extended the actual Chromium
+audit to inspect the lower action row and timeline, and to seed two sample
+anonymous history conversations in an isolated browser context for responsive
+rendering and Bag-of-Words search/clear checks. This sample does not write to
+the application backend. Reviewed the 0-event norm case: the separate timeline
+still presents dated corpus events, and the timeline cards remain readable at
+390px.
+
+Validation: full `npm test` passed, including all 26 real-Chromium flows;
+focused history and norma UI suites passed (22 and 43 tests respectively);
+frontend static Python tests 11/11; Django system check clean; `git diff
+--check` clean. Dark/light browser captures passed for 20 history states (empty
+and populated × five viewports × two themes), plus the norm action/timeline
+scroll states at the same five viewports; zero navigation errors, console
+errors, failed requests, bad responses, or horizontal overflow. A transient
+automation-only key-combination mismatch was replaced with an explicit input
+event for the Chromium harness, then the full captures passed.
+
+Visual score: empty-state clarity 9, populated-card padding 9, search layout 9,
+norm action rhythm 9, timeline phone readability 9. Next: continue populated
+collection/history interaction review where authenticated data is available,
+then run the complete keyboard/focus/reduced-motion/performance closeout across
+all real routes. Section-17 completion is not established.

@@ -39,7 +39,9 @@
     }).filter(item => !queryTokens.length || item.score > 0)
       .sort((a, b) => queryTokens.length ? b.score - a.score || String(b.session.updated_at).localeCompare(String(a.session.updated_at)) : String(b.session.updated_at).localeCompare(String(a.session.updated_at)));
     if (!sessions.length) {
-      root.innerHTML = `<section class="workspace-empty-state"><span class="workspace-eyebrow">Busca no histórico</span><h2>Nenhuma conversa encontrada</h2><p>Tente termos relacionados ao assunto, à norma ou ao conteúdo da resposta.</p></section>`;
+      root.innerHTML = queryTokens.length
+        ? `<section class="workspace-empty-state workspace-empty-state-large" role="status"><span class="workspace-eyebrow">Busca no histórico</span><h2>Nenhuma conversa encontrada</h2><p>Tente termos relacionados ao assunto, à norma ou ao conteúdo da resposta.</p></section>`
+        : `<section class="workspace-empty-state workspace-empty-state-large" aria-labelledby="history-empty-title"><div class="workspace-empty-icon" aria-hidden="true">◷</div><span class="workspace-eyebrow">Histórico vazio</span><h2 id="history-empty-title">Suas pesquisas aparecerão aqui</h2><p>Comece uma conversa no Assistente ou faça uma pesquisa jurídica para criar o primeiro registro.</p><a href="/assistente/" class="workspace-button workspace-button-primary">Abrir Assistente</a></section>`;
       return;
     }
     root.innerHTML = `
@@ -50,13 +52,16 @@
     ${sessions.map(({ session, title, preview, count }) => {
       const href = `/assistente/${encodeURIComponent(session.slug || session.id)}/`;
       return `<a class="workspace-history-card" href="${href}">
-        <div class="workspace-history-main"><span class="workspace-eyebrow">Conversa local</span><h2>${escapeHtml(title)}</h2><p>${escapeHtml(preview.slice(0, 220))}</p></div>
-        <div class="workspace-history-meta"><span>${count} ${count === 1 ? 'mensagem' : 'mensagens'}</span><time datetime="${escapeHtml(session.updated_at)}">${escapeHtml(formatDate(session.updated_at))}</time></div>
+        <div class="workspace-history-card__surface"><div class="workspace-history-card__link">
+          <div class="workspace-history-main"><span class="workspace-eyebrow">Conversa local</span><h2>${escapeHtml(title)}</h2><p>${escapeHtml(preview.slice(0, 220))}</p></div>
+          <div class="workspace-history-meta"><span>${count} ${count === 1 ? 'mensagem' : 'mensagens'}</span><time datetime="${escapeHtml(session.updated_at)}">${escapeHtml(formatDate(session.updated_at))}</time></div>
+        </div></div>
       </a>`;
     }).join('')}
   `;
   };
   searchForm?.addEventListener('submit', event => { event.preventDefault(); render(); });
   searchInput?.addEventListener('input', render);
+  searchInput?.addEventListener('search', render);
   render();
 })();

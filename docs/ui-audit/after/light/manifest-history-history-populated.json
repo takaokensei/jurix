@@ -1,0 +1,393 @@
+{
+  "phase": "after",
+  "theme": "light",
+  "routeFilter": [
+    "history",
+    "history-populated"
+  ],
+  "baseUrl": "http://127.0.0.1:8004",
+  "capturedAt": "2026-09-30T19:13:34.781Z",
+  "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "results": [
+    {
+      "route": "history",
+      "requestedPath": "/historico/",
+      "viewport": "1440x900",
+      "screenshot": "history-1440x900.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "documentHeight": 900,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "anonymous history empty state",
+          "title": "Suas pesquisas aparecerão aqui",
+          "cta": "Abrir Assistente",
+          "misleadingSearchCopy": false,
+          "searchInput": {
+            "x": 292,
+            "y": 275.1875,
+            "width": 736,
+            "height": 44,
+            "top": 275.1875,
+            "right": 1028,
+            "bottom": 319.1875,
+            "left": 292
+          },
+          "searchButton": {
+            "x": 1040,
+            "y": 279.1875,
+            "width": 112,
+            "height": 40,
+            "top": 279.1875,
+            "right": 1152,
+            "bottom": 319.1875,
+            "left": 1040
+          },
+          "viewportWidth": 1440
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history",
+      "requestedPath": "/historico/",
+      "viewport": "1024x768",
+      "screenshot": "history-1024x768.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "documentHeight": 850,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "anonymous history empty state",
+          "title": "Suas pesquisas aparecerão aqui",
+          "cta": "Abrir Assistente",
+          "misleadingSearchCopy": false,
+          "searchInput": {
+            "x": 270.71875,
+            "y": 266.1875,
+            "width": 598.5625,
+            "height": 44,
+            "top": 266.1875,
+            "right": 869.28125,
+            "bottom": 310.1875,
+            "left": 270.71875
+          },
+          "searchButton": {
+            "x": 881.28125,
+            "y": 270.1875,
+            "width": 112,
+            "height": 40,
+            "top": 270.1875,
+            "right": 993.28125,
+            "bottom": 310.1875,
+            "left": 881.28125
+          },
+          "viewportWidth": 1024
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history",
+      "requestedPath": "/historico/",
+      "viewport": "768x1024",
+      "screenshot": "history-768x1024.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "documentHeight": 1024,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "anonymous history empty state",
+          "title": "Suas pesquisas aparecerão aqui",
+          "cta": "Abrir Assistente",
+          "misleadingSearchCopy": false,
+          "searchInput": {
+            "x": 23.03125,
+            "y": 241.1875,
+            "width": 597.9375,
+            "height": 44,
+            "top": 241.1875,
+            "right": 620.96875,
+            "bottom": 285.1875,
+            "left": 23.03125
+          },
+          "searchButton": {
+            "x": 632.96875,
+            "y": 241.1875,
+            "width": 112,
+            "height": 44,
+            "top": 241.1875,
+            "right": 744.96875,
+            "bottom": 285.1875,
+            "left": 632.96875
+          },
+          "viewportWidth": 768
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history",
+      "requestedPath": "/historico/",
+      "viewport": "1280x800",
+      "screenshot": "history-1280x800.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "documentHeight": 859,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "anonymous history empty state",
+          "title": "Suas pesquisas aparecerão aqui",
+          "cta": "Abrir Assistente",
+          "misleadingSearchCopy": false,
+          "searchInput": {
+            "x": 278.390625,
+            "y": 275.1875,
+            "width": 736,
+            "height": 44,
+            "top": 275.1875,
+            "right": 1014.390625,
+            "bottom": 319.1875,
+            "left": 278.390625
+          },
+          "searchButton": {
+            "x": 1026.390625,
+            "y": 279.1875,
+            "width": 112,
+            "height": 40,
+            "top": 279.1875,
+            "right": 1138.390625,
+            "bottom": 319.1875,
+            "left": 1026.390625
+          },
+          "viewportWidth": 1280
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history",
+      "requestedPath": "/historico/",
+      "viewport": "390x844",
+      "screenshot": "history-390x844.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "documentHeight": 907,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "anonymous history empty state",
+          "title": "Suas pesquisas aparecerão aqui",
+          "cta": "Abrir Assistente",
+          "misleadingSearchCopy": false,
+          "searchInput": {
+            "x": 14,
+            "y": 267.375,
+            "width": 362,
+            "height": 44,
+            "top": 267.375,
+            "right": 376,
+            "bottom": 311.375,
+            "left": 14
+          },
+          "searchButton": {
+            "x": 14,
+            "y": 323.375,
+            "width": 362,
+            "height": 44,
+            "top": 323.375,
+            "right": 376,
+            "bottom": 367.375,
+            "left": 14
+          },
+          "viewportWidth": 390
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-populated",
+      "requestedPath": "/historico/",
+      "viewport": "1440x900",
+      "screenshot": "history-populated-1440x900.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "documentHeight": 900,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "anonymous history populated/search state (local sample)",
+          "initialCards": [
+            "Lei nº 8206/2026 — vigência e artigos",
+            "Prazo para licença municipal"
+          ],
+          "filteredTitle": "Lei nº 8206/2026 — vigência e artigos",
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-populated",
+      "requestedPath": "/historico/",
+      "viewport": "1024x768",
+      "screenshot": "history-populated-1024x768.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "documentHeight": 768,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "anonymous history populated/search state (local sample)",
+          "initialCards": [
+            "Lei nº 8206/2026 — vigência e artigos",
+            "Prazo para licença municipal"
+          ],
+          "filteredTitle": "Lei nº 8206/2026 — vigência e artigos",
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-populated",
+      "requestedPath": "/historico/",
+      "viewport": "768x1024",
+      "screenshot": "history-populated-768x1024.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "documentHeight": 1024,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "anonymous history populated/search state (local sample)",
+          "initialCards": [
+            "Lei nº 8206/2026 — vigência e artigos",
+            "Prazo para licença municipal"
+          ],
+          "filteredTitle": "Lei nº 8206/2026 — vigência e artigos",
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-populated",
+      "requestedPath": "/historico/",
+      "viewport": "1280x800",
+      "screenshot": "history-populated-1280x800.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "documentHeight": 800,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "anonymous history populated/search state (local sample)",
+          "initialCards": [
+            "Lei nº 8206/2026 — vigência e artigos",
+            "Prazo para licença municipal"
+          ],
+          "filteredTitle": "Lei nº 8206/2026 — vigência e artigos",
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "history-populated",
+      "requestedPath": "/historico/",
+      "viewport": "390x844",
+      "screenshot": "history-populated-390x844.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Histórico — Jurix",
+      "url": "http://127.0.0.1:8004/historico/",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "documentHeight": 912,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "anonymous history populated/search state (local sample)",
+          "initialCards": [
+            "Lei nº 8206/2026 — vigência e artigos",
+            "Prazo para licença municipal"
+          ],
+          "filteredTitle": "Lei nº 8206/2026 — vigência e artigos",
+          "noBackendWrites": true
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    }
+  ]
+}

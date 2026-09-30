@@ -5,7 +5,7 @@
     "norm-detail"
   ],
   "baseUrl": "http://127.0.0.1:8004",
-  "capturedAt": "2026-09-30T17:42:19.700Z",
+  "capturedAt": "2026-09-30T18:58:21.175Z",
   "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "results": [
     {
@@ -23,6 +23,55 @@
       "mainVisible": true,
       "horizontalOverflow": false,
       "interactionChecks": [
+        {
+          "control": "norma secondary actions",
+          "columns": 3,
+          "buttons": [
+            {
+              "left": 292,
+              "right": 650.65625,
+              "top": 383.28125,
+              "bottom": 445.28125
+            },
+            {
+              "left": 660.65625,
+              "right": 1019.328125,
+              "top": 383.28125,
+              "bottom": 445.28125
+            },
+            {
+              "left": 1029.328125,
+              "right": 1387.984375,
+              "top": 383.28125,
+              "bottom": 445.28125
+            },
+            {
+              "left": 292,
+              "right": 650.65625,
+              "top": 455.28125,
+              "bottom": 517.28125
+            },
+            {
+              "left": 660.65625,
+              "right": 1019.328125,
+              "top": 455.28125,
+              "bottom": 517.28125
+            },
+            {
+              "left": 1029.328125,
+              "right": 1387.984375,
+              "top": 455.28125,
+              "bottom": 517.28125
+            }
+          ],
+          "noDocumentOverflow": true,
+          "screenshot": "norm-detail-actions-1440x900.png"
+        },
+        {
+          "control": "normative timeline",
+          "rendered": true,
+          "screenshot": "norm-detail-timeline-1440x900.png"
+        },
         {
           "control": "norma ementa disclosure",
           "collapsedPreviewVisible": true,
@@ -50,10 +99,59 @@
       "url": "http://127.0.0.1:8004/normas/3/",
       "viewportWidth": 1024,
       "documentWidth": 1024,
-      "documentHeight": 6534,
+      "documentHeight": 6462,
       "mainVisible": true,
       "horizontalOverflow": false,
       "interactionChecks": [
+        {
+          "control": "norma secondary actions",
+          "columns": 3,
+          "buttons": [
+            {
+              "left": 270.71875,
+              "right": 504.90625,
+              "top": 316.875,
+              "bottom": 378.875
+            },
+            {
+              "left": 514.90625,
+              "right": 749.09375,
+              "top": 316.875,
+              "bottom": 378.875
+            },
+            {
+              "left": 759.09375,
+              "right": 993.28125,
+              "top": 316.875,
+              "bottom": 378.875
+            },
+            {
+              "left": 270.71875,
+              "right": 504.90625,
+              "top": 388.875,
+              "bottom": 450.875
+            },
+            {
+              "left": 514.90625,
+              "right": 749.09375,
+              "top": 388.875,
+              "bottom": 450.875
+            },
+            {
+              "left": 759.09375,
+              "right": 993.28125,
+              "top": 388.875,
+              "bottom": 450.875
+            }
+          ],
+          "noDocumentOverflow": true,
+          "screenshot": "norm-detail-actions-1024x768.png"
+        },
+        {
+          "control": "normative timeline",
+          "rendered": true,
+          "screenshot": "norm-detail-timeline-1024x768.png"
+        },
         {
           "control": "norma ementa disclosure",
           "collapsedPreviewVisible": true,
@@ -86,6 +184,55 @@
       "horizontalOverflow": false,
       "interactionChecks": [
         {
+          "control": "norma secondary actions",
+          "columns": 2,
+          "buttons": [
+            {
+              "left": 23.03125,
+              "right": 379,
+              "top": 409.09375,
+              "bottom": 471.09375
+            },
+            {
+              "left": 389,
+              "right": 744.96875,
+              "top": 409.09375,
+              "bottom": 471.09375
+            },
+            {
+              "left": 23.03125,
+              "right": 379,
+              "top": 481.09375,
+              "bottom": 543.09375
+            },
+            {
+              "left": 389,
+              "right": 744.96875,
+              "top": 481.09375,
+              "bottom": 543.09375
+            },
+            {
+              "left": 23.03125,
+              "right": 379,
+              "top": 553.09375,
+              "bottom": 615.09375
+            },
+            {
+              "left": 389,
+              "right": 744.96875,
+              "top": 553.09375,
+              "bottom": 615.09375
+            }
+          ],
+          "noDocumentOverflow": true,
+          "screenshot": "norm-detail-actions-768x1024.png"
+        },
+        {
+          "control": "normative timeline",
+          "rendered": true,
+          "screenshot": "norm-detail-timeline-768x1024.png"
+        },
+        {
           "control": "norma ementa disclosure",
           "collapsedPreviewVisible": true,
           "expandedHeight": 256.34375,
@@ -117,6 +264,55 @@
       "horizontalOverflow": false,
       "interactionChecks": [
         {
+          "control": "norma secondary actions",
+          "columns": 3,
+          "buttons": [
+            {
+              "left": 278.390625,
+              "right": 592.796875,
+              "top": 333.28125,
+              "bottom": 395.28125
+            },
+            {
+              "left": 602.796875,
+              "right": 917.203125,
+              "top": 333.28125,
+              "bottom": 395.28125
+            },
+            {
+              "left": 927.203125,
+              "right": 1241.609375,
+              "top": 333.28125,
+              "bottom": 395.28125
+            },
+            {
+              "left": 278.390625,
+              "right": 592.796875,
+              "top": 405.28125,
+              "bottom": 467.28125
+            },
+            {
+              "left": 602.796875,
+              "right": 917.203125,
+              "top": 405.28125,
+              "bottom": 467.28125
+            },
+            {
+              "left": 927.203125,
+              "right": 1241.609375,
+              "top": 405.28125,
+              "bottom": 467.28125
+            }
+          ],
+          "noDocumentOverflow": true,
+          "screenshot": "norm-detail-actions-1280x800.png"
+        },
+        {
+          "control": "normative timeline",
+          "rendered": true,
+          "screenshot": "norm-detail-timeline-1280x800.png"
+        },
+        {
           "control": "norma ementa disclosure",
           "collapsedPreviewVisible": true,
           "expandedHeight": 229.953125,
@@ -147,6 +343,55 @@
       "mainVisible": true,
       "horizontalOverflow": false,
       "interactionChecks": [
+        {
+          "control": "norma secondary actions",
+          "columns": 1,
+          "buttons": [
+            {
+              "left": 30,
+              "right": 360,
+              "top": 219.671875,
+              "bottom": 281.671875
+            },
+            {
+              "left": 30,
+              "right": 360,
+              "top": 291.671875,
+              "bottom": 353.671875
+            },
+            {
+              "left": 30,
+              "right": 360,
+              "top": 363.671875,
+              "bottom": 425.671875
+            },
+            {
+              "left": 30,
+              "right": 360,
+              "top": 435.671875,
+              "bottom": 479.671875
+            },
+            {
+              "left": 30,
+              "right": 360,
+              "top": 489.671875,
+              "bottom": 551.671875
+            },
+            {
+              "left": 30,
+              "right": 360,
+              "top": 561.671875,
+              "bottom": 623.671875
+            }
+          ],
+          "noDocumentOverflow": true,
+          "screenshot": "norm-detail-actions-390x844.png"
+        },
+        {
+          "control": "normative timeline",
+          "rendered": true,
+          "screenshot": "norm-detail-timeline-390x844.png"
+        },
         {
           "control": "norma ementa disclosure",
           "collapsedPreviewVisible": true,
