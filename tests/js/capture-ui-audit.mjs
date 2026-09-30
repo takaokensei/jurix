@@ -36,6 +36,7 @@ if (!browserPath) throw new Error('Chrome/Edge executable not found.');
 
 const routes = [
   ['assistant', '/assistente/'],
+  ['command-palette', '/normas/'],
   ['search-empty', '/pesquisa/'],
   ['search-results', '/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0'],
   ['norms', '/normas/'],
@@ -93,6 +94,11 @@ try {
         status = response?.status() ?? null;
         await page.evaluate(() => document.fonts?.ready);
         await new Promise((resolve) => setTimeout(resolve, 180));
+        if (routeName === 'command-palette') {
+          await page.click('#command-palette-trigger');
+          await page.type('#command-palette-input', 'normas');
+          await page.waitForSelector('.command-palette-item[data-command-id="norms"][aria-selected="true"]');
+        }
       } catch (error) {
         navigationError = error.message;
       }

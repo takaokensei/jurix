@@ -2514,3 +2514,48 @@ Regressions: None observed.
 Next action: Continue the final interactive pass over empty/error recovery,
 focus order, and mobile actions; keep backend/search-ranking limitations
 separate from frontend defects.
+
+## Cycle 62 — 2026-09-29
+
+Area: Command palette relevance and keyboard recovery.
+
+Goal: Make the quick-navigation palette select the most likely destination
+when a term matches both a destination title and another item's description.
+
+Observed problems: Typing “normas” put “Pesquisa Jurídica” first because its
+description mentioned normas and the palette used declaration order. “Normas
+Consolidadas” matched the title but was only the second option, so Enter could
+navigate to the wrong workspace.
+
+Changes made: Palette search now ranks exact title, title prefix, title
+substring, then description match while preserving prior order within equal
+scores. Added structural and Chromium assertions for the initial selected
+result, updated both workspace/chat cache-busted URLs, and taught the visual
+capture to preserve a searchable “normas” palette state at desktop and mobile
+sizes.
+
+Browser validation: On the live `/normas/` page, opened the palette, typed
+“normas”, and confirmed “Normas Consolidadas” became the selected first
+result. Pressed Escape and verified focus returned to the original
+`command-palette-trigger` button.
+
+Tests: The full `npm test` suite passed, including 21 real Chromium scenarios,
+26 norm/UI contracts, streaming/persistence and security checks. The focused
+Chromium file verifies palette ranking, compact SVG icons, focus containment,
+Escape and focus restoration. Visual capture completed 36 views (12 routes ×
+3 viewports) with zero views flagged for review.
+
+Console: No new errors in the live palette interaction or browser tests.
+
+Responsive validation: Capture includes 390×844 in addition to 1280×800 and
+1440×900; prior real-browser tests verify the palette remains within mobile
+gutters and SVG icons remain bounded.
+
+Visual score: Quick navigation now resolves obvious title matches ahead of
+incidental descriptive matches, reducing accidental navigation without
+changing the palette layout or adding dependencies.
+
+Regressions: None observed.
+
+Next action: Continue keyboard and mobile checks across the remaining primary
+routes and address the next reproducible frontend defect.

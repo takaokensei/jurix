@@ -105,11 +105,20 @@ test('command palette templates cache-bust the shared keyboard accessibility beh
   const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
   const palette = await read('src/apps/core/static/js/command_palette.js');
   assert.match(chat, /command-palette-results[^>]+role="listbox"/);
-  assert.match(chat, /js\/command_palette\.js['"] %\}\?v=20260929-combobox-a11y/);
-  assert.match(workspace, /js\/command_palette\.js['"] %\}\?v=20260929-combobox-a11y/);
+  assert.match(chat, /js\/command_palette\.js['"] %\}\?v=20260929-title-priority/);
+  assert.match(workspace, /js\/command_palette\.js['"] %\}\?v=20260929-title-priority/);
   assert.match(palette, /setAttribute\('role', 'combobox'\)/);
   assert.match(palette, /aria-activedescendant/);
   assert.match(palette, /aria-selected/);
+});
+
+test('command palette prioritizes title matches above descriptive matches', async () => {
+  const source = await read('src/apps/core/static/js/command_palette.js');
+  const chat = await read('src/apps/legislation/templates/legislation/chatbot.html');
+  const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
+  assert.match(source, /title === queryLower\) return 0[\s\S]*title\.startsWith\(queryLower\)[\s\S]*title\.includes\(queryLower\)[\s\S]*description\.includes\(queryLower\)/);
+  assert.match(chat, /js\/command_palette\.js['"] %\}\?v=20260929-title-priority/);
+  assert.match(workspace, /js\/command_palette\.js['"] %\}\?v=20260929-title-priority/);
 });
 
 test('norm catalog uses the shared workspace shell instead of the legacy navbar', async () => {

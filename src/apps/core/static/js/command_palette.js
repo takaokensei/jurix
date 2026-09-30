@@ -211,7 +211,18 @@
             (cmd) =>
                 (cmd.title || '').toLowerCase().includes(queryLower) ||
                 (cmd.description || '').toLowerCase().includes(queryLower)
-        );
+        ).sort((left, right) => {
+            const score = (command) => {
+                const title = (command.title || '').toLocaleLowerCase('pt-BR');
+                const description = (command.description || '').toLocaleLowerCase('pt-BR');
+                if (title === queryLower) return 0;
+                if (title.startsWith(queryLower)) return 1;
+                if (title.includes(queryLower)) return 2;
+                if (description.includes(queryLower)) return 3;
+                return 4;
+            };
+            return score(left) - score(right);
+        });
 
         if (filtered.length === 0) {
             resultsContainer.innerHTML = `

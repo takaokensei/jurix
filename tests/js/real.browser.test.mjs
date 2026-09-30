@@ -2018,6 +2018,13 @@ test('real browser: command palette keeps compact icons and focuses search on mo
     assert.ok(movedSelection.active);
     assert.equal(movedSelection.active, movedSelection.selectedId);
 
+    await page.locator('#command-palette-input').fill('normas');
+    const rankedNorms = await page.evaluate(() => ({
+      firstId: document.querySelector('.command-palette-item')?.dataset.commandId,
+      selectedId: document.querySelector('.command-palette-item[aria-selected="true"]')?.dataset.commandId,
+    }));
+    assert.deepEqual(rankedNorms, { firstId: 'norms', selectedId: 'norms' });
+
     await page.locator('#command-palette-input').fill('jurix-sem-resultado-xyz');
     const emptySelection = await page.evaluate(() => ({
       active: document.getElementById('command-palette-input').getAttribute('aria-activedescendant'),
