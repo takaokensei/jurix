@@ -2828,3 +2828,16 @@ and their synchronized accessible label. Django system checks, Ruff on the
 modified parser/task modules, and `git diff --check` passed. The live assistant
 accessibility tree confirms the shared navigation, quill-backed brand image,
 completed response and sources control are present in the running app.
+
+## Cycle 70 — empty recent-history state
+
+The post-change live screenshot exposed the recent-history empty-state link in
+browser-default blue/underline styling. Styled the empty-state copy with the
+existing muted/blue tokens, removed the permanent underline, retained an
+underline hover affordance and added a visible keyboard focus ring. The link
+still invokes the existing new-research action.
+
+Validation: static template/CSS regression test and all 32 `norma_ui_v3`
+JavaScript tests pass; the Python static frontend suite passes (11/11). A live
+1440x900 Chromium check confirms the link uses the intended color/no underline,
+the page has no horizontal overflow, and there are no console errors.

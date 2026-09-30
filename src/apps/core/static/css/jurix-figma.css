@@ -1084,6 +1084,27 @@ html[data-sidebar-collapsed="true"] .figma-sidebar .figma-nav-list { gap: 7px; }
   background-color: rgba(255, 255, 255, 0.02);
 }
 
+.figma-recent-searches-empty {
+  margin-top: -4px;
+  color: var(--figma-text-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.figma-recent-searches-empty a {
+  color: var(--figma-blue-light);
+  font-weight: 600;
+  text-decoration: none;
+  text-underline-offset: 3px;
+  border-radius: 4px;
+}
+
+.figma-recent-searches-empty a:hover { text-decoration: underline; }
+.figma-recent-searches-empty a:focus-visible {
+  outline: 2px solid var(--figma-blue-light);
+  outline-offset: 3px;
+}
+
 .figma-col-query {
   width: 404px;
   display: flex;

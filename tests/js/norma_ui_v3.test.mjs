@@ -129,6 +129,14 @@ test('chat sidebar exposes the same quick-search action as the workspace shell',
   assert.match(topbar, /aria-controls="sidebar"[\s\S]*aria-expanded="false"/);
 });
 
+test('assistant recent-history empty-state link is styled and keeps visible keyboard focus', async () => {
+  const template = await read('src/apps/legislation/templates/legislation/chatbot.html');
+  const styles = await read('src/apps/core/static/css/jurix-figma.css');
+  assert.match(template, /class="figma-recent-searches-empty"[\s\S]*id="figma-new-chat-link"/);
+  assert.match(styles, /\.figma-recent-searches-empty a\s*\{[^}]*color:\s*var\(--figma-blue-light\)[^}]*text-decoration:\s*none/);
+  assert.match(styles, /\.figma-recent-searches-empty a:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--figma-blue-light\)/);
+});
+
 test('assistant sidebar keeps its utility footer fixed while the navigation region can scroll', async () => {
   const source = await read('src/apps/core/static/css/jurix-chat-shell.css');
   const template = await read('src/apps/legislation/templates/legislation/chatbot.html');
