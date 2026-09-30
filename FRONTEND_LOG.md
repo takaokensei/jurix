@@ -3792,3 +3792,32 @@ Visual score: announcement clarity 9.5, visible/announced state consistency
 9.5, route responsive smoke 9. Section-17 completion remains unproven. Next:
 continue manual keyboard interaction across normative source and search
 controls, then inspect route-specific empty/error states.
+
+## Cycle 107 — preserve focus in the evidence drawer — 2026-09-30
+
+Area: assistant evidence drawer focus management during streaming completion.
+
+Live browser testing reproduced focus moving from the open evidence drawer
+back to the composer when a streamed response completed. The completion and
+retry paths now focus the composer only when the evidence dialog is closed;
+the shared chat shell applies the same guard. Corrected the shell's misspelled
+`jurix:chat-state` event subscription, which prevented its state handler from
+observing real chat transitions. Removed a second per-pill drawer click
+listener so opening evidence is handled by the shared delegated controller.
+
+Added a real-browser regression that opens the evidence drawer while the
+stream's final event is deferred, verifies focus remains in the dialog when
+the response completes and when the idle state fires, then confirms Escape
+returns focus to the source control. The test also continues to verify sources
+are deferred until completion.
+
+Verification: focused Chromium regression passed; full `npm test` passed,
+including 29 real-browser scenarios, 43 static UI checks, 22 streaming
+behavior checks, CSP/XSS checks, history tests, and contrast checks. Full
+Python suite passed (669 passed, 6 skipped); `manage.py check` and
+`git diff --check` passed. The browser suite also confirmed Escape restoration
+and source drawer operation. No backend/API behavior was changed.
+
+Visual score: evidence-drawer keyboard continuity 9.5, streaming state/focus
+consistency 9.5. Section-17 completion remains unproven; continue the broader
+manual keyboard and route-specific interaction audit.

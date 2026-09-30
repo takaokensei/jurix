@@ -1738,12 +1738,43 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
       `saved assistant preferences must reach the streaming API payload; received ${JSON.stringify(receivedPayload)}`
     );
 
+    // Open the drawer as soon as sources appear, before chat finalization can
+    // restore focus to the composer behind the modal.
+    await page.evaluate(() => {
+      window.__drawerAutoOpened = false;
+      const observer = new MutationObserver(() => {
+        const pill = document.querySelector('.jurix-sources-pill-btn');
+        if (!pill || window.__drawerAutoOpened) return;
+        window.__drawerAutoOpened = true;
+        observer.disconnect();
+        pill.focus();
+        pill.click();
+      });
+      observer.observe(document.getElementById('messages-wrapper'), { childList: true, subtree: true });
+    });
     // Libera a barreira para o servidor emitir o done
     await page.evaluate(() => fetch('/api/test/release-done/'));
 
     // VERIFICAÇÃO RIGOROSA 2: Aguardar renderização das fontes
     await page.waitForSelector('.sources-section', { timeout: 6000 });
+    await page.waitForSelector('.jurix-sources-drawer-panel.is-open', { timeout: 6000 });
     await page.waitForFunction(() => document.getElementById('chat-state-indicator')?.hidden === true, { timeout: 6000 });
+    assert.equal(
+      await page.$eval('#jurix-sources-drawer-panel', (panel) => panel.contains(document.activeElement)),
+      true,
+      'finishing a response must not steal focus from a drawer opened as evidence arrives'
+    );
+    await page.evaluate(() => {
+      document.dispatchEvent(new CustomEvent('jurix:chat-state', { detail: { state: 'idle' } }));
+    });
+    assert.equal(
+      await page.$eval('#jurix-sources-drawer-panel', (panel) => panel.contains(document.activeElement)),
+      true,
+      'the chat-state idle handler must keep focus inside the open evidence dialog'
+    );
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('.jurix-sources-drawer-panel.is-open'));
+    assert.equal(await page.evaluate(() => document.activeElement.matches('.jurix-sources-pill-btn')), true);
     assert.equal(await page.$eval('#chat-state-indicator', (el) => el.dataset.pipelineStatus || null), null);
     const observedStatuses = await page.evaluate(() => [...new Set(window.__pipelineStatuses)]);
     assert.deepEqual(observedStatuses, ['retrieving', 'reranking', 'grounding', 'generating']);
@@ -1782,14 +1813,6 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
     assert.ok(mobileSourcesLayout.count?.height < 22, `Source count should stay on one line on mobile: ${JSON.stringify(mobileSourcesLayout)}`);
     assert.ok(mobileSourcesLayout.action?.height < 22, `Source action should stay on one line on mobile: ${JSON.stringify(mobileSourcesLayout)}`);
     assert.ok(mobileSourcesLayout.confidence?.height < 22, `Confidence label should stay on one line on mobile: ${JSON.stringify(mobileSourcesLayout)}`);
-    await page.evaluate(() => {
-      window.__drawerOpenCalls = 0;
-      const openDrawer = window.JurixRagUI.openSourcesDrawer;
-      window.JurixRagUI.openSourcesDrawer = (...args) => {
-        window.__drawerOpenCalls += 1;
-        return openDrawer(...args);
-      };
-    });
     await page.click('.jurix-sources-pill-btn');
     try {
       await page.waitForSelector('.jurix-sources-drawer-panel.is-open .source-card, .jurix-sources-drawer-panel.is-open .jurix-rag-source', { timeout: 6000 });
@@ -2770,6 +2793,18 @@ test('real browser: evidence drawer groups same-norm citations without hiding ar
       ]);
     });
     await new Promise((resolve) => setTimeout(resolve, 350));
+    await page.waitForFunction(() => {
+      const panel = document.getElementById('jurix-sources-drawer-panel');
+      return panel?.getAttribute('aria-hidden') === 'false' && panel.contains(document.activeElement);
+    }, { timeout: 3000 });
+    await page.evaluate(() => {
+      document.dispatchEvent(new CustomEvent('jurix:chat-state', { detail: { state: 'idle' } }));
+    });
+    assert.equal(
+      await page.$eval('#jurix-sources-drawer-panel', (panel) => panel.contains(document.activeElement)),
+      true,
+      'a late idle transition must not move keyboard focus behind the open evidence dialog'
+    );
 
     const mobile = await page.evaluate(() => {
       const panel = document.getElementById('jurix-sources-drawer-panel');

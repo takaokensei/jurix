@@ -166,6 +166,8 @@ try {
 }
 
     function focusComposer() {
+        const sourcesDialog = byId('jurix-sources-drawer-panel');
+        if (sourcesDialog?.getAttribute('aria-hidden') === 'false') return;
         const composer = getComposer();
         if (!composer || composer.disabled) return;
         window.requestAnimationFrame(() => {
@@ -345,7 +347,7 @@ try {
             updateCounter();
             autosize();
         }
-        document.addEventListener('jurij:chat-state', handleState);
+        document.addEventListener('jurix:chat-state', handleState);
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
         window.addEventListener('unhandledrejection', handleUnhandledRejection);
