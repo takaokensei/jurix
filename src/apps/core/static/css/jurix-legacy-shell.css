@@ -18,10 +18,13 @@ footer p { margin-bottom: var(--jurix-space-1); }
 .compare-panel h3 { color: var(--figma-text-white); margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--figma-border); }
 .original-text { border-left: 4px solid var(--figma-text-muted); }
 .consolidated-text { border-left: 4px solid var(--figma-green); }
-.compare-summary { display: flex; flex-wrap: wrap; gap: var(--jurix-space-2); margin: 16px 0; }
-.compare-summary .badge-info { color: var(--figma-blue-soft); background: var(--figma-blue-deep); }
-.compare-summary .badge-success { color: var(--figma-green-soft); background: var(--figma-green-deep); }
-.compare-summary .badge-warning { color: var(--figma-amber-soft); background: var(--figma-amber-deep); }
+.compare-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 18px 0 2px; }
+.compare-metric { display: flex; min-width: 0; min-height: 66px; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid var(--figma-border); border-radius: 10px; background: color-mix(in srgb, var(--figma-bg-button) 68%, transparent); }
+.compare-metric strong { flex: 0 0 auto; color: var(--figma-text-white); font-size: 1.25rem; font-variant-numeric: tabular-nums; line-height: 1; }
+.compare-metric > span { color: var(--figma-text-muted); font-size: .76rem; line-height: 1.4; }
+.compare-metric-original { border-inline-start: 3px solid var(--figma-blue-light); }
+.compare-metric-consolidated { border-inline-start: 3px solid var(--figma-purple); }
+.compare-metric-events { border-inline-start: 3px solid var(--figma-amber-soft); }
 .compare-method-note { margin: 12px 0 0; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--figma-amber-soft) 24%, var(--figma-border)); border-left: 3px solid var(--figma-amber-soft); border-radius: var(--jurix-radius-sm); background: color-mix(in srgb, var(--figma-amber-deep) 24%, var(--figma-bg-root)); color: var(--figma-text-body); font-size: .86rem; line-height: 1.6; }
 .compare-panel pre { max-width: 100%; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; overflow-x: auto; color: inherit; background: var(--figma-bg-root); border: 1px solid var(--figma-border); border-radius: var(--jurix-radius-sm); padding: 14px; }
 .compare-diff-row code { background: transparent !important; color: var(--figma-blue-soft); }
@@ -63,6 +66,7 @@ footer p { margin-bottom: var(--jurix-space-1); }
 .node-text { color: var(--figma-text-body); font-size: 14px; line-height: 1.55; padding-left: 16px; }
 .node-meta { font-size: 12px; color: var(--figma-text-muted); margin-top: 4px; }
 @media (max-width:860px) { .compare-container { grid-template-columns: 1fr; } }
+@media (max-width:720px) { .compare-summary { grid-template-columns: 1fr; gap: 8px; } .compare-metric { min-height: 54px; padding: 9px 12px; } .compare-metric strong { min-width: 2.5ch; font-size: 1.15rem; } }
 @media (max-width:720px) {
   .compare-diff { overflow: visible; gap: 10px; border: 0; background: transparent; }
   .compare-diff-header { display: none; }

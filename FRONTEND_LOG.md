@@ -2885,3 +2885,22 @@ norma UI tests passed. A full JavaScript run exposed a brittle contrast check
 that treated a transparent control background as black; it now measures the
 blue action label against the actual page surface. After that correction, all
 JavaScript suites passed (128/128, including real-browser coverage).
+
+## Cycle 74 — comparison summary hierarchy
+
+On the version-comparison route, three highly saturated inline badges made
+line counts and applied-event counts look like one status cluster. Replaced
+them with a labelled summary group: large tabular counts, explicit descriptions
+for OCR lines, consolidated-text lines, and normative events, and restrained
+blue/purple/amber accents that do not imply legal validation. The metrics form
+three columns on desktop and stack on mobile. No comparison logic or legal
+interpretation changed.
+
+Before/after captures: existing baseline `norm-compare-{1440x900,390x844}.png`
+and updated `norm-compare-summary-{1440x900,390x844}.png` in the UI audit
+folders. Live `/normas/3/compare/` returned HTTP 200 at both widths; the
+summary contains the expected 75/43/0 values, uses three columns at 1440px and
+one at 390px, has no horizontal overflow, and produced no browser errors.
+
+Validation: all `norma_ui_v3` tests pass; Django system check and
+`git diff --check` pass.

@@ -313,6 +313,14 @@ test('version comparison exposes both texts as labelled stacked evidence on mobi
   assert.match(template, /class="compare-method-note" role="note"/);
   assert.match(template, /podem gerar diferenças sem representar uma alteração jurídica/);
   assert.match(styles, /\.compare-method-note \{[^}]*border-left:\s*3px solid/);
+  assert.match(template, /class="compare-summary" role="group" aria-label="Resumo da comparação"/);
+  assert.match(template, /class="compare-metric compare-metric-original"[\s\S]*?linhas no original OCR/);
+  assert.match(template, /class="compare-metric compare-metric-consolidated"[\s\S]*?linhas no texto consolidado/);
+  assert.match(template, /class="compare-metric compare-metric-events"[\s\S]*?eventos normativos aplicados/);
+  assert.match(styles, /\.compare-metric \{[^}]*min-height: 66px/);
+  assert.match(styles, /\.compare-metric-consolidated \{ border-inline-start: 3px solid var\(--figma-purple\); \}/);
+  assert.match(styles, /@media \(max-width:720px\) \{ \.compare-summary \{ grid-template-columns: 1fr;/);
+  assert.match(template, /css\/jurix-legacy-shell\.css['"] %\}\?v=20260930-compare-summary2/);
   assert.match(template, /data-line="\{\{ row\.original_number\|default:'—' \}\}"/);
   assert.match(template, /data-line="\{\{ row\.consolidated_number\|default:'—' \}\}"/);
   const missingSideMarkup = template.match(
