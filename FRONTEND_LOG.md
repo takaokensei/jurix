@@ -2841,3 +2841,16 @@ Validation: static template/CSS regression test and all 32 `norma_ui_v3`
 JavaScript tests pass; the Python static frontend suite passes (11/11). A live
 1440x900 Chromium check confirms the link uses the intended color/no underline,
 the page has no horizontal overflow, and there are no console errors.
+
+## Cycle 71 — legally calibrated landing-page claims
+
+Removed unsupported implications of comprehensive legal grounding, guaranteed
+precision, and current corpus freshness from the assistant's welcome screen.
+The hero now states the observable capabilities (municipal-law search, version
+comparison, and traceable provisions); side labels identify the municipal
+corpus, traceability, and official sources instead of implying jurisprudence
+and doctrine collections that are not part of this search experience.
+
+Validation: the full static frontend suite passes (11/11), all `norma_ui_v3`
+tests pass (33/33), and live Chromium returns HTTP 200 with the updated copy,
+no JavaScript console errors, and no horizontal overflow at 1440px.

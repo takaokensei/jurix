@@ -137,6 +137,13 @@ test('assistant recent-history empty-state link is styled and keeps visible keyb
   assert.match(styles, /\.figma-recent-searches-empty a:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--figma-blue-light\)/);
 });
 
+test('assistant landing copy describes verifiable legal-research capabilities without accuracy guarantees', async () => {
+  const template = await read('src/apps/legislation/templates/legislation/chatbot.html');
+  assert.match(template, /Pesquise normas municipais, compare versões e confira os dispositivos que fundamentam cada resposta/);
+  assert.match(template, /CORPUS MUNICIPAL[\s\S]*RASTREABILIDADE[\s\S]*FONTES OFICIAIS/);
+  assert.doesNotMatch(template, /fundamentação jurídica completa|PRECISÃO JURÍDICA|JURISPRUDÊNCIA|DOUTRINA/);
+});
+
 test('assistant sidebar keeps its utility footer fixed while the navigation region can scroll', async () => {
   const source = await read('src/apps/core/static/css/jurix-chat-shell.css');
   const template = await read('src/apps/legislation/templates/legislation/chatbot.html');
