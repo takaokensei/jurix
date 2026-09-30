@@ -3262,3 +3262,21 @@ Visual score: settings form clarity 9, mobile select readability 9, security
 feedback 10, session restore 10. Next: continue the assistant end-to-end
 keyboard/loading/error audit and any remaining responsive regressions; final
 section-17 verification is still outstanding.
+
+## Cycle 92 — assistant streaming and navigation regression pass — 2026-09-30
+
+Re-ran the real-Chromium assistant lifecycle scenarios after the recent shell,
+source-drawer, and settings work: navigating back during active streaming,
+out-of-order navigation responses, complex Markdown with deferred source fade-in,
+and interruption preserving both partial response and original question.
+
+All four browser scenarios passed (4 passed, 22 intentionally filtered). No
+production code change was needed; the source timeline and request ownership
+remain consistent when users navigate or interrupt generation. The broader
+suite remains green at 137/137 from Cycle 91, including settings, evidence,
+security, and responsive checks.
+
+Visual score: stream readability 9, interruption recovery 9, navigation state
+integrity 9. Next: perform the complete cross-route/dual-theme audit for the
+section-17 closeout, then fix any remaining issues it exposes; do not mark the
+goal complete until that evidence is reviewed.
