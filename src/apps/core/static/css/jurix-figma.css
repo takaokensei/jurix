@@ -770,6 +770,30 @@ body.figma-theme :is(button, a, input, textarea, select, summary):focus-visible 
   margin-left: 2px;
 }
 
+:root[data-theme="light"] .jurix-sources-pill-btn {
+  background-color: var(--figma-bg-surface) !important;
+  border-color: var(--figma-border-strong) !important;
+  color: var(--figma-text-body) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+:root[data-theme="light"] .jurix-sources-pill-btn:hover {
+  border-color: var(--figma-blue-primary) !important;
+  color: var(--figma-text-white) !important;
+  background-color: var(--figma-source-hover) !important;
+}
+
+:root[data-theme="light"] .jurix-sources-pill-badge {
+  background-color: color-mix(in srgb, var(--figma-blue-primary) 10%, var(--figma-bg-surface)) !important;
+  color: var(--figma-blue-dark) !important;
+  border-color: color-mix(in srgb, var(--figma-blue-primary) 24%, var(--figma-border)) !important;
+}
+
+:root[data-theme="light"] .jurix-sources-pill-action {
+  color: var(--figma-blue-primary) !important;
+}
+
 /* Slide-over Side Drawer */
 .jurix-sources-drawer-backdrop {
   position: fixed;

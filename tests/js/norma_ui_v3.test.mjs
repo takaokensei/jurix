@@ -43,6 +43,13 @@ test('light theme maps semantic tokens and workspace surfaces instead of leaving
   assert.match(detail, /\.legal-detail-actions \.btn[^}]*color:var\(--figma-text-on-accent\)/);
 });
 
+test('light theme gives the assistant source-summary control semantic foregrounds and surfaces', async () => {
+  const source = await read('src/apps/core/static/css/jurix-figma.css');
+  assert.match(source, /:root\[data-theme="light"\] \.jurix-sources-pill-btn\s*\{[^}]*background-color:\s*var\(--figma-bg-surface\)[^}]*color:\s*var\(--figma-text-body\)/);
+  assert.match(source, /:root\[data-theme="light"\] \.jurix-sources-pill-badge\s*\{[^}]*color:\s*var\(--figma-blue-dark\)/);
+  assert.match(source, /:root\[data-theme="light"\] \.jurix-sources-pill-action\s*\{[^}]*color:\s*var\(--figma-blue-primary\)/);
+});
+
 test('dynamic suggestions controller uses the corpus API', async () => {
   const source = await read('src/apps/core/static/js/jurix-dynamic-suggestions.js');
   assert.match(source, /\/api\/v1\/suggestions\//);

@@ -126,6 +126,7 @@ function createTestServer(handlers = {}) {
         <div class="jurix-anonymous-banner">Consulta pública</div>
         <div class="message message-user"><div class="message-body">Pergunta do usuário</div></div>
         <aside class="jurix-sources-drawer-panel"><header class="jurix-sources-drawer-header"><div class="jurix-sources-drawer-title-group"><h3>Fontes Consultadas</h3></div></header><div class="jurix-rag-source__contribution"><span class="jurix-rag-source__contribution-label">Contribuição</span>Trecho de dispositivo</div></aside>
+        <div class="sources-section"><button type="button" class="jurix-sources-pill-btn"><span>2 fontes consultadas</span><span class="jurix-sources-pill-badge">Boa correspondência</span><span class="jurix-sources-pill-action">Ver fontes →</span></button></div>
         <div class="messages-wrapper"><div class="message"><div class="message-body"><p>Texto de teste.</p></div></div></div>
         <script src="/static/js/theme.js"></script></body></html>`);
     }
@@ -581,6 +582,9 @@ test('real browser: theme preference stays synchronized with the legacy toggle',
         userBubble: colors(document.querySelector('.message-user .message-body')),
         sourceHeader: colors(document.querySelector('.jurix-sources-drawer-header')),
         contribution: colors(document.querySelector('.jurix-rag-source__contribution')),
+        sourcePill: colors(document.querySelector('.jurix-sources-pill-btn')),
+        sourceBadge: colors(document.querySelector('.jurix-sources-pill-badge')),
+        sourceAction: colors(document.querySelector('.jurix-sources-pill-action')),
       };
     });
     assert.equal(lightSurfaces.body, 'rgb(247, 249, 252)');
@@ -596,6 +600,9 @@ test('real browser: theme preference stays synchronized with the legacy toggle',
     };
     assert.ok(contrast(lightSurfaces.primary.color, lightSurfaces.primary.background) >= 4.5, JSON.stringify(lightSurfaces.primary));
     assert.ok(contrast(lightSurfaces.normAction.color, lightSurfaces.normAction.background) >= 4.5, JSON.stringify(lightSurfaces.normAction));
+    assert.ok(contrast(lightSurfaces.sourcePill.color, lightSurfaces.sourcePill.background) >= 4.5, JSON.stringify(lightSurfaces.sourcePill));
+    assert.ok(contrast(lightSurfaces.sourceBadge.color, lightSurfaces.sourceBadge.background) >= 4.5, JSON.stringify(lightSurfaces.sourceBadge));
+    assert.ok(contrast(lightSurfaces.sourceAction.color, lightSurfaces.sourcePill.background) >= 4.5, JSON.stringify(lightSurfaces.sourceAction));
     assert.equal(lightSurfaces.banner.background, 'rgb(255, 255, 255)');
     assert.equal(lightSurfaces.userBubble.color, 'rgb(15, 23, 42)');
     assert.equal(lightSurfaces.sourceHeader.background, 'rgb(255, 255, 255)');

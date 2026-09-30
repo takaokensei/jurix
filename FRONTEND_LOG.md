@@ -2695,3 +2695,31 @@ brand-first focus order.
 
 Next action: Repeat the full frontend suite, responsive route sweep and
 cross-route visual audit before selecting the next highest-impact defect.
+
+## Cycle 66 — light-theme evidence summary contrast
+
+Cross-route inspection of `/configuracoes/`, `/normas/`, `/normas/3/`,
+`/pesquisa/` and an active `/assistente/<session>/` conversation in light mode
+found a real readability defect in the assistant's compact source summary:
+the control, evidence-count badge and action label retained dark-theme colors
+against a dark translucent surface. Updated the light-theme semantic surface,
+foreground and hover tokens with sufficient specificity to override the legacy
+RAG pill declarations, and refreshed the shared stylesheet cache key. Added a
+browser contrast assertion for all three controls and a source-contract test.
+
+Live browser validation: the assistant source summary now renders on a white
+surface with readable slate text and blue action/badge colors. The source drawer
+and its evidence cards remain legible in light mode. The normal user-facing
+theme preference screen was inspected; the browser automation environment does
+not expose writable browser storage, so its temporary isolated light-mode state
+could not be persisted back to dark. This is confined to the audit tab, not the
+user's browser profile. Rebuilt ignored Django static assets so the local app
+served the updated stylesheet.
+
+Tests: Focused light-theme browser contrast test and static source-contract test
+passed. Full `npm test` passed, including 23 real-Chromium scenarios and the
+assistant-history, streaming, source drawer, CSP/XSS, navigation, and responsive
+flows. `git diff --check` passed. No backend, API or model behavior changed.
+
+Next action: continue the cross-route visual audit, prioritizing remaining
+interactive affordances and content hierarchy across the workspace shells.
