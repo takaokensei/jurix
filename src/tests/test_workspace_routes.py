@@ -54,6 +54,16 @@ def test_product_root_enters_the_assistant_flow():
     assert response["Location"] == "/assistente/"
 
 
+def test_semantic_search_empty_state_omits_none_year_from_catalog_link():
+    response = Client().get("/pesquisa/", {"q": "x" * 201})
+    body = response.content.decode("utf-8")
+
+    assert response.status_code == 200
+    assert "Buscar no acervo normativo" in body
+    assert "&amp;ano=" in body
+    assert "ano=None" not in body
+
+
 def test_history_page_paginates_authenticated_sessions():
     user = get_user_model().objects.create_user(username="history-page", password="pass")
     ChatSession.objects.bulk_create(

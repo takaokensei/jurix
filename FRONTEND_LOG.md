@@ -2471,3 +2471,46 @@ Regressions: None observed in focused Python tests or the browser check.
 
 Next action: Continue the final audit of focus behavior and empty/error states
 in the assistant and normative workflows.
+
+## Cycle 61 — 2026-09-29
+
+Area: Legal-search empty-state recovery link.
+
+Goal: Ensure the “Buscar no acervo normativo” action produces a clean URL when
+the user did not select a year.
+
+Observed problems: On `/pesquisa/?q=zzzzinexistente2026`, the recovery CTA
+linked to `/normas/?q=...&tipo=&ano=None`. The list view ignored the invalid
+year safely, but the literal `None` leaked into a user-facing URL and shared
+links.
+
+Changes made: The template now applies Django's `default_if_none` filter to
+the optional year before URL encoding. Added a Python route regression test
+that uses an overlength query to exercise the empty/error state without
+invoking the semantic backend, and updated the frontend template contract.
+No backend logic changed.
+
+Browser validation: Reproduced the CTA on the live semantic-search empty
+state. It now links to `/normas/?q=zzzzinexistente2026&tipo=&ano=`; clicking it
+opens the normative list with the search preserved, an empty year facet, and
+the expected no-results state.
+
+Tests: The new Python route test passed; all 25 norm/workspace frontend
+contracts passed. The complete 29-test focused workspace-route suite passed
+after the effective-date copy change in Cycle 60. Full `npm test` passed in
+Cycle 60 and this cycle's updated static contract passed independently.
+
+Console: No new page errors during CTA navigation.
+
+Responsive validation: Recaptured the 33-view, 11-route matrix at 1440×900,
+1280×800 and 390×844; route sweep reported no views needing review.
+
+Visual score: Recovery behavior remains visually consistent, and the
+destination URL now accurately encodes an unset year as empty rather than a
+Python sentinel value.
+
+Regressions: None observed.
+
+Next action: Continue the final interactive pass over empty/error recovery,
+focus order, and mobile actions; keep backend/search-ranking limitations
+separate from frontend defects.

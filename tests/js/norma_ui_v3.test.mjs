@@ -149,7 +149,7 @@ test('legal search does not force mobile autofocus and uses a compact empty stat
   assert.match(template, /não uma conclusão jurídica/);
   assert.match(styles, /\.workspace-search-caveat \{[^}]*font-size: 12px;[^}]*line-height: 1\.6/);
   assert.match(template, /Buscar no acervo normativo/);
-  assert.match(template, /norma_list' %\}\?q=\{\{ query\|urlencode \}\}&amp;tipo=\{\{ norma_type\|urlencode \}\}&amp;ano=\{\{ year\|urlencode \}\}/);
+  assert.match(template, /norma_list' %\}\?q=\{\{ query\|urlencode \}\}&amp;tipo=\{\{ norma_type\|urlencode \}\}&amp;ano=\{\{ year\|default_if_none:''\|urlencode \}\}/);
   assert.match(styles, /\.workspace-button-secondary \{[^}]*background: rgba\(255,255,255,\.035\);[^}]*color: var\(--figma-text-body\);/);
   assert.match(styles, /\.workspace-button-secondary:hover \{[^}]*border-color: var\(--figma-blue-light\);/);
   assert.match(styles, /\.workspace-search-empty \{ padding: 28px 20px; \}/);
