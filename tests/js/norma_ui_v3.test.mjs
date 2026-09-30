@@ -169,7 +169,19 @@ test('workspace sidebar keeps utility actions visible while navigation can scrol
   assert.match(source, /\.workspace-sidebar\s*\{[^}]*box-sizing:\s*border-box;[^}]*overflow:\s*hidden;/);
   assert.match(source, /\.workspace-nav\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/);
   assert.match(source, /\.workspace-sidebar-bottom\s*\{[^}]*flex:\s*0\s+0\s+auto;/);
-  assert.match(template, /css\/workspace\.css['"] %\}\?v=20260930-history-search-provider2/);
+  assert.match(template, /css\/workspace\.css['"] %\}\?v=20260930-svg-navigation1/);
+});
+
+test('assistant and workspace navigation share accessible outline SVG icons', async () => {
+  const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
+  const assistant = await read('src/apps/legislation/templates/legislation/chatbot.html');
+  const styles = await read('src/apps/core/static/css/workspace.css');
+  const navigation = workspace.match(/<nav class="workspace-nav"[\s\S]*?<\/nav>/)?.[0] ?? '';
+  assert.match(workspace, /class="workspace-nav-icon"[^>]+aria-hidden="true" focusable="false"/);
+  assert.doesNotMatch(navigation, /<span aria-hidden="true">[◉⌕▤▱◷⚙⌘]/);
+  assert.match(styles, /\.workspace-nav-icon \{[^}]*width: 18px;[^}]*height: 18px;[^}]*flex: 0 0 18px/);
+  assert.match(assistant, /id="new-chat-button"[\s\S]*?<svg width="18" height="18"[^>]*aria-hidden="true"/);
+  assert.match(assistant, /<path d="M12 20h9"><\/path>[\s\S]*?<path d="M16\.5 3\.5a2\.12 2\.12/);
 });
 
 test('command palette templates cache-bust the shared keyboard accessibility behavior', async () => {

@@ -2969,3 +2969,22 @@ returned HTTP 200, each main region was visible, and the browser audit found
 zero navigation errors, failed requests, HTTP errors, console errors, or
 horizontal overflow. Refreshed `docs/ui-audit/after/` captures and manifest to
 preserve the current rendered state.
+
+## Cycle 79 — unified SVG navigation across workspace shells
+
+The assistant used consistent outline SVGs while the shared workspace shell
+used font-dependent Unicode symbols for navigation and utility actions.
+Replaced the workspace glyphs with inline, aria-hidden outline SVGs using a
+consistent 18px stroke treatment, and aligned “Nova pesquisa” with the
+assistant's square-pencil compose icon. Navigation labels, URLs, active
+states, keyboard behavior, and collapsed-rail accessibility are unchanged.
+
+The 1440x900 settings baseline/updated captures use the same canonical names;
+`settings-collapsed-1440x900.png` records the icon rail. Browser interaction
+on `/configuracoes/` returned HTTP 200, measured all eight icons at 18x18,
+confirmed labels remain accessible after collapse to 72px, and found no
+console errors or horizontal overflow. The 36-view cross-route audit again
+returned all HTTP 200 with no failed requests, console errors, or overflow.
+
+Validation: full JavaScript suite passed, including the real-browser collapse
+interaction; Django system check and `git diff --check` passed.

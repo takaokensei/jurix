@@ -81,11 +81,11 @@ function createTestServer(handlers = {}) {
         <link rel="stylesheet" href="/static/css/workspace.css">
       </head><body class="figma-theme workspace-page workspace-document"><div class="workspace-shell">
         <aside id="sidebar" class="workspace-sidebar" data-workspace-sidebar aria-label="Navegação principal">
-          <div class="workspace-brand-block"><a class="workspace-brand" href="#home" aria-label="Jurix — Assistente"><span class="workspace-logo"><img src="/static/img/logo-icon.png" alt=""></span><span>Jurix</span></a><a class="workspace-new-action" href="#new" aria-label="Nova pesquisa"><span aria-hidden="true">+</span><span>Nova pesquisa</span></a></div>
+          <div class="workspace-brand-block"><a class="workspace-brand" href="#home" aria-label="Jurix — Assistente"><span class="workspace-logo"><img src="/static/img/logo-icon.png" alt=""></span><span>Jurix</span></a><a class="workspace-new-action" href="#new" aria-label="Nova pesquisa"><svg class="workspace-nav-icon" aria-hidden="true"></svg><span>Nova pesquisa</span></a></div>
           <nav class="workspace-nav" aria-label="Menu principal">
-            ${Array.from({ length: 12 }, (_, index) => { const label = index === 0 ? 'Assistente' : index === 1 ? 'Normas' : `Item de navegação ${index + 1}`; return `<a class="workspace-nav-item" href="#item-${index}" aria-label="${label}" title="${label}"><span aria-hidden="true">${index === 0 ? '◉' : index === 1 ? '▤' : '◷'}</span><span>${label}</span></a>`; }).join('')}
+            ${Array.from({ length: 12 }, (_, index) => { const label = index === 0 ? 'Assistente' : index === 1 ? 'Normas' : `Item de navegação ${index + 1}`; return `<a class="workspace-nav-item" href="#item-${index}" aria-label="${label}" title="${label}"><svg class="workspace-nav-icon" aria-hidden="true"></svg><span>${label}</span></a>`; }).join('')}
           </nav>
-          <div class="workspace-sidebar-bottom"><a class="workspace-nav-item" href="/configuracoes/" aria-label="Configurações" title="Configurações"><span aria-hidden="true">⚙</span><span>Configurações</span></a><button class="workspace-nav-item workspace-palette-trigger" data-open-command-palette aria-label="Busca rápida, Ctrl K" title="Busca rápida, Ctrl K"><span aria-hidden="true">⌘</span><span>Busca rápida</span><kbd>Ctrl K</kbd></button></div>
+          <div class="workspace-sidebar-bottom"><a class="workspace-nav-item" href="/configuracoes/" aria-label="Configurações" title="Configurações"><svg class="workspace-nav-icon" aria-hidden="true"></svg><span>Configurações</span></a><button class="workspace-nav-item workspace-palette-trigger" data-open-command-palette aria-label="Busca rápida, Ctrl K" title="Busca rápida, Ctrl K"><svg class="workspace-nav-icon" aria-hidden="true"></svg><span>Busca rápida</span><kbd>Ctrl K</kbd></button></div>
         </aside><main class="workspace-main"><header class="workspace-topbar">
           <button id="toggle-sidebar" class="workspace-mobile-toggle" data-workspace-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Recolher navegação">Menu</button>
         </header><div class="workspace-content" id="main-content"><a href="#content">Conteúdo</a><div style="height:1600px"></div></div></main>
@@ -1771,7 +1771,7 @@ test('real browser: workspace routes scroll naturally and desktop sidebar collap
     await page.waitForFunction(() => Math.abs(document.querySelector('.workspace-sidebar')?.getBoundingClientRect().width - 72) < 1);
     const collapsed = await page.evaluate(() => {
       const sidebar = document.querySelector('.workspace-sidebar');
-      const icon = sidebar.querySelector('.workspace-nav-item > span[aria-hidden="true"]');
+      const icon = sidebar.querySelector('.workspace-nav-item > .workspace-nav-icon');
       const label = sidebar.querySelector('.workspace-nav-item > span:not([aria-hidden="true"])');
       return {
         sidebarWidth: sidebar.getBoundingClientRect().width,
