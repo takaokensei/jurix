@@ -44,6 +44,7 @@ const routes = [
   ['norms', '/normas/'],
   ['norm-number-year', '/normas/?q=8205&tipo=&ano=2026&ordenar=recentes'],
   ['norm-detail', '/normas/3/'],
+  ['norm-full-text', '/normas/3/'],
   ['norm-device-reading', '/normas/3/'],
   ['norm-compare', '/normas/3/compare/'],
   ['norm-tree', '/normas/3/tree/'],
@@ -579,6 +580,35 @@ try {
             throw new Error(`Norm device reading is clipped or overflows: ${JSON.stringify(readingState)}`);
           }
           interactionChecks.push({ control: 'norm device reading', ...readingState });
+        }
+        if (routeName === 'norm-full-text') {
+          const disclosure = await page.$('.legal-consolidated-details');
+          if (!disclosure) throw new Error('Norm detail has no consolidated full-text disclosure');
+          await disclosure.evaluate((element) => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
+          await disclosure.$eval('summary', (summary) => summary.focus());
+          await page.keyboard.press('Enter');
+          await page.waitForFunction(() => document.querySelector('.legal-consolidated-details')?.open);
+          const readerState = await disclosure.$eval('pre', (text) => {
+            const style = getComputedStyle(text);
+            return {
+              fontFamily: style.fontFamily,
+              fontSize: style.fontSize,
+              lineHeight: style.lineHeight,
+              scrollWidth: text.scrollWidth,
+              clientWidth: text.clientWidth,
+              textLength: text.textContent.trim().length,
+            };
+          });
+          if (
+            readerState.scrollWidth > readerState.clientWidth
+            || readerState.textLength < 200
+            || readerState.fontFamily.toLowerCase().includes('mono')
+            || Number.parseFloat(readerState.fontSize) < 15
+            || Number.parseFloat(readerState.lineHeight) < 25
+          ) {
+            throw new Error(`Consolidated full text is clipped or not in a readable document style: ${JSON.stringify(readerState)}`);
+          }
+          interactionChecks.push({ control: 'consolidated full-text disclosure', keyboardExpanded: true, ...readerState });
         }
         if (routeName === 'search-results') {
           await page.focus('.workspace-search-panel input[name="q"]');

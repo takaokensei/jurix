@@ -1,0 +1,162 @@
+{
+  "phase": "before",
+  "theme": "light",
+  "routeFilter": [
+    "norm-full-text"
+  ],
+  "baseUrl": "http://127.0.0.1:8004",
+  "capturedAt": "2026-09-30T22:41:05.276Z",
+  "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "results": [
+    {
+      "route": "norm-full-text",
+      "requestedPath": "/normas/3/",
+      "viewport": "1440x900",
+      "screenshot": "norm-full-text-1440x900.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "documentHeight": 7446,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "consolidated full-text disclosure",
+          "keyboardExpanded": true,
+          "fontFamily": "monospace",
+          "fontSize": "13px",
+          "lineHeight": "21.45px",
+          "scrollWidth": 1094,
+          "clientWidth": 1094,
+          "textLength": 3306
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-full-text",
+      "requestedPath": "/normas/3/",
+      "viewport": "1024x768",
+      "screenshot": "norm-full-text-1024x768.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "documentHeight": 7781,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "consolidated full-text disclosure",
+          "keyboardExpanded": true,
+          "fontFamily": "monospace",
+          "fontSize": "13px",
+          "lineHeight": "21.45px",
+          "scrollWidth": 721,
+          "clientWidth": 721,
+          "textLength": 3306
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-full-text",
+      "requestedPath": "/normas/3/",
+      "viewport": "768x1024",
+      "screenshot": "norm-full-text-768x1024.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "documentHeight": 7803,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "consolidated full-text disclosure",
+          "keyboardExpanded": true,
+          "fontFamily": "monospace",
+          "fontSize": "13px",
+          "lineHeight": "21.45px",
+          "scrollWidth": 720,
+          "clientWidth": 720,
+          "textLength": 3306
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-full-text",
+      "requestedPath": "/normas/3/",
+      "viewport": "1280x800",
+      "screenshot": "norm-full-text-1280x800.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "documentHeight": 7467,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "consolidated full-text disclosure",
+          "keyboardExpanded": true,
+          "fontFamily": "monospace",
+          "fontSize": "13px",
+          "lineHeight": "21.45px",
+          "scrollWidth": 961,
+          "clientWidth": 961,
+          "textLength": 3306
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "norm-full-text",
+      "requestedPath": "/normas/3/",
+      "viewport": "390x844",
+      "screenshot": "norm-full-text-390x844.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Lei nº 8206/2026 - Jurix",
+      "url": "http://127.0.0.1:8004/normas/3/",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "documentHeight": 10118,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "consolidated full-text disclosure",
+          "keyboardExpanded": true,
+          "fontFamily": "monospace",
+          "fontSize": "13px",
+          "lineHeight": "21.45px",
+          "scrollWidth": 328,
+          "clientWidth": 328,
+          "textLength": 3306
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    }
+  ]
+}

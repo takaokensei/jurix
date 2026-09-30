@@ -3821,3 +3821,37 @@ and source drawer operation. No backend/API behavior was changed.
 Visual score: evidence-drawer keyboard continuity 9.5, streaming state/focus
 consistency 9.5. Section-17 completion remains unproven; continue the broader
 manual keyboard and route-specific interaction audit.
+
+## Cycle 108 — improve consolidated-text reading comfort — 2026-09-30
+
+Area: long-form legal text on the normative detail page.
+
+The live `/normas/3/` detail page showed that the “Exibir o texto completo da
+norma” control worked through keyboard activation, but its expanded legal
+document used the browser default 13px monospace face. That presentation read
+like a code block rather than a legal document and fell below the comfortable
+reading hierarchy used by the device cards above it.
+
+Applied the existing sans-serif design token to the consolidated text, set
+15.04px type with 1.75 line-height, and kept the existing whitespace wrapping,
+surface and border treatment. Added cache-busting for the stylesheet and
+expanded the visual audit to open this disclosure by keyboard, check computed
+type size/leading and horizontal fit, and capture the expanded state.
+
+Browser evidence: captured before/after screenshots in dark and light themes at
+1440×900, 1280×800, 1024×768, 768×1024 and 390×844. All ten after states
+returned HTTP 200, had no horizontal overflow, console errors or failed
+requests, and passed the reader checks. Before, the document computed to
+monospace/13px/21.45px; after, it computes to the design sans-serif/15.04px/
+26.32px. Confirmed the disclosure opens with Enter in the live browser.
+
+Verification: `norma_ui_v3.test.mjs` passed 43/43; full `npm test` passed,
+including 29 Chromium scenarios, 22 streaming behavior tests, CSP/XSS,
+history, source, and contrast checks. `git diff --check` passed. No backend or
+API behavior changed.
+
+Visual score: long-document typography 9, mobile wrapping 9, dark/light
+consistency 9. The next observed finish issue is the timeline status label
+wrapping as a bare “vigente” word instead of a compact status badge on narrow
+screens; inspect and fix as a separate cycle. Section-17 completion remains
+unproven.

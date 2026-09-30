@@ -42,7 +42,7 @@
 .legal-consolidated-details > summary::after { content:"＋"; color:var(--figma-blue-light); font-size:1.1rem; }
 .legal-consolidated-details[open] > summary { border-bottom:1px solid var(--figma-border); }
 .legal-consolidated-details[open] > summary::after { content:"−"; }
-.legal-consolidated-details > pre { margin:0; border:0; border-radius:0; background:transparent; }
+.legal-consolidated-details > pre { margin:0; border:0; border-radius:0; background:transparent; color:var(--figma-text-body); font-family:var(--font-sans,Inter,system-ui,sans-serif); font-size:.94rem; line-height:1.75; }
 .legal-detail-back { margin-top:20px; }
 .legal-detail-collection-form { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-top:16px; padding-top:16px; border-top:1px solid var(--figma-border); }
 .legal-detail-collection-form label { color:var(--figma-text-muted); font-size:.85rem; }
