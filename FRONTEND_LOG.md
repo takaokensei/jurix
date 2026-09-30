@@ -3005,3 +3005,18 @@ Added a CSS contract regression assertion. All 130 JavaScript tests passed on
 the diagnostic rerun, Django system check passed, and `git diff --check`
 passed. A prior dot-reporter run had one transient failure; its isolated
 browser suite (26/26) and subsequent full named run (130/130) passed.
+
+## Cycle 81 — light-theme cross-route audit support and baseline
+
+The visual audit runner previously captured only the default theme. Added a
+`dark|light` option that seeds the browser's theme preference before each
+route, keeps dark captures in their existing paths, and writes light captures
+and a separate manifest under `docs/ui-audit/<phase>/light/`.
+
+Ran the complete light-theme audit at 1440x900, 1280x800, and 390x844 across
+all 12 canonical routes (36 views). The manifest reports 36/36 HTTP 200,
+visible main content, zero failed requests, zero console errors, and zero
+horizontal overflow. Manually reviewed light-theme comparison, settings, and
+norm-detail screens; the existing status contrast issue was fixed and
+captured separately in Cycle 80. `node --check` passes for the updated audit
+runner.

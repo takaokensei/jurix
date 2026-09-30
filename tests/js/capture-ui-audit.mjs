@@ -5,9 +5,10 @@ import puppeteer from 'puppeteer-core';
 const ROOT = path.resolve(import.meta.dirname, '../..');
 const BASE_URL = process.env.JURIX_UI_AUDIT_URL || 'http://127.0.0.1:8004';
 const phase = process.argv[2];
+const theme = process.argv[3] || 'dark';
 
-if (!['before', 'after'].includes(phase)) {
-  throw new Error('Usage: node tests/js/capture-ui-audit.mjs <before|after>');
+if (!['before', 'after'].includes(phase) || !['dark', 'light'].includes(theme)) {
+  throw new Error('Usage: node tests/js/capture-ui-audit.mjs <before|after> [dark|light]');
 }
 
 const browserPaths = [
@@ -53,7 +54,7 @@ const viewports = [
   ['1280x800', 1280, 800],
   ['390x844', 390, 844],
 ];
-const outputDir = path.join(ROOT, 'docs', 'ui-audit', phase);
+const outputDir = path.join(ROOT, 'docs', 'ui-audit', phase, ...(theme === 'light' ? ['light'] : []));
 await fs.mkdir(outputDir, { recursive: true });
 
 const browser = await puppeteer.launch({
@@ -71,6 +72,13 @@ try {
       const failedRequests = [];
       const badResponses = [];
       await page.setViewport({ width, height, deviceScaleFactor: 1 });
+      await page.evaluateOnNewDocument((selectedTheme) => {
+        try {
+          localStorage.setItem('jurix-preferences', JSON.stringify({ theme: selectedTheme, density: 'comfortable' }));
+        } catch {
+          // The audit still runs if browser storage is unavailable; the page reports that state separately.
+        }
+      }, theme);
       page.on('pageerror', (error) => consoleErrors.push(error.message));
       page.on('console', (message) => {
         if (message.type() === 'error') consoleErrors.push(message.text());
@@ -135,6 +143,7 @@ try {
 
 const manifest = {
   phase,
+  theme,
   baseUrl: BASE_URL,
   capturedAt: new Date().toISOString(),
   browser: browserPath,
