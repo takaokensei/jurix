@@ -2904,3 +2904,25 @@ one at 390px, has no horizontal overflow, and produced no browser errors.
 
 Validation: all `norma_ui_v3` tests pass; Django system check and
 `git diff --check` pass.
+
+## Cycle 75 — compact norma-search prompt on mobile
+
+Cross-route review found the `/normas/` search placeholder was clipped after
+“tipo ou” at 390px, leaving the final search field (ementa) undiscoverable.
+Shortened the prompt from “Pesquisar por número, tipo ou ementa…” to
+“Número, tipo ou ementa…”, preserving the input's accessible label and all
+search behavior.
+
+Baseline and refreshed captures are `norms-390x844.png` and
+`norm-search-placeholder-390x844.png` (also captured at 1440x900). Live route
+checks returned HTTP 200, showed the complete placeholder, reported no
+horizontal overflow, and recorded no page errors. The existing norma UI
+JavaScript tests pass with a copy regression assertion.
+
+The complete JavaScript suite passed; full pytest passed (665 passed, 6
+skipped, 7 warnings), Django system check passed, and `git diff --check` passed.
+
+The prior collection-title clipping seen in an older capture was checked
+against the live DOM before changing code: the title box starts at the correct
+14px mobile content inset and a fresh screenshot renders it in full. No patch
+was made for that stale visual observation.

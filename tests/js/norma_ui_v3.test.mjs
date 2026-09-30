@@ -111,6 +111,7 @@ test('norma template exposes semantic filters and no hardcoded suggestion cards'
   assert.match(source, /name="ano"/);
   assert.match(source, /name="ordenar"/);
   assert.match(source, /jurix-norma-grid/);
+  assert.match(source, /placeholder="Número, tipo ou ementa…"/);
   assert.match(source, /jurix-norma-list\.js['"] %\}\?v=20260929-identifier-search1/);
   assert.match(source, /jurix-norma-list\.css['"] %\}\?v=20260929-metadata-hierarchy1/);
 });
