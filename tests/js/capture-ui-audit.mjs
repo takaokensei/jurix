@@ -39,6 +39,7 @@ const routes = [
   ['search-empty', '/pesquisa/'],
   ['search-results', '/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0'],
   ['norms', '/normas/'],
+  ['norm-number-year', '/normas/?q=8205&tipo=&ano=2026&ordenar=recentes'],
   ['norm-detail', '/normas/3/'],
   ['norm-compare', '/normas/3/compare/'],
   ['norm-tree', '/normas/3/tree/'],

@@ -13,6 +13,7 @@
     const search = document.getElementById('norma-search-input');
     const clear = document.getElementById('norma-search-clear');
     const filterForm = document.getElementById('norma-filter-form');
+    const yearFilter = document.getElementById('norma-ano');
     const viewButtons = document.querySelectorAll('[data-norma-view]');
     const mobileFilterToggle = document.getElementById('norma-filter-toggle');
     const filterGrid = document.getElementById('norma-filter-grid');
@@ -34,6 +35,22 @@
         if (persist) {
             try { localStorage.setItem(STORAGE_KEY, view); } catch (_) {}
         }
+    }
+
+    function splitNormaIdentifier() {
+        if (!search || !yearFilter) return;
+        const match = search.value.trim().match(
+            /^(?:(?:lei|decreto(?:\s+legislativo)?|resolu[cç][aã]o)\s*(?:n(?:[úu]mero|[º°.]?)\s*)?)?(\d{1,6})\s*\/\s*(\d{4})$/i,
+        );
+        if (!match) return;
+
+        const yearOption = Array.from(yearFilter.options).find((option) => option.value === match[2]);
+        if (!yearOption) return;
+
+        // The server searches the number field and year facet independently;
+        // searching the literal "8205/2026" cannot match the stored number "8205".
+        search.value = match[1];
+        yearFilter.value = match[2];
     }
 
     function initialView() {
@@ -88,6 +105,7 @@
     });
 
     filterForm?.addEventListener('submit', () => {
+        splitNormaIdentifier();
         const button = filterForm.querySelector('button[type="submit"]');
         if (button) {
             button.setAttribute('aria-busy', 'true');

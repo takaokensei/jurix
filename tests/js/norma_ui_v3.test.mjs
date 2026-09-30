@@ -59,6 +59,15 @@ test('norma list controller persists the selected presentation mode', async () =
   assert.match(source, /search\.disabled = true;[\s\S]*filterForm\.requestSubmit\(\)/);
 });
 
+test('norma list recognizes an exact number/year identifier as separate server filters', async () => {
+  const source = await read('src/apps/core/static/js/jurix-norma-list.js');
+  const template = await read('src/apps/legislation/templates/legislation/norma_list.html');
+  assert.match(source, /function splitNormaIdentifier\(\)/);
+  assert.match(source, /search\.value = match\[1\];[\s\S]*yearFilter\.value = match\[2\]/);
+  assert.match(source, /splitNormaIdentifier\(\);[\s\S]*querySelector\('button\[type="submit"\]'\)/);
+  assert.match(template, /jurix-norma-list\.js['"] %\}\?v=20260929-identifier-search1/);
+});
+
 test('norma list stylesheet contains mobile, reduced motion and print rules', async () => {
   const source = await read('src/apps/core/static/css/jurix-norma-list.css');
   assert.match(source, /@media \(max-width: 720px\)/);
@@ -73,7 +82,7 @@ test('norma template exposes semantic filters and no hardcoded suggestion cards'
   assert.match(source, /name="ano"/);
   assert.match(source, /name="ordenar"/);
   assert.match(source, /jurix-norma-grid/);
-  assert.match(source, /jurix-norma-list\.js['"] %\}\?v=20260929-search-reset1/);
+  assert.match(source, /jurix-norma-list\.js['"] %\}\?v=20260929-identifier-search1/);
   assert.match(source, /jurix-norma-list\.css['"] %\}\?v=20260929-metadata-hierarchy1/);
 });
 

@@ -179,6 +179,7 @@ function createTestServer(handlers = {}) {
     if (url.pathname === '/norma-search-test/') {
       const query = url.searchParams.get('q') || '';
       const type = url.searchParams.get('tipo') || '';
+      const year = url.searchParams.get('ano') || '';
       const escapedQuery = query.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;');
       const escapedType = type.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;');
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -187,6 +188,7 @@ function createTestServer(handlers = {}) {
           <input id="norma-search-input" type="search" name="q" aria-label="Pesquisar normas" value="${escapedQuery}">
           <button id="norma-search-clear" type="button" aria-label="Limpar pesquisa" ${query ? '' : 'hidden'}>×</button>
           <select name="tipo" aria-label="Tipo"><option value="">Todos</option><option value="Lei" ${type === 'Lei' ? 'selected' : ''}>Lei</option></select>
+          <select id="norma-ano" name="ano" aria-label="Ano"><option value="">Todos</option><option value="2025" ${year === '2025' ? 'selected' : ''}>2025</option><option value="2026" ${year === '2026' ? 'selected' : ''}>2026</option></select>
           <button type="submit">Pesquisar</button>
         </form></section><p id="results">${query ? '0 resultados' : '3 resultados'}</p>
         <script src="/static/js/jurix-norma-list.js"></script></body></html>`);
@@ -2299,16 +2301,44 @@ test('real browser: clearing a norma search refreshes results and preserves othe
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(`http://127.0.0.1:${port}/norma-search-test/?q=sem-resultados&tipo=Lei`, { waitUntil: 'domcontentloaded' });
     await page.click('#norma-search-clear');
-    await page.waitForFunction(() => location.search === '?tipo=Lei');
+    await page.waitForFunction(() => location.search === '?tipo=Lei&ano=');
     assert.equal(await page.$eval('#norma-search-input', (input) => input.value), '');
     assert.equal(await page.$eval('#results', (node) => node.textContent), '3 resultados');
 
     await page.goto(`http://127.0.0.1:${port}/norma-search-test/?q=sem-resultados&tipo=Lei`, { waitUntil: 'domcontentloaded' });
     await page.focus('#norma-search-input');
     await page.keyboard.press('Escape');
-    await page.waitForFunction(() => location.search === '?tipo=Lei');
+    await page.waitForFunction(() => location.search === '?tipo=Lei&ano=');
     assert.equal(await page.$eval('#norma-search-input', (input) => input.value), '');
     assert.equal(await page.$eval('#results', (node) => node.textContent), '3 resultados');
+    assert.deepEqual(errors, []);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: exact norm number/year searches map to the number and year filters', async () => {
+  const server = createTestServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto(`http://127.0.0.1:${port}/norma-search-test/`, { waitUntil: 'domcontentloaded' });
+    await page.focus('#norma-search-input');
+    await page.keyboard.type('Lei nº 8205/2026');
+    await page.click('button[type="submit"]');
+    await page.waitForFunction(() => location.search === '?q=8205&tipo=&ano=2026');
+    assert.equal(await page.$eval('#norma-search-input', (input) => input.value), '8205');
+    assert.equal(await page.$eval('#norma-ano', (select) => select.value), '2026');
     assert.deepEqual(errors, []);
   } finally {
     await browser.close();

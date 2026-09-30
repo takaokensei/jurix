@@ -2371,3 +2371,57 @@ remain outside this frontend cycle and are still tracked separately.
 Next action: Continue visual and interaction audits from the remaining
 acceptance criteria, prioritizing any reproducible user-facing issue and
 retaining screenshots/tests as evidence.
+
+## Cycle 59 — 2026-09-29
+
+Area: Norm library search by legal identifier.
+
+Goal: Fix a reproducible search failure without changing server-side query
+contracts.
+
+Observed problems: The visible list contained Lei 8205/2026, but entering the
+common identifier `Lei nº 8205/2026` returned zero results. The list view
+filters the number and year separately, while the search field was submitting
+the complete string to the number substring search.
+
+Changes made: The norm-list controller now recognizes exact number/year
+identifiers (with optional Lei, Decreto, Decreto Legislativo or Resolução
+prefix) and translates them into the existing number query plus year facet
+before form submission. It only applies the transformation when the year is a
+valid option in the current filter. Existing type/order filters and all server
+contracts remain intact. Added static and real Chromium regression tests,
+updated the script cache key, and added a norm-number/year route to the visual
+capture matrix.
+
+Browser validation: Reproduced the original zero-result behavior on the real
+`/normas/` page, then searched `Lei nº 8205/2026` after the change. The URL
+became `?q=8205&tipo=&ano=2026&ordenar=recentes`, the year filter showed 2026,
+and the single correct Lei 8205/2026 card appeared. Also switched grid/list
+views and confirmed the selected state updates.
+
+Tests: Added real-browser coverage for the identifier conversion; all 21
+Chromium scenarios passed. The initial full run caught that adding the year
+field changed the existing clear-search fixture URL; updated that fixture's
+expected query, after which the full frontend suite completed with passing TAP
+sections. Focused Python checks from Cycle 58 remain valid because this cycle
+only touches client JS/template cache version and tests. `git diff --check`
+will be rerun before commit.
+
+Console: No page errors were observed during the live search interaction or
+the Chromium identifier scenario.
+
+Responsive validation: The refreshed visual matrix captures 33 views across
+the existing ten routes plus normalized number/year search at desktop and
+mobile widths. No route was flagged for review.
+
+Visual score: The search now matches the product's advertised “number” search
+and gives a directly interpretable URL with the year visible as a selected
+facet; no backend dependency was introduced.
+
+Regressions: The first automated run exposed a stale query expectation in the
+clear-search fixture; corrected and revalidated. No product regression
+observed.
+
+Next action: Continue the phase-E audit for visual/interaction defects not
+covered by route captures, especially failure/empty states and keyboard focus
+across the normative workflow.
