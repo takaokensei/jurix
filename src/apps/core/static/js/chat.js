@@ -1600,7 +1600,6 @@
                                 if (window.JurixRagUI) {
                                     window.JurixRagUI.setStreamingState(streamElements.messageBody, true);
                                     window.JurixRagUI.scheduleRender(streamElements.messageBody, accumulatedText);
-                                    window.JurixRagUI.announce('Gerando resposta…');
                                 } else {
                                     streamElements.messageBody.innerHTML = renderMarkdown(accumulatedText);
                                 }

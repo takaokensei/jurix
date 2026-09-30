@@ -3753,3 +3753,42 @@ Visual score: visible progress feedback 9, mobile processing-state clarity
 9, status cleanup 9. Section-17 completion remains unproven. Next: continue
 the broad route and interaction audit; preserve the backend streaming-contract
 limitation as a separate out-of-scope finding.
+
+## Cycle 106 — prevent duplicate screen-reader progress announcements — 2026-09-30
+
+Area: assistant streaming announcements and cross-route responsive smoke audit.
+
+The streaming renderer was writing “Gerando resposta…” to a second live
+region for every received chunk, while the assistant state controller already
+updates the visible `role="status"` indicator. The chat shell also announced
+submitting/streaming/regenerating state changes into a separate live region.
+Removed those redundant progress announcements, retaining the existing
+visible status updates, completion announcement, network announcements, and
+error/idle focus behavior. Cache-busted `jurix-chat-shell.js` and `chat.js` so
+the deployed template does not retain stale copies.
+
+The real-browser streaming regression now observes all RagUI announcements
+and asserts that submit/generation progress is not duplicated, while also
+checking the visible SSE stage sequence and deferred evidence behavior.
+
+Browser route smoke: inspected actual Django routes from `config/urls.py` and
+`workspace_urls.py`/`urls.py` because the optional `show_urls` command is not
+installed. Chromium opened `/assistente/`, `/pesquisa/`, `/normas/`,
+`/normas/3/`, `/normas/3/compare/`, `/normas/3/tree/`, `/colecoes/`,
+`/historico/`, and `/configuracoes/` at 390×844 and 1440×900. All 18
+route/viewport states returned HTTP 200, retained exact viewport document
+width, and emitted no page or console errors. No new layout issue was found
+in this smoke pass; the dense comparison at 390px remains a lengthy but
+scrollable legal document, not a horizontal-overflow defect.
+
+Verification: focused Chromium test and full `npm test` passed (29 real
+browser scenarios); Python workspace/frontend tests passed 35/35;
+`manage.py check` and `git diff --check` passed. This is an accessibility
+behavior change with no visual layout change, so no new layout screenshot was
+created; Cycle 105's screenshot remains the visual record of the active
+processing state.
+
+Visual score: announcement clarity 9.5, visible/announced state consistency
+9.5, route responsive smoke 9. Section-17 completion remains unproven. Next:
+continue manual keyboard interaction across normative source and search
+controls, then inspect route-specific empty/error states.

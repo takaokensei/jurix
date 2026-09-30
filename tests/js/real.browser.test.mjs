@@ -1672,6 +1672,12 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
     })));
     await page.evaluate(() => {
       window.__pipelineStatuses = [];
+      window.__ragAnnouncements = [];
+      const announce = window.JurixRagUI.announce;
+      window.JurixRagUI.announce = (message) => {
+        window.__ragAnnouncements.push(message);
+        announce(message);
+      };
       const indicator = document.getElementById('chat-state-indicator');
       new MutationObserver(() => {
         if (indicator.dataset.pipelineStatus) window.__pipelineStatuses.push(indicator.dataset.pipelineStatus);
@@ -1741,6 +1747,15 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
     assert.equal(await page.$eval('#chat-state-indicator', (el) => el.dataset.pipelineStatus || null), null);
     const observedStatuses = await page.evaluate(() => [...new Set(window.__pipelineStatuses)]);
     assert.deepEqual(observedStatuses, ['retrieving', 'reranking', 'grounding', 'generating']);
+    const duplicateProgressAnnouncements = await page.evaluate(() => {
+      const progressCopy = /Pergunta enviada|Gerando resposta|Regenerando resposta/;
+      return window.__ragAnnouncements.filter((message) => progressCopy.test(message));
+    });
+    assert.deepEqual(
+      duplicateProgressAnnouncements,
+      [],
+      'the visible role=status region is the single source of progress announcements'
+    );
     const sourceTexts = await page.$$eval('.sources-section', (els) => els.map((el) => el.textContent));
     assert.ok(
       sourceTexts.some((t) => t.includes('fontes consultadas') || t.includes('Ver fontes')),

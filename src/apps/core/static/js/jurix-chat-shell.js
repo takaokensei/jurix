@@ -176,16 +176,7 @@ try {
     function handleState(event) {
         const detail = event.detail || {};
         const state = detail.state;
-        if (state === 'submitting') {
-            announce('Pergunta enviada. Preparando pesquisa jurídica.');
-        } else if (state === 'streaming') {
-            announce('Gerando resposta jurídica.');
-        } else if (state === 'regenerating') {
-            announce('Regenerando resposta jurídica.');
-        } else if (state === 'error') {
-            announce('Ocorreu um erro ao gerar a resposta.');
-            focusComposer();
-        } else if (state === 'idle') {
+        if (state === 'error' || state === 'idle') {
             focusComposer();
         }
     }
