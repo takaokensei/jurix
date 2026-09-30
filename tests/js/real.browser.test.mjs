@@ -77,6 +77,7 @@ function createTestServer(handlers = {}) {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(`<!doctype html><html lang="pt-BR"><head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" href="data:,">
         <link rel="stylesheet" href="/static/css/jurix-figma.css">
         <link rel="stylesheet" href="/static/css/workspace.css">
       </head><body class="figma-theme workspace-page workspace-document"><div class="workspace-shell">
@@ -96,11 +97,16 @@ function createTestServer(handlers = {}) {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(`<!doctype html><html lang="pt-BR"><head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" href="data:,">
         <link rel="stylesheet" href="/static/css/jurix-figma.css">
         <link rel="stylesheet" href="/static/css/workspace.css">
       </head><body class="figma-theme workspace-page"><main class="workspace-content">
         <form class="workspace-stack" data-settings-form>
-          <label class="workspace-field"><span>Modelo</span><select name="model"><option value="qwen2.5">qwen2.5</option><option value="llama3" selected>llama3</option></select></label>
+          <label class="workspace-field"><span>Provedor de geração</span><select name="llm_provider"><option value="ollama">Ollama local</option><option value="openai">OpenAI</option><option value="compatible">Compatível</option></select></label>
+          <label class="workspace-field"><span>Modelo</span><select name="model" data-ollama-model><option value="qwen2.5">qwen2.5</option><option value="llama3" selected>llama3</option></select></label>
+          <label class="workspace-field" data-external-llm-field hidden><span>Identificador do modelo remoto</span><input name="external_model" autocomplete="off"></label>
+          <label class="workspace-field" data-compatible-endpoint-field hidden><span>Endpoint compatível (somente serviço local)</span><input name="llm_endpoint" inputmode="url"></label>
+          <label class="workspace-field" data-external-llm-field hidden><span>Chave de API</span><input name="llm_api_key" type="password" autocomplete="new-password"></label>
           <label class="workspace-field"><span>Temperatura</span><input name="temperature" type="number" value="0.3"></label>
           <label class="workspace-field"><span>Fontes</span><input name="sources" type="number" value="5"></label>
           <fieldset><label><input type="radio" name="theme" value="dark" checked>Escuro</label><label><input type="radio" name="theme" value="light">Claro</label><label><input type="radio" name="theme" value="system">Sistema</label></fieldset>
@@ -551,6 +557,87 @@ test('real browser: settings report when browser storage rejects preferences', a
     assert.equal(reset.warning, true);
     assert.equal(reset.stored.theme, 'light', 'failed removal must not pretend the stored preference was cleared');
     assert.equal(reset.stored.model, 'qwen2.5');
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: provider settings expose a labelled keyboard path without hidden fields', async () => {
+  const server = createTestServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 390, height: 844 });
+    const consoleErrors = [];
+    page.on('pageerror', (error) => consoleErrors.push(error.message));
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+    const response = await page.goto(`http://127.0.0.1:${port}/settings-test/`, { waitUntil: 'domcontentloaded' });
+    assert.equal(response.status(), 200);
+
+    await page.focus('select[name="llm_provider"]');
+    await page.keyboard.press('End');
+    await page.waitForFunction(() => document.querySelector('select[name="llm_provider"]')?.value === 'compatible'
+      && !document.querySelector('[data-compatible-endpoint-field]')?.hidden);
+    const compatibleState = await page.evaluate(() => ({
+      ollamaHidden: document.querySelector('[name="model"]').closest('.workspace-field').hidden,
+      remoteModelVisible: !document.querySelector('[name="external_model"]').closest('.workspace-field').hidden,
+      endpointVisible: !document.querySelector('[name="llm_endpoint"]').closest('.workspace-field').hidden,
+      apiKeyVisible: !document.querySelector('[name="llm_api_key"]').closest('.workspace-field').hidden,
+      apiKeyType: document.querySelector('[name="llm_api_key"]').type,
+      labels: ['external_model', 'llm_endpoint', 'llm_api_key'].map((name) => ({
+        name,
+        label: document.querySelector(`[name="${name}"]`).labels?.[0]?.innerText.trim(),
+      })),
+    }));
+    assert.deepEqual(compatibleState, {
+      ollamaHidden: true,
+      remoteModelVisible: true,
+      endpointVisible: true,
+      apiKeyVisible: true,
+      apiKeyType: 'password',
+      labels: [
+        { name: 'external_model', label: 'Identificador do modelo remoto' },
+        { name: 'llm_endpoint', label: 'Endpoint compatível (somente serviço local)' },
+        { name: 'llm_api_key', label: 'Chave de API' },
+      ],
+    });
+
+    const keyboardOrder = [];
+    for (let index = 0; index < 4; index += 1) {
+      await page.keyboard.press('Tab');
+      keyboardOrder.push(await page.evaluate(() => document.activeElement?.getAttribute('name')));
+    }
+    assert.deepEqual(keyboardOrder, ['external_model', 'llm_endpoint', 'llm_api_key', 'temperature']);
+
+    await page.focus('select[name="llm_provider"]');
+    await page.keyboard.press('Home');
+    await page.waitForFunction(() => document.querySelector('select[name="llm_provider"]')?.value === 'ollama'
+      && document.querySelector('[data-compatible-endpoint-field]')?.hidden);
+    const ollamaState = await page.evaluate(() => ({
+      modelVisible: !document.querySelector('[name="model"]').closest('.workspace-field').hidden,
+      externalFieldsHidden: [...document.querySelectorAll('[data-external-llm-field]')].every((field) => field.hidden),
+      endpointHidden: document.querySelector('[data-compatible-endpoint-field]').hidden,
+      viewportWidth: document.documentElement.clientWidth,
+      documentWidth: document.documentElement.scrollWidth,
+    }));
+    assert.deepEqual(ollamaState, {
+      modelVisible: true,
+      externalFieldsHidden: true,
+      endpointHidden: true,
+      viewportWidth: 390,
+      documentWidth: 390,
+    });
+    assert.deepEqual(consoleErrors, []);
   } finally {
     await browser.close();
     server.close();

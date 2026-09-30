@@ -3603,3 +3603,33 @@ Visual score: small-text contrast on light legal comparisons 9.2, theme parity
 9, mobile comparison readability 9. Section-17 completion remains unproven.
 Next: resume the broad keyboard/accessibility and real route-interaction audit;
 do not treat this focused contrast fix as phase-E closeout.
+
+## Cycle 102 — provider settings keyboard audit — 2026-09-30
+
+Area: settings, keyboard access, and safe configuration disclosure.
+Audited the provider selector's native keyboard path on the real
+`/configuracoes/` route. Choosing the compatible provider with the keyboard
+reveals remote-model, local endpoint, and API-key controls; hidden Ollama
+controls stay out of the tab order. Tab order is provider → remote model →
+endpoint → API key → temperature, with accessible labels and the key masked.
+Returning to Ollama hides the external fields again.
+
+Added a reproducible Chromium regression using the existing settings JS and a
+local-only fixture mirroring the production form contracts. It asserts the
+accessible names, provider change through native keyboard input, exact tab
+order, hidden-field removal, 390px overflow, and no console errors. No runtime
+application code or saved credentials changed; screenshots were not recaptured
+because the production UI and styling did not change in this test-only cycle.
+
+Browser validation: tested the real `/configuracoes/` page at 390×844 (HTTP
+200); its document width remained 390px, the expected tab order was observed,
+and the console was clean. The isolated Chromium regression and the full JS
+suite passed, including all 28 real-browser scenarios. Frontend static Python
+tests passed 11/11, `manage.py check` passed, the design-token guard passed
+with its known baseline occurrence, and `git diff --check` passed.
+
+Visual score: settings field discoverability 9, keyboard order 9, mobile
+layout 9. No production defect was found in this flow. Section-17 completion
+remains unproven. Next: continue the route-level keyboard audit through
+history deletion/search and norma source actions, then check live runtime and
+performance acceptance gaps.
