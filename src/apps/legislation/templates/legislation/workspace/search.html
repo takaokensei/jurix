@@ -10,19 +10,19 @@
 </section>
 
 <form class="workspace-search-panel" method="get" role="search" aria-label="Pesquisa jurídica">
-    <label class="workspace-search-input"><span class="sr-only">Consulta</span><input name="q" value="{{ query }}" placeholder="Ex.: zoneamento ou IPTU progressivo"></label>
-    <button class="workspace-button workspace-button-primary" type="submit">Pesquisar</button>
+    <label class="workspace-search-input"><span class="sr-only">Consulta</span><input type="search" name="q" maxlength="200" value="{{ query }}" placeholder="Ex.: zoneamento ou IPTU progressivo"></label>
     <div class="workspace-filter-row">
         <label>Tipo<select name="tipo"><option value="">Todos os tipos</option>{% for item in types %}<option value="{{ item.value }}"{% if norma_type == item.value %} selected{% endif %}>{{ item.label }}</option>{% endfor %}</select></label>
         <label>Ano<select name="ano"><option value="">Todos os anos</option>{% for item in years %}<option value="{{ item }}"{% if year == item %} selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
         <label>Relevância mínima<select name="similaridade"><option value="0"{% if min_similarity == 0 %} selected{% endif %}>Sem limiar</option><option value="0.5"{% if min_similarity == 0.5 %} selected{% endif %}>50%</option><option value="0.65"{% if min_similarity == 0.65 %} selected{% endif %}>65%</option><option value="0.8"{% if min_similarity == 0.8 %} selected{% endif %}>80%</option></select></label>
     </div>
+    <button class="workspace-button workspace-button-primary" type="submit">Pesquisar</button>
 </form>
 
-{% if search_error %}<div class="workspace-alert">{{ search_error }}</div>{% endif %}
+{% if search_error %}<div class="workspace-alert" role="alert" aria-live="assertive">{{ search_error }}</div>{% endif %}
 
 <section class="workspace-results-section" aria-live="polite">
-    <div class="workspace-section-heading"><div><span class="workspace-eyebrow">Resultados</span><h2>{% if query %}{{ result_count }} resultados{% else %}Comece uma pesquisa{% endif %}</h2></div>{% if query %}<span class="workspace-badge">Modo: {{ search_mode }}</span>{% endif %}</div>
+    <div class="workspace-section-heading"><div><span class="workspace-eyebrow">Resultados</span><h2>{% if query %}{{ result_count }} {% if result_count == 1 %}resultado{% else %}resultados{% endif %}{% else %}Comece uma pesquisa{% endif %}</h2></div>{% if query %}<span class="workspace-badge">{% if search_mode == 'semantic' %}Busca semântica{% elif search_mode == 'lexical' %}Busca textual{% else %}Busca não executada{% endif %}</span>{% endif %}</div>
 
     {% if query %}<p class="workspace-search-caveat" role="note">A relevância é uma estimativa automática de recuperação, não uma conclusão jurídica. Confira o dispositivo e a fonte normativa antes de usar ou citar um resultado.</p>{% endif %}
 

@@ -126,6 +126,22 @@ test('legal search placeholder stays concise while examples remain available in 
   assert.match(template, /Exemplos: “parcelamento do solo”, “licenciamento ambiental” ou “IPTU progressivo”/);
 });
 
+test('legal search follows query-filter-submit reading order and localizes result state', async () => {
+  const template = await read('src/apps/legislation/templates/legislation/workspace/search.html');
+  const styles = await read('src/apps/core/static/css/workspace.css');
+  const queryIndex = template.indexOf('class="workspace-search-input"');
+  const filtersIndex = template.indexOf('class="workspace-filter-row"');
+  const submitIndex = template.indexOf('type="submit"');
+  assert.ok(queryIndex >= 0 && queryIndex < filtersIndex && filtersIndex < submitIndex, 'Keyboard order must be query, filters, then submit');
+  assert.match(template, /type="search" name="q" maxlength="200"/);
+  assert.match(template, /aria-live="assertive"/);
+  assert.match(template, /result_count == 1 %}resultado/);
+  assert.match(template, /search_mode == 'semantic' %}Busca semântica/);
+  assert.match(template, /search_mode == 'lexical' %}Busca textual/);
+  assert.match(styles, /\.workspace-search-panel > \.workspace-button \{ grid-column:2; grid-row:1;/);
+  assert.match(styles, /@media \(max-width:900px\)[\s\S]*?\.workspace-search-panel > \.workspace-button \{ grid-column:1; grid-row:3;/);
+});
+
 test('chat sidebar exposes the same quick-search action as the workspace shell', async () => {
   const source = await read('src/apps/legislation/templates/legislation/chatbot.html');
   const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
@@ -170,7 +186,7 @@ test('workspace sidebar keeps utility actions visible while navigation can scrol
   assert.match(source, /\.workspace-sidebar\s*\{[^}]*box-sizing:\s*border-box;[^}]*overflow:\s*hidden;/);
   assert.match(source, /\.workspace-nav\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/);
   assert.match(source, /\.workspace-sidebar-bottom\s*\{[^}]*flex:\s*0\s+0\s+auto;/);
-  assert.match(template, /css\/workspace\.css['"] %\}\?v=20260930-compose-icon1/);
+  assert.match(template, /css\/workspace\.css['"] %\}\?v=20260930-search-flow1/);
 });
 
 test('assistant and workspace navigation share accessible outline SVG icons', async () => {

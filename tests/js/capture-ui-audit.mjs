@@ -154,6 +154,23 @@ try {
             });
           }
         }
+        if (routeName === 'search-results') {
+          await page.focus('.workspace-search-panel input[name="q"]');
+          const keyboardOrder = [];
+          for (let index = 0; index < 4; index += 1) {
+            await page.keyboard.press('Tab');
+            keyboardOrder.push(await page.evaluate(() => {
+              const active = document.activeElement;
+              return active?.name || active?.textContent?.trim() || active?.tagName?.toLowerCase();
+            }));
+          }
+          const expectedOrder = ['tipo', 'ano', 'similaridade', 'Pesquisar'];
+          if (JSON.stringify(keyboardOrder) !== JSON.stringify(expectedOrder)) {
+            throw new Error(`Legal-search keyboard order mismatch: ${keyboardOrder.join(' → ')}`);
+          }
+          interactionChecks.push({ control: 'legal search filters', keyboardOrder });
+          await page.evaluate(() => document.activeElement?.blur());
+        }
       } catch (error) {
         navigationError = error.message;
       }

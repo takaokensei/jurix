@@ -1,0 +1,157 @@
+{
+  "phase": "after",
+  "theme": "dark",
+  "routeFilter": [
+    "search-results"
+  ],
+  "baseUrl": "http://127.0.0.1:8004",
+  "capturedAt": "2026-09-30T17:48:57.857Z",
+  "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "results": [
+    {
+      "route": "search-results",
+      "requestedPath": "/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
+      "viewport": "1440x900",
+      "screenshot": "search-results-1440x900.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Pesquisa Jurídica — Jurix",
+      "url": "http://127.0.0.1:8004/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "documentHeight": 1089,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "legal search filters",
+          "keyboardOrder": [
+            "tipo",
+            "ano",
+            "similaridade",
+            "Pesquisar"
+          ]
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "search-results",
+      "requestedPath": "/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
+      "viewport": "1024x768",
+      "screenshot": "search-results-1024x768.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Pesquisa Jurídica — Jurix",
+      "url": "http://127.0.0.1:8004/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "documentHeight": 1142,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "legal search filters",
+          "keyboardOrder": [
+            "tipo",
+            "ano",
+            "similaridade",
+            "Pesquisar"
+          ]
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "search-results",
+      "requestedPath": "/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
+      "viewport": "768x1024",
+      "screenshot": "search-results-768x1024.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Pesquisa Jurídica — Jurix",
+      "url": "http://127.0.0.1:8004/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "documentHeight": 1327,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "legal search filters",
+          "keyboardOrder": [
+            "tipo",
+            "ano",
+            "similaridade",
+            "Pesquisar"
+          ]
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "search-results",
+      "requestedPath": "/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
+      "viewport": "1280x800",
+      "screenshot": "search-results-1280x800.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Pesquisa Jurídica — Jurix",
+      "url": "http://127.0.0.1:8004/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "documentHeight": 1110,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "legal search filters",
+          "keyboardOrder": [
+            "tipo",
+            "ano",
+            "similaridade",
+            "Pesquisar"
+          ]
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "search-results",
+      "requestedPath": "/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
+      "viewport": "390x844",
+      "screenshot": "search-results-390x844.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Pesquisa Jurídica — Jurix",
+      "url": "http://127.0.0.1:8004/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "documentHeight": 1544,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "legal search filters",
+          "keyboardOrder": [
+            "tipo",
+            "ano",
+            "similaridade",
+            "Pesquisar"
+          ]
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    }
+  ]
+}

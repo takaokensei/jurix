@@ -3107,3 +3107,28 @@ Visual score for this component: hierarchy 9, mobile density 9, accessibility
 9, responsive behavior 9. Next: audit the legal-search results/filter flow for
 keyboard clarity and dense result scanning before returning to the remaining
 norm timeline/tree details.
+
+## Cycle 86 — legal-search form flow and result labels
+
+The `/pesquisa/` audit found that keyboard users reached the submit button
+before the filters, result counts always used the plural, and the retrieval
+badge exposed the internal English value `semantic`. Reordered the form's DOM
+so focus moves from query to type/year/relevance and then submit; desktop keeps
+the query and CTA on one row, while narrow layouts stack query, filters, and
+CTA. Localized retrieval labels, corrected singular result wording, and made
+search errors announce through an assertive alert region.
+
+Captured and inspected the real route in dark and light themes at 1440x900,
+1280x800, 1024x768, 768x1024, and 390x844. All ten captures returned HTTP 200,
+had no horizontal overflow, console errors, or failed requests. The browser
+audit confirmed keyboard order `tipo → ano → similaridade → Pesquisar` after
+the query input at every viewport. The mobile card now uses the available width
+cleanly, with filter controls and CTA clearly separated.
+
+Validation: complete JavaScript suite 133/133; frontend static Python tests
+11/11; Django system check and `git diff --check` passed. No backend/API
+behavior changed.
+
+Visual score for this component: hierarchy 9, keyboard flow 9, mobile layout 9,
+clarity 9. Next: resume the remaining norm timeline/tree and broader cross-route
+interaction audit.
