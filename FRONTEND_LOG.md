@@ -3234,3 +3234,31 @@ known legacy occurrence in its approved baseline; `git diff --check`.
 Visual score: mark consistency 10, small-format legibility 9. Next: continue
 the required final-pass audits of history, settings, assistant loading/error,
 and remaining keyboard paths; the overall objective remains open.
+
+## Cycle 91 — settings provider flow and mobile select clarity
+
+The settings audit found that the compatible-provider label was clipped at
+390px, hiding the end of “LiteLLM, AirLLM ou local”. Shortened it to
+“Compatível (LiteLLM, AirLLM, local)”; the full name now fits the mobile
+select while preserving the supported integrations.
+
+Added a real-route interaction to the browser audit: select the compatible
+provider, verify required-field feedback and focus, enter dummy model/key/local
+endpoint values, save, reload, and verify the selected provider, label, and
+fields are restored. The audit explicitly asserts the key is absent from
+`localStorage`, remains in this tab's `sessionStorage`, and no external request
+is made. Values are test-only and never leave the browser.
+
+Captured `/configuracoes/` in both themes at 1440x900, 1280x800, 1024x768,
+768x1024, and 390x844. All ten views returned HTTP 200 with no horizontal
+overflow, console errors, or failed requests. The mobile capture confirms the
+short provider label fits and the key remains masked.
+
+Validation: complete JavaScript suite 137/137; focused UI tests 42/42;
+frontend static tests 11/11; Django check; design-token guard passes with one
+known baseline occurrence; `git diff --check`.
+
+Visual score: settings form clarity 9, mobile select readability 9, security
+feedback 10, session restore 10. Next: continue the assistant end-to-end
+keyboard/loading/error audit and any remaining responsive regressions; final
+section-17 verification is still outstanding.

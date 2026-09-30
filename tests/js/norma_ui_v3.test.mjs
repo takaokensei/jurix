@@ -16,6 +16,7 @@ test('settings select the server-configured model and reset to that exact option
   const template = await read('src/apps/legislation/templates/legislation/workspace/settings.html');
   const workspace = await read('src/apps/core/static/js/workspace.js');
   assert.match(template, /option value="\{\{ model \}\}"\{% if model == default_model %\} selected\{% endif %\}/);
+  assert.match(template, /<option value="compatible">Compatível \(LiteLLM, AirLLM, local\)<\/option>/);
   assert.match(workspace, /querySelector\('option\[selected\]'\)/);
 });
 

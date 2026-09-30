@@ -50,6 +50,7 @@ const routes = [
   ['history', '/historico/'],
   ['history-delete-dialog', '/historico/'],
   ['settings', '/configuracoes/'],
+  ['settings-provider', '/configuracoes/'],
 ];
 const selectedRoutes = routeFilter.size ? routes.filter(([name]) => routeFilter.has(name)) : routes;
 if (routeFilter.size && selectedRoutes.length !== routeFilter.size) {
@@ -176,6 +177,57 @@ try {
           await page.evaluate(() => document.querySelector('[data-history-delete]').click());
           await page.waitForSelector('.workspace-confirm-backdrop.is-open');
           interactionChecks.push({ control: 'history delete confirmation (local preview)', ...dialogState, escapeRestoredFocus });
+        }
+        if (routeName === 'settings-provider') {
+          await page.select('select[name="llm_provider"]', 'compatible');
+          const requiredFieldsShown = await page.evaluate(() => ({
+            model: !document.querySelector('[data-external-llm-field] input[name="external_model"]')?.closest('[data-external-llm-field]')?.hidden,
+            key: !document.querySelector('[data-external-llm-field] input[name="llm_api_key"]')?.closest('[data-external-llm-field]')?.hidden,
+            endpoint: !document.querySelector('[data-compatible-endpoint-field]')?.hidden,
+          }));
+          await page.click('[data-settings-form] button[type="submit"]');
+          await page.waitForFunction(() => document.querySelector('[data-settings-status]')?.textContent.includes('Informe modelo, chave'));
+          const invalidState = await page.evaluate(() => ({
+            status: document.querySelector('[data-settings-status]').textContent.trim(),
+            focusedField: document.activeElement?.name,
+          }));
+          await page.locator('input[name="external_model"]').fill('local-test-model');
+          await page.locator('input[name="llm_endpoint"]').fill('http://127.0.0.1:4000/v1');
+          await page.locator('input[name="llm_api_key"]').fill('ui-audit-secret-not-real');
+          await page.click('[data-settings-form] button[type="submit"]');
+          await page.waitForFunction(() => document.querySelector('[data-settings-status]')?.textContent === 'Preferências salvas neste navegador.');
+          const savedState = await page.evaluate(() => ({
+            localStorageContainsSecret: localStorage.getItem('jurix-preferences')?.includes('ui-audit-secret-not-real') || false,
+            sessionConfig: JSON.parse(sessionStorage.getItem('jurix-llm-session-config') || '{}'),
+            theme: document.documentElement.dataset.theme,
+            status: document.querySelector('[data-settings-status]').textContent.trim(),
+          }));
+          if (savedState.localStorageContainsSecret) throw new Error('API key must not be stored in localStorage');
+          if (savedState.sessionConfig.api_key !== 'ui-audit-secret-not-real') throw new Error('API key was not saved in this tab session');
+          await page.reload({ waitUntil: 'domcontentloaded' });
+          await page.waitForFunction(() => document.querySelector('[data-settings-form]'));
+          const restoredState = await page.evaluate(() => ({
+            provider: document.querySelector('[name="llm_provider"]').value,
+            providerLabel: document.querySelector('[name="llm_provider"]').selectedOptions[0]?.textContent.trim(),
+            model: document.querySelector('[name="external_model"]').value,
+            endpoint: document.querySelector('[name="llm_endpoint"]').value,
+            keyRestored: document.querySelector('[name="llm_api_key"]').value === 'ui-audit-secret-not-real',
+            endpointVisible: !document.querySelector('[data-compatible-endpoint-field]').hidden,
+          }));
+          if (restoredState.provider !== 'compatible' || restoredState.providerLabel !== 'Compatível (LiteLLM, AirLLM, local)' || !restoredState.keyRestored || !restoredState.endpointVisible) {
+            throw new Error(`Settings were not restored safely after reload: ${JSON.stringify(restoredState)}`);
+          }
+          await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+          await new Promise((resolve) => setTimeout(resolve, 160));
+          interactionChecks.push({
+            control: 'LLM provider settings (local-only values)',
+            requiredFieldsShown,
+            invalidSave: invalidState,
+            localStorageContainsSecret: savedState.localStorageContainsSecret,
+            sessionSecretStored: Boolean(savedState.sessionConfig.api_key),
+            reloadRestored: restoredState,
+            externalRequestsMade: false,
+          });
         }
         if (routeName === 'norm-detail') {
           const disclosure = await page.$('.legal-detail-ementa--expandable');

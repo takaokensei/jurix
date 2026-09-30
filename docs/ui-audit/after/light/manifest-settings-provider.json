@@ -1,0 +1,227 @@
+{
+  "phase": "after",
+  "theme": "light",
+  "routeFilter": [
+    "settings-provider"
+  ],
+  "baseUrl": "http://127.0.0.1:8004",
+  "capturedAt": "2026-09-30T18:20:08.190Z",
+  "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "results": [
+    {
+      "route": "settings-provider",
+      "requestedPath": "/configuracoes/",
+      "viewport": "1440x900",
+      "screenshot": "settings-provider-1440x900.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Configurações — Jurix",
+      "url": "http://127.0.0.1:8004/configuracoes/",
+      "viewportWidth": 1440,
+      "documentWidth": 1440,
+      "documentHeight": 1370,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "LLM provider settings (local-only values)",
+          "requiredFieldsShown": {
+            "model": true,
+            "key": true,
+            "endpoint": true
+          },
+          "invalidSave": {
+            "status": "Informe modelo, chave de API e, para endpoint compatível, a URL local.",
+            "focusedField": "external_model"
+          },
+          "localStorageContainsSecret": false,
+          "sessionSecretStored": true,
+          "reloadRestored": {
+            "provider": "compatible",
+            "providerLabel": "Compatível (LiteLLM, AirLLM, local)",
+            "model": "local-test-model",
+            "endpoint": "http://127.0.0.1:4000/v1",
+            "keyRestored": true,
+            "endpointVisible": true
+          },
+          "externalRequestsMade": false
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "settings-provider",
+      "requestedPath": "/configuracoes/",
+      "viewport": "1024x768",
+      "screenshot": "settings-provider-1024x768.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Configurações — Jurix",
+      "url": "http://127.0.0.1:8004/configuracoes/",
+      "viewportWidth": 1024,
+      "documentWidth": 1024,
+      "documentHeight": 1374,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "LLM provider settings (local-only values)",
+          "requiredFieldsShown": {
+            "model": true,
+            "key": true,
+            "endpoint": true
+          },
+          "invalidSave": {
+            "status": "Informe modelo, chave de API e, para endpoint compatível, a URL local.",
+            "focusedField": "external_model"
+          },
+          "localStorageContainsSecret": false,
+          "sessionSecretStored": true,
+          "reloadRestored": {
+            "provider": "compatible",
+            "providerLabel": "Compatível (LiteLLM, AirLLM, local)",
+            "model": "local-test-model",
+            "endpoint": "http://127.0.0.1:4000/v1",
+            "keyRestored": true,
+            "endpointVisible": true
+          },
+          "externalRequestsMade": false
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "settings-provider",
+      "requestedPath": "/configuracoes/",
+      "viewport": "768x1024",
+      "screenshot": "settings-provider-768x1024.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Configurações — Jurix",
+      "url": "http://127.0.0.1:8004/configuracoes/",
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "documentHeight": 1541,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "LLM provider settings (local-only values)",
+          "requiredFieldsShown": {
+            "model": true,
+            "key": true,
+            "endpoint": true
+          },
+          "invalidSave": {
+            "status": "Informe modelo, chave de API e, para endpoint compatível, a URL local.",
+            "focusedField": "external_model"
+          },
+          "localStorageContainsSecret": false,
+          "sessionSecretStored": true,
+          "reloadRestored": {
+            "provider": "compatible",
+            "providerLabel": "Compatível (LiteLLM, AirLLM, local)",
+            "model": "local-test-model",
+            "endpoint": "http://127.0.0.1:4000/v1",
+            "keyRestored": true,
+            "endpointVisible": true
+          },
+          "externalRequestsMade": false
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "settings-provider",
+      "requestedPath": "/configuracoes/",
+      "viewport": "1280x800",
+      "screenshot": "settings-provider-1280x800.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Configurações — Jurix",
+      "url": "http://127.0.0.1:8004/configuracoes/",
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "documentHeight": 1383,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "LLM provider settings (local-only values)",
+          "requiredFieldsShown": {
+            "model": true,
+            "key": true,
+            "endpoint": true
+          },
+          "invalidSave": {
+            "status": "Informe modelo, chave de API e, para endpoint compatível, a URL local.",
+            "focusedField": "external_model"
+          },
+          "localStorageContainsSecret": false,
+          "sessionSecretStored": true,
+          "reloadRestored": {
+            "provider": "compatible",
+            "providerLabel": "Compatível (LiteLLM, AirLLM, local)",
+            "model": "local-test-model",
+            "endpoint": "http://127.0.0.1:4000/v1",
+            "keyRestored": true,
+            "endpointVisible": true
+          },
+          "externalRequestsMade": false
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    },
+    {
+      "route": "settings-provider",
+      "requestedPath": "/configuracoes/",
+      "viewport": "390x844",
+      "screenshot": "settings-provider-390x844.png",
+      "status": 200,
+      "navigationError": null,
+      "title": "Configurações — Jurix",
+      "url": "http://127.0.0.1:8004/configuracoes/",
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "documentHeight": 1658,
+      "mainVisible": true,
+      "horizontalOverflow": false,
+      "interactionChecks": [
+        {
+          "control": "LLM provider settings (local-only values)",
+          "requiredFieldsShown": {
+            "model": true,
+            "key": true,
+            "endpoint": true
+          },
+          "invalidSave": {
+            "status": "Informe modelo, chave de API e, para endpoint compatível, a URL local.",
+            "focusedField": "external_model"
+          },
+          "localStorageContainsSecret": false,
+          "sessionSecretStored": true,
+          "reloadRestored": {
+            "provider": "compatible",
+            "providerLabel": "Compatível (LiteLLM, AirLLM, local)",
+            "model": "local-test-model",
+            "endpoint": "http://127.0.0.1:4000/v1",
+            "keyRestored": true,
+            "endpointVisible": true
+          },
+          "externalRequestsMade": false
+        }
+      ],
+      "consoleErrors": [],
+      "failedRequests": [],
+      "badResponses": []
+    }
+  ]
+}
