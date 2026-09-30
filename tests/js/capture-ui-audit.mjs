@@ -292,6 +292,17 @@ try {
             decoration: getComputedStyle(link).textDecorationLine,
           }));
           await page.mouse.move(0, 0);
+          await page.keyboard.press('Tab');
+          await page.evaluate(() => document.querySelector('.workspace-card h2 a')?.focus());
+          const keyboardLink = await page.$eval('.workspace-card h2 a', (link) => ({
+            visible: link.matches(':focus-visible'),
+            outlineWidth: getComputedStyle(link).outlineWidth,
+            outlineStyle: getComputedStyle(link).outlineStyle,
+            outlineColor: getComputedStyle(link).outlineColor,
+            color: getComputedStyle(link).color,
+            decoration: getComputedStyle(link).textDecorationLine,
+          }));
+          await page.$eval('.workspace-card h2 a', (link) => link.blur());
           if (
             state.cards.length !== 3
             || state.documentWidth > state.viewportWidth
@@ -300,10 +311,14 @@ try {
             || state.firstLinkDecoration !== 'none'
             || hoverLink.color === state.firstLinkColor
             || !hoverLink.decoration.includes('underline')
+            || !keyboardLink.visible
+            || keyboardLink.outlineStyle !== 'solid'
+            || Number.parseFloat(keyboardLink.outlineWidth) < 2
+            || !keyboardLink.decoration.includes('underline')
           ) {
-            throw new Error(`Populated collection cards overflow or lose metadata: ${JSON.stringify(state)}`);
+            throw new Error(`Populated collection cards overflow, lose metadata, or lack a visible keyboard focus: ${JSON.stringify({ state, hoverLink, keyboardLink })}`);
           }
-          interactionChecks.push({ control: 'populated collection cards (local visual sample)', ...state, hoverLink, noBackendWrites: true });
+          interactionChecks.push({ control: 'populated collection cards (local visual sample)', ...state, hoverLink, keyboardLink, noBackendWrites: true });
         }
         if (routeName === 'collection-detail-populated') {
           const state = await page.evaluate(() => {

@@ -3473,8 +3473,18 @@ screenshots per phase; 40 total). Reviewed phone and desktop captures in both
 themes: title hierarchy is consistent, long names wrap cleanly, descriptions
 and norm counts remain secondary, and no card or document overflows
 horizontally. The browser harness checks card bounds, title-link color and
-resting decoration, hover color/underline, metadata visibility, 40px removal
-actions, HTTP/console/request errors, and that the sample is local-only.
+resting decoration, hover color/underline, keyboard `:focus-visible` with a
+solid outline, metadata visibility, 40px removal actions, HTTP/console/request
+errors, and that the sample is local-only.
+
+That keyboard check exposed an overloaded design token: `--jurix-focus-ring`
+contains a box-shadow value in both themes but one shared primitive used it as
+an `outline` value. In light mode Chromium dropped the invalid outline style,
+leaving only the shadow. Split the contracts: `--jurix-focus-outline` is now a
+valid solid outline, while `--jurix-focus-ring` remains the shadow halo. Both
+workspace and assistant templates cache-bust the shared component stylesheet.
+The real-browser assertion now requires a visible solid outline in both themes;
+the 10 populated-list captures passed again after this correction.
 
 Performance follow-up measured all 30 assistant CSS/JS assets directly from
 the local server's source responses: 418,782 bytes raw, 105,544 bytes with
@@ -3496,3 +3506,27 @@ parity 9. Next: exercise a populated collection detail state and its remove/
 source navigation affordances using isolated fixtures, then finish remaining
 keyboard/reduced-motion and production-resource closeout. Section-17 completion
 remains unproven.
+
+## Cycle 99 — valid keyboard outline token — 2026-09-30
+
+Area: shared focus primitive and collection-card keyboard affordance.
+Separated the focus-outline token from the focus halo so consumers do not pass
+a `box-shadow` value to CSS `outline`. The populated collection title anchor
+now has an actual 2px solid blue outline in both themes, in addition to its
+keyboard-only underline. Cache-busted the shared component stylesheet in the
+assistant and workspace shells. The browser capture asserts `:focus-visible`,
+outline style/width, and decoration rather than relying on color alone.
+
+Validation: the full JavaScript suite passed (exit 0), including the 26 real
+Chromium scenarios; the populated collection state passed all five viewport
+checks in dark and light. Focus outline computed as 2px solid in all ten
+captures, with no console errors, failed requests, or horizontal overflow.
+Frontend Python tests passed 13/13, `manage.py check` reports no issues, the
+design-token guard passed with its one documented baseline occurrence, and
+`git diff --check` passed. The first Python invocation used the system
+interpreter, which lacks Django; rerunning with the repository `.venv` passed.
+
+Visual score: keyboard focus clarity 9, theme parity 9, card-link affordance 9.
+Next: exercise collection-detail actions and navigation in the isolated
+populated fixture, then continue the remaining high-priority interaction and
+production-resource audit. Section-17 completion remains unproven.

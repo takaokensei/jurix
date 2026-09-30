@@ -5,7 +5,7 @@
     "collections-populated"
   ],
   "baseUrl": "http://127.0.0.1:8004",
-  "capturedAt": "2026-09-30T19:45:52.513Z",
+  "capturedAt": "2026-09-30T19:59:20.915Z",
   "browser": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "results": [
     {
@@ -54,6 +54,14 @@
           "firstLinkColor": "rgb(15, 23, 42)",
           "firstLinkDecoration": "none",
           "hoverLink": {
+            "color": "rgb(29, 78, 216)",
+            "decoration": "underline"
+          },
+          "keyboardLink": {
+            "visible": true,
+            "outlineWidth": "2px",
+            "outlineStyle": "solid",
+            "outlineColor": "rgb(29, 78, 216)",
             "color": "rgb(29, 78, 216)",
             "decoration": "underline"
           },
@@ -113,6 +121,14 @@
             "color": "rgb(29, 78, 216)",
             "decoration": "underline"
           },
+          "keyboardLink": {
+            "visible": true,
+            "outlineWidth": "2px",
+            "outlineStyle": "solid",
+            "outlineColor": "rgb(29, 78, 216)",
+            "color": "rgb(29, 78, 216)",
+            "decoration": "underline"
+          },
           "noBackendWrites": true
         }
       ],
@@ -166,6 +182,14 @@
           "firstLinkColor": "rgb(15, 23, 42)",
           "firstLinkDecoration": "none",
           "hoverLink": {
+            "color": "rgb(29, 78, 216)",
+            "decoration": "underline"
+          },
+          "keyboardLink": {
+            "visible": true,
+            "outlineWidth": "2px",
+            "outlineStyle": "solid",
+            "outlineColor": "rgb(29, 78, 216)",
             "color": "rgb(29, 78, 216)",
             "decoration": "underline"
           },
@@ -225,6 +249,14 @@
             "color": "rgb(29, 78, 216)",
             "decoration": "underline"
           },
+          "keyboardLink": {
+            "visible": true,
+            "outlineWidth": "2px",
+            "outlineStyle": "solid",
+            "outlineColor": "rgb(29, 78, 216)",
+            "color": "rgb(29, 78, 216)",
+            "decoration": "underline"
+          },
           "noBackendWrites": true
         }
       ],
@@ -278,6 +310,14 @@
           "firstLinkColor": "rgb(15, 23, 42)",
           "firstLinkDecoration": "none",
           "hoverLink": {
+            "color": "rgb(29, 78, 216)",
+            "decoration": "underline"
+          },
+          "keyboardLink": {
+            "visible": true,
+            "outlineWidth": "2px",
+            "outlineStyle": "solid",
+            "outlineColor": "rgb(29, 78, 216)",
             "color": "rgb(29, 78, 216)",
             "decoration": "underline"
           },

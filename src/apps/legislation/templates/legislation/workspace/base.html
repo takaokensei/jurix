@@ -13,7 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20260930-quill-evidence-motion1">
     <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20260930-collection-card-links1">
-    <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}">
+    <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}?v=20260930-focus-outline1">
     {% block extra_css %}{% endblock %}
 </head>
 <body class="figma-theme workspace-page workspace-document{% block body_class %}{% endblock %}" data-chatbot-url="{% url 'workspace:assistant' %}" data-norma-list-url="{% url 'legislation:norma_list' %}" data-logo-icon-url="{% static 'img/logo-icon.svg' %}?v=20260930-quill1" data-user-name="{{ request.user.first_name|default:request.user.username|title }}">

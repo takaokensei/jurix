@@ -6,7 +6,7 @@
  */
 
 :root {
-    --jurix-focus-ring: 2px solid var(--figma-blue-light);
+    --jurix-focus-outline: 2px solid var(--figma-blue-light);
     --jurix-focus-offset: 2px;
     --jurix-space-1: 4px;
     --jurix-space-2: 8px;
@@ -112,7 +112,7 @@
     select,
     [tabindex="0"]
 ):focus-visible {
-    outline: var(--jurix-focus-ring);
+    outline: var(--jurix-focus-outline);
     outline-offset: var(--jurix-focus-offset);
 }
 
