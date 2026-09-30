@@ -2425,3 +2425,49 @@ observed.
 Next action: Continue the phase-E audit for visual/interaction defects not
 covered by route captures, especially failure/empty states and keyboard focus
 across the normative workflow.
+
+## Cycle 60 — 2026-09-29
+
+Area: Legal certainty cues for missing effective dates.
+
+Goal: Align norm-list and norm-detail language so missing corpus data is not
+visually presented as a verified legal conclusion.
+
+Observed problems: The list rendered missing effective dates as “Não
+informada”, while the detail page used a green “Vigente desde a publicação”
+badge and the timeline used a “vigente” badge. A smaller disclaimer qualified
+the assertion, but the dominant visual state still communicated certainty.
+
+Changes made: Norm cards now identify missing effective dates as “Não
+registrada no corpus”. In the detail page, the temporal status and timeline
+use neutral “não registrada” labels unless the corpus has a date; a revoked
+status remains visible as such. The caveat now explicitly directs users to
+confirm vigência in the official source. Updated the Python route assertion and
+added a frontend contract forbidding the former inference wording. No model,
+RAG or backend computation changed.
+
+Browser validation: Reloaded the live Lei 8206/2026 detail page and confirmed
+the temporal table says “Data de vigência não registrada no corpus”, includes
+the official-source caveat, and the timeline badge says “Vigência não
+registrada”. Visual audit recaptured 33 views across 11 routes and 3 sizes;
+the capture reported zero views needing review.
+
+Tests: Focused Python frontend/workspace route tests passed (29). Norm UI
+contracts passed (25). Full frontend `npm test` is running now and must pass
+before this cycle is committed. The first Python run caught the prior test's
+expectation of “Vigente desde a publicação”; updated that stale assertion to
+the new neutral contract and reran successfully.
+
+Console: No new console errors observed in the live detail-page reload.
+
+Responsive validation: Visual matrix remains clear at desktop and 390px mobile;
+the detail page retains its responsive action grid and metadata layout.
+
+Visual score: Improved legal clarity: absence of a date is no longer encoded
+as a green verified state. The remaining `status` interpretation still
+depends on source data, but missing vigência now remains explicitly uncertain.
+
+Regressions: None observed in focused Python tests or the browser check.
+
+Next action: Continue the final audit of focus behavior and empty/error states
+in the assistant and normative workflows.

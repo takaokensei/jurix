@@ -207,6 +207,16 @@ test('norm actions use a responsive grid instead of stranding the official sourc
   assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260929-light-theme1/);
 });
 
+test('missing effective date is not presented as legal certainty in norm list or detail', async () => {
+  const list = await read('src/apps/legislation/templates/legislation/norma_list.html');
+  const detail = await read('src/apps/legislation/templates/legislation/norma_detail.html');
+  assert.match(list, /data_vigencia\|date:'d\/m\/Y'\|default:'Não registrada no corpus'/);
+  assert.match(detail, /badge badge-neutral">Data de vigência não registrada no corpus/);
+  assert.match(detail, /Confirme a vigência na fonte oficial; o corpus não informa uma data específica\./);
+  assert.match(detail, /elif not norma\.data_vigencia %\}badge-neutral/);
+  assert.doesNotMatch(detail, /Vigente desde a publicação\*/);
+});
+
 test('norm consolidated text stays available but does not duplicate every device on initial view', async () => {
   const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
   const styles = await read('src/apps/core/static/css/jurix-legal-detail.css');

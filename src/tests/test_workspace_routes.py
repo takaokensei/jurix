@@ -109,8 +109,8 @@ def test_norma_compare_renders_aligned_diff_and_explicit_missing_effective_date(
 
     detail_body = Client().get(f"/normas/{norma.pk}/").content.decode()
     assert "Não informada" in detail_body
-    assert "Vigente desde a publicação" in detail_body
-    assert "não registra uma data de vigência específica" in detail_body
+    assert "Data de vigência não registrada no corpus" in detail_body
+    assert "Confirme a vigência na fonte oficial" in detail_body
 
 
 def test_norma_tree_exposes_hierarchy_semantics(norma):

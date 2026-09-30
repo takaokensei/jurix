@@ -122,8 +122,8 @@
                 {% elif temporal_status == "data_indeterminada" %}
                 <span class="badge badge-neutral">Data não determinada</span>
                 {% elif not norma.data_vigencia %}
-                <span class="badge badge-success">Vigente desde a publicação*</span>
-                <small class="temporal-disclaimer">* O corpus não registra uma data de vigência específica.</small>
+                    <span class="badge badge-neutral">Data de vigência não registrada no corpus</span>
+                    <small class="temporal-disclaimer">Confirme a vigência na fonte oficial; o corpus não informa uma data específica.</small>
                 {% else %}
                 <span class="badge badge-success">Vigente</span>
                 {% endif %}
@@ -140,7 +140,7 @@
             <h2 id="timeline-title">Linha do tempo normativa</h2>
             <p class="timeline-intro">Datas e eventos visíveis no corpus. Inferências são sinalizadas para revisão.</p>
         </div>
-        <span class="badge {% if temporal_status == 'revogada' %}badge-warning{% else %}badge-success{% endif %}">{{ temporal_status }}</span>
+            <span class="badge {% if temporal_status == 'revogada' %}badge-warning{% elif not norma.data_vigencia %}badge-neutral{% else %}badge-success{% endif %}">{% if temporal_status == 'revogada' or norma.data_vigencia %}{{ temporal_status }}{% else %}Vigência não registrada{% endif %}</span>
     </div>
     <ol class="timeline-list">
         {% for item in timeline %}
