@@ -2559,3 +2559,45 @@ Regressions: None observed.
 
 Next action: Continue keyboard and mobile checks across the remaining primary
 routes and address the next reproducible frontend defect.
+
+## Cycle 63 — 2026-09-29
+
+Area: Tablet and breakpoint transition coverage.
+
+Goal: Validate the main product routes at the explicit 768px and 1024px
+breakpoints from the UX rubric, beyond the saved 390px and desktop captures.
+
+Observed problems: The visual screenshot matrix covered mobile and desktop,
+but there was no repeatable route sweep at tablet width or immediately above
+the 900px sidebar breakpoint. A layout could therefore fail at those widths
+without appearing in the existing 30–36 image review.
+
+Changes made: Added `tests/js/responsive-breakpoint-smoke.mjs` and exposed it
+as `npm run test:responsive`, a repeatable headless Chromium check for 11 real
+workspace routes at 768×1024 and
+1024×768. It checks HTTP status, visible main content, horizontal overflow,
+page errors, console errors and failed requests without generating redundant
+screenshots or modifying the app.
+
+Browser validation: The smoke run checked all 22 route/viewport combinations
+against the running Django app on port 8004.
+
+Tests: All 22 returned HTTP 200, exposed a visible main region, had no
+horizontal document overflow, and produced no console errors or failed
+requests. The script exited successfully. Existing full frontend suite passed
+in Cycle 62; this cycle adds an independent real-app responsive check.
+
+Console: Zero errors across all 22 visits.
+
+Responsive validation: Both sides of the mobile/desktop shell transition
+(768px mobile-navigation layout and 1024px desktop layout) passed for
+assistant, search, norm catalog/search/detail/compare/tree, collections,
+history and settings.
+
+Visual score: This closes a blind spot in breakpoint coverage; no visual
+regression was found at tablet or transition widths.
+
+Regressions: None observed.
+
+Next action: Continue the cross-route keyboard/accessibility audit and correct
+any reproducible issue before the final phase assessment.

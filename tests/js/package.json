@@ -4,7 +4,8 @@
   "description": "Security tests for the chat frontend (XSS surface). Dev-only: nothing here ships to production.",
   "type": "module",
   "scripts": {
-    "test": "node run-tests.mjs"
+    "test": "node run-tests.mjs",
+    "test:responsive": "node responsive-breakpoint-smoke.mjs"
   },
   "devDependencies": {
     "jsdom": "^26.1.0",
