@@ -3020,3 +3020,16 @@ horizontal overflow. Manually reviewed light-theme comparison, settings, and
 norm-detail screens; the existing status contrast issue was fixed and
 captured separately in Cycle 80. `node --check` passes for the updated audit
 runner.
+
+## Cycle 82 — intermediate responsive breakpoints and drawer interaction
+
+Expanded the capture matrix to include 1024x768 and 768x1024 in addition to
+1440x900, 1280x800, and 390x844. Re-ran all 12 routes in dark and light themes:
+60 views per theme. Both manifests report 60/60 HTTP 200 and zero navigation
+errors, failed requests, console errors, or horizontal overflow.
+
+At 768x1024, interacted with the actual workspace drawer on
+`/configuracoes/`: it opens to the 240px rail, leaves the SVG icons visible,
+sets `aria-expanded=true`, closes on Escape, resets `aria-expanded=false`,
+and never creates horizontal overflow. Saved the open-drawer screenshot as
+`workspace-drawer-768x1024.png`. `node --check` and `git diff --check` pass.
