@@ -218,6 +218,7 @@ class NormaDetailView(DetailView):
             {
                 "active_nav": "normas",
                 "eventos_recebidos": eventos_recebidos,
+                "official_source_url": canonical_norma_url(norma),
                 "dispositivos": dispositivos,
                 "root_dispositivos": root_dispositivos,
                 "stats": stats,

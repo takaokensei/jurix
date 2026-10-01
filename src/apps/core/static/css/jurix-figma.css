@@ -634,7 +634,8 @@ html[data-sidebar-collapsed="true"] .figma-sidebar .figma-nav-list { gap: 7px; }
 }
 
 .figma-search-dropdown {
-  height: 32px;
+  height: 44px;
+  min-height: 44px;
   border-radius: 8px;
   padding: 6px 12px;
   background-color: var(--figma-bg-dropdown);
@@ -646,7 +647,7 @@ html[data-sidebar-collapsed="true"] .figma-sidebar .figma-nav-list { gap: 7px; }
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .figma-search-dropdown:hover {

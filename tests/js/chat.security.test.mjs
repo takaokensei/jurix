@@ -300,6 +300,42 @@ test('assistant references to a sourced law article link directly to the officia
   window.close();
 });
 
+test('standalone bold articles and incisos link to the matching recovered device', async () => {
+  const { window } = await renderWithSource(source());
+  const sources = ['Art. 1º', 'Art. 2º', 'Art. 2º > Inciso I', 'Art. 2º > Inciso II'].map((device, index) => source({
+    norma_ref: 'Lei nº 8205/2026', dispositivo_ref: device,
+    pdf_url: 'https://sapl.natal.rn.leg.br/media/lei.pdf', full_text: 'Trecho exato ' + index,
+  }));
+  const body = window.document.createElement('div');
+  body.innerHTML = window.JurixMarkdown.render('A Lei nº 8.205/2026 institui a data. **Art. 1º** explica.\n\n**Art. 2°** prevê:\n- **Inciso I**\n- **Incisso II**');
+  window.JurixRagUI.linkLegalReferences(body, sources);
+  const links = [...body.querySelectorAll('.jurix-legal-reference-link')];
+  assert.equal(links.length, 5);
+  assert.ok(body.querySelector('strong a'));
+  assert.ok(links[3].href.includes(encodeURIComponent('Trecho exato 2')));
+  assert.ok(links[4].href.includes(encodeURIComponent('Trecho exato 3')));
+  const preserved = body.textContent;
+  window.JurixRagUI.linkLegalReferences(body, sources);
+  assert.equal(body.textContent, preserved);
+  assert.equal(body.querySelectorAll('.jurix-legal-reference-link').length, 5);
+  window.close();
+});
+
+test('ambiguous or unsupported legal references remain plain text', async () => {
+  const { window } = await renderWithSource(source());
+  const sources = [source({ norma_ref: 'Lei nº 8205/2026', dispositivo_ref: 'Art. 2º > Inciso I', pdf_url: 'https://sapl.natal.rn.leg.br/8205.pdf' }),
+    source({ norma_ref: 'Lei nº 8206/2026', dispositivo_ref: 'Art. 2º > Inciso I', pdf_url: 'https://sapl.natal.rn.leg.br/8206.pdf' })];
+  const body = window.document.createElement('div');
+  body.innerHTML = '<p>Art. 2º e Inciso I.</p><p>Lei nº 9999/2026, Art. 2º.</p><code>Lei nº 8205/2026</code>';
+  window.JurixRagUI.linkLegalReferences(body, sources);
+  assert.equal(body.querySelectorAll('a').length, 0);
+  body.innerHTML = '<p>Art. 2º da Lei nº 8206/2026 e Inciso I.</p>';
+  window.JurixRagUI.linkLegalReferences(body, sources);
+  assert.equal(body.querySelectorAll('a').length, 2);
+  assert.ok([...body.querySelectorAll('a')].every(a => a.title.includes('8206/2026')));
+  window.close();
+});
+
 test('source citation copy control matches the card action and copies a formatted legal reference', async () => {
   const { window, card } = await renderWithSource(source({
     norma_ref: 'Lei nº 8198/2026', dispositivo_ref: 'Art. 1º',

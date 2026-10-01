@@ -352,31 +352,41 @@
 
     function linkLegalReferences(container, sources = []) {
         if (!container || !Array.isArray(sources) || !sources.length) return;
-        const references = sources.map((source, index) => {
-            const norm = String(source?.norma || source?.norma_ref || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/\./g, '');
-            const identity = norm.match(/\b(\d+)\s*\/\s*(\d{4})\b/);
-            const article = String(source?.dispositivo_ref || source?.hierarchy || '').match(/\bart\.?\s*(\d+[º°o]?)/i);
+        const normalize = value => String(value || '').normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        const normPattern = /\b(Lei(?:\s+Complementar)?|Decreto|Resolução|Portaria)\s+(?:n[º°o.]?\s*)?([\d.]+)\s*\/\s*(\d{4})\b/i;
+        const normKey = match => match
+            ? normalize(match[1]) + ':' + match[2].replace(/\./g, '').replace(/^0+(?=\d)/, '') + '/' + match[3]
+            : null;
+        const references = sources.map(source => {
+            const norm = String(source?.norma || source?.norma_ref || '');
+            const device = String(source?.dispositivo_ref || source?.hierarchy || '');
+            const article = device.match(/\bart\.?\s*(\d+)/i)?.[1];
+            const inciso = device.match(/\binciso\s+([IVXLCDM]+)\b/i)?.[1]?.toUpperCase();
             const href = buildSourceUrl(source);
-            return identity && article && href ? {
-                identity: `${identity[1]}/${identity[2]}`,
-                article: article[1].replace(/[º°o]$/i, ''),
-                href,
-                label: `${identity[1]}/${identity[2]} Art. ${article[1]}`,
-                index,
-            } : null;
+            const identity = normKey(norm.match(normPattern));
+            return identity && href ? { identity, article, inciso, href, label: norm + ', ' + device, device } : null;
         }).filter(Boolean);
         if (!references.length) return;
 
+        const identities = [...new Set(references.map(item => item.identity))];
+        let currentNorm = identities.length === 1 ? identities[0] : null;
+        let currentArticle = null;
         const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
             acceptNode(node) {
-                if (!node.nodeValue?.trim() || node.parentElement?.closest('a, code, pre, button, script, style')) return NodeFilter.FILTER_REJECT;
-                return NodeFilter.FILTER_ACCEPT;
+                return !node.nodeValue?.trim() || node.parentElement?.closest('a, code, pre, button, script, style')
+                    ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
             },
         });
         const textNodes = [];
         while (walker.nextNode()) textNodes.push(walker.currentNode);
-        const pattern = /\b(?:Lei|Decreto|Resolução|Portaria)\s+(?:n[º°o.]?\s*)?(\d+)\s*\/\s*(\d{4})\s*,?\s*(?:,\s*)?\bArt\.?\s*(\d+)[º°o]?/gi;
-        textNodes.forEach((node) => {
+        const normExpression = normPattern.source;
+        // Qualified articles override prior context; standalone labels reuse only recovered evidence.
+        const pattern = new RegExp(
+            normExpression + '|\\bArt\\.?\\s*\\d+[º°o]?(?:\\s+(?:da|do)\\s+' + normExpression
+                + ')?|\\bInciss?o\\s+[IVXLCDM]+\\b', 'gi'
+        );
+        textNodes.forEach(node => {
             const text = node.nodeValue;
             pattern.lastIndex = 0;
             let match;
@@ -384,8 +394,28 @@
             const fragment = document.createDocumentFragment();
             let changed = false;
             while ((match = pattern.exec(text))) {
-                const [, number, year, article] = match;
-                const reference = references.find((item) => item.identity === `${number}/${year}` && item.article === article);
+                const token = match[0];
+                const explicitNorm = token.match(normPattern);
+                const article = token.match(/^Art\.?\s*(\d+)/i);
+                const inciso = token.match(/^Inciss?o\s+([IVXLCDM]+)/i);
+                if (explicitNorm) {
+                    currentNorm = normKey(explicitNorm);
+                    currentArticle = null;
+                }
+                if (article) currentArticle = article[1];
+                const candidates = references.filter(item => item.identity === currentNorm);
+                let reference;
+                if (inciso) {
+                    // Never guess which article a repeated inciso belongs to.
+                    const matches = candidates.filter(item => item.inciso === inciso[1].toUpperCase()
+                        && (!currentArticle || item.article === currentArticle));
+                    if (new Set(matches.map(item => item.device)).size === 1) reference = matches[0];
+                } else if (article) {
+                    reference = candidates.find(item => item.article === currentArticle && !item.device.includes('>'))
+                        || candidates.find(item => item.article === currentArticle);
+                } else {
+                    reference = candidates[0];
+                }
                 if (!reference) continue;
                 fragment.append(document.createTextNode(text.slice(cursor, match.index)));
                 const anchor = document.createElement('a');
@@ -393,8 +423,9 @@
                 anchor.href = reference.href;
                 anchor.target = '_blank';
                 anchor.rel = 'noopener noreferrer';
-                anchor.setAttribute('aria-label', `Abrir ${reference.label} na fonte oficial`);
-                anchor.textContent = match[0];
+                anchor.title = 'Abrir ' + reference.label + ' no SAPL (nova aba)';
+                anchor.setAttribute('aria-label', anchor.title);
+                anchor.textContent = token;
                 fragment.append(anchor);
                 cursor = pattern.lastIndex;
                 changed = true;

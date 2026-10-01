@@ -54,8 +54,8 @@
         <a href="{% url 'legislation:norma_tree' norma.pk %}" class="btn btn-secondary">Visualizar Árvore</a>
         <button type="button" class="btn btn-secondary" data-copy-citation="{{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }} — {{ norma.ementa|default:'Norma municipal consolidada' }}">Copiar citação</button>
         <a href="{% url 'legislation:norma_pdf_export' norma.pk %}" class="btn btn-secondary" download>Exportar PDF</a>
-        {% if norma.sapl_url %}
-        <a href="{{ norma.sapl_url }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Abrir fonte oficial no SAPL</a>
+        {% if official_source_url %}
+        <a href="{{ official_source_url }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Abrir fonte oficial no SAPL</a>
         {% elif norma.pdf_url %}
         <a href="{{ norma.pdf_url }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Abrir PDF oficial</a>
         {% endif %}

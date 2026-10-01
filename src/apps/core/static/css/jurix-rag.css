@@ -8,6 +8,23 @@
     --jurix-rag-muted: var(--figma-text-dim);
 }
 
+/* Evidence-backed references are recognizable without relying on color alone. */
+.figma-theme .message-body a.jurix-legal-reference-link {
+    color: var(--figma-blue-light);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: .2em;
+    border-radius: 3px;
+    overflow-wrap: anywhere;
+}
+.figma-theme .message-body a.jurix-legal-reference-link:hover {
+    text-decoration-thickness: 2px;
+}
+.figma-theme .message-body a.jurix-legal-reference-link:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+}
+
 .jurix-rag-sr-only {
     position: absolute !important;
     width: 1px !important;

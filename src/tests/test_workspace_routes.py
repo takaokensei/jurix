@@ -208,6 +208,25 @@ def test_norma_list_rewrites_legacy_sapl_detail_url(norma):
     assert "/norma/normajuridica/9387/" not in body
 
 
+def test_norma_detail_rewrites_legacy_sapl_url_without_mutating_the_record(norma):
+    norma.sapl_id = 9387
+    legacy = "https://sapl.natal.rn.leg.br/norma/normajuridica/9387/"
+    norma.sapl_url = legacy
+    norma.save(update_fields=["sapl_id", "sapl_url"])
+    response = Client().get(f"/normas/{norma.pk}/")
+    body = response.content.decode()
+    assert response.status_code == 200
+    assert 'href="https://sapl.natal.rn.leg.br/norma/9387/"' in body
+    assert legacy not in body
+    norma.refresh_from_db()
+    assert norma.sapl_url == legacy
+
+
+def test_workspace_new_research_link_requests_a_blank_conversation():
+    body = Client().get('/normas/').content.decode()
+    assert 'href="/assistente/?new=1" id="workspace-new-chat"' in body
+
+
 def test_norma_compare_renders_aligned_diff_and_explicit_missing_effective_date(norma):
     from datetime import date
 

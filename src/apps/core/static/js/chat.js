@@ -950,6 +950,7 @@
             }
         } else {
             typewriterEffect(messageId, answer, () => {
+                window.JurixRagUI?.linkLegalReferences?.(messageBody, sources);
                 copyButton.classList.add('show');
 
                 if (regenerateBtn && currentSessionId && showRegenerate) {
@@ -999,6 +1000,7 @@
                 if (copyButton) copyButton.setAttribute('data-markdown', data.answer);
 
                 typewriterEffect(messageBody.id, data.answer, () => {
+                    window.JurixRagUI?.linkLegalReferences?.(messageBody, answerSources);
                     if (copyButton) {
                         copyButton.classList.remove('is-hidden');
                         copyButton.classList.add('show');
@@ -1293,8 +1295,8 @@
                 window.location.href = config.chatbotUrl;
             }
         } else {
-            let keepBlank = false;
-            try { keepBlank = sessionStorage.getItem('jurix:new-conversation') === '1'; } catch (_) {}
+            let keepBlank = new URLSearchParams(window.location.search).get('new') === '1';
+            try { keepBlank ||= sessionStorage.getItem('jurix:new-conversation') === '1'; } catch (_) {}
             if (thisToken !== navSeq) return;
             currentSessionId = null;
             const messagesWrapper = document.getElementById('messages-wrapper');
