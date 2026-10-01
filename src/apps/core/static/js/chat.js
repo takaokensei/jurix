@@ -1331,8 +1331,8 @@
 
         if (toggleSidebarBtn && sidebar) {
             const isMobileSidebar = () => window.matchMedia
-                ? window.matchMedia('(max-width: 768px)').matches
-                : window.innerWidth <= 768;
+                ? window.matchMedia('(max-width: 900px)').matches
+                : window.innerWidth <= 900;
             const setMobileSidebarOpen = (open) => {
                 if (isMobileSidebar()) sidebar.classList.remove('collapsed');
                 sidebar.classList.toggle('is-open', open);

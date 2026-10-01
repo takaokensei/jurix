@@ -1,0 +1,27 @@
+/* One sidebar foundation shared by documents and the assistant. */
+.figma-theme .jurix-sidebar { width: 240px; height: 100dvh; padding: 18px 14px; flex: 0 0 240px; gap: 16px; font-family: var(--figma-font-ui, Inter, system-ui, sans-serif); }
+.jurix-sidebar-heading { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.jurix-sidebar .workspace-brand { font: 700 17px/1.4 var(--figma-font-ui, Inter, system-ui, sans-serif); }
+.jurix-sidebar-search { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px; padding: 0; border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--figma-text-muted); cursor: pointer; }
+.jurix-sidebar-search:hover { background: var(--figma-bg-card); color: var(--figma-text-white); }
+.jurix-sidebar .workspace-new-action, .jurix-sidebar .workspace-nav-item { min-height: 44px; font-size: .875rem; }
+.jurix-sidebar .workspace-nav { flex: 0 0 auto; margin: 0; overflow: visible; }
+.jurix-sidebar .workspace-brand-block { flex: 0 0 auto; }
+.jurix-sidebar-recents { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+.jurix-sidebar-recents-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: .75rem; color: var(--figma-text-muted); }
+.jurix-sidebar-recents-heading a { display: inline-flex; align-items: center; min-height: 32px; color: inherit; text-decoration: none; }
+.jurix-sidebar .chat-sessions-list { min-height: 0; overflow-y: auto; scrollbar-width: thin; flex: 1; color: var(--figma-text-muted); font-size: .8125rem; }
+.jurix-recent-chat, .jurix-sidebar .chat-session-item { box-sizing: border-box; display: flex; align-items: center; min-height: 44px; padding: 8px 10px; border-radius: 8px; color: var(--figma-text-muted); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jurix-recent-chat { display: block; line-height: 28px; }
+.jurix-recent-chat:hover, .jurix-sidebar .chat-session-item:hover { background: var(--figma-bg-card); color: var(--figma-text-white); }
+.jurix-sidebar :focus-visible { outline: 2px solid var(--figma-blue-light); outline-offset: 2px; }
+.jurix-palette-close { width: 44px; height: 44px; flex: 0 0 44px; border: 0; border-radius: 9px; background: transparent; color: var(--figma-text-muted); font-size: 24px; cursor: pointer; }
+.jurix-palette-close:hover { background: var(--figma-bg-card); color: var(--figma-text-white); }
+.jurix-palette-close:focus-visible { outline: 2px solid var(--figma-blue-light); outline-offset: 2px; }
+@media (min-width: 901px) {
+  html[data-sidebar-collapsed="true"] .jurix-sidebar, .figma-theme .jurix-sidebar.collapsed { width: 72px; flex-basis: 72px; padding-inline: 10px; }
+  html[data-sidebar-collapsed="true"] .jurix-sidebar-heading { flex-direction: column; }
+  html[data-sidebar-collapsed="true"] .jurix-sidebar-recents { display: none; }
+  html[data-sidebar-collapsed="true"] .jurix-sidebar .workspace-brand > span:not(.workspace-logo), html[data-sidebar-collapsed="true"] .jurix-sidebar .workspace-new-action > span, html[data-sidebar-collapsed="true"] .jurix-sidebar .workspace-nav-item > span { display: none; }
+}
+@media (max-width: 900px) { .figma-theme .jurix-sidebar { width: 240px; padding: 18px 14px; } }

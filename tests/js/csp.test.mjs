@@ -20,6 +20,9 @@ const read = (f) => fs.readFileSync(path.join(JS_DIR, f), 'utf8');
 const tick = () => new Promise((r) => setTimeout(r, 60));
 
 function renderTemplate(raw) {
+  raw = raw.replace(/\{%\s*include\s+'legislation\/workspace\/_sidebar\.html'[^%]*%\}/g,
+    () => fs.readFileSync(path.join(ROOT, 'src/apps/legislation/templates/legislation/workspace/_sidebar.html'), 'utf8')
+      .replace(/\{% if sidebar_assistant %\}new-chat-button\{% else %\}workspace-new-chat\{% endif %\}/g, 'new-chat-button'));
   // Minimal Django-template stand-in: only the tags chatbot.html actually uses.
   raw = raw.replace(/\{%\s*include\s+'legislation\/workspace\/_topbar\.html'[^%]*%\}/g,
     () => fs.readFileSync(path.join(ROOT, 'src/apps/legislation/templates/legislation/workspace/_topbar.html'), 'utf8'));

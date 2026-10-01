@@ -73,7 +73,7 @@ test('workspace pages opt into document scrolling and icon-only navigation keeps
   assert.match(workspace, /body\.figma-theme\.workspace-document[^}]*overflow-y:\s*auto/);
   assert.match(topbar, /data-workspace-toggle[\s\S]*aria-label="Recolher navegação"/);
   assert.match(workspace, /\.workspace-shell\.is-sidebar-collapsed\s*\{\s*grid-template-columns:\s*72px/);
-  assert.match(base, /aria-label="Normas" title="Normas"/);
+  assert.match(await read('src/apps/legislation/templates/legislation/workspace/_sidebar.html'), /aria-label="Normas" title="Normas"/);
   assert.doesNotMatch(detail, /class="dispositivo-tipo badge"/);
 });
 
@@ -145,16 +145,16 @@ test('legal search follows query-filter-submit reading order and localizes resul
 });
 
 test('chat sidebar exposes the same quick-search action as the workspace shell', async () => {
-  const source = await read('src/apps/legislation/templates/legislation/chatbot.html');
-  const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
+  const source = await read('src/apps/legislation/templates/legislation/workspace/_sidebar.html');
+  const workspace = source;
   const topbar = await read('src/apps/legislation/templates/legislation/workspace/_topbar.html');
-  assert.match(source, /class="figma-sidebar-item workspace-palette-trigger" data-open-command-palette/);
+  assert.match(source, /class="workspace-nav-item workspace-palette-trigger" data-open-command-palette/);
   assert.match(source, /Busca rápida/);
   assert.match(source, /workspace:settings/);
   assert.match(source, /<aside[^>]+id="sidebar"/);
-  const nav = source.slice(source.indexOf('class="figma-nav-list"'), source.indexOf('<!-- Sidebar Footer -->'));
+  const nav = source.slice(source.indexOf('class="workspace-nav"'), source.indexOf('workspace-sidebar-bottom'));
   assert.ok(nav.indexOf("workspace:legal_search") < nav.indexOf("legislation:norma_list"), 'Chat navigation should follow the shared shell order');
-  assert.match(workspace, /<aside class="workspace-sidebar" id="sidebar"/);
+  assert.match(workspace, /<aside class="workspace-sidebar jurix-sidebar[^>]+id="sidebar"/);
   assert.match(topbar, /aria-controls="sidebar"[\s\S]*aria-expanded="false"/);
 });
 
@@ -192,15 +192,15 @@ test('workspace sidebar keeps utility actions visible while navigation can scrol
 });
 
 test('assistant and workspace navigation share accessible outline SVG icons', async () => {
-  const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
-  const assistant = await read('src/apps/legislation/templates/legislation/chatbot.html');
+  const workspace = await read('src/apps/legislation/templates/legislation/workspace/_sidebar.html');
+  const assistant = workspace;
   const styles = await read('src/apps/core/static/css/workspace.css');
   const navigation = workspace.match(/<nav class="workspace-nav"[\s\S]*?<\/nav>/)?.[0] ?? '';
   assert.match(workspace, /class="workspace-nav-icon"[^>]+aria-hidden="true" focusable="false"/);
   assert.doesNotMatch(navigation, /<span aria-hidden="true">[◉⌕▤▱◷⚙⌘]/);
   assert.match(styles, /\.workspace-nav-icon \{[^}]*width: 18px;[^}]*height: 18px;[^}]*flex: 0 0 18px/);
-  assert.match(assistant, /id="new-chat-button"[\s\S]*?<svg width="18" height="18"[^>]*aria-hidden="true"/);
-  assert.match(assistant, /<path d="M12 20h9"><\/path>[\s\S]*?<path d="M16\.5 3\.5a2\.12 2\.12/);
+  assert.match(assistant, /new-chat-button[\s\S]*?class="workspace-nav-icon"[^>]*aria-hidden="true"/);
+  assert.match(assistant, /<path d="M16\.5 3\.5a2\.12 2\.12/);
 });
 
 test('command palette templates cache-bust the shared keyboard accessibility behavior', async () => {
@@ -227,7 +227,7 @@ test('command palette prioritizes title matches above descriptive matches', asyn
 
 test('norm catalog uses the shared workspace shell instead of the legacy navbar', async () => {
   const template = await read('src/apps/legislation/templates/legislation/norma_list.html');
-  const workspace = await read('src/apps/legislation/templates/legislation/workspace/base.html');
+  const workspace = await read('src/apps/legislation/templates/legislation/workspace/_sidebar.html');
   assert.match(template, /extends ['"]legislation\/workspace\/base\.html['"]/);
   assert.match(template, /block topbar/);
   assert.match(workspace, /workspace-nav-item\{% if active_nav == 'normas' %\} is-active/);

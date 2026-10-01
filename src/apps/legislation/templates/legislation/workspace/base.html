@@ -16,57 +16,15 @@
     <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20260930-light-dim-contrast1">
     <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20260930-axe-kbd-contrast1">
     <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}?v=20260930-focus-outline1">
+    <link rel="stylesheet" href="{% static 'css/jurix-sidebar.css' %}?v=20260930-unified1">
+    <meta name="jurix-authenticated" content="{{ request.user.is_authenticated|yesno:'true,false' }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body class="figma-theme workspace-page workspace-document{% block body_class %}{% endblock %}" data-chatbot-url="{% url 'workspace:assistant' %}" data-norma-list-url="{% url 'legislation:norma_list' %}" data-logo-icon-url="{% static 'img/logo-icon.svg' %}?v=20260930-quill1" data-user-name="{{ request.user.first_name|default:request.user.username|title }}">
     <a class="skip-link jurix-skip-link" href="#main-content">Pular para o conteúdo principal</a>
 
     <div class="workspace-shell">
-        <aside class="workspace-sidebar" id="sidebar" data-workspace-sidebar aria-label="Navegação principal">
-            <div class="workspace-brand-block">
-                <a href="{% url 'workspace:assistant' %}" class="workspace-brand" aria-label="Jurix — Assistente" title="Jurix — Assistente">
-                    <span class="workspace-logo"><img src="{% static 'img/logo-icon.svg' %}?v=20260930-quill1" alt=""></span>
-                    <span>Jurix</span>
-                </a>
-                <a href="{% url 'workspace:assistant' %}" class="workspace-new-action" aria-label="Nova pesquisa" title="Nova pesquisa">
-                    <svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                        <path d="M13.5 6H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-8.5"></path>
-                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"></path>
-                    </svg>
-                    <span>Nova pesquisa</span>
-                </a>
-            </div>
-
-            <nav class="workspace-nav" aria-label="Menu principal">
-                <a href="{% url 'workspace:assistant' %}" class="workspace-nav-item{% if active_nav == 'assistant' %} is-active{% endif %}" aria-label="Assistente" title="Assistente">
-                    <svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span>Assistente</span>
-                </a>
-                <a href="{% url 'workspace:legal_search' %}" class="workspace-nav-item{% if active_nav == 'search' %} is-active{% endif %}" aria-label="Pesquisa jurídica" title="Pesquisa jurídica">
-                    <svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg><span>Pesquisa jurídica</span>
-                </a>
-                <a href="{% url 'legislation:norma_list' %}" class="workspace-nav-item{% if active_nav == 'normas' %} is-active{% endif %}" aria-label="Normas" title="Normas">
-                    <svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"></path></svg><span>Normas</span>
-                </a>
-                <a href="{% url 'workspace:collections' %}" class="workspace-nav-item{% if active_nav == 'collections' %} is-active{% endif %}" aria-label="Coleções" title="Coleções">
-                    <svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg><span>Coleções</span>
-                </a>
-                <a href="{% url 'workspace:history' %}" class="workspace-nav-item{% if active_nav == 'history' %} is-active{% endif %}" aria-label="Histórico" title="Histórico">
-                    <svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg><span>Histórico</span>
-                </a>
-            </nav>
-
-            <div class="workspace-sidebar-bottom">
-                {% if user.is_authenticated and user.is_staff %}
-                <a href="/admin/" class="workspace-nav-item"><svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3 4 6v5c0 5 3.4 8 8 10 4.6-2 8-5 8-10V6z"></path><path d="m9 12 2 2 4-4"></path></svg><span>Admin</span></a>
-                {% endif %}
-                <a href="{% url 'workspace:settings' %}" class="workspace-nav-item{% if active_nav == 'settings' %} is-active{% endif %}" aria-label="Configurações" title="Configurações">
-                    <svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"></path></svg><span>Configurações</span>
-                </a>
-                <button type="button" class="workspace-nav-item workspace-palette-trigger" data-open-command-palette aria-label="Busca rápida, Ctrl K" title="Busca rápida, Ctrl K">
-                    <svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><span>Busca rápida</span><kbd>Ctrl K</kbd>
-                </button>
-            </div>
-        </aside>
+        {% include 'legislation/workspace/_sidebar.html' %}
 
         <div class="workspace-main">
             {% block topbar %}
@@ -92,8 +50,9 @@
 
     <script src="{% static 'js/config.js' %}"></script>
     <script src="{% static 'js/workspace.js' %}?v=20260930-provider-settings2"></script>
-    <script src="{% static 'js/command_palette.js' %}?v=20260930-query-race1"></script>
+    <script src="{% static 'js/command_palette.js' %}?v=20260930-query-race1-sidebar2"></script>
     <script src="{% static 'js/jurix-anonymous-history.js' %}"></script>
+    <script src="{% static 'js/jurix-sidebar.js' %}?v=20260930-unified1"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

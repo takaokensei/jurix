@@ -21,10 +21,22 @@
     input.setAttribute('aria-controls', resultsContainer.id);
     input.setAttribute('aria-expanded', overlay.classList.contains('active') ? 'true' : 'false');
     resultsContainer.setAttribute('role', 'listbox');
+    const header = overlay.querySelector('.command-palette-header');
+    if (header) {
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'jurix-palette-close';
+        close.setAttribute('aria-label', 'Fechar busca');
+        close.textContent = '×';
+        close.addEventListener('click', closeCommandPalette);
+        header.append(close);
+    }
 
     let chatSessionsForSearch = [];
+    let conversationsOnly = false;
     let selectedIndex = -1;
     let lastFocusedElement = null;
+    let closeTimer = null;
 
     const config = window.JURIX_CONFIG || {
         normaListUrl: '/normas/',
@@ -107,7 +119,10 @@
 
     async function loadChatSessionsForSearch() {
         try {
-            const response = await fetch('/api/v1/chat/sessions/');
+            const localStore = window.JurixAnonymousHistory;
+            const response = localStore?.isAnonymous()
+                ? { ok: true, json: async () => ({ sessions: localStore.list() }) }
+                : await fetch('/api/v1/chat/sessions/');
             if (response.ok) {
                 const data = await response.json();
                 if (data.sessions && Array.isArray(data.sessions)) {
@@ -115,7 +130,10 @@
                         id: `chat-${session.id}`,
                         category: 'Histórico Recente',
                         title: session.title || 'Conversa sem título',
-                        description: `Sessão #${session.id}`,
+                        description: 'Abrir conversa',
+                        searchText: localStore?.isAnonymous()
+                            ? (localStore.get(session.id)?.messages || []).map(message => message.content).join(' ')
+                            : session.preview || '',
                         icon: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
                         action: () => {
                             if (window.jurixChat && typeof window.jurixChat.loadSession === 'function') {
@@ -133,7 +151,11 @@
         }
     }
 
-    function openCommandPalette() {
+    function openCommandPalette(options = {}) {
+        clearTimeout(closeTimer);
+        conversationsOnly = options.conversationsOnly === true;
+        input.placeholder = conversationsOnly ? 'Pesquisar nas conversas…' : 'Navegar, abrir ou pesquisar…';
+        input.setAttribute('aria-label', conversationsOnly ? 'Pesquisar conversas' : 'Buscar comandos');
         lastFocusedElement = document.activeElement;
         overlay.classList.add('active');
         overlay.setAttribute('aria-hidden', 'false');
@@ -147,18 +169,17 @@
             // instead of replacing filtered results with the unfiltered command list.
             updateCommandPaletteResults(input.value);
         });
-        setTimeout(() => {
-            input.focus();
-        }, 50);
+        input.focus();
     }
 
     function closeCommandPalette() {
+        if (!overlay.classList.contains('active')) return;
         overlay.classList.remove('active');
         overlay.setAttribute('aria-hidden', 'true');
         input.setAttribute('aria-expanded', 'false');
         input.removeAttribute('aria-activedescendant');
         document.body.classList.remove('jurix-command-palette-open');
-        setTimeout(() => {
+        closeTimer = setTimeout(() => {
             input.value = '';
             resultsContainer.innerHTML = '';
             selectedIndex = -1;
@@ -200,7 +221,7 @@
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
 
-        const allCommands = [...commands, ...chatSessionsForSearch];
+        const allCommands = conversationsOnly ? chatSessionsForSearch : [...commands, ...chatSessionsForSearch];
         // Icons are trusted, local SVG templates defined above. Escape labels and
         // descriptions, but keep the SVG as markup so its path data is not exposed
         // as visible text in the palette.
@@ -213,7 +234,8 @@
         const filtered = allCommands.filter(
             (cmd) =>
                 (cmd.title || '').toLowerCase().includes(queryLower) ||
-                (cmd.description || '').toLowerCase().includes(queryLower)
+                (cmd.description || '').toLowerCase().includes(queryLower) ||
+                (cmd.searchText || '').toLowerCase().includes(queryLower)
         ).sort((left, right) => {
             const score = (command) => {
                 const title = (command.title || '').toLocaleLowerCase('pt-BR');
@@ -283,7 +305,7 @@
         const cmd = allCommands.find((c) => c.id === commandId);
         if (!cmd) return;
 
-        if (commandId.startsWith('chat-')) {
+        if (commandId.startsWith('chat-') && !commandId.startsWith('chat-local-')) {
             const sessionId = parseInt(commandId.replace('chat-', ''), 10);
             if (sessionId && window.jurixChat && typeof window.jurixChat.loadSession === 'function') {
                 closeCommandPalette();
@@ -305,7 +327,7 @@
         updateCommandPaletteResults(e.target.value);
     });
 
-    input.addEventListener('keydown', (e) => {
+    overlay.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeCommandPalette();
         } else if (e.key === 'Enter') {
@@ -358,6 +380,11 @@
 
     // Keyboard shortcut: ⌘K or Ctrl+K
     document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && overlay.classList.contains('active')) {
+            e.preventDefault();
+            closeCommandPalette();
+            return;
+        }
         if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
             e.preventDefault();
             if (overlay.classList.contains('active')) {

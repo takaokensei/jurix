@@ -2627,7 +2627,7 @@ test('real browser: command palette keeps compact icons and focuses search on mo
     assert.equal(palette.svgMarkupVisible, false, 'O SVG deve ser renderizado como ícone, nunca como texto');
 
     await page.keyboard.press('Tab');
-    assert.equal(await page.evaluate(() => document.activeElement?.id), 'command-palette-input', 'Tab must stay within the command palette');
+    assert.equal(await page.evaluate(() => document.activeElement?.className), 'jurix-palette-close', 'Tab must reach the accessible close button inside the palette');
     await page.keyboard.down('Shift');
     await page.keyboard.press('Tab');
     await page.keyboard.up('Shift');
@@ -2685,6 +2685,8 @@ test('real browser: command palette keeps the user query while recent-history se
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800 });
     await page.goto(`http://127.0.0.1:${port}/assistente/`, { waitUntil: 'domcontentloaded' });
+    // This test exercises delayed server history, not the anonymous local store.
+    await page.evaluate(() => { window.JurixAnonymousHistory.isAnonymous = () => false; });
     await page.setRequestInterception(true);
     page.on('request', (request) => {
       if (new URL(request.url()).pathname === '/api/v1/chat/sessions/') {
