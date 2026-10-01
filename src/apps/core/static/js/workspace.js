@@ -106,7 +106,31 @@
         if (externalModelField) externalModelField.value = providerSettings.model || '';
         if (endpointField) endpointField.value = providerSettings.endpoint || '';
         if (apiKeyField) apiKeyField.value = providerSettings.api_key || '';
+        const providerFieldError = field => form.querySelector(`[data-provider-error="${field.name}"]`);
+        const clearProviderFieldError = field => {
+            if (!field) return;
+            const error = providerFieldError(field);
+            if (error) {
+                error.hidden = true;
+                error.textContent = '';
+            }
+            field.removeAttribute('aria-invalid');
+            const helpId = field.getAttribute('aria-describedby')?.split(' ').find(id => id.endsWith('-help'));
+            if (helpId) field.setAttribute('aria-describedby', helpId);
+            else field.removeAttribute('aria-describedby');
+        };
+        const clearProviderErrors = () => [externalModelField, endpointField, apiKeyField].forEach(clearProviderFieldError);
+        const setProviderFieldError = (field, message) => {
+            const error = providerFieldError(field);
+            if (!error) return;
+            error.textContent = message;
+            error.hidden = false;
+            field.setAttribute('aria-invalid', 'true');
+            const helpId = field.getAttribute('aria-describedby')?.split(' ').find(id => id.endsWith('-help'));
+            field.setAttribute('aria-describedby', [helpId, error.id].filter(Boolean).join(' '));
+        };
         const updateProviderFields = () => {
+            clearProviderErrors();
             const external = providerField?.value && providerField.value !== 'ollama';
             form.querySelectorAll('[data-external-llm-field]').forEach(field => { field.hidden = !external; });
             form.querySelectorAll('[data-compatible-endpoint-field]').forEach(field => { field.hidden = providerField?.value !== 'compatible'; });
@@ -114,6 +138,9 @@
             if (ollamaField) ollamaField.hidden = Boolean(external);
         };
         providerField?.addEventListener('change', updateProviderFields);
+        [externalModelField, endpointField, apiKeyField].forEach(field => {
+            field?.addEventListener('input', () => clearProviderFieldError(field));
+        });
         updateProviderFields();
         if (modelField) modelField.value = defaults.model;
         if (temperatureField) temperatureField.value = defaults.temperature;
@@ -142,13 +169,25 @@
                 api_key: String(formData.get('llm_api_key') || '').trim(),
             };
             const status = form.querySelector('[data-settings-status]');
-            if (selectedProvider !== 'ollama' && (!providerConfig.model || !providerConfig.api_key || (selectedProvider === 'compatible' && !providerConfig.endpoint))) {
-                if (status) {
-                    status.classList.add('is-warning');
-                    status.textContent = 'Informe modelo, chave de API e, para endpoint compatível, a URL local.';
+            clearProviderErrors();
+            if (selectedProvider !== 'ollama') {
+                const required = [
+                    [externalModelField, providerConfig.model, 'Informe o identificador do modelo.'],
+                    [apiKeyField, providerConfig.api_key, 'Informe a chave de API.'],
+                    ...(selectedProvider === 'compatible'
+                        ? [[endpointField, providerConfig.endpoint, 'Informe o endpoint compatível.']]
+                        : []),
+                ];
+                const missing = required.filter(([field, value]) => field && !value);
+                missing.forEach(([field, , message]) => setProviderFieldError(field, message));
+                if (missing.length) {
+                    if (status) {
+                        status.classList.add('is-warning');
+                        status.textContent = 'Revise os campos do provedor indicados abaixo.';
+                    }
+                    missing[0][0]?.focus();
+                    return;
                 }
-                (externalModelField?.value ? apiKeyField : externalModelField)?.focus();
-                return;
             }
             let saved = true;
             try {

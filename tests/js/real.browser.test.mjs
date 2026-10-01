@@ -104,9 +104,9 @@ function createTestServer(handlers = {}) {
         <form class="workspace-stack" data-settings-form>
           <label class="workspace-field"><span>Provedor de geração</span><select name="llm_provider"><option value="ollama">Ollama local</option><option value="openai">OpenAI</option><option value="compatible">Compatível</option></select></label>
           <label class="workspace-field"><span>Modelo</span><select name="model" data-ollama-model><option value="qwen2.5">qwen2.5</option><option value="llama3" selected>llama3</option></select></label>
-          <label class="workspace-field" data-external-llm-field hidden><span>Identificador do modelo remoto</span><input name="external_model" autocomplete="off"></label>
-          <label class="workspace-field" data-compatible-endpoint-field hidden><span>Endpoint compatível (somente serviço local)</span><input name="llm_endpoint" inputmode="url"></label>
-          <label class="workspace-field" data-external-llm-field hidden><span>Chave de API</span><input name="llm_api_key" type="password" autocomplete="new-password"></label>
+          <label class="workspace-field" data-external-llm-field hidden><span>Identificador do modelo remoto</span><input name="external_model" autocomplete="off" aria-describedby="external-model-help"><small id="external-model-help">Modelo do provedor</small><small id="external-model-error" data-provider-error="external_model" hidden></small></label>
+          <label class="workspace-field" data-compatible-endpoint-field hidden><span>Endpoint compatível</span><input name="llm_endpoint" inputmode="url" aria-describedby="llm-endpoint-help"><small id="llm-endpoint-help">Endpoint local ou autorizado</small><small id="llm-endpoint-error" data-provider-error="llm_endpoint" hidden></small></label>
+          <label class="workspace-field" data-external-llm-field hidden><span>Chave de API</span><input name="llm_api_key" type="password" autocomplete="new-password" aria-describedby="llm-api-key-help"><small id="llm-api-key-help">Chave privada</small><small id="llm-api-key-error" data-provider-error="llm_api_key" hidden></small></label>
           <label class="workspace-field"><span>Temperatura</span><input name="temperature" type="number" value="0.3"></label>
           <label class="workspace-field"><span>Fontes</span><input name="sources" type="number" value="5"></label>
           <fieldset><label><input type="radio" name="theme" value="dark" checked>Escuro</label><label><input type="radio" name="theme" value="light">Claro</label><label><input type="radio" name="theme" value="system">Sistema</label></fieldset>
@@ -696,7 +696,7 @@ test('real browser: provider settings expose a labelled keyboard path without hi
       apiKeyType: document.querySelector('[name="llm_api_key"]').type,
       labels: ['external_model', 'llm_endpoint', 'llm_api_key'].map((name) => ({
         name,
-        label: document.querySelector(`[name="${name}"]`).labels?.[0]?.innerText.trim(),
+        label: document.querySelector(`[name="${name}"]`).labels?.[0]?.querySelector('span')?.innerText.trim(),
       })),
     }));
     assert.deepEqual(compatibleState, {
@@ -707,7 +707,7 @@ test('real browser: provider settings expose a labelled keyboard path without hi
       apiKeyType: 'password',
       labels: [
         { name: 'external_model', label: 'Identificador do modelo remoto' },
-        { name: 'llm_endpoint', label: 'Endpoint compatível (somente serviço local)' },
+            { name: 'llm_endpoint', label: 'Endpoint compatível' },
         { name: 'llm_api_key', label: 'Chave de API' },
       ],
     });
@@ -718,6 +718,34 @@ test('real browser: provider settings expose a labelled keyboard path without hi
       keyboardOrder.push(await page.evaluate(() => document.activeElement?.getAttribute('name')));
     }
     assert.deepEqual(keyboardOrder, ['external_model', 'llm_endpoint', 'llm_api_key', 'temperature']);
+
+    await page.click('button[type="submit"]');
+    const invalidState = await page.evaluate(() => ({
+      focused: document.activeElement?.name,
+      modelInvalid: document.querySelector('[name="external_model"]').getAttribute('aria-invalid'),
+      modelDescription: document.querySelector('[name="external_model"]').getAttribute('aria-describedby'),
+      modelError: document.querySelector('[data-provider-error="external_model"]').textContent,
+      keyInvalid: document.querySelector('[name="llm_api_key"]').getAttribute('aria-invalid'),
+      endpointInvalid: document.querySelector('[name="llm_endpoint"]').getAttribute('aria-invalid'),
+    }));
+    assert.deepEqual(invalidState, {
+      focused: 'external_model',
+      modelInvalid: 'true',
+      modelDescription: 'external-model-help external-model-error',
+      modelError: 'Informe o identificador do modelo.',
+      keyInvalid: 'true',
+      endpointInvalid: 'true',
+    });
+    await page.focus('[name="external_model"]');
+    await page.keyboard.type('local-model');
+    await page.focus('[name="llm_endpoint"]');
+    await page.keyboard.type('http://localhost:4000/v1');
+    await page.focus('[name="llm_api_key"]');
+    await page.keyboard.type('test-key');
+    await page.click('button[type="submit"]');
+    assert.equal(await page.$eval('[name="external_model"]', element => element.hasAttribute('aria-invalid')), false);
+    assert.equal(await page.$eval('[data-provider-error="external_model"]', element => element.hidden), true);
+    assert.match(await page.$eval('[data-settings-status]', element => element.textContent), /Preferências salvas/);
 
     await page.focus('select[name="llm_provider"]');
     await page.keyboard.press('Home');
