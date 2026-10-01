@@ -165,8 +165,14 @@
       control.dataset.control = key;
       control.setAttribute('role', 'button');
       control.setAttribute('tabindex', '0');
-      control.setAttribute('aria-haspopup', 'menu');
-      control.setAttribute('aria-expanded', 'false');
+      if (key === 'attachment') {
+        control.removeAttribute('aria-haspopup');
+        control.removeAttribute('aria-expanded');
+        control.removeAttribute('aria-controls');
+      } else {
+        control.setAttribute('aria-haspopup', 'menu');
+        control.setAttribute('aria-expanded', 'false');
+      }
       control.addEventListener('click', event => {
         event.preventDefault();
         event.stopPropagation();

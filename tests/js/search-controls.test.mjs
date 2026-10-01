@@ -64,10 +64,19 @@ test('search controls preserve keyboard semantics and handle attachment lifecycl
   const fileInput = window.document.getElementById('jurix-document-input');
   assert.equal(fileInput.accept, '.pdf,.txt,.md,.csv,.json,.docx');
   assert.equal(fileInput.multiple, true);
+  const attachmentControl = window.document.querySelector('[data-control="attachment"]');
+  assert.equal(attachmentControl.getAttribute('role'), 'button');
+  assert.equal(attachmentControl.hasAttribute('aria-haspopup'), false);
+  assert.equal(attachmentControl.hasAttribute('aria-expanded'), false);
+  assert.equal(attachmentControl.hasAttribute('aria-controls'), false);
   let pickerRequests = 0;
   fileInput.addEventListener('click', () => { pickerRequests += 1; });
-  window.document.querySelector('[data-control="attachment"]').click();
+  attachmentControl.click();
   assert.equal(pickerRequests, 1, 'The attachment control opens the chooser without uploading a file');
+  attachmentControl.focus();
+  attachmentControl.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+  assert.equal(pickerRequests, 2, 'Enter also opens the attachment chooser');
+  assert.equal(window.document.activeElement, attachmentControl, 'The ordinary button keeps its focus after chooser activation');
 
   const uploadCalls = [];
   const deletedIds = [];
