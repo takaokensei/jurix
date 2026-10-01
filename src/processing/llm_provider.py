@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import ipaddress
 import json
 from urllib.parse import urlparse
 
 import requests
+from django.conf import settings
 
 PROVIDER_URLS = {
     "openai": "https://api.openai.com/v1",
@@ -13,6 +15,70 @@ PROVIDER_URLS = {
     "openrouter": "https://openrouter.ai/api/v1",
     "groq": "https://api.groq.com/openai/v1",
 }
+
+_LOCAL_HOSTS = {"localhost", "host.docker.internal"}
+
+
+def _canonical_compatible_endpoint(endpoint: str) -> tuple[str, str, int | None, str]:
+    """Return a strict base URL and its parsed host parts, rejecting URL ambiguity."""
+    if not isinstance(endpoint, str) or not endpoint or endpoint != endpoint.strip():
+        raise ValueError("Endpoint próprio inválido.")
+    if any(ord(char) < 33 or ord(char) == 127 for char in endpoint):
+        raise ValueError("Endpoint próprio contém caracteres inválidos.")
+    try:
+        parsed = urlparse(endpoint)
+        hostname = parsed.hostname
+        port = parsed.port
+    except ValueError as exc:
+        raise ValueError("Endpoint próprio inválido.") from exc
+    if (
+        parsed.scheme.lower() not in {"http", "https"}
+        or not hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError("Endpoint próprio deve ser uma URL HTTP(S) sem credenciais, query ou fragmento.")
+    path = parsed.path.rstrip("/")
+    if path.endswith("/chat/completions"):
+        path = path[: -len("/chat/completions")].rstrip("/")
+    if path and (
+        not path.startswith("/")
+        or "//" in path
+        or "\\" in path
+        or any(part in {".", ".."} for part in path.split("/"))
+    ):
+        raise ValueError("Caminho do endpoint próprio inválido.")
+    host = hostname.lower().rstrip(".")
+    if not host or "%" in host:
+        raise ValueError("Host do endpoint próprio inválido.")
+    rendered_host = f"[{host}]" if ":" in host else host
+    authority = rendered_host + (f":{port}" if port is not None else "")
+    base_url = f"{parsed.scheme.lower()}://{authority}{path}"
+    return base_url, host, port, parsed.scheme.lower()
+
+
+def _validate_compatible_endpoint(endpoint: str) -> str:
+    base_url, host, _port, _scheme = _canonical_compatible_endpoint(endpoint)
+    try:
+        is_loopback = ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        is_loopback = host in _LOCAL_HOSTS
+
+    if is_loopback and getattr(settings, "LLM_ALLOW_LOCAL_COMPATIBLE_ENDPOINTS", False):
+        return base_url
+
+    allowed = set()
+    for configured in getattr(settings, "LLM_COMPATIBLE_ENDPOINT_ALLOWLIST", ()):
+        try:
+            allowed.add(_canonical_compatible_endpoint(configured)[0])
+        except ValueError:
+            # Invalid deployment configuration never broadens the allowlist.
+            continue
+    if base_url not in allowed:
+        raise ValueError("Endpoint próprio não está na lista de destinos permitidos.")
+    return base_url
 
 
 def validate_provider_config(value):
@@ -33,12 +99,7 @@ def validate_provider_config(value):
     if provider == "compatible":
         if not isinstance(endpoint, str) or len(endpoint) > 500:
             raise ValueError("Endpoint inválido.")
-        parsed = urlparse(endpoint)
-        if parsed.scheme != "http" or parsed.hostname not in {"localhost", "127.0.0.1", "::1", "host.docker.internal"} or parsed.username or parsed.password or parsed.query or parsed.fragment:
-            raise ValueError("Endpoint próprio deve ser HTTP em um host local permitido, sem credenciais, query ou fragmento.")
-        endpoint = endpoint.rstrip("/")
-        if endpoint.endswith("/chat/completions"):
-            endpoint = endpoint.rsplit("/chat/completions", 1)[0]
+        endpoint = _validate_compatible_endpoint(endpoint)
     else:
         endpoint = "https://api.anthropic.com/v1" if provider == "anthropic" else PROVIDER_URLS[provider]
     if not api_key:
@@ -48,12 +109,17 @@ def validate_provider_config(value):
 
 def stream_text(prompt: str, config: dict, *, temperature: float, max_tokens: int):
     provider = config["provider"]
+    endpoint = (
+        _validate_compatible_endpoint(config["endpoint"])
+        if provider == "compatible"
+        else config["endpoint"]
+    )
     if provider == "anthropic":
-        url = f"{config['endpoint']}/messages"
+        url = f"{endpoint}/messages"
         headers = {"x-api-key": config["api_key"], "anthropic-version": "2023-06-01", "content-type": "application/json"}
         payload = {"model": config["model"], "max_tokens": max_tokens, "temperature": temperature, "stream": True, "messages": [{"role": "user", "content": prompt}]}
     else:
-        url = f"{config['endpoint']}/chat/completions"
+        url = f"{endpoint}/chat/completions"
         headers = {"Authorization": f"Bearer {config['api_key']}", "Content-Type": "application/json"}
         payload = {"model": config["model"], "temperature": temperature, "max_tokens": max_tokens, "stream": True, "messages": [{"role": "user", "content": prompt}]}
     with requests.post(url, headers=headers, json=payload, stream=True, timeout=(5, 120), allow_redirects=False) as response:

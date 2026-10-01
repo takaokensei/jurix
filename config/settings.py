@@ -275,6 +275,17 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
 OLLAMA_EMBEDDING_MODEL = os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
 
+# Compatible LLM endpoints can make server-side HTTP requests. Production uses
+# an exact URL allowlist; local endpoints are available only in explicit dev mode.
+LLM_COMPATIBLE_ENDPOINT_ALLOWLIST = tuple(
+    endpoint.strip()
+    for endpoint in os.getenv("LLM_COMPATIBLE_ENDPOINT_ALLOWLIST", "").split(",")
+    if endpoint.strip()
+)
+LLM_ALLOW_LOCAL_COMPATIBLE_ENDPOINTS = env_bool(
+    "LLM_ALLOW_LOCAL_COMPATIBLE_ENDPOINTS", DEBUG
+)
+
 # Models a client may request. The default (OLLAMA_MODEL) is always allowed;
 # add more with a comma-separated OLLAMA_ALLOWED_MODELS.
 OLLAMA_ALLOWED_MODELS = sorted(
