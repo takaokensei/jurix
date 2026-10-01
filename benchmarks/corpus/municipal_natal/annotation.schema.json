@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jurix.local/schemas/municipal-annotation-v1.json",
+  "title": "Anotação jurídica municipal Jurix",
+  "type": "object",
+  "required": ["schema_version", "case_id", "sapl_id", "source_text_sha256", "annotator_id", "reviewer_id", "adjudication_status", "spans", "events"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "case_id": {"type": "string", "minLength": 1},
+    "sapl_id": {"type": "integer", "minimum": 1},
+    "source_text_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "annotator_id": {"type": "string", "minLength": 1},
+    "reviewer_id": {"type": "string", "minLength": 1},
+    "adjudication_status": {"enum": ["pending", "adjudicated", "excluded"]},
+    "spans": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["span_id", "label", "start", "end", "quote"],
+        "properties": {
+          "span_id": {"type": "string", "minLength": 1},
+          "parent_id": {"type": ["string", "null"]},
+          "label": {"enum": ["artigo", "paragrafo", "inciso", "alinea", "item"]},
+          "start": {"type": "integer", "minimum": 0},
+          "end": {"type": "integer", "minimum": 1},
+          "quote": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["action", "source_span_id", "resolution", "evidence"],
+        "properties": {
+          "action": {"enum": ["REVOGA", "ALTERA", "ADICIONA", "REGULAMENTA", "REFERENCIA"]},
+          "source_span_id": {"type": "string", "minLength": 1},
+          "target_sapl_id": {"type": ["integer", "null"], "minimum": 1},
+          "target_device_key": {"type": ["string", "null"]},
+          "effect_date": {"type": ["string", "null"], "format": "date"},
+          "resolution": {"enum": ["resolved", "unresolved", "pending_review"]},
+          "evidence": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

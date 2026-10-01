@@ -14,6 +14,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CASES = ROOT / "benchmarks/rag/legal/v1/cases.jsonl"
+DEFAULT_ENDPOINT = "/api/v1/search/answer/"
 
 
 def norm(v: str) -> str:
@@ -21,12 +22,47 @@ def norm(v: str) -> str:
 
 
 def load_cases(path: Path) -> list[dict[str, Any]]:
-    return [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
+    cases: list[dict[str, Any]] = []
+    for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        try:
+            case = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON at line {line_no}") from exc
+        if not isinstance(case, dict):
+            raise ValueError(f"Case at line {line_no} must be an object")
+        required = {"id", "question", "source", "expected_citations", "must_contain_any"}
+        missing = sorted(required - case.keys())
+        if missing:
+            raise ValueError(f"Case at line {line_no} is missing: {', '.join(missing)}")
+        if not isinstance(case["id"], str) or not case["id"].strip():
+            raise ValueError(f"Case at line {line_no} has an invalid id")
+        if not isinstance(case["question"], str) or not case["question"].strip():
+            raise ValueError(f"Case {case['id']} has an invalid question")
+        if not isinstance(case["source"], dict):
+            raise ValueError(f"Case {case['id']} has an invalid source")
+        if not isinstance(case["expected_citations"], list) or not all(
+            isinstance(value, str) and value.strip() for value in case["expected_citations"]
+        ):
+            raise ValueError(f"Case {case['id']} has invalid expected_citations")
+        groups = case["must_contain_any"]
+        if not isinstance(groups, list) or not all(
+            isinstance(group, list)
+            and group
+            and all(isinstance(value, str) and value.strip() for value in group)
+            for group in groups
+        ):
+            raise ValueError(f"Case {case['id']} has invalid must_contain_any")
+        cases.append(case)
+    if not cases:
+        raise ValueError("The legal benchmark contains no cases")
+    return cases
 
 
 def extract_answer(raw: str, ctype: str) -> str:
     if "text/event-stream" in ctype or raw.lstrip().startswith("data:"):
-        parts: list[str] = []
+        final_answer: str | None = None
         for line in raw.splitlines():
             if not line.startswith("data:"):
                 continue
@@ -36,17 +72,26 @@ def extract_answer(raw: str, ctype: str) -> str:
             try:
                 obj = json.loads(data)
             except json.JSONDecodeError:
-                parts.append(data)
-                continue
-            for key in ("answer", "response", "text", "token", "content"):
-                if isinstance(obj.get(key), str):
-                    parts.append(obj[key])
-                    break
-        return "".join(parts)
+                raise ValueError("SSE stream contains malformed JSON") from None
+            if not isinstance(obj, dict):
+                raise ValueError("SSE event must be a JSON object")
+            event_type = obj.get("type")
+            if event_type == "error" or obj.get("status") in {"failed", "cancelled"}:
+                raise ValueError("SSE stream ended without a successful answer")
+            if event_type == "done":
+                answer = obj.get("answer")
+                if not isinstance(answer, str):
+                    raise ValueError("SSE completion event has no answer")
+                final_answer = answer
+        if final_answer is None:
+            raise ValueError("SSE stream ended before its completion event")
+        return final_answer
     try:
         obj = json.loads(raw)
     except json.JSONDecodeError:
-        return raw
+        raise ValueError("JSON response is malformed") from None
+    if not isinstance(obj, dict):
+        raise ValueError("JSON response must be an object")
     for key in ("answer", "response", "message", "text", "content"):
         if isinstance(obj.get(key), str):
             return obj[key]
@@ -54,7 +99,7 @@ def extract_answer(raw: str, ctype: str) -> str:
         for key in ("answer", "response", "text"):
             if isinstance(obj["data"].get(key), str):
                 return obj["data"][key]
-    return raw
+    raise ValueError("JSON response has no answer field")
 
 
 def evaluate(case: dict[str, Any], answer: str) -> dict[str, Any]:
@@ -80,9 +125,7 @@ def evaluate(case: dict[str, Any], answer: str) -> dict[str, Any]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base-url", default=os.getenv("JURIX_BENCHMARK_URL", ""))
-    ap.add_argument(
-        "--endpoint", default=os.getenv("JURIX_BENCHMARK_ENDPOINT", "/api/v1/chat/ask/")
-    )
+    ap.add_argument("--endpoint", default=os.getenv("JURIX_BENCHMARK_ENDPOINT", DEFAULT_ENDPOINT))
     ap.add_argument("--cases", type=Path, default=DEFAULT_CASES)
     ap.add_argument(
         "--timeout", type=int, default=int(os.getenv("JURIX_BENCHMARK_TIMEOUT_SECONDS", "90"))
@@ -96,13 +139,23 @@ def main() -> int:
         return 2
     try:
         headers = json.loads(os.getenv("JURIX_BENCHMARK_HEADERS_JSON", "{}"))
-    except json.JSONDecodeError as exc:
-        print(f"FAIL: invalid benchmark headers: {exc}")
+        if not isinstance(headers, dict) or not all(
+            isinstance(key, str) and isinstance(value, str) for key, value in headers.items()
+        ):
+            raise ValueError
+    except (json.JSONDecodeError, ValueError):
+        print("FAIL: benchmark headers must be a JSON object of string values.")
+        return 2
+
+    try:
+        cases = load_cases(args.cases)
+    except (OSError, ValueError) as exc:
+        print(f"FAIL: invalid benchmark cases: {exc}")
         return 2
 
     url = args.base_url.rstrip("/") + "/" + args.endpoint.lstrip("/")
     results: list[dict[str, Any]] = []
-    for case in load_cases(args.cases):
+    for case in cases:
         started = time.perf_counter()
         try:
             req = Request(
@@ -121,7 +174,13 @@ def main() -> int:
             r = evaluate(case, extract_answer(raw, ctype))
             r["latency_ms"] = round((time.perf_counter() - started) * 1000, 1)
         except (HTTPError, URLError, TimeoutError, OSError) as exc:
-            r = {"case_id": case["id"], "accepted": False, "transport_error": str(exc)}
+            r = {
+                "case_id": case["id"],
+                "accepted": False,
+                "transport_error": type(exc).__name__,
+            }
+        except ValueError as exc:
+            r = {"case_id": case["id"], "accepted": False, "response_error": str(exc)}
         results.append(r)
         print(("PASS" if r.get("accepted") else "FAIL"), case["id"])
 

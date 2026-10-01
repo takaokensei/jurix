@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Aggregate gate artifacts into one deterministic release report."""
+
 from __future__ import annotations
 
 import argparse

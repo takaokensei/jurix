@@ -5,6 +5,7 @@ Verify a database backup artifact without modifying the source environment.
 The actual restore command is operator-supplied. This script focuses on file
 integrity, expected headers, age, size and optional SHA-256.
 """
+
 from __future__ import annotations
 
 import argparse

@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jurix.local/schemas/municipal-manifest-v1.json",
+  "title": "Registro de norma do corpus municipal Jurix",
+  "type": "object",
+  "required": ["schema_version", "record_id", "sapl_id", "norma", "document", "text", "provenance", "license", "pilot", "human_review"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "record_id": {"type": "string", "minLength": 1},
+    "sapl_id": {"type": "integer", "minimum": 1},
+    "norma": {
+      "type": "object",
+      "required": ["tipo", "numero", "ano", "ementa"],
+      "properties": {
+        "tipo": {"type": "string", "minLength": 1},
+        "numero": {"type": "string", "minLength": 1},
+        "ano": {"type": "integer", "minimum": 1},
+        "ementa": {"type": "string"},
+        "data_publicacao": {"type": ["string", "null"], "format": "date"}
+      },
+      "additionalProperties": false
+    },
+    "document": {
+      "type": "object",
+      "required": ["official_url", "sha256"],
+      "properties": {
+        "official_url": {"type": "string", "format": "uri"},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      },
+      "additionalProperties": false
+    },
+    "text": {
+      "type": "object",
+      "required": ["path", "sha256", "ocr_status"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "ocr_status": {"enum": ["native", "ocr_reviewed", "ocr_unreviewed", "unreadable"]}
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["source", "retrieved_at", "selection_rationale"],
+      "properties": {
+        "source": {"const": "SAPL Natal"},
+        "retrieved_at": {"type": "string", "format": "date-time"},
+        "selection_rationale": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "license": {
+      "type": "object",
+      "required": ["status", "terms_url"],
+      "properties": {
+        "status": {"enum": ["public_record_reviewed", "permission_required", "unknown"]},
+        "terms_url": {"type": ["string", "null"], "format": "uri"},
+        "notes": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "pilot": {"enum": ["not_selected", "candidate", "approved"]},
+    "human_review": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {"enum": ["not_reviewed", "in_review", "approved", "rejected"]},
+        "reviewer_id": {"type": ["string", "null"]},
+        "reviewed_at": {"type": ["string", "null"], "format": "date-time"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

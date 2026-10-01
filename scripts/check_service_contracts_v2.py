@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Static contract checks for endpoints and operational entrypoints."""
+
 from __future__ import annotations
 
 import argparse

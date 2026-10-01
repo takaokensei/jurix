@@ -2,12 +2,20 @@
 
 Este diretório formaliza o experimento principal do PIBIC/UFRN. O corpus de trabalho é **municipal e proveniente do SAPL de Natal/RN**; benchmarks federais são considerados apenas como generalização secundária e não como gate principal do projeto.
 
-## Meta atual
+## Meta científica do ciclo atual
 
-- **300 normas** no corpus de trabalho.
-- **20 normas-piloto dentro dessas 300** para gold standard/anotação detalhada.
-- Cada registro deve preservar `sapl_id`, identificador jurídico, ementa e URL de origem.
-- A seleção automática é assistida por software; ela não certifica correção jurídica.
+- A amostra intencional aprovada pelo plano de pesquisa é de **150–200 normas**.
+- **20 normas-piloto** devem receber anotação e adjudicação humanas antes de serem usadas como gold standard.
+- A expansão para **300 normas** é uma meta operacional opcional; não substitui a seleção intencional nem o aceite do plano de pesquisa.
+- Cada registro deve preservar identificador, PDF e texto extraído com hashes, proveniência SAPL, condição de uso, status OCR e revisão humana.
+- A seleção automática é assistida por software; nunca certifica correção jurídica.
+
+Os contratos por registro estão em `manifest.schema.json` e `annotation.schema.json`.
+Valide um manifesto/anotações JSONL com `python scripts/validate_municipal_corpus.py
+--manifest benchmarks/corpus/municipal_natal/manifest.jsonl --annotations
+benchmarks/corpus/municipal_natal/annotations.jsonl`. O validator diferencia erro
+estrutural (exit 2) de gate humano ainda incompleto (exit 3). Um exemplo sintético
+ou uma sugestão de IA não satisfaz a contagem de 20 normas revisadas.
 
 ## Preparação
 
@@ -16,7 +24,7 @@ python manage.py ingest_sapl_corpus --limit 300 --year-start 2000 --year-end 202
 python manage.py build_pilot_manifest --corpus-limit 300 --pilot-size 20
 ```
 
-Use `--sync` no primeiro comando para executar no processo atual durante testes locais; sem essa opção a tarefa é enfileirada no Celery.
+Use `--sync` no primeiro comando para executar no processo atual durante testes locais; sem essa opção a tarefa é enfileirada no Celery. A ingestão de 300 itens é expansão opcional e requer avaliação de licença, cobertura e capacidade antes de ser chamada.
 
 ## Piloto / gold standard
 
@@ -28,6 +36,11 @@ O guia de anotação deve registrar pelo menos:
 2. eventos `REVOGA`, `ALTERA`, `ADICIONA`, `REGULAMENTA` e `REFERENCIA`;
 3. observações sobre texto ilegível/OCR;
 4. casos ambíguos que não devem entrar no cálculo sem regra explícita.
+
+Cada anotação referencia o hash exato do texto, spans por offsets e citação literal,
+IDs pseudônimos de anotador/revisor e status de adjudicação. Eventos resolvidos
+precisam apontar para norma e dispositivo do manifesto; referências incertas ficam
+`unresolved` ou `pending_review`, sem alvo inventado.
 
 ## Critério de cobertura SAPL
 

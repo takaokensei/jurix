@@ -6,6 +6,7 @@ The scanner is intentionally conservative: findings are categorized as BLOCK,
 REVIEW or INFO rather than pretending regex can prove a vulnerability. It is
 designed to catch accidental regressions in pull requests.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -25,12 +26,20 @@ class Finding:
 
 
 RULES = (
-    ("BLOCK", "hardcoded-secret", re.compile(r"""(?:SECRET_KEY|PASSWORD|TOKEN|API_KEY)\s*=\s*["'][^"']{12,}["']""")),
+    (
+        "BLOCK",
+        "hardcoded-secret",
+        re.compile(r"""(?:SECRET_KEY|PASSWORD|TOKEN|API_KEY)\s*=\s*["'][^"']{12,}["']"""),
+    ),
     ("BLOCK", "shell-true", re.compile(r"""\bshell\s*=\s*True\b""")),
     ("REVIEW", "unsafe-eval", re.compile(r"""\b(?:eval|exec)\s*\(""")),
     ("REVIEW", "raw-innerhtml", re.compile(r"""\.innerHTML\s*=""")),
     ("REVIEW", "dangerous-subprocess", re.compile(r"""\bsubprocess\.(?:run|Popen|call)\s*\(""")),
-    ("INFO", "todo-production", re.compile(r"""\bTODO\b.*(?:production|security|release)""", re.IGNORECASE)),
+    (
+        "INFO",
+        "todo-production",
+        re.compile(r"""\bTODO\b.*(?:production|security|release)""", re.IGNORECASE),
+    ),
 )
 
 IGNORE_PARTS = {
@@ -53,7 +62,17 @@ def iter_files(root: Path):
             continue
         if any(part in IGNORE_PARTS for part in path.parts):
             continue
-        if path.suffix.lower() not in {".py", ".js", ".mjs", ".ts", ".html", ".yml", ".yaml", ".env", ".toml"}:
+        if path.suffix.lower() not in {
+            ".py",
+            ".js",
+            ".mjs",
+            ".ts",
+            ".html",
+            ".yml",
+            ".yaml",
+            ".env",
+            ".toml",
+        }:
             continue
         yield path
 
@@ -69,7 +88,9 @@ def scan(root: Path) -> list[Finding]:
         for line_number, line in enumerate(text.splitlines(), start=1):
             for severity, rule, pattern in RULES:
                 if pattern.search(line):
-                    if rule == "hardcoded-secret" and (is_test_file or "_DEV_" in line or "_DEV" in line):
+                    if rule == "hardcoded-secret" and (
+                        is_test_file or "_DEV_" in line or "_DEV" in line
+                    ):
                         continue
                     findings.append(
                         Finding(

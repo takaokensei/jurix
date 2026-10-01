@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Detect architectural hotspots before they become another refactor wave."""
+
 from __future__ import annotations
 
 import argparse
@@ -18,7 +19,9 @@ DEFAULT_BUDGETS = {
 def module_stats(path: Path) -> dict[str, int]:
     text = path.read_text(encoding="utf-8")
     tree = ast.parse(text, filename=str(path))
-    functions = sum(isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) for node in ast.walk(tree))
+    functions = sum(
+        isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) for node in ast.walk(tree)
+    )
     classes = sum(isinstance(node, ast.ClassDef) for node in ast.walk(tree))
     imports = sum(isinstance(node, ast.Import | ast.ImportFrom) for node in ast.walk(tree))
     return {

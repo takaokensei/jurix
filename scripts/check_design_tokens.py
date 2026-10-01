@@ -25,7 +25,9 @@ def current_values() -> dict[str, Counter[str]]:
     for path in sorted(CSS_ROOT.glob("*.css")):
         if path.name in TOKEN_FILES:
             continue
-        found = Counter(match.group(0).lower() for match in HEX_RE.finditer(path.read_text(encoding="utf-8")))
+        found = Counter(
+            match.group(0).lower() for match in HEX_RE.finditer(path.read_text(encoding="utf-8"))
+        )
         if found:
             values[path.name] = found
     return values

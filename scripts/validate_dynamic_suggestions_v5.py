@@ -1,4 +1,5 @@
 """Release guard: the welcome screen must never reintroduce legal placeholders."""
+
 import sys
 from pathlib import Path
 

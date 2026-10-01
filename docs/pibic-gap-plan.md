@@ -6,13 +6,14 @@ Este plano traduz o cronograma do projeto para tarefas verificáveis no reposit�
 
 **Corpus e base experimental**
 
-- executar a ingestão via SAPL com alvo de 300 normas;
+- selecionar intencionalmente uma amostra de 150–200 normas conforme o plano aprovado;
+- tratar 300 normas como expansão operacional opcional, condicionada à capacidade e cobertura;
 - selecionar 20 normas-piloto dentro do corpus;
 - gerar `pilot.jsonl` com trilha de revisão;
 - revisar o gold standard e congelar a versão usada nas métricas;
 - registrar cobertura, duplicatas, falhas de PDF/OCR e normas sem texto integral.
 
-**Aceite:** 300 normas ou um relatório explícito de cobertura inferior a 300; 20 pilotos identificados; origem SAPL registrada em cada item.
+**Aceite:** amostra intencional de 150–200 normas (ou justificativa de cobertura inferior); 20 pilotos revisados/adjudicados; origem SAPL, hashes e condição de uso registrados em cada item. A meta opcional de 300 deve ser reportada separadamente.
 
 ## Fase 2 — novembro/dezembro de 2026
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Build a deterministic manifest for a local Jurix storage tree."""
+
 from __future__ import annotations
 
 import argparse

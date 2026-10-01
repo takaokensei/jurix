@@ -1,0 +1,749 @@
+{
+  "schema_version": 1,
+  "status": "measured synthetic workload",
+  "database": "jurix_audit",
+  "rows": 10000,
+  "dimensions": 768,
+  "top_k": 10,
+  "runs_per_query": 30,
+  "seed": 20261001,
+  "host": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "cpu_count": 12
+  },
+  "cache_state": "warm only; cold-cache benchmark not attempted",
+  "results": [
+    {
+      "query_class": "synthetic_topic_0",
+      "modes": [
+        {
+          "mode": "pgvector_hnsw",
+          "runs": 30,
+          "cache_state": "warm after initial query",
+          "latency_ms": {
+            "median": 15.123,
+            "p95_sample": 16.072,
+            "min": 14.738,
+            "max": 17.172
+          },
+          "ranking": {
+            "recall_at_10": 1.0,
+            "mrr": 1.0,
+            "expected_relevant": 858,
+            "retrieved": 10
+          },
+          "explain_analyze_buffers": {
+            "planning_ms": 0.083,
+            "execution_ms": 14.026,
+            "nodes": [
+              {
+                "node_type": "Limit",
+                "index_name": null,
+                "local_hit_blocks": 9113,
+                "local_read_blocks": 4150,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Sort",
+                "index_name": null,
+                "local_hit_blocks": 9113,
+                "local_read_blocks": 4150,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Index Scan",
+                "index_name": "jurix_scale_fixture_norma_type_publication_year_is_active_idx",
+                "local_hit_blocks": 9113,
+                "local_read_blocks": 4150,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              }
+            ]
+          }
+        },
+        {
+          "mode": "postgres_fts",
+          "runs": 30,
+          "cache_state": "warm after initial query",
+          "latency_ms": {
+            "median": 1.655,
+            "p95_sample": 1.834,
+            "min": 1.604,
+            "max": 1.883
+          },
+          "ranking": {
+            "recall_at_10": 1.0,
+            "mrr": 1.0,
+            "expected_relevant": 858,
+            "retrieved": 10
+          },
+          "explain_analyze_buffers": {
+            "planning_ms": 0.048,
+            "execution_ms": 1.1,
+            "nodes": [
+              {
+                "node_type": "Limit",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Sort",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Index Scan",
+                "index_name": "jurix_scale_fixture_norma_type_publication_year_is_active_idx",
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              }
+            ]
+          }
+        },
+        {
+          "mode": "postgres_trigram",
+          "runs": 30,
+          "cache_state": "warm after initial query",
+          "latency_ms": {
+            "median": 56.661,
+            "p95_sample": 67.048,
+            "min": 54.949,
+            "max": 82.476
+          },
+          "ranking": {
+            "recall_at_10": 1.0,
+            "mrr": 1.0,
+            "expected_relevant": 858,
+            "retrieved": 10
+          },
+          "explain_analyze_buffers": {
+            "planning_ms": 0.13,
+            "execution_ms": 53.444,
+            "nodes": [
+              {
+                "node_type": "Limit",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Sort",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Index Scan",
+                "index_name": "jurix_scale_fixture_norma_type_publication_year_is_active_idx",
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "query_class": "synthetic_topic_1",
+      "modes": [
+        {
+          "mode": "pgvector_hnsw",
+          "runs": 30,
+          "cache_state": "warm after initial query",
+          "latency_ms": {
+            "median": 16.338,
+            "p95_sample": 22.534,
+            "min": 15.278,
+            "max": 23.442
+          },
+          "ranking": {
+            "recall_at_10": 1.0,
+            "mrr": 1.0,
+            "expected_relevant": 858,
+            "retrieved": 10
+          },
+          "explain_analyze_buffers": {
+            "planning_ms": 0.074,
+            "execution_ms": 15.214,
+            "nodes": [
+              {
+                "node_type": "Limit",
+                "index_name": null,
+                "local_hit_blocks": 9113,
+                "local_read_blocks": 4150,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Sort",
+                "index_name": null,
+                "local_hit_blocks": 9113,
+                "local_read_blocks": 4150,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Index Scan",
+                "index_name": "jurix_scale_fixture_norma_type_publication_year_is_active_idx",
+                "local_hit_blocks": 9113,
+                "local_read_blocks": 4150,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              }
+            ]
+          }
+        },
+        {
+          "mode": "postgres_fts",
+          "runs": 30,
+          "cache_state": "warm after initial query",
+          "latency_ms": {
+            "median": 1.834,
+            "p95_sample": 2.416,
+            "min": 1.664,
+            "max": 2.501
+          },
+          "ranking": {
+            "recall_at_10": 1.0,
+            "mrr": 1.0,
+            "expected_relevant": 858,
+            "retrieved": 10
+          },
+          "explain_analyze_buffers": {
+            "planning_ms": 0.103,
+            "execution_ms": 1.439,
+            "nodes": [
+              {
+                "node_type": "Limit",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Sort",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Index Scan",
+                "index_name": "jurix_scale_fixture_norma_type_publication_year_is_active_idx",
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              }
+            ]
+          }
+        },
+        {
+          "mode": "postgres_trigram",
+          "runs": 30,
+          "cache_state": "warm after initial query",
+          "latency_ms": {
+            "median": 56.441,
+            "p95_sample": 75.095,
+            "min": 55.146,
+            "max": 76.132
+          },
+          "ranking": {
+            "recall_at_10": 1.0,
+            "mrr": 1.0,
+            "expected_relevant": 858,
+            "retrieved": 10
+          },
+          "explain_analyze_buffers": {
+            "planning_ms": 0.136,
+            "execution_ms": 55.619,
+            "nodes": [
+              {
+                "node_type": "Limit",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Sort",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Index Scan",
+                "index_name": "jurix_scale_fixture_norma_type_publication_year_is_active_idx",
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "query_class": "synthetic_topic_2",
+      "modes": [
+        {
+          "mode": "pgvector_hnsw",
+          "runs": 30,
+          "cache_state": "warm after initial query",
+          "latency_ms": {
+            "median": 16.288,
+            "p95_sample": 19.439,
+            "min": 15.313,
+            "max": 22.084
+          },
+          "ranking": {
+            "recall_at_10": 1.0,
+            "mrr": 1.0,
+            "expected_relevant": 857,
+            "retrieved": 10
+          },
+          "explain_analyze_buffers": {
+            "planning_ms": 0.085,
+            "execution_ms": 14.623,
+            "nodes": [
+              {
+                "node_type": "Limit",
+                "index_name": null,
+                "local_hit_blocks": 9113,
+                "local_read_blocks": 4150,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Sort",
+                "index_name": null,
+                "local_hit_blocks": 9113,
+                "local_read_blocks": 4150,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Index Scan",
+                "index_name": "jurix_scale_fixture_norma_type_publication_year_is_active_idx",
+                "local_hit_blocks": 9113,
+                "local_read_blocks": 4150,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              }
+            ]
+          }
+        },
+        {
+          "mode": "postgres_fts",
+          "runs": 30,
+          "cache_state": "warm after initial query",
+          "latency_ms": {
+            "median": 1.702,
+            "p95_sample": 1.982,
+            "min": 1.614,
+            "max": 2.001
+          },
+          "ranking": {
+            "recall_at_10": 1.0,
+            "mrr": 1.0,
+            "expected_relevant": 857,
+            "retrieved": 10
+          },
+          "explain_analyze_buffers": {
+            "planning_ms": 0.181,
+            "execution_ms": 1.627,
+            "nodes": [
+              {
+                "node_type": "Limit",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Sort",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Index Scan",
+                "index_name": "jurix_scale_fixture_norma_type_publication_year_is_active_idx",
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              }
+            ]
+          }
+        },
+        {
+          "mode": "postgres_trigram",
+          "runs": 30,
+          "cache_state": "warm after initial query",
+          "latency_ms": {
+            "median": 56.279,
+            "p95_sample": 71.599,
+            "min": 55.248,
+            "max": 75.862
+          },
+          "ranking": {
+            "recall_at_10": 1.0,
+            "mrr": 1.0,
+            "expected_relevant": 857,
+            "retrieved": 10
+          },
+          "explain_analyze_buffers": {
+            "planning_ms": 0.084,
+            "execution_ms": 60.351,
+            "nodes": [
+              {
+                "node_type": "Limit",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Sort",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Index Scan",
+                "index_name": "jurix_scale_fixture_norma_type_publication_year_is_active_idx",
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "query_class": "synthetic_topic_3",
+      "modes": [
+        {
+          "mode": "pgvector_hnsw",
+          "runs": 30,
+          "cache_state": "warm after initial query",
+          "latency_ms": {
+            "median": 16.548,
+            "p95_sample": 18.208,
+            "min": 15.738,
+            "max": 21.678
+          },
+          "ranking": {
+            "recall_at_10": 1.0,
+            "mrr": 1.0,
+            "expected_relevant": 857,
+            "retrieved": 10
+          },
+          "explain_analyze_buffers": {
+            "planning_ms": 0.081,
+            "execution_ms": 17.731,
+            "nodes": [
+              {
+                "node_type": "Limit",
+                "index_name": null,
+                "local_hit_blocks": 9113,
+                "local_read_blocks": 4150,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Sort",
+                "index_name": null,
+                "local_hit_blocks": 9113,
+                "local_read_blocks": 4150,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Index Scan",
+                "index_name": "jurix_scale_fixture_norma_type_publication_year_is_active_idx",
+                "local_hit_blocks": 9113,
+                "local_read_blocks": 4150,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              }
+            ]
+          }
+        },
+        {
+          "mode": "postgres_fts",
+          "runs": 30,
+          "cache_state": "warm after initial query",
+          "latency_ms": {
+            "median": 1.738,
+            "p95_sample": 1.921,
+            "min": 1.638,
+            "max": 1.974
+          },
+          "ranking": {
+            "recall_at_10": 1.0,
+            "mrr": 1.0,
+            "expected_relevant": 857,
+            "retrieved": 10
+          },
+          "explain_analyze_buffers": {
+            "planning_ms": 0.077,
+            "execution_ms": 1.39,
+            "nodes": [
+              {
+                "node_type": "Limit",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Sort",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Index Scan",
+                "index_name": "jurix_scale_fixture_norma_type_publication_year_is_active_idx",
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              }
+            ]
+          }
+        },
+        {
+          "mode": "postgres_trigram",
+          "runs": 30,
+          "cache_state": "warm after initial query",
+          "latency_ms": {
+            "median": 59.415,
+            "p95_sample": 77.756,
+            "min": 55.667,
+            "max": 90.029
+          },
+          "ranking": {
+            "recall_at_10": 1.0,
+            "mrr": 1.0,
+            "expected_relevant": 857,
+            "retrieved": 10
+          },
+          "explain_analyze_buffers": {
+            "planning_ms": 0.095,
+            "execution_ms": 53.707,
+            "nodes": [
+              {
+                "node_type": "Limit",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Sort",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Index Scan",
+                "index_name": "jurix_scale_fixture_norma_type_publication_year_is_active_idx",
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "query_class": "synthetic_topic_4",
+      "modes": [
+        {
+          "mode": "pgvector_hnsw",
+          "runs": 30,
+          "cache_state": "warm after initial query",
+          "latency_ms": {
+            "median": 15.359,
+            "p95_sample": 16.88,
+            "min": 14.674,
+            "max": 20.387
+          },
+          "ranking": {
+            "recall_at_10": 1.0,
+            "mrr": 1.0,
+            "expected_relevant": 856,
+            "retrieved": 10
+          },
+          "explain_analyze_buffers": {
+            "planning_ms": 0.071,
+            "execution_ms": 15.294,
+            "nodes": [
+              {
+                "node_type": "Limit",
+                "index_name": null,
+                "local_hit_blocks": 9113,
+                "local_read_blocks": 4150,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Sort",
+                "index_name": null,
+                "local_hit_blocks": 9113,
+                "local_read_blocks": 4150,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Index Scan",
+                "index_name": "jurix_scale_fixture_norma_type_publication_year_is_active_idx",
+                "local_hit_blocks": 9113,
+                "local_read_blocks": 4150,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              }
+            ]
+          }
+        },
+        {
+          "mode": "postgres_fts",
+          "runs": 30,
+          "cache_state": "warm after initial query",
+          "latency_ms": {
+            "median": 1.665,
+            "p95_sample": 1.856,
+            "min": 1.612,
+            "max": 1.889
+          },
+          "ranking": {
+            "recall_at_10": 1.0,
+            "mrr": 1.0,
+            "expected_relevant": 856,
+            "retrieved": 10
+          },
+          "explain_analyze_buffers": {
+            "planning_ms": 0.064,
+            "execution_ms": 1.143,
+            "nodes": [
+              {
+                "node_type": "Limit",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Sort",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Index Scan",
+                "index_name": "jurix_scale_fixture_norma_type_publication_year_is_active_idx",
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              }
+            ]
+          }
+        },
+        {
+          "mode": "postgres_trigram",
+          "runs": 30,
+          "cache_state": "warm after initial query",
+          "latency_ms": {
+            "median": 56.236,
+            "p95_sample": 66.206,
+            "min": 54.787,
+            "max": 67.695
+          },
+          "ranking": {
+            "recall_at_10": 1.0,
+            "mrr": 1.0,
+            "expected_relevant": 856,
+            "retrieved": 10
+          },
+          "explain_analyze_buffers": {
+            "planning_ms": 0.081,
+            "execution_ms": 54.522,
+            "nodes": [
+              {
+                "node_type": "Limit",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Sort",
+                "index_name": null,
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              },
+              {
+                "node_type": "Index Scan",
+                "index_name": "jurix_scale_fixture_norma_type_publication_year_is_active_idx",
+                "local_hit_blocks": 405,
+                "local_read_blocks": 0,
+                "shared_hit_blocks": 0,
+                "shared_read_blocks": 0
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "seed_time_ms": 5627.751,
+  "index_build_ms": 3401.665
+}

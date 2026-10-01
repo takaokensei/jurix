@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Repository-level preflight runner for production candidate builds."""
+
 from __future__ import annotations
 
 import argparse

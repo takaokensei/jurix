@@ -6,6 +6,8 @@ O conjunto é um benchmark de engenharia e factualidade baseado em fontes reais;
 
 O executor live chama uma instância Jurix e verifica fonte citada + conteúdo mínimo esperado. Ele registra commit, modelo, endpoint e resultados.
 
+O endpoint padrão é `/api/v1/search/answer/`, registrado pela API do Jurix. Para avaliar SSE explicitamente, passe `--endpoint /api/v1/search/answer/stream/`; o benchmark considera a resposta somente quando recebe o evento terminal `done` com `answer`.
+
 Limiares de release: 90% dos casos aceitos e 95% de correspondência de fonte.
 
 Execução:

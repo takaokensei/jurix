@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Operational guard for Celery queues via the native `celery inspect` CLI."""
+
 from __future__ import annotations
 
 import argparse
@@ -20,9 +21,39 @@ def main() -> int:
     args = parser.parse_args()
 
     commands = {
-        "ping": [sys.executable, "-m", "celery", "-A", args.app, "inspect", "ping", "--timeout", str(args.timeout)],
-        "stats": [sys.executable, "-m", "celery", "-A", args.app, "inspect", "stats", "--timeout", str(args.timeout)],
-        "active": [sys.executable, "-m", "celery", "-A", args.app, "inspect", "active", "--timeout", str(args.timeout)],
+        "ping": [
+            sys.executable,
+            "-m",
+            "celery",
+            "-A",
+            args.app,
+            "inspect",
+            "ping",
+            "--timeout",
+            str(args.timeout),
+        ],
+        "stats": [
+            sys.executable,
+            "-m",
+            "celery",
+            "-A",
+            args.app,
+            "inspect",
+            "stats",
+            "--timeout",
+            str(args.timeout),
+        ],
+        "active": [
+            sys.executable,
+            "-m",
+            "celery",
+            "-A",
+            args.app,
+            "inspect",
+            "active",
+            "--timeout",
+            str(args.timeout),
+        ],
     }
 
     results = {}

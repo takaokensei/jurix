@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Small dependency-free HTTP smoke/load probe for staging."""
+
 from __future__ import annotations
 
 import argparse
@@ -67,7 +68,9 @@ def main() -> int:
         "latency_ms": {
             "min": min(latencies) if latencies else 0,
             "median": statistics.median(latencies) if latencies else 0,
-            "p95_approx": sorted(latencies)[max(0, int(len(latencies) * 0.95) - 1)] if latencies else 0,
+            "p95_approx": sorted(latencies)[max(0, int(len(latencies) * 0.95) - 1)]
+            if latencies
+            else 0,
             "max": max(latencies) if latencies else 0,
         },
         "samples": [sample.__dict__ for sample in samples],

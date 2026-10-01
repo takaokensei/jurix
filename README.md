@@ -8,7 +8,7 @@
   <samp>PIBIC/UFRN · Sistema de Consolidação Normativa e Rastreabilidade Jurídica</samp>
   <br/><br/>
   
-  <img src="https://img.shields.io/badge/Django-5.0-092E20?style=for-the-badge&logo=django&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Django-5.2_LTS-092E20?style=for-the-badge&logo=django&logoColor=white"/>
   <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white"/>
   <img src="https://img.shields.io/badge/Ollama-llama3-dc2626?style=for-the-badge"/>
   <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white"/>
@@ -31,7 +31,7 @@ class Jurix:
     
     def architecture(self):
         return {
-            "backend": "Django 5.0",
+            "backend": "Django 5.2 LTS",
             "database": "PostgreSQL 16 + pgvector",
             "ai_engine": "Ollama (llama3 via host)",
             "task_queue": "Celery + Redis",
@@ -72,7 +72,7 @@ class Jurix:
 <tr>
 <td align="center" width="33%">
 <strong>🎯 Backend & Database</strong><br/><br/>
-<img src="https://img.shields.io/badge/Django-5.0-092E20?style=flat-square&logo=django"/>
+<img src="https://img.shields.io/badge/Django-5.2_LTS-092E20?style=flat-square&logo=django"/>
 <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql"/>
 <img src="https://img.shields.io/badge/pgvector-Semantic_Search-6DB33F?style=flat-square"/>
 <img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python"/>

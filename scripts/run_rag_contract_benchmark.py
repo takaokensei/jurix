@@ -12,6 +12,32 @@ from urllib.request import Request, urlopen
 
 import django
 
+DEFAULT_ENDPOINT = "/api/v1/search/answer/"
+
+
+def validate_cases(cases: list[object]) -> str | None:
+    """Validate one homogeneous benchmark schema before executing any case."""
+    if not cases:
+        return "Benchmark contains no cases"
+    if not all(isinstance(case, dict) for case in cases):
+        return "Every benchmark case must be an object"
+    legal = ["expected_citations" in case for case in cases]
+    if any(legal) and not all(legal):
+        return "Benchmark mixes legal and deterministic contract case schemas"
+    if all(legal):
+        for index, case in enumerate(cases, 1):
+            required = {"id", "question", "source", "expected_citations", "must_contain_any"}
+            missing = sorted(required - case.keys())
+            if missing:
+                return f"Legal case {index} is missing: {', '.join(missing)}"
+        return None
+    for index, case in enumerate(cases, 1):
+        if not isinstance(case.get("answer"), str) or not isinstance(case.get("sources"), list):
+            return f"Contract case {index} must contain string answer and list sources"
+        if not isinstance(case.get("expected_grounded"), bool):
+            return f"Contract case {index} must contain boolean expected_grounded"
+    return None
+
 
 def main() -> int:
     ROOT = Path(__file__).resolve().parents[1]
@@ -22,7 +48,7 @@ def main() -> int:
     parser.add_argument("cases", type=Path)
     parser.add_argument("--base-url", default=os.getenv("JURIX_BENCHMARK_URL", ""))
     parser.add_argument(
-        "--endpoint", default=os.getenv("JURIX_BENCHMARK_ENDPOINT", "/api/v1/chat/ask/")
+        "--endpoint", default=os.getenv("JURIX_BENCHMARK_ENDPOINT", DEFAULT_ENDPOINT)
     )
     parser.add_argument("--timeout", type=int, default=90)
     parser.add_argument("--json", action="store_true")
@@ -37,6 +63,10 @@ def main() -> int:
         for line in args.cases.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.lstrip().startswith("#")
     ]
+    schema_error = validate_cases(cases)
+    if schema_error:
+        print(f"FAIL: {schema_error}.")
+        return 2
     if cases and "expected_citations" in cases[0]:
         # Legal v1 cases are live endpoint evaluations, not deterministic
         # answer/source contract fixtures. Delegate to the canonical evaluator
@@ -69,6 +99,12 @@ def main() -> int:
                     answer = extract_answer(raw, response.headers.get("Content-Type", ""))
                 result = evaluate(case, answer)
             except (HTTPError, URLError, TimeoutError, OSError) as exc:
+                result = {
+                    "case_id": case.get("id"),
+                    "accepted": False,
+                    "error": type(exc).__name__,
+                }
+            except ValueError as exc:
                 result = {"case_id": case.get("id"), "accepted": False, "error": str(exc)}
             if result.get("accepted"):
                 passed += 1
