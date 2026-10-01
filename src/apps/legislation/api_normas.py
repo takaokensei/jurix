@@ -32,6 +32,7 @@ from src.apps.legislation.models import (
     EventoAlteracao,
     Norma,
 )
+from src.apps.legislation.norma_ordering import order_normas_by_publication
 from src.apps.legislation.retrieval_api import build_retrieval_options
 from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
 from src.apps.legislation.suggestion_service import build_dynamic_suggestions
@@ -115,7 +116,7 @@ def norma_list_api(request: HttpRequest) -> JsonResponse:
                 | Q(tipo__icontains=search)
             )
 
-        queryset = queryset.order_by("-ano", "-numero")
+        queryset = order_normas_by_publication(queryset)
 
         # Paginate
         paginator = Paginator(queryset, page_size)

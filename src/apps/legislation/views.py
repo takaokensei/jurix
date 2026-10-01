@@ -26,6 +26,7 @@ from src.processing.temporal_scope import build_norma_timeline, temporal_status
 
 from .api_limits import InvalidLLMParams, parse_llm_request, rate_limit_response
 from .models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
+from .norma_ordering import order_normas_by_publication
 from .serializers import (
     serialize_dispositivo_source,
 )
@@ -89,11 +90,6 @@ class NormaListView(ListView):
     context_object_name = "normas"
     paginate_by = 18
 
-    ORDERING_OPTIONS = {
-        "recentes": ("-ano", "-numero"),
-        "antigas": ("ano", "numero"),
-    }
-
     def get_queryset(self):
         queryset = Norma.objects.filter(status="consolidated")
         search_query = _normalize_norma_query(self.request.GET.get("q"))
@@ -113,9 +109,10 @@ class NormaListView(ListView):
             queryset = queryset.filter(ano=int(selected_year))
 
         ordering = self.request.GET.get("ordenar", "recentes")
-        queryset = queryset.order_by(
-            *self.ORDERING_OPTIONS.get(ordering, self.ORDERING_OPTIONS["recentes"])
-        )
+        if ordering == "antigas":
+            queryset = order_normas_by_publication(queryset, descending=False)
+        else:
+            queryset = order_normas_by_publication(queryset)
         return queryset.only(
             "id",
             "tipo",

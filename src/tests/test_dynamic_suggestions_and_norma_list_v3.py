@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 from django.test import TestCase
@@ -95,3 +96,48 @@ class NormaListContractTests(TestCase):
         self.assertIn("jurix-norma-grid", template)
         self.assertIn("jurix-norma-list.js", template)
         self.assertNotIn('class="norma-grid"', template)
+
+    def test_recent_order_matches_between_web_and_api_with_safe_number_fallbacks(self):
+        records = [
+            ("10", 2026, date(2026, 9, 21)),
+            ("9", 2026, date(2026, 9, 21)),
+            ("11-A", 2026, date(2026, 9, 21)),
+            ("12345678901234567890", 2026, date(2026, 9, 21)),
+            ("9000", 2025, date(2026, 9, 22)),
+            ("12", 2027, None),
+            ("11", 2026, None),
+        ]
+        for index, (number, year, published) in enumerate(records, start=1):
+            Norma.objects.create(
+                tipo="Lei",
+                numero=number,
+                ano=year,
+                data_publicacao=published,
+                ementa=f"Norma de ordenação {number}/{year}",
+                sapl_id=2000 + index,
+                status=Norma.Status.CONSOLIDATED,
+            )
+
+        web_response = self.client.get(reverse("legislation:norma_list"), {"tipo": "Lei"})
+        web_order = [(item.numero, item.ano) for item in web_response.context["normas"]]
+        api_response = self.client.get(
+            reverse("legislation_api:norma_list"),
+            {"tipo": "Lei", "status": "consolidated", "page_size": 100},
+        )
+        api_payload = api_response.json()
+        api_order = [(item["numero"], item["ano"]) for item in api_payload["normas"]]
+        expected_prefix = [
+            ("9000", 2025),
+            ("10", 2026),
+            ("9", 2026),
+            ("12345678901234567890", 2026),
+            ("11-A", 2026),
+            ("12", 2027),
+            ("11", 2026),
+        ]
+
+        self.assertEqual(web_response.status_code, 200)
+        self.assertEqual(api_response.status_code, 200)
+        self.assertTrue(api_payload["success"])
+        self.assertEqual(web_order[: len(expected_prefix)], expected_prefix)
+        self.assertEqual(api_order, web_order)
