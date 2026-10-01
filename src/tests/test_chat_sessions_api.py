@@ -223,3 +223,80 @@ class TestFixedBehaviour:
             manager.filter.side_effect = DatabaseError("secret-internal-detail")
             body = client.get(SESSIONS).content.decode()
         assert "secret-internal-detail" not in body and "Traceback" not in body
+
+
+@pytest.mark.parametrize("grounded", [False, True])
+def test_stream_contract_persists_sources_only_for_grounded_answers(client, user, grounded):
+    import json
+
+    session = ChatSession.objects.create(user=user, title="Consulta")
+    ChatMessage.objects.create(session=session, role="user", content="Pergunta anterior")
+    source = {"norma_ref": "Lei 10/2025", "text": "Art. 1º", "dispositivo_id": 7}
+    events = iter(
+        [
+            {"event": "sources", "sources": [source]},
+            {"event": "chunk", "chunk": "Resposta"},
+            {"event": "done", "answer": "Resposta", "grounded": grounded},
+        ]
+    )
+
+    with (
+        patch("src.apps.legislation.api_views.RAGService") as rag,
+        patch("src.apps.legislation.api_views.rate_limit_response", return_value=None),
+    ):
+        rag.return_value.stream_answer_question.return_value = events
+        response = client.post(
+            "/api/v1/search/answer/stream/",
+            data=json.dumps({"question": "Nova pergunta", "session_id": session.id}),
+            content_type="application/json",
+        )
+        payloads = [
+            json.loads(line[6:])
+            for line in b"".join(response.streaming_content).decode().splitlines()
+            if line.startswith("data: ")
+        ]
+
+    done = next(payload for payload in payloads if payload["type"] == "done")
+    saved = ChatMessage.objects.get(session=session, role="assistant")
+    assert response.status_code == 200
+    assert done["grounded"] is grounded
+    assert bool(saved.sources_json) is grounded
+    assert saved.metadata_json["grounded"] is grounded
+    assert saved.metadata_json["sources_count"] == (1 if grounded else 0)
+
+
+@pytest.mark.parametrize("grounded", [False, True])
+def test_regeneration_exposes_and_persists_sources_only_when_grounded(client, user, grounded):
+    import json
+
+    session = ChatSession.objects.create(user=user, title="Consulta")
+    ChatMessage.objects.create(session=session, role="user", content="Pergunta")
+    ChatMessage.objects.create(
+        session=session, role="assistant", content="Resposta antiga", sources_json=[{"old": True}]
+    )
+    source = {"norma_ref": "Lei 10/2025", "text": "Art. 1º", "dispositivo_id": 7}
+    generated = {
+        "answer": "Resposta regenerada",
+        "sources": [source],
+        "grounded": grounded,
+        "confidence": 0.95,
+        "model": "llama3",
+        "context_length": 100,
+    }
+
+    with (
+        patch("src.apps.legislation.api_views.RAGService") as rag,
+        patch("src.apps.legislation.api_views.rate_limit_response", return_value=None),
+    ):
+        rag.return_value.answer_question.return_value = generated
+        response = client.post(
+            f"{SESSIONS}{session.id}/regenerate/", data="{}", content_type="application/json"
+        )
+
+    body = response.json()
+    saved = ChatMessage.objects.get(session=session, role="assistant")
+    assert response.status_code == 200
+    assert body["grounded"] is grounded
+    assert bool(body["sources"]) is grounded
+    assert bool(saved.sources_json) is grounded
+    assert saved.metadata_json["grounded"] is grounded

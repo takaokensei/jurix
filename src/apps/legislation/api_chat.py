@@ -198,10 +198,11 @@ def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonRe
             force_refresh=True,
         )
 
+        grounded = response.get("grounded") is True
         sources = [
             serialize_dispositivo_source(source)
             for source in response.get("sources", [])
-            if isinstance(source, dict)
+            if grounded and isinstance(source, dict)
         ]
 
         # Replace the old answer and persist the new one atomically. A database
@@ -219,6 +220,7 @@ def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonRe
                     "confidence": response.get("confidence", 0.0),
                     "context_length": response.get("context_length", 0),
                     "sources_count": len(sources),
+                    "grounded": grounded,
                 },
             )
 
@@ -228,6 +230,7 @@ def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonRe
                 "answer": response["answer"],
                 "sources": sources,
                 "confidence": response["confidence"],
+                "grounded": grounded,
                 "metadata": {
                     "model": response.get("model", model),
                     "context_length": response.get("context_length", 0),

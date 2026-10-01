@@ -995,6 +995,7 @@
             const data = await chatAPI.regenerateSession(sessionId);
             if (data.success && messageBody) {
                 messageBody.innerHTML = '';
+                const answerSources = data.grounded === true && Array.isArray(data.sources) ? data.sources : [];
                 if (copyButton) copyButton.setAttribute('data-markdown', data.answer);
 
                 typewriterEffect(messageBody.id, data.answer, () => {
@@ -1008,8 +1009,8 @@
                         regenerateBtn.disabled = false;
                         regenerateBtn.classList.remove('is-busy');
                     }
-                    if (data.sources && data.sources.length > 0) {
-                        showSourcesGradually(sourcesContainer, data.sources, true, data.answer || '');
+                    if (answerSources.length > 0) {
+                        showSourcesGradually(sourcesContainer, answerSources, true, data.answer || '');
                     }
                 });
             }
@@ -1612,16 +1613,19 @@
                         async (doneData) => {
                             doneData = doneData && typeof doneData === 'object' ? doneData : {};
                             const finalAnswer = doneData.answer || accumulatedText;
+                            const answerSources = doneData.grounded === true ? finalSources : [];
                             if (streamElements && window.JurixRagUI) {
                                 const provisionalNotice = streamElements.messageDiv.querySelector('.jurix-provisional-notice');
                                 if (provisionalNotice) provisionalNotice.remove();
                                 window.JurixRagUI.flushRender(streamElements.messageBody, finalAnswer);
-                                window.JurixRagUI.linkLegalReferences(streamElements.messageBody, finalSources);
+                                window.JurixRagUI.linkLegalReferences(streamElements.messageBody, answerSources);
                                 window.JurixRagUI.setStreamingState(streamElements.messageBody, false);
-                                window.JurixRagUI.announce('Resposta concluída.');
+                                window.JurixRagUI.announce(doneData.grounded === true
+                                    ? 'Resposta concluída.'
+                                    : 'Evidências recuperadas, mas insuficientes para fundamentar a resposta.');
                             }
-                            if (streamElements && streamElements.sourcesContainer && finalSources.length > 0) {
-                                showSourcesGradually(streamElements.sourcesContainer, finalSources, true, finalAnswer);
+                            if (streamElements && streamElements.sourcesContainer && answerSources.length > 0) {
+                                showSourcesGradually(streamElements.sourcesContainer, answerSources, true, finalAnswer);
                                 window.requestAnimationFrame(() => {
                                     if (window.JurixRagUI) window.JurixRagUI.enhanceSources(streamElements.sourcesContainer);
                                 });

@@ -60,7 +60,15 @@ test('sources are deferred until the done callback and scroll is wired after ren
   const doneCallback = chat.indexOf('async (doneData) => {', sourceCallback);
   assert.ok(sourceCallback > 0 && doneCallback > sourceCallback);
   assert.equal(chat.slice(sourceCallback, doneCallback).includes('showSourcesGradually'), false);
-  assert.ok(chat.slice(doneCallback, doneCallback + 1800).includes('showSourcesGradually'));
+  const completion = chat.slice(doneCallback, doneCallback + 2200);
+  assert.match(completion, /doneData\.grounded === true \? finalSources : \[\]/);
+  assert.match(completion, /linkLegalReferences\(streamElements\.messageBody, answerSources\)/);
+  assert.match(completion, /sourcesContainer && answerSources\.length > 0/);
+  assert.match(completion, /insuficientes para fundamentar a resposta/);
+
+  const regeneration = chat.slice(chat.indexOf('async function regenerateLastResponse'), chat.indexOf('function copyResponseToClipboard'));
+  assert.match(regeneration, /data\.grounded === true && Array\.isArray\(data\.sources\)/);
+  assert.match(regeneration, /if \(answerSources\.length > 0\)/);
 
   const rag = read('jurix-rag.js');
   assert.match(rag, /window\.scrollToBottomIfAtBottom\(\)/);

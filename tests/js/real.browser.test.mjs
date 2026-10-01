@@ -1642,6 +1642,7 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
         `data: ${JSON.stringify({
           type: 'done',
           answer: markdownChunk,
+          grounded: true,
           session_id: null,
         })}\n\n`
       );

@@ -460,16 +460,19 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     yield f"data: {json.dumps(payload)}\n\n"
                 elif ev_type == "done":
                     final_answer = item.get("answer", "")
+                    grounded = item.get("grounded") is True
+                    answer_sources = sources_list if grounded else []
                     if request.user.is_authenticated and chat_session:
                         try:
                             ChatMessage.objects.create(
                                 session=chat_session,
                                 role="assistant",
                                 content=final_answer,
-                                sources_json=sources_list,
+                                sources_json=answer_sources,
                                 metadata_json={
                                     "model": model,
-                                    "sources_count": len(sources_list),
+                                    "sources_count": len(answer_sources),
+                                    "grounded": grounded,
                                     "streaming": True,
                                 },
                             )
@@ -482,6 +485,7 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     payload = {
                         "type": "done",
                         "answer": final_answer,
+                        "grounded": grounded,
                         "session_id": chat_session.id if chat_session else None,
                         "session_slug": getattr(chat_session, "slug", None)
                         if chat_session
