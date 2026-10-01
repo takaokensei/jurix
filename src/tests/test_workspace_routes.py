@@ -15,8 +15,18 @@ pytestmark = pytest.mark.django_db
 
 
 def test_history_search_ranks_bag_of_words_relevance_before_recency():
-    recent_weak = SimpleNamespace(title="Consulta recente", history_messages=[SimpleNamespace(content="Assunto geral")], updated_at=2)
-    relevant_old = SimpleNamespace(title="Política de imóveis abandonados", history_messages=[SimpleNamespace(content="Lei municipal sobre imóveis abandonados e revitalização")], updated_at=1)
+    recent_weak = SimpleNamespace(
+        title="Consulta recente",
+        history_messages=[SimpleNamespace(content="Assunto geral")],
+        updated_at=2,
+    )
+    relevant_old = SimpleNamespace(
+        title="Política de imóveis abandonados",
+        history_messages=[
+            SimpleNamespace(content="Lei municipal sobre imóveis abandonados e revitalização")
+        ],
+        updated_at=1,
+    )
     assert _rank_history([recent_weak, relevant_old], "imóveis abandonados") == [relevant_old]
 
 
@@ -26,8 +36,12 @@ def test_history_preview_uses_first_user_question_not_a_recent_answer():
     ChatMessage.objects.create(session=session, role="user", content="Pergunta inicial distinta")
     ChatMessage.objects.create(session=session, role="assistant", content="Resposta inicial")
     for index in range(11):
-        ChatMessage.objects.create(session=session, role="user", content=f"Pergunta posterior {index}")
-        ChatMessage.objects.create(session=session, role="assistant", content=f"Resposta posterior {index}")
+        ChatMessage.objects.create(
+            session=session, role="user", content=f"Pergunta posterior {index}"
+        )
+        ChatMessage.objects.create(
+            session=session, role="assistant", content=f"Resposta posterior {index}"
+        )
     client = Client()
     client.force_login(user)
 
@@ -87,7 +101,9 @@ def test_collections_and_assistant_copy_describe_only_available_products():
     user = get_user_model().objects.create_user(username="collections-copy", password="pass")
     authenticated = Client()
     authenticated.force_login(user)
-    assert "Adicione normas municipais à coleção" in authenticated.get("/colecoes/").content.decode()
+    assert (
+        "Adicione normas municipais à coleção" in authenticated.get("/colecoes/").content.decode()
+    )
 
 
 def test_google_fonts_are_loaded_only_when_the_matching_csp_opt_in_is_enabled():
@@ -175,7 +191,9 @@ def test_history_page_paginates_authenticated_sessions():
     assert first.content.count(b"data-history-card") == 20
     assert second.content.count(b"data-history-card") == 1
     assert b"data-history-delete" in first.content
-    assert "csrftoken" in client.cookies, "History deletion needs the CSRF cookie for its API request"
+    assert (
+        "csrftoken" in client.cookies
+    ), "History deletion needs the CSRF cookie for its API request"
 
 
 def test_norma_surfaces_expose_consistent_identity(norma):
@@ -223,7 +241,7 @@ def test_norma_detail_rewrites_legacy_sapl_url_without_mutating_the_record(norma
 
 
 def test_workspace_new_research_link_requests_a_blank_conversation():
-    body = Client().get('/normas/').content.decode()
+    body = Client().get("/normas/").content.decode()
     assert 'href="/assistente/?new=1" id="workspace-new-chat"' in body
 
 
@@ -234,7 +252,7 @@ def test_norma_compare_renders_aligned_diff_and_explicit_missing_effective_date(
     norma.save(update_fields=["data_publicacao"])
     response = Client().get(f"/normas/{norma.pk}/compare/")
     body = response.content.decode()
-    assert "Comparação textual por linhas" in body
+    assert "Diferenças textuais estruturais" in body
     assert "Original (OCR)" in body
     assert "Consolidado" in body
     assert "Art. 1º Texto." in body
@@ -258,7 +276,7 @@ def test_norma_compare_declines_oversized_diff_and_links_to_full_versions(norma,
     norma.sapl_url = "https://sapl.example.test/norma/123/"
     norma.save(update_fields=["texto_original", "sapl_url"])
 
-    with patch("src.apps.legislation.views.SequenceMatcher") as matcher:
+    with patch("src.apps.legislation.views.build_legal_diff") as matcher:
         response = Client().get(f"/normas/{norma.pk}/compare/")
 
     assert response.status_code == 200
@@ -267,7 +285,7 @@ def test_norma_compare_declines_oversized_diff_and_links_to_full_versions(norma,
     assert "Nenhum diff parcial foi gerado." in body
     assert "Ler texto consolidado completo" in body
     assert 'href="https://sapl.example.test/norma/123/"' in body
-    assert "Comparação textual por linhas" not in body
+    assert "Diferenças textuais estruturais" not in body
     matcher.assert_not_called()
 
 
@@ -441,7 +459,10 @@ def test_legal_search_uses_retrieval_metadata_and_falls_back_after_semantic_fail
 
     assert response.status_code == 200
     assert b"Busca textual" in response.content
-    assert b"busca sem\xc3\xa2ntica est\xc3\xa1 temporariamente indispon\xc3\xadvel" in response.content
+    assert (
+        b"busca sem\xc3\xa2ntica est\xc3\xa1 temporariamente indispon\xc3\xadvel"
+        in response.content
+    )
 
 
 def test_legal_search_labels_successful_vector_retrieval_as_semantic(monkeypatch):
@@ -468,15 +489,13 @@ def test_legal_search_result_links_to_the_matching_device(norma, monkeypatch):
     class FakeRAG:
         def semantic_search(self, **kwargs):
             return {
-                "results": [
-                    {"dispositivo": device, "similarity_score": 0.9, "context": {}}
-                ],
+                "results": [{"dispositivo": device, "similarity_score": 0.9, "context": {}}],
                 "mode": "semantic",
             }
 
     monkeypatch.setattr("src.apps.legislation.workspace_views.RAGService", FakeRAG)
     response = Client().get("/pesquisa/", {"q": "texto específico"})
-    expected_href = f'/normas/{norma.pk}/#dispositivo-{device.pk}'
+    expected_href = f"/normas/{norma.pk}/#dispositivo-{device.pk}"
 
     assert response.status_code == 200
     assert expected_href.encode() in response.content

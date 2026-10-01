@@ -40,9 +40,9 @@ def test_collection_items_are_mutated_only_by_owner():
     detail = client.get(f"/colecoes/{collection.pk}/")
     assert detail.status_code == 200
     rendered = detail.content.decode()
-    assert 'data-collection-remove-form' in rendered
+    assert "data-collection-remove-form" in rendered
     assert f'aria-label="Remover {norma} da coleção"' in rendered
-    assert 'jurix-collections.js?v=20260930-remove-confirm1' in rendered
+    assert "jurix-collections.js?v=20260930-remove-confirm1" in rendered
 
     response = client.post(
         f"/colecoes/{collection.pk}/", {"norma_id": norma.pk, "action": "remove"}

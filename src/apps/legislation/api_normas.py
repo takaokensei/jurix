@@ -177,7 +177,7 @@ def norma_detail_api(request: HttpRequest, pk: int) -> JsonResponse:
 
         # Get dispositivos
         dispositivos = list(
-            Dispositivo.objects.filter(norma=norma)
+            Dispositivo.objects.filter(norma=norma, is_active=True)
             .annotate(
                 _has_embedding=Exists(
                     Dispositivo.objects.filter(pk=OuterRef("pk"), embedding__isnull=False)
@@ -221,7 +221,7 @@ def norma_detail_api(request: HttpRequest, pk: int) -> JsonResponse:
 
         # Get alteration events
         eventos = (
-            EventoAlteracao.objects.filter(norma_alvo=norma)
+            EventoAlteracao.objects.filter(norma_alvo=norma, is_active=True)
             .select_related("dispositivo_fonte", "dispositivo_fonte__norma", "dispositivo_alvo")
             .distinct()
             .order_by("created_at")

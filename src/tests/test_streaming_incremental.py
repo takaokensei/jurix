@@ -30,3 +30,15 @@ def test_stream_forwards_ollama_chunks_incrementally(mock_service):
     assert chunks == ["pri", "mei", "ro"]
     assert events[-1]["event"] == "done"
     assert events[-1]["answer"] == "primeiro"
+    assert events[-1]["timings_ms"]["retrieval"] >= 0
+    assert events[-1]["timings_ms"]["generation"] >= 0
+    assert events[-1]["generation_attempts"] == [
+        {
+            "attempt": 1,
+            "duration_ms": events[-1]["generation_attempts"][0]["duration_ms"],
+            "time_to_first_chunk_ms": events[-1]["generation_attempts"][0][
+                "time_to_first_chunk_ms"
+            ],
+            "output_characters": len("primeiro"),
+        }
+    ]

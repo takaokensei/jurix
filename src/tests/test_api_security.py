@@ -22,22 +22,44 @@ pytestmark = pytest.mark.django_db
 
 
 def test_short_article_followup_inherits_only_explicit_previous_law():
-    assert _resolve_article_followup("E o artigo 7?", "O que prevê o art. 8º da Lei nº 8206/2026?") == (
-        "O que prevê o art. 7 da Lei nº 8206/2026?"
+    result = _resolve_article_followup(
+        "E o artigo 7?", "O que prevê o art. 8º da Lei nº 8206/2026?"
     )
+    assert result.startswith("E o artigo 7?")
+    assert result.endswith("contexto normativo: Lei nº 8206/2026)")
     assert _resolve_article_followup("E o artigo 7?", "Qual é a regra geral?") == "E o artigo 7?"
     assert _resolve_article_followup("E o artigo 7 da Lei 9000/2025?", "Lei nº 8206/2026") == (
         "E o artigo 7 da Lei 9000/2025?"
     )
-    assert _resolve_article_followup("E o artigo 7?", "E o artigo 8?\nO que prevê o art. 9º da Lei nº 8206/2026?") == (
-        "O que prevê o art. 7 da Lei nº 8206/2026?"
+    result = _resolve_article_followup(
+        "E o artigo 7?", "E o artigo 8?\nO que prevê o art. 9º da Lei nº 8206/2026?"
     )
+    assert result.startswith("E o artigo 7?")
+    assert "Lei nº 8206/2026" in result
 
 
 def test_custom_llm_endpoint_is_restricted_to_loopback():
     with pytest.raises(ValueError):
-        validate_provider_config({"provider": "compatible", "model": "m", "api_key": "x", "endpoint": "http://169.254.169.254/latest"})
-    assert validate_provider_config({"provider": "compatible", "model": "m", "api_key": "x", "endpoint": "http://127.0.0.1:4000/v1"})["endpoint"] == "http://127.0.0.1:4000/v1"
+        validate_provider_config(
+            {
+                "provider": "compatible",
+                "model": "m",
+                "api_key": "x",
+                "endpoint": "http://169.254.169.254/latest",
+            }
+        )
+    assert (
+        validate_provider_config(
+            {
+                "provider": "compatible",
+                "model": "m",
+                "api_key": "x",
+                "endpoint": "http://127.0.0.1:4000/v1",
+            }
+        )["endpoint"]
+        == "http://127.0.0.1:4000/v1"
+    )
+
 
 STREAM = "/api/v1/search/answer/stream/"
 ANSWER = "/api/v1/search/answer/"

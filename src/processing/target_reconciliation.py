@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from django.db import transaction
 
 from src.apps.legislation.models import EventoAlteracao, Norma
+from src.processing.normative_reference import canonical_type, parse_normative_references
 
 REFERENCE_RE = re.compile(
     r"\b(?P<tipo>lei\s+complementar|lei|decreto|resolu(?:c|ç)ão|portaria|emenda)"
@@ -31,15 +32,7 @@ def _normalize_number(value) -> str:
 
 
 def _normalize_type(value: str) -> str:
-    value = re.sub(r"\s+", " ", str(value or "").strip().lower())
-    replacements = {
-        "resolução": "resolucao",
-        "resolucao": "resolucao",
-        "lei complementar": "lei complementar",
-        "lei ordinária": "lei",
-        "lei ordinaria": "lei",
-    }
-    return replacements.get(value, value)
+    return canonical_type(value)
 
 
 @dataclass(frozen=True)
@@ -67,11 +60,19 @@ def parse_target_reference(event: EventoAlteracao) -> TargetReference | None:
         parts = str(numero).split("/")
         if len(parts) == 2 and re.fullmatch(r"(19|20)\d{2}", parts[1]):
             numero, ano = parts[0], int(parts[1])
+        if ano is None:
+            return None
         return TargetReference(str(tipo), str(numero), ano)
 
     text = str(getattr(event, "target_text", "") or "")
+    references = parse_normative_references(text)
+    if len(references) == 1 and not references[0].ambiguous:
+        reference = references[0]
+        match = REFERENCE_RE.search(text)
+        display_number = match.group("numero") if match else reference.number
+        return TargetReference(reference.type_key, display_number, reference.year)
     match = REFERENCE_RE.search(text)
-    if not match:
+    if not match or not match.group("ano"):
         return None
     parsed_year = match.group("ano")
     return TargetReference(
@@ -125,7 +126,7 @@ def resolve_event_target(event: EventoAlteracao) -> bool:
 def reconcile_unresolved_event_targets(limit: int = 5000) -> dict[str, int]:
     """Resolve a bounded number of previously unresolved alteration events."""
     events = (
-        EventoAlteracao.objects.filter(norma_alvo__isnull=True)
+        EventoAlteracao.objects.filter(norma_alvo__isnull=True, is_active=True)
         .select_related("dispositivo_fonte__norma")
         .order_by("id")[: max(1, min(int(limit), 50_000))]
     )

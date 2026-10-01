@@ -151,18 +151,14 @@ def test_mobile_touch_targets_have_accessible_minimums():
 
 def test_norma_document_headings_follow_a_valid_accessible_hierarchy():
     templates = (
-        Path(__file__).resolve().parents[1]
-        / "apps"
-        / "legislation"
-        / "templates"
-        / "legislation"
+        Path(__file__).resolve().parents[1] / "apps" / "legislation" / "templates" / "legislation"
     )
     detail = (templates / "norma_detail.html").read_text(encoding="utf-8")
     compare = (templates / "norma_compare.html").read_text(encoding="utf-8")
     tree = (templates / "norma_tree.html").read_text(encoding="utf-8")
 
     assert '<h1 class="legal-page-heading">' in compare
-    assert '<h2>📑 Comparação textual por linhas</h2>' in compare
+    assert "<h2>Diferenças textuais estruturais</h2>" in compare
     assert '<h1 class="legal-page-heading">' in tree
     assert '<span class="legal-stat-value">{{ stats.total_dispositivos }}</span>' in detail
     assert "<h3>{{ stats.total_dispositivos }}</h3>" not in detail
@@ -170,12 +166,7 @@ def test_norma_document_headings_follow_a_valid_accessible_hierarchy():
 
 def test_sidebar_keyboard_shortcut_keeps_full_contrast():
     workspace = (
-        Path(__file__).resolve().parents[1]
-        / "apps"
-        / "core"
-        / "static"
-        / "css"
-        / "workspace.css"
+        Path(__file__).resolve().parents[1] / "apps" / "core" / "static" / "css" / "workspace.css"
     ).read_text(encoding="utf-8")
     assert re.search(r"\.workspace-nav-item kbd\s*\{[^}]*opacity:\s*1", workspace)
     assert re.search(r"\.figma-sidebar-item kbd\s*\{[^}]*opacity:\s*1", workspace)

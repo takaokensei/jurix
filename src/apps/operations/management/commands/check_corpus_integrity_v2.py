@@ -34,6 +34,38 @@ class Command(BaseCommand):
         if orphan_devices:
             failures.append(f"Orphan devices: {orphan_devices}")
 
+        parent_rows = list(Dispositivo.objects.values_list("id", "norma_id", "dispositivo_pai_id"))
+        parent_map = {row_id: (norma_id, parent_id) for row_id, norma_id, parent_id in parent_rows}
+        external_parents = [
+            child_id
+            for child_id, (norma_id, parent_id) in parent_map.items()
+            if parent_id and (parent_id not in parent_map or parent_map[parent_id][0] != norma_id)
+        ]
+        if external_parents:
+            failures.append(
+                f"Parent links cross normas or point to missing rows: "
+                f"{external_parents[: options['limit']]}"
+            )
+
+        cycle_nodes: set[int] = set()
+        complete: set[int] = set()
+        for start in parent_map:
+            path: list[int] = []
+            positions: dict[int, int] = {}
+            current = start
+            while current in parent_map and current not in complete:
+                if current in positions:
+                    cycle_nodes.update(path[positions[current] :])
+                    break
+                positions[current] = len(path)
+                path.append(current)
+                current = parent_map[current][1]
+                if current is None:
+                    break
+            complete.update(path)
+        if cycle_nodes:
+            failures.append(f"Device parent cycles: {sorted(cycle_nodes)[: options['limit']]}")
+
         bad_order_groups = list(
             Dispositivo.objects.values("norma")
             .annotate(count=Count("id"), distinct_orders=Count("ordem", distinct=True))

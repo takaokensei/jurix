@@ -5,6 +5,7 @@ import json
 import logging
 import math
 import re
+from uuid import uuid4
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -33,6 +34,7 @@ from src.apps.legislation.chat_api_helpers import _chat_session_response, _parse
 from src.apps.legislation.models import (
     ChatMessage,
     ChatSession,
+    ChatTurn,
     Dispositivo,
     EventoAlteracao,
     Norma,
@@ -41,7 +43,17 @@ from src.apps.legislation.retrieval_api import build_retrieval_options
 from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
 from src.apps.legislation.suggestion_service import build_dynamic_suggestions
 from src.processing.adaptive_rag_service import AdaptiveRAGService
+from src.processing.answer_contract import build_answer_contract
+from src.processing.chat_turns import (
+    TurnPayloadConflict,
+    normalize_turn_id,
+    reserve_authenticated_turn,
+    transition_turn,
+)
+from src.processing.conversation_titles import build_conversation_title
 from src.processing.llm_provider import validate_provider_config
+from src.processing.normative_reference import parse_normative_references
+from src.observability.safe_logging import log_exception_safely
 
 RAGService = AdaptiveRAGService
 from .api_health import _format_error_message, _server_error
@@ -49,57 +61,61 @@ from .api_health import _format_error_message, _server_error
 logger = logging.getLogger(__name__)
 
 
-_LAW_REFERENCE_RE = re.compile(
-    r"\b(Lei(?:\s+Complementar)?|Decreto|Resolução|Portaria)\s*(?:n[º°o.]?\s*)?(\d{1,7})\s*/\s*(\d{4})\b",
-    re.IGNORECASE,
+_ARTICLE_FOLLOWUP_RE = re.compile(
+    r"\b(?:e\s+)?(?:o\s+)?art(?:igo)?\.?\s*(\d{1,4})\s*[º°o]?\b", re.IGNORECASE
 )
-_ARTICLE_FOLLOWUP_RE = re.compile(r"\b(?:e\s+)?(?:o\s+)?art(?:igo)?\.?\s*(\d{1,4})\s*[º°o]?\b", re.IGNORECASE)
 
 
 def _resolve_article_followup(question: str, previous_question: str) -> str:
-    """Carry only an explicit law citation into a short article follow-up."""
+    """Preserve the follow-up and add only an unambiguous prior normative scope."""
     if not previous_question or len(previous_question) > 10000:
         return question
     match = _ARTICLE_FOLLOWUP_RE.search(question)
-    law = _LAW_REFERENCE_RE.search(previous_question)
-    if not match or not law or _LAW_REFERENCE_RE.search(question):
+    if not match or parse_normative_references(question):
         return question
-    kind = " ".join(law.group(1).split())
-    number, year = law.group(2), law.group(3)
-    return f"O que prevê o art. {match.group(1)} da {kind} nº {number}/{year}?"
-
-
-def _generate_local_conversation_title(question: str) -> str:
-    """Generate a compact title with the configured local Ollama model; fail closed."""
-    try:
-        from src.llm_engine.ollama_service import OllamaService
-
-        generated = OllamaService(model=settings.OLLAMA_MODEL).generate_text(
-            prompt=(
-                "Resuma o tema desta conversa jurídica em um título de 3 a 7 palavras, "
-                "máximo 55 caracteres. Não repita a pergunta inteira. Responda somente o título.\n\n"
-                f"Pergunta: {question[:1500]}"
-            ),
-            model=settings.OLLAMA_MODEL,
-            temperature=0.2,
-            max_tokens=32,
-        )
-        title = " ".join(str(generated or "").replace("\n", " ").strip(" \t\"'`.*#-").split())
-        if title and len(title) <= 70:
-            return title[:55].rstrip(" .,;:!?—-")
-    except Exception:
-        logger.info("Local conversation title generation unavailable", exc_info=True)
-    # A concise fallback is preferable to repeating the same question as title and preview.
-    reference = _LAW_REFERENCE_RE.search(question)
-    remainder = question[reference.end():] if reference else question
-    words = [word for word in re.findall(r"[\wÀ-ÿ]+", remainder) if word.casefold() not in {"o", "a", "os", "as", "que", "sobre", "prevê", "preve", "estabelece", "trata", "da", "do", "de", "um", "uma", "qual"}]
-    topic = " ".join(words[:5]).strip()
-    if reference and topic:
-        kind = "Lei" if reference.group(1).casefold().startswith("lei") else reference.group(1)
-        topic = f"{kind} {reference.group(2)}/{reference.group(3)} — {topic}"
-    if not topic and reference:
-        topic = f"{reference.group(1)} {reference.group(2)}/{reference.group(3)}"
-    return topic[:55].rstrip(" .,;:!?—-") or "Pesquisa jurídica"
+    reference = None
+    typed_reference_seen = False
+    # Conversations arrive newest-first from persistence. Resolve the law from
+    # one message at a time so two norms mentioned in separate turns do not get
+    # collapsed into an ambiguous composite citation.
+    for prior_message in previous_question.splitlines():
+        references = parse_normative_references(prior_message)
+        typed_reference_seen = typed_reference_seen or bool(references)
+        if len(references) == 1 and not references[0].ambiguous:
+            reference = references[0]
+            break
+    if reference is None:
+        # Compact references without a type are accepted only in isolation.
+        # A typed but ambiguous mention must never fall back to its first match.
+        if typed_reference_seen:
+            return question
+        compact_refs = [
+            re.findall(r"\b(\d{1,7})\s*/\s*((?:19|20)\d{2})\b", line)
+            for line in previous_question.splitlines()
+        ]
+        compact_refs = [items[0] for items in compact_refs if len(items) == 1]
+        if len(compact_refs) != 1:
+            return question
+        number, year = compact_refs[0]
+        kind = "norma"
+    else:
+        kind = {
+            "lei": "Lei",
+            "lei_complementar": "Lei Complementar",
+            "lei_organica": "Lei Orgânica",
+            "decreto": "Decreto",
+            "decreto_lei": "Decreto-Lei",
+            "decreto_legislativo": "Decreto Legislativo",
+            "resolucao": "Resolução",
+            "portaria": "Portaria",
+            "emenda": "Emenda",
+            "emenda_constitucional": "Emenda Constitucional",
+        }.get(reference.type_key)
+        if not kind or reference.year is None:
+            return question
+        number, year = reference.number, str(reference.year)
+    # Keep the user's words/intention intact; context is a retrieval hint only.
+    return f"{question.rstrip()} (contexto normativo: {kind} nº {number}/{year})"
 
 
 @require_http_methods(["GET"])
@@ -173,8 +189,11 @@ def semantic_search_api(request: HttpRequest) -> JsonResponse:
             )
 
         logger.info(
-            f"API semantic search request: query='{query_text[:50]}...', "
-            f"k={k}, norma_id={norma_id}, min_similarity={min_similarity}"
+            "API semantic search request (query_length=%s, k=%s, norma_id=%s, min_similarity=%s)",
+            len(query_text),
+            k,
+            norma_id,
+            min_similarity,
         )
 
         # Perform semantic search
@@ -226,7 +245,7 @@ def semantic_search_api(request: HttpRequest) -> JsonResponse:
         )
 
     except Exception as e:
-        logger.error(f"Error in semantic search API: {e}", exc_info=True)
+        log_exception_safely(logger, "Error in semantic search API", e)
         return JsonResponse({"success": False, "error": _format_error_message(e)}, status=500)
 
 
@@ -287,7 +306,31 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
                 status=400,
             )
 
-        logger.info(f"RAG answer request: question='{question[:50]}...', k={k}, model={model}")
+        if retrieval_options.temporal_scope.as_of:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "code": "historical_version_unavailable",
+                    "error": (
+                        "O corpus não mantém versões históricas verificadas desta redação. "
+                        "Não é seguro apresentar o texto atual como se fosse o texto vigente "
+                        "na data solicitada."
+                    ),
+                    "sources": [],
+                    "metadata": {
+                        "as_of": retrieval_options.temporal_scope.as_of.isoformat(),
+                        "historical_version_available": False,
+                    },
+                },
+                status=409,
+            )
+
+        logger.info(
+            "RAG answer request (question_length=%s, k=%s, model=%s)",
+            len(question),
+            k,
+            model,
+        )
 
         # Generate answer using RAG
         rag_service = RAGService()
@@ -303,6 +346,28 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
         formatted_sources = [
             serialize_dispositivo_source(source) for source in response.get("sources", [])
         ]
+        answer_contract = build_answer_contract(
+            question=question,
+            retrieval_query=question,
+            filters={
+                "mode": retrieval_options.mode,
+                "norma_status": retrieval_options.norma_status,
+                "source_scope": retrieval_options.source_scope,
+                "norma_type": retrieval_options.norma_type,
+                "year": retrieval_options.year,
+                "max_sources": retrieval_options.max_sources,
+                "min_similarity": retrieval_options.min_similarity,
+                "as_of": retrieval_options.as_of,
+                "published_from": retrieval_options.published_from,
+                "published_to": retrieval_options.published_to,
+            },
+            provider="ollama",
+            model=response.get("model", model),
+            sources=formatted_sources,
+            grounding=response.get("grounding", {}),
+            grounded=response.get("grounded") is True,
+            cached=response.get("cached", False),
+        )
 
         return JsonResponse(
             {
@@ -316,12 +381,13 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
                     "model": response.get("model", model),
                     "context_length": response.get("context_length", 0),
                     "cached": response.get("cached", False),
+                    "contract": answer_contract,
                 },
             }
         )
 
     except Exception as e:
-        logger.error(f"Error in RAG answer API: {e}", exc_info=True)
+        log_exception_safely(logger, "Error in RAG answer API", e)
         return JsonResponse({"success": False, "error": _format_error_message(e)}, status=500)
 
 
@@ -369,9 +435,40 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
     client_session_id = data.get("client_session_id", "")
     if not isinstance(client_session_id, str) or len(client_session_id) > 80:
         return JsonResponse({"success": False, "error": "Invalid client_session_id"}, status=400)
+    request_id = str(uuid4())
+    client_turn_id = data.get("client_turn_id")
+    if client_turn_id is not None:
+        try:
+            client_turn_id = normalize_turn_id(client_turn_id)
+        except ValueError as exc:
+            return JsonResponse({"success": False, "error": str(exc)}, status=400)
+    retry_of_client_turn_id = data.get("retry_of_client_turn_id")
+    if retry_of_client_turn_id is not None:
+        try:
+            retry_of_client_turn_id = normalize_turn_id(retry_of_client_turn_id)
+        except ValueError as exc:
+            return JsonResponse({"success": False, "error": str(exc)}, status=400)
+        if client_turn_id is None:
+            return JsonResponse(
+                {"success": False, "error": "A retry must include a new client turn id"},
+                status=400,
+            )
+    contract_filters = {
+        "mode": retrieval_options.mode,
+        "norma_status": retrieval_options.norma_status,
+        "source_scope": retrieval_options.source_scope,
+        "norma_type": retrieval_options.norma_type,
+        "year": retrieval_options.year,
+        "max_sources": retrieval_options.max_sources,
+        "min_similarity": retrieval_options.min_similarity,
+        "as_of": retrieval_options.as_of,
+        "published_from": retrieval_options.published_from,
+        "published_to": retrieval_options.published_to,
+    }
 
     # Session management
     chat_session = None
+    chat_turn = None
     first_turn = False
     context_question = previous_question
     if request.user.is_authenticated:
@@ -385,19 +482,123 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                         return JsonResponse(
                             {"success": False, "error": "Session not found"}, status=404
                         )
-                if not chat_session:
+                if client_turn_id is not None:
+                    if not client_session_id:
+                        return JsonResponse(
+                            {
+                                "success": False,
+                                "error": "Client session id is required for idempotent turns",
+                            },
+                            status=400,
+                        )
+                    retry_of_turn = None
+                    if retry_of_client_turn_id is not None:
+                        retry_of_turn = ChatTurn.objects.filter(
+                            user=request.user,
+                            client_session_id=client_session_id,
+                            client_turn_id=retry_of_client_turn_id,
+                        ).first()
+                        if retry_of_turn is None:
+                            return JsonResponse(
+                                {
+                                    "success": False,
+                                    "error": "Turno original da tentativa não encontrado",
+                                },
+                                status=409,
+                            )
+                        if chat_session is None:
+                            chat_session = retry_of_turn.session
+                    turn_payload = {
+                        "question": question,
+                        "k": k,
+                        "model": model,
+                        "temperature": temperature,
+                        "retrieval": retrieval_options.fingerprint(),
+                        "provider": text_provider,
+                        "retry_of": str(retry_of_client_turn_id or ""),
+                    }
+                    chat_turn, created_turn = reserve_authenticated_turn(
+                        user=request.user,
+                        client_session_id=client_session_id,
+                        client_turn_id=client_turn_id,
+                        payload=turn_payload,
+                        session=chat_session,
+                        retry_of=retry_of_turn,
+                    )
+                    if not created_turn:
+                        if chat_turn.state == "completed":
+                            chat_session = chat_turn.session
+                            replay_message = (
+                                chat_turn.messages.filter(role="assistant")
+                                .order_by("-created_at", "-id")
+                                .first()
+                            )
+                            if not chat_session or not replay_message:
+                                return JsonResponse(
+                                    {
+                                        "success": False,
+                                        "error": "Turn is complete but its response is unavailable",
+                                    },
+                                    status=409,
+                                )
+
+                            def replay_completed_turn():
+                                yield f"data: {json.dumps({'type': 'status', 'status': 'queued'})}\n\n"
+                                yield f"data: {json.dumps({'type': 'session', 'session_id': chat_session.id, 'session_slug': chat_session.slug})}\n\n"
+                                contract = replay_message.metadata_json or {}
+                                replay_sources = (
+                                    replay_message.sources_json
+                                    if contract.get("grounded") is True
+                                    else []
+                                )
+                                yield f"data: {json.dumps({'type': 'sources', 'sources': replay_sources, 'cached': True})}\n\n"
+                                yield f"data: {json.dumps({'type': 'chunk', 'chunk': replay_message.content, 'provisional': False})}\n\n"
+                                yield f"data: {json.dumps({'type': 'status', 'status': 'completed'})}\n\n"
+                                yield f"data: {json.dumps({'type': 'done', 'answer': replay_message.content, 'grounded': contract.get('grounded') is True, 'contract': contract, 'session_id': chat_session.id, 'session_slug': chat_session.slug})}\n\n"
+
+                            replay_response = StreamingHttpResponse(
+                                replay_completed_turn(), content_type="text/event-stream"
+                            )
+                            replay_response["Cache-Control"] = "no-cache"
+                            replay_response["X-Accel-Buffering"] = "no"
+                            return replay_response
+                        return JsonResponse(
+                            {
+                                "success": False,
+                                "error": "Este turno já foi enviado; use uma nova tentativa para reenviar.",
+                            },
+                            status=409,
+                        )
+                    if not chat_session:
+                        chat_session = ChatSession.objects.create(
+                            user=request.user, title="Nova pesquisa", is_active=True
+                        )
+                        chat_turn.session = chat_session
+                        chat_turn.save(update_fields=["session", "updated_at"])
+                    chat_turn = transition_turn(chat_turn, "in_progress")
+                elif not chat_session:
                     chat_session = ChatSession.objects.create(
                         user=request.user, title="Nova pesquisa", is_active=True
                     )
-                prior_user_messages = list(ChatMessage.objects.filter(
-                    session=chat_session, role="user"
-                ).order_by("-created_at", "-id").values_list("content", flat=True)[:5])
+                prior_user_messages = list(
+                    ChatMessage.objects.filter(session=chat_session, role="user")
+                    .order_by("-created_at", "-id")
+                    .values_list("content", flat=True)[:5]
+                )
                 if prior_user_messages:
                     context_question = "\n".join(prior_user_messages)
                 else:
                     first_turn = True
-                ChatMessage.objects.create(session=chat_session, role="user", content=question)
+                if not (chat_turn and chat_turn.retry_of_id):
+                    ChatMessage.objects.create(
+                        session=chat_session,
+                        role="user",
+                        content=question,
+                        turn=chat_turn,
+                    )
                 ChatSession.objects.filter(pk=chat_session.pk).update(updated_at=timezone.now())
+        except TurnPayloadConflict as exc:
+            return JsonResponse({"success": False, "error": str(exc)}, status=409)
         except Exception as e:
             return _server_error("persisting user message", e)
 
@@ -410,10 +611,52 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
             yield f"data: {json.dumps({'type': 'status', 'status': 'queued'})}\n\n"
             if chat_session:
                 yield f"data: {json.dumps({'type': 'session', 'session_id': chat_session.id, 'session_slug': chat_session.slug})}\n\n"
+            if retrieval_options.temporal_scope.as_of:
+                final_answer = (
+                    "Não posso confirmar qual redação estava vigente nessa data: "
+                    "o Jurix ainda não possui versões históricas verificadas para esta norma. "
+                    "A redação atual não será apresentada como histórica."
+                )
+                metadata = {
+                    "grounded": False,
+                    "reason_code": "historical_version_unavailable",
+                    "as_of": retrieval_options.temporal_scope.as_of.isoformat(),
+                    "historical_version_available": False,
+                }
+                provenance = build_answer_contract(
+                    question=question,
+                    retrieval_query=question,
+                    filters=contract_filters,
+                    provider="unavailable",
+                    model=model,
+                    grounded=False,
+                    request_id=request_id,
+                )
+                yield f"data: {json.dumps({'type': 'status', 'status': 'insufficient_evidence'})}\n\n"
+                if request.user.is_authenticated and chat_session:
+                    with transaction.atomic():
+                        ChatMessage.objects.create(
+                            session=chat_session,
+                            role="assistant",
+                            content=final_answer,
+                            sources_json=[],
+                            metadata_json=provenance,
+                            turn=chat_turn,
+                        )
+                        if chat_turn:
+                            transition_turn(chat_turn, "completed")
+                    assistant_persisted = True
+                yield f"data: {json.dumps({'type': 'status', 'status': 'completed'})}\n\n"
+                yield f"data: {json.dumps({'type': 'done', 'answer': final_answer, **metadata, 'sources': [], 'contract': provenance})}\n\n"
+                return
             rag_service = RAGService()
             retrieval_question = _resolve_article_followup(question, context_question)
             stream_gen = rag_service.stream_answer_question(
-                retrieval_question, k=k, model=model, temperature=temperature, options=retrieval_options,
+                retrieval_question,
+                k=k,
+                model=model,
+                temperature=temperature,
+                options=retrieval_options,
                 text_provider=text_provider,
             )
 
@@ -462,23 +705,39 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     final_answer = item.get("answer", "")
                     grounded = item.get("grounded") is True
                     answer_sources = sources_list if grounded else []
+                    provenance = build_answer_contract(
+                        question=question,
+                        retrieval_query=retrieval_question,
+                        filters=contract_filters,
+                        provider=text_provider.get("provider", "ollama"),
+                        model=text_provider.get("model") or model,
+                        sources=answer_sources,
+                        discarded_sources=item.get("discarded_sources", []),
+                        grounding=item.get("grounding", {}),
+                        grounded=grounded,
+                        cached=item.get("cached", False),
+                        request_id=request_id,
+                        timings_ms=item.get("timings_ms"),
+                        generation_attempts=item.get("generation_attempts"),
+                    )
                     if request.user.is_authenticated and chat_session:
                         try:
-                            ChatMessage.objects.create(
-                                session=chat_session,
-                                role="assistant",
-                                content=final_answer,
-                                sources_json=answer_sources,
-                                metadata_json={
-                                    "model": model,
-                                    "sources_count": len(answer_sources),
-                                    "grounded": grounded,
-                                    "streaming": True,
-                                },
-                            )
+                            with transaction.atomic():
+                                ChatMessage.objects.create(
+                                    session=chat_session,
+                                    role="assistant",
+                                    content=final_answer,
+                                    sources_json=answer_sources,
+                                    metadata_json=provenance,
+                                    turn=chat_turn,
+                                )
+                                if chat_turn:
+                                    transition_turn(chat_turn, "completed")
                             assistant_persisted = True
                         except Exception as msg_err:
-                            logger.error(f"Error persisting streaming assistant message: {msg_err}")
+                            log_exception_safely(
+                                logger, "Error persisting streaming assistant message", msg_err
+                            )
                             yield f"data: {json.dumps({'type': 'error', 'error': 'A resposta foi gerada, mas não pôde ser salva. Copie o texto antes de sair.'})}\n\n"
                             return
 
@@ -486,31 +745,47 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                         "type": "done",
                         "answer": final_answer,
                         "grounded": grounded,
+                        "contract": provenance,
                         "session_id": chat_session.id if chat_session else None,
                         "session_slug": getattr(chat_session, "slug", None)
                         if chat_session
                         else None,
                     }
-                    yield f"data: {json.dumps({'type': 'status', 'status': 'completed'})}\n\n"
-                    yield f"data: {json.dumps(payload)}\n\n"
                     if first_turn and chat_session:
-                        title = _generate_local_conversation_title(question)
+                        title = build_conversation_title(question, answer_sources)
                         ChatSession.objects.filter(pk=chat_session.pk).update(title=title)
                         yield f"data: {json.dumps({'type': 'title', 'title': title})}\n\n"
-                    elif not request.user.is_authenticated and client_session_id.startswith("local-") and not context_question:
-                        title = _generate_local_conversation_title(question)
+                    elif (
+                        not request.user.is_authenticated
+                        and client_session_id.startswith("local-")
+                        and not context_question
+                    ):
+                        title = build_conversation_title(question, answer_sources)
                         yield f"data: {json.dumps({'type': 'title', 'title': title, 'client_session_id': client_session_id})}\n\n"
+                    yield f"data: {json.dumps({'type': 'status', 'status': 'completed'})}\n\n"
+                    yield f"data: {json.dumps(payload)}\n\n"
         except Exception as e:
-            logger.error(f"Error in chatbot_stream_api stream: {e}", exc_info=True)
+            log_exception_safely(logger, "Error in chatbot_stream_api stream", e)
+            if chat_turn:
+                try:
+                    transition_turn(chat_turn, "failed")
+                except Exception:
+                    pass
             yield f"data: {json.dumps({'type': 'status', 'status': 'failed'})}\n\n"
             err_payload = {"type": "error", "error": _format_error_message(e)}
             yield f"data: {json.dumps(err_payload)}\n\n"
         finally:
+            if chat_turn and not assistant_persisted:
+                try:
+                    if ChatTurn.objects.filter(pk=chat_turn.pk, state="in_progress").exists():
+                        transition_turn(chat_turn, "interrupted")
+                except Exception:
+                    pass
             if stream_gen is not None and hasattr(stream_gen, "close"):
                 try:
                     stream_gen.close()
-                except Exception:
-                    logger.exception("Error closing RAG stream")
+                except Exception as close_err:
+                    log_exception_safely(logger, "Error closing RAG stream", close_err)
             if (
                 request.user.is_authenticated
                 and chat_session
@@ -531,7 +806,9 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                         },
                     )
                 except Exception as msg_err:
-                    logger.error(f"Error persisting interrupted assistant message: {msg_err}")
+                    log_exception_safely(
+                        logger, "Error persisting interrupted assistant message", msg_err
+                    )
 
     response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
     response["Cache-Control"] = "no-cache"

@@ -31,7 +31,9 @@ CONTRADICTORY_PAIRS = {
 
 def detect_for_norma(norma) -> list[dict]:
     events = list(
-        EventoAlteracao.objects.filter(Q(norma_alvo=norma) | Q(dispositivo_alvo__norma=norma))
+        EventoAlteracao.objects.filter(
+            Q(norma_alvo=norma) | Q(dispositivo_alvo__norma=norma), is_active=True
+        )
         .select_related("dispositivo_fonte__norma", "dispositivo_alvo", "norma_alvo")
         .order_by("dispositivo_fonte__norma__data_publicacao", "created_at", "id")
     )

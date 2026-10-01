@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from django.contrib.auth.models import User
-from django.test import Client
+from django.test import Client, override_settings
 from django.urls import reverse
 
 from src.apps.legislation.models import ChatMessage, ChatSession
@@ -94,6 +94,15 @@ def test_invalid_and_empty_input_are_400(client):
     assert post(client, {"question": "   "}).status_code == 400
     assert post(client, {"question": "x", "k": "abc"}).status_code == 400
     assert post(client, {"question": "x", "model": "modelo-nao-permitido"}).status_code == 400
+
+
+@override_settings(LLM_MAX_QUESTION_LENGTH=73)
+def test_composer_maximum_is_rendered_from_server_setting():
+    response = Client().get(reverse("legislation:chatbot"))
+
+    assert response.status_code == 200
+    assert b'data-question-max-length="73"' in response.content
+    assert b'maxlength="73"' in response.content
 
 
 def test_server_error_does_not_leak_details(client, fake_llm):

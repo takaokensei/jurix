@@ -81,16 +81,18 @@ def strip_closing_editorial_metadata(text: str) -> str:
     if not last_article:
         return text
     for marker in candidates:
-        suffix = text[marker.start():]
+        suffix = text[marker.start() :]
         # A session phrase alone can occur in substantive text; require a
         # corroborating signature/publication marker in the same closing tail.
-        corroborated = bool(re.search(
-            r"\b(?:Publicad[oa]\s+no\s+Di[aá]rio\s+Oficial|Autoria\s*:|Presidente|Primeiro\s+Secret[aá]rio|Segunda\s+Secret[aá]ria)\b",
-            suffix,
-            re.IGNORECASE,
-        ))
+        corroborated = bool(
+            re.search(
+                r"\b(?:Publicad[oa]\s+no\s+Di[aá]rio\s+Oficial|Autoria\s*:|Presidente|Primeiro\s+Secret[aá]rio|Segunda\s+Secret[aá]ria)\b",
+                suffix,
+                re.IGNORECASE,
+            )
+        )
         if marker.start() > last_article[-1].start() and corroborated:
-            return text[:marker.start()].rstrip()
+            return text[: marker.start()].rstrip()
     return text
 
 

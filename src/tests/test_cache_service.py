@@ -83,6 +83,52 @@ def test_answer_generated_before_a_bump_is_never_served_after_it(svc):
     assert svc.get_answer("q?", k=5, model="m", corpus_version=version_at_start) is not None
 
 
+def test_durable_corpus_revision_prevents_cross_worker_stale_cache_hits(svc):
+    with patch.object(svc, "get_corpus_revision_digest", return_value="r7:old-digest"):
+        svc.set_answer("q?", k=5, model="m", answer_data=ANSWER)
+    with patch.object(svc, "get_corpus_revision_digest", return_value="r8:new-digest"):
+        assert svc.get_answer("q?", k=5, model="m") is None
+
+
+def test_answer_cache_separates_generation_provider_endpoint_and_temperature(svc):
+    common = {"model": "same-model", "temperature": 0.2}
+    ollama = svc.generation_fingerprint(
+        provider="ollama", endpoint="http://localhost:11434/", **common
+    )
+    other_endpoint = svc.generation_fingerprint(
+        provider="compatible", endpoint="http://localhost:1234/v1", **common
+    )
+    other_temperature = svc.generation_fingerprint(
+        provider="ollama",
+        endpoint="http://localhost:11434",
+        **{**common, "temperature": 0.8},
+    )
+    assert len({ollama, other_endpoint, other_temperature}) == 3
+
+    svc.set_answer(
+        "q?",
+        k=5,
+        model="same-model",
+        answer_data=ANSWER,
+        generation_fingerprint=ollama,
+    )
+    assert (
+        svc.get_answer("q?", k=5, model="same-model", generation_fingerprint=other_endpoint) is None
+    )
+
+
+def test_generation_fingerprint_does_not_contain_credentials():
+    fingerprint = CacheService.generation_fingerprint(
+        provider="compatible",
+        model="model-a",
+        endpoint="https://user:very-secret@example.test/v1?api_key=also-secret",
+        temperature=0.3,
+    )
+    assert "very-secret" not in fingerprint
+    assert "also-secret" not in fingerprint
+    assert len(fingerprint) == 64
+
+
 def test_clear_cache_invalidates_answers_without_flushing_the_shared_db(svc):
     cache.set("celery-queue-marker", "must survive")
     svc.set_answer("q?", k=5, model="m", answer_data=ANSWER)
@@ -117,7 +163,11 @@ def test_cache_outage_never_raises(svc):
 )
 def test_malformed_cached_answer_is_discarded(svc, payload):
     cache.set(
-        svc._generate_key(svc.ANSWER_PREFIX, "v0:q?:k=5:model=m:retrieval="), json.dumps(payload)
+        svc._generate_key(
+            svc.ANSWER_PREFIX,
+            "cache0:unavailable:v0:q?:k=5:model=m:retrieval=:generation=",
+        ),
+        json.dumps(payload),
     )
 
     assert svc.get_answer("q?", k=5, model="m") is None

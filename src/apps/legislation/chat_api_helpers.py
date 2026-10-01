@@ -31,7 +31,7 @@ def _preview(content: str | None) -> str:
 
 
 def _chat_session_response(session: ChatSession, before: str | None = None) -> JsonResponse:
-    queryset = ChatMessage.objects.filter(session=session)
+    queryset = ChatMessage.objects.filter(session=session).select_related("turn")
     total = queryset.count()
     if before:
         try:

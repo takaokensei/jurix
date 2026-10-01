@@ -3,14 +3,17 @@
 from django.db import transaction
 from django.db.models.signals import post_delete, post_save
 
-from .models import Dispositivo, Norma
+from .models import Dispositivo, EventoAlteracao, Norma
 
 
 def _bump_after_commit() -> None:
     from src.processing.cache_service import get_cache_service
+    from src.processing.corpus_identity import refresh_corpus_revision
 
     try:
-        get_cache_service().bump_corpus_version()
+        revision = refresh_corpus_revision()
+        if revision["changed"]:
+            get_cache_service().bump_corpus_version()
     except Exception:
         # Cache invalidation is best effort; it must never break a legal write.
         return
@@ -29,4 +32,12 @@ post_save.connect(
 )
 post_delete.connect(
     _schedule_bump, sender=Dispositivo, dispatch_uid="jurix.dispositivo.cache_invalidation.delete"
+)
+post_save.connect(
+    _schedule_bump, sender=EventoAlteracao, dispatch_uid="jurix.evento.cache_invalidation"
+)
+post_delete.connect(
+    _schedule_bump,
+    sender=EventoAlteracao,
+    dispatch_uid="jurix.evento.cache_invalidation.delete",
 )

@@ -222,7 +222,9 @@ class AdaptiveRetriever:
         for token in selected_tokens:
             query |= Q(texto__icontains=token)
 
-        queryset = Dispositivo.objects.select_related("norma", "dispositivo_pai").filter(query)
+        queryset = Dispositivo.objects.select_related("norma", "dispositivo_pai").filter(
+            query, is_active=True
+        )
         if options.norma_type:
             queryset = queryset.filter(norma__tipo=options.norma_type)
         if options.year is not None:

@@ -10,6 +10,8 @@ import re
 import sys
 from pathlib import Path
 
+import django
+
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src"
 
@@ -67,6 +69,23 @@ def _declared():
         if line:
             names.add(_norm(re.split(r"[=<>!~\[; ]", line, maxsplit=1)[0]))
     return names
+
+
+def _django_pin():
+    requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+    pins = re.findall(r"^Django==(\d+)\.(\d+)\.(\d+)\s*$", requirements, re.M)
+    assert len(pins) == 1, "Django must have one exact, stable version pin"
+    return tuple(int(part) for part in pins[0])
+
+
+def test_django_pin_uses_supported_lts_security_baseline():
+    version = _django_pin()
+    assert version[:2] == (5, 2), "Keep Django on the approved 5.2 LTS release series"
+    assert version >= (5, 2, 17), "Do not regress below the audited security patch baseline"
+
+
+def test_installed_django_matches_declared_pin():
+    assert django.VERSION[:3] == _django_pin(), "Install the declared Django pin before testing"
 
 
 def _imported_third_party():

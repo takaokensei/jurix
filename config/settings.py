@@ -283,9 +283,15 @@ LLM_COMPATIBLE_ENDPOINT_ALLOWLIST = tuple(
     for endpoint in os.getenv("LLM_COMPATIBLE_ENDPOINT_ALLOWLIST", "").split(",")
     if endpoint.strip()
 )
-LLM_ALLOW_LOCAL_COMPATIBLE_ENDPOINTS = env_bool(
-    "LLM_ALLOW_LOCAL_COMPATIBLE_ENDPOINTS", DEBUG
+# Exact compatible endpoints that are known by the operator to require no
+# authentication. An entry here does not grant network access by itself; the
+# endpoint must also pass the destination allowlist/local-development policy.
+LLM_COMPATIBLE_OPTIONAL_AUTH_ALLOWLIST = tuple(
+    endpoint.strip()
+    for endpoint in os.getenv("LLM_COMPATIBLE_OPTIONAL_AUTH_ALLOWLIST", "").split(",")
+    if endpoint.strip()
 )
+LLM_ALLOW_LOCAL_COMPATIBLE_ENDPOINTS = env_bool("LLM_ALLOW_LOCAL_COMPATIBLE_ENDPOINTS", DEBUG)
 
 # Models a client may request. The default (OLLAMA_MODEL) is always allowed;
 # add more with a comma-separated OLLAMA_ALLOWED_MODELS.
@@ -339,7 +345,9 @@ SAPL_BASE_URL = os.getenv("SAPL_BASE_URL", "https://sapl.natal.rn.leg.br/api")
 SAPL_INCREMENTAL_MAX_PAGES = int(os.getenv("SAPL_INCREMENTAL_MAX_PAGES", "20"))
 SAPL_SYNC_LEASE_SECONDS = int(os.getenv("SAPL_SYNC_LEASE_SECONDS", "900"))
 RAG_TEMPORAL_FILTERS_ENABLED = os.getenv("RAG_TEMPORAL_FILTERS_ENABLED", "True").lower() == "true"
-RAG_TEMPORAL_REQUIRE_SOURCE_DATES = os.getenv("RAG_TEMPORAL_REQUIRE_SOURCE_DATES", "False").lower() == "true"
+RAG_TEMPORAL_REQUIRE_SOURCE_DATES = (
+    os.getenv("RAG_TEMPORAL_REQUIRE_SOURCE_DATES", "False").lower() == "true"
+)
 SAPL_OCR_MAX_PAGES = int(os.getenv("SAPL_OCR_MAX_PAGES", "200"))
 SAPL_DOWNLOAD_MAX_BYTES = int(os.getenv("SAPL_DOWNLOAD_MAX_BYTES", str(80 * 1024 * 1024)))
 SAPL_DOWNLOAD_TIMEOUT_SECONDS = int(os.getenv("SAPL_DOWNLOAD_TIMEOUT_SECONDS", "60"))

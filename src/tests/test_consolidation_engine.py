@@ -91,6 +91,13 @@ class TestConsolidationEngine:
         evento.dispositivo_alvo = target_disp
         evento.dispositivo_fonte = fonte_disp
         evento.target_text = target_text
+        evento.referencia_tipo = getattr(target_disp, "tipo", "artigo")
+        evento.referencia_numero = getattr(target_disp, "numero", "")
+        if acao in ("ALTERA", "SUBSTITUI") and target_disp is not None:
+            fonte_disp.texto = (
+                f"Altera o art. {target_disp.numero}: “Art. {target_disp.numero} {target_text}”"
+            )
+        evento.validado = True
         return evento
 
     def test_consolidation_deterministic_output(self, mock_norma, mock_dispositivos):
@@ -153,6 +160,29 @@ class TestConsolidationEngine:
         assert "A alíquota do ISS é fixada em 3%." in consolidated
         assert "(Redação dada pela Lei nº 300/2022)" in consolidated
         assert "A alíquota do ISS é fixada em 5%." not in consolidated
+
+    def test_populated_target_fk_does_not_allow_unquoted_instruction_to_replace_text(
+        self, mock_norma, mock_dispositivos
+    ):
+        event = self._create_event(
+            event_id=3,
+            acao="ALTERA",
+            target_disp=mock_dispositivos[1],
+            altering_norma_date=date(2022, 3, 15),
+            altering_num=301,
+            target_text="Altera o art. 2º da Lei base.",
+        )
+        event.dispositivo_fonte.texto = "Altera o art. 2º da Lei base, sem redação citada."
+
+        engine = ConsolidationEngine(mock_norma)
+        engine.dispositivos = mock_dispositivos
+        engine.eventos = [event]
+        engine._process_eventos()
+        consolidated = engine._build_consolidated_text()
+
+        assert engine.get_statistics()["altered_count"] == 0
+        assert engine.get_statistics()["events_unresolved"] == 1
+        assert "A alíquota do ISS é fixada em 5%." in consolidated
 
     def test_chronological_ordering_overrides(self, mock_norma, mock_dispositivos):
         """Test that events are processed in chronological order regardless of list input order."""
@@ -262,6 +292,7 @@ class TestConsolidationAdditionsAndHonestStats:
         ev.target_text = f"Art. {ref_num}" if ref_num else ""
         ev.referencia_tipo = ref_tipo
         ev.referencia_numero = ref_num
+        ev.validado = True
         return ev
 
     def _run(self, norma, arts, eventos):

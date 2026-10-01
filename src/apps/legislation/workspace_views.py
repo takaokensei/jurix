@@ -34,11 +34,32 @@ def _highlight_search_text(text, query):
     return mark_safe("".join(rendered))
 
 
-_HISTORY_STOPWORDS = {"para", "como", "sobre", "entre", "pela", "pelo", "uma", "que", "qual", "quais", "com", "dos", "das", "artigo", "art", "lei"}
+_HISTORY_STOPWORDS = {
+    "para",
+    "como",
+    "sobre",
+    "entre",
+    "pela",
+    "pelo",
+    "uma",
+    "que",
+    "qual",
+    "quais",
+    "com",
+    "dos",
+    "das",
+    "artigo",
+    "art",
+    "lei",
+}
 
 
 def _history_tokens(value):
-    return [token.casefold() for token in re.findall(r"[\wÀ-ÿ]{2,}", str(value or "")) if token.casefold() not in _HISTORY_STOPWORDS]
+    return [
+        token.casefold()
+        for token in re.findall(r"[\wÀ-ÿ]{2,}", str(value or ""))
+        if token.casefold() not in _HISTORY_STOPWORDS
+    ]
 
 
 def _rank_history(sessions, query):
@@ -53,7 +74,10 @@ def _rank_history(sessions, query):
         for message in session.history_messages:
             body_tokens.extend(_history_tokens(str(message.content or "")[:3000]))
         tokenized.append((session, Counter(title_tokens), Counter(body_tokens), len(body_tokens)))
-    doc_freq = {term: sum(1 for _, title, body, _ in tokenized if title[term] or body[term]) for term in query_terms}
+    doc_freq = {
+        term: sum(1 for _, title, body, _ in tokenized if title[term] or body[term])
+        for term in query_terms
+    }
     total = max(len(tokenized), 1)
     scored = []
     for session, title, body, length in tokenized:
@@ -377,12 +401,16 @@ def history_view(request):
     if request.user.is_authenticated:
         history_messages = Prefetch(
             "messages",
-            queryset=ChatMessage.objects.filter(role__in=("user", "assistant")).only("session_id", "role", "content", "created_at").order_by("-created_at")[:20],
+            queryset=ChatMessage.objects.filter(role__in=("user", "assistant"))
+            .only("session_id", "role", "content", "created_at")
+            .order_by("-created_at")[:20],
             to_attr="history_messages",
         )
-        initial_user_query = ChatMessage.objects.filter(
-            session_id=OuterRef("pk"), role="user"
-        ).order_by("created_at", "pk").values("content")[:1]
+        initial_user_query = (
+            ChatMessage.objects.filter(session_id=OuterRef("pk"), role="user")
+            .order_by("created_at", "pk")
+            .values("content")[:1]
+        )
         try:
             page_number = max(int(request.GET.get("page", 1)), 1)
         except (TypeError, ValueError):
@@ -395,8 +423,7 @@ def history_view(request):
                 matches |= Q(title__icontains=term) | Q(messages__content__icontains=term)
             queryset = queryset.filter(matches).distinct()
         candidates = list(
-            queryset
-            .annotate(message_count=Count("messages", distinct=True))
+            queryset.annotate(message_count=Count("messages", distinct=True))
             .annotate(primary_query=Subquery(initial_user_query))
             .prefetch_related(history_messages)
             .order_by("-updated_at", "-id")[:500]

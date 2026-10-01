@@ -44,6 +44,39 @@ def test_strict_grounding_rejects_negation_mismatch():
     assert report["grounded"] is False
 
 
+def test_strict_grounding_rejects_both_polarity_mismatch_directions():
+    assert not evaluate_strict_grounding(
+        "A lei exige autorização.", [source("A lei não exige autorização.")]
+    )["grounded"]
+    assert not evaluate_strict_grounding(
+        "A lei não exige autorização.", [source("A lei exige autorização.")]
+    )["grounded"]
+    assert evaluate_strict_grounding(
+        "A lei não exige autorização.", [source("A lei não exige autorização.")]
+    )["grounded"]
+
+
+def test_strict_grounding_rejects_removed_conditions_and_strengthened_modality():
+    assert not evaluate_strict_grounding(
+        "O município concede apoio financeiro.",
+        [source("O município pode conceder apoio financeiro se houver dotação.")],
+    )["grounded"]
+    assert not evaluate_strict_grounding(
+        "O município deve conceder apoio financeiro.",
+        [source("O município pode conceder apoio financeiro.")],
+    )["grounded"]
+
+
+def test_strict_grounding_binds_quantities_to_their_units_and_anchors():
+    evidence = source("O prazo é de 10 dias e a multa é de 20 reais.")
+    assert not evaluate_strict_grounding(
+        "O prazo é de 20 dias e a multa é de 10 reais.", [evidence]
+    )["grounded"]
+    assert evaluate_strict_grounding("O prazo é de 10 dias e a multa é de 20 reais.", [evidence])[
+        "grounded"
+    ]
+
+
 def test_strict_grounding_rejects_unknown_citation():
     report = evaluate_strict_grounding(
         "A Lei 9999/2025 exige cadastro.",

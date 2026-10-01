@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, name="ingestion.consolidate_norma", max_retries=3, default_retry_delay=60)
-def consolidate_norma_task(self, norma_id: int) -> dict[str, Any]:
+def consolidate_norma_task(self, norma_id: int, experimental: bool = False) -> dict[str, Any]:
     """
     Consolidate a Norma by applying all alteration events.
 
@@ -61,6 +61,16 @@ def consolidate_norma_task(self, norma_id: int) -> dict[str, Any]:
         # Fetch Norma
         norma = Norma.objects.get(id=norma_id)
 
+        if not isinstance(experimental, bool):
+            return {
+                "success": False,
+                "error": "experimental must be a boolean",
+                "norma_id": norma_id,
+            }
+
+        original_status = norma.status
+        previous_consolidated_text = norma.texto_consolidado
+
         # Validate status
         if norma.status != "entities_extracted":
             logger.warning(
@@ -69,11 +79,12 @@ def consolidate_norma_task(self, norma_id: int) -> dict[str, Any]:
             )
 
         # Update status to processing
-        norma.status = "consolidation"
-        norma.save(update_fields=["status", "updated_at"])
+        if not experimental and original_status != "consolidated":
+            norma.status = "consolidation"
+            norma.save(update_fields=["status", "updated_at"])
 
         # Initialize consolidation engine
-        engine = ConsolidationEngine(norma)
+        engine = ConsolidationEngine(norma, include_unvalidated=experimental)
 
         # Execute consolidation
         logger.info(f"[Task {task_id}] Executing consolidation algorithm...")
@@ -81,6 +92,48 @@ def consolidate_norma_task(self, norma_id: int) -> dict[str, Any]:
 
         # Get statistics
         stats = engine.get_statistics()
+
+        if experimental:
+            return {
+                "success": False,
+                "experimental": True,
+                "label": "DERIVADO EXPERIMENTAL — NÃO OFICIAL",
+                "experimental_text": consolidated_text,
+                "norma_id": norma_id,
+                "norma_str": str(norma),
+                "events_processed": stats["events_processed"],
+                "events_applied": stats["events_applied"],
+                "events_unresolved": stats["events_unresolved"],
+                "events_unvalidated": stats["events_unvalidated"],
+                "needs_review": True,
+            }
+
+        # Never replace or publish the official text when the derivation would
+        # depend on automatically extracted, unreviewed events.
+        if stats["events_unvalidated"]:
+            norma.needs_review = True
+            norma.processing_error = (
+                "Consolidação pendente: "
+                f"{stats['events_unvalidated']} evento(s) extraído(s) aguardam validação humana."
+            )
+            update_fields = ["needs_review", "processing_error", "updated_at"]
+            if not previous_consolidated_text:
+                norma.status = "failed"
+                update_fields.append("status")
+            else:
+                norma.status = original_status
+            norma.save(update_fields=update_fields)
+            return {
+                "success": False,
+                "norma_id": norma_id,
+                "norma_str": str(norma),
+                "events_processed": stats["events_processed"],
+                "events_applied": stats["events_applied"],
+                "events_unresolved": stats["events_unresolved"],
+                "events_unvalidated": stats["events_unvalidated"],
+                "needs_review": True,
+                "official_text_preserved": bool(previous_consolidated_text),
+            }
 
         # Save consolidated text
         norma.texto_consolidado = consolidated_text
@@ -130,6 +183,7 @@ def consolidate_norma_task(self, norma_id: int) -> dict[str, Any]:
             "events_processed": stats["events_processed"],
             "events_applied": stats["events_applied"],
             "events_unresolved": stats["events_unresolved"],
+            "events_unvalidated": stats["events_unvalidated"],
             "needs_review": stats["needs_review"],
             "consolidated_length": len(consolidated_text),
             "processing_time": processing_time,

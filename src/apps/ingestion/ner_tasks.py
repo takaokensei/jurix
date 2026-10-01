@@ -24,12 +24,35 @@ from src.clients.sapl.sapl_client import SaplAPIClient
 from src.llm_engine.ollama_service import OllamaService
 from src.processing.cache_service import get_cache_service
 from src.processing.consolidation_engine import ConsolidationEngine
+from src.processing.event_revision import event_revision_identity
 from src.processing.legal_parser import LegalTextParser
 from src.processing.ner_extractor import LegalNERExtractor
 
 from .task_support import _invalidate_rag_cache, _mark_norma_failed, _resolve_norma_reference
 
 logger = logging.getLogger(__name__)
+
+
+def _persist_embedding_if_current(
+    *, dispositivo_id: int, source_revision: str, model: str, embedding: list[float]
+) -> bool:
+    """Compare-and-set vector persistence; a newer text revision wins every race."""
+    vector_str = "[" + ",".join(map(str, embedding)) + "]"
+    now = timezone.now()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE legislation_dispositivo
+            SET embedding = %s::vector,
+                embedding_model = %s,
+                embedding_generated_at = %s,
+                embedding_revision_fingerprint = %s,
+                updated_at = %s
+            WHERE id = %s AND is_active = TRUE AND revision_fingerprint = %s
+            """,
+            [vector_str, model, now, source_revision, now, dispositivo_id, source_revision],
+        )
+        return cursor.rowcount == 1
 
 
 @shared_task(bind=True, name="ingestion.extract_entities", max_retries=3, default_retry_delay=60)
@@ -79,7 +102,9 @@ def extract_entities_task(self, norma_id: int) -> dict[str, Any]:
         extractor = LegalNERExtractor()
 
         # Fetch all dispositivos for this norma
-        dispositivos = Dispositivo.objects.filter(norma=norma).select_related("norma")
+        dispositivos = Dispositivo.objects.filter(norma=norma, is_active=True).select_related(
+            "norma"
+        )
 
         if not dispositivos.exists():
             logger.warning(
@@ -103,7 +128,8 @@ def extract_entities_task(self, norma_id: int) -> dict[str, Any]:
         logger.info(f"[Task {task_id}] Found {dispositivos.count()} dispositivos to analyze")
 
         # Extract events from each dispositivo
-        events_to_create = []
+        extracted_rows = []
+        occurrences: dict[tuple, int] = {}
         dispositivos_with_events = 0
 
         for dispositivo in dispositivos:
@@ -145,13 +171,101 @@ def extract_entities_task(self, norma_id: int) -> dict[str, Any]:
                         referencia_tipo=event_data["referencia_tipo"][:50],
                         referencia_numero=event_data["referencia_numero"][:50],
                     )
-                    events_to_create.append(evento)
+                    occurrence_key = (
+                        dispositivo.pk,
+                        evento.acao,
+                        evento.target_text,
+                        evento.referencia_tipo,
+                        evento.referencia_numero,
+                        norma_alvo.pk if norma_alvo else None,
+                    )
+                    occurrence = occurrences.get(occurrence_key, 0)
+                    occurrences[occurrence_key] = occurrence + 1
+                    source_identity = dispositivo.structural_key or f"device:{dispositivo.pk}"
+                    fingerprint, provenance = event_revision_identity(
+                        source_identity=source_identity,
+                        source_revision=dispositivo.revision_fingerprint,
+                        action=evento.acao,
+                        target_text=evento.target_text,
+                        reference_type=evento.referencia_tipo,
+                        reference_number=evento.referencia_numero,
+                        target_norma_id=norma_alvo.pk if norma_alvo else None,
+                        occurrence=occurrence,
+                    )
+                    evento.revision_fingerprint = fingerprint
+                    evento.provenance_json = provenance
+                    extracted_rows.append(evento)
 
-        # Atomically clean up prior events for this norma and bulk create the new clean events
+        # Reconcile by evidence revision: keep reviewed IDs and retain superseded events for audit.
         with transaction.atomic():
-            EventoAlteracao.objects.filter(dispositivo_fonte__norma=norma).delete()
-            if events_to_create:
-                EventoAlteracao.objects.bulk_create(events_to_create, batch_size=500)
+            norma = Norma.objects.select_for_update().get(pk=norma_id)
+            existing_rows = list(
+                EventoAlteracao.objects.select_for_update()
+                .filter(dispositivo_fonte__norma=norma, is_active=True)
+                .select_related("dispositivo_fonte")
+                .order_by("pk")
+            )
+            existing_by_fingerprint: dict[str, list[EventoAlteracao]] = {}
+            old_occurrences: dict[tuple, int] = {}
+            for existing in existing_rows:
+                source = existing.dispositivo_fonte
+                occurrence_key = (
+                    source.pk,
+                    existing.acao,
+                    existing.target_text,
+                    existing.referencia_tipo,
+                    existing.referencia_numero,
+                    existing.norma_alvo_id,
+                )
+                occurrence = old_occurrences.get(occurrence_key, 0)
+                old_occurrences[occurrence_key] = occurrence + 1
+                was_legacy = not existing.revision_fingerprint
+                if was_legacy:
+                    fingerprint, provenance = event_revision_identity(
+                        source_identity=source.structural_key or f"device:{source.pk}",
+                        source_revision=source.revision_fingerprint,
+                        action=existing.acao,
+                        target_text=existing.target_text,
+                        reference_type=existing.referencia_tipo,
+                        reference_number=existing.referencia_numero,
+                        target_norma_id=existing.norma_alvo_id,
+                        occurrence=occurrence,
+                    )
+                    existing.revision_fingerprint = fingerprint
+                    existing.provenance_json = provenance
+                existing_by_fingerprint.setdefault(existing.revision_fingerprint, []).append(
+                    existing
+                )
+
+            matched_ids: set[int] = set()
+            events_created = 0
+            events_preserved = 0
+            for extracted in extracted_rows:
+                matches = existing_by_fingerprint.get(extracted.revision_fingerprint, [])
+                existing = next((row for row in matches if row.pk not in matched_ids), None)
+                if existing is None:
+                    extracted.save(force_insert=True)
+                    events_created += 1
+                    continue
+                matched_ids.add(existing.pk)
+                events_preserved += 1
+                update_fields = []
+                if was_legacy:
+                    existing.provenance_json = extracted.provenance_json
+                    existing.revision_fingerprint = extracted.revision_fingerprint
+                    update_fields.extend(["provenance_json", "revision_fingerprint"])
+                if not existing.is_active:
+                    existing.is_active = True
+                    update_fields.append("is_active")
+                if update_fields:
+                    existing.save(update_fields=[*update_fields, "updated_at"])
+
+            events_inactivated = 0
+            for existing in existing_rows:
+                if existing.pk not in matched_ids:
+                    existing.is_active = False
+                    existing.save(update_fields=["is_active", "updated_at"])
+                    events_inactivated += 1
 
             # Preserve consolidated status if previously consolidated
             norma.status = (
@@ -164,12 +278,13 @@ def extract_entities_task(self, norma_id: int) -> dict[str, Any]:
 
         # Calculate statistics by action type
         action_stats = {}
-        for evento in events_to_create:
+        for evento in extracted_rows:
             action_stats[evento.acao] = action_stats.get(evento.acao, 0) + 1
 
         logger.info(
             f"[Task {task_id}] Entity extraction completed for Norma {norma}: "
-            f"{len(events_to_create)} events from {dispositivos_with_events} dispositivos "
+            f"{events_created} new, {events_preserved} preserved, "
+            f"{events_inactivated} inactivated from {dispositivos_with_events} dispositivos "
             f"(out of {dispositivos.count()} total) in {processing_time:.2f}s. "
             f"Action distribution: {action_stats}"
         )
@@ -178,7 +293,9 @@ def extract_entities_task(self, norma_id: int) -> dict[str, Any]:
             "success": True,
             "norma_id": norma_id,
             "norma_str": str(norma),
-            "events_created": len(events_to_create),
+            "events_created": events_created,
+            "events_preserved": events_preserved,
+            "events_inactivated": events_inactivated,
             "dispositivos_processed": dispositivos.count(),
             "dispositivos_with_events": dispositivos_with_events,
             "action_stats": action_stats,
@@ -235,6 +352,13 @@ def generate_embedding_task(
     try:
         # Fetch Dispositivo
         dispositivo = Dispositivo.objects.select_related("norma").get(id=dispositivo_id)
+        if not dispositivo.is_active:
+            return {
+                "success": False,
+                "stale_input": True,
+                "error": "Dispositivo inativo; embeddings só são gerados para a revisão atual.",
+                "dispositivo_id": dispositivo_id,
+            }
 
         # Prepare text for embedding
         # Include context: norma info + dispositivo hierarchy + content
@@ -266,32 +390,23 @@ def generate_embedding_task(
         if not embedding:
             raise Exception("Failed to generate embedding (None returned)")
 
-        # Store embedding using SQL to avoid dimension mismatch issues
-        from django.db import connection
-        from django.utils import timezone
+        source_revision = dispositivo.revision_fingerprint
 
-        # Use SQL directly - first clear, then set new embedding
-        with connection.cursor() as cursor:
-            # Step 1: Clear old embedding first
-            cursor.execute(
-                "UPDATE legislation_dispositivo SET embedding = NULL WHERE id = %s",
-                [dispositivo_id],
-            )
-
-            # Step 2: Set new embedding (now that field is NULL, dimension mismatch won't occur)
-            vector_str = "[" + ",".join(map(str, embedding)) + "]"
-            now = timezone.now()
-            cursor.execute(
-                """
-                UPDATE legislation_dispositivo
-                SET embedding = %s::vector,
-                    embedding_model = %s,
-                    embedding_generated_at = %s,
-                    updated_at = %s
-                WHERE id = %s
-                """,
-                [vector_str, model, now, now, dispositivo_id],
-            )
+        # Persist only if this exact source revision is still current. Never clear a good
+        # previous vector before the compare-and-set succeeds.
+        if not _persist_embedding_if_current(
+            dispositivo_id=dispositivo_id,
+            source_revision=source_revision,
+            model=model,
+            embedding=embedding,
+        ):
+            logger.info("Discarded stale embedding result for Dispositivo ID=%s", dispositivo_id)
+            return {
+                "success": False,
+                "stale_input": True,
+                "error": "O texto mudou durante a geração; o vetor antigo foi descartado.",
+                "dispositivo_id": dispositivo_id,
+            }
 
         # Refresh from DB to get updated values
         dispositivo.refresh_from_db()

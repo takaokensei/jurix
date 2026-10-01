@@ -17,7 +17,7 @@ from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
-from src.apps.legislation.models import ChatMessage, ChatSession
+from src.apps.legislation.models import ChatMessage, ChatSession, ChatTurn
 
 pytestmark = pytest.mark.django_db
 
@@ -236,7 +236,13 @@ def test_stream_contract_persists_sources_only_for_grounded_answers(client, user
         [
             {"event": "sources", "sources": [source]},
             {"event": "chunk", "chunk": "Resposta"},
-            {"event": "done", "answer": "Resposta", "grounded": grounded},
+            {
+                "event": "done",
+                "answer": "Resposta",
+                "grounded": grounded,
+                "timings_ms": {"retrieval": 7, "generation": 30},
+                "generation_attempts": [{"attempt": 1, "duration_ms": 30}],
+            },
         ]
     )
 
@@ -260,14 +266,167 @@ def test_stream_contract_persists_sources_only_for_grounded_answers(client, user
     saved = ChatMessage.objects.get(session=session, role="assistant")
     assert response.status_code == 200
     assert done["grounded"] is grounded
+    assert done["contract"]["schema_version"] == 1
+    assert done["contract"] == saved.metadata_json
     assert bool(saved.sources_json) is grounded
     assert saved.metadata_json["grounded"] is grounded
     assert saved.metadata_json["sources_count"] == (1 if grounded else 0)
+    assert done["contract"]["timings_ms"] == {"retrieval": 7, "generation": 30}
+    assert done["contract"]["generation_attempts"] == [{"attempt": 1, "duration_ms": 30}]
+
+
+def test_stream_turn_retry_replays_completed_answer_without_generating_again(client, user):
+    import json
+
+    session = ChatSession.objects.create(user=user, title="Consulta")
+    ChatMessage.objects.create(session=session, role="user", content="Pergunta anterior")
+    turn_id = "b84f621d-333d-4da1-85ed-01ebc7e7226b"
+    payload = {
+        "question": "Pergunta com retry idempotente",
+        "session_id": session.id,
+        "client_session_id": "client-session-idempotent",
+        "client_turn_id": turn_id,
+    }
+    generated_events = iter(
+        [
+            {"event": "sources", "sources": [{"norma_ref": "Lei 1/2026", "text": "Art. 1º"}]},
+            {"event": "chunk", "chunk": "Resposta persistida"},
+            {
+                "event": "done",
+                "answer": "Resposta persistida",
+                "grounded": True,
+                "grounding": {"grounded": True},
+            },
+        ]
+    )
+    with (
+        patch("src.apps.legislation.api_views.RAGService") as rag,
+        patch("src.apps.legislation.api_views.rate_limit_response", return_value=None),
+    ):
+        rag.return_value.stream_answer_question.return_value = generated_events
+        first = client.post(
+            "/api/v1/search/answer/stream/",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        first_events = [
+            json.loads(line[6:])
+            for line in b"".join(first.streaming_content).decode().splitlines()
+            if line.startswith("data: ")
+        ]
+        retry = client.post(
+            "/api/v1/search/answer/stream/",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        retry_events = [
+            json.loads(line[6:])
+            for line in b"".join(retry.streaming_content).decode().splitlines()
+            if line.startswith("data: ")
+        ]
+        changed_payload = {**payload, "question": "Conteúdo diferente"}
+        conflict = client.post(
+            "/api/v1/search/answer/stream/",
+            data=json.dumps(changed_payload),
+            content_type="application/json",
+        )
+
+    assert first.status_code == retry.status_code == 200
+    assert (
+        next(item for item in first_events if item["type"] == "done")["answer"]
+        == "Resposta persistida"
+    )
+    replayed = next(item for item in retry_events if item["type"] == "done")
+    assert replayed["answer"] == "Resposta persistida"
+    assert replayed["contract"]["grounded"] is True
+    rag.return_value.stream_answer_question.assert_called_once()
+    assert conflict.status_code == 409
+    assert ChatTurn.objects.filter(user=user).count() == 1
+    assert (
+        ChatMessage.objects.filter(
+            session=session, role="user", content=payload["question"]
+        ).count()
+        == 1
+    )
+
+
+def test_stream_retry_links_failed_turn_without_duplicate_user_message(client, user):
+    import json
+
+    session = ChatSession.objects.create(user=user, title="Consulta")
+    ChatMessage.objects.create(session=session, role="user", content="Pergunta anterior")
+    original_turn_id = "440836cc-4fa4-4a7e-ab2c-50d0324131a7"
+    next_turn_id = "59eab147-3662-492b-9b3b-50b8d640ab2a"
+    base_payload = {
+        "question": "Pergunta que precisa de retry",
+        "session_id": session.id,
+        "client_session_id": "client-session-retry",
+    }
+
+    def interrupted_events():
+        yield {"event": "status", "status": "retrieving"}
+        raise RuntimeError("synthetic interruption")
+
+    def parse_events(response):
+        return [
+            json.loads(line[6:])
+            for line in b"".join(response.streaming_content).decode().splitlines()
+            if line.startswith("data: ")
+        ]
+
+    with (
+        patch("src.apps.legislation.api_views.RAGService") as rag,
+        patch("src.apps.legislation.api_views.rate_limit_response", return_value=None),
+    ):
+        rag.return_value.stream_answer_question.return_value = interrupted_events()
+        first = client.post(
+            "/api/v1/search/answer/stream/",
+            data=json.dumps({**base_payload, "client_turn_id": original_turn_id}),
+            content_type="application/json",
+        )
+        first_events = parse_events(first)
+        original_turn = ChatTurn.objects.get(client_turn_id=original_turn_id)
+        assert original_turn.state == "failed"
+
+        rag.return_value.stream_answer_question.return_value = iter(
+            [
+                {"event": "sources", "sources": []},
+                {"event": "chunk", "chunk": "Resposta após retry"},
+                {"event": "done", "answer": "Resposta após retry", "grounded": False},
+            ]
+        )
+        retry = client.post(
+            "/api/v1/search/answer/stream/",
+            data=json.dumps(
+                {
+                    **base_payload,
+                    "client_turn_id": next_turn_id,
+                    "retry_of_client_turn_id": original_turn_id,
+                }
+            ),
+            content_type="application/json",
+        )
+        retry_events = parse_events(retry)
+
+    retry_turn = ChatTurn.objects.get(client_turn_id=next_turn_id)
+    assert first.status_code == retry.status_code == 200
+    assert any(item.get("type") == "error" for item in first_events)
+    assert retry_turn.retry_of_id == original_turn.pk
+    assert retry_turn.state == "completed"
+    assert (
+        ChatMessage.objects.filter(
+            session=session, role="user", content=base_payload["question"]
+        ).count()
+        == 1
+    )
+    assert (
+        next(item for item in retry_events if item["type"] == "done")["answer"]
+        == "Resposta após retry"
+    )
 
 
 @pytest.mark.parametrize("grounded", [False, True])
 def test_regeneration_exposes_and_persists_sources_only_when_grounded(client, user, grounded):
-
     session = ChatSession.objects.create(user=user, title="Consulta")
     ChatMessage.objects.create(session=session, role="user", content="Pergunta")
     ChatMessage.objects.create(

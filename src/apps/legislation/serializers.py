@@ -188,7 +188,8 @@ def serialize_chat_message(message: Any) -> dict[str, Any]:
     report them empty.
     """
     is_assistant = message.role == "assistant"
-    return {
+    turn = None if is_assistant else getattr(message, "turn", None)
+    result = {
         "id": message.id,
         "role": message.role,
         "content": message.content,
@@ -196,3 +197,7 @@ def serialize_chat_message(message: Any) -> dict[str, Any]:
         "metadata": message.metadata_json if is_assistant else {},
         "created_at": message.created_at.isoformat() if message.created_at else None,
     }
+    if not is_assistant:
+        result["turn_state"] = getattr(turn, "state", None)
+        result["client_turn_id"] = str(turn.client_turn_id) if turn else None
+    return result

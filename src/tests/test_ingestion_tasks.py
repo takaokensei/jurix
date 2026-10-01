@@ -96,7 +96,7 @@ class TestConsolidationTaskReviewFlag:
             )
         return base
 
-    def test_unresolved_events_flag_norma_and_are_listed_in_text(self):
+    def test_unvalidated_events_are_held_for_review_and_not_published(self):
         from src.apps.ingestion.tasks import consolidate_norma_task
 
         base = self._make(with_events=True)
@@ -108,8 +108,85 @@ class TestConsolidationTaskReviewFlag:
         assert result["events_unresolved"] == 1
         assert result["events_applied"] == 0
         assert result["needs_review"] is True
+        assert result["events_unvalidated"] == 1
         assert base.needs_review is True
-        assert "EVENTOS NÃO RESOLVIDOS" in base.texto_consolidado
+        assert base.texto_consolidado == ""
+        assert "aguardam validação humana" in base.processing_error
+
+    def test_unvalidated_event_cannot_replace_existing_official_text(self):
+        from src.apps.ingestion.tasks import consolidate_norma_task
+        from src.apps.legislation.models import Dispositivo, EventoAlteracao
+
+        base = Norma.objects.create(
+            tipo="Lei",
+            numero="1001",
+            ano=2020,
+            status="consolidated",
+            texto_consolidado="REDAÇÃO OFICIAL ANTERIOR",
+        )
+        target = Dispositivo.objects.create(
+            norma=base, tipo="artigo", numero="1º", texto="Redação anterior.", ordem=1
+        )
+        amending = Norma.objects.create(tipo="Lei", numero="2001", ano=2021)
+        source_device = Dispositivo.objects.create(
+            norma=amending, tipo="artigo", numero="1º", texto="Fica revogado o art. 1º.", ordem=1
+        )
+        EventoAlteracao.objects.create(
+            dispositivo_fonte=source_device,
+            dispositivo_alvo=target,
+            norma_alvo=base,
+            acao="REVOGA",
+            target_text="art. 1º",
+            referencia_tipo="artigo",
+            referencia_numero="1º",
+            validado=False,
+        )
+
+        result = consolidate_norma_task(base.id)
+        base.refresh_from_db()
+
+        assert result["official_text_preserved"] is True
+        assert base.status == "consolidated"
+        assert base.texto_consolidado == "REDAÇÃO OFICIAL ANTERIOR"
+        assert base.needs_review is True
+
+    def test_experimental_unvalidated_output_is_labeled_and_never_persisted(self):
+        from src.apps.ingestion.tasks import consolidate_norma_task
+        from src.apps.legislation.models import Dispositivo, EventoAlteracao
+
+        base = Norma.objects.create(
+            tipo="Lei",
+            numero="1002",
+            ano=2020,
+            status="consolidated",
+            texto_consolidado="REDAÇÃO OFICIAL ANTERIOR",
+        )
+        target = Dispositivo.objects.create(
+            norma=base, tipo="artigo", numero="1º", texto="Redação anterior.", ordem=1
+        )
+        amending = Norma.objects.create(tipo="Lei", numero="2002", ano=2021)
+        source_device = Dispositivo.objects.create(
+            norma=amending, tipo="artigo", numero="1º", texto="Fica revogado o art. 1º.", ordem=1
+        )
+        EventoAlteracao.objects.create(
+            dispositivo_fonte=source_device,
+            dispositivo_alvo=target,
+            norma_alvo=base,
+            acao="REVOGA",
+            target_text="art. 1º",
+            referencia_tipo="artigo",
+            referencia_numero="1º",
+            validado=False,
+        )
+
+        result = consolidate_norma_task(base.id, experimental=True)
+        base.refresh_from_db()
+
+        assert result["experimental"] is True
+        assert "DERIVADO EXPERIMENTAL — NÃO OFICIAL" in result["experimental_text"]
+        assert "Art. 1º (Revogado" in result["experimental_text"]
+        assert base.status == "consolidated"
+        assert base.texto_consolidado == "REDAÇÃO OFICIAL ANTERIOR"
 
     def test_clean_norma_is_not_flagged(self):
         from src.apps.ingestion.tasks import consolidate_norma_task
@@ -324,6 +401,7 @@ class TestEndToEndConsolidationFromAmendingSentences:
                     extraction_method=ev["extraction_method"],
                     referencia_tipo=ev["referencia_tipo"],
                     referencia_numero=ev["referencia_numero"],
+                    validado=True,
                 )
         result = consolidate_norma_task(base.id)
         base.refresh_from_db()
@@ -416,6 +494,7 @@ class TestEndToEndPluralAndRangeRevocations:
                 extraction_method=ev["extraction_method"],
                 referencia_tipo=ev["referencia_tipo"],
                 referencia_numero=ev["referencia_numero"],
+                validado=True,
             )
         result = consolidate_norma_task(base.id)
         base.refresh_from_db()

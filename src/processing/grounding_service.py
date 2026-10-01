@@ -465,13 +465,18 @@ def build_evidence(sources: Iterable[dict[str, Any]]) -> tuple[Evidence, ...]:
         # grounding.  It lets retrieval add authoritative norma metadata (for
         # example an ementa or publication clause) without polluting the
         # concise snippet shown in the source drawer.
-        text = str(
-            source.get("evidence_text")
-            or source.get("text")
-            or source.get("full_text")
-            or getattr(dispositivo, "texto", "")
-            or ""
-        )
+        if "evidence_text" in source:
+            # An explicitly empty bounded excerpt means this source supplied no
+            # claim-supporting text to the model. Never fall back to text that
+            # may have been omitted by the context budget.
+            text = str(source.get("evidence_text") or "")
+        else:
+            text = str(
+                source.get("text")
+                or source.get("full_text")
+                or getattr(dispositivo, "texto", "")
+                or ""
+            )
         if not text:
             continue
         result.append(

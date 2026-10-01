@@ -264,6 +264,23 @@ class Dispositivo(TimeStampedModel):
         help_text="Texto original antes da limpeza (para auditoria)",
     )
 
+    structural_key = models.CharField(
+        max_length=64,
+        blank=True,
+        db_index=True,
+        help_text="Identidade estrutural estável do dispositivo dentro da norma.",
+    )
+    revision_fingerprint = models.CharField(
+        max_length=64,
+        blank=True,
+        help_text="Hash do texto e redação bruta desta revisão do dispositivo.",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Dispositivo presente na última segmentação validada da norma.",
+    )
+
     # Hierarquia Materializada (O(1) lookups sem queries recursivas)
     caminho = models.CharField(
         max_length=500,
@@ -301,6 +318,11 @@ class Dispositivo(TimeStampedModel):
         verbose_name="Data de Geração do Embedding",
         help_text="Timestamp de quando o embedding foi gerado",
     )
+    embedding_revision_fingerprint = models.CharField(
+        max_length=64,
+        blank=True,
+        help_text="Fingerprint do conteúdo de origem usado para gerar o embedding.",
+    )
 
     class Meta:
         verbose_name = "Dispositivo"
@@ -329,6 +351,45 @@ class Dispositivo(TimeStampedModel):
         else:
             return f"{self.get_tipo_display()} {self.numero}"
 
+    def _validate_parent_hierarchy(self):
+        """Reject self-parenting, cross-norma parents, and cycles on row saves."""
+        from django.core.exceptions import ValidationError
+
+        if not self.dispositivo_pai_id:
+            return
+        if self.pk and self.dispositivo_pai_id == self.pk:
+            raise ValidationError(
+                {"dispositivo_pai": "Um dispositivo não pode ser pai de si mesmo."}
+            )
+        parent = self.dispositivo_pai
+        if parent is None or parent.pk is None:
+            raise ValidationError(
+                {"dispositivo_pai": "O dispositivo pai precisa estar persistido."}
+            )
+        if parent.norma_id != self.norma_id:
+            raise ValidationError({"dispositivo_pai": "O pai deve pertencer à mesma norma."})
+
+        visited = {self.pk} if self.pk else set()
+        current = parent
+        while current is not None:
+            if current.pk in visited:
+                raise ValidationError({"dispositivo_pai": "A hierarquia contém um ciclo."})
+            visited.add(current.pk)
+            parent_id = current.dispositivo_pai_id
+            if not parent_id:
+                break
+            current = (
+                Dispositivo.objects.filter(pk=parent_id)
+                .only("id", "norma_id", "dispositivo_pai_id")
+                .first()
+            )
+            if current is not None and current.norma_id != self.norma_id:
+                raise ValidationError({"dispositivo_pai": "A cadeia de pais cruza normas."})
+
+    def save(self, *args, **kwargs):
+        self._validate_parent_hierarchy()
+        return super().save(*args, **kwargs)
+
     def get_caminho_completo(self) -> str:
         """
         Retorna o caminho hierárquico completo do dispositivo.
@@ -341,11 +402,18 @@ class Dispositivo(TimeStampedModel):
             return self.caminho
 
         caminho = [str(self)]
+        visited = {self.pk} if self.pk else set()
         pai = self.dispositivo_pai
 
-        while pai:
+        while pai and len(visited) < 64:
+            if pai.pk in visited:
+                caminho.insert(0, "[ciclo hierárquico detectado]")
+                break
+            visited.add(pai.pk)
             caminho.insert(0, str(pai))
             pai = pai.dispositivo_pai
+        if pai and len(visited) >= 64:
+            caminho.insert(0, "[limite hierárquico excedido]")
 
         return " > ".join(caminho)
 
@@ -360,9 +428,13 @@ class Dispositivo(TimeStampedModel):
             return self.nivel
 
         nivel = 0
+        visited = {self.pk} if self.pk else set()
         pai = self.dispositivo_pai
 
-        while pai:
+        while pai and len(visited) < 64:
+            if pai.pk in visited:
+                return nivel
+            visited.add(pai.pk)
             nivel += 1
             pai = pai.dispositivo_pai
 
@@ -486,6 +558,22 @@ class EventoAlteracao(TimeStampedModel):
         default=False,
         verbose_name="Validado",
         help_text="Se a referência foi validada/confirmada manualmente",
+    )
+    revision_fingerprint = models.CharField(
+        max_length=64,
+        blank=True,
+        db_index=True,
+        help_text="Identidade da evidência e da versão do extrator desta revisão.",
+    )
+    provenance_json = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Proveniência da extração, sem credenciais ou dados de requisição.",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Evento encontrado na extração atual; revisões antigas são preservadas.",
     )
 
     class Meta:
@@ -637,6 +725,48 @@ class ChatSession(TimeStampedModel):
         super().save(*args, **kwargs)
 
 
+class ChatTurn(TimeStampedModel):
+    """Idempotency and lifecycle record for an authenticated client chat turn."""
+
+    STATE_CHOICES = [
+        ("reserved", "Reservado"),
+        ("in_progress", "Em andamento"),
+        ("completed", "Concluído"),
+        ("failed", "Falhou"),
+        ("cancelled", "Cancelado"),
+        ("interrupted", "Interrompido"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="chat_turns")
+    session = models.ForeignKey(
+        ChatSession,
+        on_delete=models.CASCADE,
+        related_name="turns",
+        null=True,
+        blank=True,
+    )
+    retry_of = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        related_name="retries",
+        null=True,
+        blank=True,
+    )
+    client_session_id = models.CharField(max_length=80)
+    client_turn_id = models.UUIDField()
+    payload_digest = models.CharField(max_length=64)
+    state = models.CharField(max_length=16, choices=STATE_CHOICES, default="reserved")
+
+    class Meta:
+        indexes = [models.Index(fields=["user", "state", "updated_at"])]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "client_session_id", "client_turn_id"],
+                name="unique_chat_turn_client_identity",
+            )
+        ]
+
+
 class ChatMessage(TimeStampedModel):
     """
     Model for storing individual chat messages within a session.
@@ -655,6 +785,14 @@ class ChatMessage(TimeStampedModel):
         related_name="messages",
         verbose_name="Sessão",
         help_text="Sessão de chat à qual esta mensagem pertence",
+    )
+
+    turn = models.ForeignKey(
+        ChatTurn,
+        on_delete=models.SET_NULL,
+        related_name="messages",
+        null=True,
+        blank=True,
     )
 
     role = models.CharField(

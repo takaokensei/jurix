@@ -11,9 +11,12 @@ import hashlib
 import json
 import logging
 from typing import Any
+from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.core.cache import cache
+
+from src.observability.safe_logging import log_exception_safely
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +61,7 @@ class CacheService:
         try:
             return int(cache.get(self.VERSION_KEY, 0))
         except Exception as e:
-            logger.warning(f"Could not read corpus version: {e}")
+            log_exception_safely(logger, "Could not read corpus version", e)
             return 0
 
     def bump_corpus_version(self) -> int | None:
@@ -75,8 +78,66 @@ class CacheService:
             cache.add(self.VERSION_KEY, 0, timeout=None)
             return cache.incr(self.VERSION_KEY)
         except Exception as e:
-            logger.error(f"Could not bump corpus version; cached answers may be stale: {e}")
+            log_exception_safely(logger, "Could not bump corpus version", e)
             return None
+
+    @staticmethod
+    def get_corpus_revision_digest() -> str:
+        """Read the durable shared corpus identity; cache counters are only accelerators."""
+        try:
+            from src.processing.corpus_identity import get_corpus_revision
+
+            identity = get_corpus_revision()
+            if identity and identity.get("digest"):
+                return f"r{identity['revision']}:{identity['digest']}"
+        except Exception as exc:
+            log_exception_safely(logger, "Could not read durable corpus identity", exc)
+        return "unavailable"
+
+    def _corpus_token(self, revision_digest: str | None = None) -> str:
+        digest = revision_digest or self.get_corpus_revision_digest()
+        return f"cache{self.get_corpus_version()}:{digest}"
+
+    @staticmethod
+    def generation_fingerprint(
+        *,
+        provider: str,
+        model: str,
+        temperature: float,
+        endpoint: str = "",
+        max_tokens: int = 2048,
+    ) -> str:
+        """Fingerprint output-affecting settings without ever retaining API keys."""
+        from src.processing.answer_contract import (
+            GROUNDING_POLICY_VERSION,
+            PROMPT_POLICY_VERSION,
+        )
+
+        parsed_endpoint = urlsplit(endpoint.strip()) if endpoint else None
+        if parsed_endpoint and parsed_endpoint.hostname:
+            host = parsed_endpoint.hostname.lower().rstrip(".")
+            if ":" in host:
+                host = f"[{host}]"
+            port = f":{parsed_endpoint.port}" if parsed_endpoint.port else ""
+            endpoint_identity = (
+                f"{parsed_endpoint.scheme.lower()}://{host}{port}{parsed_endpoint.path.rstrip('/')}"
+            )
+        else:
+            endpoint_identity = ""
+        material = json.dumps(
+            {
+                "provider": provider,
+                "model": model,
+                "endpoint": endpoint_identity,
+                "temperature": round(float(temperature), 3),
+                "max_tokens": int(max_tokens),
+                "prompt_policy": PROMPT_POLICY_VERSION,
+                "grounding_policy": GROUNDING_POLICY_VERSION,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        return hashlib.sha256(material.encode("utf-8")).hexdigest()
 
     def _generate_key(self, prefix: str, text: str) -> str:
         """
@@ -111,13 +172,13 @@ class CacheService:
         try:
             cached = cache.get(key)
             if cached:
-                logger.debug(f"Cache HIT for embedding: {query_text[:50]}...")
+                logger.debug("Cache HIT for embedding (query_length=%s)", len(query_text))
                 return json.loads(cached)
             else:
-                logger.debug(f"Cache MISS for embedding: {query_text[:50]}...")
+                logger.debug("Cache MISS for embedding (query_length=%s)", len(query_text))
                 return None
         except Exception as e:
-            logger.error(f"Error getting cached embedding: {e}")
+            log_exception_safely(logger, "Error getting cached embedding", e)
             return None
 
     def set_embedding(self, query_text: str, model: str, embedding: list[float]) -> bool:
@@ -139,10 +200,10 @@ class CacheService:
 
         try:
             cache.set(key, json.dumps(embedding), timeout=self.EMBEDDING_TTL)
-            logger.debug(f"Cached embedding for: {query_text[:50]}...")
+            logger.debug("Cached embedding (query_length=%s)", len(query_text))
             return True
         except Exception as e:
-            logger.error(f"Error caching embedding: {e}")
+            log_exception_safely(logger, "Error caching embedding", e)
             return False
 
     def get_search_results(
@@ -163,19 +224,19 @@ class CacheService:
             return None
 
         filter_str = json.dumps(filters, sort_keys=True)
-        cache_input = f"v{self.get_corpus_version()}:{query_text}:k={k}:{filter_str}"
+        cache_input = f"{self._corpus_token()}:{query_text}:k={k}:{filter_str}"
         key = self._generate_key(self.SEARCH_PREFIX, cache_input)
 
         try:
             cached = cache.get(key)
             if cached:
-                logger.debug(f"Cache HIT for search: {query_text[:50]}...")
+                logger.debug("Cache HIT for search (query_length=%s)", len(query_text))
                 return json.loads(cached)
             else:
-                logger.debug(f"Cache MISS for search: {query_text[:50]}...")
+                logger.debug("Cache MISS for search (query_length=%s)", len(query_text))
                 return None
         except Exception as e:
-            logger.error(f"Error getting cached search results: {e}")
+            log_exception_safely(logger, "Error getting cached search results", e)
             return None
 
     def set_search_results(
@@ -197,7 +258,7 @@ class CacheService:
             return False
 
         filter_str = json.dumps(filters, sort_keys=True)
-        cache_input = f"v{self.get_corpus_version()}:{query_text}:k={k}:{filter_str}"
+        cache_input = f"{self._corpus_token()}:{query_text}:k={k}:{filter_str}"
         key = self._generate_key(self.SEARCH_PREFIX, cache_input)
 
         try:
@@ -215,10 +276,10 @@ class CacheService:
                 )
 
             cache.set(key, json.dumps(serializable_results), timeout=self.SEARCH_TTL)
-            logger.debug(f"Cached search results for: {query_text[:50]}...")
+            logger.debug("Cached search results (query_length=%s)", len(query_text))
             return True
         except Exception as e:
-            logger.error(f"Error caching search results: {e}")
+            log_exception_safely(logger, "Error caching search results", e)
             return False
 
     def get_answer(
@@ -228,6 +289,8 @@ class CacheService:
         model: str,
         corpus_version: int | None = None,
         retrieval_fingerprint: str = "",
+        corpus_revision: str | None = None,
+        generation_fingerprint: str = "",
     ) -> dict[str, Any] | None:
         """
         Get cached RAG answer.
@@ -247,14 +310,15 @@ class CacheService:
         if corpus_version is None:
             corpus_version = self.get_corpus_version()
         cache_input = (
-            f"v{corpus_version}:{question}:k={k}:model={model}:retrieval={retrieval_fingerprint}"
+            f"{self._corpus_token(corpus_revision)}:v{corpus_version}:{question}:k={k}:"
+            f"model={model}:retrieval={retrieval_fingerprint}:generation={generation_fingerprint}"
         )
         key = self._generate_key(self.ANSWER_PREFIX, cache_input)
 
         try:
             cached = cache.get(key)
             if cached:
-                logger.info(f"Cache HIT for answer: {question[:50]}...")
+                logger.info("Cache HIT for answer")
                 payload = json.loads(cached)
                 if not isinstance(payload, dict):
                     logger.warning("Discarding malformed cached answer: expected object")
@@ -270,10 +334,10 @@ class CacheService:
                     return None
                 return payload
             else:
-                logger.debug(f"Cache MISS for answer: {question[:50]}...")
+                logger.debug("Cache MISS for answer")
                 return None
         except Exception as e:
-            logger.error(f"Error getting cached answer: {e}")
+            log_exception_safely(logger, "Error getting cached answer", e)
             return None
 
     def set_answer(
@@ -284,6 +348,8 @@ class CacheService:
         answer_data: dict[str, Any],
         corpus_version: int | None = None,
         retrieval_fingerprint: str = "",
+        corpus_revision: str | None = None,
+        generation_fingerprint: str = "",
     ) -> bool:
         """
         Cache RAG answer.
@@ -306,7 +372,8 @@ class CacheService:
         if corpus_version is None:
             corpus_version = self.get_corpus_version()
         cache_input = (
-            f"v{corpus_version}:{question}:k={k}:model={model}:retrieval={retrieval_fingerprint}"
+            f"{self._corpus_token(corpus_revision)}:v{corpus_version}:{question}:k={k}:"
+            f"model={model}:retrieval={retrieval_fingerprint}:generation={generation_fingerprint}"
         )
         key = self._generate_key(self.ANSWER_PREFIX, cache_input)
 
@@ -353,10 +420,10 @@ class CacheService:
             }
 
             cache.set(key, json.dumps(serializable_answer), timeout=self.ANSWER_TTL)
-            logger.debug(f"Cached answer for: {question[:50]}...")
+            logger.debug("Cached answer")
             return True
         except Exception as e:
-            logger.error(f"Error caching answer: {e}")
+            log_exception_safely(logger, "Error caching answer", e)
             return False
 
     def clear_cache(self, prefix: str | None = None) -> bool:

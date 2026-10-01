@@ -28,7 +28,9 @@ class TemporalScope:
 
     def contains_publication(self, publication: date | None) -> bool:
         if publication is None:
-            return True
+            # An explicit historical/publication filter cannot confirm a
+            # document whose publication date is unknown.
+            return not (self.as_of or self.published_from or self.published_to)
         if self.published_from and publication < self.published_from:
             return False
         if self.published_to and publication > self.published_to:
@@ -73,17 +75,21 @@ def revoked_norma_ids(norma_ids: Iterable[int], as_of: date | None) -> set[int]:
     from src.apps.legislation.models import EventoAlteracao
 
     events = (
-        EventoAlteracao.objects.filter(acao="REVOGA")
+        EventoAlteracao.objects.filter(acao="REVOGA", is_active=True)
         .filter(Q(norma_alvo_id__in=ids) | Q(dispositivo_alvo__norma_id__in=ids))
         .select_related("dispositivo_fonte__norma", "dispositivo_alvo")
     )
     revoked: set[int] = set()
     for event in events:
         source_norma = getattr(event.dispositivo_fonte, "norma", None)
-        source_date = getattr(source_norma, "data_publicacao", None)
-        if source_date is not None and source_date > as_of:
+        if not event.validado:
             continue
-        if event.norma_alvo_id:
+        effective_date = getattr(source_norma, "data_vigencia", None)
+        if effective_date is None or effective_date > as_of:
+            continue
+        # A targeted dispositivo is a partial event; it does not revoke the
+        # containing norma as a whole.
+        if event.norma_alvo_id and not event.dispositivo_alvo_id:
             revoked.add(int(event.norma_alvo_id))
     return revoked
 
@@ -97,13 +103,19 @@ def revoked_dispositivo_ids(norma_ids: Iterable[int], as_of: date | None) -> set
 
     events = EventoAlteracao.objects.filter(
         acao="REVOGA",
+        is_active=True,
         dispositivo_alvo__norma_id__in=ids,
     ).select_related("dispositivo_fonte__norma")
     revoked: set[int] = set()
     for event in events:
         source_norma = getattr(event.dispositivo_fonte, "norma", None)
-        source_date = getattr(source_norma, "data_publicacao", None)
-        if source_date is not None and source_date <= as_of and event.dispositivo_alvo_id:
+        effective_date = getattr(source_norma, "data_vigencia", None)
+        if (
+            event.validado
+            and effective_date is not None
+            and effective_date <= as_of
+            and event.dispositivo_alvo_id
+        ):
             revoked.add(int(event.dispositivo_alvo_id))
     return revoked
 
@@ -122,9 +134,28 @@ def temporal_status(norma, *, as_of: date | None = None) -> str:
     revoked = revoked_norma_ids([getattr(norma, "id", 0)], when)
     if int(getattr(norma, "id", 0) or 0) in revoked:
         return "revogada"
-    if not publication and not effective:
+    if not effective:
         return "data_indeterminada"
+    if not publication:
+        return "data_indeterminada"
+    if _partially_revoked(getattr(norma, "id", 0), when):
+        return "parcialmente_revogada"
     return "vigente"
+
+
+def _partially_revoked(norma_id: int, as_of: date) -> bool:
+    if not norma_id:
+        return False
+    from src.apps.legislation.models import EventoAlteracao
+
+    return EventoAlteracao.objects.filter(
+        acao="REVOGA",
+        validado=True,
+        is_active=True,
+        dispositivo_alvo__norma_id=norma_id,
+        dispositivo_fonte__norma__data_vigencia__isnull=False,
+        dispositivo_fonte__norma__data_vigencia__lte=as_of,
+    ).exists()
 
 
 def matches_temporal_scope(
@@ -139,7 +170,9 @@ def matches_temporal_scope(
     if scope.as_of is None:
         return True
     effective = getattr(norma, "data_vigencia", None)
-    if effective and effective > scope.as_of:
+    # Historical scope requires both publication and effective dates. Unknown
+    # dates are not evidence that the norma was available/in force.
+    if effective is None or effective > scope.as_of:
         return False
     if revoked_ids and int(getattr(norma, "id", 0) or 0) in revoked_ids:
         return False
@@ -150,12 +183,23 @@ def build_norma_timeline(norma, *, as_of: date | None = None) -> list[dict[str, 
     """Build an auditable timeline, optionally cut at a historical date."""
     from src.apps.legislation.models import EventoAlteracao
 
+    def date_display(value: date | str | None) -> str | None:
+        if isinstance(value, date):
+            return value.strftime("%d/%m/%Y")
+        if value:
+            try:
+                return date.fromisoformat(str(value)[:10]).strftime("%d/%m/%Y")
+            except ValueError:
+                return None
+        return None
+
     items: list[dict[str, Any]] = []
     if norma.data_publicacao and (as_of is None or norma.data_publicacao <= as_of):
         items.append(
             {
                 "kind": "publication",
                 "date": norma.data_publicacao.isoformat(),
+                "date_display": date_display(norma.data_publicacao),
                 "title": "Publicação",
                 "description": f"{norma} publicada no corpus municipal.",
                 "source_norma": str(norma),
@@ -167,6 +211,7 @@ def build_norma_timeline(norma, *, as_of: date | None = None) -> list[dict[str, 
             {
                 "kind": "effective",
                 "date": norma.data_vigencia.isoformat(),
+                "date_display": date_display(norma.data_vigencia),
                 "title": "Início da vigência",
                 "description": f"Vigência indicada para {norma}.",
                 "source_norma": str(norma),
@@ -175,7 +220,9 @@ def build_norma_timeline(norma, *, as_of: date | None = None) -> list[dict[str, 
         )
 
     events = (
-        EventoAlteracao.objects.filter(Q(norma_alvo=norma) | Q(dispositivo_alvo__norma=norma))
+        EventoAlteracao.objects.filter(
+            Q(norma_alvo=norma) | Q(dispositivo_alvo__norma=norma), is_active=True
+        )
         .select_related("dispositivo_fonte__norma", "dispositivo_alvo", "norma_alvo")
         .distinct()
         .order_by("dispositivo_fonte__norma__data_publicacao", "created_at", "id")
@@ -189,13 +236,23 @@ def build_norma_timeline(norma, *, as_of: date | None = None) -> list[dict[str, 
         if source.id == norma.id:
             continue
         source_date = source.data_publicacao
-        if as_of is not None and source_date and source_date > as_of:
+        effective_date = source.data_vigencia if event.validado else None
+        if as_of is not None and (
+            not event.validado or effective_date is None or effective_date > as_of
+        ):
             continue
+        pending = not event.validado
         items.append(
             {
                 "kind": "event",
-                "date": source_date.isoformat() if source_date else None,
-                "title": event.get_acao_display(),
+                "date": effective_date.isoformat() if effective_date else None,
+                "date_display": date_display(effective_date),
+                "publication_date": source_date.isoformat() if source_date else None,
+                "publication_date_display": date_display(source_date),
+                "title": "Evento extraído — pendente de revisão"
+                if pending
+                else event.get_acao_display(),
+                "action": event.get_acao_display(),
                 "description": event.get_descricao_completa(),
                 "source_norma": str(source),
                 "source_norma_id": source.id,

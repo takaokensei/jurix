@@ -63,6 +63,43 @@ def test_citation_resolver_accepts_number_year_without_norma_type(db):
     assert [item.id for item in AdaptiveRAGService._find_cited_normas("8001/2025")] == [norma.id]
 
 
+def test_citation_resolver_refuses_yearless_citation_and_typed_collision(db):
+    from src.apps.legislation.models import Norma
+    from src.processing.adaptive_rag_service import AdaptiveRAGService
+
+    ordinary = Norma.objects.create(numero="8205", ano=2026, tipo="Lei")
+    Norma.objects.create(numero="8205", ano=2026, tipo="Lei Complementar")
+    assert AdaptiveRAGService._find_cited_normas("Lei nº 8205") == []
+    assert AdaptiveRAGService._find_cited_normas("Lei nº 8205/2026") == [ordinary]
+
+
+def test_explicit_article_query_returns_only_that_article_subtree_without_fake_scores(db):
+    from src.apps.legislation.models import Dispositivo, Norma
+    from src.processing.adaptive_rag_service import AdaptiveRAGService
+
+    norma = Norma.objects.create(numero="8206", ano=2026, tipo="Lei", status="consolidated")
+    article_7 = Dispositivo.objects.create(
+        norma=norma, tipo="artigo", numero="7º", texto="Artigo sete específico", ordem=7
+    )
+    child = Dispositivo.objects.create(
+        norma=norma,
+        tipo="inciso",
+        numero="II",
+        texto="Regra do inciso dois",
+        ordem=72,
+        dispositivo_pai=article_7,
+    )
+    Dispositivo.objects.create(
+        norma=norma, tipo="artigo", numero="8º", texto="Artigo oito diverso", ordem=8
+    )
+
+    rows = AdaptiveRAGService().semantic_search("O que prevê o art. 7º da Lei nº 8206/2026?", k=5)
+
+    assert [row["dispositivo"].id for row in rows] == [article_7.id, child.id]
+    assert all(row["match_kind"] == "explicit_reference" for row in rows)
+    assert all(row["similarity_score"] == 0.0 for row in rows)
+
+
 def test_explicit_citation_stays_ahead_of_saturated_general_scores():
     from src.processing.adaptive_rag_service import AdaptiveRAGService
 

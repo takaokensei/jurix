@@ -54,7 +54,7 @@ def load_cases(path: str | Path) -> list[EventCase]:
 
 def predicted_actions(norma_id: int) -> tuple[str, ...]:
     rows = EventoAlteracao.objects.filter(
-        Q(norma_alvo_id=norma_id) | Q(dispositivo_fonte__norma_id=norma_id)
+        Q(norma_alvo_id=norma_id) | Q(dispositivo_fonte__norma_id=norma_id), is_active=True
     ).values_list("acao", flat=True)
     return tuple(sorted(set(rows)))
 

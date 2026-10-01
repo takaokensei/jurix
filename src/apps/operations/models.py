@@ -70,3 +70,30 @@ class AttachmentRecord(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+
+class CorpusRevision(models.Model):
+    """Durable, shared identity of the legal corpus used by answers and caches."""
+
+    key = models.CharField(max_length=32, primary_key=True, default="municipal")
+    revision = models.PositiveBigIntegerField(default=0)
+    digest = models.CharField(max_length=64, blank=True)
+    norm_count = models.PositiveIntegerField(default=0)
+    device_count = models.PositiveIntegerField(default=0)
+    active_event_count = models.PositiveIntegerField(default=0)
+    schema_version = models.PositiveSmallIntegerField(default=1)
+    segmentation_version = models.CharField(max_length=40, default="hierarchy-v1")
+    completeness = models.CharField(
+        max_length=16,
+        choices=[
+            ("unknown", "Desconhecida"),
+            ("partial", "Parcial"),
+            ("complete", "Declarada completa"),
+        ],
+        default="unknown",
+    )
+    generated_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"Corpus {self.key} r{self.revision}"

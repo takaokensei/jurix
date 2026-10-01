@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from src.processing.adaptive_retrieval import (
@@ -10,17 +9,13 @@ from src.processing.adaptive_retrieval import (
     RetrievalOptions,
     attachment_context,
 )
+from src.processing.normative_reference import canonical_type, parse_normative_references
 from src.processing.rag_service import RAGService
+from src.processing.target_resolver import article_key
 from src.processing.temporal_scope import (
     matches_temporal_scope,
     revoked_dispositivo_ids,
     revoked_norma_ids,
-)
-
-_CITED_NORMA_RE = re.compile(
-    r"\b(lei(?:\s+complementar|\s+ordin[áa]ria|\s+org[âa]nica)?|lc|decreto(?:-lei|\s+legislativo)?|"
-    r"resolu[çc][ãa]o|emenda(?:\s+constitucional)?|portaria)\s*(?:n[º°o.]*\s*)?(\d[\d.]*)(?:\s*(?:/|de)\s*(\d{4}))?\b",
-    re.IGNORECASE,
 )
 
 
@@ -65,33 +60,31 @@ class AdaptiveRAGService(RAGService):
 
         cited_normas = []
         seen_ids = set()
-        for match in _CITED_NORMA_RE.finditer(query_text):
-            tipo_raw = (match.group(1) or "").lower()
-            numero = (match.group(2) or "").replace(".", "").strip()
-            ano = match.group(3)
-            if not numero:
+        for reference in parse_normative_references(query_text):
+            # A yearless or multi-reference string does not identify one safe
+            # target. Never let the first regex match silently choose a norma.
+            if reference.ambiguous or reference.year is None:
                 continue
-            qs = Norma.objects.filter(numero=numero)
-            if ano:
-                qs = qs.filter(ano=int(ano))
-            if "complementar" in tipo_raw or tipo_raw == "lc":
-                qs = qs.filter(tipo__in=["2", "lei_complementar", "LEI COMPLEMENTAR"])
-            elif "ordin" in tipo_raw:
-                qs = qs.filter(tipo__in=["1", "lei_ordinaria", "LEI ORDINÁRIA"])
-            for n in qs[:3]:
+            for n in Norma.objects.filter(numero=reference.number, ano=reference.year)[:20]:
+                display = getattr(n, "get_tipo_display_name", None)
+                actual_type = canonical_type(
+                    display() if callable(display) else getattr(n, "tipo", "")
+                )
+                if actual_type != reference.type_key:
+                    continue
                 if n.id not in seen_ids:
                     seen_ids.add(n.id)
                     cited_normas.append(n)
-        # A pesquisa normativa também accepts the compact, common form
-        # ``8001/2025`` without requiring the user to repeat the type. This is
-        # deliberately limited to a number/year pair to avoid treating dates
-        # or arbitrary numerals as legal citations.
-        for match in re.finditer(r"\b(\d{1,6})\s*/\s*(\d{4})\b", query_text):
-            numero, ano = match.groups()
-            for n in Norma.objects.filter(numero=numero, ano=int(ano))[:3]:
-                if n.id not in seen_ids:
-                    seen_ids.add(n.id)
-                    cited_normas.append(n)
+        # Accept the compact number/year form only if exactly one norma has
+        # that identifier; ambiguous collisions require an explicit type.
+        if not parse_normative_references(query_text):
+            import re
+
+            for number, year in re.findall(r"\b(\d{1,6})\s*/\s*((?:19|20)\d{2})\b", query_text):
+                matches = list(Norma.objects.filter(numero=number, ano=int(year))[:2])
+                if len(matches) == 1 and matches[0].id not in seen_ids:
+                    seen_ids.add(matches[0].id)
+                    cited_normas.append(matches[0])
         return cited_normas
 
     def _retrieve_cited_norma_devices(
@@ -101,38 +94,84 @@ class AdaptiveRAGService(RAGService):
 
         results: list[dict[str, Any]] = []
         seen_disp_ids = set()
+        retrieval_rows: list[dict[str, Any]] = []
+        references = parse_normative_references(query_text)
+        explicit_reference = (
+            references[0]
+            if len(references) == 1 and not references[0].ambiguous and references[0].article
+            else None
+        )
         for norma in cited_normas:
             all_disps = list(
-                Dispositivo.objects.filter(norma_id=norma.id)
+                Dispositivo.objects.filter(norma_id=norma.id, is_active=True)
                 .select_related("norma", "dispositivo_pai")
                 .order_by("ordem")
             )
             if not all_disps:
                 continue
 
-            if len(all_disps) <= 12:
-                chosen_disps = all_disps
+            if explicit_reference is not None:
+                target_article = article_key(explicit_reference.article)
+                article_matches = [
+                    d
+                    for d in all_disps
+                    if d.tipo == "artigo" and article_key(d.numero) == target_article
+                ]
+                if len(article_matches) != 1:
+                    continue
+                target_id = article_matches[0].id
+                chosen_disps = []
+                for d in all_disps:
+                    current = d
+                    seen_ancestors = set()
+                    while current is not None and current.id not in seen_ancestors:
+                        if current.id == target_id:
+                            chosen_disps.append(d)
+                            break
+                        seen_ancestors.add(current.id)
+                        current = getattr(current, "dispositivo_pai", None)
+                match_kind = "explicit_reference"
             else:
                 norma_semantic = super().semantic_search(
-                    query_text=query_text, k=10, norma_id=norma.id, min_similarity=0.0
+                    query_text=query_text,
+                    k=max(10, min(50, options.max_sources * 3)),
+                    norma_id=norma.id,
+                    min_similarity=0.0,
                 )
+                retrieval_rows = norma_semantic
                 chosen_disps = [r["dispositivo"] for r in norma_semantic if r.get("dispositivo")]
                 if not chosen_disps:
-                    chosen_disps = all_disps[:8]
+                    retrieval_rows = AdaptiveRetriever(self)._lexical(
+                        query_text, max(10, options.max_sources * 3), options, norma_id=norma.id
+                    )
+                    chosen_disps = [r["dispositivo"] for r in retrieval_rows]
+                match_kind = "retrieval"
 
-            for i, d in enumerate(chosen_disps):
+            for d in chosen_disps:
                 if d.id in seen_disp_ids:
                     continue
                 seen_disp_ids.add(d.id)
-                boosted_score = max(0.90, 0.98 - (i * 0.01))
+                retrieval_row = (
+                    next((row for row in retrieval_rows if row.get("dispositivo") is d), None)
+                    if match_kind == "retrieval"
+                    else None
+                )
+                score = (
+                    float(retrieval_row.get("similarity_score") or 0.0) if retrieval_row else 0.0
+                )
                 results.append(
                     {
                         "dispositivo": d,
-                        "similarity_score": boosted_score,
-                        "semantic_score": boosted_score,
-                        "lexical_score": boosted_score,
-                        "retrieval_score": boosted_score,
-                        "distance": round(1.0 - boosted_score, 4),
+                        "similarity_score": score,
+                        "semantic_score": float(retrieval_row.get("semantic_score") or score)
+                        if retrieval_row
+                        else 0.0,
+                        "lexical_score": float(retrieval_row.get("lexical_score") or 0.0)
+                        if retrieval_row
+                        else 0.0,
+                        "retrieval_score": score,
+                        "distance": round(1.0 - score, 4),
+                        "match_kind": match_kind,
                         "context": {
                             "norma": {
                                 "id": d.norma.id,
@@ -196,6 +235,10 @@ class AdaptiveRAGService(RAGService):
                 cited_norma_ids=cited_norma_ids,
             )
 
+        explicit_rows = [row for row in cited_rows if row.get("match_kind") == "explicit_reference"]
+        if explicit_rows:
+            return explicit_rows[:max_sources]
+
         cited_selected = AdaptiveRetriever._select(
             cited_rows,
             max_sources=max_sources,
@@ -243,6 +286,8 @@ class AdaptiveRAGService(RAGService):
             else []
         )
         cited_rows = self._filter_status(cited_rows, options)
+        if any(row.get("match_kind") == "explicit_reference" for row in cited_rows):
+            return cited_rows[: min(k, options.max_sources)]
 
         if norma_id is not None or options.mode == "semantic":
             rows = super().semantic_search(

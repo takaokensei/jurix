@@ -67,6 +67,7 @@ def evento(
         dispositivo_alvo=alvo,
         dispositivo_fonte=fonte,
         dispositivo_fonte_id=fonte_id,
+        validado=True,
     )
 
 

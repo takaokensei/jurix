@@ -95,8 +95,6 @@ def _build_content_security_policy() -> str:
     )
 
 
-
-
 class ContentSecurityPolicyMiddleware:
     """Apply CSP and baseline browser security headers."""
 

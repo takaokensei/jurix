@@ -25,7 +25,7 @@ def build_relevant_context(
 
     context_parts: list[str] = []
     used_results: list[dict[str, Any]] = []
-    total_chars = 0
+    used_chars = 0
     max_chars = min(max_tokens * 4, int(getattr(settings, "RAG_MAX_CONTEXT_CHARS", max_tokens * 4)))
     asks_for_norma_summary = bool(
         re.search(r"\b(?:ementa|assunto|tema)\b", query_text, re.IGNORECASE)
@@ -58,22 +58,31 @@ def build_relevant_context(
                 f" | Vigência registrada: {effective.isoformat() if effective else 'não informada'}"
             )
 
-        part = (
-            f"[{score:.2f}] {tipo_label} nº {norma.numero}/{norma.ano} | "
-            f"{dispositivo.get_full_identifier()}: {dispositivo.texto}"
-            f"{ementa_context}{temporal_context}"
+        header = (
+            f"{index}. [{score:.2f}] {tipo_label} nº {norma.numero}/{norma.ano} | "
+            f"{dispositivo.get_full_identifier()}: "
         )
-        result["evidence_text"] = f"{dispositivo.texto}{ementa_context}{temporal_context}"
-
-        remaining = max_chars - total_chars
-        if remaining <= 0:
+        full_body = f"{dispositivo.texto}{ementa_context}{temporal_context}"
+        separator = "\n\n" if context_parts else ""
+        remaining = max_chars - used_chars - len(separator)
+        body_budget = remaining - len(header)
+        if body_budget <= 0:
             break
-        part = f"{index}. {part}"[:remaining]
+        snippet = full_body[:body_budget]
+        if not snippet.strip():
+            continue
+        part = f"{header}{snippet}"
         context_parts.append(part)
+        used_chars += len(separator) + len(part)
         used_results.append(result)
-        total_chars += len(part) + 2
+        result["full_text"] = dispositivo.texto
+        result["snippet"] = snippet
+        result["evidence_text"] = snippet
+        result["context_start"] = 0
+        result["context_end"] = len(snippet)
 
     formatted_context = "\n\n".join(context_parts)
+    total_chars = len(formatted_context)
     logger.info(
         "Generated context of %s characters from %s dispositivos",
         total_chars,

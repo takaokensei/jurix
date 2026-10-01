@@ -34,7 +34,7 @@ class ConsolidationEngine:
     APPLYING_ACTIONS = ("REVOGA", "ALTERA", "SUBSTITUI", "ADICIONA")
     ELEMENT_TYPES = ("artigo", "paragrafo", "inciso", "alinea")
 
-    def __init__(self, norma):
+    def __init__(self, norma, *, include_unvalidated: bool = False):
         """
         Initialize the consolidation engine for a specific norma.
 
@@ -42,6 +42,7 @@ class ConsolidationEngine:
             norma: The Norma instance to consolidate
         """
         self.norma = norma
+        self.include_unvalidated = include_unvalidated
         self.dispositivos = []
         self.eventos = []
         self.revoked_dispositivos = {}  # disp_id -> {'evento', 'norma_ref'}
@@ -49,6 +50,7 @@ class ConsolidationEngine:
         self.added_dispositivos = []  # list of addition entries (see _register_addition)
         self.unresolved_eventos = []  # events that could NOT be applied (see _mark_unresolved)
         self.applied_events = 0
+        self.unvalidated_event_count = 0
         self._additions_by_anchor: dict[int, list[dict[str, Any]]] = {}
         self._emitted_anchors: set[int] = set()
 
@@ -93,7 +95,7 @@ class ConsolidationEngine:
         from src.apps.legislation.models import Dispositivo
 
         self.dispositivos = list(
-            Dispositivo.objects.filter(norma=self.norma)
+            Dispositivo.objects.filter(norma=self.norma, is_active=True)
             .order_by("ordem", "id")
             .select_related("dispositivo_pai")
         )
@@ -146,7 +148,7 @@ class ConsolidationEngine:
 
         # Events where this norma is the target
         eventos_recebidos = list(
-            EventoAlteracao.objects.filter(norma_alvo=self.norma).select_related(
+            EventoAlteracao.objects.filter(norma_alvo=self.norma, is_active=True).select_related(
                 "dispositivo_fonte", "dispositivo_fonte__norma", "dispositivo_alvo"
             )
         )
@@ -154,7 +156,7 @@ class ConsolidationEngine:
         # Events where dispositivos of this norma reference themselves
         eventos_internos = list(
             EventoAlteracao.objects.filter(
-                dispositivo_fonte__norma=self.norma, norma_alvo=self.norma
+                dispositivo_fonte__norma=self.norma, norma_alvo=self.norma, is_active=True
             ).select_related("dispositivo_fonte", "dispositivo_alvo")
         )
 
@@ -193,6 +195,7 @@ class ConsolidationEngine:
         self.added_dispositivos = []
         self.unresolved_eventos = []
         self.applied_events = 0
+        self.unvalidated_event_count = 0
         additions: dict[tuple, dict[str, Any]] = {}
         # Targets are resolved in memory (never persisted) and only when unambiguous.
         resolutions = resolve_targets(self.eventos, self.dispositivos)
@@ -210,20 +213,29 @@ class ConsolidationEngine:
             if norma_fonte:
                 ref_str = f"{norma_fonte.tipo} nº {norma_fonte.numero}/{norma_fonte.ano}"
 
+            if acao not in self.APPLYING_ACTIONS:
+                continue  # REGULAMENTA / REFERENCIA: informational only
+
+            if not bool(getattr(evento, "validado", False)):
+                self.unvalidated_event_count += 1
+                if not self.include_unvalidated:
+                    self._mark_unresolved(
+                        evento,
+                        ref_str,
+                        "evento extraído ainda não foi validado por uma pessoa",
+                    )
+                    continue
+
             if acao == "ADICIONA":
                 self._register_addition(evento, fonte, ref_str, additions)
                 continue
 
-            if acao not in self.APPLYING_ACTIONS:
-                continue  # REGULAMENTA / REFERENCIA: informational only
-
-            resolved_here = False
             targets = [target] if target is not None else []
             if target is None and acao in RESOLVABLE_ACTIONS:
                 resolution = resolutions.get(evento.id)
                 if resolution is not None and resolution.dispositivos:
                     targets = list(resolution.dispositivos)
-                    target, resolved_here = targets[0], True
+                    target = targets[0]
                 elif resolution is not None:
                     self._mark_unresolved(evento, ref_str, resolution.reason)
                     continue
@@ -253,20 +265,13 @@ class ConsolidationEngine:
                 logger.debug(f"Dispositivo {target.id} marked as revoked by {ref_str}")
 
             elif acao in ("ALTERA", "SUBSTITUI"):
-                if resolved_here:
-                    # Only the quoted new wording may become the text, never the sentence
-                    # that instructs the change ('Altera o art. 5º ...').
-                    new_text, why = self._new_wording(evento, fonte)
-                    if new_text is None:
-                        self._mark_unresolved(evento, ref_str, why)
-                        continue
-                else:
-                    # The new text comes from target_text or the source dispositivo's text
-                    new_text = ""
-                    if evento.target_text and not evento.target_text.lower().startswith("art"):
-                        new_text = evento.target_text.strip()
-                    elif fonte and fonte.texto:
-                        new_text = fonte.texto.strip()
+                # Foreign keys can be populated by external/admin code, so
+                # they do not make the amending wording trustworthy. Both paths
+                # must extract and validate the quoted replacement text.
+                new_text, why = self._new_wording(evento, fonte)
+                if new_text is None:
+                    self._mark_unresolved(evento, ref_str, why)
+                    continue
 
                 # If device is revoked, subsequent alteration might restore or redefine it
                 if target.id in self.revoked_dispositivos:
@@ -557,6 +562,8 @@ class ConsolidationEngine:
         )
         lines.append(f"{tipo_label} nº {self.norma.numero}/{self.norma.ano}")
         lines.append("TEXTO CONSOLIDADO")
+        if self.include_unvalidated:
+            lines.append("DERIVADO EXPERIMENTAL — NÃO OFICIAL")
         lines.append("=" * 80)
         lines.append("")
 
@@ -686,6 +693,10 @@ class ConsolidationEngine:
             "events_processed": len(self.eventos),
             "events_applied": self.applied_events,
             "events_unresolved": len(self.unresolved_eventos),
-            "needs_review": bool(self.unresolved_eventos or self.added_dispositivos),
+            "needs_review": bool(
+                self.unresolved_eventos or self.added_dispositivos or self.unvalidated_event_count
+            ),
+            "events_unvalidated": self.unvalidated_event_count,
+            "experimental": self.include_unvalidated,
             "norma_str": str(self.norma),
         }

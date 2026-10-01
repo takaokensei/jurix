@@ -24,10 +24,22 @@ ROOT = Path(__file__).resolve().parents[2]
 DIM = 768
 
 
-def probe(tag):
+def probe(tag, historical=False):
     """Shell snippet that writes embeddings; `tag` keeps the norma unique across tests."""
+    if historical:
+        model_setup = """
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
+state = MigrationExecutor(connection).loader.project_state([
+    ("legislation", "0012_backfill_chatsession_slug"),
+])
+Norma = state.apps.get_model("legislation", "Norma")
+Dispositivo = state.apps.get_model("legislation", "Dispositivo")
+"""
+    else:
+        model_setup = "from src.apps.legislation.models import Norma, Dispositivo\n"
     return f"""
-from src.apps.legislation.models import Norma, Dispositivo
+{model_setup}
 n = Norma.objects.create(tipo="Lei", numero="{tag}", ano=2020)
 d = Dispositivo.objects.create(norma=n, tipo="artigo", numero="1", texto="t", ordem=1)
 Dispositivo.objects.filter(pk=d.pk).update(embedding=[0.01] * {DIM})
@@ -178,4 +190,7 @@ def test_migration_0013_is_reversible_without_reintroducing_the_bug(migrated_db_
     }
     assert "dispositivo_embedding_ivfflat_idx" in names
     assert "dispositivo_embedding_cosine_idx" not in names  # never recreated
-    assert "EMBEDDINGS-OK" in _manage(migrated_db_url, "shell", "-c", probe("reverse")).stdout
+    assert (
+        "EMBEDDINGS-OK"
+        in _manage(migrated_db_url, "shell", "-c", probe("reverse", historical=True)).stdout
+    )

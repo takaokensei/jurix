@@ -45,12 +45,37 @@ _OBLIGATION_CERTAINTY_RE = re.compile(
     re.IGNORECASE,
 )
 _PERMISSION_CERTAINTY_RE = re.compile(
-    r"\b(?:é\s+permitid[oa]|fica\s+permitid[oa]|permitid[oa]s?|facultad[oa]s?|autorizad[oa]s?)\b",
+    r"\b(?:pode|podem|poderá|poderão|é\s+permitid[oa]|fica\s+permitid[oa]|"
+    r"permitid[oa]s?|facultad[oa]s?|autorizad[oa]s?)\b",
     re.IGNORECASE,
 )
 _CONDITION_RE = re.compile(
-    r"\b(?:somente|apenas|exceto|salvo|específico|específica|específicos|específicas|ressalvado|ressalvada)\b",
+    r"\b(?:somente|apenas|exceto|salvo|se\s+houver|se\s+for|desde\s+que|quando|"
+    r"específico|específica|específicos|específicas|ressalvado|ressalvada)\b",
     re.IGNORECASE,
+)
+_CLAUSE_RE = re.compile(r"(?<=[.!?;:])\s+|\n+")
+_FACT_UNIT_RE = re.compile(
+    r"(?P<value>\d+(?:[.,]\d+)?)\s*(?P<unit>dias?|meses?|anos?|reais?|r\$|%|por cento|"
+    r"salários?\s*mínimos?|horas?|semanas?)(?=\s|$|[.,;:])",
+    re.IGNORECASE,
+)
+_FACT_ANCHORS = (
+    "prazo",
+    "multa",
+    "valor",
+    "taxa",
+    "idade",
+    "quantidade",
+    "percentual",
+    "limite",
+    "pena",
+    "carência",
+    "vigência",
+    "mandato",
+    "remuneração",
+    "salário",
+    "período",
 )
 
 _STOPWORDS = {
@@ -266,6 +291,38 @@ def _certainty(text: str) -> set[str]:
     return c
 
 
+def _relevant_clause(claim_text: str, evidence_text: str) -> str:
+    """Select the evidence clause most lexically related to this claim."""
+    clauses = [part.strip() for part in _CLAUSE_RE.split(evidence_text or "") if part.strip()]
+    if len(clauses) < 2:
+        return evidence_text
+    claim_tokens = _tokens(claim_text)
+    if not claim_tokens:
+        return evidence_text
+    return max(
+        clauses,
+        key=lambda clause: len(claim_tokens & _tokens(clause)),
+    )
+
+
+def _number_facts(text: str) -> set[tuple[str, str, str]]:
+    """Extract explicit value/unit facts tied to a nearby legal concept."""
+    facts = set()
+    normalized = (text or "").lower()
+    for match in _FACT_UNIT_RE.finditer(normalized):
+        prefix = normalized[max(0, match.start() - 64) : match.start()]
+        anchor_matches = [
+            (found.end(), anchor)
+            for anchor in _FACT_ANCHORS
+            for found in re.finditer(rf"\b{anchor}\b", prefix)
+        ]
+        anchor = max(anchor_matches)[1] if anchor_matches else ""
+        unit = re.sub(r"\s+", " ", match.group("unit").replace("r$", "reais"))
+        value = match.group("value").replace(",", ".")
+        facts.add((anchor, unit, value))
+    return facts
+
+
 def _normalise(text: str) -> str:
     return " ".join((text or "").lower().split())
 
@@ -303,22 +360,36 @@ def _citation_ok(claim, evidence) -> bool:
 
 def _match_claim(claim, evidence) -> EvidenceMatch:
     evidence_text = f"{evidence.norma_ref} {evidence.identifier} {evidence.text}".strip()
+    predicate_evidence = _relevant_clause(claim.text, evidence.text)
     claim_tokens = _tokens(claim.text)
     evidence_tokens = _tokens(evidence_text)
     overlap = len(claim_tokens & evidence_tokens) / max(len(claim_tokens), 1)
     claim_numbers = _numbers(claim.text)
     evidence_numbers = _numbers(evidence_text)
     numeric_ok = claim_numbers.issubset(evidence_numbers)
-    negation_ok = not _negated(claim.text) or _negated(evidence_text)
+    # Positive claims must not be supported by a negated clause, and vice versa.
+    negation_ok = _negated(claim.text) == _negated(predicate_evidence)
     citation_ok = _citation_ok(claim, evidence)
     claim_certainty = _certainty(claim.text)
-    evidence_certainty = _certainty(evidence_text)
+    evidence_certainty = _certainty(predicate_evidence)
     has_claim_condition = bool(_CONDITION_RE.search(claim.text))
-    has_evidence_condition = bool(_CONDITION_RE.search(evidence_text))
+    has_evidence_condition = bool(_CONDITION_RE.search(predicate_evidence))
     condition_mismatch = has_evidence_condition and not has_claim_condition
+    claim_facts = _number_facts(claim.text)
+    evidence_facts = _number_facts(predicate_evidence)
+    fact_mismatch = any(
+        any(
+            evidence_anchor == anchor and evidence_unit == unit and evidence_value != value
+            for evidence_anchor, evidence_unit, evidence_value in evidence_facts
+        )
+        for anchor, unit, value in claim_facts
+        if anchor
+    )
     certainty_ok = (
-        not claim_certainty or bool(claim_certainty & evidence_certainty)
-    ) and not condition_mismatch
+        (not claim_certainty or bool(claim_certainty & evidence_certainty))
+        and not condition_mismatch
+        and not fact_mismatch
+    )
     return EvidenceMatch(
         evidence_index=-1,
         lexical_overlap=round(overlap, 4),

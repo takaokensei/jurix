@@ -11,7 +11,6 @@ import re
 import textwrap
 import uuid
 from collections import defaultdict
-from difflib import SequenceMatcher
 from typing import Any
 
 from django.conf import settings
@@ -21,6 +20,8 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import DetailView, ListView
 
+from src.observability.safe_logging import log_exception_safely
+from src.processing.legal_diff import build_legal_diff
 from src.processing.rag_service import RAGService
 from src.processing.temporal_scope import build_norma_timeline, temporal_status
 
@@ -184,14 +185,14 @@ class NormaDetailView(DetailView):
 
         # Get all alteration events affecting this norma
         eventos_recebidos = (
-            EventoAlteracao.objects.filter(norma_alvo=norma)
+            EventoAlteracao.objects.filter(norma_alvo=norma, is_active=True)
             .select_related("dispositivo_fonte", "dispositivo_fonte__norma", "dispositivo_alvo")
             .order_by("created_at")
         )
 
         # Get all dispositivos for this norma
         dispositivos = (
-            Dispositivo.objects.filter(norma=norma)
+            Dispositivo.objects.filter(norma=norma, is_active=True)
             .select_related("dispositivo_pai")
             .order_by("ordem")
         )
@@ -244,8 +245,8 @@ def norma_compare_view(request: HttpRequest, pk: int) -> HttpResponse:
     """
     norma = get_object_or_404(Norma, pk=pk)
 
-    # Bound synchronous diff work: SequenceMatcher with autojunk disabled can
-    # become quadratic for long, repetitive legal texts.
+    # Bound synchronous structural matching; no partial comparison is exposed
+    # when an OCR document exceeds the configured resource budget.
     original_text = norma.texto_original or ""
     consolidated_text = _presentation_consolidated_text(norma)
     diff_rows = []
@@ -261,63 +262,13 @@ def norma_compare_view(request: HttpRequest, pk: int) -> HttpResponse:
     if comparison_available:
         original_lines = original_text.split("\n") if original_text else []
         consolidated_lines = consolidated_text.split("\n") if consolidated_text else []
-        matcher = SequenceMatcher(a=original_lines, b=consolidated_lines, autojunk=False)
-        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-            if tag == "equal":
-                diff_rows.extend(
-                    {
-                        "kind": "equal",
-                        "original_number": i + 1,
-                        "original": original_lines[i],
-                        "consolidated_number": j + 1,
-                        "consolidated": consolidated_lines[j],
-                    }
-                    for i, j in zip(range(i1, i2), range(j1, j2), strict=True)
-                )
-            elif tag == "replace":
-                span = max(i2 - i1, j2 - j1)
-                for offset in range(span):
-                    original_index = i1 + offset
-                    consolidated_index = j1 + offset
-                    diff_rows.append(
-                        {
-                            "kind": "changed",
-                            "original_number": original_index + 1 if original_index < i2 else None,
-                            "original": original_lines[original_index] if original_index < i2 else "",
-                            "consolidated_number": consolidated_index + 1
-                            if consolidated_index < j2
-                            else None,
-                            "consolidated": consolidated_lines[consolidated_index]
-                            if consolidated_index < j2
-                            else "",
-                        }
-                    )
-            elif tag == "delete":
-                diff_rows.extend(
-                    {
-                        "kind": "removed",
-                        "original_number": i + 1,
-                        "original": original_lines[i],
-                        "consolidated_number": None,
-                        "consolidated": "",
-                    }
-                    for i in range(i1, i2)
-                )
-            elif tag == "insert":
-                diff_rows.extend(
-                    {
-                        "kind": "added",
-                        "original_number": None,
-                        "original": "",
-                        "consolidated_number": j + 1,
-                        "consolidated": consolidated_lines[j],
-                    }
-                    for j in range(j1, j2)
-                )
+        diff_rows = build_legal_diff(original_text, consolidated_text)
 
     # Get alteration events
     eventos = (
-        EventoAlteracao.objects.filter(Q(norma_alvo=norma) | Q(dispositivo_fonte__norma=norma))
+        EventoAlteracao.objects.filter(
+            Q(norma_alvo=norma) | Q(dispositivo_fonte__norma=norma), is_active=True
+        )
         .select_related(
             "dispositivo_fonte", "dispositivo_fonte__norma", "dispositivo_alvo", "norma_alvo"
         )
@@ -337,6 +288,8 @@ def norma_compare_view(request: HttpRequest, pk: int) -> HttpResponse:
         "comparison_max_lines": NORMA_COMPARE_MAX_LINES,
         "comparison_max_chars": NORMA_COMPARE_MAX_CHARS,
         "diff_rows": diff_rows,
+        "comparison_label": "Diferenças textuais estruturais",
+        "legal_changes_validated": False,
     }
 
     return render(request, "legislation/norma_compare.html", context)
@@ -356,9 +309,13 @@ def norma_pdf_export_view(request: HttpRequest, pk: int) -> HttpResponse:
     page_lines = 52
     for offset in range(0, len(lines) or 1, page_lines):
         page = document.new_page(width=595, height=842)
-        page.insert_text((48, 48), "JURIX · NORMA CONSOLIDADA", fontsize=9, color=(0.18, 0.43, 0.78))
+        page.insert_text(
+            (48, 48), "JURIX · NORMA CONSOLIDADA", fontsize=9, color=(0.18, 0.43, 0.78)
+        )
         page.insert_text((48, 75), title, fontsize=16, fontname="hebo", color=(0.06, 0.10, 0.18))
-        page.insert_text((48, 94), "Exportação do texto consolidado", fontsize=9, color=(0.35, 0.40, 0.48))
+        page.insert_text(
+            (48, 94), "Exportação do texto consolidado", fontsize=9, color=(0.35, 0.40, 0.48)
+        )
         page.insert_textbox(
             fitz.Rect(48, 120, 547, 790),
             "\n".join(lines[offset : offset + page_lines]),
@@ -367,7 +324,12 @@ def norma_pdf_export_view(request: HttpRequest, pk: int) -> HttpResponse:
             fontname="cour",
             color=(0.10, 0.12, 0.16),
         )
-        page.insert_text((48, 818), f"Fonte oficial: SAPL · Página {offset // page_lines + 1}", fontsize=8, color=(0.40, 0.44, 0.50))
+        page.insert_text(
+            (48, 818),
+            f"Fonte oficial: SAPL · Página {offset // page_lines + 1}",
+            fontsize=8,
+            color=(0.40, 0.44, 0.50),
+        )
     payload = document.tobytes(garbage=4, deflate=True)
     document.close()
     response = HttpResponse(payload, content_type="application/pdf")
@@ -391,7 +353,9 @@ def norma_dispositivos_tree_view(request: HttpRequest, pk: int) -> HttpResponse:
 
     # Get all dispositivos
     dispositivos = (
-        Dispositivo.objects.filter(norma=norma).select_related("dispositivo_pai").order_by("ordem")
+        Dispositivo.objects.filter(norma=norma, is_active=True)
+        .select_related("dispositivo_pai")
+        .order_by("ordem")
     )
 
     # Build tree structure in O(N) using in-memory parent-children map
@@ -486,6 +450,7 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
             "current_session_id": current_session_id,
             "current_session_slug": session_slug,
             "prefill_question": prefill_question,
+            "max_question_length": settings.LLM_MAX_QUESTION_LENGTH,
         }
         return render(request, "legislation/chatbot.html", context)
 
@@ -506,7 +471,7 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
             if not question:
                 return JsonResponse({"success": False, "error": "Pergunta vazia"}, status=400)
 
-            logger.info(f"Chatbot question received: '{question[:100]}...'")
+            logger.info("Chatbot question received (question_length=%s)", len(question))
 
             # Get session_id from request if regenerating
             session_id = data.get("session_id")
@@ -562,15 +527,11 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                             f"Session {session_id} has {verify_count} messages after creating user message"
                         )
                     except Exception as e:
-                        logger.error(
-                            f"Error creating user message for session {session_id}: {e}",
-                            exc_info=True,
-                        )
-                        import traceback
-
-                        logger.error(f"Traceback: {traceback.format_exc()}")
+                        log_exception_safely(logger, "Error creating user message", e)
                     logger.info(
-                        f"Created new chat session {session_id} (slug: {chat_session.slug}) for user {request.user.username}"
+                        "Created new chat session %s (slug: %s)",
+                        session_id,
+                        chat_session.slug,
                     )
                 else:
                     # Anonymous sessions are represented by the signed Django
@@ -589,7 +550,7 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                         )
                         request.session.modified = True
                     except Exception as e:
-                        logger.debug(f"Could not check messages for session {session_id}: {e}")
+                        log_exception_safely(logger, "Could not update anonymous session", e)
                     # Save user message if not regenerating
                     if not regenerate:
                         try:
@@ -598,23 +559,17 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                             )
                             request.session.modified = True
                         except Exception as e:
-                            logger.error(f"Error creating user message: {e}", exc_info=True)
+                            log_exception_safely(logger, "Error creating user message", e)
                             # Continue even if message creation fails
             except Exception as e:
-                logger.error(f"Error in session management: {e}", exc_info=True)
-                import traceback
-
-                logger.error(f"Traceback: {traceback.format_exc()}")
+                log_exception_safely(logger, "Error in session management", e)
                 # Continue with RAG processing even if session creation fails
 
             # Initialize RAG service with error handling
             try:
                 rag_service = RAGService()
             except Exception as e:
-                logger.error(f"Error initializing RAG service: {e}", exc_info=True)
-                import traceback
-
-                logger.error(f"Traceback: {traceback.format_exc()}")
+                log_exception_safely(logger, "Error initializing RAG service", e)
                 return JsonResponse(
                     {
                         "success": False,
@@ -629,10 +584,7 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                 if not response or "answer" not in response:
                     raise ValueError("Invalid response from RAG service")
             except Exception as e:
-                logger.error(f"Error generating answer: {e}", exc_info=True)
-                import traceback
-
-                logger.error(f"Traceback: {traceback.format_exc()}")
+                log_exception_safely(logger, "Error generating answer", e)
                 return JsonResponse(
                     {"success": False, "error": "Erro ao gerar resposta. Tente novamente."},
                     status=500,
@@ -660,7 +612,9 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                             if last_assistant:
                                 last_assistant.delete()
                         except Exception as e:
-                            logger.debug(f"Could not delete last assistant message: {e}")
+                            log_exception_safely(
+                                logger, "Could not delete previous assistant message", e
+                            )
 
                     # Save assistant message with error handling
                     try:
@@ -700,13 +654,7 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                                 f"Session {chat_session.id}: Message count mismatch! session_id={message_count_by_id}, session={message_count_by_obj}"
                             )
 
-                        # List all message IDs for debugging
-                        all_message_ids = list(
-                            ChatMessage.objects.filter(session_id=chat_session.id).values_list(
-                                "id", flat=True
-                            )
-                        )
-                        logger.info(f"Session {chat_session.id} message IDs: {all_message_ids}")
+                        logger.info("Session %s message count verified", chat_session.id)
 
                         # Generate title using AI if this is a new session with temporary title
                         if chat_session.title == "Nova Conversa":
@@ -755,13 +703,11 @@ Responda APENAS com o título, sem aspas, sem explicações, sem pontuação fin
                                             chat_session.title = clean_title
                                             chat_session.save(update_fields=["title"])
                                             logger.info(
-                                                f"Generated AI title for session {chat_session.id}: '{clean_title}'"
+                                                "Generated AI title for session %s", chat_session.id
                                             )
                             except Exception as e:
                                 # If title generation fails, keep "Nova Conversa" or use fallback
-                                logger.warning(
-                                    f"Failed to generate AI title for session {chat_session.id}: {e}"
-                                )
+                                log_exception_safely(logger, "Failed to generate AI title", e)
                                 # Fallback: use first 50 chars of question
                                 try:
                                     first_user_msg = (
@@ -780,10 +726,10 @@ Responda APENAS com o título, sem aspas, sem explicações, sem pontuação fin
                                 except Exception:
                                     pass  # Keep "Nova Conversa" if everything fails
                     except Exception as e:
-                        logger.error(f"Error creating assistant message: {e}", exc_info=True)
+                        log_exception_safely(logger, "Error creating assistant message", e)
                         # Continue even if message saving fails
                 except Exception as e:
-                    logger.error(f"Error in message persistence: {e}", exc_info=True)
+                    log_exception_safely(logger, "Error in message persistence", e)
                     # Continue even if persistence fails
 
             session_slug = chat_session.slug if chat_session else None
@@ -810,7 +756,7 @@ Responda APENAS com o título, sem aspas, sem explicações, sem pontuação fin
                     }
                 )
             except Exception as e:
-                logger.error(f"Error building JSON response: {e}", exc_info=True)
+                log_exception_safely(logger, "Error building JSON response", e)
                 return JsonResponse(
                     {"success": False, "error": "Erro ao construir resposta"}, status=500
                 )
@@ -819,7 +765,7 @@ Responda APENAS com o título, sem aspas, sem explicações, sem pontuação fin
             return JsonResponse({"success": False, "error": "JSON inválido"}, status=400)
         except Exception as e:
             # Details go to the log only: never echo str(e) or a traceback to the client.
-            logger.error(f"Error in chatbot POST: {e}", exc_info=True)
+            log_exception_safely(logger, "Error in chatbot POST", e)
             return JsonResponse(
                 {
                     "success": False,

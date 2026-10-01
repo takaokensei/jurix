@@ -3,6 +3,7 @@ Unit tests for LegalTextParser.
 Covers articles, paragraphs, incisos, alíneas, structural divisions, and hierarchy.
 """
 
+import json
 import textwrap
 
 import pytest
@@ -552,7 +553,7 @@ def test_publication_metadata_does_not_invent_dates():
 
 
 @pytest.mark.django_db
-def test_repair_existing_legal_colophon_preserves_device_references_and_dates():
+def test_repair_existing_legal_colophon_preserves_device_references_and_dates(tmp_path):
     from datetime import date
     from io import StringIO
 
@@ -597,14 +598,34 @@ CÂMARA MUNICIPAL DE NATAL"""
     )
 
     preview = StringIO()
-    call_command("repair_legal_colophons", "--norma-id", str(norma.pk), stdout=preview)
+    manifest_path = tmp_path / "repair-plan.json"
+    call_command(
+        "repair_legal_colophons",
+        "--norma-id",
+        str(norma.pk),
+        "--manifest-out",
+        str(manifest_path),
+        stdout=preview,
+    )
     article.refresh_from_db()
     norma.refresh_from_db()
     assert "Correção disponível" in preview.getvalue()
     assert "Sala das Sessões" in article.texto
     assert norma.data_vigencia is None
 
-    call_command("repair_legal_colophons", "--norma-id", str(norma.pk), "--apply", stdout=StringIO())
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    call_command(
+        "repair_legal_colophons",
+        "--norma-id",
+        str(norma.pk),
+        "--apply",
+        "--approved-manifest",
+        str(manifest_path),
+        "--expected-manifest-sha256",
+        manifest["sha256"],
+        "--backup-verified",
+        stdout=StringIO(),
+    )
     article.refresh_from_db()
     norma.refresh_from_db()
     event.refresh_from_db()
@@ -615,5 +636,13 @@ CÂMARA MUNICIPAL DE NATAL"""
     assert event.dispositivo_alvo_id == article.pk
 
     rerun = StringIO()
-    call_command("repair_legal_colophons", "--norma-id", str(norma.pk), "--apply", stdout=rerun)
-    assert "correções aplicadas: 0" in rerun.getvalue()
+    dry_rerun = tmp_path / "after-repair.json"
+    call_command(
+        "repair_legal_colophons",
+        "--norma-id",
+        str(norma.pk),
+        "--manifest-out",
+        str(dry_rerun),
+        stdout=rerun,
+    )
+    assert "correções encontradas (dry-run): 0" in rerun.getvalue()

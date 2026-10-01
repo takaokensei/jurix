@@ -5,8 +5,10 @@ Tests for RAG Service with mocked Ollama.
 from unittest.mock import Mock, patch
 
 import pytest
+from django.conf import settings
 
 from src.apps.legislation.models import Dispositivo, Norma
+from src.processing.cache_service import CacheService
 from src.processing.rag_service import RAGService
 
 
@@ -383,6 +385,13 @@ class TestRAGService:
             model="llama3",
             corpus_version=service.cache.get_corpus_version.return_value,
             retrieval_fingerprint="",
+            corpus_revision=service.cache.get_corpus_revision_digest.return_value,
+            generation_fingerprint=CacheService.generation_fingerprint(
+                provider="ollama",
+                model="llama3",
+                endpoint=getattr(settings, "OLLAMA_BASE_URL", ""),
+                temperature=0.3,
+            ),
         )
 
     @patch("src.processing.rag_service.OllamaService")

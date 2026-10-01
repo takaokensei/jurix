@@ -19,6 +19,20 @@ PROVIDER_URLS = {
 _LOCAL_HOSTS = {"localhost", "host.docker.internal"}
 
 
+class ProviderStreamError(RuntimeError):
+    """Sanitized protocol failure from a compatible text-generation provider."""
+
+    def __init__(self, code: str):
+        self.code = code
+        messages = {
+            "provider_error": "O provedor de IA informou uma falha durante a geração.",
+            "invalid_event": "O provedor de IA enviou um evento inválido.",
+            "truncated": "A geração foi interrompida antes de terminar.",
+            "unsupported_finish": "O provedor encerrou a geração sem uma resposta completa.",
+        }
+        super().__init__(messages.get(code, messages["provider_error"]))
+
+
 def _canonical_compatible_endpoint(endpoint: str) -> tuple[str, str, int | None, str]:
     """Return a strict base URL and its parsed host parts, rejecting URL ambiguity."""
     if not isinstance(endpoint, str) or not endpoint or endpoint != endpoint.strip():
@@ -39,7 +53,9 @@ def _canonical_compatible_endpoint(endpoint: str) -> tuple[str, str, int | None,
         or parsed.query
         or parsed.fragment
     ):
-        raise ValueError("Endpoint próprio deve ser uma URL HTTP(S) sem credenciais, query ou fragmento.")
+        raise ValueError(
+            "Endpoint próprio deve ser uma URL HTTP(S) sem credenciais, query ou fragmento."
+        )
     path = parsed.path.rstrip("/")
     if path.endswith("/chat/completions"):
         path = path[: -len("/chat/completions")].rstrip("/")
@@ -85,7 +101,15 @@ def validate_provider_config(value):
     if not isinstance(value, dict):
         return None
     provider = value.get("provider", "ollama")
-    if provider not in {"ollama", "openai", "gemini", "openrouter", "groq", "anthropic", "compatible"}:
+    if provider not in {
+        "ollama",
+        "openai",
+        "gemini",
+        "openrouter",
+        "groq",
+        "anthropic",
+        "compatible",
+    }:
         raise ValueError("Provedor de IA inválido.")
     if provider == "ollama":
         return {"provider": "ollama"}
@@ -100,11 +124,27 @@ def validate_provider_config(value):
         if not isinstance(endpoint, str) or len(endpoint) > 500:
             raise ValueError("Endpoint inválido.")
         endpoint = _validate_compatible_endpoint(endpoint)
+        optional_auth_endpoints = set()
+        for configured_endpoint in getattr(settings, "LLM_COMPATIBLE_OPTIONAL_AUTH_ALLOWLIST", ()):
+            try:
+                optional_auth_endpoints.add(_canonical_compatible_endpoint(configured_endpoint)[0])
+            except ValueError:
+                continue
+        auth_optional = endpoint in optional_auth_endpoints
     else:
-        endpoint = "https://api.anthropic.com/v1" if provider == "anthropic" else PROVIDER_URLS[provider]
-    if not api_key:
+        endpoint = (
+            "https://api.anthropic.com/v1" if provider == "anthropic" else PROVIDER_URLS[provider]
+        )
+        auth_optional = False
+    if not api_key and not auth_optional:
         raise ValueError("Informe a chave de API deste provedor.")
-    return {"provider": provider, "model": model.strip(), "api_key": api_key, "endpoint": endpoint}
+    return {
+        "provider": provider,
+        "model": model.strip(),
+        "api_key": api_key,
+        "endpoint": endpoint,
+        "auth_required": not auth_optional,
+    }
 
 
 def stream_text(prompt: str, config: dict, *, temperature: float, max_tokens: int):
@@ -116,31 +156,86 @@ def stream_text(prompt: str, config: dict, *, temperature: float, max_tokens: in
     )
     if provider == "anthropic":
         url = f"{endpoint}/messages"
-        headers = {"x-api-key": config["api_key"], "anthropic-version": "2023-06-01", "content-type": "application/json"}
-        payload = {"model": config["model"], "max_tokens": max_tokens, "temperature": temperature, "stream": True, "messages": [{"role": "user", "content": prompt}]}
+        headers = {
+            "x-api-key": config["api_key"],
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        }
+        payload = {
+            "model": config["model"],
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "stream": True,
+            "messages": [{"role": "user", "content": prompt}],
+        }
     else:
         url = f"{endpoint}/chat/completions"
-        headers = {"Authorization": f"Bearer {config['api_key']}", "Content-Type": "application/json"}
-        payload = {"model": config["model"], "temperature": temperature, "max_tokens": max_tokens, "stream": True, "messages": [{"role": "user", "content": prompt}]}
-    with requests.post(url, headers=headers, json=payload, stream=True, timeout=(5, 120), allow_redirects=False) as response:
+        headers = {"Content-Type": "application/json"}
+        if config.get("api_key"):
+            headers["Authorization"] = f"Bearer {config['api_key']}"
+        elif config.get("auth_required", True):
+            raise ValueError("Este endpoint exige autenticação.")
+        payload = {
+            "model": config["model"],
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+    with requests.post(
+        url, headers=headers, json=payload, stream=True, timeout=(5, 120), allow_redirects=False
+    ) as response:
         response.raise_for_status()
+        terminal_received = False
         for raw_line in response.iter_lines(decode_unicode=True):
             if not raw_line:
                 continue
-            line = raw_line.decode("utf-8", errors="replace") if isinstance(raw_line, bytes) else raw_line
+            line = (
+                raw_line.decode("utf-8", errors="replace")
+                if isinstance(raw_line, bytes)
+                else raw_line
+            )
             if not line.startswith("data:"):
                 continue
             raw = line[5:].strip()
             if raw == "[DONE]":
+                if provider == "anthropic":
+                    raise ProviderStreamError("invalid_event")
+                terminal_received = True
                 break
             try:
                 event = json.loads(raw)
             except (json.JSONDecodeError, TypeError):
-                continue
+                raise ProviderStreamError("invalid_event") from None
+            if not isinstance(event, dict):
+                raise ProviderStreamError("invalid_event")
+            if event.get("error") or event.get("type") == "error":
+                raise ProviderStreamError("provider_error")
             if provider == "anthropic":
-                text = event.get("delta", {}).get("text", "") if event.get("type") == "content_block_delta" else ""
+                if event.get("type") == "message_delta":
+                    stop_reason = (event.get("delta") or {}).get("stop_reason")
+                    if stop_reason == "max_tokens":
+                        raise ProviderStreamError("truncated")
+                    if stop_reason not in (None, "end_turn", "stop_sequence"):
+                        raise ProviderStreamError("unsupported_finish")
+                if event.get("type") == "message_stop":
+                    terminal_received = True
+                    break
+                text = (
+                    event.get("delta", {}).get("text", "")
+                    if event.get("type") == "content_block_delta"
+                    else ""
+                )
             else:
                 choices = event.get("choices") or []
-                text = (choices[0].get("delta") or {}).get("content", "") if choices else ""
+                choice = choices[0] if choices else {}
+                finish_reason = choice.get("finish_reason")
+                if finish_reason == "length":
+                    raise ProviderStreamError("truncated")
+                if finish_reason not in (None, "stop"):
+                    raise ProviderStreamError("unsupported_finish")
+                text = (choice.get("delta") or {}).get("content", "") if choice else ""
             if isinstance(text, str) and text:
                 yield text
+        if not terminal_received:
+            raise ProviderStreamError("truncated")

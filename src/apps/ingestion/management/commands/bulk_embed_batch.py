@@ -10,12 +10,26 @@ import time
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
-from django.db.models import Q
+from django.db import transaction
+from django.db.models import F, Q
 from django.utils import timezone
 
 from src.apps.legislation.models import Dispositivo
 from src.llm_engine.ollama_service import OllamaService
 from src.processing.cache_service import get_cache_service
+from src.processing.device_revision import revision_fingerprint
+
+
+def _embedding_text(dispositivo: Dispositivo) -> str:
+    context_parts = [
+        f"{dispositivo.norma.tipo} {dispositivo.norma.numero}/{dispositivo.norma.ano}",
+        dispositivo.get_full_identifier(),
+        dispositivo.texto,
+    ]
+    if dispositivo.dispositivo_pai:
+        context_parts.insert(2, f"Contexto: {dispositivo.dispositivo_pai}")
+    return " | ".join(context_parts)
+
 
 logger = logging.getLogger(__name__)
 
@@ -131,13 +145,16 @@ class Command(BaseCommand):
 
         # Build queryset
         if dispositivo_id is not None:
-            queryset = Dispositivo.objects.filter(id=dispositivo_id)
+            queryset = Dispositivo.objects.filter(id=dispositivo_id, is_active=True)
         elif force:
-            queryset = Dispositivo.objects.all()
+            queryset = Dispositivo.objects.filter(is_active=True)
             self.stdout.write(self.style.WARNING("\n🔄 Force mode: Re-generating all embeddings"))
         else:
             queryset = Dispositivo.objects.filter(
-                Q(embedding__isnull=True) | ~Q(embedding_model=model)
+                Q(embedding__isnull=True)
+                | ~Q(embedding_model=model)
+                | ~Q(embedding_revision_fingerprint=F("revision_fingerprint")),
+                is_active=True,
             )
 
         if norma_id:
@@ -193,15 +210,7 @@ class Command(BaseCommand):
             pending: list[tuple[Dispositivo, str]] = []
             embeddings_by_id: dict[int, list[float]] = {}
             for disp in batch:
-                norma = disp.norma
-                context_parts = [
-                    f"{norma.tipo} {norma.numero}/{norma.ano}",
-                    f"{disp.get_full_identifier()}",
-                    disp.texto,
-                ]
-                if disp.dispositivo_pai:
-                    context_parts.insert(2, f"Contexto: {disp.dispositivo_pai}")
-                embedding_text = " | ".join(context_parts)
+                embedding_text = _embedding_text(disp)
                 embedding = cache.get_embedding(embedding_text, model) if cache else None
                 if embedding:
                     embeddings_by_id[disp.id] = embedding
@@ -241,23 +250,45 @@ class Command(BaseCommand):
                                     exc_info=True,
                                 )
 
-            to_update = []
+            updated_count = 0
             for disp in batch:
                 embedding = embeddings_by_id.get(disp.id)
                 if embedding is None:
                     continue
-                disp.embedding = embedding
-                disp.embedding_model = model
-                disp.embedding_generated_at = timezone.now()
-                to_update.append(disp)
+                with transaction.atomic():
+                    current = (
+                        Dispositivo.objects.select_for_update()
+                        .select_related("norma", "dispositivo_pai")
+                        .filter(pk=disp.pk, is_active=True)
+                        .first()
+                    )
+                    if (
+                        current is None
+                        or current.revision_fingerprint != disp.revision_fingerprint
+                        or revision_fingerprint(_embedding_text(current), "")
+                        != revision_fingerprint(_embedding_text(disp), "")
+                    ):
+                        failure_count += 1
+                        logger.info(
+                            "Discarded stale batch embedding for Dispositivo ID=%s", disp.pk
+                        )
+                        continue
+                    current.embedding = embedding
+                    current.embedding_model = model
+                    current.embedding_generated_at = timezone.now()
+                    current.embedding_revision_fingerprint = current.revision_fingerprint
+                    current.save(
+                        update_fields=[
+                            "embedding",
+                            "embedding_model",
+                            "embedding_generated_at",
+                            "embedding_revision_fingerprint",
+                            "updated_at",
+                        ]
+                    )
+                    updated_count += 1
 
-            if to_update:
-                Dispositivo.objects.bulk_update(
-                    to_update,
-                    ["embedding", "embedding_model", "embedding_generated_at", "updated_at"],
-                    batch_size=batch_size,
-                )
-                success_count += len(to_update)
+            success_count += updated_count
 
             batch_time = time.time() - batch_start
             self.stdout.write(

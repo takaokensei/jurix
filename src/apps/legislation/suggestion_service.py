@@ -84,7 +84,8 @@ def _cache_key(normas: list[Norma]) -> str:
 
 def _candidate_queryset(limit: int) -> list[Norma]:
     event_exists = EventoAlteracao.objects.filter(
-        Q(norma_alvo=OuterRef("pk")) | Q(dispositivo_fonte__norma=OuterRef("pk"))
+        Q(norma_alvo=OuterRef("pk")) | Q(dispositivo_fonte__norma=OuterRef("pk")),
+        is_active=True,
     )
     return list(
         Norma.objects.filter(

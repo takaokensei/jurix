@@ -1,3 +1,4 @@
+from src.processing.rag_prompt import build_prompt
 from src.processing.rag_service import RAGService
 
 
@@ -33,3 +34,12 @@ def test_contract_keeps_grounding_failure_auditable():
         model="test-model",
     )
     assert contract["grounding"]["failed_claims"] == ["A"]
+
+
+def test_generation_prompt_requires_direct_non_repetitive_claims_with_local_citations():
+    prompt = " ".join(
+        build_prompt("Art. 1º institui o programa.", "O que estabelece o art. 1º?").split()
+    )
+    assert "não reescreva a pergunta" in prompt
+    assert "não repita a mesma conclusão" in prompt
+    assert "cite junto dela o dispositivo" in prompt

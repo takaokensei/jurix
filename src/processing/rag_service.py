@@ -6,7 +6,7 @@ and Ollama embeddings for legal document retrieval.
 """
 
 import logging
-import re
+import time
 from collections.abc import Generator
 from typing import Any
 
@@ -15,18 +15,21 @@ from django.db import connection
 
 from src.apps.legislation.models import Dispositivo
 from src.llm_engine.ollama_service import OllamaService
-from src.processing.cache_service import get_cache_service
+from src.observability.safe_logging import log_exception_safely
+from src.processing.cache_service import CacheService, get_cache_service
+from src.processing.rag_cache_helpers import hydrate_cached_sources
 from src.processing.rag_contract_helpers import contract, grounding_fallback
 from src.processing.rag_deterministic import deterministic_answer
+from src.processing.rag_generation import (
+    answer_uses_only_sources,
+    fix_markdown_formatting,
+    ground_answer,
+    has_unsupported_absence_claim,
+    source_relevance,
+    validate_generated_answer,
+)
 from src.processing.rag_prompt import PROMPT_TEMPLATE as RAG_PROMPT_TEMPLATE
 from src.processing.rag_prompt import build_prompt
-
-_UNSUPPORTED_ABSENCE_RE = re.compile(
-    r"\b(?:não\s+(?:há|existe|foi\s+encontrad[oa]|se\s+encontram)|"
-    r"nenhum(?:a)?\s+(?:outro|outra)|únic[oa]|unico|única|nada\s+mais|"
-    r"não\s+se\s+aplica)\b",
-    re.IGNORECASE,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +123,7 @@ class RAGService:
             - distance: Vector distance (lower is better)
             - context: Additional context information
         """
+
         def result_with_mode(rows: list[dict[str, Any]], mode: str):
             return {"results": rows, "mode": mode} if include_metadata else rows
 
@@ -127,7 +131,7 @@ class RAGService:
             logger.warning("Empty query provided for semantic search")
             return result_with_mode([], "not_executed")
 
-        logger.info(f"Performing semantic search for query: '{query_text[:100]}...'")
+        logger.info("Performing semantic search (query_length=%s)", len(query_text))
 
         if getattr(connection, "vendor", "") == "sqlite":
             from src.processing.adaptive_retrieval import AdaptiveRetriever, RetrievalOptions
@@ -199,6 +203,9 @@ class RAGService:
             FROM legislation_dispositivo
             WHERE embedding IS NOT NULL
               AND embedding_model = %s
+              AND is_active = TRUE
+              AND revision_fingerprint <> ''
+              AND embedding_revision_fingerprint = revision_fingerprint
         """
 
         params = [query_embedding, query_embedding, self.model]
@@ -248,9 +255,9 @@ class RAGService:
             # Fetch all dispositivos in one query (optimization)
             dispositivos_map = {
                 d.id: d
-                for d in Dispositivo.objects.filter(id__in=dispositivo_ids).select_related(
-                    "norma", "dispositivo_pai"
-                )
+                for d in Dispositivo.objects.filter(
+                    id__in=dispositivo_ids, is_active=True
+                ).select_related("norma", "dispositivo_pai")
             }
 
             for raw_result in raw_results:
@@ -294,7 +301,7 @@ class RAGService:
             return result_with_mode(results, "semantic")
 
         except Exception as e:
-            logger.error(f"Error executing semantic search: {e}", exc_info=True)
+            log_exception_safely(logger, "Error executing semantic search", e)
             return result_with_mode([], "unavailable")
 
     def get_relevant_context(
@@ -345,11 +352,22 @@ class RAGService:
         clean_question = question.strip()
         model = model or settings.OLLAMA_MODEL
         temperature = max(0.0, min(float(temperature), 1.0))
-        logger.info(f"Answering question with RAG: '{clean_question[:100]}...'")
+        generation_fingerprint = CacheService.generation_fingerprint(
+            provider="ollama",
+            model=model,
+            endpoint=getattr(settings, "OLLAMA_BASE_URL", ""),
+            temperature=temperature,
+        )
+        logger.info("Answering question with RAG (question_length=%s)", len(clean_question))
 
         # Read the corpus version BEFORE the (slow) generation: if the corpus changes
         # meanwhile, the result is stored under the old version and never served.
         corpus_version = self.cache.get_corpus_version() if (self.use_cache and self.cache) else 0
+        corpus_revision = (
+            self.cache.get_corpus_revision_digest()
+            if (self.use_cache and self.cache)
+            else "unavailable"
+        )
 
         from src.observability.metrics import RAG_CACHE_HITS, RAG_CACHE_MISSES
 
@@ -361,27 +379,15 @@ class RAGService:
                 model=model,
                 corpus_version=corpus_version,
                 retrieval_fingerprint=retrieval_fingerprint,
+                corpus_revision=corpus_revision,
+                generation_fingerprint=generation_fingerprint,
             )
             if cached_result:
-                logger.info(f"Cache HIT for RAG answer: '{clean_question[:50]}...'")
+                logger.info("Cache HIT for RAG answer")
                 RAG_CACHE_HITS.inc()
-                cached_sources = cached_result.get("sources", [])
-                disp_ids = [
-                    s["dispositivo_id"]
-                    for s in cached_sources
-                    if isinstance(s, dict) and s.get("dispositivo_id")
-                ]
-                if disp_ids:
-                    disps = {
-                        d.id: d
-                        for d in Dispositivo.objects.filter(id__in=disp_ids).select_related(
-                            "norma", "dispositivo_pai"
-                        )
-                    }
-                    for s in cached_sources:
-                        did = s.get("dispositivo_id")
-                        if did in disps:
-                            s["dispositivo"] = disps[did]
+                cached_sources = hydrate_cached_sources(
+                    cached_result.get("sources", []), dispositivo_model=Dispositivo
+                )
                 cached_result["sources"] = cached_sources
                 cached_result["source_relevance"] = float(
                     cached_result.get(
@@ -466,22 +472,17 @@ class RAGService:
         )
 
         source_relevance = self._source_relevance(results)
-        source_only = self._answer_uses_only_sources(
-            answer, results
-        ) and not self._has_unsupported_absence_claim(answer, results)
-        grounding_report = (
-            self._ground_answer(answer, results)
-            if source_only
-            else {
-                "grounded": False,
-                "score": 0.0,
-                "claims": [],
-                "failed_claims": [
-                    "A resposta contém referências ou afirmações que não foram encontradas nas fontes recuperadas."
-                ],
-            }
+        validation = validate_generated_answer(
+            answer,
+            results,
+            format_answer=self._fix_markdown_formatting,
+            citation_policy=self._answer_uses_only_sources,
+            absence_policy=self._has_unsupported_absence_claim,
+            grounding_policy=self._ground_answer,
         )
-        grounded = bool(grounding_report.get("grounded")) and source_only
+        answer = validation["answer"]
+        grounding_report = validation["grounding"]
+        grounded = validation["grounded"]
 
         if not grounded:
             RAG_GROUNDING_FAILURES.inc()
@@ -510,47 +511,23 @@ class RAGService:
                 answer_data=result_payload,
                 corpus_version=corpus_version,
                 retrieval_fingerprint=retrieval_fingerprint,
+                corpus_revision=corpus_revision,
+                generation_fingerprint=generation_fingerprint,
             )
 
         return result_payload
 
     @staticmethod
     def _ground_answer(answer: str, results: list[dict[str, Any]]) -> dict[str, Any]:
-        """Evaluate grounding of the answer against retrieved evidence."""
-        from src.processing.strict_grounding import evaluate_strict_grounding
-
-        from .grounding_service import evaluate_grounding
-
-        baseline = evaluate_grounding(answer, results)
-        if not getattr(settings, "RAG_STRICT_GROUNDING", True):
-            return baseline
-        strict = evaluate_strict_grounding(answer, results)
-        from src.processing.rag_policy import decide_grounding, response_metadata
-
-        policy = decide_grounding(strict, True)
-        strict["grounded"] = policy.accepted
-        strict["policy"] = response_metadata(policy)
-        strict["baseline_score"] = baseline.get("score", 0.0)
-        strict["baseline_grounded"] = baseline.get("grounded", False)
-        return strict
+        return ground_answer(answer, results)
 
     @staticmethod
     def _has_unsupported_absence_claim(answer: str, results: list[dict[str, Any]]) -> bool:
-        """Reject completeness/absence claims unless the corpus states them explicitly."""
-        if not _UNSUPPORTED_ABSENCE_RE.search(answer or ""):
-            return False
-        evidence = " ".join(
-            str(item.get("evidence_text") or item.get("text") or item.get("full_text") or "")
-            for item in results
-        )
-        return not _UNSUPPORTED_ABSENCE_RE.search(evidence)
+        return has_unsupported_absence_claim(answer, results)
 
     @staticmethod
     def _source_relevance(results: list[dict[str, Any]]) -> float:
-        if not results:
-            return 0.0
-        scores = [float(item.get("similarity_score", 0.0) or 0.0) for item in results]
-        return round(sum(scores) / len(scores), 4)
+        return source_relevance(results)
 
     def stream_answer_question(
         self,
@@ -570,11 +547,26 @@ class RAGService:
         - {'event': 'done', 'answer': str}
         """
         clean_question = question.strip()
+        request_started = time.perf_counter()
         model = model or settings.OLLAMA_MODEL
         if text_provider and text_provider.get("provider") != "ollama":
             model = f"{text_provider.get('provider')}:{text_provider.get('model', 'unknown')}"
         temperature = max(0.0, min(float(temperature), 1.0))
+        provider_name = (text_provider or {}).get("provider", "ollama")
+        provider_model = (text_provider or {}).get("model") or model
+        generation_fingerprint = CacheService.generation_fingerprint(
+            provider=provider_name,
+            model=provider_model,
+            endpoint=(text_provider or {}).get("endpoint")
+            or getattr(settings, "OLLAMA_BASE_URL", ""),
+            temperature=temperature,
+        )
         corpus_version = self.cache.get_corpus_version() if (self.use_cache and self.cache) else 0
+        corpus_revision = (
+            self.cache.get_corpus_revision_digest()
+            if (self.use_cache and self.cache)
+            else "unavailable"
+        )
 
         yield {"event": "status", "status": "retrieving"}
 
@@ -582,33 +574,23 @@ class RAGService:
 
         # Check cache first
         if self.use_cache and self.cache:
+            cache_started = time.perf_counter()
             cached_result = self.cache.get_answer(
                 clean_question,
                 k=k,
                 model=model,
                 corpus_version=corpus_version,
                 retrieval_fingerprint=retrieval_fingerprint,
+                corpus_revision=corpus_revision,
+                generation_fingerprint=generation_fingerprint,
             )
             if cached_result:
+                cache_ms = round((time.perf_counter() - cache_started) * 1000)
                 RAG_CACHE_HITS.inc()
                 yield {"event": "status", "status": "finalizing"}
-                cached_sources = cached_result.get("sources", [])
-                disp_ids = [
-                    s["dispositivo_id"]
-                    for s in cached_sources
-                    if isinstance(s, dict) and s.get("dispositivo_id")
-                ]
-                if disp_ids:
-                    disps = {
-                        d.id: d
-                        for d in Dispositivo.objects.filter(id__in=disp_ids).select_related(
-                            "norma", "dispositivo_pai"
-                        )
-                    }
-                    for s in cached_sources:
-                        did = s.get("dispositivo_id")
-                        if did in disps:
-                            s["dispositivo"] = disps[did]
+                cached_sources = hydrate_cached_sources(
+                    cached_result.get("sources", []), dispositivo_model=Dispositivo
+                )
                 cached_source_relevance = float(
                     cached_result.get(
                         "source_relevance",
@@ -633,12 +615,20 @@ class RAGService:
                     "confidence_calibrated": False,
                     "grounded": bool(cached_result.get("grounded", False)),
                     "grounding": cached_result.get("grounding", {}),
+                    "timings_ms": {
+                        "cache_lookup": cache_ms,
+                        "total_before_done": round((time.perf_counter() - request_started) * 1000),
+                    },
+                    "generation_attempts": [],
+                    "cached": True,
                 }
                 return
             RAG_CACHE_MISSES.inc()
 
         # Retrieve relevant context
+        retrieval_started = time.perf_counter()
         context, results = self.get_relevant_context(clean_question, k=k)
+        retrieval_ms = round((time.perf_counter() - retrieval_started) * 1000)
         if not results:
             from src.observability.metrics import RAG_REQUESTS
 
@@ -661,6 +651,11 @@ class RAGService:
                     "claims": [],
                     "failed_claims": [],
                 },
+                "timings_ms": {
+                    "retrieval": retrieval_ms,
+                    "total_before_done": round((time.perf_counter() - request_started) * 1000),
+                },
+                "generation_attempts": [],
             }
             return
         source_relevance = self._source_relevance(results)
@@ -674,7 +669,9 @@ class RAGService:
 
         deterministic = deterministic_answer(clean_question, results)
         if deterministic:
+            grounding_started = time.perf_counter()
             grounding_report = self._ground_answer(deterministic, results)
+            grounding_ms = round((time.perf_counter() - grounding_started) * 1000)
             yield {"event": "status", "status": "grounding"}
             is_grounded = bool(grounding_report.get("grounded"))
             final_answer = deterministic if is_grounded else grounding_fallback()
@@ -688,6 +685,12 @@ class RAGService:
                 "confidence_calibrated": False,
                 "grounded": is_grounded,
                 "grounding": grounding_report,
+                "timings_ms": {
+                    "retrieval": retrieval_ms,
+                    "grounding": grounding_ms,
+                    "total_before_done": round((time.perf_counter() - request_started) * 1000),
+                },
+                "generation_attempts": [],
             }
             return
 
@@ -703,6 +706,8 @@ class RAGService:
         yield {"event": "status", "status": "generating"}
         grounding_report = None
         full_answer = ""
+        generation_attempts = []
+        grounding_total_ms = 0
         for attempt in range(2):
             attempt_prompt = prompt
             if attempt:
@@ -724,27 +729,37 @@ class RAGService:
                 generation_stream = self.ollama.stream_text(
                     attempt_prompt, model=model, temperature=temperature, max_tokens=2048
                 )
+            generation_started = time.perf_counter()
+            first_chunk_ms = None
             for chunk in generation_stream:
+                if first_chunk_ms is None:
+                    first_chunk_ms = round((time.perf_counter() - generation_started) * 1000)
                 chunks.append(chunk)
                 if stream_provisional and attempt == 0:
                     yield {"event": "chunk", "chunk": chunk, "provisional": True}
-            full_answer = self._fix_markdown_formatting("".join(chunks)).strip()
-            source_only = self._answer_uses_only_sources(
-                full_answer, results
-            ) and not self._has_unsupported_absence_claim(full_answer, results)
-            grounding_report = (
-                self._ground_answer(full_answer, results)
-                if source_only
-                else {
-                    "grounded": False,
-                    "score": 0.0,
-                    "claims": [],
-                    "failed_claims": [
-                        "A resposta contém referências ou afirmações que não foram encontradas nas fontes recuperadas."
-                    ],
+            generation_ms = round((time.perf_counter() - generation_started) * 1000)
+            generation_attempts.append(
+                {
+                    "attempt": attempt + 1,
+                    "duration_ms": generation_ms,
+                    "time_to_first_chunk_ms": first_chunk_ms,
+                    "output_characters": sum(len(part) for part in chunks),
                 }
             )
-            if bool(grounding_report.get("grounded")) and source_only:
+            grounding_started = time.perf_counter()
+            validation = validate_generated_answer(
+                "".join(chunks),
+                results,
+                format_answer=self._fix_markdown_formatting,
+                citation_policy=self._answer_uses_only_sources,
+                absence_policy=self._has_unsupported_absence_claim,
+                grounding_policy=self._ground_answer,
+            )
+            full_answer = validation["answer"]
+            grounding_report = validation["grounding"]
+            source_only = validation["source_only"]
+            grounding_total_ms += round((time.perf_counter() - grounding_started) * 1000)
+            if validation["grounded"] and source_only:
                 break
 
         yield {"event": "status", "status": "grounding"}
@@ -780,6 +795,8 @@ class RAGService:
                 answer_data=result_payload,
                 corpus_version=corpus_version,
                 retrieval_fingerprint=retrieval_fingerprint,
+                corpus_revision=corpus_revision,
+                generation_fingerprint=generation_fingerprint,
             )
         yield {
             "event": "done",
@@ -790,61 +807,22 @@ class RAGService:
             "source_relevance": source_relevance,
             "grounded": is_grounded,
             "grounding": grounding_report,
+            "timings_ms": {
+                "retrieval": retrieval_ms,
+                "generation": sum(item["duration_ms"] for item in generation_attempts),
+                "grounding": grounding_total_ms,
+                "total_before_done": round((time.perf_counter() - request_started) * 1000),
+            },
+            "generation_attempts": generation_attempts,
+            "cached": False,
         }
 
     def _fix_markdown_formatting(self, text: str) -> str:
-        """
-        Post-process markdown to fix common formatting issues.
-
-        Fixes:
-        - Lists without proper line breaks (e.g., "• Item 1; • Item 2" → "• Item 1\n• Item 2")
-        - Multiple bullet points on same line
-        """
-        # Fix: Multiple bullet points on same line separated by semicolons
-        # Pattern: "• Text1; • Text2" → "• Text1\n• Text2"
-        text = re.sub(r"([•\-])\s+([^•\n]+?);\s+([•\-])", r"\1 \2\n\3", text)
-
-        # Fix: Multiple bullet points on same line (no semicolon, just space)
-        # Pattern: "• Text1 • Text2" → "• Text1\n• Text2"
-        text = re.sub(r"([•\-])\s+([^•\n]+?)\s+([•\-])\s+", r"\1 \2\n\3 ", text)
-
-        # Fix: Ensure bullet points are on separate lines
-        # Replace "; •" or "; -" with newline + bullet
-        text = re.sub(r";\s+([•\-])", r"\n\1", text)
-
-        # Fix: Ensure proper spacing before bullet points
-        # Add newline before bullet if not already there
-        text = re.sub(r"([^\n])([•\-])\s+", r"\1\n\2 ", text)
-
-        # Clean up: Remove multiple consecutive newlines (max 2)
-        text = re.sub(r"\n{3,}", "\n\n", text)
-
-        return text
+        return fix_markdown_formatting(text)
 
     @staticmethod
     def _answer_uses_only_sources(answer: str, results: list[dict[str, Any]]) -> bool:
-        """Reject legal citations that were not present in retrieved sources."""
-        if any(result.get("attachment") for result in results):
-            return True
-        allowed = set()
-        for result in results:
-            disp = result.get("dispositivo")
-            norma = getattr(disp, "norma", None)
-            if norma:
-                num = str(norma.numero or "").replace(".", "").strip()
-                ano = str(norma.ano or "").strip()
-                if num and ano:
-                    allowed.add(f"{num}/{ano}")
-                    allowed.add(f"{norma.numero}/{ano}")
-        cited_raw = re.findall(
-            r"\b(?:Lei|Decreto|Resolução|Portaria)\s*(?:n[º°o.]*\s*)?(\d[\d.]*/\d{4})",
-            answer,
-            re.IGNORECASE,
-        )
-        cited = {c.replace(".", "") for c in cited_raw}
-        if not cited:
-            return True
-        return cited.issubset(allowed)
+        return answer_uses_only_sources(answer, results)
 
 
 # Convenience function for quick searches

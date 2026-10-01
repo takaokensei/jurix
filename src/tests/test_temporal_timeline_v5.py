@@ -27,6 +27,7 @@ def test_build_norma_timeline_accepts_as_of(monkeypatch):
     )
     timeline = build_norma_timeline(norma, as_of=date(2024, 1, 1))
     assert [item["kind"] for item in timeline] == ["publication", "effective"]
+    assert [item["date_display"] for item in timeline] == ["01/01/2020", "01/02/2020"]
 
 
 @pytest.mark.django_db
