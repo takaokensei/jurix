@@ -18,7 +18,18 @@
   const searchForm = document.querySelector('[data-history-search]');
   const searchInput = searchForm?.querySelector('input[name="q"]');
   const stopwords = new Set(['para', 'como', 'sobre', 'entre', 'pela', 'pelo', 'uma', 'que', 'qual', 'com', 'dos', 'das']);
-  const tokens = value => String(value || '').toLocaleLowerCase('pt-BR').match(/[\p{L}\p{N}]{2,}/gu)?.filter(word => !stopwords.has(word)) || [];
+  const normalize = value => String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+  const tokens = value => normalize(value).match(/[\p{L}\p{N}]{2,}/gu)?.filter(word => !stopwords.has(word)) || [];
+  const plainText = value => String(value || '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/^\s{0,3}(?:[-*+]\s+|\d+[.)]\s+)/gm, '')
+    .replace(/[>*_`~]/g, '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   const baseSessions = store.list();
   root.className = 'workspace-history-list';
   root.setAttribute('aria-live', 'polite');
@@ -34,7 +45,15 @@
       const frequency = corpus.reduce((counts, word) => (counts[word] = (counts[word] || 0) + 1, counts), {});
       const score = queryTokens.reduce((sum, word) => sum + Math.min(frequency[word] || 0, 3), 0);
       const count = Number(session.messages_count || detail?.messages?.length || 0);
-      const preview = firstAssistant?.content || (firstUser?.content === title ? `${count} ${count === 1 ? 'mensagem registrada' : 'mensagens registradas'}` : firstUser?.content) || 'Conversa sem mensagem registrada';
+      const rawPreview = firstAssistant?.content || firstUser?.content || '';
+      let cleanedPreview = plainText(rawPreview);
+      const foldedTitle = normalize(title);
+      if (foldedTitle && normalize(cleanedPreview).startsWith(foldedTitle)) {
+        cleanedPreview = cleanedPreview.slice(String(title).length).replace(/^[\s:—–.,;!?-]+/, '').trim();
+      }
+      const preview = !cleanedPreview
+        ? `${count} ${count === 1 ? 'mensagem registrada' : 'mensagens registradas'}`
+        : cleanedPreview;
       return { session, title, preview, score, count };
     }).filter(item => !queryTokens.length || item.score > 0)
       .sort((a, b) => queryTokens.length ? b.score - a.score || String(b.session.updated_at).localeCompare(String(a.session.updated_at)) : String(b.session.updated_at).localeCompare(String(a.session.updated_at)));
@@ -51,12 +70,13 @@
     </div>
     ${sessions.map(({ session, title, preview, count }) => {
       const href = `/assistente/${encodeURIComponent(session.slug || session.id)}/`;
-      return `<a class="workspace-history-card" href="${href}">
-        <div class="workspace-history-card__surface"><div class="workspace-history-card__link">
+      return `<article class="workspace-history-card" data-history-card data-session-id="${escapeHtml(session.id)}">
+        <div class="workspace-history-card__surface"><a class="workspace-history-card__link" href="${href}">
           <div class="workspace-history-main"><span class="workspace-eyebrow">Conversa local</span><h2>${escapeHtml(title)}</h2><p>${escapeHtml(preview.slice(0, 220))}</p></div>
           <div class="workspace-history-meta"><span>${count} ${count === 1 ? 'mensagem' : 'mensagens'}</span><time datetime="${escapeHtml(session.updated_at)}">${escapeHtml(formatDate(session.updated_at))}</time></div>
-        </div></div>
-      </a>`;
+        </a></div>
+        <button type="button" class="workspace-history-delete" data-history-delete aria-label="Excluir conversa: ${escapeHtml(title)}" title="Excluir conversa">Excluir</button>
+      </article>`;
     }).join('')}
   `;
   };

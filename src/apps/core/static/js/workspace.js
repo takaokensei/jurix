@@ -173,7 +173,9 @@
             if (selectedProvider !== 'ollama') {
                 const required = [
                     [externalModelField, providerConfig.model, 'Informe o identificador do modelo.'],
-                    [apiKeyField, providerConfig.api_key, 'Informe a chave de API.'],
+                    ...(selectedProvider !== 'compatible'
+                        ? [[apiKeyField, providerConfig.api_key, 'Informe a chave de API.']]
+                        : []),
                     ...(selectedProvider === 'compatible'
                         ? [[endpointField, providerConfig.endpoint, 'Informe o endpoint compatível.']]
                         : []),
@@ -236,6 +238,51 @@
                     : 'Padrões aplicados nesta página, mas não foi possível remover as preferências salvas. Elas podem voltar após recarregar.';
             }
             if (removed) window.location.reload();
+        });
+
+        const exportHistory = document.querySelector('[data-history-export]');
+        const clearHistory = document.querySelector('[data-history-clear]');
+        const historyDialog = document.querySelector('[data-local-history-dialog]');
+        const historyStatus = document.querySelector('[data-history-data-status]');
+        const cancelHistoryClear = historyDialog?.querySelector('[data-local-history-cancel]');
+        const confirmHistoryClear = historyDialog?.querySelector('[data-local-history-confirm]');
+        exportHistory?.addEventListener('click', () => {
+            try {
+                const payload = window.JurixAnonymousHistory?.exportData?.();
+                if (!payload) throw new Error('Histórico local indisponível.');
+                const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const anchor = document.createElement('a');
+                anchor.href = url;
+                anchor.download = `jurix-historico-${new Date().toISOString().slice(0, 10)}.json`;
+                anchor.hidden = true;
+                document.body.append(anchor);
+                anchor.click();
+                anchor.remove();
+                window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+                if (historyStatus) historyStatus.textContent = 'Exportação criada. O arquivo contém somente conversas locais, sem as chaves de API.';
+            } catch (_) {
+                if (historyStatus) historyStatus.textContent = 'Não foi possível exportar o histórico deste navegador.';
+            }
+        });
+        clearHistory?.addEventListener('click', () => {
+            if (!historyDialog?.showModal) {
+                if (historyStatus) historyStatus.textContent = 'Não foi possível abrir a confirmação para apagar o histórico.';
+                return;
+            }
+            historyDialog.showModal();
+            cancelHistoryClear?.focus();
+        });
+        cancelHistoryClear?.addEventListener('click', () => historyDialog.close());
+        confirmHistoryClear?.addEventListener('click', () => {
+            const cleared = window.JurixAnonymousHistory?.clear?.() === true;
+            historyDialog.close();
+            if (historyStatus) {
+                historyStatus.textContent = cleared
+                    ? 'Histórico local apagado. Preferências e chaves de API foram mantidas.'
+                    : 'O histórico foi removido da memória desta página, mas o navegador não confirmou a remoção do armazenamento persistente.';
+            }
+            clearHistory?.focus();
         });
     }
 

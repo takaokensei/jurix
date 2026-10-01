@@ -25,6 +25,17 @@
 .legal-detail-actions .btn { display:inline-flex; align-items:center; justify-content:center; min-width:0; min-height:44px; padding:8px 14px; border-radius:8px; background:var(--figma-blue-primary); border:1px solid var(--figma-blue-primary); color:var(--figma-text-on-accent); text-align:center; text-decoration:none; }
 .legal-detail-actions .btn:hover { background:var(--figma-blue-dark); }
 .legal-detail-actions .btn-secondary { background:rgba(255,255,255,.04); border-color:var(--figma-border); color:var(--figma-text-white); }
+.legal-detail-dates { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:18px 0 0; }
+.legal-detail-dates > div { min-width:0; padding:12px 14px; border:1px solid var(--figma-border); border-radius:10px; background:color-mix(in srgb,var(--figma-bg-sidebar) 72%,transparent); }
+.legal-detail-dates dt { color:var(--figma-text-muted); font-size:.75rem; font-weight:650; }
+.legal-detail-dates dd { margin:4px 0 0; color:var(--figma-text-white); font-size:.92rem; font-weight:600; }
+.legal-detail-technical { margin-top:16px; border:1px solid var(--figma-border); border-radius:10px; }
+.legal-detail-technical > summary, .legal-detail-more-actions > summary { display:flex; min-height:44px; align-items:center; padding:0 13px; color:var(--figma-text-body); cursor:pointer; font-size:.82rem; font-weight:650; }
+.legal-detail-technical > summary:focus-visible, .legal-detail-more-actions > summary:focus-visible { outline:2px solid var(--figma-blue-light); outline-offset:2px; }
+.legal-detail-technical .stats-grid { padding:0 12px 12px; }
+.legal-detail-more-actions { min-width:0; }
+.legal-detail-more-actions > summary { display:none; }
+.legal-detail-secondary-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
 .legal-detail-card .stats-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:20px 0; }
 .legal-detail-card .stat-card { min-width:0; background:var(--figma-bg-sidebar); border:1px solid var(--figma-border); border-radius:10px; padding:16px; }
 .legal-detail-card .stat-card .legal-stat-value { display:block; margin:0; color:var(--figma-text-white); font-size:clamp(22px,3vw,32px); font-weight:700; line-height:1.2; }
@@ -119,6 +130,10 @@
 .compare-diff-header span:first-child { grid-column: 1 / 4; }
 .compare-diff-header span:last-child { grid-column: 4 / 6; }
 .compare-diff-row { display: grid; grid-template-columns: 3.5rem minmax(0, 1fr) 1.5rem 3.5rem minmax(0, 1fr); align-items: stretch; min-width: 42rem; border-bottom: 1px solid rgba(148,163,184,.10); }
+.compare-diff-formatting { background: color-mix(in srgb,var(--figma-amber) 7%,var(--figma-bg-surface)); }
+.compare-diff-added .compare-diff-marker { color: var(--figma-green-soft); }
+.compare-diff-removed .compare-diff-marker { color: var(--figma-red-soft); }
+.compare-diff-changed .compare-diff-marker, .compare-diff-formatting .compare-diff-marker { color: var(--figma-amber-soft); }
 .compare-diff-row:last-child { border-bottom: 0; }
 .compare-diff-row code { padding: 7px 10px; color: var(--figma-blue-pale); white-space: pre-wrap; overflow-wrap: anywhere; font: 0.82rem/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }
 .compare-line-number { padding: 7px 8px; color: var(--figma-text-dim); background: rgba(15,23,42,.72); text-align: right; font: .72rem/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; user-select: none; }
@@ -148,3 +163,10 @@
 @media (max-width:900px) { .legal-detail-actions { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:520px) { .legal-detail-actions { grid-template-columns:minmax(0,1fr); } }
 @media (max-width:640px) { .legal-detail-collection-form { align-items:stretch; flex-direction:column; } .legal-detail-collection-form select, .legal-detail-collection-form .btn { width:100%; max-width:none; } .norma-timeline-item { grid-template-columns:1fr; gap:8px; } }
+@media (max-width:720px) {
+  .legal-detail-dates { grid-template-columns:1fr; }
+  .legal-detail-actions { grid-template-columns:1fr; }
+  .legal-detail-more-actions > summary { display:flex; border:1px solid var(--figma-border); border-radius:8px; }
+  .legal-detail-more-actions[open] > summary { margin-bottom:8px; }
+  .legal-detail-secondary-actions { grid-template-columns:1fr; }
+}

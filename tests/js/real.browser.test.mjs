@@ -107,7 +107,7 @@ function createTestServer(handlers = {}) {
           <label class="workspace-field"><span>Modelo</span><select name="model" data-ollama-model><option value="qwen2.5">qwen2.5</option><option value="llama3" selected>llama3</option></select></label>
           <label class="workspace-field" data-external-llm-field hidden><span>Identificador do modelo remoto</span><input name="external_model" autocomplete="off" aria-describedby="external-model-help"><small id="external-model-help">Modelo do provedor</small><small id="external-model-error" data-provider-error="external_model" hidden></small></label>
           <label class="workspace-field" data-compatible-endpoint-field hidden><span>Endpoint compatível</span><input name="llm_endpoint" inputmode="url" aria-describedby="llm-endpoint-help"><small id="llm-endpoint-help">Endpoint local ou autorizado</small><small id="llm-endpoint-error" data-provider-error="llm_endpoint" hidden></small></label>
-          <label class="workspace-field" data-external-llm-field hidden><span>Chave de API</span><input name="llm_api_key" type="password" autocomplete="new-password" aria-describedby="llm-api-key-help"><small id="llm-api-key-help">Chave privada</small><small id="llm-api-key-error" data-provider-error="llm_api_key" hidden></small></label>
+          <label class="workspace-field" data-external-llm-field hidden><span>Chave de API</span><input name="llm_api_key" type="password" autocomplete="new-password" aria-describedby="llm-api-key-help"><small id="llm-api-key-help">Opcional apenas para endpoints autorizados pelo servidor</small><small id="llm-api-key-error" data-provider-error="llm_api_key" hidden></small></label>
           <label class="workspace-field"><span>Temperatura</span><input name="temperature" type="number" value="0.3"></label>
           <label class="workspace-field"><span>Fontes</span><input name="sources" type="number" value="5"></label>
           <fieldset><label><input type="radio" name="theme" value="dark" checked>Escuro</label><label><input type="radio" name="theme" value="light">Claro</label><label><input type="radio" name="theme" value="system">Sistema</label></fieldset>
@@ -503,7 +503,11 @@ test('real browser: history deletion keeps keyboard focus on the next conversati
     assert.equal(response.status(), 200);
     await page.evaluate(() => {
       window.__deleteRequests = [];
+      window.__localRemovals = [];
       window.JurixChatAPI = { deleteSession: async (id) => window.__deleteRequests.push(id) };
+      window.JurixAnonymousHistory = {
+        remove: (id) => { window.__localRemovals.push(id); return true; },
+      };
     });
     await page.addScriptTag({ url: `/static/js/jurix-history-actions.js?v=20260930-post-delete-focus1` });
 
@@ -543,6 +547,7 @@ test('real browser: history deletion keeps keyboard focus on the next conversati
       focusedSessionId: document.activeElement?.closest('[data-history-card]')?.dataset.sessionId,
       dialogHidden: document.querySelector('[role="dialog"]').getAttribute('aria-hidden'),
       deleteRequests: window.__deleteRequests,
+      localRemovals: window.__localRemovals,
       viewportWidth: document.documentElement.clientWidth,
       documentWidth: document.documentElement.scrollWidth,
     }));
@@ -552,7 +557,8 @@ test('real browser: history deletion keeps keyboard focus on the next conversati
     assert.equal(afterDelete.dialogHidden, 'true');
     assert.equal(afterDelete.viewportWidth, 390);
     assert.equal(afterDelete.documentWidth, 390);
-    assert.deepEqual(afterDelete.deleteRequests, ['local-a']);
+    assert.deepEqual(afterDelete.deleteRequests, []);
+    assert.deepEqual(afterDelete.localRemovals, ['local-a']);
     assert.deepEqual(consoleErrors, []);
   } finally {
     await browser.close();
@@ -775,19 +781,19 @@ test('real browser: provider settings expose a labelled keyboard path without hi
       modelInvalid: 'true',
       modelDescription: 'external-model-help external-model-error',
       modelError: 'Informe o identificador do modelo.',
-      keyInvalid: 'true',
+      keyInvalid: null,
       endpointInvalid: 'true',
     });
     await page.focus('[name="external_model"]');
     await page.keyboard.type('local-model');
     await page.focus('[name="llm_endpoint"]');
     await page.keyboard.type('http://localhost:4000/v1');
-    await page.focus('[name="llm_api_key"]');
-    await page.keyboard.type('test-key');
     await page.click('button[type="submit"]');
     assert.equal(await page.$eval('[name="external_model"]', element => element.hasAttribute('aria-invalid')), false);
     assert.equal(await page.$eval('[data-provider-error="external_model"]', element => element.hidden), true);
     assert.match(await page.$eval('[data-settings-status]', element => element.textContent), /Preferências salvas/);
+    assert.equal(await page.evaluate(() => JSON.parse(sessionStorage.getItem('jurix-llm-session-config')).api_key), '',
+      'a compatible local endpoint may be configured without entering a key; the backend enforces its opt-in');
 
     await page.focus('select[name="llm_provider"]');
     await page.keyboard.press('Home');
@@ -1045,9 +1051,9 @@ test('real browser: keyboard navigation from anonymous history restores the sele
     });
     await page.reload({ waitUntil: 'domcontentloaded' });
     assert.equal(await page.$eval('.workspace-history-card h2', (el) => el.textContent), 'Prazo de licença municipal');
-    assert.equal(await page.$eval('.workspace-history-card', (el) => el.getAttribute('href')), '/assistente/local-keyboard-history-01/');
+    assert.equal(await page.$eval('.workspace-history-card__link', (el) => el.getAttribute('href')), '/assistente/local-keyboard-history-01/');
 
-    await page.focus('.workspace-history-card');
+    await page.focus('.workspace-history-card__link');
     await Promise.all([
       page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
       page.keyboard.press('Enter'),

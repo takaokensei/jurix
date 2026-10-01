@@ -11,32 +11,53 @@
     function sessionUrl(session) {
         return `${document.body.dataset.chatbotUrl || '/assistente/'}${encodeURIComponent(session.slug || session.id)}/`;
     }
+    function render(entries, { activeSessionId = null, preserveTemporary = false } = {}) {
+        const list = document.getElementById('chat-sessions-list');
+        if (!list) return false;
+        const temporary = preserveTemporary
+            ? [...list.querySelectorAll('.chat-session-item[data-session-id^="temp-"]')]
+            : [];
+        const sorted = [...(Array.isArray(entries) ? entries : [])].sort((a, b) => {
+            const dateA = Date.parse(a.updated_at || a.created_at || '') || 0;
+            const dateB = Date.parse(b.updated_at || b.created_at || '') || 0;
+            return dateB - dateA || String(b.id).localeCompare(String(a.id), undefined, { numeric: true });
+        });
+        list.replaceChildren();
+        temporary.forEach(item => list.append(item));
+        sorted.slice(0, 24).forEach(session => {
+            const item = document.createElement('div');
+            const isActive = activeSessionId != null && String(session.id) === String(activeSessionId);
+            item.className = `chat-session-item${isActive ? ' active' : ''}`;
+            item.dataset.sessionId = String(session.id);
+            const link = document.createElement('a');
+            link.className = 'jurix-recent-chat chat-session-main';
+            link.href = sessionUrl(session);
+            link.textContent = session.title || 'Conversa sem título';
+            link.title = link.textContent;
+            if (isActive) link.setAttribute('aria-current', 'page');
+            item.append(link);
+            list.append(item);
+        });
+        if (!sorted.length && !temporary.length) list.textContent = 'Nenhuma conversa ainda';
+        return true;
+    }
     async function refresh() {
-        // The assistant owns its live list, including retry/deletion/session state.
-        if (document.querySelector('.figma-workspace')) return;
         const list = document.getElementById('chat-sessions-list');
         if (!list) return;
         try {
             const entries = await sessions();
-            list.replaceChildren();
-            entries.slice(0, 24).forEach(session => {
-                const link = document.createElement('a');
-                link.className = 'jurix-recent-chat';
-                link.href = sessionUrl(session);
-                link.textContent = session.title || 'Conversa sem título';
-                link.title = link.textContent;
-                list.append(link);
-            });
-            if (!entries.length) list.textContent = 'Nenhuma conversa ainda';
+            const active = document.querySelector('.chat-session-item.active')?.dataset.sessionId || null;
+            render(entries, { activeSessionId: active });
         } catch (_) {
             list.textContent = 'Histórico indisponível. Tente novamente ao abrir a busca.';
         }
     }
-    window.JurixSidebar = Object.freeze({ sessions, sessionUrl, refresh });
+    window.JurixSidebar = Object.freeze({ sessions, sessionUrl, render, refresh });
     document.querySelectorAll('[data-search-conversations]').forEach(button => {
         button.addEventListener('click', () => window.jurixCommandPalette?.open({ conversationsOnly: true }));
     });
     document.getElementById('new-chat-button')?.addEventListener('click', event => event.preventDefault());
     window.addEventListener('storage', refresh);
-    refresh();
+    window.addEventListener('jurix:sessions-changed', refresh);
+    if (!document.querySelector('.figma-workspace')) refresh();
 })();

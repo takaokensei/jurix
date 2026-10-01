@@ -121,6 +121,9 @@ test('sources are deferred until the done callback and scroll is wired after ren
   assert.match(completion, /linkLegalReferences\(streamElements\.messageBody, answerSources\)/);
   assert.match(completion, /sourcesContainer && answerSources\.length > 0/);
   assert.match(completion, /insuficientes para fundamentar a resposta/);
+  const sourcePill = chat.slice(chat.indexOf('function showSourcesGradually'), chat.indexOf('function createSourceCard'));
+  assert.match(sourcePill, /Referências usadas/);
+  assert.doesNotMatch(sourcePill, /topRawScore|Alta correspondência|Boa correspondência|Correspondência parcial/);
 
   const regeneration = chat.slice(chat.indexOf('async function regenerateLastResponse'), chat.indexOf('function copyResponseToClipboard'));
   assert.match(regeneration, /data\.grounded === true && Array\.isArray\(data\.sources\)/);
@@ -393,12 +396,81 @@ test('anonymous history distinguishes a genuinely empty history from a search wi
   dom.window.close();
 });
 
+test('anonymous history renders a clean distinct preview and supports confirmed local deletion', async () => {
+  const dom = new JSDOM('<!doctype html><html><body><form data-history-search><input name="q"></form><section data-anonymous-history></section></body></html>', {
+    url: 'http://localhost/historico/', runScripts: 'dangerously', pretendToBeVisual: true,
+  });
+  const { window } = dom;
+  const sessions = [
+    { id: 'local-a', title: 'Educação popular', updated_at: '2026-10-01T12:00:00Z', messages_count: 2 },
+    { id: 'local-b', title: 'Normas municipais', updated_at: '2026-10-01T11:00:00Z', messages_count: 1 },
+  ];
+  const details = {
+    'local-a': { messages: [
+      { role: 'user', content: 'Educação popular' },
+      { role: 'assistant', content: '### Educação popular\n\nA **Lei nº 8205/2026** institui [a data](https://sapl.invalid).' },
+    ] },
+    'local-b': { messages: [{ role: 'user', content: 'Lei municipal' }] },
+  };
+  window.JurixAnonymousHistory = {
+    list: () => sessions,
+    get: id => details[id],
+    remove: id => { sessions.splice(sessions.findIndex(session => session.id === id), 1); return true; },
+  };
+  let authenticatedDeleteCalls = 0;
+  window.JurixChatAPI = { deleteSession: async () => { authenticatedDeleteCalls += 1; throw new Error('local id must never call authenticated API'); } };
+  window.eval(read('jurix-anonymous-history-page.js'));
+  const card = window.document.querySelector('[data-history-card][data-session-id="local-a"]');
+  assert.ok(card);
+  assert.equal(card.querySelector('h2').textContent, 'Educação popular');
+  assert.equal(card.querySelector('p').textContent, 'A Lei nº 8205/2026 institui a data.');
+  assert.equal(card.querySelector('a').contains(card.querySelector('[data-history-delete]')), false);
+
+  window.requestAnimationFrame = callback => callback();
+  window.eval(read('jurix-history-actions.js'));
+  card.querySelector('[data-history-delete]').click();
+  assert.ok(window.document.querySelector('[role="dialog"]'));
+  window.document.querySelector('[data-history-confirm]').click();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(window.document.querySelector('[data-session-id="local-a"]'), null);
+  assert.ok(window.document.querySelector('[data-session-id="local-b"]'));
+  assert.deepEqual(sessions.map(session => session.id), ['local-b']);
+  assert.equal(authenticatedDeleteCalls, 0);
+  dom.window.close();
+});
+
+test('anonymous history export uses an allowlist and clear reports persistence status', () => {
+  const dom = new JSDOM('<!doctype html><html><body data-authenticated="false"></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously',
+  });
+  const { window } = dom;
+  window.eval(read('jurix-anonymous-history.js'));
+  const sessionId = window.JurixAnonymousHistory.ensureSession(null, 'Pergunta');
+  window.JurixAnonymousHistory.addMessage(sessionId, 'user', 'Pergunta', []);
+  window.JurixAnonymousHistory.addMessage(sessionId, 'assistant', 'Resposta', [{
+    norma_ref: 'Lei nº 1/2026', text: 'Trecho', api_key: 'must-not-export', provider_secret: 'must-not-export',
+  }]);
+  // Only explicitly grounded assistant sources belong in a user export.
+  window.JurixAnonymousHistory.updateLastAssistant(sessionId, 'Resposta fundamentada', [{
+    norma_ref: 'Lei nº 1/2026', text: 'Trecho', api_key: 'must-not-export', provider_secret: 'must-not-export',
+  }], true);
+  const exported = window.JurixAnonymousHistory.exportData();
+  const serialized = JSON.stringify(exported);
+  assert.equal(exported.schema, 'jurix-anonymous-history-export/v1');
+  assert.equal(exported.sessions.length, 1);
+  assert.match(serialized, /Lei nº 1\/2026/);
+  assert.doesNotMatch(serialized, /must-not-export|api_key|provider_secret/);
+  assert.equal(window.JurixAnonymousHistory.clear(), true);
+  assert.equal(window.JurixAnonymousHistory.list().length, 0);
+  dom.window.close();
+});
+
 test('history search stays inline on desktop and anonymous result cards use the shared card interior', () => {
   const template = readTemplate('history.html');
   const renderer = read('jurix-anonymous-history-page.js');
   assert.match(template, /class="workspace-field" for="history-query"/);
   assert.doesNotMatch(template, /class="workspace-field workspace-field-wide" for="history-query"/);
-  assert.match(renderer, /class="workspace-history-card__surface"><div class="workspace-history-card__link">/);
+  assert.match(renderer, /class="workspace-history-card__surface"><a class="workspace-history-card__link"/);
   assert.match(renderer, /workspace-history-meta/);
 });
 
@@ -458,6 +530,120 @@ test('SSE parser accepts fragmented data, done before title, and terminal event 
   assert.deepEqual(provisionalStates, [true]);
   assert.equal(done, 'Resposta final.');
   assert.equal(title, 'Pesquisa jurídica');
+  dom.window.close();
+});
+
+test('stream retries get a new turn UUID linked to the previous failed attempt', async () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously',
+  });
+  const { window } = dom;
+  window.TextDecoder = TextDecoder;
+  const requests = [];
+  let first = true;
+  window.fetch = async (_url, options) => {
+    requests.push(JSON.parse(options.body));
+    if (first) {
+      first = false;
+      return { ok: false, status: 503, body: null };
+    }
+    const bytes = new TextEncoder().encode('data: {"type":"done","answer":"Resposta"}\n\n');
+    let consumed = false;
+    return {
+      ok: true,
+      status: 200,
+      body: { getReader: () => ({ read: async () => consumed ? { done: true } : (consumed = true, { done: false, value: bytes }) }) },
+    };
+  };
+  window.eval(read('jurix-chat-api.js'));
+  await assert.rejects(window.JurixChatAPI.streamAnswer('Pergunta original', 12, {}), /HTTP 503/);
+  await window.JurixChatAPI.streamAnswer('Pergunta original', 12, { retryExistingQuestion: true });
+
+  const [initial, retry] = requests;
+  assert.match(initial.client_session_id, /^[0-9a-f-]{36}$/i);
+  assert.match(initial.client_turn_id, /^[0-9a-f-]{36}$/i);
+  assert.match(retry.client_turn_id, /^[0-9a-f-]{36}$/i);
+  assert.notEqual(retry.client_turn_id, initial.client_turn_id);
+  assert.equal(retry.retry_of_client_turn_id, initial.client_turn_id);
+  assert.equal(retry.client_session_id, initial.client_session_id);
+  dom.window.close();
+});
+
+test('chat controller exposes an enabled and accessible Stop action only while generating', () => {
+  const dom = new JSDOM('<!doctype html><html><body><form id="chat-form"><textarea id="question-textarea"></textarea><button id="send-button" type="submit">send</button></form><div id="chat-state-indicator" hidden></div><div id="conversation-input-bar"></div></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously', pretendToBeVisual: true,
+  });
+  const { window } = dom;
+  window.eval(read('jurix-chat-state.js'));
+  window.eval(read('jurix-chat-controller.js'));
+  window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
+  const input = window.document.getElementById('question-textarea');
+  const button = window.document.getElementById('send-button');
+  input.value = 'Pergunta';
+  input.dispatchEvent(new window.Event('input', { bubbles: true }));
+
+  window.JurixChatState.transition('submitting');
+  assert.equal(button.disabled, true, 'button is not a stop control before a stream can be aborted');
+  window.JurixChatState.transition('streaming');
+  assert.equal(button.disabled, false);
+  assert.equal(button.getAttribute('aria-label'), 'Parar geração');
+  assert.equal(button.dataset.action, 'stop');
+  assert.match(button.innerHTML, /<rect/);
+
+  window.JurixChatState.transition('cancelled');
+  assert.equal(button.getAttribute('aria-label'), 'Enviar pergunta');
+  assert.equal(button.dataset.action, 'send');
+  dom.window.close();
+});
+
+test('restored interrupted authenticated question exposes one explicit retry action', () => {
+  const dom = new JSDOM('<!doctype html><html><body><div id="messages-wrapper"></div></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously', pretendToBeVisual: true,
+  });
+  const { window } = dom;
+  window.eval(read('jurix-chat-renderer.js'));
+  let retried = null;
+  const message = window.JurixChatRenderer.addUserMessage('Pergunta ainda não respondida', {
+    retryContext: { state: 'interrupted', clientTurnId: '81a3119b-0fb4-42f8-b1ef-d1890563cb38' },
+    onRetry: (...args) => { retried = args; },
+  });
+  const retry = message.querySelector('.jurix-interrupted-retry');
+  assert.ok(retry);
+  retry.click();
+  assert.deepEqual(retried, ['Pergunta ainda não respondida', '81a3119b-0fb4-42f8-b1ef-d1890563cb38']);
+  assert.equal(window.document.querySelectorAll('.jurix-interrupted-retry').length, 1);
+  dom.window.close();
+});
+
+test('local stream cancellation skips the failure callback and is not reported as remote confirmation', async () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously',
+  });
+  const { window } = dom;
+  window.TextDecoder = TextDecoder;
+  let rejectRead;
+  window.fetch = async (_url, options) => {
+    options.signal.addEventListener('abort', () => {
+      const error = new Error('aborted');
+      error.name = 'AbortError';
+      rejectRead(error);
+    }, { once: true });
+    return {
+      ok: true,
+      status: 200,
+      body: { getReader: () => ({ read: () => new Promise((_resolve, reject) => { rejectRead = reject; }) }) },
+    };
+  };
+  window.eval(read('jurix-chat-api.js'));
+  let failureCallbacks = 0;
+  const pending = window.JurixChatAPI.streamAnswer('Pergunta', null, {
+    onError: () => { failureCallbacks += 1; },
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(window.JurixChatAPI.cancelStream(), true);
+  await assert.rejects(pending, { name: 'AbortError' });
+  assert.equal(failureCallbacks, 0);
+  assert.equal(window.JurixChatAPI.cancelStream(), false);
   dom.window.close();
 });
 

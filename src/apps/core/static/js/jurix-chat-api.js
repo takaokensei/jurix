@@ -104,11 +104,44 @@
     }
 
     let activeStreamController = null;
+    const retryTurnIds = new Map();
+    let fallbackClientSessionId = '';
+
+    function createUuid() {
+        if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+        if (window.crypto?.getRandomValues) {
+            const bytes = new Uint8Array(16);
+            window.crypto.getRandomValues(bytes);
+            bytes[6] = (bytes[6] & 0x0f) | 0x40;
+            bytes[8] = (bytes[8] & 0x3f) | 0x80;
+            const hex = [...bytes].map(value => value.toString(16).padStart(2, '0')).join('');
+            return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+        }
+        return `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function getClientSessionId() {
+        const key = 'jurix:client-session-id:v1';
+        try {
+            let value = sessionStorage.getItem(key);
+            if (!value) {
+                value = createUuid();
+                sessionStorage.setItem(key, value);
+            }
+            return value;
+        } catch (_) {
+            if (!fallbackClientSessionId) fallbackClientSessionId = createUuid();
+            return fallbackClientSessionId;
+        }
+    }
 
     async function streamAnswer(
         question,
         sessionId,
-        { onChunk, onSources, onDone, onError, onSession, onStatus, onTitle, searchOptions = {} } = {}
+        {
+            onChunk, onSources, onDone, onError, onSession, onStatus, onTitle,
+            retryExistingQuestion = false, searchOptions = {},
+        } = {}
     ) {
         if (!question || !String(question).trim()) {
             throw new Error('question is required');
@@ -122,6 +155,13 @@
         activeStreamController = controller;
         let reader;
         let completed = false;
+        const clientSessionId = searchOptions.client_session_id || getClientSessionId();
+        const retryKey = `${sessionId || clientSessionId}\\u0000${String(question).trim()}`;
+        const previousTurnId = retryTurnIds.get(retryKey) || null;
+        const retryOfTurnId = searchOptions.retry_of_client_turn_id ||
+            (retryExistingQuestion ? previousTurnId : null);
+        const clientTurnId = searchOptions.client_turn_id || createUuid();
+        retryTurnIds.set(retryKey, clientTurnId);
 
         try {
             let response;
@@ -147,8 +187,10 @@
                         question,
                         session_id: sessionId,
                         ...(searchOptions.previous_question ? { previous_question: searchOptions.previous_question } : {}),
-                        ...(searchOptions.client_session_id ? { client_session_id: searchOptions.client_session_id } : {}),
                         ...searchOptions,
+                        client_session_id: clientSessionId,
+                        client_turn_id: clientTurnId,
+                        ...(retryOfTurnId ? { retry_of_client_turn_id: retryOfTurnId } : {}),
                         llm_provider: providerConfig,
                         ...(preferences.model ? { model: preferences.model } : {}),
                         max_sources: Number.isFinite(preferredSources)
@@ -197,6 +239,7 @@
                     await onChunk(eventData.chunk, eventData);
                 } else if (eventData.type === 'done') {
                     completed = true;
+                    retryTurnIds.delete(retryKey);
                     if (onDone) {
                         try { await onDone(eventData); }
                         catch (error) { console.error('[Jurix] Falha em atualização secundária após resposta concluída.', error); }
@@ -236,7 +279,7 @@
                 console.error('[Jurix] A resposta foi concluída; erro ao finalizar a leitura do stream ignorado.', error);
                 return;
             }
-            if (onError) await onError(error);
+            if (error.name !== 'AbortError' && onError) await onError(error);
             throw error;
         } finally {
             try { await reader?.cancel?.(); } catch (_) { /* Preserve the original stream error. */ }

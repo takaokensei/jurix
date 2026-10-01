@@ -11,13 +11,18 @@
         IDLE: 'idle',
         SUBMITTING: 'submitting',
         STREAMING: 'streaming',
+        FINALIZING: 'finalizing',
         REGENERATING: 'regenerating',
+        COMPLETED: 'completed',
+        FAILED: 'failed',
+        CANCELLED: 'cancelled',
         ERROR: 'error',
     });
 
     const BUSY_STATES = new Set([
         STATES.SUBMITTING,
         STATES.STREAMING,
+        STATES.FINALIZING,
         STATES.REGENERATING,
     ]);
 

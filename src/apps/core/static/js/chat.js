@@ -55,6 +55,9 @@
     let navSeq = 0;
     let retryingExistingQuestion = null;
     let deleteModalTrigger = null;
+    let activeStreamElements = null;
+    let activeStreamQuestion = '';
+    let pendingRetryTurnId = null;
 
     // ===== UTILITIES =====
     function escapeHtml(text) {
@@ -228,82 +231,12 @@
         try {
             const data = await chatAPI.listSessions();
             if (!data.success || !data.sessions) return;
-
-            const sessionsList = document.getElementById('chat-sessions-list');
-            if (!sessionsList) return;
-
-            if (data.sessions.length === 0) {
-                sessionsList.innerHTML = '<div class="chat-sessions-empty">Nenhuma conversa ainda</div>';
-                return;
-            }
-
-            const tempCards = Array.from(
-                sessionsList.querySelectorAll('.chat-session-item[data-session-id^="temp-"]')
-            );
-
-            const existingItems = sessionsList.querySelectorAll(
-                '.chat-session-item:not([data-session-id^="temp-"])'
-            );
-            existingItems.forEach((item) => item.remove());
-
-            const emptyState = sessionsList.querySelector('.chat-sessions-empty');
-            if (emptyState) {
-                emptyState.remove();
-            }
-
             const sessionSlug = getSessionSlugFromPath();
             const isInNewConversation = !sessionSlug && !currentSessionId;
-
-            data.sessions.forEach((session, index) => {
-                const existing = sessionsList.querySelector(`[data-session-id="${session.id}"]`);
-                if (existing) {
-                    const shouldBeActive =
-                        !isInNewConversation &&
-                        ((sessionSlug && session.slug === sessionSlug) ||
-                            (!sessionSlug && currentSessionId && String(session.id) === String(currentSessionId)));
-                    existing.className = `chat-session-item ${shouldBeActive ? 'active' : ''}`;
-                    const titleEl = existing.querySelector('.chat-session-title');
-                    if (titleEl) {
-                        titleEl.textContent = session.latest_message_preview || session.title;
-                    }
-                    return;
-                }
-
-                const shouldBeActive =
-                    !isInNewConversation &&
-                    ((sessionSlug && session.slug === sessionSlug) ||
-                        (!sessionSlug && currentSessionId && String(session.id) === String(currentSessionId)));
-
-                const sessionItem = document.createElement('div');
-                sessionItem.className = `chat-session-item ${shouldBeActive ? 'active' : ''}`;
-                sessionItem.dataset.sessionId = session.id;
-
-                sessionItem.innerHTML = `
-                    <div class="chat-session-main">
-                        <div class="chat-session-title">${escapeHtml(session.latest_message_preview || session.title)}</div>
-                    </div>
-                    <button 
-                        class="delete-session-button" 
-                        data-delete-session-id="${session.id}"
-                        aria-label="Deletar conversa"
-                        title="Deletar conversa">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="delete-icon">
-                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
-                `;
-
-                if (tempCards.length > 0 && tempCards[0].parentNode === sessionsList) {
-                    sessionsList.insertBefore(sessionItem, tempCards[0]);
-                } else if (
-                    sessionsList.firstChild &&
-                    sessionsList.firstChild.classList &&
-                    sessionsList.firstChild.classList.contains('chat-session-item')
-                ) {
-                    sessionsList.insertBefore(sessionItem, sessionsList.firstChild);
-                } else {
-                    sessionsList.appendChild(sessionItem);
-                }
+            const activeSessionId = isInNewConversation ? null : currentSessionId;
+            window.JurixSidebar?.render(data.sessions, {
+                activeSessionId,
+                preserveTemporary: true,
             });
         } catch (error) {
             console.error('Error loading chat sessions:', error);
@@ -382,6 +315,7 @@
             if (textarea) {
                 textarea.value = '';
                 resetComposerSize(textarea);
+                window.JurixChatShell?.updateCounter();
                 try {
                     const keys = Object.keys(localStorage);
                     for (let i = 0; i < keys.length; i++) {
@@ -468,7 +402,7 @@
                 for (let i = 0; i < sessionData.messages.length; i++) {
                     const msg = sessionData.messages[i];
                     if (msg.role === 'user') {
-                        addUserMessage(msg.content, msg.created_at);
+                        addUserMessage(msg.content, msg.created_at, msg);
                     } else if (msg.role === 'assistant') {
                         messageIndex++;
                         const isLastAssistant = messageIndex === assistantMessages.length;
@@ -541,7 +475,7 @@
                 }
                 const existing = new Set(wrapper.children);
                 for (const msg of page.messages || []) {
-                    if (msg.role === 'user') addUserMessage(msg.content, msg.created_at);
+                    if (msg.role === 'user') addUserMessage(msg.content, msg.created_at, msg);
                     else addAssistantMessage(msg.content, msg.sources || [], false, true, msg.metadata || {}, msg.created_at);
                 }
                 const fragment = document.createDocumentFragment();
@@ -612,6 +546,7 @@
         if (savedText !== null) {
             textarea.value = savedText;
             fitComposerSize(textarea);
+            window.JurixChatShell?.updateCounter();
         }
     }
 
@@ -836,10 +771,26 @@
     }
 
     // ===== MESSAGE RENDERING =====
-    function addUserMessage(text, createdAt = null) {
+    function addUserMessage(text, createdAt = null, turn = null) {
         if (!window.JurixChatRenderer) return;
         document.getElementById('welcome-state')?.classList.add('is-hidden');
-        window.JurixChatRenderer.addUserMessage(text, { scrollToBottom, renderMarkdown, escapeHtml, createdAt });
+        window.JurixChatRenderer.addUserMessage(text, {
+            scrollToBottom, renderMarkdown, escapeHtml, createdAt,
+            retryContext: turn?.turn_state && turn?.client_turn_id
+                ? { state: turn.turn_state, clientTurnId: turn.client_turn_id }
+                : null,
+            onRetry(question, clientTurnId) {
+                if (chatState?.isBusy?.()) return;
+                retryingExistingQuestion = question;
+                pendingRetryTurnId = clientTurnId;
+                const input = document.getElementById('question-textarea');
+                if (input) input.value = question;
+                window.JurixChatShell?.updateCounter();
+                const form = document.getElementById('chat-form');
+                if (form?.requestSubmit) form.requestSubmit();
+                else form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+            },
+        });
     }
 
     function addLoadingMessage() {
@@ -1045,18 +996,6 @@
             return scoreB - scoreA;
         });
 
-        const topRawScore = parseFloat(sortedSources[0]?.similarity_score || 0);
-        const evidenceInsufficient = /não encontrei evidências suficientes|evidência insuficiente/i.test(String(answerText));
-        const topLabel = evidenceInsufficient
-            ? 'Evidência insuficiente'
-            : topRawScore >= 0.8
-            ? 'Alta correspondência'
-            : topRawScore >= 0.6
-            ? 'Boa correspondência'
-            : topRawScore >= 0.4
-            ? 'Correspondência parcial'
-            : 'Baixa correspondência';
-
         const headerHtml = `
             <div class="sources-section">
                 <button type="button" class="jurix-sources-pill-btn" aria-label="Abrir painel com ${sortedSources.length} fontes consultadas">
@@ -1064,7 +1003,7 @@
                         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                     </svg>
                     <span>${sortedSources.length} ${sortedSources.length === 1 ? 'fonte consultada' : 'fontes consultadas'}</span>
-                    ${topRawScore > 0 ? `<span class="jurix-sources-pill-badge">${topLabel}</span>` : ''}
+                    <span class="jurix-sources-pill-badge">Referências usadas</span>
                     <span class="jurix-sources-pill-action">Ver fontes →</span>
                 </button>
             </div>
@@ -1452,6 +1391,42 @@
 // Composer input/keyboard ergonomics are owned by JurijChatShell.
 
         if (chatForm) {
+            const sendButton = document.getElementById('send-button');
+            if (sendButton) {
+                sendButton.addEventListener('click', (event) => {
+                    const state = chatState?.snapshot?.();
+                    if (!['streaming', 'finalizing'].includes(state?.status)) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (!chatAPI?.cancelStream?.()) return;
+                    chatState.transition('cancelled', { question: activeStreamQuestion });
+                    const elements = activeStreamElements;
+                    if (elements?.messageDiv) {
+                        const retryQuestion = activeStreamQuestion;
+                        const notice = elements.messageDiv.querySelector('.jurix-provisional-notice');
+                        if (notice) {
+                            notice.hidden = false;
+                            notice.textContent = 'Geração interrompida neste navegador. O servidor pode ainda estar encerrando a tarefa; a resposta parcial não foi validada.';
+                            notice.classList.add('is-interrupted');
+                        }
+                        const retry = document.createElement('button');
+                        retry.type = 'button';
+                        retry.className = 'jurix-interrupted-retry';
+                        retry.textContent = 'Tentar novamente';
+                        retry.disabled = true;
+                        elements.retryButton = retry;
+                        retry.addEventListener('click', () => {
+                            retryingExistingQuestion = retryQuestion;
+                            elements.messageDiv.remove();
+                            textarea.value = retryQuestion;
+                            window.JurixChatShell?.updateCounter();
+                            if (typeof chatForm.requestSubmit === 'function') chatForm.requestSubmit();
+                            else chatForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+                        }, { once: true });
+                        elements.messageDiv.querySelector('.message-actions')?.append(retry);
+                    }
+                });
+            }
             chatForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if ((chatState && typeof chatState.isBusy === 'function' && chatState.isBusy()) || !textarea) return;
@@ -1459,7 +1434,9 @@
                 const question = textarea.value.trim();
                 if (!question) return;
                 const isRetry = retryingExistingQuestion === question;
+                const retryOfTurnId = isRetry ? pendingRetryTurnId : null;
                 retryingExistingQuestion = null;
+                pendingRetryTurnId = null;
                 chatState?.transition?.('submitting', { question });
                 try { sessionStorage.removeItem('jurix:new-conversation'); } catch (_) {}
                 if (chatState && typeof chatState.setLastQuestion === 'function') {
@@ -1474,6 +1451,7 @@
 
                 textarea.value = '';
                 resetComposerSize(textarea);
+                window.JurixChatShell?.updateCounter();
 
                 if (currentSessionId) {
                     try { localStorage.removeItem(`chat-input-${currentSessionId}`); } catch (_) {}
@@ -1559,7 +1537,7 @@
         };
     }
 
-    async function streamAssistantResponse(question, sessionId, onChunk, onSources, onDone, onError, onStatus, retryExistingQuestion = false) {
+    async function streamAssistantResponse(question, sessionId, onChunk, onSources, onDone, onError, onStatus, retryExistingQuestion = false, retryOfTurnId = null) {
         const controls = window.JurixSearchControls?.getPayload?.() || {};
         return chatAPI.streamAnswer(question, sessionId, {
             onSession(data) {
@@ -1577,7 +1555,10 @@
                 if (item && data?.title) item.textContent = data.title;
             },
             retryExistingQuestion,
-            searchOptions: controls,
+            searchOptions: {
+                ...controls,
+                ...(retryOfTurnId ? { retry_of_client_turn_id: retryOfTurnId } : {}),
+            },
         });
     }
 
@@ -1590,6 +1571,8 @@
                         chatState.transition('streaming', { question });
                     }
                     streamElements = createStreamingAssistantMessage();
+                    activeStreamElements = streamElements;
+                    activeStreamQuestion = question;
                     removeLoadingMessage(loadingId);
 
                     await streamAssistantResponse(
@@ -1614,6 +1597,7 @@
                         },
                         async (doneData) => {
                             doneData = doneData && typeof doneData === 'object' ? doneData : {};
+                            chatState?.transition?.('finalizing', { question });
                             const finalAnswer = doneData.answer || accumulatedText;
                             const answerSources = doneData.grounded === true ? finalSources : [];
                             if (streamElements && window.JurixRagUI) {
@@ -1662,9 +1646,10 @@
                                 await loadChatSessions();
                                 updateNewChatButtonState();
                             }
+                            chatState?.transition?.('completed', { question });
                         },
                         (errorMsg) => {
-                            chatState.transition('error', { error: errorMsg });
+                            chatState.transition('failed', { error: errorMsg });
                         },
                         (status) => {
                             const labels = {
@@ -1683,10 +1668,14 @@
                                 indicator.removeAttribute('hidden');
                             }
                         },
-                        isRetry
+                        isRetry,
+                        retryOfTurnId
                     );
                 } catch (streamError) {
-                    if (streamError.name !== 'AbortError') {
+                    if (streamError.name === 'AbortError') {
+                        // Keep the user question and partial draft visible. A local
+                        // AbortController request is not proof of remote cancellation.
+                    } else {
                         if (streamElements?.messageBody && window.JurixRagUI) {
                             const errorBox = document.createElement('div');
                             streamElements.messageDiv.appendChild(errorBox);
@@ -1703,6 +1692,7 @@
                                 retryingExistingQuestion = question;
                                 streamElements.messageDiv.remove();
                                 textarea.value = question;
+                                window.JurixChatShell?.updateCounter();
                                 focusComposerSafely(textarea);
                                 if (typeof chatForm.requestSubmit === 'function') chatForm.requestSubmit();
                                 else chatForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
@@ -1714,6 +1704,9 @@
                     }
                 } finally {
                     chatState.transition('idle');
+                    if (streamElements?.retryButton) streamElements.retryButton.disabled = false;
+                    activeStreamElements = null;
+                    activeStreamQuestion = '';
                     if (sendButton) sendButton.disabled = false;
                     focusComposerSafely(textarea);
                 }

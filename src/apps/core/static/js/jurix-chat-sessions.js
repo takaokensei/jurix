@@ -47,10 +47,14 @@
         if (sessionId === null) return;
 
         item.dataset.loadSessionId = String(sessionId);
-        item.setAttribute('role', 'button');
-        item.setAttribute('tabindex', '0');
         syncActiveState(item);
         normalizeContentWrapper(item);
+
+        // Shared sidebar items use native links; do not wrap navigation in a
+        // synthetic button or intercept its browser semantics.
+        if (item.querySelector('.chat-session-main[href]')) return;
+        item.setAttribute('role', 'button');
+        item.setAttribute('tabindex', '0');
 
         if (item.getAttribute(ENHANCED_ATTR) === '1') return;
         item.setAttribute(ENHANCED_ATTR, '1');

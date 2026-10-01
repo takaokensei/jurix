@@ -227,8 +227,46 @@
   }
 
   function clear() {
-    memoryState = emptyState();
-    try { localStorage.removeItem(STORAGE_KEY); } catch (error) { storageFailed(error); }
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      memoryState = emptyState();
+      return true;
+    } catch (error) {
+      memoryState = emptyState();
+      storageFailed(error);
+      return false;
+    }
+  }
+
+  function exportData() {
+    const allowedSourceFields = [
+      'id', 'norma_ref', 'dispositivo_ref', 'text', 'full_text', 'sapl_url', 'pdf_url',
+      'source_url', 'similarity_score', 'contribution', 'source_type', 'data_publicacao',
+      'data_vigencia',
+    ];
+    const state = prune(read());
+    return {
+      schema: 'jurix-anonymous-history-export/v1',
+      exported_at: now(),
+      sessions: state.sessions.map(session => ({
+        id: String(session.id),
+        title: String(session.title || 'Nova pesquisa').slice(0, 120),
+        created_at: session.created_at,
+        updated_at: session.updated_at,
+        messages: session.messages.map(message => ({
+          role: message.role === 'assistant' ? 'assistant' : 'user',
+          content: String(message.content || ''),
+          created_at: message.created_at,
+          grounded: message.role === 'assistant' && message.grounded === true,
+          sources: message.role === 'assistant' && message.grounded === true
+            ? (Array.isArray(message.sources) ? message.sources : []).slice(0, 20).map(source =>
+              Object.fromEntries(allowedSourceFields
+                .filter(key => Object.prototype.hasOwnProperty.call(source || {}, key))
+                .map(key => [key, source[key]])))
+            : [],
+        })),
+      })),
+    };
   }
 
   window.JurixAnonymousHistory = {
@@ -243,5 +281,6 @@
     setTitle,
     remove,
     clear,
+    exportData,
   };
 })();

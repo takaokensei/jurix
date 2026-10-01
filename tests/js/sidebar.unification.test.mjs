@@ -49,3 +49,25 @@ test('sidebar and conversation search include anonymous history without leaking 
   window.jurixCommandPalette.close();
   dom.window.close();
 });
+
+test('assistant uses the same safe recent-chat renderer with deterministic order and native links', () => {
+  const dom = new JSDOM(`<body class="figma-workspace" data-chatbot-url="/assistente/">
+    <div id="chat-sessions-list"><div class="chat-session-item session-card-new" data-session-id="temp-1">pending</div></div>
+  </body>`, { url: 'http://localhost/assistente/', runScripts: 'dangerously' });
+  const { window } = dom;
+  window.eval(read('src/apps/core/static/js/jurix-sidebar.js'));
+  window.JurixSidebar.render([
+    { id: 3, title: 'Mais recente <img>', updated_at: '2026-10-01T12:00:00Z' },
+    { id: 2, title: 'Antiga', updated_at: '2026-09-30T12:00:00Z' },
+  ], { activeSessionId: 3, preserveTemporary: true });
+  const cards = [...window.document.querySelectorAll('#chat-sessions-list .chat-session-item')];
+  assert.equal(cards[0].dataset.sessionId, 'temp-1');
+  assert.equal(cards[1].dataset.sessionId, '3');
+  assert.equal(cards[1].querySelector('a').textContent, 'Mais recente <img>');
+  assert.equal(cards[1].querySelector('img'), null);
+  assert.equal(cards[1].querySelector('a').getAttribute('aria-current'), 'page');
+  assert.equal(cards[1].getAttribute('role'), null, 'a native link remains a link, not a synthetic nested button');
+  assert.equal(cards[2].dataset.sessionId, '2');
+  assert.equal(cards[2].querySelector('a').href, 'http://localhost/assistente/2/');
+  dom.window.close();
+});

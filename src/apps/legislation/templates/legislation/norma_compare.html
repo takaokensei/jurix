@@ -7,20 +7,21 @@
 {% block extra_css %}
 {% load static %}
 <link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}?v=20260930-axe-heading1">
+<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261001-structural-compare1">
 {% endblock %}
 
 {% block content %}
 <div class="card">
     <h1 class="legal-page-heading">Comparação de Versões - {{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }}</h1>
     <p class="compare-intro">
-        Compare o texto original extraído por OCR com o texto consolidado disponível no sistema.
+        Compare dispositivos alinhados pela hierarquia normativa entre o OCR original e o texto consolidado.
     </p>
     <p class="compare-method-note" role="note">
-        Esta é uma comparação textual automática, alinhada por linhas. OCR, cabeçalhos de página, formatação e consolidação podem gerar diferenças sem representar uma alteração jurídica. Confira o texto integral e os eventos normativos antes de tirar conclusões.
+        Estas são diferenças textuais automáticas, não alterações jurídicas validadas. OCR, quebras de linha, cabeçalhos e consolidação podem gerar diferenças sem representar uma alteração jurídica. Confira o texto integral e os eventos normativos revisados antes de tirar conclusões.
     </p>
     
     <div class="compare-summary" role="group" aria-label="Resumo da comparação">
-        <span class="compare-metric compare-metric-original">
+            <span class="compare-metric compare-metric-original">
             <strong>{{ original_length }}</strong><span>linhas no original OCR</span>
         </span>
         <span class="compare-metric compare-metric-consolidated">
@@ -35,8 +36,8 @@
 {% if comparison_available %}
 <div class="compare-container" aria-label="Comparação linha a linha das versões">
     <div class="compare-panel original-text">
-        <h2>📑 Comparação textual por linhas</h2>
-        <div class="compare-diff" role="table" aria-label="Diferenças entre texto original e consolidado">
+        <h2>Diferenças textuais estruturais</h2>
+        <div class="compare-diff" role="table" aria-label="Diferenças textuais entre dispositivos alinhados por hierarquia">
             <div class="compare-diff-header" role="row">
                 <span role="columnheader">Original (OCR)</span>
                 <span role="columnheader">Consolidado</span>
@@ -45,7 +46,7 @@
             <div class="compare-diff-row compare-diff-{{ row.kind }}" role="row">
                 <span class="compare-line-number" aria-hidden="true">{{ row.original_number|default:"" }}</span>
                 <code class="compare-original-text" role="cell" data-label="Original (OCR)" data-line="{{ row.original_number|default:'—' }}">{% if row.original %}{{ row.original }}{% else %}<span class="compare-side-empty" role="note" aria-label="Sem linha correspondente" title="Sem linha correspondente">Sem correspondente</span>{% endif %}</code>
-                <span class="compare-diff-marker" aria-hidden="true">{% if row.kind == "removed" or row.kind == "changed" %}−{% else %} {% endif %}</span>
+                <span class="compare-diff-marker" aria-label="{{ row.label }}" title="{{ row.label }}">{% if row.kind == "removed" %}−{% elif row.kind == "added" %}+{% elif row.kind == "changed" %}Δ{% elif row.kind == "formatting" %}≈{% else %}={% endif %}</span>
                 <span class="compare-line-number" aria-hidden="true">{{ row.consolidated_number|default:"" }}</span>
                 <code class="compare-consolidated-text" role="cell" data-label="Consolidado" data-line="{{ row.consolidated_number|default:'—' }}">{% if row.consolidated %}{{ row.consolidated }}{% else %}<span class="compare-side-empty" role="note" aria-label="Sem linha correspondente" title="Sem linha correspondente">Sem correspondente</span>{% endif %}</code>
             </div>

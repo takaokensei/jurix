@@ -16,6 +16,11 @@
         <div><span class="legal-detail-eyebrow">Norma consolidada</span><h1>{{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }}</h1></div>
         <span class="badge badge-success">{{ norma.get_status_display }}</span>
     </div>
+
+    <dl class="legal-detail-dates" aria-label="Publicação e vigência">
+        <div><dt>Publicação</dt><dd>{% if norma.data_publicacao %}<time datetime="{{ norma.data_publicacao|date:'c' }}">{{ norma.data_publicacao|date:'d/m/Y' }}</time>{% else %}<span>Não registrada</span>{% endif %}</dd></div>
+        <div><dt>Vigência</dt><dd>{% if norma.data_vigencia %}<time datetime="{{ norma.data_vigencia|date:'c' }}">{{ norma.data_vigencia|date:'d/m/Y' }}</time>{% else %}<span>Não determinada no corpus</span>{% endif %}</dd></div>
+    </dl>
     
     {% if norma.ementa %}
     {% if norma.ementa|length > 220 %}
@@ -33,7 +38,9 @@
     {% endif %}
     {% endif %}
     
-    <div class="stats-grid">
+    <details class="legal-detail-technical">
+      <summary>Informações técnicas</summary>
+      <div class="stats-grid">
         <div class="stat-card">
             <span class="legal-stat-value">{{ stats.total_dispositivos }}</span>
             <p>Dispositivos</p>
@@ -46,10 +53,14 @@
             <span class="legal-stat-value">{{ stats.total_chars }}</span>
             <p>Caracteres</p>
         </div>
-    </div>
+      </div>
+    </details>
     
     <div class="legal-detail-actions">
-        <a href="{% url 'workspace:assistant' %}?norma_id={{ norma.pk }}" class="btn btn-primary">Perguntar sobre esta norma</a>
+        <a href="{% url 'workspace:assistant' %}?norma_id={{ norma.pk }}" class="btn btn-primary legal-detail-primary-action">Perguntar sobre esta norma</a>
+        <details class="legal-detail-more-actions">
+          <summary>Mais ações</summary>
+          <div class="legal-detail-secondary-actions">
         <a href="{% url 'legislation:norma_compare' norma.pk %}" class="btn">Comparar Versões</a>
         <a href="{% url 'legislation:norma_tree' norma.pk %}" class="btn btn-secondary">Visualizar Árvore</a>
         <button type="button" class="btn btn-secondary" data-copy-citation="{{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }} — {{ norma.ementa|default:'Norma municipal consolidada' }}">Copiar citação</button>
@@ -62,6 +73,8 @@
         {% if user.is_authenticated and user.is_staff %}
         <a href="/admin/legislation/norma/{{ norma.pk }}/change/" class="btn btn-secondary">Editar no Admin</a>
         {% endif %}
+          </div>
+        </details>
     </div>
     {% if user.is_authenticated and user_collections %}
     <form method="post" action="{% url 'workspace:collection_detail' user_collections.0.pk %}" class="legal-detail-collection-form" data-collection-form>
@@ -127,9 +140,13 @@
         <tr>
             <th>Status Vigência:</th>
             <td>
-                {% if norma.is_em_vacatio_legis %}
+                {% if temporal_status == "revogada" %}
+                <span class="badge badge-warning">Revogada</span>
+                {% elif temporal_status == "parcialmente_revogada" %}
+                <span class="badge badge-warning">Parcialmente revogada</span>
+                {% elif norma.is_em_vacatio_legis %}
                 <span class="badge badge-warning">Vacatio Legis</span>
-                {% elif temporal_status == "data_indeterminada" %}
+                {% elif temporal_status == "data_indeterminada" and not norma.data_publicacao and not norma.data_vigencia %}
                 <span class="badge badge-neutral">Data não determinada</span>
                 {% elif not norma.data_vigencia %}
                     <span class="badge badge-neutral">Data de vigência não registrada no corpus</span>
@@ -150,18 +167,19 @@
             <h2 id="timeline-title">Linha do tempo normativa</h2>
             <p class="timeline-intro">Datas e eventos visíveis no corpus. Inferências são sinalizadas para revisão.</p>
         </div>
-                <span class="badge timeline-status {% if temporal_status == 'revogada' %}timeline-status--warning{% elif not norma.data_vigencia %}timeline-status--neutral{% else %}timeline-status--success{% endif %}">{% if temporal_status == 'revogada' or norma.data_vigencia %}{{ temporal_status }}{% else %}Vigência não registrada{% endif %}</span>
+                <span class="badge timeline-status {% if temporal_status == 'revogada' or temporal_status == 'parcialmente_revogada' %}timeline-status--warning{% elif not norma.data_vigencia %}timeline-status--neutral{% else %}timeline-status--success{% endif %}">{% if temporal_status == 'revogada' %}Revogada{% elif temporal_status == 'parcialmente_revogada' %}Parcialmente revogada{% elif norma.data_vigencia %}Vigência registrada{% else %}Vigência não registrada{% endif %}</span>
     </div>
     <ol class="timeline-list">
         {% for item in timeline %}
         <li class="norma-timeline-item">
             <div>
-                <strong>{{ item.date|default:"Data não disponível" }}</strong>
-                <div class="timeline-kind">{{ item.kind }}</div>
+                {% if item.date %}<time datetime="{{ item.date }}">{{ item.date_display|default:item.date }}</time>{% else %}<span>Data não informada</span>{% endif %}
+                <div class="timeline-kind">{% if item.kind == 'publication' %}Publicação{% elif item.kind == 'effective' %}Início de vigência registrado{% elif item.kind == 'event' %}{% if item.validated %}Evento normativo validado{% else %}Evento extraído — pendente de revisão{% endif %}{% else %}Evento normativo{% endif %}</div>
             </div>
             <div>
                 <strong>{{ item.title }}</strong>
                 <p class="timeline-description">{{ item.description }}</p>
+                {% if item.publication_date %}<small class="timeline-source-date">Publicação da fonte: <time datetime="{{ item.publication_date }}">{{ item.publication_date_display|default:item.publication_date }}</time></small>{% endif %}
                 {% if item.source_norma %}<small class="timeline-source">Fonte: {{ item.source_norma }}</small>{% endif %}
             </div>
         </li>

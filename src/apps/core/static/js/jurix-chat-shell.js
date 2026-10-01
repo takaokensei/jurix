@@ -11,8 +11,14 @@
 (function () {
     'use strict';
 
-    const MAX_LENGTH = 10000;
-    const NEAR_LIMIT = 9000;
+    const configuredMaxLength = Number.parseInt(
+        document.body?.dataset.questionMaxLength || '',
+        10
+    );
+    const MAX_LENGTH = Number.isSafeInteger(configuredMaxLength) && configuredMaxLength > 0
+        ? configuredMaxLength
+        : 2000;
+    const NEAR_LIMIT = Math.floor(MAX_LENGTH * 0.9);
     let networkTimer = null;
 
     function byId(id) {

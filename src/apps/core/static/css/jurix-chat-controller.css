@@ -42,11 +42,37 @@
 }
 
 #send-button.is-busy {
-    cursor: progress;
+    cursor: pointer;
+    background: var(--figma-red, #b42318);
+    color: #fff;
+}
+
+#send-button.is-stop-action:hover {
+    filter: brightness(1.12);
 }
 
 #send-button:disabled {
     opacity: 0.58;
+}
+
+.jurix-provisional-notice.is-interrupted {
+    color: var(--figma-amber-light, #f5c26b);
+}
+
+.jurix-interrupted-retry {
+    margin: .5rem 0 0 3rem;
+    min-height: 2.5rem;
+    padding: .5rem .85rem;
+    border: 1px solid var(--figma-border, #344054);
+    border-radius: .65rem;
+    background: var(--figma-surface-raised, #151d2b);
+    color: var(--figma-text-primary, #f8fafc);
+    cursor: pointer;
+}
+
+.jurix-interrupted-retry:focus-visible {
+    outline: 3px solid var(--figma-blue-light, #60a5fa);
+    outline-offset: 2px;
 }
 
 .figma-floating-input-bar[data-chat-state='streaming'],

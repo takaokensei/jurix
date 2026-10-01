@@ -93,6 +93,7 @@ async function boot(routes) {
     'jurix-chat-api.js',
     'jurix-api-reliability-overlay.js',
     'jurix-chat-sessions.js',
+    'jurix-sidebar.js',
     'jurix-chat-state.js',
     'jurix-chat-renderer.js',
   ]) window.eval(read(file));
@@ -292,11 +293,13 @@ test('assistant references to a sourced law article link directly to the officia
     norma_ref: 'Lei nº 8198/2026', dispositivo_ref: 'Art. 1º',
     pdf_url: 'https://sapl.natal.rn.leg.br/media/lei.pdf', text: sourceText, full_text: sourceText,
   })]);
-  const link = body.querySelector('.jurix-legal-reference-link');
-  assert.ok(link);
-  assert.equal(link.target, '_blank');
-  assert.equal(link.rel, 'noopener noreferrer');
-  assert.ok(link.href.includes(encodeURIComponent(sourceText)));
+  const links = [...body.querySelectorAll('.jurix-legal-reference-link')];
+  assert.equal(links.length, 2, 'the law and article are independently navigable');
+  assert.equal(new URL(links[0].href).hash, '', 'the law name opens the unmarked PDF');
+  assert.equal(links[0].title, 'Abrir Lei nº 8198/2026 no SAPL (nova aba)');
+  assert.equal(links[1].target, '_blank');
+  assert.equal(links[1].rel, 'noopener noreferrer');
+  assert.ok(links[1].href.includes(encodeURIComponent(sourceText)), 'the article opens its cited excerpt');
   window.close();
 });
 
@@ -312,6 +315,9 @@ test('standalone bold articles and incisos link to the matching recovered device
   const links = [...body.querySelectorAll('.jurix-legal-reference-link')];
   assert.equal(links.length, 5);
   assert.ok(body.querySelector('strong a'));
+  assert.equal(new URL(links[0].href).hash, '', 'a bare law citation opens the PDF without a text highlight');
+  assert.match(links[0].title, /^Abrir Lei nº 8\.205\/2026 no SAPL/);
+  assert.ok(links[1].href.includes(encodeURIComponent('Trecho exato 0')), 'an article citation keeps its evidence highlight');
   assert.ok(links[3].href.includes(encodeURIComponent('Trecho exato 2')));
   assert.ok(links[4].href.includes(encodeURIComponent('Trecho exato 3')));
   const preserved = body.textContent;

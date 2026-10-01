@@ -35,6 +35,7 @@
 <body class="figma-theme workspace-page"
       data-chatbot-url="{% url 'workspace:assistant' %}"
       data-norma-list-url="{% url 'legislation:norma_list' %}"
+      data-question-max-length="{{ max_question_length }}"
       data-logo-icon-url="{% static 'img/logo-icon.svg' %}?v=20260930-quill1"
       data-user-name="{{ request.user.first_name|default:request.user.username|title }}">
     <!-- Skip link for keyboard accessibility -->
@@ -196,12 +197,13 @@
                                 placeholder="Pergunte sobre normas, artigos ou legislação municipal..."
                                 rows="1" 
                                 required
+                                maxlength="{{ max_question_length }}"
                                 class="figma-hero-search-input jurix-composer-textarea"
                                 aria-label="Digite sua pergunta sobre legislação"
                             >{% if prefill_question %}{{ prefill_question }}{% endif %}</textarea>
                         </div>
                         <button type="submit" class="figma-action-arrow-btn" id="send-button" aria-label="Enviar pergunta">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <line x1="5" y1="12" x2="19" y2="12"></line>
                                 <polyline points="12 5 19 12 12 19"></polyline>
                             </svg>

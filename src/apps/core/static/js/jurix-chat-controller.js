@@ -17,7 +17,11 @@
         idle: '',
         submitting: 'Preparando pesquisa…',
         streaming: 'Gerando resposta…',
+        finalizing: 'Finalizando resposta…',
         regenerating: 'Regenerando resposta…',
+        cancelled: 'Geração interrompida neste navegador; o servidor pode ainda estar encerrando a tarefa.',
+        failed: 'A pesquisa não foi concluída. Você pode tentar novamente.',
+        completed: '',
         error: 'A última pesquisa encontrou um erro.',
     });
 
@@ -49,7 +53,9 @@
         const composer = getElement('conversation-input-bar');
 
         const hasQuestion = Boolean(textarea && textarea.value.trim());
-        const disabled = snapshot.busy || !hasQuestion;
+        const canCancel = snapshot.status === state.STATES.STREAMING ||
+            snapshot.status === state.STATES.FINALIZING;
+        const disabled = canCancel ? false : (snapshot.busy || !hasQuestion);
 
         if (form) {
             form.dataset.chatState = snapshot.status;
@@ -62,11 +68,19 @@
 
         if (sendButton) {
             sendButton.disabled = disabled;
-            sendButton.classList.toggle('is-busy', snapshot.busy);
+            sendButton.classList.toggle('is-busy', canCancel);
+            sendButton.classList.toggle('is-stop-action', canCancel);
             sendButton.setAttribute(
                 'aria-label',
-                snapshot.busy ? 'Gerando resposta' : 'Enviar pergunta'
+                canCancel ? 'Parar geração' : snapshot.busy ? 'Pesquisa em andamento' : 'Enviar pergunta'
             );
+            sendButton.title = canCancel ? 'Parar geração' : snapshot.busy ? 'Pesquisa em andamento' : 'Enviar pergunta';
+            sendButton.dataset.action = canCancel ? 'stop' : 'send';
+            if (canCancel) {
+                sendButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>';
+            } else {
+                sendButton.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>';
+            }
         }
 
         if (composer) {

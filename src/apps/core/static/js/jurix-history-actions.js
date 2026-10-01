@@ -60,7 +60,12 @@
       const nextFocusTarget = adjacentCard?.querySelector(
         '.workspace-history-card__link, [data-history-delete], a[href], button:not([disabled])',
       );
-      await window.JurixChatAPI.deleteSession(sessionId);
+      if (String(sessionId).startsWith('local-')) {
+        const removed = window.JurixAnonymousHistory?.remove?.(sessionId);
+        if (!removed) throw new Error('A conversa local não pôde ser removida.');
+      } else {
+        await window.JurixChatAPI.deleteSession(sessionId);
+      }
       closeDialog(false);
       card.remove();
       const remaining = document.querySelectorAll('[data-history-card]').length;

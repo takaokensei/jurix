@@ -396,7 +396,7 @@
             while ((match = pattern.exec(text))) {
                 const token = match[0];
                 const explicitNorm = token.match(normPattern);
-                const article = token.match(/^Art\.?\s*(\d+)/i);
+                const article = token.match(/\bArt\.?\s*(\d+)/i);
                 const inciso = token.match(/^Inciss?o\s+([IVXLCDM]+)/i);
                 if (explicitNorm) {
                     currentNorm = normKey(explicitNorm);
@@ -420,10 +420,18 @@
                 fragment.append(document.createTextNode(text.slice(cursor, match.index)));
                 const anchor = document.createElement('a');
                 anchor.className = 'jurix-legal-reference-link';
-                anchor.href = reference.href;
+                let targetHref = reference.href;
+                let targetLabel = reference.label;
+                if (explicitNorm && !article && !inciso) {
+                    const lawUrl = new URL(targetHref);
+                    if (lawUrl.hash.startsWith('#:~:text=')) lawUrl.hash = '';
+                    targetHref = lawUrl.href;
+                    targetLabel = token;
+                }
+                anchor.href = targetHref;
                 anchor.target = '_blank';
                 anchor.rel = 'noopener noreferrer';
-                anchor.title = 'Abrir ' + reference.label + ' no SAPL (nova aba)';
+                anchor.title = 'Abrir ' + targetLabel + ' no SAPL (nova aba)';
                 anchor.setAttribute('aria-label', anchor.title);
                 anchor.textContent = token;
                 fragment.append(anchor);

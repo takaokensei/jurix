@@ -60,6 +60,21 @@
                 <div class="message-body">${body}</div>
             </div>
         `;
+        const retryContext = deps.retryContext;
+        if (retryContext && typeof deps.onRetry === 'function' &&
+            ['failed', 'cancelled', 'interrupted'].includes(retryContext.state) &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(retryContext.clientTurnId || ''))) {
+            const actions = document.createElement('div');
+            actions.className = 'message-actions';
+            const retry = document.createElement('button');
+            retry.type = 'button';
+            retry.className = 'jurix-interrupted-retry';
+            retry.textContent = 'Tentar novamente';
+            retry.setAttribute('aria-label', 'Tentar novamente a pergunta interrompida');
+            retry.addEventListener('click', () => deps.onRetry(String(text || ''), retryContext.clientTurnId));
+            actions.append(retry);
+            message.querySelector('.message-content')?.append(actions);
+        }
         wrapper.appendChild(message);
         requestAnimationFrame(() => message.classList.remove('jurix-message-enter'));
         if (typeof deps.scrollToBottom === 'function') deps.scrollToBottom();

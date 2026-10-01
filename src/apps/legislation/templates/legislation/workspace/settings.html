@@ -38,7 +38,7 @@
             </label>
             <label class="workspace-field workspace-field-wide" data-external-llm-field hidden><span>Identificador do modelo remoto</span><input name="external_model" maxlength="120" autocomplete="off" placeholder="ex.: gpt-4o-mini, claude-3-5-sonnet" aria-describedby="external-model-help"><small id="external-model-help">Informe o nome exato do modelo habilitado no provedor.</small><small id="external-model-error" data-provider-error="external_model" hidden></small></label>
             <label class="workspace-field workspace-field-wide" data-compatible-endpoint-field hidden><span>Endpoint compatível</span><input name="llm_endpoint" maxlength="500" inputmode="url" placeholder="http://127.0.0.1:4000/v1" aria-describedby="llm-endpoint-help"><small id="llm-endpoint-help">Use um endpoint local de desenvolvimento ou um destino autorizado pelo servidor.</small><small id="llm-endpoint-error" data-provider-error="llm_endpoint" hidden></small></label>
-            <label class="workspace-field workspace-field-wide" data-external-llm-field hidden><span>Chave de API</span><input name="llm_api_key" type="password" maxlength="4096" autocomplete="new-password" placeholder="Enviada somente durante a consulta" aria-describedby="llm-api-key-help"><small id="llm-api-key-help">Guardada apenas no sessionStorage desta aba, nunca no histórico ou localStorage. Em produção, use HTTPS.</small><small id="llm-api-key-error" data-provider-error="llm_api_key" hidden></small></label>
+            <label class="workspace-field workspace-field-wide" data-external-llm-field hidden><span>Chave de API</span><input name="llm_api_key" type="password" maxlength="4096" autocomplete="new-password" placeholder="Enviada somente durante a consulta" aria-describedby="llm-api-key-help"><small id="llm-api-key-help">Guardada apenas no sessionStorage desta aba, nunca no histórico ou localStorage. Em produção, use HTTPS. Alguns endpoints compatíveis só aceitam chave vazia quando autorizados explicitamente pelo servidor; provedores públicos exigem chave.</small><small id="llm-api-key-error" data-provider-error="llm_api_key" hidden></small></label>
             <label class="workspace-field">
                 <span>Temperatura</span>
                 <input type="number" name="temperature" min="0" max="1" step="0.1" value="0.3">
@@ -69,8 +69,29 @@
 
     <section class="workspace-card workspace-card-muted">
         <div class="workspace-card-heading"><div><span class="workspace-eyebrow">Estado</span><h2>Persistência local</h2></div></div>
-        <p>As preferências desta tela são salvas localmente neste navegador nesta fase. A persistência por usuário no servidor pode ser adicionada sem mudar a arquitetura visual.</p>
+        <p>Preferências visuais ficam neste navegador. Chaves de API ficam somente no sessionStorage desta aba e não são incluídas no histórico exportado.</p>
     </section>
+
+    {% if not request.user.is_authenticated %}
+    <section class="workspace-card">
+        <div class="workspace-card-heading"><div><span class="workspace-eyebrow">Seus dados</span><h2>Histórico local</h2></div></div>
+        <p>Como visitante, conversas e respostas verificadas são guardadas no armazenamento local deste navegador até você apagá-las, limpar os dados do site ou o limite local ser atingido. Elas não ficam disponíveis em outro dispositivo. Em computador compartilhado, exporte somente o necessário e apague o histórico ao terminar.</p>
+        <div class="workspace-form-actions">
+            <button type="button" class="workspace-button workspace-button-secondary" data-history-export>Exportar histórico JSON</button>
+            <button type="button" class="workspace-button workspace-button-danger" data-history-clear>Apagar histórico local</button>
+            <span class="workspace-save-status" data-history-data-status role="status" aria-live="polite"></span>
+        </div>
+        <dialog class="workspace-confirm-dialog" data-local-history-dialog aria-labelledby="local-history-dialog-title" aria-describedby="local-history-dialog-description">
+            <span class="workspace-confirm-icon" aria-hidden="true">!</span>
+            <h2 id="local-history-dialog-title">Apagar o histórico deste navegador?</h2>
+            <p id="local-history-dialog-description">Serão removidas somente as conversas locais de visitante do Jurix. Preferências visuais e chaves de API não serão alteradas. Esta ação não pode ser desfeita.</p>
+            <div class="workspace-confirm-actions">
+                <button type="button" class="workspace-button workspace-button-secondary" data-local-history-cancel>Manter histórico</button>
+                <button type="button" class="workspace-button workspace-button-danger" data-local-history-confirm>Apagar conversas</button>
+            </div>
+        </dialog>
+    </section>
+    {% endif %}
 
     <div class="workspace-form-actions">
         <button type="button" class="workspace-button workspace-button-ghost" data-settings-reset>Restaurar padrão</button>
