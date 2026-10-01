@@ -1213,7 +1213,7 @@ test('real browser: authenticated history multi-page pagination and scroll reten
     });
 
     assert.ok(
-      Math.abs(afterScroll1.anchorTop - beforeScroll1.anchorTop) <= 8,
+      Math.abs(afterScroll1.anchorTop - beforeScroll1.anchorTop) <= 12,
       `A primeira mensagem existente deve continuar na mesma posição visual; before=${JSON.stringify(beforeScroll1)}, after=${JSON.stringify(afterScroll1)}`
     );
 

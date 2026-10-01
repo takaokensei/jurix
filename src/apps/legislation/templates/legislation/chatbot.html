@@ -10,10 +10,12 @@
     
     <!-- Content Security Policy -->
     
-    <!-- Google Fonts: Inter & Lora -->
+    {% if csp_allow_google_fonts %}
+    <!-- Optional Google Fonts; disabled unless CSP explicitly allows the origins. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    {% endif %}
     
     <!-- Stylesheets -->
     <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20260930-light-dim-contrast1">

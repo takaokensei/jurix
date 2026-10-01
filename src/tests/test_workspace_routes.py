@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 from django.contrib.auth import get_user_model
-from django.test import Client
+from django.test import Client, override_settings
 
 from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, Norma
 from src.apps.legislation.workspace_views import _deduplicate_search_results, _rank_history
@@ -87,6 +87,29 @@ def test_collections_and_assistant_copy_describe_only_available_products():
     authenticated = Client()
     authenticated.force_login(user)
     assert "Adicione normas municipais à coleção" in authenticated.get("/colecoes/").content.decode()
+
+
+def test_google_fonts_are_loaded_only_when_the_matching_csp_opt_in_is_enabled():
+    client = Client()
+    routes = ("/assistente/", "/normas/", "/configuracoes/")
+    with override_settings(CSP_ALLOW_GOOGLE_FONTS=False):
+        for route in routes:
+            response = client.get(route)
+            assert response.status_code == 200
+            assert b"fonts.googleapis.com" not in response.content
+            assert b"fonts.gstatic.com" not in response.content
+            assert "fonts.googleapis.com" not in response["Content-Security-Policy"]
+
+    with override_settings(CSP_ALLOW_GOOGLE_FONTS=True):
+        for route in routes:
+            response = client.get(route)
+            assert b"fonts.googleapis.com/css2" in response.content
+            assert "https://fonts.googleapis.com" in response["Content-Security-Policy"]
+            assert "https://fonts.gstatic.com" in response["Content-Security-Policy"]
+
+    styles = Path("src/apps/core/static/css/jurix-figma.css").read_text(encoding="utf-8")
+    assert "--font-sans: system-ui" in styles
+    assert "--font-serif: Georgia" in styles
 
 
 def test_product_root_enters_the_assistant_flow():

@@ -47,7 +47,7 @@ html[data-sidebar-collapsed="true"] .workspace-nav-item { justify-content: cente
 .workspace-content { box-sizing: border-box; width: min(1180px, 100%); margin: 0 auto; padding: 40px clamp(18px, 3vw, 42px) 64px; }
 .error-page-content { min-height: 100vh; display: grid; place-items: center; }
 .workspace-page-header { display: flex; justify-content: space-between; gap: 28px; align-items: flex-end; margin-bottom: 28px; }
-.workspace-page-header h1 { margin: 3px 0 8px; font-family: 'Lora', serif; font-size: clamp(30px,4vw,48px); letter-spacing: -.03em; color: var(--figma-text-white); }
+.workspace-page-header h1 { margin: 3px 0 8px; font-family: var(--font-serif, Georgia, serif); font-size: clamp(30px,4vw,48px); letter-spacing: -.03em; color: var(--figma-text-white); }
 .workspace-page-header p { max-width: 700px; margin: 0; color: var(--figma-text-muted); line-height: 1.7; }
 .workspace-eyebrow { display: inline-flex; color: var(--figma-blue-light); font-size: .75rem; line-height: 1.4; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .workspace-stack, .workspace-result-list, .workspace-history-list { display: grid; gap: 14px; }
