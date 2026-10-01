@@ -345,3 +345,31 @@ def test_legal_search_labels_successful_vector_retrieval_as_semantic(monkeypatch
 
     assert response.status_code == 200
     assert b"Busca sem\xc3\xa2ntica" in response.content
+
+
+def test_legal_search_result_links_to_the_matching_device(norma, monkeypatch):
+    device = Dispositivo.objects.create(
+        norma=norma,
+        tipo="artigo",
+        numero="1º",
+        ordem=1,
+        texto="Texto específico pesquisado.",
+    )
+
+    class FakeRAG:
+        def semantic_search(self, **kwargs):
+            return {
+                "results": [
+                    {"dispositivo": device, "similarity_score": 0.9, "context": {}}
+                ],
+                "mode": "semantic",
+            }
+
+    monkeypatch.setattr("src.apps.legislation.workspace_views.RAGService", FakeRAG)
+    response = Client().get("/pesquisa/", {"q": "texto específico"})
+    expected_href = f'/normas/{norma.pk}/#dispositivo-{device.pk}'
+
+    assert response.status_code == 200
+    assert expected_href.encode() in response.content
+    detail = Client().get(expected_href.split("#", 1)[0])
+    assert f'id="dispositivo-{device.pk}"'.encode() in detail.content

@@ -30,7 +30,7 @@
     <div class="workspace-result-list">
         {% for result in results %}
         {% if result.dispositivo %}
-        <a class="workspace-result-card" href="{% url 'legislation:norma_detail' result.dispositivo.norma.id %}">
+        <a class="workspace-result-card" href="{% url 'legislation:norma_detail' result.dispositivo.norma.id %}#dispositivo-{{ result.dispositivo.pk }}">
             <div class="workspace-result-meta"><span>{{ result.dispositivo.norma.get_tipo_display_name }} nº {{ result.dispositivo.norma.numero }}/{{ result.dispositivo.norma.ano }}</span><span class="workspace-score">{{ result.relevance_label }}</span></div>
             <h3>{{ result.dispositivo.get_full_identifier }}</h3>
             <p class="workspace-result-snippet">{{ result.highlighted_text }}</p>
