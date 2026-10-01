@@ -78,7 +78,10 @@
         role: message.role === 'assistant' ? 'assistant' : 'user',
         content: String(message.content || '').slice(0, 30_000),
         created_at: message.created_at || now(),
-        sources: Array.isArray(message.sources) ? message.sources.slice(0, 20) : [],
+        grounded: message.grounded === true,
+        sources: message.grounded === true && Array.isArray(message.sources)
+          ? message.sources.slice(0, 20)
+          : [],
       }));
     });
     return state;
@@ -140,6 +143,7 @@
       role: role === 'assistant' ? 'assistant' : 'user',
       content: String(content || ''),
       created_at: now(),
+      grounded: false,
       sources: Array.isArray(sources) ? sources.slice(0, 20) : [],
     });
     if (role === 'user' && session.title === 'Nova pesquisa') {
@@ -149,7 +153,7 @@
     write(state);
   }
 
-  function updateLastAssistant(sessionId, content, sources) {
+  function updateLastAssistant(sessionId, content, sources, grounded = false) {
     const state = read();
     const session = state.sessions.find(item => String(item.id) === String(sessionId));
     if (!session) return;
@@ -157,9 +161,16 @@
     const last = messages[messages.length - 1];
     if (last && last.role === 'assistant') {
       last.content = String(content || '');
-      last.sources = Array.isArray(sources) ? sources.slice(0, 20) : (last.sources || []);
+      last.grounded = grounded === true;
+      last.sources = last.grounded && Array.isArray(sources) ? sources.slice(0, 20) : [];
     } else {
-      messages.push({ role: 'assistant', content: String(content || ''), created_at: now(), sources: sources || [] });
+      messages.push({
+        role: 'assistant',
+        content: String(content || ''),
+        created_at: now(),
+        grounded: grounded === true,
+        sources: grounded === true && Array.isArray(sources) ? sources.slice(0, 20) : [],
+      });
     }
     session.updated_at = now();
     write(state);
@@ -190,7 +201,7 @@
   }
 
   function get(id) {
-    const session = read().sessions.find(item => String(item.id) === String(id));
+    const session = prune(read()).sessions.find(item => String(item.id) === String(id));
     return session ? JSON.parse(JSON.stringify(session)) : null;
   }
 

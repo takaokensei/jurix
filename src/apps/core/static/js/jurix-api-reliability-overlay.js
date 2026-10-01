@@ -159,7 +159,9 @@
           answer += text;
           if (!chunkMetadata?.provisional) {
             verifiedAnswer += text;
-            window.JurixAnonymousHistory.updateLastAssistant(localId, verifiedAnswer, sources);
+            // Retrieved sources are provisional until the terminal SSE event
+            // confirms grounding. Never make them durable during generation.
+            window.JurixAnonymousHistory.updateLastAssistant(localId, verifiedAnswer, [], false);
           }
           return onChunk?.(chunk, chunkMetadata);
         };
@@ -172,11 +174,13 @@
             ? doneEvent.answer
             : doneEvent;
           if (answerFromEvent != null) answer = String(answerFromEvent);
-          window.JurixAnonymousHistory.updateLastAssistant(localId, answer, sources);
+          const grounded = doneEvent?.grounded === true;
+          const verifiedSources = grounded ? sources : [];
+          window.JurixAnonymousHistory.updateLastAssistant(localId, answer, verifiedSources, grounded);
           return onDone?.({ ...doneEvent, answer, session_id: localId, session_slug: localId }, ...rest);
         };
         const wrappedError = (error) => {
-          if (verifiedAnswer.trim()) window.JurixAnonymousHistory.updateLastAssistant(localId, verifiedAnswer, sources);
+          if (verifiedAnswer.trim()) window.JurixAnonymousHistory.updateLastAssistant(localId, verifiedAnswer, [], false);
           return onError?.(error);
         };
         const wrappedTitle = (event) => {

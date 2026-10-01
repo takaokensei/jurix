@@ -20,7 +20,7 @@ test('anonymous stream persists the final answer after the API overlay is instal
     { type: 'sources', sources: [{ id: 1 }], confidence: 0.9 },
     { type: 'chunk', chunk: 'Resposta ' },
     { type: 'chunk', chunk: 'final.' },
-    { type: 'done', answer: 'Resposta final.', session_id: null },
+    { type: 'done', answer: 'Resposta final.', grounded: true, session_id: null },
   ];
   const encoded = events.map((event) => new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`));
   let index = 0;
@@ -50,7 +50,63 @@ test('anonymous stream persists the final answer after the API overlay is instal
   assert.equal(messages[0].role, 'user');
   assert.equal(messages[1].role, 'assistant');
   assert.equal(messages[1].content, 'Resposta final.');
+  assert.equal(messages[1].grounded, true);
+  assert.deepEqual(messages[1].sources, [{ id: 1 }]);
   assert.notEqual(messages[1].content, '[object Object]');
+  dom.window.close();
+});
+
+test('anonymous history never restores evidence rejected by the final grounding decision', async () => {
+  const dom = new JSDOM(
+    '<!doctype html><html><body><meta name="jurix-authenticated" content="false"></body></html>',
+    { url: 'http://localhost/assistant/', runScripts: 'dangerously' },
+  );
+  const { window } = dom;
+  window.TextDecoder = TextDecoder;
+  const events = [
+    { type: 'sources', sources: [{ id: 7, text: 'Evidência não validada' }], confidence: 0.9 },
+    { type: 'chunk', chunk: 'Rascunho da resposta.' },
+    { type: 'done', answer: 'Resposta insuficientemente fundamentada.', grounded: false },
+  ];
+  const encoded = events.map((event) => new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`));
+  let index = 0;
+  window.fetch = async () => ({
+    ok: true,
+    status: 200,
+    body: { getReader: () => ({ async read() {
+      if (index >= encoded.length) return { done: true, value: undefined };
+      return { done: false, value: encoded[index++] };
+    } }) },
+  });
+
+  window.eval(read('jurix-anonymous-history.js'));
+  window.eval(read('jurix-chat-api.js'));
+  window.eval(read('jurix-api-reliability-overlay.js'));
+  await window.JurixChatAPI.streamAnswer('Pergunta', null, {});
+
+  const sessionId = window.JurixAnonymousHistory.list()[0].id;
+  const restored = await window.JurixChatAPI.getSession(sessionId);
+  assert.equal(restored.messages[1].grounded, false);
+  assert.deepEqual(Array.from(restored.messages[1].sources), []);
+  const stored = JSON.parse(window.localStorage.getItem('jurix:anonymous-history:v2'));
+  assert.deepEqual(Array.from(stored.sessions[0].messages[1].sources), []);
+  dom.window.close();
+});
+
+test('legacy anonymous evidence without an explicit grounded marker is hidden on restore', () => {
+  const dom = new JSDOM('<!doctype html><html><body data-authenticated="false"></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+  });
+  const { window } = dom;
+  window.localStorage.setItem('jurix:anonymous-history:v2', JSON.stringify({
+    schema: 2,
+    sessions: [{ id: 'local-old', messages: [{
+      role: 'assistant', content: 'Resposta antiga', sources: [{ id: 9 }],
+    }] }],
+  }));
+  window.eval(read('jurix-anonymous-history.js'));
+  assert.deepEqual(Array.from(window.JurixAnonymousHistory.get('local-old').messages[0].sources), []);
   dom.window.close();
 });
 

@@ -1638,6 +1638,51 @@ test('real browser: out-of-order navigation responses do not overwrite active co
   }
 });
 
+test('real browser: ungrounded stream sources stay hidden after anonymous history reload', async () => {
+  const server = createTestServer({
+    isAuthenticated: () => false,
+    '/api/v1/search/answer/stream/': (req, res) => {
+      req.resume();
+      req.on('end', () => {
+        res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
+        res.write(`data: ${JSON.stringify({ type: 'sources', sources: [{ id: 17, text: 'Evidência não validada' }] })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'chunk', chunk: 'Resposta sem fundamentação suficiente.' })}\n\n`);
+        res.end(`data: ${JSON.stringify({ type: 'done', answer: 'Resposta sem fundamentação suficiente.', grounded: false })}\n\n`);
+      });
+    },
+    '/api/v1/chat/sessions/': (req, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, sessions: [] }));
+    },
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.goto(`http://127.0.0.1:${server.address().port}/assistente/`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#hero-search-input');
+    await page.type('#hero-search-input', 'Pergunta de teste sem evidência');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('.message-assistant')?.textContent.includes('Resposta sem fundamentação suficiente.'));
+    assert.equal(await page.$$('.jurix-sources-pill-btn').then((items) => items.length), 0);
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => document.querySelector('.message-assistant')?.textContent.includes('Resposta sem fundamentação suficiente.'));
+    assert.equal(await page.$$('.jurix-sources-pill-btn').then((items) => items.length), 0);
+    const history = await page.evaluate(() => JSON.parse(localStorage.getItem('jurix:anonymous-history:v2')));
+    assert.deepEqual(history.sessions[0].messages[1].sources, []);
+    assert.equal(history.sessions[0].messages[1].grounded, false);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
 test('real browser: streaming with complex markdown (tables, lists, code) and deferred sources with fade-in', async () => {
   const markdownChunk =
     '### Parecer Jurídico\n\n' +
