@@ -267,7 +267,6 @@ def test_stream_contract_persists_sources_only_for_grounded_answers(client, user
 
 @pytest.mark.parametrize("grounded", [False, True])
 def test_regeneration_exposes_and_persists_sources_only_when_grounded(client, user, grounded):
-    import json
 
     session = ChatSession.objects.create(user=user, title="Consulta")
     ChatMessage.objects.create(session=session, role="user", content="Pergunta")

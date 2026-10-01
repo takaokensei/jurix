@@ -11,7 +11,11 @@ import logging
 import re
 from typing import Any
 
-from src.apps.legislation.source_urls import canonical_norma_url, canonical_sapl_url, public_source_url
+from src.apps.legislation.source_urls import (
+    canonical_norma_url,
+    canonical_sapl_url,
+    public_source_url,
+)
 from src.processing.temporal_scope import temporal_state_from_dates
 
 logger = logging.getLogger(__name__)
