@@ -190,7 +190,7 @@ def legal_search_view(request):
 
     if query and len(query) <= 200:
         try:
-            results = RAGService().semantic_search(
+            retrieval = RAGService().semantic_search(
                 query_text=query,
                 # Retrieve a wider candidate set because device-level hits are
                 # collapsed to one result per norm below.
@@ -198,7 +198,16 @@ def legal_search_view(request):
                 min_similarity=min_similarity,
                 norma_type=norma_type or None,
                 year=year,
+                include_metadata=True,
             )
+            results = retrieval["results"]
+            search_mode = retrieval["mode"]
+            if search_mode == "unavailable":
+                search_mode = "lexical"
+                search_error = (
+                    "A busca semântica está temporariamente indisponível; "
+                    "exibindo correspondências textuais."
+                )
             results = [
                 {**result, "relevance_label": _relevance_label(result.get("similarity_score"))}
                 for result in results

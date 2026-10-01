@@ -63,10 +63,15 @@ class TestRAGService:
             year=2026,
         )
         unfiltered = service.semantic_search("política municipal zoneamento urbano", k=10)
+        lexical_metadata = service.semantic_search(
+            "política municipal zoneamento urbano", k=10, include_metadata=True
+        )
 
         assert [row["dispositivo"].id for row in filtered] == [matching_device.id]
         assert len(unfiltered) == 10
         assert matching_device.id not in {row["dispositivo"].id for row in unfiltered}
+        assert lexical_metadata["mode"] == "lexical"
+        assert len(lexical_metadata["results"]) == 10
 
     @pytest.fixture
     def mock_norma(self):
@@ -177,10 +182,18 @@ class TestRAGService:
         mock_connection.cursor.return_value = mock_cursor
 
         # Execute search
-        results = service.semantic_search(query_text, k=5, norma_type="Lei", year=2026)
+        retrieval = service.semantic_search(
+            query_text,
+            k=5,
+            norma_type="Lei",
+            year=2026,
+            include_metadata=True,
+        )
+        results = retrieval["results"]
 
         # Assertions
         assert len(results) == 1
+        assert retrieval["mode"] == "semantic"
         assert results[0]["similarity_score"] == 0.85
         assert results[0]["dispositivo"].id == mock_dispositivo.id
 

@@ -97,7 +97,8 @@ class RAGService:
         min_similarity: float = 0.0,
         norma_type: str | None = None,
         year: int | None = None,
-    ) -> list[dict[str, Any]]:
+        include_metadata: bool = False,
+    ) -> list[dict[str, Any]] | dict[str, Any]:
         """
         Perform semantic search on Dispositivos using pgvector similarity.
 
@@ -119,9 +120,12 @@ class RAGService:
             - distance: Vector distance (lower is better)
             - context: Additional context information
         """
+        def result_with_mode(rows: list[dict[str, Any]], mode: str):
+            return {"results": rows, "mode": mode} if include_metadata else rows
+
         if not query_text or not query_text.strip():
             logger.warning("Empty query provided for semantic search")
-            return []
+            return result_with_mode([], "not_executed")
 
         logger.info(f"Performing semantic search for query: '{query_text[:100]}...'")
 
@@ -139,14 +143,17 @@ class RAGService:
                 ),
                 norma_id=norma_id,
             )
-            return [
-                row
-                for row in rows
-                if row["similarity_score"] >= min_similarity
-                and (norma_id is None or row["dispositivo"].norma_id == norma_id)
-                and (norma_type is None or row["dispositivo"].norma.tipo == norma_type)
-                and (year is None or row["dispositivo"].norma.ano == year)
-            ][:k]
+            return result_with_mode(
+                [
+                    row
+                    for row in rows
+                    if row["similarity_score"] >= min_similarity
+                    and (norma_id is None or row["dispositivo"].norma_id == norma_id)
+                    and (norma_type is None or row["dispositivo"].norma.tipo == norma_type)
+                    and (year is None or row["dispositivo"].norma.ano == year)
+                ][:k],
+                "lexical",
+            )
 
         # Step 1: Try to get cached embedding
         query_embedding = None
@@ -159,7 +166,7 @@ class RAGService:
 
             if not query_embedding:
                 logger.error("Failed to generate embedding for query")
-                return []
+                return result_with_mode([], "unavailable")
 
             # Cache the generated embedding
             if self.use_cache and self.cache:
@@ -172,7 +179,7 @@ class RAGService:
                 self.model,
                 len(query_embedding),
             )
-            return []
+            return result_with_mode([], "unavailable")
 
         # Using <=> operator for cosine distance (pgvector vector_cosine_ops)
         # Lower distance = more similar
@@ -284,11 +291,11 @@ class RAGService:
                     }
                 )
 
-            return results
+            return result_with_mode(results, "semantic")
 
         except Exception as e:
             logger.error(f"Error executing semantic search: {e}", exc_info=True)
-            return []
+            return result_with_mode([], "unavailable")
 
     def get_relevant_context(
         self, query_text: str, k: int = 5, max_tokens: int = 2000

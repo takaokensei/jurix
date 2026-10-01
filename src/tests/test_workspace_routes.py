@@ -304,3 +304,44 @@ def test_legal_search_collapses_multiple_device_hits_per_norm(norma):
         bounded = Client().get(f"/api/v1/normas/?page_size={page_size}")
         assert bounded.status_code == 200
         assert bounded.json()["pagination"]["page_size"] == 1
+
+
+def test_legal_search_labels_sqlite_lexical_fallback_as_text_search(norma):
+    Dispositivo.objects.create(
+        norma=norma,
+        tipo="artigo",
+        numero="1º",
+        ordem=1,
+        texto="zoneamento urbano municipal",
+    )
+
+    response = Client().get("/pesquisa/", {"q": "zoneamento urbano"})
+
+    assert response.status_code == 200
+    assert b"Busca textual" in response.content
+
+
+def test_legal_search_uses_retrieval_metadata_and_falls_back_after_semantic_failure(monkeypatch):
+    class FakeRAG:
+        def semantic_search(self, **kwargs):
+            assert kwargs["include_metadata"] is True
+            return {"results": [], "mode": "unavailable"}
+
+    monkeypatch.setattr("src.apps.legislation.workspace_views.RAGService", FakeRAG)
+    response = Client().get("/pesquisa/", {"q": "tema sem resultado"})
+
+    assert response.status_code == 200
+    assert b"Busca textual" in response.content
+    assert b"busca sem\xc3\xa2ntica est\xc3\xa1 temporariamente indispon\xc3\xadvel" in response.content
+
+
+def test_legal_search_labels_successful_vector_retrieval_as_semantic(monkeypatch):
+    class FakeRAG:
+        def semantic_search(self, **kwargs):
+            return {"results": [], "mode": "semantic"}
+
+    monkeypatch.setattr("src.apps.legislation.workspace_views.RAGService", FakeRAG)
+    response = Client().get("/pesquisa/", {"q": "tema sem resultado"})
+
+    assert response.status_code == 200
+    assert b"Busca sem\xc3\xa2ntica" in response.content
