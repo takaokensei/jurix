@@ -8,7 +8,7 @@ from collections import Counter
 from django.conf import settings
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, OuterRef, Prefetch, Q, Subquery
 from django.shortcuts import redirect, render
 from django.utils.html import conditional_escape, mark_safe
 
@@ -380,6 +380,9 @@ def history_view(request):
             queryset=ChatMessage.objects.filter(role__in=("user", "assistant")).only("session_id", "role", "content", "created_at").order_by("-created_at")[:20],
             to_attr="history_messages",
         )
+        initial_user_query = ChatMessage.objects.filter(
+            session_id=OuterRef("pk"), role="user"
+        ).order_by("created_at", "pk").values("content")[:1]
         try:
             page_number = max(int(request.GET.get("page", 1)), 1)
         except (TypeError, ValueError):
@@ -394,6 +397,7 @@ def history_view(request):
         candidates = list(
             queryset
             .annotate(message_count=Count("messages", distinct=True))
+            .annotate(primary_query=Subquery(initial_user_query))
             .prefetch_related(history_messages)
             .order_by("-updated_at", "-id")[:500]
         )
@@ -403,10 +407,7 @@ def history_view(request):
         page_obj = paginator.get_page(page_number)
         sessions = list(page_obj)
         for session in sessions:
-            recent_messages = sorted(session.history_messages, key=lambda message: message.created_at)
-            first_user = next((m for m in recent_messages if m.role == "user"), None)
-            first_answer = next((m for m in recent_messages if m.role == "assistant"), None)
-            session.primary_query = first_answer.content if first_answer else (first_user.content if first_user else "Sem consulta registrada")
+            session.primary_query = session.primary_query or "Sem consulta registrada"
 
     return render(
         request,

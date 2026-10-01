@@ -7,7 +7,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client
 
-from src.apps.legislation.models import ChatSession, Dispositivo, Norma
+from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, Norma
 from src.apps.legislation.workspace_views import _deduplicate_search_results, _rank_history
 
 pytestmark = pytest.mark.django_db
@@ -17,6 +17,25 @@ def test_history_search_ranks_bag_of_words_relevance_before_recency():
     recent_weak = SimpleNamespace(title="Consulta recente", history_messages=[SimpleNamespace(content="Assunto geral")], updated_at=2)
     relevant_old = SimpleNamespace(title="Política de imóveis abandonados", history_messages=[SimpleNamespace(content="Lei municipal sobre imóveis abandonados e revitalização")], updated_at=1)
     assert _rank_history([recent_weak, relevant_old], "imóveis abandonados") == [relevant_old]
+
+
+def test_history_preview_uses_first_user_question_not_a_recent_answer():
+    user = get_user_model().objects.create_user(username="history-preview", password="pass")
+    session = ChatSession.objects.create(user=user, title="Resumo gerado")
+    ChatMessage.objects.create(session=session, role="user", content="Pergunta inicial distinta")
+    ChatMessage.objects.create(session=session, role="assistant", content="Resposta inicial")
+    for index in range(11):
+        ChatMessage.objects.create(session=session, role="user", content=f"Pergunta posterior {index}")
+        ChatMessage.objects.create(session=session, role="assistant", content=f"Resposta posterior {index}")
+    client = Client()
+    client.force_login(user)
+
+    response = client.get("/historico/")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "Pergunta inicial distinta" in body
+    assert "Resposta inicial" not in body
 
 
 @pytest.fixture
