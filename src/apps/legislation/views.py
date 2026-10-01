@@ -34,6 +34,8 @@ from .source_urls import canonical_norma_url
 logger = logging.getLogger(__name__)
 
 MAX_NORMA_SEARCH_LENGTH = 160
+NORMA_COMPARE_MAX_LINES = 1_000
+NORMA_COMPARE_MAX_CHARS = 120_000
 
 
 def _presentation_consolidated_text(norma: Norma) -> str:
@@ -244,45 +246,55 @@ def norma_compare_view(request: HttpRequest, pk: int) -> HttpResponse:
     """
     norma = get_object_or_404(Norma, pk=pk)
 
-    # Split texts into lines for comparison
-    original_lines = norma.texto_original.split("\n") if norma.texto_original else []
+    # Bound synchronous diff work: SequenceMatcher with autojunk disabled can
+    # become quadratic for long, repetitive legal texts.
+    original_text = norma.texto_original or ""
     consolidated_text = _presentation_consolidated_text(norma)
-    consolidated_lines = consolidated_text.split("\n") if consolidated_text else []
-
     diff_rows = []
-    matcher = SequenceMatcher(a=original_lines, b=consolidated_lines, autojunk=False)
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        if tag == "equal":
-            diff_rows.extend(
-                {
-                    "kind": "equal",
-                    "original_number": i + 1,
-                    "original": original_lines[i],
-                    "consolidated_number": j + 1,
-                    "consolidated": consolidated_lines[j],
-                }
-                for i, j in zip(range(i1, i2), range(j1, j2), strict=True)
-            )
-        elif tag == "replace":
-            span = max(i2 - i1, j2 - j1)
-            for offset in range(span):
-                original_index = i1 + offset
-                consolidated_index = j1 + offset
-                diff_rows.append(
+    original_lines = []
+    consolidated_lines = []
+    original_length = original_text.count("\n") + (1 if original_text else 0)
+    consolidated_length = consolidated_text.count("\n") + (1 if consolidated_text else 0)
+    comparison_available = (
+        max(original_length, consolidated_length) <= NORMA_COMPARE_MAX_LINES
+        and max(len(original_text), len(consolidated_text)) <= NORMA_COMPARE_MAX_CHARS
+    )
+
+    if comparison_available:
+        original_lines = original_text.split("\n") if original_text else []
+        consolidated_lines = consolidated_text.split("\n") if consolidated_text else []
+        matcher = SequenceMatcher(a=original_lines, b=consolidated_lines, autojunk=False)
+        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+            if tag == "equal":
+                diff_rows.extend(
                     {
-                        "kind": "changed",
-                        "original_number": original_index + 1 if original_index < i2 else None,
-                        "original": original_lines[original_index] if original_index < i2 else "",
-                        "consolidated_number": consolidated_index + 1
-                        if consolidated_index < j2
-                        else None,
-                        "consolidated": consolidated_lines[consolidated_index]
-                        if consolidated_index < j2
-                        else "",
+                        "kind": "equal",
+                        "original_number": i + 1,
+                        "original": original_lines[i],
+                        "consolidated_number": j + 1,
+                        "consolidated": consolidated_lines[j],
                     }
+                    for i, j in zip(range(i1, i2), range(j1, j2), strict=True)
                 )
-        else:
-            if tag == "delete":
+            elif tag == "replace":
+                span = max(i2 - i1, j2 - j1)
+                for offset in range(span):
+                    original_index = i1 + offset
+                    consolidated_index = j1 + offset
+                    diff_rows.append(
+                        {
+                            "kind": "changed",
+                            "original_number": original_index + 1 if original_index < i2 else None,
+                            "original": original_lines[original_index] if original_index < i2 else "",
+                            "consolidated_number": consolidated_index + 1
+                            if consolidated_index < j2
+                            else None,
+                            "consolidated": consolidated_lines[consolidated_index]
+                            if consolidated_index < j2
+                            else "",
+                        }
+                    )
+            elif tag == "delete":
                 diff_rows.extend(
                     {
                         "kind": "removed",
@@ -321,8 +333,11 @@ def norma_compare_view(request: HttpRequest, pk: int) -> HttpResponse:
         "consolidated_lines": consolidated_lines,
         "consolidated_text": consolidated_text,
         "eventos": eventos,
-        "original_length": len(original_lines),
-        "consolidated_length": len(consolidated_lines),
+        "original_length": original_length,
+        "consolidated_length": consolidated_length,
+        "comparison_available": comparison_available,
+        "comparison_max_lines": NORMA_COMPARE_MAX_LINES,
+        "comparison_max_chars": NORMA_COMPARE_MAX_CHARS,
         "diff_rows": diff_rows,
     }
 

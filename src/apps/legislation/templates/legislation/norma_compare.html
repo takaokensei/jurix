@@ -32,6 +32,7 @@
     </div>
 </div>
 
+{% if comparison_available %}
 <div class="compare-container" aria-label="Comparação linha a linha das versões">
     <div class="compare-panel original-text">
         <h2>📑 Comparação textual por linhas</h2>
@@ -54,6 +55,20 @@
         </div>
     </div>
 </div>
+{% else %}
+<section class="card compare-unavailable" role="status" aria-labelledby="compare-unavailable-title">
+    <h2 id="compare-unavailable-title">Comparação grande indisponível nesta visualização</h2>
+    <p>Esta norma excede o limite seguro para comparação síncrona ({{ comparison_max_lines }} linhas ou {{ comparison_max_chars }} caracteres por versão). Nenhum diff parcial foi gerado.</p>
+    <div class="compare-back">
+        <a href="{% url 'legislation:norma_detail' norma.pk %}" class="btn btn-secondary">Ler texto consolidado completo</a>
+        {% if norma.sapl_url %}
+        <a href="{{ norma.sapl_url }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Abrir versão oficial no SAPL</a>
+        {% elif norma.pdf_url %}
+        <a href="{{ norma.pdf_url }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Abrir PDF oficial</a>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
 
 {% if eventos %}
 <div class="card">

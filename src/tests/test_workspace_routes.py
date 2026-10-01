@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -223,6 +224,37 @@ def test_norma_compare_renders_aligned_diff_and_explicit_missing_effective_date(
     assert "Não informada" in detail_body
     assert "Data de vigência não registrada no corpus" in detail_body
     assert "Confirme a vigência na fonte oficial" in detail_body
+
+
+@pytest.mark.parametrize(
+    "original_text",
+    [
+        "linha\n" * 1_000 + "linha",
+        "x" * 120_001,
+    ],
+    ids=["line-limit", "character-limit"],
+)
+def test_norma_compare_declines_oversized_diff_and_links_to_full_versions(norma, original_text):
+    norma.texto_original = original_text
+    norma.sapl_url = "https://sapl.example.test/norma/123/"
+    norma.save(update_fields=["texto_original", "sapl_url"])
+
+    with patch("src.apps.legislation.views.SequenceMatcher") as matcher:
+        response = Client().get(f"/normas/{norma.pk}/compare/")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "Comparação grande indisponível nesta visualização" in body
+    assert "Nenhum diff parcial foi gerado." in body
+    assert "Ler texto consolidado completo" in body
+    assert 'href="https://sapl.example.test/norma/123/"' in body
+    assert "Comparação textual por linhas" not in body
+    matcher.assert_not_called()
+
+
+def test_norma_compare_unknown_norma_returns_not_found():
+    response = Client().get("/normas/999999/compare/")
+    assert response.status_code == 404
 
 
 def test_norma_tree_exposes_hierarchy_semantics(norma):
