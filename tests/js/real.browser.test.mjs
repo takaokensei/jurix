@@ -101,6 +101,7 @@ function createTestServer(handlers = {}) {
         <link rel="stylesheet" href="/static/css/jurix-figma.css">
         <link rel="stylesheet" href="/static/css/workspace.css">
       </head><body class="figma-theme workspace-page"><main class="workspace-content">
+        <span class="workspace-eyebrow">Workspace</span><span class="workspace-muted">Estado opcional</span>
         <form class="workspace-stack" data-settings-form>
           <label class="workspace-field"><span>Provedor de geração</span><select name="llm_provider"><option value="ollama">Ollama local</option><option value="openai">OpenAI</option><option value="compatible">Compatível</option></select></label>
           <label class="workspace-field"><span>Modelo</span><select name="model" data-ollama-model><option value="qwen2.5">qwen2.5</option><option value="llama3" selected>llama3</option></select></label>
@@ -683,6 +684,47 @@ test('real browser: provider settings expose a labelled keyboard path without hi
     });
     const response = await page.goto(`http://127.0.0.1:${port}/settings-test/`, { waitUntil: 'domcontentloaded' });
     assert.equal(response.status(), 200);
+
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate((value) => { document.documentElement.dataset.theme = value; }, theme);
+      for (const width of [360, 768, 1280]) {
+        await page.setViewport({ width, height: 844 });
+        const typography = await page.evaluate(() => {
+          const field = document.querySelector('.workspace-field');
+          const help = document.querySelector('.workspace-field small');
+          const eyebrow = document.querySelector('.workspace-eyebrow');
+          const muted = document.querySelector('.workspace-muted');
+          return {
+            field: Number.parseFloat(getComputedStyle(field).fontSize),
+            fieldLineHeight: Number.parseFloat(getComputedStyle(field).lineHeight),
+            help: Number.parseFloat(getComputedStyle(help).fontSize),
+            helpLineHeight: Number.parseFloat(getComputedStyle(help).lineHeight),
+            eyebrow: Number.parseFloat(getComputedStyle(eyebrow).fontSize),
+            muted: Number.parseFloat(getComputedStyle(muted).fontSize),
+            viewport: document.documentElement.clientWidth,
+            content: document.documentElement.scrollWidth,
+          };
+        });
+        assert.ok(typography.field >= 14 && typography.help >= 14, JSON.stringify({ theme, width, typography }));
+        assert.ok(typography.fieldLineHeight >= typography.field * 1.4 - 0.1, JSON.stringify(typography));
+        assert.ok(typography.helpLineHeight >= typography.help * 1.4 - 0.1, JSON.stringify(typography));
+        assert.ok(typography.eyebrow >= 12 && typography.muted >= 12, JSON.stringify(typography));
+        assert.equal(typography.content, typography.viewport, JSON.stringify({ theme, width, typography }));
+      }
+    }
+    await page.setViewport({ width: 1280, height: 844 });
+    await page.evaluate(() => { document.body.style.zoom = '200%'; });
+    const zoomedLayout = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      document: document.documentElement.scrollWidth,
+      formRight: document.querySelector('[data-settings-form]').getBoundingClientRect().right,
+      fontSize: Number.parseFloat(getComputedStyle(document.querySelector('.workspace-field')).fontSize),
+    }));
+    assert.equal(zoomedLayout.document, zoomedLayout.viewport, JSON.stringify(zoomedLayout));
+    assert.ok(zoomedLayout.formRight <= zoomedLayout.viewport, JSON.stringify(zoomedLayout));
+    assert.ok(zoomedLayout.fontSize >= 14, JSON.stringify(zoomedLayout));
+    await page.evaluate(() => { document.body.style.zoom = ''; });
+    await page.setViewport({ width: 390, height: 844 });
 
     await page.focus('select[name="llm_provider"]');
     await page.keyboard.press('End');
@@ -2156,6 +2198,8 @@ test('real browser: sidebar items stay inside the shell and fully offscreen when
           }),
           labels: labels.map((label) => ({
             visibleWidth: label.getBoundingClientRect().width,
+            scrollWidth: label.scrollWidth,
+            clientWidth: label.clientWidth,
             overflow: getComputedStyle(label).textOverflow,
             whiteSpace: getComputedStyle(label).whiteSpace,
           })),
@@ -2171,11 +2215,12 @@ test('real browser: sidebar items stay inside the shell and fully offscreen when
           assert.equal(mobileControls.columns, 1, `Controles abaixo de 400px devem ocupar uma coluna em ${theme}: ${JSON.stringify(mobileControls)}`);
           assert.ok(mobileControls.controls[1].top >= mobileControls.controls[0].bottom + 7);
           assert.ok(mobileControls.controls[2].top >= mobileControls.controls[1].bottom + 7);
-          assert.ok(mobileControls.labels.every((label) => label.whiteSpace === 'normal' && label.overflow === 'visible'));
+          assert.ok(mobileControls.labels.every((label) => label.whiteSpace === 'normal' && label.scrollWidth <= label.clientWidth), JSON.stringify(mobileControls));
         }
       }
     }
     await page.setViewport({ width: 390, height: 844 });
+    await page.waitForFunction(() => document.getElementById('sidebar')?.getBoundingClientRect().left <= -239.9);
 
     const measurements = await page.evaluate(() => {
       const sidebar = document.getElementById('sidebar');
@@ -2190,7 +2235,7 @@ test('real browser: sidebar items stay inside the shell and fully offscreen when
       };
     });
 
-    assert.equal(measurements.sidebarLeft, -240, 'A sidebar deve iniciar totalmente fora da tela');
+    assert.ok(Math.abs(measurements.sidebarLeft + 240) < 1, `A sidebar deve iniciar totalmente fora da tela: ${JSON.stringify(measurements)}`);
     assert.ok(
       measurements.navItems.every((item) => item.right <= 0),
       `Itens da sidebar fechada não devem vazar no viewport: ${JSON.stringify(measurements.navItems)}`
@@ -2435,8 +2480,10 @@ test('real browser: command palette keeps compact icons and focuses search on mo
       return { x: bounds.x, right: bounds.right, y: bounds.y, width: bounds.width, height: bounds.height };
     }));
     assert.equal(mobileSearchControls.length, 4);
-    assert.ok(mobileSearchControls[0].y === mobileSearchControls[1].y, `Os dois primeiros filtros devem compartilhar a primeira linha: ${JSON.stringify(mobileSearchControls)}`);
-    assert.ok(mobileSearchControls[2].y === mobileSearchControls[3].y, `Os dois últimos filtros devem compartilhar a segunda linha: ${JSON.stringify(mobileSearchControls)}`);
+    assert.ok(mobileSearchControls[0].y < mobileSearchControls[1].y
+      && mobileSearchControls[1].y < mobileSearchControls[2].y
+      && mobileSearchControls[2].y < mobileSearchControls[3].y,
+    `Abaixo de 400px os filtros devem empilhar para preservar rótulos completos: ${JSON.stringify(mobileSearchControls)}`);
     assert.ok(mobileSearchControls.every(({ x, right, width }) => width >= 100 && x >= 0 && right <= 390), JSON.stringify(mobileSearchControls));
     const promptPlaceholder = await page.$eval('#hero-search-input', (input) => {
       const context = document.createElement('canvas').getContext('2d');

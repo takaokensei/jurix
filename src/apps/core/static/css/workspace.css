@@ -49,7 +49,7 @@ html[data-sidebar-collapsed="true"] .workspace-nav-item { justify-content: cente
 .workspace-page-header { display: flex; justify-content: space-between; gap: 28px; align-items: flex-end; margin-bottom: 28px; }
 .workspace-page-header h1 { margin: 3px 0 8px; font-family: 'Lora', serif; font-size: clamp(30px,4vw,48px); letter-spacing: -.03em; color: var(--figma-text-white); }
 .workspace-page-header p { max-width: 700px; margin: 0; color: var(--figma-text-muted); line-height: 1.7; }
-.workspace-eyebrow { display: inline-flex; color: var(--figma-blue-light); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.workspace-eyebrow { display: inline-flex; color: var(--figma-blue-light); font-size: .75rem; line-height: 1.4; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .workspace-stack, .workspace-result-list, .workspace-history-list { display: grid; gap: 14px; }
 .workspace-card, .workspace-search-panel, .workspace-result-card, .workspace-history-card { border: 1px solid var(--figma-border); border-radius: 14px; background: rgba(19,29,47,.72); box-shadow: 0 18px 50px rgba(0,0,0,.18); backdrop-filter: blur(12px); }
 .workspace-card { padding: 24px; }
@@ -58,7 +58,7 @@ html[data-sidebar-collapsed="true"] .workspace-nav-item { justify-content: cente
 .workspace-card h2, .workspace-section-heading h2 { margin: 3px 0 0; color: var(--figma-text-white); font-size: 20px; }
 .workspace-badge, .workspace-score { display: inline-flex; align-items: center; padding: 5px 9px; border-radius: 999px; border: 1px solid rgba(96,165,250,.2); color: var(--figma-blue-light); background: rgba(59,130,246,.09); font-size: 10px; font-weight: 700; }
 .workspace-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; }
-.workspace-field { display: grid; gap: 8px; color: var(--figma-text-muted); font-size: 12px; font-weight: 600; }
+.workspace-field { display: grid; gap: 8px; color: var(--figma-text-muted); font-size: .875rem; line-height: 1.4; font-weight: 600; }
 .workspace-field-wide { grid-column: 1 / -1; }
 .workspace-field input, .workspace-field select, .workspace-search-panel input, .workspace-search-panel select { box-sizing: border-box; width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--figma-border); border-radius: 9px; background: rgba(7,13,24,.72); color: var(--figma-text-white); font: inherit; }
 .workspace-field select { appearance: none; padding-right: 40px; background-image: linear-gradient(45deg, transparent 50%, var(--figma-blue-light) 50%), linear-gradient(135deg, var(--figma-blue-light) 50%, transparent 50%); background-position: calc(100% - 19px) 18px, calc(100% - 12px) 18px; background-size: 7px 7px, 7px 7px; background-repeat: no-repeat; cursor: pointer; }
@@ -68,7 +68,7 @@ html[data-sidebar-collapsed="true"] .workspace-nav-item { justify-content: cente
 .workspace-auth-note { color: var(--figma-text-muted); font-size: 12px; }
 .workspace-result-snippet mark { color: var(--figma-blue-pale); background: rgba(96,165,250,.28); border-radius: 3px; padding: 0 2px; }
 .workspace-search-caveat { margin: -8px 0 16px; padding: 10px 12px; border-left: 3px solid var(--figma-amber-soft); border-radius: 8px; background: color-mix(in srgb, var(--figma-amber-deep) 20%, var(--figma-bg-root)); color: var(--figma-text-body); font-size: 12px; line-height: 1.6; }
-.workspace-field small { color: var(--figma-text-muted); font-weight: 400; }
+.workspace-field small { color: var(--figma-text-muted); font-size: .875rem; line-height: 1.4; font-weight: 400; }
 .workspace-option-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
 .workspace-fieldset { min-width: 0; display: grid; gap: 10px; border: 0; padding: 0; color: var(--figma-text-muted); }
 .workspace-fieldset legend { margin-bottom: 4px; color: var(--figma-text-white); font-size: 12px; font-weight: 600; }
@@ -87,7 +87,7 @@ html[data-sidebar-collapsed="true"] .workspace-nav-item { justify-content: cente
 .workspace-card h2 a:hover,
 .workspace-card h2 a:focus-visible { color: var(--figma-blue-light); text-decoration: underline; }
 .workspace-card p { color: var(--figma-text-muted); min-height: 42px; }
-.workspace-muted { color: var(--figma-text-muted); font-size: .84rem; }
+.workspace-muted { color: var(--figma-text-muted); font-size: .75rem; line-height: 1.4; }
 .workspace-dialog { width: min(480px, calc(100vw - 32px)); border: 1px solid var(--figma-border); border-radius: 16px; background: var(--figma-bg-surface); color: var(--figma-text-white); padding: 0; box-shadow: 0 24px 80px rgb(0 0 0 / .45); }
 .workspace-dialog::backdrop { background: rgb(2 6 23 / .72); backdrop-filter: blur(3px); }
 .workspace-dialog .workspace-form { display: grid; gap: 16px; padding: 24px; }
