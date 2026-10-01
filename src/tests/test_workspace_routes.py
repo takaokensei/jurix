@@ -60,6 +60,33 @@ def test_product_root_enters_the_assistant_flow():
     assert response["Location"] == "/assistente/"
 
 
+def test_anonymous_assistant_get_does_not_create_session_state_or_chat_records():
+    client = Client()
+
+    assert client.get("/assistente/").status_code == 200
+    assert client.get("/assistente/").status_code == 200
+    assert "temp_chat_session_id" not in client.session
+    assert "temp_chat_messages" not in client.session
+    assert ChatSession.objects.count() == 0
+
+
+def test_authenticated_assistant_get_does_not_change_active_session():
+    user = get_user_model().objects.create_user(username="assistant-get", password="pass")
+    active = ChatSession.objects.create(user=user, title="Ativa", is_active=True)
+    inactive = ChatSession.objects.create(user=user, title="Inativa", is_active=False)
+    client = Client()
+    client.force_login(user)
+
+    assert client.get(f"/assistente/{inactive.slug}/").status_code == 200
+    assert client.get(f"/assistente/{inactive.slug}/").status_code == 200
+    active.refresh_from_db()
+    inactive.refresh_from_db()
+
+    assert active.is_active is True
+    assert inactive.is_active is False
+    assert ChatSession.objects.filter(user=user).count() == 2
+
+
 def test_semantic_search_empty_state_omits_none_year_from_catalog_link():
     response = Client().get("/pesquisa/", {"q": "x" * 201})
     body = response.content.decode("utf-8")

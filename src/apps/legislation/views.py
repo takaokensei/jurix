@@ -427,12 +427,6 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                 try:
                     active_session = ChatSession.objects.get(slug=session_slug, user=request.user)
                     current_session_id = active_session.id
-                    # Mark as active
-                    ChatSession.objects.filter(user=request.user, is_active=True).update(
-                        is_active=False
-                    )
-                    active_session.is_active = True
-                    active_session.save(update_fields=["is_active"])
                 except ChatSession.DoesNotExist:
                     # Invalid slug, redirect to new chat
                     from django.shortcuts import redirect
@@ -451,13 +445,8 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
 
             # Don't create session automatically - only create when user sends first message
             # This matches Gemini behavior: show welcome state until user actually sends something
-        else:
-            # For anonymous users, create temporary session in session storage
-            session_id = request.session.get("temp_chat_session_id")
-            if not session_id:
-                # Create a temporary session object (not persisted)
-                session_id = f"temp_{request.session.session_key}"
-                request.session["temp_chat_session_id"] = session_id
+        # GET is intentionally read-only: anonymous session state and persisted
+        # chat records are initialized only when the user sends the first POST.
 
         prefill_question = ""
         norma_id_raw = request.GET.get("norma_id", "").strip()
