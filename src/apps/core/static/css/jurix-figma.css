@@ -1854,6 +1854,32 @@ html[data-sidebar-collapsed="true"] .figma-floating-input-bar { left: 72px; }
   .figma-logo-group { min-height: 44px; }
 }
 
+@media (max-width: 399px) {
+  .figma-theme #hero-search-form .figma-filters-row,
+  .figma-theme #conversation-input-bar .jurix-composer-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .figma-theme #hero-search-form .figma-search-dropdown,
+  .figma-theme #conversation-input-bar .jurix-composer-filters > .figma-search-dropdown {
+    height: auto;
+    min-height: 44px;
+    white-space: normal;
+  }
+
+  .figma-theme #hero-search-form .figma-search-dropdown span,
+  .figma-theme #conversation-input-bar .jurix-composer-filters [data-control-label] {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .figma-theme #conversation-input-bar .jurix-composer-filters > .figma-search-dropdown:last-child {
+    grid-column: auto;
+  }
+}
+
 @media (max-width: 768px) {
   html[data-sidebar-collapsed="true"] .figma-sidebar,
   html[data-sidebar-collapsed="true"] .figma-sidebar.collapsed { width: 240px; padding: 24px 16px; }

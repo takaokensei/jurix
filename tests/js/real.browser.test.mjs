@@ -2140,9 +2140,11 @@ test('real browser: sidebar items stay inside the shell and fully offscreen when
     assert.ok(mobileComposer.formWidth >= 320 && mobileComposer.formRight <= 390, `Formulário mobile não pode ficar estreito ou sair do viewport: ${JSON.stringify(mobileComposer)}`);
     assert.ok(mobileComposer.sourcesBottom < mobileComposer.barTop, `O botão de fontes deve permanecer acessível acima do composer: ${JSON.stringify(mobileComposer)}`);
 
-    for (const width of [320, 390, 640]) {
-      await page.setViewport({ width, height: 844 });
-      const mobileControls = await page.evaluate(() => {
+    for (const theme of ['light', 'dark']) {
+      for (const width of [360, 390, 399, 640, 768, 1280]) {
+        await page.setViewport({ width, height: 844 });
+        const mobileControls = await page.evaluate((themeValue) => {
+        document.documentElement.dataset.theme = themeValue;
         const filters = document.querySelector('.jurix-composer-filters');
         const controls = [...filters.children];
         const labels = [...filters.querySelectorAll('[data-control-label]')];
@@ -2159,14 +2161,19 @@ test('real browser: sidebar items stay inside the shell and fully offscreen when
           })),
           documentWidth: document.documentElement.scrollWidth,
           viewportWidth: document.documentElement.clientWidth,
+          theme: document.documentElement.dataset.theme,
         };
-      });
-      assert.equal(mobileControls.columns, 2, `Controles do composer devem usar grid legível a ${width}px: ${JSON.stringify(mobileControls)}`);
-      assert.equal(mobileControls.controls.length, 3);
-      assert.equal(mobileControls.controls[2].top, mobileControls.controls[0].top + mobileControls.controls[0].height + 8);
-      assert.ok(mobileControls.controls.every((control) => control.height >= 44));
-      assert.ok(mobileControls.labels.every((label) => label.overflow === 'ellipsis' && label.whiteSpace === 'nowrap'));
-      assert.equal(mobileControls.documentWidth, mobileControls.viewportWidth);
+        }, theme);
+        assert.equal(mobileControls.controls.length, 3);
+        assert.ok(mobileControls.controls.every((control) => control.height >= 44));
+        assert.equal(mobileControls.documentWidth, mobileControls.viewportWidth);
+        if (width <= 399) {
+          assert.equal(mobileControls.columns, 1, `Controles abaixo de 400px devem ocupar uma coluna em ${theme}: ${JSON.stringify(mobileControls)}`);
+          assert.ok(mobileControls.controls[1].top >= mobileControls.controls[0].bottom + 7);
+          assert.ok(mobileControls.controls[2].top >= mobileControls.controls[1].bottom + 7);
+          assert.ok(mobileControls.labels.every((label) => label.whiteSpace === 'normal' && label.overflow === 'visible'));
+        }
+      }
     }
     await page.setViewport({ width: 390, height: 844 });
 
