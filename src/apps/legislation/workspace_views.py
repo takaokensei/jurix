@@ -196,12 +196,12 @@ def legal_search_view(request):
                 # collapsed to one result per norm below.
                 k=50,
                 min_similarity=min_similarity,
+                norma_type=norma_type or None,
+                year=year,
             )
             results = [
                 {**result, "relevance_label": _relevance_label(result.get("similarity_score"))}
                 for result in results
-                if (not norma_type or result["dispositivo"].norma.tipo == norma_type)
-                and (not year or result["dispositivo"].norma.ano == year)
             ]
             results = _deduplicate_search_results(results)
         except Exception:

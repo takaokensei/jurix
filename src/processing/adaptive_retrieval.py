@@ -80,6 +80,8 @@ class RetrievalOptions:
     mode: str = "hybrid"
     norma_status: str = "consolidated"
     source_scope: str = "municipal"
+    norma_type: str | None = None
+    year: int | None = None
     max_sources: int = 12
     min_similarity: float = 0.0
     attachment_texts: tuple[str, ...] = field(default_factory=tuple)
@@ -109,7 +111,8 @@ class RetrievalOptions:
             else "none"
         )
         return (
-            f"retrieval=v3;mode={self.mode};status={self.norma_status};scope={self.source_scope};"
+            f"retrieval=v4;mode={self.mode};status={self.norma_status};scope={self.source_scope};"
+            f"tipo={self.norma_type or 'all'};ano={self.year or 'all'};"
             f"max={self.max_sources};min={self.min_similarity:.3f};"
             f"temporal={self.temporal_scope.fingerprint()};attachments={attachment_digest}"
         )
@@ -220,6 +223,10 @@ class AdaptiveRetriever:
             query |= Q(texto__icontains=token)
 
         queryset = Dispositivo.objects.select_related("norma", "dispositivo_pai").filter(query)
+        if options.norma_type:
+            queryset = queryset.filter(norma__tipo=options.norma_type)
+        if options.year is not None:
+            queryset = queryset.filter(norma__ano=options.year)
         if options.norma_status != "all":
             queryset = queryset.filter(norma__status=options.norma_status)
         if norma_id is not None:

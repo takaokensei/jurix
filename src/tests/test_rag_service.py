@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from src.apps.legislation.models import Dispositivo, Norma
 from src.processing.rag_service import RAGService
 
 
@@ -18,6 +19,54 @@ class TestRAGService:
     """
 
     """Test suite for RAGService with mocked Ollama."""
+
+    def test_sqlite_search_applies_norm_type_and_year_before_candidate_limit(self, db):
+        for index in range(50):
+            norma = Norma.objects.create(
+                tipo="Lei",
+                numero=str(index + 1),
+                ano=2025,
+                status="consolidated",
+                ementa="Norma irrelevante",
+                texto_original="",
+                texto_consolidado="",
+            )
+            Dispositivo.objects.create(
+                norma=norma,
+                tipo="artigo",
+                numero="1º",
+                ordem=1,
+                texto="política municipal de zoneamento urbano",
+            )
+        matching_norma = Norma.objects.create(
+            tipo="Decreto",
+            numero="99",
+            ano=2026,
+            status="consolidated",
+            ementa="Norma alvo",
+            texto_original="",
+            texto_consolidado="",
+        )
+        matching_device = Dispositivo.objects.create(
+            norma=matching_norma,
+            tipo="artigo",
+            numero="1º",
+            ordem=1,
+            texto="política municipal de zoneamento urbano",
+        )
+
+        service = object.__new__(RAGService)
+        filtered = service.semantic_search(
+            "política municipal zoneamento urbano",
+            k=10,
+            norma_type="Decreto",
+            year=2026,
+        )
+        unfiltered = service.semantic_search("política municipal zoneamento urbano", k=10)
+
+        assert [row["dispositivo"].id for row in filtered] == [matching_device.id]
+        assert len(unfiltered) == 10
+        assert matching_device.id not in {row["dispositivo"].id for row in unfiltered}
 
     @pytest.fixture
     def mock_norma(self):
@@ -128,7 +177,7 @@ class TestRAGService:
         mock_connection.cursor.return_value = mock_cursor
 
         # Execute search
-        results = service.semantic_search(query_text, k=5)
+        results = service.semantic_search(query_text, k=5, norma_type="Lei", year=2026)
 
         # Assertions
         assert len(results) == 1
@@ -138,6 +187,10 @@ class TestRAGService:
         # Verify cache was used (no Ollama call)
         mock_ollama.generate_embedding.assert_not_called()
         service.cache.get_embedding.assert_called_once_with(query_text, service.model)
+        sql, params = mock_cursor.execute.call_args.args
+        assert sql.index("norma_id IN") < sql.index("LIMIT %s")
+        assert "AND tipo = %s" in sql and "AND ano = %s" in sql
+        assert params[-3:-1] == ["Lei", 2026]
 
     @patch("src.processing.rag_service.OllamaService")
     @patch("src.processing.rag_service.Dispositivo")

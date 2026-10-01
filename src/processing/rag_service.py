@@ -90,7 +90,13 @@ class RAGService:
         self.cache = get_cache_service() if use_cache else None
 
     def semantic_search(
-        self, query_text: str, k: int = 10, norma_id: int | None = None, min_similarity: float = 0.0
+        self,
+        query_text: str,
+        k: int = 10,
+        norma_id: int | None = None,
+        min_similarity: float = 0.0,
+        norma_type: str | None = None,
+        year: int | None = None,
     ) -> list[dict[str, Any]]:
         """
         Perform semantic search on Dispositivos using pgvector similarity.
@@ -125,7 +131,12 @@ class RAGService:
             rows = AdaptiveRetriever(self)._lexical(
                 query_text,
                 max(1, k),
-                RetrievalOptions(norma_status="all", source_scope="all"),
+                RetrievalOptions(
+                    norma_status="all",
+                    source_scope="all",
+                    norma_type=norma_type,
+                    year=year,
+                ),
                 norma_id=norma_id,
             )
             return [
@@ -133,6 +144,8 @@ class RAGService:
                 for row in rows
                 if row["similarity_score"] >= min_similarity
                 and (norma_id is None or row["dispositivo"].norma_id == norma_id)
+                and (norma_type is None or row["dispositivo"].norma.tipo == norma_type)
+                and (year is None or row["dispositivo"].norma.ano == year)
             ][:k]
 
         # Step 1: Try to get cached embedding
@@ -187,6 +200,17 @@ class RAGService:
         if norma_id:
             sql_query += " AND norma_id = %s"
             params.append(norma_id)
+
+        norma_table = Dispositivo._meta.get_field("norma").remote_field.model._meta.db_table
+        if norma_type is not None or year is not None:
+            sql_query += f" AND norma_id IN (SELECT id FROM {norma_table} WHERE 1 = 1"
+            if norma_type is not None:
+                sql_query += " AND tipo = %s"
+                params.append(norma_type)
+            if year is not None:
+                sql_query += " AND ano = %s"
+                params.append(year)
+            sql_query += ")"
 
         # Filter by minimum similarity (convert to distance: distance = 1 - similarity)
         if min_similarity > 0:
