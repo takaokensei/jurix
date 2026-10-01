@@ -73,6 +73,22 @@ def test_workspace_surfaces_render_without_server_errors(norma):
         assert b"Traceback" not in response.content
 
 
+def test_collections_and_assistant_copy_describe_only_available_products():
+    anonymous = Client()
+    collections = anonymous.get("/colecoes/").content.decode()
+    assistant = anonymous.get("/assistente/").content.decode()
+
+    assert "normas municipais salvas" in collections
+    assert "normas e evidências" not in collections
+    assert "legislação municipal" in assistant
+    assert "jurisprudência..." not in assistant
+
+    user = get_user_model().objects.create_user(username="collections-copy", password="pass")
+    authenticated = Client()
+    authenticated.force_login(user)
+    assert "Adicione normas municipais à coleção" in authenticated.get("/colecoes/").content.decode()
+
+
 def test_product_root_enters_the_assistant_flow():
     response = Client().get("/")
     assert response.status_code == 302

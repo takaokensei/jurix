@@ -7,7 +7,7 @@
 
 {% block content %}
 <section class="workspace-page-header">
-    <div><span class="workspace-eyebrow">Organização</span><h1>Coleções</h1><p>Reúna normas, pesquisas e evidências em dossiês de um mesmo assunto jurídico.</p></div>
+    <div><span class="workspace-eyebrow">Organização</span><h1>Coleções</h1><p>Organize normas municipais salvas em coleções por assunto jurídico.</p></div>
     {% if user.is_authenticated %}<button class="workspace-button workspace-button-primary" type="button" data-open-collection-form>Nova coleção</button>{% endif %}
 </section>
 
@@ -27,7 +27,7 @@
     <div class="workspace-empty-icon" aria-hidden="true">▱</div>
     <span class="workspace-eyebrow">Sem coleções ainda</span>
     <h2>{% if user.is_authenticated %}Crie seu primeiro dossiê jurídico{% else %}Coleções persistentes para seu trabalho jurídico{% endif %}</h2>
-    <p>{% if user.is_authenticated %}Reúna normas e evidências relacionadas para acompanhar um assunto jurídico.{% else %}Dossiês mantêm normas e evidências organizadas por assunto.{% endif %}</p>
+    <p>{% if user.is_authenticated %}Adicione normas municipais à coleção para acompanhar um assunto jurídico.{% else %}Coleções organizam normas municipais por assunto jurídico.{% endif %}</p>
     {% if not user.is_authenticated %}
     <div class="workspace-auth-notice" role="note">
         <strong>Criação de coleções indisponível</strong>
