@@ -9,7 +9,7 @@ Provides RESTful API endpoints for:
 
 from django.urls import path
 
-from . import api_views, temporal_api
+from . import api_cancel, api_views, temporal_api
 
 app_name = "legislation_api"
 
@@ -31,6 +31,7 @@ urlpatterns = [
     # RAG answer endpoint
     path("search/answer/", api_views.rag_answer_api, name="rag_answer"),
     path("search/answer/stream/", api_views.chatbot_stream_api, name="rag_answer_stream"),
+    path("search/cancel/", api_cancel.cancel_generation_api, name="search_cancel"),
     # Norma listing
     path("normas/", api_views.norma_list_api, name="norma_list"),
     path("suggestions/", api_views.dynamic_suggestions_api, name="dynamic_suggestions"),

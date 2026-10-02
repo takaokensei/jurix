@@ -51,6 +51,13 @@ from src.processing.chat_turns import (
     transition_turn,
 )
 from src.processing.conversation_titles import build_conversation_title
+from src.processing.generation_control import (
+    attach_ephemeral_session_cookie,
+    claim_generation_finalization,
+    finish_generation,
+    is_generation_cancelled,
+    register_generation,
+)
 from src.processing.llm_provider import validate_provider_config
 from src.processing.normative_reference import parse_normative_references
 from src.observability.safe_logging import log_exception_safely
@@ -602,13 +609,30 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
         except Exception as e:
             return _server_error("persisting user message", e)
 
+    generation_id, cancel_token = register_generation(request)
+
     def event_stream():
         sources_list = []
         accumulated_answer = ""
         assistant_persisted = False
+        generation_cancelled = False
         stream_gen = None
+        pipeline_stage = "queued"
+        retrieval_reason_code = None
+
+        def mark_stream_cancelled():
+            nonlocal generation_cancelled
+            generation_cancelled = True
+            finish_generation(generation_id, "cancelled")
+            if chat_turn and ChatTurn.objects.filter(pk=chat_turn.pk, state="in_progress").exists():
+                transition_turn(chat_turn, "cancelled")
+
         try:
-            yield f"data: {json.dumps({'type': 'status', 'status': 'queued'})}\n\n"
+            yield f"data: {json.dumps({'type': 'status', 'status': 'queued', 'cancel_token': cancel_token})}\n\n"
+            if is_generation_cancelled(generation_id):
+                mark_stream_cancelled()
+                yield f"data: {json.dumps({'type': 'status', 'status': 'cancelled'})}\n\n"
+                return
             if chat_session:
                 yield f"data: {json.dumps({'type': 'session', 'session_id': chat_session.id, 'session_slug': chat_session.slug})}\n\n"
             if retrieval_options.temporal_scope.as_of:
@@ -632,6 +656,11 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     grounded=False,
                     request_id=request_id,
                 )
+                terminal_state = claim_generation_finalization(generation_id)
+                if terminal_state == "cancelled":
+                    mark_stream_cancelled()
+                    yield f"data: {json.dumps({'type': 'status', 'status': 'cancelled'})}\n\n"
+                    return
                 yield f"data: {json.dumps({'type': 'status', 'status': 'insufficient_evidence'})}\n\n"
                 if request.user.is_authenticated and chat_session:
                     with transaction.atomic():
@@ -646,6 +675,7 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                         if chat_turn:
                             transition_turn(chat_turn, "completed")
                     assistant_persisted = True
+                finish_generation(generation_id, "completed")
                 yield f"data: {json.dumps({'type': 'status', 'status': 'completed'})}\n\n"
                 yield f"data: {json.dumps({'type': 'done', 'answer': final_answer, **metadata, 'sources': [], 'contract': provenance})}\n\n"
                 return
@@ -660,7 +690,23 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                 text_provider=text_provider,
             )
 
-            for item in stream_gen:
+            stream_iterator = iter(stream_gen)
+            while True:
+                # Poll between upstream events. This ends delivery promptly after
+                # control returns from the provider; it does not interrupt a
+                # currently blocked Ollama/provider request.
+                if is_generation_cancelled(generation_id):
+                    mark_stream_cancelled()
+                    yield f"data: {json.dumps({'type': 'status', 'status': 'cancelled'})}\n\n"
+                    return
+                try:
+                    item = next(stream_iterator)
+                except StopIteration:
+                    break
+                if is_generation_cancelled(generation_id):
+                    mark_stream_cancelled()
+                    yield f"data: {json.dumps({'type': 'status', 'status': 'cancelled'})}\n\n"
+                    return
                 ev_type = item.get("event")
                 if ev_type == "status":
                     status = item.get("status")
@@ -702,7 +748,11 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     }
                     yield f"data: {json.dumps(payload)}\n\n"
                 elif ev_type == "done":
-                    final_answer = item.get("answer", "")
+                    terminal_state = claim_generation_finalization(generation_id)
+                    if terminal_state == "cancelled":
+                        mark_stream_cancelled()
+                        yield f"data: {json.dumps({'type': 'status', 'status': 'cancelled'})}\n\n"
+                        return
                     grounded = item.get("grounded") is True
                     answer_sources = sources_list if grounded else []
                     provenance = build_answer_contract(
@@ -762,23 +812,38 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     ):
                         title = build_conversation_title(question, answer_sources)
                         yield f"data: {json.dumps({'type': 'title', 'title': title, 'client_session_id': client_session_id})}\n\n"
+                    finish_generation(generation_id, "completed")
                     yield f"data: {json.dumps({'type': 'status', 'status': 'completed'})}\n\n"
                     yield f"data: {json.dumps(payload)}\n\n"
         except Exception as e:
             log_exception_safely(logger, "Error in chatbot_stream_api stream", e)
+            if is_generation_cancelled(generation_id):
+                generation_cancelled = True
             if chat_turn:
                 try:
-                    transition_turn(chat_turn, "failed")
+                    transition_turn(chat_turn, "cancelled" if generation_cancelled else "failed")
                 except Exception:
                     pass
-            yield f"data: {json.dumps({'type': 'status', 'status': 'failed'})}\n\n"
-            err_payload = {"type": "error", "error": _format_error_message(e)}
+            finish_generation(generation_id, "cancelled" if generation_cancelled else "failed")
+            if generation_cancelled:
+                yield f"data: {json.dumps({'type': 'status', 'status': 'cancelled'})}\n\n"
+                return
+            reason_code = "generation_failed" if pipeline_stage in {"generating", "grounding"} else "request_failed"
+            yield f"data: {json.dumps({'type': 'status', 'status': 'failed', 'reason_code': reason_code})}\n\n"
+            safe_error = (
+                "A geração da resposta não foi concluída. Nenhum rascunho sem validação foi exibido; tente novamente."
+                if reason_code == "generation_failed"
+                else _format_error_message(e)
+            )
+            err_payload = {"type": "error", "error": safe_error, "reason_code": reason_code}
             yield f"data: {json.dumps(err_payload)}\n\n"
         finally:
+            if is_generation_cancelled(generation_id):
+                generation_cancelled = True
             if chat_turn and not assistant_persisted:
                 try:
                     if ChatTurn.objects.filter(pk=chat_turn.pk, state="in_progress").exists():
-                        transition_turn(chat_turn, "interrupted")
+                        transition_turn(chat_turn, "cancelled" if generation_cancelled else "interrupted")
                 except Exception:
                     pass
             if stream_gen is not None and hasattr(stream_gen, "close"):
@@ -809,8 +874,15 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     log_exception_safely(
                         logger, "Error persisting interrupted assistant message", msg_err
                     )
+            if assistant_persisted:
+                finish_generation(generation_id, "completed")
+            elif generation_cancelled:
+                finish_generation(generation_id, "cancelled")
+            else:
+                finish_generation(generation_id, "interrupted")
 
     response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
     response["Cache-Control"] = "no-cache"
     response["X-Accel-Buffering"] = "no"
+    attach_ephemeral_session_cookie(request, response)
     return response
