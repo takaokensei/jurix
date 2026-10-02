@@ -1,0 +1,129 @@
+/* Jurix design tokens — loaded after the legacy palette, before components. */
+:root {
+  color-scheme: dark;
+
+  --jurix-canvas: #081220;
+  --jurix-surface: #111827;
+  --jurix-sidebar: #0B111E;
+  --jurix-surface-hover: #1E293B;
+  --jurix-text: #F8FAFC;
+  --jurix-text-body: #E2E8F0;
+  --jurix-text-muted: #94A3B8;
+  --jurix-action: #2563EB;
+  --jurix-action-hover: #1D4ED8;
+  --jurix-on-action: #FFFFFF;
+  --jurix-link: #93C5FD;
+  --jurix-border: #334155;
+  --jurix-control-border: #64748B;
+  --jurix-focus: #93C5FD;
+  --jurix-success: #6EE7B7;
+  --jurix-warning: #FDE68A;
+  --jurix-danger: #FCA5A5;
+  --jurix-danger-action: #B42332;
+
+  --jurix-type-caption: .8125rem;
+  --jurix-leading-caption: 1.45;
+  --jurix-type-label: .875rem;
+  --jurix-leading-label: 1.45;
+  --jurix-type-body: 1rem;
+  --jurix-leading-body: 1.65;
+  --jurix-type-lead: 1.125rem;
+  --jurix-leading-lead: 1.55;
+  --jurix-type-section: 1.25rem;
+  --jurix-leading-section: 1.4;
+  --jurix-type-title: clamp(1.5rem, 2.5vw, 2rem);
+  --jurix-leading-title: 1.2;
+
+  --jurix-space-1: .25rem;
+  --jurix-space-2: .5rem;
+  --jurix-space-3: .75rem;
+  --jurix-space-4: 1rem;
+  --jurix-space-5: 1.5rem;
+  --jurix-space-6: 2rem;
+  --jurix-space-7: 3rem;
+  --jurix-radius-sm: 10px;
+  --jurix-radius-md: 12px;
+  --jurix-radius-lg: 16px;
+  --jurix-elevation-1: 0 1px 2px rgb(0 0 0 / .18);
+  --jurix-elevation-2: 0 8px 24px rgb(0 0 0 / .24);
+  --jurix-elevation-3: 0 24px 64px rgb(0 0 0 / .34);
+  --jurix-motion-fast: 120ms;
+  --jurix-motion-standard: 180ms;
+  --jurix-motion-normal: 180ms;
+  --jurix-motion-drawer: 220ms;
+  --jurix-ease-standard: cubic-bezier(.2, .8, .2, 1);
+  --jurix-focus-ring: 0 0 0 3px rgb(147 197 253 / .3);
+  --jurix-surface-elevated: #111827;
+
+  /* Backward-compatible aliases used by existing component stylesheets. */
+  --figma-bg-root: var(--jurix-canvas);
+  --figma-bg-sidebar: var(--jurix-sidebar);
+  --figma-bg-surface: var(--jurix-surface);
+  --figma-bg-button: var(--jurix-surface-hover);
+  --figma-bg-dropdown: var(--jurix-canvas);
+  --figma-border: var(--jurix-border);
+  --figma-border-strong: var(--jurix-control-border);
+  --figma-blue-primary: var(--jurix-action);
+  --figma-blue-dark: var(--jurix-action-hover);
+  --figma-blue-light: var(--jurix-link);
+  --figma-green: var(--jurix-success);
+  --figma-amber: var(--jurix-warning);
+  --figma-red: var(--jurix-danger);
+  --figma-red-action: var(--jurix-danger-action);
+  --figma-text-white: var(--jurix-text);
+  --figma-text-on-accent: var(--jurix-on-action);
+  --figma-text-muted: var(--jurix-text-muted);
+  --figma-text-body: var(--jurix-text-body);
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+  --font-serif: Georgia, 'Times New Roman', serif;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --jurix-canvas: #F7F9FC;
+  --jurix-surface: #FFFFFF;
+  --jurix-sidebar: #FFFFFF;
+  --jurix-surface-hover: #EAF0F8;
+  --jurix-text: #0F172A;
+  --jurix-text-body: #334155;
+  --jurix-text-muted: #475569;
+  --jurix-action: #1D4ED8;
+  --jurix-action-hover: #1E40AF;
+  --jurix-on-action: #FFFFFF;
+  --jurix-link: #1D4ED8;
+  --jurix-border: #D7E0EC;
+  --jurix-control-border: #64748B;
+  --jurix-focus: #1D4ED8;
+  --jurix-success: #047857;
+  --jurix-warning: #92400E;
+  --jurix-danger: #B91C1C;
+  --jurix-danger-action: #B42332;
+  --jurix-focus-ring: 0 0 0 3px rgb(29 78 216 / .2);
+  --jurix-surface-elevated: #FFFFFF;
+
+  --figma-bg-root: var(--jurix-canvas);
+  --figma-bg-sidebar: var(--jurix-sidebar);
+  --figma-bg-surface: var(--jurix-surface);
+  --figma-bg-button: var(--jurix-surface-hover);
+  --figma-bg-dropdown: var(--jurix-surface);
+  --figma-border: var(--jurix-border);
+  --figma-border-strong: #AAB8CA;
+  --figma-blue-primary: var(--jurix-action);
+  --figma-blue-dark: var(--jurix-action-hover);
+  --figma-blue-light: var(--jurix-link);
+  --figma-green: var(--jurix-success);
+  --figma-amber: var(--jurix-warning);
+  --figma-red: var(--jurix-danger);
+  --figma-red-action: var(--jurix-danger-action);
+  --figma-text-white: var(--jurix-text);
+  --figma-text-on-accent: var(--jurix-on-action);
+  --figma-text-muted: var(--jurix-text-muted);
+  --figma-text-dim: #53657E;
+  --figma-text-body: var(--jurix-text-body);
+  --figma-light-root: var(--jurix-canvas);
+  --figma-light-text: var(--jurix-text);
+  --figma-light-text-body: var(--jurix-text-body);
+  --figma-light-muted: var(--jurix-text-muted);
+}

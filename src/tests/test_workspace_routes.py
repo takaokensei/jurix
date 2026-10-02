@@ -106,7 +106,7 @@ def test_collections_and_assistant_copy_describe_only_available_products():
     )
 
 
-def test_google_fonts_are_loaded_only_when_the_matching_csp_opt_in_is_enabled():
+def test_workspace_uses_local_system_fonts_regardless_of_google_fonts_csp_opt_in():
     client = Client()
     routes = ("/assistente/", "/normas/", "/configuracoes/")
     with override_settings(CSP_ALLOW_GOOGLE_FONTS=False):
@@ -120,9 +120,9 @@ def test_google_fonts_are_loaded_only_when_the_matching_csp_opt_in_is_enabled():
     with override_settings(CSP_ALLOW_GOOGLE_FONTS=True):
         for route in routes:
             response = client.get(route)
-            assert b"fonts.googleapis.com/css2" in response.content
-            assert "https://fonts.googleapis.com" in response["Content-Security-Policy"]
-            assert "https://fonts.gstatic.com" in response["Content-Security-Policy"]
+            assert response.status_code == 200
+            assert b"fonts.googleapis.com" not in response.content
+            assert b"fonts.gstatic.com" not in response.content
 
     styles = Path("src/apps/core/static/css/jurix-figma.css").read_text(encoding="utf-8")
     assert "--font-sans: system-ui" in styles

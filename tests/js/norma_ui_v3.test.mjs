@@ -260,7 +260,7 @@ test('legal search does not force mobile autofocus and uses a compact empty stat
   assert.match(template, /workspace-empty-state workspace-search-empty/);
   assert.match(template, /class="workspace-search-caveat" role="note"/);
   assert.match(template, /não uma conclusão jurídica/);
-  assert.match(styles, /\.workspace-search-caveat \{[^}]*font-size: 12px;[^}]*line-height: 1\.6/);
+  assert.match(styles, /\.workspace-search-caveat \{[^}]*font-size: var\(--jurix-type-label(?:,\s*\.875rem)?\);[^}]*line-height: var\(--jurix-leading-body(?:,\s*1\.65)?\)/);
   assert.match(template, /Buscar no acervo normativo/);
   assert.match(template, /norma_list' %\}\?q=\{\{ query\|urlencode \}\}&amp;tipo=\{\{ norma_type\|urlencode \}\}&amp;ano=\{\{ year\|default_if_none:''\|urlencode \}\}/);
   assert.match(styles, /\.workspace-button-secondary \{[^}]*background: rgba\(255,255,255,\.035\);[^}]*color: var\(--figma-text-body\);/);

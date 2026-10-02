@@ -8,13 +8,9 @@
     <script src="{% static 'js/theme.js' %}?v=20260930-persist-sidebar1"></script>
     <link rel="icon" type="image/svg+xml" href="{% static 'img/logo-icon.svg' %}?v=20260930-quill1">
     <title>{% block title %}Jurix{% endblock %}</title>
-    {% if csp_allow_google_fonts %}
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    {% endif %}
     <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20260930-light-dim-contrast1-controls44">
-    <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20260930-axe-kbd-contrast1">
+    <link rel="stylesheet" href="{% static 'css/jurix-tokens.css' %}?v=20261002-design-tokens1">
+    <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20261002-design-tokens1">
     <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}?v=20260930-focus-outline1">
     <link rel="stylesheet" href="{% static 'css/jurix-sidebar.css' %}?v=20260930-unified1">
     <meta name="jurix-authenticated" content="{{ request.user.is_authenticated|yesno:'true,false' }}">
