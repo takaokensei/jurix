@@ -11,6 +11,8 @@
     <span class="workspace-muted">{{ collection.normas.count }} norma{{ collection.normas.count|pluralize }}</span>
 </section>
 
+{% if collection_form_error %}<p id="collection-norma-id-error" class="workspace-confirm-error" role="alert">{{ collection_form_error }}</p>{% endif %}
+
 {% if collection.normas.all %}
 <section class="workspace-card-grid" aria-label="Normas desta coleção">
 {% for norma in collection.normas.all %}

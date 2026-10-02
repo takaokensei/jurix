@@ -322,22 +322,55 @@ def legal_search_view(request):
 
 def collections_view(request):
     """List and create authenticated collections without fake client-only state."""
+    form_values = {"name": "", "description": ""}
     if request.method == "POST":
         if not request.user.is_authenticated:
             messages.info(request, "Entre para criar coleções persistentes.")
             return redirect("workspace:collections")
-        name = request.POST.get("name", "").strip()
-        description = request.POST.get("description", "").strip()
-        if not name:
-            messages.error(request, "Informe um nome para a coleção.")
-        else:
-            collection, created = Collection.objects.get_or_create(
-                user=request.user, name=name, defaults={"description": description}
+        form_values = {
+            "name": request.POST.get("name", ""),
+            "description": request.POST.get("description", ""),
+        }
+        name = form_values["name"].strip()
+        description = form_values["description"].strip()
+        form_errors = {}
+        if not name or len(name) > 120:
+            form_errors["name"] = "Informe um nome com até 120 caracteres."
+        if len(description) > 500:
+            form_errors["description"] = "A descrição deve ter no máximo 500 caracteres."
+        if form_errors:
+            return render(
+                request,
+                "legislation/workspace/collections.html",
+                {
+                    "norma_count": Norma.objects.filter(status="consolidated").count(),
+                    "collections": list(
+                        Collection.objects.filter(user=request.user)
+                        .annotate(norma_count=Count("normas"))
+                        .order_by("-updated_at", "name")
+                    ),
+                    "active_nav": "collections",
+                    "collection_form_values": form_values,
+                    "collection_form_errors": form_errors,
+                    "collection_dialog_open": True,
+                },
+                status=400,
             )
-            if not created and description and collection.description != description:
-                collection.description = description
-                collection.save(update_fields=["description", "updated_at"])
-            messages.success(request, "Coleção criada." if created else "Coleção atualizada.")
+
+        collection, created = Collection.objects.get_or_create(
+            user=request.user, name=name, defaults={"description": description}
+        )
+        updated = False
+        if not created and description and collection.description != description:
+            collection.description = description
+            collection.save(update_fields=["description", "updated_at"])
+            updated = True
+        if created:
+            messages.success(request, "Coleção criada.")
+        elif updated:
+            messages.success(request, "Coleção atualizada.")
+        else:
+            messages.info(request, "A coleção já existe; nenhum dado foi alterado.")
         return redirect("workspace:collections")
 
     collections = []
@@ -354,6 +387,9 @@ def collections_view(request):
             "norma_count": Norma.objects.filter(status="consolidated").count(),
             "collections": collections,
             "active_nav": "collections",
+            "collection_form_values": form_values,
+            "collection_form_errors": {},
+            "collection_dialog_open": False,
         },
     )
 
@@ -374,17 +410,49 @@ def collection_detail_view(request, pk):
 
         raise Http404
     if request.method == "POST":
-        norma_id = request.POST.get("norma_id")
+        submitted_norma_id = request.POST.get("norma_id", "")
         action = request.POST.get("action")
-        norma = Norma.objects.filter(pk=norma_id, status="consolidated").first()
-        if norma is None or action not in {"add", "remove"}:
-            messages.error(request, "Não foi possível atualizar esta coleção.")
+        try:
+            parsed_norma_id = int(submitted_norma_id)
+        except (TypeError, ValueError):
+            parsed_norma_id = 0
+        if not 0 < parsed_norma_id <= 9_223_372_036_854_775_807:
+            norma = None
         elif action == "add":
-            collection.normas.add(norma)
-            messages.success(request, "Norma adicionada à coleção.")
+            norma = Norma.objects.filter(pk=parsed_norma_id, status="consolidated").first()
+        elif action == "remove":
+            norma = Norma.objects.filter(pk=parsed_norma_id, status="consolidated").first()
         else:
-            collection.normas.remove(norma)
-            messages.success(request, "Norma removida da coleção.")
+            norma = None
+
+        if norma is None or action not in {"add", "remove"}:
+            error = (
+                "Informe um identificador de norma válido."
+                if norma is None
+                else "Ação de coleção inválida."
+            )
+            return render(
+                request,
+                "legislation/workspace/collection_detail.html",
+                {
+                    "collection": collection,
+                    "active_nav": "collections",
+                    "collection_form_error": error,
+                },
+                status=400,
+            )
+        if action == "add":
+            if collection.normas.filter(pk=norma.pk).exists():
+                messages.info(request, "Esta norma já está nesta coleção.")
+            else:
+                collection.normas.add(norma)
+                messages.success(request, "Norma adicionada à coleção.")
+        else:
+            if not collection.normas.filter(pk=norma.pk).exists():
+                messages.info(request, "Esta norma já não está nesta coleção.")
+            else:
+                collection.normas.remove(norma)
+                messages.success(request, "Norma removida da coleção.")
         return redirect("workspace:collection_detail", pk=collection.pk)
     return render(
         request,

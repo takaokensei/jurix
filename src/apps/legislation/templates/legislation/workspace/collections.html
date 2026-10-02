@@ -40,12 +40,14 @@
 {% endif %}
 
 {% if user.is_authenticated %}
-<dialog class="workspace-dialog" data-collection-dialog aria-labelledby="collection-dialog-title">
+<dialog class="workspace-dialog" data-collection-dialog aria-labelledby="collection-dialog-title"{% if collection_dialog_open %} open{% endif %}>
     <form method="post" class="workspace-form">
         {% csrf_token %}
         <h2 id="collection-dialog-title">Nova coleção</h2>
-        <label>Nome<input name="name" maxlength="120" required autocomplete="off"></label>
-        <label>Descrição <span>(opcional)</span><textarea name="description" maxlength="500" rows="3"></textarea></label>
+        <label for="collection-name">Nome<input id="collection-name" name="name" maxlength="120" required autocomplete="off" value="{{ collection_form_values.name }}"{% if collection_form_errors.name %} aria-invalid="true" aria-describedby="collection-name-error"{% endif %}></label>
+        {% if collection_form_errors.name %}<small id="collection-name-error" class="workspace-confirm-error" role="alert">{{ collection_form_errors.name }}</small>{% endif %}
+        <label for="collection-description">Descrição <span>(opcional)</span><textarea id="collection-description" name="description" maxlength="500" rows="3"{% if collection_form_errors.description %} aria-invalid="true" aria-describedby="collection-description-error"{% endif %}>{{ collection_form_values.description }}</textarea></label>
+        {% if collection_form_errors.description %}<small id="collection-description-error" class="workspace-confirm-error" role="alert">{{ collection_form_errors.description }}</small>{% endif %}
         <div class="workspace-dialog-actions"><button type="button" class="workspace-button workspace-button-ghost" data-close-collection-form>Cancelar</button><button class="workspace-button workspace-button-primary" type="submit">Salvar coleção</button></div>
     </form>
 </dialog>
