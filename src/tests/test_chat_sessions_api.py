@@ -54,7 +54,7 @@ def add_messages(session, n, *, first_user_text="Pergunta"):
     return out
 
 
-SESSION_KEYS = {"id", "title", "slug", "is_active", "created_at", "updated_at"}
+SESSION_KEYS = {"id", "title", "slug", "is_active", "is_pinned", "created_at", "updated_at"}
 
 
 # ------------------------------------------------------------- contract: list
@@ -94,6 +94,15 @@ class TestListContract:
             ChatSession.objects.create(user=user, title=f"s{i}")
         n = client.get(SESSIONS, {"limit": raw}).json()["count"]
         assert n == min(expected, 7)
+
+    def test_pinned_sessions_sort_before_recent_unpinned_sessions(self, client, user):
+        recent = ChatSession.objects.create(user=user, title="Recente")
+        ChatSession.objects.create(user=user, title="Fixada", is_pinned=True)
+        ChatSession.objects.filter(pk=recent.pk).update(updated_at=timezone.now() + timedelta(days=1))
+        assert [item["title"] for item in client.get(SESSIONS).json()["sessions"]] == [
+            "Fixada",
+            "Recente",
+        ]
 
 
 # ------------------------------------------------------------ contract: create
@@ -172,6 +181,37 @@ class TestDetailAndSlugContract:
 
 
 class TestDetailMisc:
+    def test_patch_renames_and_pins_owned_session(self, client, user):
+        session = ChatSession.objects.create(user=user, title="Consulta")
+        response = client.patch(
+            f"{SESSIONS}{session.id}/",
+            data='{"title":"Lei do Município","is_pinned":true}',
+            content_type="application/json",
+        )
+        assert response.status_code == 200
+        assert response.json()["session"]["title"] == "Lei do Município"
+        assert response.json()["session"]["is_pinned"] is True
+
+    def test_patch_rejects_invalid_fields_and_foreign_sessions(self, client, user):
+        session = ChatSession.objects.create(user=user, title="Consulta")
+        invalid = client.patch(
+            f"{SESSIONS}{session.id}/",
+            data='{"is_pinned":"yes"}',
+            content_type="application/json",
+        )
+        assert invalid.status_code == 400
+        assert client.patch(
+            f"{SESSIONS}{session.id}/",
+            data='{"user_id":999}',
+            content_type="application/json",
+        ).status_code == 400
+        foreign = ChatSession.objects.create(user=User.objects.create_user("outra"), title="Privada")
+        assert client.patch(
+            f"{SESSIONS}{foreign.id}/",
+            data='{"is_pinned":true}',
+            content_type="application/json",
+        ).status_code == 404
+
     def test_delete_removes_session_and_messages(self, client, user):
         s = ChatSession.objects.create(user=user, title="t")
         add_messages(s, 2)

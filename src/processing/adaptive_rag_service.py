@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from src.processing.adaptive_retrieval import (
@@ -9,7 +10,9 @@ from src.processing.adaptive_retrieval import (
     RetrievalOptions,
     attachment_context,
 )
+from src.processing.normative_query import classify_normative_query
 from src.processing.normative_reference import canonical_type, parse_normative_references
+from src.processing.rag_context_builder import EvidenceRows
 from src.processing.rag_service import RAGService
 from src.processing.target_resolver import article_key
 from src.processing.temporal_scope import (
@@ -17,6 +20,9 @@ from src.processing.temporal_scope import (
     revoked_dispositivo_ids,
     revoked_norma_ids,
 )
+
+NORMA_OVERVIEW_MAX_SOURCES = 48
+NORMA_OVERVIEW_ALL_DEVICES_LIMIT = 48
 
 
 class AdaptiveRAGService(RAGService):
@@ -50,6 +56,25 @@ class AdaptiveRAGService(RAGService):
                 for text in options.attachment_texts
             ]
             return context, sources
+        query_plan = classify_normative_query(query_text)
+        if query_plan.is_norma_overview:
+            from django.conf import settings
+
+            # Whole-statute questions need a wider evidence window than an
+            # article lookup. Keep this explicitly bounded and independent of
+            # the normal semantic-search top-k.
+            max_chars = max(
+                8_000,
+                min(
+                    48_000,
+                    int(getattr(settings, "RAG_NORMA_OVERVIEW_MAX_CONTEXT_CHARS", 24_000)),
+                ),
+            )
+            return super().get_relevant_context(
+                query_text,
+                k=NORMA_OVERVIEW_MAX_SOURCES,
+                max_tokens=max_chars // 4,
+            )
         return super().get_relevant_context(query_text, k=k, max_tokens=max_tokens)
 
     @staticmethod
@@ -87,8 +112,22 @@ class AdaptiveRAGService(RAGService):
                     cited_normas.append(matches[0])
         return cited_normas
 
+    @staticmethod
+    def _has_unambiguous_versioned_reference(query_text: str) -> bool:
+        references = parse_normative_references(query_text or "")
+        return (
+            len(references) == 1
+            and not references[0].ambiguous
+            and references[0].year is not None
+        )
+
     def _retrieve_cited_norma_devices(
-        self, cited_normas: list[Any], query_text: str, options: RetrievalOptions
+        self,
+        cited_normas: list[Any],
+        query_text: str,
+        options: RetrievalOptions,
+        *,
+        norma_overview: bool = False,
     ) -> list[dict[str, Any]]:
         from src.apps.legislation.models import Dispositivo
 
@@ -110,7 +149,14 @@ class AdaptiveRAGService(RAGService):
             if not all_disps:
                 continue
 
-            if explicit_reference is not None:
+            coverage = None
+            if norma_overview:
+                chosen_disps, coverage = self._select_norma_overview_devices(all_disps)
+                match_kind = (
+                    "norma_overview_complete" if coverage["complete"] else "norma_overview_sampled"
+                )
+                retrieval_rows = []
+            elif explicit_reference is not None:
                 target_article = article_key(explicit_reference.article)
                 article_matches = [
                     d
@@ -172,6 +218,7 @@ class AdaptiveRAGService(RAGService):
                         "retrieval_score": score,
                         "distance": round(1.0 - score, 4),
                         "match_kind": match_kind,
+                        "coverage": coverage,
                         "context": {
                             "norma": {
                                 "id": d.norma.id,
@@ -187,6 +234,84 @@ class AdaptiveRAGService(RAGService):
                     }
                 )
         return results
+
+    @staticmethod
+    def _select_norma_overview_devices(dispositivos: list[Any]) -> tuple[list[Any], dict[str, Any]]:
+        """Use full coverage for small norms and a distributed sample for large ones."""
+        total = len(dispositivos)
+        articles = [row for row in dispositivos if getattr(row, "tipo", "") == "artigo"]
+        if total <= NORMA_OVERVIEW_ALL_DEVICES_LIMIT:
+            selected = dispositivos
+        elif articles:
+            # Sample article roots evenly across the statute, then use remaining
+            # slots for the first substantive child under those roots. This
+            # avoids top-k similarity collapsing an overview onto one chapter.
+            article_budget = min(32, len(articles), NORMA_OVERVIEW_MAX_SOURCES)
+            if article_budget == 1:
+                sampled_articles = [articles[0]]
+            else:
+                indexes = {
+                    round(index * (len(articles) - 1) / (article_budget - 1))
+                    for index in range(article_budget)
+                }
+                sampled_articles = [articles[index] for index in sorted(indexes)]
+
+            selected = list(sampled_articles)
+            selected_ids = {row.id for row in selected}
+            article_ids = {row.id for row in articles}
+            rows_by_id = {row.id: row for row in dispositivos}
+            children_by_article: dict[int, list[Any]] = {row.id: [] for row in articles}
+            for row in dispositivos:
+                parent = rows_by_id.get(getattr(row, "dispositivo_pai_id", None))
+                seen = set()
+                while parent is not None and parent.id not in seen:
+                    seen.add(parent.id)
+                    if parent.id in article_ids:
+                        children_by_article[parent.id].append(row)
+                        break
+                    parent = rows_by_id.get(getattr(parent, "dispositivo_pai_id", None))
+
+            child_slots = NORMA_OVERVIEW_MAX_SOURCES - len(selected)
+            child_candidates = []
+            for article in sampled_articles:
+                children = children_by_article.get(article.id, [])
+                child = next(
+                    (
+                        row
+                        for row in children
+                        if row.id not in selected_ids and str(row.texto or "").strip()
+                    ),
+                    None,
+                )
+                if child is not None:
+                    child_candidates.append(child)
+            if child_slots and child_candidates:
+                if len(child_candidates) <= child_slots:
+                    selected.extend(child_candidates)
+                else:
+                    indexes = {
+                        round(index * (len(child_candidates) - 1) / (child_slots - 1))
+                        for index in range(child_slots)
+                    } if child_slots > 1 else {0}
+                    selected.extend(child_candidates[index] for index in sorted(indexes))
+
+            selected.sort(key=lambda row: (row.ordem, row.id))
+        else:
+            selected = dispositivos[:NORMA_OVERVIEW_MAX_SOURCES]
+
+        selected_article_ids = {
+            row.id if getattr(row, "tipo", "") == "artigo" else None for row in selected
+        }
+        selected_article_ids.discard(None)
+        coverage = {
+            "strategy": "whole_norma",
+            "total_devices": total,
+            "selected_devices": len(selected),
+            "total_articles": len(articles),
+            "selected_articles": len(selected_article_ids),
+            "complete": len(selected) == total,
+        }
+        return selected, coverage
 
     @staticmethod
     def _merge_cited_and_general(
@@ -277,17 +402,47 @@ class AdaptiveRAGService(RAGService):
     ):
         options = self._options()
         min_similarity = max(min_similarity, options.min_similarity)
-
+        query_plan = classify_normative_query(query_text)
+        parsed_references = parse_normative_references(query_text)
+        exact_reference = (
+            parsed_references[0]
+            if len(parsed_references) == 1
+            and not parsed_references[0].ambiguous
+            and parsed_references[0].year is not None
+            else None
+        )
         cited_normas = self._find_cited_normas(query_text) if norma_id is None else []
+        norma_overview = query_plan.is_norma_overview and len(cited_normas) == 1
+        empty_coverage = {
+            "strategy": "whole_norma" if query_plan.is_norma_overview else "explicit_reference",
+            "complete": False,
+            "total_devices": 0,
+            "selected_devices": 0,
+        }
+        if exact_reference and norma_id is None and not cited_normas:
+            return EvidenceRows(reason_code="norm_not_in_corpus", coverage=empty_coverage)
         cited_ids = {n.id for n in cited_normas}
         cited_rows = (
-            self._retrieve_cited_norma_devices(cited_normas, query_text, options)
+            self._retrieve_cited_norma_devices(
+                cited_normas, query_text, options, norma_overview=norma_overview
+            )
             if cited_normas
             else []
         )
         cited_rows = self._filter_status(cited_rows, options)
+        if norma_overview and cited_rows:
+            return cited_rows[:NORMA_OVERVIEW_MAX_SOURCES]
         if any(row.get("match_kind") == "explicit_reference" for row in cited_rows):
             return cited_rows[: min(k, options.max_sources)]
+        if exact_reference and cited_normas and (
+            query_plan.is_norma_overview or query_plan.reference is not None
+        ):
+            reason_code = (
+                "norm_content_not_in_corpus"
+                if norma_overview
+                else "requested_device_not_in_corpus"
+            )
+            return EvidenceRows(reason_code=reason_code, coverage=empty_coverage)
 
         if norma_id is not None or options.mode == "semantic":
             rows = super().semantic_search(
@@ -385,7 +540,9 @@ class AdaptiveRAGService(RAGService):
                 k=k,
                 model=model,
                 temperature=temperature,
-                force_refresh=force_refresh,
+                force_refresh=(
+                    force_refresh or self._has_unambiguous_versioned_reference(question)
+                ),
                 retrieval_fingerprint=self._options().fingerprint(),
             )
         finally:
@@ -399,6 +556,7 @@ class AdaptiveRAGService(RAGService):
         temperature: float = 0.3,
         options: RetrievalOptions | None = None,
         text_provider: dict[str, Any] | None = None,
+        should_cancel: Callable[[], bool] | None = None,
     ):
         previous = getattr(self, "_jurix_retrieval_options", None)
         self._jurix_retrieval_options = options or RetrievalOptions(max_sources=k)
@@ -410,6 +568,8 @@ class AdaptiveRAGService(RAGService):
                 temperature=temperature,
                 text_provider=text_provider,
                 retrieval_fingerprint=self._options().fingerprint(),
+                skip_cache=self._has_unambiguous_versioned_reference(question),
+                should_cancel=should_cancel,
             )
         finally:
             self._jurix_retrieval_options = previous

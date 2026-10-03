@@ -6,7 +6,7 @@
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Norma' %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20260930-timeline-status1">
+<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261002-device-index-groups1">
 <link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}">
 {% endblock %}
 
@@ -97,16 +97,16 @@
     {% if dispositivos.count > 3 %}
     <nav class="dispositivos-index" aria-label="Índice de dispositivos">
         <span class="dispositivos-index-label">Ir para</span>
-        <div class="dispositivos-index-links">
+        <div class="dispositivos-index-links" data-device-index>
             {% for disp in dispositivos %}
-            <a href="#dispositivo-{{ disp.pk }}" class="dispositivos-index-link">{{ disp.get_full_identifier }}</a>
+            <a href="#dispositivo-{{ disp.pk }}" class="dispositivos-index-link" data-device-index-link aria-label="{{ disp.get_full_identifier }}">{{ disp.get_full_identifier }}</a>
             {% endfor %}
         </div>
     </nav>
     {% endif %}
     <div class="dispositivos-tree">
         {% for disp in dispositivos %}
-        <article id="dispositivo-{{ disp.pk }}" class="dispositivo-node" data-level="{{ disp.get_nivel }}" tabindex="-1">
+        <article id="dispositivo-{{ disp.pk }}" class="dispositivo-node" data-level="{{ disp.get_nivel }}" data-device-type="{{ disp.tipo }}" data-device-parent-id="{{ disp.dispositivo_pai_id|default_if_none:'' }}" tabindex="-1">
             <div class="dispositivo-header">
                 <span class="dispositivo-label">{{ disp.get_full_identifier }}</span>
             </div>
@@ -151,6 +151,9 @@
                 {% elif not norma.data_vigencia %}
                     <span class="badge badge-neutral">Data de vigência não registrada no corpus</span>
                     <small class="temporal-disclaimer">Confirme a vigência na fonte oficial; o corpus não informa uma data específica.</small>
+                {% elif not temporal_status_verified %}
+                    <span class="badge badge-neutral">Situação atual não verificada no corpus</span>
+                    <small class="temporal-disclaimer">A data de início está registrada, mas o corpus não foi declarado completo; confirme a situação atual na fonte oficial.</small>
                 {% else %}
                 <span class="badge badge-success">Vigente</span>
                 {% endif %}
@@ -167,7 +170,7 @@
             <h2 id="timeline-title">Linha do tempo normativa</h2>
             <p class="timeline-intro">Datas e eventos visíveis no corpus. Inferências são sinalizadas para revisão.</p>
         </div>
-                <span class="badge timeline-status {% if temporal_status == 'revogada' or temporal_status == 'parcialmente_revogada' %}timeline-status--warning{% elif not norma.data_vigencia %}timeline-status--neutral{% else %}timeline-status--success{% endif %}">{% if temporal_status == 'revogada' %}Revogada{% elif temporal_status == 'parcialmente_revogada' %}Parcialmente revogada{% elif norma.data_vigencia %}Vigência registrada{% else %}Vigência não registrada{% endif %}</span>
+                <span class="badge timeline-status {% if temporal_status == 'revogada' or temporal_status == 'parcialmente_revogada' %}timeline-status--warning{% elif not temporal_status_verified %}timeline-status--neutral{% else %}timeline-status--success{% endif %}">{% if temporal_status == 'revogada' %}Revogada{% elif temporal_status == 'parcialmente_revogada' %}Parcialmente revogada{% elif not temporal_status_verified %}Situação atual não verificada no corpus{% elif norma.data_vigencia %}Vigência registrada{% else %}Vigência não registrada{% endif %}</span>
     </div>
     <ol class="timeline-list">
         {% for item in timeline %}
@@ -246,5 +249,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/jurix-legal-detail.js' %}?v=20260930-device-trim1" defer></script>
+<script src="{% static 'js/jurix-legal-detail.js' %}?v=20261002-device-index-groups1" defer></script>
 {% endblock %}

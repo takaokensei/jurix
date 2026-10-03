@@ -203,6 +203,29 @@
     return JSON.parse(JSON.stringify(state));
   }
 
+  function wireComposerDisclosure() {
+    const toggle = document.getElementById('composer-options-toggle');
+    const panel = document.getElementById('composer-search-options');
+    if (!toggle || !panel) return;
+
+    const mobile = window.matchMedia('(max-width: 767px)');
+    let expandedOnMobile = false;
+    const sync = () => {
+      const expanded = mobile.matches ? expandedOnMobile : true;
+      panel.classList.toggle('is-open', expanded);
+      toggle.setAttribute('aria-expanded', String(expanded));
+    };
+
+    toggle.addEventListener('click', () => {
+      if (!mobile.matches) return;
+      expandedOnMobile = !expandedOnMobile;
+      sync();
+      if (!expandedOnMobile) closeAll();
+    });
+    mobile.addEventListener?.('change', sync);
+    sync();
+  }
+
   function announceAttachmentError(message) {
     const container = document.getElementById('jurix-attachment-previews');
     if (!container) return;
@@ -324,6 +347,7 @@
   window.JurixSearchControls = { getPayload, setAttachments, upload, state };
   document.addEventListener('DOMContentLoaded', () => {
     wire();
+    wireComposerDisclosure();
     renderAttachments();
   }, { once: true });
 })();

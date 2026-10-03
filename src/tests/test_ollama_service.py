@@ -9,8 +9,8 @@ from src.llm_engine.ollama_service import OllamaService
 
 def test_streaming_error_does_not_leak_internal_exception():
     service = OllamaService()
-    service.session = Mock()
-    service.session.post.side_effect = requests.ConnectionError(
+    service.stream_session = Mock()
+    service.stream_session.post.side_effect = requests.ConnectionError(
         'HTTPConnectionPool(host="10.20.30.40", port=11434): connection refused'
     )
 
@@ -37,12 +37,12 @@ def test_generate_text_uses_configured_default_model():
 @override_settings(OLLAMA_MODEL="qwen2.5:7b")
 def test_stream_text_uses_configured_default_model():
     service = OllamaService()
-    service.session = Mock()
+    service.stream_session = Mock()
     response = Mock()
     response.iter_lines.return_value = [b'{"response":"ok","done":true}']
-    service.session.post.return_value = response
+    service.stream_session.post.return_value = response
 
     assert list(service.stream_text("teste")) == ["ok"]
 
-    payload = service.session.post.call_args.kwargs["json"]
+    payload = service.stream_session.post.call_args.kwargs["json"]
     assert payload["model"] == "qwen2.5:7b"

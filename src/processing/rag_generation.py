@@ -69,6 +69,9 @@ def fix_markdown_formatting(text: str) -> str:
 
 def answer_uses_only_sources(answer: str, results: list[dict[str, Any]]) -> bool:
     """Reject legal citations that were not present in retrieved sources."""
+    marker_indexes = [int(value) for value in re.findall(r"\[\[(\d{1,3})\]\]", answer)]
+    if any(index < 1 or index > len(results) for index in marker_indexes):
+        return False
     if any(result.get("attachment") for result in results):
         return True
     allowed = set()

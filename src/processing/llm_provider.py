@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ipaddress
 import json
+from collections.abc import Callable
 from urllib.parse import urlparse
 
 import requests
@@ -147,7 +148,16 @@ def validate_provider_config(value):
     }
 
 
-def stream_text(prompt: str, config: dict, *, temperature: float, max_tokens: int):
+def stream_text(
+    prompt: str,
+    config: dict,
+    *,
+    temperature: float,
+    max_tokens: int,
+    should_cancel: Callable[[], bool] | None = None,
+):
+    if should_cancel is not None and should_cancel():
+        return
     provider = config["provider"]
     endpoint = (
         _validate_compatible_endpoint(config["endpoint"])
@@ -188,6 +198,8 @@ def stream_text(prompt: str, config: dict, *, temperature: float, max_tokens: in
         response.raise_for_status()
         terminal_received = False
         for raw_line in response.iter_lines(decode_unicode=True):
+            if should_cancel is not None and should_cancel():
+                return
             if not raw_line:
                 continue
             line = (

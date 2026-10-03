@@ -17,6 +17,13 @@ _CITATION_RE = re.compile(
     r"resolução|emenda(?:\s+constitucional)?|portaria)\s+n?[º°o.]*\s*([\d.]+)\s*[/,]\s*(\d{2,4})",
     re.IGNORECASE,
 )
+_REFERENCE_ONLY_RE = re.compile(
+    r"^(?:(?:lei(?:\s+(?:complementar|ordinária|orgânica))?|decreto(?:-lei|\s+legislativo)?|"
+    r"resolução|emenda(?:\s+constitucional)?|portaria)\s+n?[º°o.]*\s*[\d.]+\s*[/,]\s*\d{2,4})"
+    r"(?:\s*(?:[,;]\s*)?(?:arts?\.?\s*\d+[º°o]?"
+    r"(?:\s*,\s*(?:inciso\s+[ivxlcdm]+|§\s*\d+[º°o]?|parágrafo\s+(?:único|\d+[º°o]?)))?))*$",
+    re.IGNORECASE,
+)
 _NUMBER_RE = re.compile(r"\b\d+(?:[.,]\d+)?\b")
 _WORD_RE = re.compile(r"[A-Za-zÀ-ÿ]{4,}", re.UNICODE)
 
@@ -142,6 +149,14 @@ class Evidence:
     identifier: str = ""
     start: int | None = None
     end: int | None = None
+    dispositivo_ids: tuple[Any, ...] = ()
+    citation_ids: tuple[str, ...] = ()
+    norma_id: Any = None
+    tipo: str = ""
+    parent_id: Any = None
+    parent_tipo: str = ""
+    parent_norma_id: Any = None
+    snippet_truncated: bool = False
 
 
 @dataclass(frozen=True)
@@ -275,6 +290,13 @@ def _tokens(text: str) -> set[str]:
     return {_stem(token) for token in raw_tokens}
 
 
+def _is_reference_only_line(line: str) -> bool:
+    """Recognize a standalone legal citation without suppressing factual text."""
+    normalized = re.sub(r"^[-–—•\d.)\]]+\s*", "", line.strip())
+    normalized = normalized.strip("*_` \t")
+    return bool(_REFERENCE_ONLY_RE.fullmatch(normalized))
+
+
 def extract_claims(answer: str) -> tuple[Claim, ...]:
     """Split a generated answer into independently auditable claims."""
     claims: list[Claim] = []
@@ -331,6 +353,8 @@ def extract_claims(answer: str) -> tuple[Claim, ...]:
     }
     for line in (answer or "").splitlines():
         trimmed = line.strip()
+        if _is_reference_only_line(trimmed):
+            continue
         # Markdown headers (# Header) are formatting, not substantive claims
         if trimmed.startswith("#"):
             continue
@@ -479,19 +503,123 @@ def build_evidence(sources: Iterable[dict[str, Any]]) -> tuple[Evidence, ...]:
             )
         if not text:
             continue
+        dispositivo_id = (
+            source.get("dispositivo_id")
+            or source.get("id")
+            or getattr(dispositivo, "id", None)
+        )
+        norma = getattr(dispositivo, "norma", None)
+        parent = getattr(dispositivo, "dispositivo_pai", None)
         result.append(
             Evidence(
-                dispositivo_id=source.get("dispositivo_id")
-                or source.get("id")
-                or getattr(dispositivo, "id", None),
+                dispositivo_id=dispositivo_id,
                 text=text,
                 norma_ref=_norma_ref_from_source(source),
                 identifier=_identifier_from_source(source),
                 start=source.get("start"),
                 end=source.get("end"),
+                dispositivo_ids=(dispositivo_id,) if dispositivo_id is not None else (),
+                citation_ids=(source["citation_id"],) if source.get("citation_id") else (),
+                norma_id=source.get("norma_id") or getattr(dispositivo, "norma_id", None) or getattr(norma, "id", None),
+                tipo=str(getattr(dispositivo, "tipo", "") or "").lower(),
+                parent_id=getattr(dispositivo, "dispositivo_pai_id", None) or getattr(parent, "id", None),
+                parent_tipo=str(getattr(parent, "tipo", "") or "").lower(),
+                parent_norma_id=getattr(parent, "norma_id", None) or getattr(getattr(parent, "norma", None), "id", None),
+                snippet_truncated=bool(source.get("snippet_truncated")),
             )
         )
     return tuple(result)
+
+
+def build_article_family_evidence(sources: Iterable[dict[str, Any]]) -> tuple[Evidence, ...]:
+    """Add bounded caput + direct-inciso evidence, only within a verified article family."""
+    sources = tuple(sources)
+    evidence = build_evidence(sources)
+    sent_device_ids = {
+        source.get("dispositivo_id")
+        or source.get("id")
+        or getattr(source.get("dispositivo"), "id", None)
+        for source in sources
+        if "evidence_text" in source and source.get("evidence_text")
+    }
+    article_roots = {
+        item.dispositivo_id: item
+        for item in evidence
+        if item.tipo == "artigo"
+        and item.dispositivo_id is not None
+        and item.dispositivo_id in sent_device_ids
+        and item.parent_id is None
+        and not item.snippet_truncated
+    }
+    groups: dict[tuple[Any, Any], list[Evidence]] = {}
+    truncated_families = set()
+    evidence_by_id = {item.dispositivo_id: item for item in evidence if item.dispositivo_id is not None}
+    for source in sources:
+        device = source.get("dispositivo")
+        if "evidence_text" not in source or not source.get("evidence_text"):
+            continue
+        item = evidence_by_id.get(
+            source.get("dispositivo_id") or source.get("id") or getattr(device, "id", None)
+        )
+        if not item or item.tipo != "inciso":
+            continue
+        parent = getattr(device, "dispositivo_pai", None)
+        parent_id = getattr(device, "dispositivo_pai_id", None) or getattr(parent, "id", None)
+        parent_norma_id = getattr(parent, "norma_id", None) or getattr(
+            getattr(parent, "norma", None), "id", None
+        )
+        if (
+            item
+            and item.snippet_truncated
+            and parent is not None
+            and str(getattr(parent, "tipo", "")).lower() == "artigo"
+            and parent_norma_id == item.norma_id
+        ):
+            truncated_families.add((item.norma_id, parent_id))
+        if item.snippet_truncated:
+            continue
+        root = article_roots.get(parent_id)
+        if (
+            root is None
+            or parent is None
+            or getattr(parent, "id", None) != parent_id
+            or str(getattr(parent, "tipo", "")).lower() != "artigo"
+            or item.norma_id is None
+            or root.norma_id != item.norma_id
+            or parent_norma_id != item.norma_id
+        ):
+            continue
+        groups.setdefault((item.norma_id, parent_id), [root]).append(item)
+
+    composites = []
+    for (_norma_id, _article_id), family in groups.items():
+        if (_norma_id, _article_id) in truncated_families:
+            continue
+        unique = {item.dispositivo_id: item for item in family}
+        family = list(unique.values())
+        if len(family) < 2:
+            continue
+        root = article_roots[_article_id]
+        sections = [f"{root.identifier}: {root.text}"]
+        for item in family:
+            if item.dispositivo_id == root.dispositivo_id:
+                continue
+            sections.append(f"{item.identifier}: {item.text}")
+        ids = tuple(item.dispositivo_id for item in family if item.dispositivo_id is not None)
+        citation_ids = tuple(dict.fromkeys(cid for item in family for cid in item.citation_ids))
+        composites.append(
+            Evidence(
+                dispositivo_id=None,
+                text="\n".join(sections),
+                norma_ref=root.norma_ref,
+                identifier=root.identifier,
+                dispositivo_ids=ids,
+                citation_ids=citation_ids,
+                norma_id=root.norma_id,
+                tipo="article_family",
+            )
+        )
+    return (*evidence, *composites)
 
 
 def _normalise_citation_text(text: str) -> str:
@@ -558,7 +686,7 @@ def evaluate_grounding(
     sources: Iterable[dict[str, Any]],
 ) -> dict[str, Any]:
     """Return a serializable claim -> evidence grounding report."""
-    evidence = build_evidence(sources)
+    evidence = build_article_family_evidence(sources)
     claims = extract_claims(answer)
 
     matched: list[ClaimEvidence] = []

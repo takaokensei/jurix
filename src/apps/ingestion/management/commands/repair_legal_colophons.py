@@ -111,6 +111,17 @@ class Command(BaseCommand):
                 raise CommandError(
                     "O estado atual diverge do manifesto aprovado (stale); nenhuma alteração feita."
                 )
+            conflicts_without_text_fix = [
+                entry
+                for entry in proposals
+                if entry["publication_date_divergence"] and not entry["article_changes"]
+            ]
+            if conflicts_without_text_fix:
+                ids = ", ".join(str(entry["norma_id"]) for entry in conflicts_without_text_fix)
+                raise CommandError(
+                    "Datas SAPL/OCR divergem e não há correção de texto legal independente "
+                    f"para as normas {ids}; nenhuma alteração feita."
+                )
             self._apply_proposals(proposals)
             from src.apps.ingestion.task_support import _invalidate_rag_cache
 
@@ -118,6 +129,14 @@ class Command(BaseCommand):
                 _invalidate_rag_cache()
             message = f"Correções aplicadas: {len(proposals)}. Manifesto: {actual_approved_hash}."
             self.stdout.write(self.style.SUCCESS(message))
+            conflict_count = sum(entry["publication_date_divergence"] for entry in proposals)
+            if conflict_count:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"Datas SAPL/OCR divergentes preservadas sem alteração: {conflict_count}. "
+                        "As normas permanecem marcadas para revisão."
+                    )
+                )
             return
 
         if options["manifest_out"]:
@@ -224,11 +243,6 @@ class Command(BaseCommand):
                         f"Proposta para Norma ID {norma.pk} mudou após aprovação; "
                         "transação cancelada."
                     )
-                if approved["publication_date_divergence"]:
-                    raise CommandError(
-                        f"Publicação SAPL/OCR diverge na Norma ID {norma.pk}; "
-                        "revisão jurídica necessária."
-                    )
                 article = Dispositivo.objects.select_for_update().get(pk=approved["article_id"])
                 parser = LegalTextParser()
                 parsed_articles = [
@@ -263,12 +277,13 @@ class Command(BaseCommand):
                     update_fields = ["needs_review"]
                 else:
                     update_fields = []
-                if approved["publication_before"] is None and approved["publication_after"]:
-                    norma.data_publicacao = approved["publication_after"]
-                    update_fields.append("data_publicacao")
-                if approved["effective_before"] is None and approved["effective_after"]:
-                    norma.data_vigencia = approved["effective_after"]
-                    update_fields.append("data_vigencia")
+                if not approved["publication_date_divergence"]:
+                    if approved["publication_before"] is None and approved["publication_after"]:
+                        norma.data_publicacao = approved["publication_after"]
+                        update_fields.append("data_publicacao")
+                    if approved["effective_before"] is None and approved["effective_after"]:
+                        norma.data_vigencia = approved["effective_after"]
+                        update_fields.append("data_vigencia")
                 if approved["article_changes"]:
                     norma.texto_consolidado = ConsolidationEngine(norma).consolidate()
                     update_fields.append("texto_consolidado")

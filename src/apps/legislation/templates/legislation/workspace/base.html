@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="{% static 'css/jurix-tokens.css' %}?v=20261002-design-tokens1">
     <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20261002-design-tokens1">
     <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}?v=20260930-focus-outline1">
-    <link rel="stylesheet" href="{% static 'css/jurix-sidebar.css' %}?v=20260930-unified1">
+    <link rel="stylesheet" href="{% static 'css/jurix-sidebar.css' %}?v=20261002-session-actions1">
     <meta name="jurix-authenticated" content="{{ request.user.is_authenticated|yesno:'true,false' }}">
     {% block extra_css %}{% endblock %}
 </head>
@@ -48,7 +48,8 @@
     <script src="{% static 'js/workspace.js' %}?v=20260930-provider-settings2"></script>
     <script src="{% static 'js/command_palette.js' %}?v=20260930-query-race1-sidebar2"></script>
     <script src="{% static 'js/jurix-anonymous-history.js' %}"></script>
-    <script src="{% static 'js/jurix-sidebar.js' %}?v=20260930-unified1"></script>
+    <script src="{% static 'js/jurix-chat-api.js' %}?v=20261001-session-actions1"></script>
+    <script src="{% static 'js/jurix-sidebar.js' %}?v=20261001-session-actions1"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -12,6 +12,54 @@
     transition: opacity 160ms ease, transform 160ms ease;
 }
 
+.jurix-chat-state-label {
+    min-width: 0;
+}
+
+.jurix-chat-state-elapsed {
+    color: var(--figma-text-muted);
+    opacity: 0.78;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+#messages-wrapper .sources-section {
+    animation-duration: 160ms !important;
+    transition-duration: 160ms !important;
+}
+
+#messages-wrapper .message-actions .copy-response-button {
+    transition-duration: 160ms;
+}
+
+.jurix-norm-lookup-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.65rem 0 0 3rem;
+}
+
+.jurix-norm-lookup-actions > :is(button, a) {
+    display: inline-flex;
+    min-height: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--figma-border);
+    border-radius: 0.65rem;
+    background: var(--figma-surface-raised, transparent);
+    color: var(--figma-text-primary);
+    font: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.jurix-norm-lookup-actions > :is(button, a):focus-visible {
+    outline: 3px solid var(--figma-blue-light);
+    outline-offset: 2px;
+}
+
 #chat-state-indicator[hidden] {
     display: none;
 }
@@ -55,8 +103,13 @@
     opacity: 0.58;
 }
 
-.jurix-provisional-notice.is-interrupted {
-    color: var(--figma-amber-light, #f5c26b);
+.jurix-stream-interrupted-note {
+    width: fit-content;
+    max-width: 100%;
+    margin: .25rem 0 .6rem 3rem;
+    color: var(--figma-text-muted);
+    font-size: .8125rem;
+    line-height: 1.5;
 }
 
 .jurix-interrupted-retry {
@@ -96,6 +149,15 @@
     #chat-state-indicator[data-state='submitting']::before,
     #chat-state-indicator[data-state='regenerating']::before {
         animation: none;
+    }
+
+    #messages-wrapper .sources-section {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    #messages-wrapper .message-actions .copy-response-button {
+        transition: none;
     }
 }
 

@@ -18,8 +18,8 @@ test('anonymous stream persists the final answer after the API overlay is instal
   window.TextDecoder = TextDecoder;
   const events = [
     { type: 'sources', sources: [{ id: 1 }], confidence: 0.9 },
-    { type: 'chunk', chunk: 'Resposta ' },
-    { type: 'chunk', chunk: 'final.' },
+    { type: 'chunk', chunk: 'Rascunho provisório.', provisional: true },
+    { type: 'chunk', chunk: 'Resposta final.', provisional: false, replace: true },
     { type: 'done', answer: 'Resposta final.', grounded: true, session_id: null },
   ];
   const encoded = events.map((event) => new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`));
@@ -110,19 +110,23 @@ test('legacy anonymous evidence without an explicit grounded marker is hidden on
   dom.window.close();
 });
 
-test('sources are deferred until the done callback and scroll is wired after render', () => {
+test('SSE sources render immediately as pending and completion updates the same affordance', () => {
   const chat = read('chat.js');
-  const sourceCallback = chat.indexOf('(sources) => {');
+  const sourceCallback = chat.indexOf('(sources, _confidence, sourceMetadata = {}) => {');
   const doneCallback = chat.indexOf('async (doneData) => {', sourceCallback);
   assert.ok(sourceCallback > 0 && doneCallback > sourceCallback);
-  assert.equal(chat.slice(sourceCallback, doneCallback).includes('showSourcesGradually'), false);
-  const completion = chat.slice(doneCallback, doneCallback + 2200);
+  assert.match(chat.slice(sourceCallback, doneCallback), /showSourcesGradually\(/);
+  assert.match(chat.slice(sourceCallback, doneCallback), /pending: true/);
+  assert.match(chat, /Never rank-sort the rendered evidence/);
+  const completion = chat.slice(doneCallback, doneCallback + 3400);
   assert.match(completion, /doneData\.grounded === true \? finalSources : \[\]/);
+  assert.match(completion, /if \(!streamElements\.sourcesContainer\.querySelector\('\.jurix-sources-pill-btn'\)\)/);
+  assert.match(completion, /updateSourcesDrawerMetadata\?\.\(\{ pending: false \}\)/);
   assert.match(completion, /linkLegalReferences\(streamElements\.messageBody, answerSources\)/);
-  assert.match(completion, /sourcesContainer && answerSources\.length > 0/);
-  assert.match(completion, /insuficientes para fundamentar a resposta/);
+  assert.match(completion, /if \(accumulatedText !== finalAnswer\)/);
+  assert.match(chat, /Never expose unverified model output/);
   const sourcePill = chat.slice(chat.indexOf('function showSourcesGradually'), chat.indexOf('function createSourceCard'));
-  assert.match(sourcePill, /Referências usadas/);
+  assert.match(sourcePill, /Verificação em andamento/);
   assert.doesNotMatch(sourcePill, /topRawScore|Alta correspondência|Boa correspondência|Correspondência parcial/);
 
   const regeneration = chat.slice(chat.indexOf('async function regenerateLastResponse'), chat.indexOf('function copyResponseToClipboard'));
@@ -156,6 +160,56 @@ test('copy answer falls back when Clipboard API is unavailable and announces suc
   assert.ok(button.classList.contains('copied'));
   assert.equal(button.querySelector('.check-icon').classList.contains('is-hidden'), false);
   assert.equal(w.document.querySelector('.jurix-clipboard-fallback'), null);
+  w.close();
+});
+
+test('copy preserves structured citation markers as Markdown links to official evidence', async () => {
+  const dom = new JSDOM('<!doctype html><html><body><article class="message"><div class="message-body"></div><button class="copy-response-button"><svg class="copy-icon"></svg><svg class="check-icon"></svg></button></article><article class="message"><div class="message-body"><a class="jurix-legal-reference-link" href="https://sapl.natal.rn.leg.br/norma/normajuridica/94/">Lei nº 8.206/2026, Art. 2º</a></div><button class="copy-response-button"><svg class="copy-icon"></svg><svg class="check-icon"></svg></button></article></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously', pretendToBeVisual: true,
+  });
+  const { window: w } = dom;
+  let copiedText = '';
+  w.document.execCommand = () => {
+    copiedText = w.document.querySelector('.jurix-clipboard-fallback')?.value || '';
+    return true;
+  };
+  w.JurixRagUI = { buildSourceUrl: () => 'https://sapl.natal.rn.leg.br/norma/normajuridica/93/' };
+  w.eval(read('jurix-chat-renderer.js'));
+  const button = w.document.querySelector('.copy-response-button');
+  button.closest('.message').querySelector('.message-body')._citationSources = [{
+    citation_index: 1, citation_label: 'Lei nº 8.206/2026, Art. 1º',
+  }];
+  button.closest('.message').querySelector('.message-body').innerHTML = '<a class="jurix-legal-reference-link" href="https://sapl.natal.rn.leg.br/norma/normajuridica/93/">Lei nº 8.206/2026, Art. 1º</a>';
+  await w.JurixChatRenderer.copyResponseToClipboard(
+    'A norma institui o programa [[1]] e também se refere à Lei nº 8.206/2026, Art. 1º.',
+    button
+  );
+  assert.equal(
+    copiedText,
+    'A norma institui o programa [Lei nº 8.206/2026, Art. 1º](<https://sapl.natal.rn.leg.br/norma/normajuridica/93/>) e também se refere à [Lei nº 8.206/2026, Art. 1º](<https://sapl.natal.rn.leg.br/norma/normajuridica/93/>).'
+  );
+  const secondButton = w.document.querySelectorAll('.copy-response-button')[1];
+  await w.JurixChatRenderer.copyResponseToClipboard('Conforme Lei nº 8.206/2026, Art. 2º.', secondButton);
+  assert.equal(
+    copiedText,
+    'Conforme [Lei nº 8.206/2026, Art. 2º](<https://sapl.natal.rn.leg.br/norma/normajuridica/94/>).'
+  );
+  w.close();
+});
+
+test('Markdown citation markers render using readable labels from structured sources', () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously',
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-markdown.js'));
+  const html = w.JurixMarkdown.normalize('A regra consta em [[1]].', [{
+    citation_index: 1, citation_id: 'jurix:norma:3:dispositivo:12', citation_label: 'Lei nº 8.206/2026, Art. 1º',
+  }]);
+  assert.match(html, /href="#jurix-evidence-1"/);
+  assert.match(html, /data-citation-id="jurix:norma:3:dispositivo:12"/);
+  assert.match(html, />Lei nº 8\.206\/2026, Art\. 1º<\/a>/);
+  assert.doesNotMatch(html, />\[1\]</);
   w.close();
 });
 
@@ -267,6 +321,44 @@ test('source drawer groups repeated norms without merging article evidence or ci
 
   w.JurixRagUI.closeSourcesDrawer();
   dom.window.close();
+});
+
+test('whole-norm evidence is shown as coverage, not as a fabricated similarity score', () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously',
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-rag.js'));
+  const holder = w.document.createElement('div');
+  holder.innerHTML = w.JurixRagUI.renderEvidenceCard({
+    norma_ref: 'Lei nº 8.206/2026',
+    dispositivo_ref: 'Art. 1º',
+    retrieval_strategy: 'whole_norma',
+    evidence_scope: 'sampled',
+    similarity_score: 0,
+  }, 0);
+  assert.match(holder.textContent, /Amostra da norma/);
+  assert.doesNotMatch(holder.innerHTML, /jurix-rag-score-meter|Baixa correspondência/);
+  w.close();
+});
+
+test('an exact normative reference is labeled without presenting similarity as confidence', () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously',
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-rag.js'));
+  const holder = w.document.createElement('div');
+  holder.innerHTML = w.JurixRagUI.renderEvidenceCard({
+    norma_ref: 'Lei nº 8.206/2026',
+    dispositivo_ref: 'Art. 1º',
+    match_kind: 'explicit_reference',
+    similarity_score: 0,
+  }, 0);
+
+  assert.match(holder.textContent, /Dispositivo identificado/);
+  assert.doesNotMatch(holder.innerHTML, /jurix-rag-score-meter|correspondência|\b0%/i);
+  w.close();
 });
 
 test('generic fetch failures do not claim the user has lost internet connectivity', () => {
@@ -448,17 +540,21 @@ test('anonymous history export uses an allowlist and clear reports persistence s
   const sessionId = window.JurixAnonymousHistory.ensureSession(null, 'Pergunta');
   window.JurixAnonymousHistory.addMessage(sessionId, 'user', 'Pergunta', []);
   window.JurixAnonymousHistory.addMessage(sessionId, 'assistant', 'Resposta', [{
-    norma_ref: 'Lei nº 1/2026', text: 'Trecho', api_key: 'must-not-export', provider_secret: 'must-not-export',
+    norma_ref: 'Lei nº 1/2026', text: 'Trecho', citation_id: 'jurix:norma:1:dispositivo:2',
+    citation_index: 1, citation_label: 'Lei nº 1/2026, Art. 1º', api_key: 'must-not-export', provider_secret: 'must-not-export',
   }]);
   // Only explicitly grounded assistant sources belong in a user export.
   window.JurixAnonymousHistory.updateLastAssistant(sessionId, 'Resposta fundamentada', [{
-    norma_ref: 'Lei nº 1/2026', text: 'Trecho', api_key: 'must-not-export', provider_secret: 'must-not-export',
+    norma_ref: 'Lei nº 1/2026', text: 'Trecho', citation_id: 'jurix:norma:1:dispositivo:2',
+    citation_index: 1, citation_label: 'Lei nº 1/2026, Art. 1º', api_key: 'must-not-export', provider_secret: 'must-not-export',
   }], true);
   const exported = window.JurixAnonymousHistory.exportData();
   const serialized = JSON.stringify(exported);
   assert.equal(exported.schema, 'jurix-anonymous-history-export/v1');
   assert.equal(exported.sessions.length, 1);
   assert.match(serialized, /Lei nº 1\/2026/);
+  assert.match(serialized, /jurix:norma:1:dispositivo:2/);
+  assert.match(serialized, /citation_index/);
   assert.doesNotMatch(serialized, /must-not-export|api_key|provider_secret/);
   assert.equal(window.JurixAnonymousHistory.clear(), true);
   assert.equal(window.JurixAnonymousHistory.list().length, 0);
@@ -501,6 +597,7 @@ test('SSE parser accepts fragmented data, done before title, and terminal event 
   window.TextDecoder = TextDecoder;
   const terminal = `data: {"type":"done","answer":"Resposta final."}\r\n\r\n`;
   const chunks = [
+    new TextEncoder().encode('data: {"type":"sources","sources":[{"citation_index":1}],"retrieval_strategy":"whole_norma"}\r\n\r\n'),
     new TextEncoder().encode('data: {"type":"chunk","chunk":"Res'),
     new TextEncoder().encode('posta","provisional":true}\r\n\r\n'),
     new TextEncoder().encode(terminal),
@@ -521,13 +618,17 @@ test('SSE parser accepts fragmented data, done before title, and terminal event 
   const provisionalStates = [];
   let done;
   let title;
+  let sourceEvent;
   await window.JurixChatAPI.streamAnswer('Pergunta', null, {
     onChunk: (chunk, metadata) => { received.push(chunk); provisionalStates.push(metadata.provisional); },
+    onSources: (sources, confidence, metadata) => { sourceEvent = { sources, confidence, metadata }; },
     onDone: (event) => { done = event.answer; },
     onTitle: (event) => { title = event.title; },
   });
   assert.deepEqual(received, ['Resposta']);
   assert.deepEqual(provisionalStates, [true]);
+  assert.equal(sourceEvent.metadata.retrieval_strategy, 'whole_norma');
+  assert.equal(sourceEvent.sources[0].citation_index, 1);
   assert.equal(done, 'Resposta final.');
   assert.equal(title, 'Pesquisa jurídica');
   dom.window.close();
@@ -574,6 +675,15 @@ test('chat controller exposes an enabled and accessible Stop action only while g
     url: 'http://localhost/assistente/', runScripts: 'dangerously', pretendToBeVisual: true,
   });
   const { window } = dom;
+  let waitCallback = null;
+  let intervalCallback = null;
+  let requestedDelay = null;
+  let now = 1000;
+  window.Date.now = () => now;
+  window.setTimeout = (callback, delay) => { waitCallback = callback; requestedDelay = delay; return 1; };
+  window.clearTimeout = () => {};
+  window.setInterval = (callback) => { intervalCallback = callback; return 2; };
+  window.clearInterval = () => {};
   window.eval(read('jurix-chat-state.js'));
   window.eval(read('jurix-chat-controller.js'));
   window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
@@ -583,6 +693,7 @@ test('chat controller exposes an enabled and accessible Stop action only while g
   input.dispatchEvent(new window.Event('input', { bubbles: true }));
 
   window.JurixChatState.transition('submitting');
+  assert.equal(requestedDelay, 10000, 'the wait clock starts only after ten seconds');
   assert.equal(button.disabled, true, 'button is not a stop control before a stream can be aborted');
   window.JurixChatState.transition('streaming');
   assert.equal(button.disabled, false);
@@ -590,9 +701,22 @@ test('chat controller exposes an enabled and accessible Stop action only while g
   assert.equal(button.dataset.action, 'stop');
   assert.match(button.innerHTML, /<rect/);
 
+  window.JurixChatController.setPipelineStatus('retrieving');
+  assert.equal(window.document.querySelector('.jurix-chat-state-label').textContent, 'Buscando normas relevantes…');
+  now = 11000;
+  waitCallback();
+  assert.equal(window.document.querySelector('.jurix-chat-state-elapsed').textContent, '· 10 s');
+  assert.equal(window.document.querySelector('.jurix-chat-state-elapsed').getAttribute('aria-hidden'), 'true');
+  now = 14000;
+  intervalCallback();
+  assert.equal(window.document.querySelector('.jurix-chat-state-elapsed').textContent, '· 13 s');
+  window.JurixChatController.setPipelineStatus('grounding');
+  assert.equal(window.document.querySelector('.jurix-chat-state-label').textContent, 'Conferindo as referências…');
+
   window.JurixChatState.transition('cancelled');
   assert.equal(button.getAttribute('aria-label'), 'Enviar pergunta');
   assert.equal(button.dataset.action, 'send');
+  assert.equal(window.document.querySelector('.jurix-chat-state-elapsed').textContent, '');
   dom.window.close();
 });
 
@@ -615,23 +739,42 @@ test('restored interrupted authenticated question exposes one explicit retry act
   dom.window.close();
 });
 
-test('local stream cancellation skips the failure callback and is not reported as remote confirmation', async () => {
+test('stream cancellation requests server cancellation before aborting the local reader', async () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     url: 'http://localhost/assistente/', runScripts: 'dangerously',
   });
   const { window } = dom;
   window.TextDecoder = TextDecoder;
   let rejectRead;
-  window.fetch = async (_url, options) => {
+  const events = [];
+  let cancelPayload = null;
+  window.fetch = async (url, options) => {
+    if (url === '/api/v1/search/cancel/') {
+      events.push('server-cancel');
+      cancelPayload = JSON.parse(options.body);
+      return { ok: true, json: async () => ({ success: true, cancelled: true }) };
+    }
     options.signal.addEventListener('abort', () => {
+      events.push('local-abort');
       const error = new Error('aborted');
       error.name = 'AbortError';
       rejectRead(error);
     }, { once: true });
+    const encoder = new TextEncoder();
+    let sentStatus = false;
     return {
       ok: true,
       status: 200,
-      body: { getReader: () => ({ read: () => new Promise((_resolve, reject) => { rejectRead = reject; }) }) },
+      body: { getReader: () => ({ read: () => {
+        if (!sentStatus) {
+          sentStatus = true;
+          return Promise.resolve({
+            done: false,
+            value: encoder.encode('data: {"type":"status","status":"queued","cancel_token":"signed-turn-token"}\n\n'),
+          });
+        }
+        return new Promise((_resolve, reject) => { rejectRead = reject; });
+      } }) },
     };
   };
   window.eval(read('jurix-chat-api.js'));
@@ -643,7 +786,58 @@ test('local stream cancellation skips the failure callback and is not reported a
   assert.equal(window.JurixChatAPI.cancelStream(), true);
   await assert.rejects(pending, { name: 'AbortError' });
   assert.equal(failureCallbacks, 0);
+  assert.deepEqual(cancelPayload, { cancel_token: 'signed-turn-token' });
+  assert.deepEqual(events, ['server-cancel', 'local-abort']);
   assert.equal(window.JurixChatAPI.cancelStream(), false);
+  dom.window.close();
+});
+
+test('a generation already finalizing wins the cancellation race and is allowed to complete', async () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously',
+  });
+  const { window } = dom;
+  window.TextDecoder = TextDecoder;
+  let resolveRead;
+  let aborted = false;
+  let readCount = 0;
+  const encoder = new TextEncoder();
+  window.fetch = async (url, options) => {
+    if (url === '/api/v1/search/cancel/') {
+      return { ok: true, json: async () => ({ success: true, state: 'finalizing' }) };
+    }
+    options.signal.addEventListener('abort', () => { aborted = true; }, { once: true });
+    return {
+      ok: true,
+      status: 200,
+      body: { getReader: () => ({ read: () => {
+        readCount += 1;
+        if (readCount === 1) {
+          return Promise.resolve({
+            done: false,
+            value: encoder.encode('data: {"type":"status","status":"queued","cancel_token":"signed-turn-token"}\n\n'),
+          });
+        }
+        if (readCount > 2) return Promise.resolve({ done: true });
+        return new Promise((resolve) => { resolveRead = resolve; });
+      } }) },
+    };
+  };
+  window.eval(read('jurix-chat-api.js'));
+  let finalAnswer = null;
+  const pending = window.JurixChatAPI.streamAnswer('Pergunta', null, {
+    onDone: (event) => { finalAnswer = event.answer; },
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(window.JurixChatAPI.cancelStream(), true);
+  await new Promise((resolve) => setImmediate(resolve));
+  resolveRead({
+    done: false,
+    value: encoder.encode('data: {"type":"done","answer":"Resposta concluída."}\n\n'),
+  });
+  await pending;
+  assert.equal(finalAnswer, 'Resposta concluída.');
+  assert.equal(aborted, false);
   dom.window.close();
 });
 

@@ -11,12 +11,15 @@ from django.core.cache import cache
 from django.middleware.csrf import _get_new_csrf_string
 from django.test import Client, RequestFactory
 
-from src.apps.legislation import api_search
+from src.apps.legislation import api_views
+from src.apps.legislation.models import ChatMessage, ChatTurn
+from src.processing.adaptive_rag_service import AdaptiveRAGService
 from src.processing.generation_control import (
     finish_generation,
     is_generation_cancelled,
     register_generation,
 )
+from src.processing.rag_answer_pipeline import GenerationCancelled, run_grounded_generation
 
 pytestmark = pytest.mark.django_db
 
@@ -144,7 +147,7 @@ def test_stream_issues_cancel_token_in_queued_event(monkeypatch):
                 "grounding": {"grounded": False, "claims": [], "failed_claims": []},
             }
 
-    monkeypatch.setattr(api_search, "RAGService", CompletedService)
+    monkeypatch.setattr(api_views, "RAGService", CompletedService)
     client = Client()
     response = client.post(
         "/api/v1/search/answer/stream/",
@@ -176,7 +179,7 @@ def test_cancel_from_queued_event_stops_before_retrieval(monkeypatch):
             yield {"event": "status", "status": "retrieving"}
 
     service = DeferredService()
-    monkeypatch.setattr(api_search, "RAGService", lambda: service)
+    monkeypatch.setattr(api_views, "RAGService", lambda: service)
     client = Client()
     response = client.post(
         "/api/v1/search/answer/stream/",
@@ -193,3 +196,230 @@ def test_cancel_from_queued_event_stops_before_retrieval(monkeypatch):
     assert cancelled.json()["cancelled"] is True
     assert next_event == {"type": "status", "status": "cancelled"}
     assert service.started is False
+
+
+def test_cancel_during_provider_attempt_reaches_rag_and_prevents_completed_persistence(monkeypatch):
+    User.objects.create_user(username="cancel-during-generation", password="pass")
+    client = Client()
+    assert client.login(username="cancel-during-generation", password="pass")
+    cancel_token = {"value": None}
+    control_result = {"value": None}
+
+    class GeneratingService:
+        def stream_answer_question(self, *_args, should_cancel=None, **_kwargs):
+            assert callable(should_cancel)
+            yield {"event": "status", "status": "generating"}
+            control = _post_cancel(client, cancel_token["value"])
+            control_result["value"] = control.json()
+            assert should_cancel() is True
+            raise GenerationCancelled("synthetic cancellation")
+
+    monkeypatch.setattr(api_views, "RAGService", GeneratingService)
+    response = client.post(
+        "/api/v1/search/answer/stream/",
+        data=json.dumps(
+            {
+                "question": "Pergunta sintética cancelada durante a geração",
+                "client_session_id": "test-cancel-generation",
+                "client_turn_id": "a5936f90-fdb2-4e64-96a8-70f740d84d5c",
+            }
+        ),
+        content_type="application/json",
+    )
+    events = iter(response.streaming_content)
+    queued = json.loads(next(events).decode().removeprefix("data: ").strip())
+    cancel_token["value"] = queued["cancel_token"]
+    payloads = [
+        json.loads(line.removeprefix("data: "))
+        for chunk in events
+        for line in chunk.decode().splitlines()
+        if line.startswith("data: ")
+    ]
+
+    turn = ChatTurn.objects.get(client_turn_id="a5936f90-fdb2-4e64-96a8-70f740d84d5c")
+    assert response.status_code == 200
+    assert control_result["value"]["cancelled"] is True
+    assert sum(item.get("status") == "cancelled" for item in payloads) == 1
+    assert not any(item.get("status") == "completed" for item in payloads)
+    assert not any(item.get("type") == "done" for item in payloads)
+    assert turn.state == "cancelled"
+    assert list(
+        ChatMessage.objects.filter(turn=turn, role="user").values_list("content", flat=True)
+    ) == ["Pergunta sintética cancelada durante a geração"]
+    assert not ChatMessage.objects.filter(turn=turn, role="assistant").exists()
+
+
+def test_adaptive_rag_forwards_cancel_callback_to_generation_service(monkeypatch):
+    from src.processing import adaptive_rag_service
+    from src.processing.adaptive_retrieval import RetrievalOptions
+
+    service = AdaptiveRAGService.__new__(AdaptiveRAGService)
+    service._options = lambda: RetrievalOptions(max_sources=3)
+    service._has_unambiguous_versioned_reference = lambda _question: False
+
+    def cancelled():
+        return True
+
+    captured = {}
+
+    def stream_answer_question(_service, **kwargs):
+        captured.update(kwargs)
+        yield {"event": "status", "status": "generating"}
+
+    monkeypatch.setattr(
+        adaptive_rag_service.RAGService, "stream_answer_question", stream_answer_question
+    )
+    events = list(service.stream_answer_question("Pergunta", should_cancel=cancelled))
+
+    assert events == [{"event": "status", "status": "generating"}]
+    assert captured["should_cancel"] is cancelled
+
+
+def test_cancel_after_grounding_validation_prevents_answer_cache_write(monkeypatch):
+    from src.processing import rag_service as rag_module
+
+    class FakeCache:
+        writes = 0
+
+        def get_corpus_version(self):
+            return 1
+
+        def get_corpus_revision_digest(self):
+            return "qa-corpus"
+
+        def get_answer(self, *_args, **_kwargs):
+            return None
+
+        def set_answer(self, *_args, **_kwargs):
+            self.writes += 1
+
+    class FakeOllama:
+        def stream_text(self, *_args, **_kwargs):
+            yield "Fato apoiado pela fonte."
+
+    service = rag_module.RAGService.__new__(rag_module.RAGService)
+    service.use_cache = True
+    service.cache = FakeCache()
+    service.ollama = FakeOllama()
+    service.get_relevant_context = lambda *_args, **_kwargs: ("contexto", [{"id": 1}])
+    service._source_relevance = lambda _results: 0.9
+    cancelled = {"value": False}
+
+    def validate(_answer, _results):
+        cancelled["value"] = True
+        return {
+            "answer": "Fato apoiado pela fonte.",
+            "grounded": True,
+            "source_only": True,
+            "grounding": {"grounded": True, "claims": [], "failed_claims": []},
+        }
+
+    service._validate_answer = validate
+    monkeypatch.setattr(rag_module, "deterministic_answer", lambda *_args: None)
+    with pytest.raises(GenerationCancelled):
+        list(service.stream_answer_question("Pergunta", should_cancel=lambda: cancelled["value"]))
+
+    assert service.cache.writes == 0
+
+
+def test_grounded_pipeline_closes_cancelled_attempt_and_skips_retry_and_validation():
+    state = {"cancelled": False, "attempts": 0, "closed": False, "validated": False}
+
+    def stream_attempt(_prompt):
+        state["attempts"] += 1
+        try:
+            yield "supported draft"
+            state["cancelled"] = True
+            yield "must not be accepted"
+        finally:
+            state["closed"] = True
+
+    def validate_attempt(_answer):
+        state["validated"] = True
+        return {"grounded": False, "source_only": False}
+
+    with pytest.raises(GenerationCancelled):
+        run_grounded_generation(
+            "prompt",
+            stream_attempt=stream_attempt,
+            validate_attempt=validate_attempt,
+            should_cancel=lambda: state["cancelled"],
+        )
+
+    assert state == {"cancelled": True, "attempts": 1, "closed": True, "validated": False}
+
+
+def test_compatible_provider_closes_response_when_cancelled_between_events(monkeypatch):
+    from src.processing import llm_provider
+
+    class FakeResponse:
+        closed = False
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            self.closed = True
+
+        def raise_for_status(self):
+            return None
+
+        def iter_lines(self, decode_unicode=True):
+            yield 'data: {"choices":[{"delta":{"content":"primeiro"}}]}'
+            yield 'data: {"choices":[{"delta":{"content":"segundo"}}]}'
+
+    response = FakeResponse()
+    cancelled = {"value": False}
+    monkeypatch.setattr(llm_provider.requests, "post", lambda *_args, **_kwargs: response)
+    stream = llm_provider.stream_text(
+        "prompt",
+        {
+            "provider": "openai",
+            "endpoint": "https://api.openai.com/v1",
+            "model": "test-model",
+            "api_key": "test-key",
+        },
+        temperature=0,
+        max_tokens=10,
+        should_cancel=lambda: cancelled["value"],
+    )
+
+    assert next(stream) == "primeiro"
+    cancelled["value"] = True
+    with pytest.raises(StopIteration):
+        next(stream)
+    assert response.closed is True
+
+
+def test_ollama_closes_response_when_cancelled_between_lines(monkeypatch):
+    from src.llm_engine.ollama_service import OllamaService
+
+    class FakeResponse:
+        closed = False
+
+        def raise_for_status(self):
+            return None
+
+        def iter_lines(self, decode_unicode=True):
+            yield '{"response":"primeiro"}'
+            yield '{"response":"segundo"}'
+
+        def close(self):
+            self.closed = True
+
+    response = FakeResponse()
+    cancelled = {"value": False}
+    service = OllamaService(base_url="http://127.0.0.1:11434")
+    assert service.stream_session.get_adapter("http://").max_retries.total == 0
+    monkeypatch.setattr(service.stream_session, "post", lambda *_args, **_kwargs: response)
+    stream = service.stream_text(
+        "prompt",
+        model="test-model",
+        should_cancel=lambda: cancelled["value"],
+    )
+
+    assert next(stream) == "primeiro"
+    cancelled["value"] = True
+    with pytest.raises(StopIteration):
+        next(stream)
+    assert response.closed is True

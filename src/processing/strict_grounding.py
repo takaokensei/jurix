@@ -27,7 +27,7 @@ from typing import Any
 
 from django.conf import settings
 
-from src.processing.grounding_service import build_evidence, extract_claims
+from src.processing.grounding_service import build_article_family_evidence, extract_claims
 
 _WORD_RE = re.compile(r"[A-Za-zÀ-ÿ]{3,}", re.UNICODE)
 _NUMBER_RE = re.compile(r"\b\d+(?:[.,]\d+)?\b")
@@ -407,7 +407,7 @@ def evaluate_strict_grounding(
     require_source_diversity: bool | None = None,
 ) -> dict[str, Any]:
     """Evaluate claims with a stricter deterministic evidence contract."""
-    evidence = build_evidence(sources)
+    evidence = build_article_family_evidence(sources)
     claims = extract_claims(answer)
     require_diversity = (
         bool(getattr(settings, "RAG_STRICT_REQUIRE_SOURCE_DIVERSITY", False))
@@ -432,11 +432,13 @@ def evaluate_strict_grounding(
                 certainty_ok=match.certainty_ok,
             )
             if match.accepted:
-                matched_source_ids.add(item.dispositivo_id or index)
+                matched_source_ids.update(item.dispositivo_ids or ((item.dispositivo_id or index),))
                 matches.append(
                     {
                         "evidence_index": index,
                         "dispositivo_id": item.dispositivo_id,
+                        "dispositivo_ids": list(item.dispositivo_ids),
+                        "citation_ids": list(item.citation_ids),
                         "lexical_overlap": match.lexical_overlap,
                         "numeric_ok": match.numeric_ok,
                         "negation_ok": match.negation_ok,

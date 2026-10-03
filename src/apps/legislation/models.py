@@ -673,6 +673,11 @@ class ChatSession(TimeStampedModel):
     is_active = models.BooleanField(
         default=True, verbose_name="Ativa", help_text="Se esta sessão está atualmente ativa"
     )
+    is_pinned = models.BooleanField(
+        default=False,
+        verbose_name="Fixada",
+        help_text="Se esta conversa deve permanecer no topo do histórico do usuário",
+    )
 
     class Meta:
         verbose_name = "Sessão de Chat"

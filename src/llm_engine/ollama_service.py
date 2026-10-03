@@ -11,7 +11,7 @@ Ollama runs on the host machine and is accessible via host.docker.internal:11434
 
 import json
 import logging
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from typing import Any
 
 import requests
@@ -53,6 +53,18 @@ class OllamaService:
         adapter = HTTPAdapter(pool_connections=10, pool_maxsize=20, max_retries=retries)
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
+
+        # A streaming generation must not hide transport retries from its
+        # cancellation checks. Keep the resilient session for ordinary calls,
+        # but use a no-retry pool for token streams.
+        self.stream_session = requests.Session()
+        stream_adapter = HTTPAdapter(
+            pool_connections=10,
+            pool_maxsize=20,
+            max_retries=Retry(total=0, connect=0, read=0, redirect=0, status=0),
+        )
+        self.stream_session.mount("http://", stream_adapter)
+        self.stream_session.mount("https://", stream_adapter)
 
     def generate_embedding(self, text: str, model: str | None = None) -> list[float] | None:
         """
@@ -137,7 +149,13 @@ class OllamaService:
             return None
 
     def stream_text(
-        self, prompt: str, model: str | None = None, temperature: float = 0.7, max_tokens: int = 500
+        self,
+        prompt: str,
+        model: str | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 500,
+        *,
+        should_cancel: Callable[[], bool] | None = None,
     ) -> Generator[str, None, None]:
         """
         Stream text completion from Ollama yielding chunks as they arrive.
@@ -163,10 +181,16 @@ class OllamaService:
         response = None
         completed = False
         try:
-            response = self.session.post(url, json=payload, stream=True, timeout=self.timeout * 2)
+            if should_cancel is not None and should_cancel():
+                return
+            response = self.stream_session.post(
+                url, json=payload, stream=True, timeout=self.timeout * 2
+            )
             response.raise_for_status()
 
             for line in response.iter_lines(decode_unicode=True):
+                if should_cancel is not None and should_cancel():
+                    return
                 if line:
                     try:
                         data = json.loads(line)

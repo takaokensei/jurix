@@ -10,9 +10,38 @@
 .jurix-sidebar-recents { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
 .jurix-sidebar-recents-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: .75rem; color: var(--figma-text-muted); }
 .jurix-sidebar-recents-heading a { display: inline-flex; align-items: center; min-height: 32px; color: inherit; text-decoration: none; }
-.jurix-sidebar .chat-sessions-list { min-height: 0; overflow-y: auto; scrollbar-width: thin; flex: 1; color: var(--figma-text-muted); font-size: .8125rem; }
+.jurix-sidebar .chat-sessions-list { width: 100%; max-height: none; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-gutter: stable; padding-inline-end: 8px; flex: 1; color: var(--figma-text-muted); font-size: .8125rem; }
 .jurix-recent-chat, .jurix-sidebar .chat-session-item { box-sizing: border-box; display: flex; align-items: center; min-height: 44px; padding: 8px 10px; border-radius: 8px; color: var(--figma-text-muted); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jurix-recent-chat { display: block; line-height: 28px; }
+.jurix-sidebar .chat-session-item { position: relative; width: 100%; height: auto; gap: 5px; padding: 3px 5px 3px 9px; }
+.jurix-sidebar .chat-session-main { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; line-height: 1.5; }
+.jurix-session-pinned-mark { display: inline-grid; flex: 0 0 auto; place-items: center; color: var(--figma-blue-light); }
+.jurix-session-pinned-mark svg { display: block; width: 13px; height: 13px; }
+.jurix-session-menu-trigger { display: inline-grid; flex: 0 0 34px; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 7px; color: var(--figma-text-muted); background: transparent; font: 600 22px/1 var(--figma-font-ui, Inter, system-ui, sans-serif); cursor: pointer; opacity: .76; }
+.jurix-session-menu-trigger:hover, .jurix-session-menu-trigger:focus-visible { color: var(--figma-text-white); background: var(--figma-bg-card); opacity: 1; }
+.jurix-session-menu { position: fixed; z-index: 1200; min-width: 188px; padding: 5px; border: 1px solid var(--figma-border); border-radius: 12px; background: var(--figma-bg-surface); box-shadow: 0 16px 40px rgb(0 0 0 / 35%); animation: jurix-menu-enter 120ms ease-out both; }
+.jurix-session-menu-item { display: flex; align-items: center; width: 100%; min-height: 40px; padding: 8px 10px; border: 0; border-radius: 7px; color: var(--figma-text-body); background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.jurix-session-menu-item:hover, .jurix-session-menu-item:focus-visible { background: var(--figma-bg-card); color: var(--figma-text-white); }
+.jurix-session-menu-item.is-danger { color: var(--figma-red-soft, #f87171); }
+.jurix-session-menu-divider { height: 1px; margin: 4px 6px; background: var(--figma-border); }
+.jurix-session-dialog { width: min(420px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--figma-border); border-radius: 18px; color: var(--figma-text-body); background: var(--figma-bg-surface); box-shadow: 0 24px 64px rgb(0 0 0 / 40%); }
+.jurix-session-dialog::backdrop { background: rgb(2 6 16 / 58%); backdrop-filter: blur(3px); }
+.jurix-session-dialog__form { display: grid; gap: 14px; padding: 24px; }
+.jurix-session-dialog__title { margin: 0; color: var(--figma-text-white); font-size: 1.1rem; }
+.jurix-session-dialog__description { margin: 0; color: var(--figma-text-muted); line-height: 1.6; }
+.jurix-session-dialog__field { display: grid; gap: 7px; color: var(--figma-text-muted); font-size: .85rem; }
+.jurix-session-dialog__field[hidden] { display: none; }
+.jurix-session-dialog__field input { min-height: 44px; padding: 9px 12px; border: 1px solid var(--figma-border); border-radius: 9px; color: var(--figma-text-white); background: var(--figma-bg-card); font: inherit; }
+.jurix-session-dialog__error { margin: 0; color: var(--figma-red-soft, #f87171); }
+.jurix-session-dialog__error[hidden] { display: none; }
+.jurix-session-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.jurix-session-dialog__actions button { min-height: 42px; padding: 8px 13px; border: 1px solid var(--figma-border); border-radius: 9px; color: var(--figma-text-body); background: transparent; font: inherit; cursor: pointer; }
+.jurix-session-dialog__confirm { color: #fff !important; border-color: var(--figma-blue-primary) !important; background: var(--figma-blue-primary) !important; }
+.jurix-session-dialog__confirm.is-danger { border-color: #b42318 !important; background: #b42318 !important; }
+.jurix-sidebar-status { position: fixed; z-index: 1300; inset: auto 20px 20px auto; max-width: min(420px, calc(100vw - 40px)); margin: 0; padding: 12px 16px; border: 1px solid var(--figma-border); border-radius: 12px; color: var(--figma-text-white); background: var(--figma-bg-surface); box-shadow: 0 12px 32px rgb(0 0 0 / 28%); animation: jurix-menu-enter 140ms ease-out both; }
+.jurix-sidebar-status[data-error="true"] { border-color: var(--figma-red-soft, #f87171); }
+@keyframes jurix-menu-enter { from { opacity: 0; transform: translateY(4px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.jurix-sidebar .chat-session-item:hover .jurix-session-menu-trigger, .jurix-session-menu-trigger:focus-visible { opacity: 1; }
 .jurix-recent-chat:hover, .jurix-sidebar .chat-session-item:hover { background: var(--figma-bg-card); color: var(--figma-text-white); }
 .jurix-sidebar :focus-visible { outline: 2px solid var(--figma-blue-light); outline-offset: 2px; }
 .jurix-palette-close { width: 44px; height: 44px; flex: 0 0 44px; border: 0; border-radius: 9px; background: transparent; color: var(--figma-text-muted); font-size: 24px; cursor: pointer; }
@@ -25,3 +54,4 @@
   html[data-sidebar-collapsed="true"] .jurix-sidebar .workspace-brand > span:not(.workspace-logo), html[data-sidebar-collapsed="true"] .jurix-sidebar .workspace-new-action > span, html[data-sidebar-collapsed="true"] .jurix-sidebar .workspace-nav-item > span { display: none; }
 }
 @media (max-width: 900px) { .figma-theme .jurix-sidebar { width: 240px; padding: 18px 14px; } }
+@media (prefers-reduced-motion: reduce) { .jurix-session-menu, .jurix-sidebar-status { animation: none; } }

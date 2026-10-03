@@ -40,17 +40,40 @@
     function splitNormaIdentifier() {
         if (!search || !yearFilter) return;
         const match = search.value.trim().match(
-            /^(?:(?:lei|decreto(?:\s+legislativo)?|resolu[cç][aã]o)\s*(?:n(?:[úu]mero|[º°.]?)\s*)?)?(\d{1,6})\s*\/\s*(\d{4})$/i,
+            /^(?:(lei(?:\s+(?:complementar|ordin[áa]ria|org[âa]nica))?|decreto(?:-lei|\s+legislativo)?|resolu[cç][aã]o|portaria)\s*(?:n(?:[úu]mero|[º°.]?)\s*)?)?((?:\d{1,6}|\d{1,3}(?:\.\d{3})+))\s*\/\s*((?:19|20)\d{2})$/i,
         );
         if (!match) return;
 
-        const yearOption = Array.from(yearFilter.options).find((option) => option.value === match[2]);
+        const number = match[2].replace(/\D/g, '');
+        const yearOption = Array.from(yearFilter.options).find((option) => option.value === match[3]);
         if (!yearOption) return;
 
+        const typeFilter = document.getElementById('norma-tipo');
+        if (match[1] && typeFilter) {
+            const canonical = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase().replace(/\s+/g, ' ').trim()
+                .replace(/^lei ordinaria$/, 'lei');
+            const requestedType = canonical(match[1]);
+            const matchingOption = Array.from(typeFilter.options).find((option) =>
+                canonical(option.value) === requestedType || canonical(option.textContent) === requestedType,
+            );
+            if (!matchingOption || (typeFilter.value && typeFilter.value !== matchingOption.value)) return;
+            typeFilter.value = matchingOption.value;
+        }
+
+        let exactReference = filterForm.querySelector('input[name="referencia_exata"]');
+        if (!exactReference) {
+            exactReference = document.createElement('input');
+            exactReference.type = 'hidden';
+            exactReference.name = 'referencia_exata';
+            filterForm.appendChild(exactReference);
+        }
+        exactReference.value = '1';
+
         // The server searches the number field and year facet independently;
-        // searching the literal "8205/2026" cannot match the stored number "8205".
-        search.value = match[1];
-        yearFilter.value = match[2];
+        // normalize dotted thousands and retain explicit type/year filters.
+        search.value = number;
+        yearFilter.value = match[3];
     }
 
     function initialView() {
@@ -74,7 +97,10 @@
             if (!clear) return;
             clear.hidden = !search.value.trim();
         };
-        search.addEventListener('input', syncClear);
+        search.addEventListener('input', () => {
+            filterForm?.querySelector('input[name="referencia_exata"]')?.remove();
+            syncClear();
+        });
         search.addEventListener('keydown', (event) => {
             if (event.key === 'Escape' && search.value) {
                 event.preventDefault();

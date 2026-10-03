@@ -10,6 +10,7 @@ from django.test import Client, override_settings
 
 from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, Norma
 from src.apps.legislation.workspace_views import _deduplicate_search_results, _rank_history
+from src.apps.operations.models import CorpusRevision
 
 pytestmark = pytest.mark.django_db
 
@@ -86,6 +87,35 @@ def test_workspace_surfaces_render_without_server_errors(norma):
         assert response.status_code == 200, url
         assert b"Server Error" not in response.content
         assert b"Traceback" not in response.content
+
+
+def test_norma_detail_does_not_claim_currently_in_force_when_corpus_completeness_is_unknown():
+    norma = Norma.objects.create(
+        tipo="Lei",
+        numero="8206",
+        ano=2026,
+        status="consolidated",
+        data_publicacao="2026-09-21",
+        data_vigencia="2026-09-21",
+        texto_consolidado="Art. 1º Texto.",
+    )
+    CorpusRevision.objects.update_or_create(
+        key="municipal",
+        defaults={
+            "completeness": "unknown",
+            "digest": "a" * 64,
+            "norm_count": 1,
+            "device_count": 1,
+        },
+    )
+
+    response = Client().get(f"/normas/{norma.pk}/")
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Situação atual não verificada no corpus" in body
+    assert "Início de vigência registrado" in body
+    assert '<span class="badge badge-success">Vigente</span>' not in body
 
 
 def test_collections_and_assistant_copy_describe_only_available_products():
@@ -214,7 +244,8 @@ def test_norma_list_corpus_total_matches_current_database(norma):
     response = Client().get("/normas/")
     body = response.content.decode()
     assert 'class="jurix-norma-stat-value">1<' in body
-    assert 'class="jurix-norma-stat-label">normas consolidadas<' in body
+    assert 'class="jurix-norma-stat-label">no acervo<' in body
+    assert 'class="jurix-norma-stat-label">resultados<' in body
 
 
 def test_norma_list_rewrites_legacy_sapl_detail_url(norma):
@@ -310,12 +341,54 @@ def test_norma_detail_exposes_safe_assistant_and_official_source_actions(norma):
     assert 'rel="noopener noreferrer"' in body
 
 
+def test_norma_detail_device_index_preserves_hierarchical_deep_links(norma):
+    article = Dispositivo.objects.create(
+        norma=norma, tipo="artigo", numero="1º", texto="Texto", ordem=1, caminho=""
+    )
+    inciso = Dispositivo.objects.create(
+        norma=norma,
+        tipo="inciso",
+        numero="I",
+        texto="Inciso",
+        ordem=2,
+        dispositivo_pai=article,
+        caminho="",
+    )
+    alinea = Dispositivo.objects.create(
+        norma=norma,
+        tipo="alinea",
+        numero="a)",
+        texto="Alínea",
+        ordem=3,
+        dispositivo_pai=inciso,
+        caminho="",
+    )
+    second_article = Dispositivo.objects.create(
+        norma=norma, tipo="artigo", numero="2º", texto="Texto", ordem=4, caminho=""
+    )
+
+    body = Client().get(f"/normas/{norma.pk}/").content.decode()
+
+    assert 'class="dispositivos-index-links" data-device-index' in body
+    assert f'href="#dispositivo-{article.pk}"' in body
+    assert f'href="#dispositivo-{inciso.pk}"' in body
+    assert f'href="#dispositivo-{alinea.pk}"' in body
+    assert f'href="#dispositivo-{second_article.pk}"' in body
+    assert f'data-device-parent-id="{inciso.pk}"' in body
+    assert 'data-device-type="artigo"' in body
+
+
 def test_norma_pdf_export_returns_a_real_pdf(norma):
+    import fitz
+
     response = Client().get(f"/normas/{norma.pk}/export/pdf/")
     assert response.status_code == 200
     assert response["Content-Type"] == "application/pdf"
     assert response["Content-Disposition"].startswith("attachment;")
     assert response.content.startswith(b"%PDF-")
+    with fitz.open(stream=response.content, filetype="pdf") as document:
+        exported_text = "\n".join(page.get_text() for page in document)
+    assert "Art. 1º Texto." in exported_text
 
 
 def test_assistant_can_prefill_a_consolidated_norm_context(norma):
@@ -501,3 +574,67 @@ def test_legal_search_result_links_to_the_matching_device(norma, monkeypatch):
     assert expected_href.encode() in response.content
     detail = Client().get(expected_href.split("#", 1)[0])
     assert f'id="dispositivo-{device.pk}"'.encode() in detail.content
+
+
+def test_legal_search_resolves_explicit_norm_and_article_before_semantic_search(monkeypatch):
+    target = Norma.objects.create(
+        tipo="Lei",
+        numero="8206",
+        ano=2026,
+        status="consolidated",
+        ementa="Institui o Programa Municipal de Educação Popular.",
+        texto_consolidado="Art. 1º Institui o programa. Art. 4º Entra em vigor na publicação.",
+    )
+    target_article = Dispositivo.objects.create(
+        norma=target,
+        tipo="artigo",
+        numero="1º",
+        ordem=1,
+        texto="Fica instituído o Programa Municipal de Educação Popular.",
+    )
+    distractor = Norma.objects.create(
+        tipo="Lei",
+        numero="8206",
+        ano=2025,
+        status="consolidated",
+        ementa="Cláusula genérica de vigência.",
+        texto_consolidado="Art. 4º Entra em vigor na publicação.",
+    )
+    Dispositivo.objects.create(
+        norma=distractor,
+        tipo="artigo",
+        numero="1º",
+        ordem=1,
+        texto="Artigo não relacionado à lei do pedido.",
+    )
+
+    class UnexpectedRAG:
+        def semantic_search(self, **kwargs):
+            raise AssertionError("Explicit norm lookup must not call semantic RAG")
+
+    monkeypatch.setattr("src.apps.legislation.workspace_views.RAGService", UnexpectedRAG)
+    client = Client()
+    whole_law = client.get("/pesquisa/", {"q": "O que prevê a Lei nº 8.206/2026?"})
+    article = client.get("/pesquisa/", {"q": "O que prevê o art. 1º da Lei nº 8.206/2026?"})
+
+    assert whole_law.status_code == article.status_code == 200
+    assert f"/normas/{target.pk}/".encode() in whole_law.content
+    assert target.ementa.encode() in whole_law.content
+    assert "Cláusula genérica de vigência".encode() not in whole_law.content
+    assert f"/normas/{target.pk}/#dispositivo-{target_article.pk}".encode() in article.content
+    assert f"/normas/{distractor.pk}/".encode() not in article.content
+
+
+def test_legal_search_explicit_missing_norm_returns_a_qualified_empty_state(monkeypatch):
+    other_year = Norma.objects.create(tipo="Lei", numero="8206", ano=2025, status="consolidated")
+
+    class UnexpectedRAG:
+        def semantic_search(self, **kwargs):
+            raise AssertionError("An exact missing reference must not drift to semantic results")
+
+    monkeypatch.setattr("src.apps.legislation.workspace_views.RAGService", UnexpectedRAG)
+    response = Client().get("/pesquisa/", {"q": "O que prevê a Lei nº 8206/2026?"})
+
+    assert response.status_code == 200
+    assert b"normativa exata" in response.content.lower()
+    assert f"/normas/{other_year.pk}/".encode() not in response.content

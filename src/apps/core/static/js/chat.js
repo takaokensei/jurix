@@ -58,6 +58,7 @@
     let activeStreamElements = null;
     let activeStreamQuestion = '';
     let pendingRetryTurnId = null;
+    let pendingSessionClientId = null;
 
     // ===== UTILITIES =====
     function escapeHtml(text) {
@@ -81,9 +82,9 @@
         FORBID_ATTR: ['style', 'srcset', 'poster', 'background', 'ping'],
     };
 
-    function renderMarkdown(text) {
+    function renderMarkdown(text, sources = []) {
         if (window.JurixMarkdown && typeof window.JurixMarkdown.render === 'function') {
-            return window.JurixMarkdown.render(text);
+            return window.JurixMarkdown.render(text, sources);
         }
         return DOMPurify.sanitize(marked.parse(text), SANITIZE_CONFIG);
     }
@@ -550,46 +551,18 @@
         }
     }
 
-    async function createSessionCardImmediately(question) {
-        const sessionsList = document.getElementById('chat-sessions-list');
-        if (!sessionsList) return;
+    function createPendingClientSessionId() {
+        const uuid = window.crypto?.randomUUID?.();
+        return `jurix-${uuid || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`}`;
+    }
 
-        const tempSessionId = 'temp-' + Date.now();
-        const sessionTitle = question.length > 50 ? question.substring(0, 50) + '...' : question;
-
-        const sessionCard = document.createElement('div');
-        sessionCard.className = 'chat-session-item active session-card-new';
-        sessionCard.dataset.sessionId = tempSessionId;
-        sessionCard.setAttribute('role', 'button');
-        sessionCard.setAttribute('tabindex', '0');
-        sessionCard.innerHTML = `
-            <div class="chat-session-content">
-                <div class="chat-session-title">${escapeHtml(sessionTitle)}</div>
-            </div>
-            <button 
-                class="delete-session-button" 
-                data-delete-session-id="${tempSessionId}"
-                aria-label="Deletar conversa"
-                title="Deletar conversa">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="delete-icon">
-                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </button>
-        `;
-
-        if (
-            sessionsList.firstChild &&
-            sessionsList.firstChild.classList &&
-            sessionsList.firstChild.classList.contains('chat-session-item')
-        ) {
-            sessionsList.insertBefore(sessionCard, sessionsList.firstChild);
-        } else {
-            const emptyState = sessionsList.querySelector('div:not(.chat-session-item)');
-            if (emptyState) emptyState.remove();
-            sessionsList.insertBefore(sessionCard, sessionsList.firstChild);
-        }
-
-        window.tempSessionCard = sessionCard;
+    function createSessionCardImmediately(question) {
+        pendingSessionClientId = createPendingClientSessionId();
+        return window.JurixSidebar?.addPending?.({
+            clientSessionId: pendingSessionClientId,
+            question,
+            title: question.length > 50 ? `${question.substring(0, 50)}...` : question,
+        }) || null;
     }
 
     function animateSessionCreated() {
@@ -868,6 +841,7 @@
         const copyButton = messageDiv.querySelector(`#${copyButtonId}`) || document.getElementById(copyButtonId);
         const messageBody = messageDiv.querySelector(`#${messageId}`) || document.getElementById(messageId);
 
+        messageBody._citationSources = Array.isArray(sources) ? sources : [];
         copyButton.setAttribute('data-markdown', answer);
         copyButton.addEventListener('click', () => {
             copyResponseToClipboard(copyButton.getAttribute('data-markdown') || answer, copyButton);
@@ -877,7 +851,7 @@
 
         if (skipStreaming) {
             if (messageBody && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
-                messageBody.innerHTML = renderMarkdown(answer);
+                messageBody.innerHTML = renderMarkdown(answer, sources);
             } else {
                 messageBody.textContent = answer;
             }
@@ -915,7 +889,7 @@
                 if (sources && sources.length > 0) {
                     showSourcesGradually(sourcesContainer, sources, true, answer);
                 }
-            });
+            }, sources);
         }
     }
 
@@ -987,23 +961,20 @@
         return Promise.resolve(false);
     }
 
-    function showSourcesGradually(container, sources, animated = true, answerText = '') {
+    function showSourcesGradually(container, sources, animated = true, answerText = '', metadata = {}) {
         if (!sources || sources.length === 0 || !container) return;
-
-        const sortedSources = [...sources].sort((a, b) => {
-            const scoreA = parseFloat(a.similarity_score || 0);
-            const scoreB = parseFloat(b.similarity_score || 0);
-            return scoreB - scoreA;
-        });
+        // Array order is the citation contract: source index N resolves to
+        // citation marker [[N]]. Never rank-sort the rendered evidence.
+        const orderedSources = [...sources];
 
         const headerHtml = `
             <div class="sources-section">
-                <button type="button" class="jurix-sources-pill-btn" aria-label="Abrir painel com ${sortedSources.length} fontes consultadas">
+                <button type="button" class="jurix-sources-pill-btn" aria-label="Abrir painel com ${orderedSources.length} fontes consultadas">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2">
                         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                     </svg>
-                    <span>${sortedSources.length} ${sortedSources.length === 1 ? 'fonte consultada' : 'fontes consultadas'}</span>
-                    <span class="jurix-sources-pill-badge">Referências usadas</span>
+                    <span>${orderedSources.length} ${orderedSources.length === 1 ? 'fonte consultada' : 'fontes consultadas'}</span>
+                    <span class="jurix-sources-pill-badge">${metadata.pending ? 'Verificação em andamento' : 'Fontes associadas à resposta'}</span>
                     <span class="jurix-sources-pill-action">Ver fontes →</span>
                 </button>
             </div>
@@ -1013,8 +984,10 @@
 
         const pillBtn = container.querySelector('.jurix-sources-pill-btn');
         if (pillBtn) {
-            pillBtn._sourcesData = sortedSources;
-            container._sourcesData = sortedSources;
+            pillBtn._sourcesData = orderedSources;
+            pillBtn._sourcesMeta = metadata;
+            container._sourcesData = orderedSources;
+            container._sourcesMeta = metadata;
         }
 
         // Source cards belong exclusively to the drawer. Rendering them inline
@@ -1032,6 +1005,32 @@
         } else {
             reveal();
         }
+    }
+
+    function appendNormLookupActions(messageDiv, question) {
+        if (!messageDiv || messageDiv.querySelector('.jurix-norm-lookup-actions')) return;
+        const actions = document.createElement('div');
+        actions.className = 'jurix-norm-lookup-actions';
+        actions.setAttribute('role', 'group');
+        actions.setAttribute('aria-label', 'Próximas ações para localizar a norma');
+
+        const revise = document.createElement('button');
+        revise.type = 'button';
+        revise.textContent = 'Revisar pesquisa';
+        revise.addEventListener('click', () => {
+            const input = document.getElementById('question-textarea') || document.getElementById('hero-search-input');
+            if (!input) return;
+            input.value = question;
+            window.JurixChatShell?.updateCounter?.();
+            focusComposerSafely(input);
+        });
+
+        const search = document.createElement('a');
+        const searchBase = document.body.dataset.normaListUrl || '/normas/';
+        search.href = `${searchBase}?q=${encodeURIComponent(question)}`;
+        search.textContent = 'Pesquisar nas normas';
+        actions.append(revise, search);
+        messageDiv.querySelector('.message-content')?.append(actions);
     }
 
     function createSourceCard(source, index) {
@@ -1117,7 +1116,7 @@
             .replace(/\n{3,}/g, '\n\n');
     }
 
-    function typewriterEffect(elementId, text, onComplete) {
+    function typewriterEffect(elementId, text, onComplete, sources = []) {
         const element = document.getElementById(elementId);
         if (!element) return;
 
@@ -1125,13 +1124,13 @@
         const words = text.split(/(\s+)/);
         let wordIndex = 0;
         const speed = 15;
-        const fullHtml = renderMarkdown(text);
+        const fullHtml = renderMarkdown(text, sources);
 
         function type() {
             if (wordIndex < words.length) {
                 const visibleText = words.slice(0, wordIndex + 1).join('');
                 try {
-                    element.innerHTML = renderMarkdown(visibleText);
+                    element.innerHTML = renderMarkdown(visibleText, sources);
                 } catch (e) {
                     element.textContent = visibleText;
                 }
@@ -1270,6 +1269,21 @@
         const sidebar = document.getElementById('sidebar');
         const sidebarBackdrop = document.getElementById('jurix-sidebar-backdrop');
 
+        document.addEventListener('click', (event) => {
+            const link = event.target.closest?.('[data-pending-session-link]');
+            if (!link) return;
+            event.preventDefault();
+            const row = link.closest('.chat-session-item');
+            if (!row || row.dataset.pendingState !== 'failed') return;
+            const input = document.getElementById('question-textarea');
+            if (!input) return;
+            if (!input.value.trim()) {
+                input.value = row.dataset.pendingQuestion || '';
+                window.JurixChatShell?.updateCounter();
+            }
+            focusComposerSafely(input);
+        });
+
         if (toggleSidebarBtn && sidebar) {
             const isMobileSidebar = () => window.matchMedia
                 ? window.matchMedia('(max-width: 900px)').matches
@@ -1403,12 +1417,14 @@
                     const elements = activeStreamElements;
                     if (elements?.messageDiv) {
                         const retryQuestion = activeStreamQuestion;
-                        const notice = elements.messageDiv.querySelector('.jurix-provisional-notice');
-                        if (notice) {
-                            notice.hidden = false;
-                            notice.textContent = 'Geração interrompida neste navegador. O servidor pode ainda estar encerrando a tarefa; a resposta parcial não foi validada.';
-                            notice.classList.add('is-interrupted');
-                        }
+                        const notice = document.createElement('p');
+                        notice.className = 'jurix-stream-interrupted-note';
+                        notice.setAttribute('role', 'status');
+                        notice.textContent = 'A consulta foi interrompida antes de a resposta ser validada. Você pode tentar novamente.';
+                        elements.messageDiv.querySelector('.message-content')?.insertBefore(
+                            notice,
+                            elements.messageDiv.querySelector('.message-body')
+                        );
                         const retry = document.createElement('button');
                         retry.type = 'button';
                         retry.className = 'jurix-interrupted-retry';
@@ -1459,7 +1475,9 @@
 
                 const wasNewSession = !currentSessionId;
                 if (wasNewSession && !isRetry) {
-                    await createSessionCardImmediately(question);
+                    createSessionCardImmediately(question);
+                } else if (wasNewSession && isRetry && pendingSessionClientId) {
+                    window.JurixSidebar?.markPendingRunning?.(pendingSessionClientId);
                 }
 
                 const loadingId = addLoadingMessage();
@@ -1495,7 +1513,6 @@
                     <span class="message-role">Jurix</span>
                     <span class="message-time">${timestamp}</span>
                 </div>
-                <p class="jurix-provisional-notice" hidden role="status">Rascunho em geração — verificando as afirmações nas fontes antes de concluir.</p>
                 <div class="message-body jurix-rag-answer" id="${messageId}"></div>
                 <div class="message-actions">
                     <button class="regenerate-button is-hidden" id="regenerate-${Date.now()}" aria-label="Tentar novamente" title="Tentar novamente">
@@ -1543,7 +1560,15 @@
             onSession(data) {
                 currentSessionId = data.session_id;
                 chatState?.setSessionId?.(currentSessionId);
-                window.history.replaceState({}, '', `${config.chatbotUrl}${encodeURIComponent(data.session_slug)}/`);
+                if (pendingSessionClientId) {
+                    window.JurixSidebar?.reconcilePending?.(pendingSessionClientId, data);
+                }
+                const sessionPath = data.session_slug
+                    ? `${config.chatbotUrl}${encodeURIComponent(data.session_slug)}/`
+                    : data.session_id
+                        ? `${config.chatbotUrl}${encodeURIComponent(data.session_id)}/`
+                        : null;
+                if (sessionPath) window.history.replaceState({}, '', sessionPath);
             },
             onChunk,
             onSources,
@@ -1551,12 +1576,18 @@
             onError,
             onStatus,
             onTitle(data) {
-                const item = document.querySelector(`[data-session-id="${CSS.escape(String(currentSessionId))}"] .chat-session-title`);
+                if (data?.title && data?.client_session_id) {
+                    window.JurixSidebar?.updatePendingTitle?.(data.client_session_id, data.title);
+                }
+                const item = document.querySelector(`[data-session-id="${CSS.escape(String(currentSessionId))}"] .chat-session-main`);
                 if (item && data?.title) item.textContent = data.title;
             },
             retryExistingQuestion,
             searchOptions: {
                 ...controls,
+                ...(sessionId == null && pendingSessionClientId
+                    ? { client_session_id: pendingSessionClientId }
+                    : {}),
                 ...(retryOfTurnId ? { retry_of_client_turn_id: retryOfTurnId } : {}),
             },
         });
@@ -1578,45 +1609,96 @@
                     await streamAssistantResponse(
                         question,
                         currentSessionId,
-                        (chunk, chunkMetadata = {}) => {
-                            accumulatedText += chunk;
+                        async (chunk, chunkMetadata = {}) => {
+                            // Never expose unverified model output. The backend streams
+                            // only the canonical answer after grounding has accepted it.
+                            if (chunkMetadata.provisional) return;
+                            accumulatedText = chunkMetadata.replace ? chunk : accumulatedText + chunk;
                             if (streamElements && streamElements.messageBody) {
-                                const provisionalNotice = streamElements.messageDiv.querySelector('.jurix-provisional-notice');
-                                if (provisionalNotice && chunkMetadata.provisional) provisionalNotice.hidden = false;
                                 if (window.JurixRagUI) {
                                     window.JurixRagUI.setStreamingState(streamElements.messageBody, true);
-                                    window.JurixRagUI.scheduleRender(streamElements.messageBody, accumulatedText);
+                                    if (chunkMetadata.replace) {
+                                        const tokens = accumulatedText.match(/\S+\s*/g) || [accumulatedText];
+                                        accumulatedText = '';
+                                        for (let index = 0; index < tokens.length; index += 4) {
+                                            accumulatedText += tokens.slice(index, index + 4).join('');
+                                            window.JurixRagUI.scheduleRender(streamElements.messageBody, accumulatedText);
+                                            await new Promise(resolve => window.setTimeout(resolve, 18));
+                                        }
+                                    } else {
+                                        window.JurixRagUI.scheduleRender(streamElements.messageBody, accumulatedText);
+                                        await new Promise(resolve => window.setTimeout(resolve, 18));
+                                    }
                                 } else {
-                                    streamElements.messageBody.innerHTML = renderMarkdown(accumulatedText);
+                                    streamElements.messageBody.innerHTML = renderMarkdown(accumulatedText, finalSources);
                                 }
                                 scrollToBottomIfAtBottom();
                             }
                         },
-                        (sources) => {
+                        (sources, _confidence, sourceMetadata = {}) => {
                             finalSources = sources || [];
+                            if (streamElements?.messageBody) {
+                                streamElements.messageBody._citationSources = finalSources;
+                                window.JurixRagUI?.setCitationSources?.(streamElements.messageBody, finalSources);
+                            }
+                            if (streamElements?.sourcesContainer) {
+                                const pendingMeta = { ...sourceMetadata, pending: true };
+                                streamElements.sourcesContainer._pendingSourcesMeta = pendingMeta;
+                                if (finalSources.length > 0) {
+                                    showSourcesGradually(
+                                        streamElements.sourcesContainer,
+                                        finalSources,
+                                        true,
+                                        accumulatedText,
+                                        pendingMeta
+                                    );
+                                }
+                            }
                         },
                         async (doneData) => {
                             doneData = doneData && typeof doneData === 'object' ? doneData : {};
                             chatState?.transition?.('finalizing', { question });
                             const finalAnswer = doneData.answer || accumulatedText;
                             const answerSources = doneData.grounded === true ? finalSources : [];
+                            const reasonCode = doneData.reason_code || doneData.contract?.reason_code || '';
+                            if (streamElements?.messageBody) streamElements.messageBody._citationSources = answerSources;
                             if (streamElements && window.JurixRagUI) {
-                                const provisionalNotice = streamElements.messageDiv.querySelector('.jurix-provisional-notice');
-                                if (provisionalNotice) provisionalNotice.remove();
-                                window.JurixRagUI.flushRender(streamElements.messageBody, finalAnswer);
+                                if (accumulatedText !== finalAnswer) {
+                                    window.JurixRagUI.flushRender(streamElements.messageBody, finalAnswer);
+                                }
                                 window.JurixRagUI.linkLegalReferences(streamElements.messageBody, answerSources);
                                 window.JurixRagUI.setStreamingState(streamElements.messageBody, false);
                                 window.JurixRagUI.announce(doneData.grounded === true
                                     ? 'Resposta concluída.'
                                     : 'Evidências recuperadas, mas insuficientes para fundamentar a resposta.');
                             }
-                            if (streamElements && streamElements.sourcesContainer && answerSources.length > 0) {
-                                showSourcesGradually(streamElements.sourcesContainer, answerSources, true, finalAnswer);
+                            if (streamElements?.sourcesContainer && answerSources.length > 0) {
+                                if (!streamElements.sourcesContainer.querySelector('.jurix-sources-pill-btn')) {
+                                    showSourcesGradually(
+                                        streamElements.sourcesContainer,
+                                        answerSources,
+                                        true,
+                                        finalAnswer,
+                                        streamElements.sourcesContainer._pendingSourcesMeta || {}
+                                    );
+                                }
+                                const pill = streamElements.sourcesContainer.querySelector('.jurix-sources-pill-btn');
+                                const badge = pill?.querySelector('.jurix-sources-pill-badge');
+                                if (badge) badge.textContent = 'Fontes associadas à resposta';
+                                if (pill) pill._sourcesMeta = { ...(pill._sourcesMeta || {}), pending: false };
+                                streamElements.sourcesContainer._sourcesMeta = { ...(streamElements.sourcesContainer._sourcesMeta || {}), pending: false };
+                                window.JurixRagUI?.updateSourcesDrawerMetadata?.({ pending: false });
+                            } else if (streamElements?.sourcesContainer) {
+                                window.JurixRagUI?.clearSourcesDrawer?.();
+                                streamElements.sourcesContainer.replaceChildren();
+                                streamElements.sourcesContainer._sourcesData = [];
+                                window.JurixRagUI?.setCitationSources?.(streamElements.messageBody, []);
                                 window.requestAnimationFrame(() => {
                                     if (window.JurixRagUI) window.JurixRagUI.enhanceSources(streamElements.sourcesContainer);
                                 });
                             }
-                            if (streamElements) {
+                            const canRevealAnswerActions = doneData.grounded === true && answerSources.length > 0;
+                            if (streamElements && canRevealAnswerActions) {
                                 if (streamElements.copyButton) {
                                     streamElements.copyButton.setAttribute('data-markdown', finalAnswer);
                                     streamElements.copyButton.classList.add('show');
@@ -1629,21 +1711,24 @@
                                     });
                                 }
                             }
+                            if (['norm_not_in_corpus', 'requested_device_not_in_corpus', 'norm_content_not_in_corpus'].includes(reasonCode)) {
+                                appendNormLookupActions(streamElements?.messageDiv, question);
+                            }
                             if (doneData.session_id) {
                                 currentSessionId = doneData.session_id;
                                 if (chatState && typeof chatState.setSessionId === 'function') {
                                     chatState.setSessionId(doneData.session_id);
                                 }
+                                if (wasNewSession && pendingSessionClientId) {
+                                    window.JurixSidebar?.reconcilePending?.(pendingSessionClientId, doneData);
+                                }
                                 if (doneData.session_slug) {
                                     const sessionUrl = `${config.chatbotUrl}${doneData.session_slug}/`;
                                     window.history.replaceState({}, '', sessionUrl);
                                 }
-                                if (wasNewSession && window.tempSessionCard) {
-                                    window.tempSessionCard.remove();
-                                    window.tempSessionCard = null;
-                                    animateSessionCreated();
-                                }
+                                if (wasNewSession) animateSessionCreated();
                                 await loadChatSessions();
+                                if (wasNewSession) pendingSessionClientId = null;
                                 updateNewChatButtonState();
                             }
                             chatState?.transition?.('completed', { question });
@@ -1652,26 +1737,16 @@
                             chatState.transition('failed', { error: errorMsg });
                         },
                         (status) => {
-                            const labels = {
-                                queued: 'Na fila…',
-                                retrieving: 'Buscando normas relevantes…',
-                                reranking: 'Refinando as evidências…',
-                                grounding: 'Validando a resposta nas fontes…',
-                                generating: 'Gerando resposta…',
-                                finalizing: 'Finalizando resposta…',
-                                insufficient_evidence: 'Evidências insuficientes para uma conclusão segura.',
-                            };
-                            const indicator = document.getElementById('chat-state-indicator');
-                            if (indicator && labels[status]) {
-                                indicator.textContent = labels[status];
-                                indicator.dataset.pipelineStatus = status;
-                                indicator.removeAttribute('hidden');
-                            }
+                            window.JurixChatController?.setPipelineStatus?.(status);
                         },
                         isRetry,
                         retryOfTurnId
                     );
                 } catch (streamError) {
+                    window.JurixChatController?.setPipelineStatus?.('failed');
+                    if (pendingSessionClientId) {
+                        window.JurixSidebar?.markPendingFailed?.(pendingSessionClientId);
+                    }
                     if (streamError.name === 'AbortError') {
                         // Keep the user question and partial draft visible. A local
                         // AbortController request is not proof of remote cancellation.

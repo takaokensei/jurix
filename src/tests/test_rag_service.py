@@ -513,15 +513,50 @@ class TestPromptConstruction:
         assert "CTX-123" in prompt and "PERGUNTA-456" in prompt
         assert prompt.rstrip().endswith("RESPOSTA:")
 
-    def test_prompt_keeps_the_formatting_examples_that_fix_glued_bullets(self):
+    def test_prompt_prefers_natural_prose_and_only_uses_lists_for_real_enumerations(self):
         prompt = RAGService.build_prompt("c", "q")
-        assert "EXEMPLO CORRETO" in prompt and "EXEMPLO INCORRETO" in prompt
+        assert "Comece diretamente pela conclusão" in prompt
+        assert "Use listas somente para enumerações reais" in prompt
+        assert "Não crie uma seção para cada artigo" in prompt
 
     def test_context_and_question_are_inserted_verbatim_even_with_braces(self):
         """The prompt is an f-string/format target: user text with { } must not break or be re-evaluated."""
         prompt = RAGService.build_prompt("Art. {1} e {contexto}", "Pergunta {question}?")
         assert "Art. {1} e {contexto}" in prompt
         assert "Pergunta {question}?" in prompt
+
+    def test_stream_cache_hit_preserves_status_sources_chunks_done_order(self):
+        service = RAGService(use_cache=True)
+        cache = Mock()
+        cache.get_corpus_version.return_value = 4
+        cache.get_corpus_revision_digest.return_value = "revision-4"
+        cache.get_answer.return_value = {
+            "answer": "Resposta em cache.",
+            "sources": [],
+            "source_relevance": 0.7,
+            "grounded": True,
+            "grounding": {"grounded": True},
+        }
+        service.cache = cache
+
+        events = list(service.stream_answer_question("Pergunta", model="llama3"))
+
+        assert [(event["event"], event.get("status")) for event in events] == [
+            ("status", "retrieving"),
+            ("status", "finalizing"),
+            ("sources", None),
+            ("chunk", None),
+            ("done", None),
+        ]
+        assert events[2]["cached"] is True
+        assert events[3]["chunk"] == events[4]["answer"] == "Resposta em cache."
+        assert events[4]["cached"] is True
+
+    def test_structured_citation_markers_must_resolve_to_retrieved_sources(self):
+        from src.processing.rag_generation import answer_uses_only_sources
+
+        assert answer_uses_only_sources("Fato sustentado [[1]].", [{"id": 7}]) is True
+        assert answer_uses_only_sources("Fato sem fonte [[2]].", [{"id": 7}]) is False
 
     @patch("src.processing.rag_service.OllamaService")
     def test_batch_and_streaming_send_the_identical_prompt(self, mock_ollama_class):

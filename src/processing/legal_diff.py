@@ -8,7 +8,11 @@ from collections import Counter
 _ARTICLE = re.compile(r"^\s*art(?:igo)?\.?\s*(\d{1,4})(?:\s*[º°o])?(?=\s|$|[.:;,)])", re.IGNORECASE)
 _UNIQUE_PARAGRAPH = re.compile(r"^\s*par[aá]grafo\s+[uú]nico\b", re.IGNORECASE)
 _PARAGRAPH = re.compile(r"^\s*§+\s*(\d{1,4})(?:\s*[º°o])?(?=\s|$|[.:;,)])", re.IGNORECASE)
-_INCISO = re.compile(r"^\s*(?:inciso\s+)?([IVXLCDM]{1,8})\s*(?:[.)–—-]|$)", re.IGNORECASE)
+_INCISO = re.compile(
+    r"^\s*(?:inciso\s+([IVXLCDM]{1,8})\b(?=\s|$|[.:;,)])"
+    r"|([IVXLCDM]{1,8})\s*(?:[.)–—-]|$))",
+    re.IGNORECASE,
+)
 _ALINEA = re.compile(r"^\s*(?:al[ií]nea\s+)?([a-z])\s*[).]\s+", re.IGNORECASE)
 _ROMAN = set("IVXLCDM")
 
@@ -16,6 +20,17 @@ _ROMAN = set("IVXLCDM")
 def _compact(text: str) -> str:
     """Normalize layout whitespace only; retain punctuation, tokens and negation."""
     return re.sub(r"\s+", " ", text).strip()
+
+
+def _comparable_text(text: str, key: str) -> str:
+    """Remove only a structural inciso label when that label is the paired key."""
+    if ":inc:" not in key:
+        return _compact(text)
+    first_line, separator, remainder = text.partition("\n")
+    marker = _INCISO.match(first_line)
+    if marker:
+        first_line = first_line[marker.end() :]
+    return _compact("\n".join((first_line, remainder)) if separator else first_line)
 
 
 def _units(text: str) -> list[dict[str, object]]:
@@ -48,8 +63,9 @@ def _units(text: str) -> list[dict[str, object]]:
             key = f"art:{article or '?'}:par:{paragraph or '-'}:inc:{inciso or '-'}:al:{match.group(1).casefold()}"
         else:
             match = _INCISO.match(line)
-            if match and set(match.group(1).upper()) <= _ROMAN and len(match.group(1)) <= 8:
-                inciso = match.group(1).upper()
+            marker = (match.group(1) or match.group(2)) if match else None
+            if marker and set(marker.upper()) <= _ROMAN and len(marker) <= 8:
+                inciso = marker.upper()
                 key = f"art:{article or '?'}:par:{paragraph or '-'}:inc:{inciso}"
 
         if key:
@@ -92,9 +108,9 @@ def build_legal_diff(original_text: str, consolidated_text: str) -> list[dict[st
             kind, label = "added", "Dispositivo presente somente no consolidado"
         elif new is None:
             kind, label = "removed", "Dispositivo presente somente no OCR"
-        elif _compact(old_text) == _compact(new_text) and old_text != new_text:
+        elif _comparable_text(old_text, key) == _comparable_text(new_text, key) and old_text != new_text:
             kind, label = "formatting", "Diferença de formatação/extração"
-        elif _compact(old_text) == _compact(new_text):
+        elif _comparable_text(old_text, key) == _comparable_text(new_text, key):
             kind, label = "equal", "Texto equivalente"
         else:
             kind, label = "changed", "Diferença textual — requer revisão"

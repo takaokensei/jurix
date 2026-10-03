@@ -36,3 +36,31 @@ def test_inserted_and_removed_devices_are_textual_not_legal_validation():
         ("added", "art:2#1"),
     ]
     assert "Diferença" in rows[1]["label"] or "presente" in rows[1]["label"]
+
+
+def test_explicit_inciso_label_pairs_with_an_ocr_roman_marker():
+    rows = build_legal_diff(
+        "Art. 2º A política compreende:\nI – valorizar agentes públicos;\nII - apoiar o programa.",
+        "Art. 2º A política compreende:\nInciso I valorizar agentes públicos;\nInciso II apoiar o programa.",
+    )
+
+    assert [row["structural_key"] for row in rows] == [
+        "art:2#1",
+        "art:2:par:-:inc:I#1",
+        "art:2:par:-:inc:II#1",
+    ]
+    assert [row["kind"] for row in rows] == ["equal", "formatting", "formatting"]
+
+
+def test_explicit_inciso_normalization_preserves_changed_negation_and_amounts():
+    rows = build_legal_diff(
+        "Art. 2º A política compreende:\nII - não poderá cobrar 10%.",
+        "Art. 2º A política compreende:\nInciso II poderá cobrar 100%.",
+    )
+
+    assert len(rows) == 2
+    assert rows[1]["structural_key"] == "art:2:par:-:inc:II#1"
+    assert rows[1]["kind"] == "changed"
+    assert "não" in rows[1]["original"]
+    assert "10%" in rows[1]["original"]
+    assert "100%" in rows[1]["consolidated"]

@@ -8,7 +8,18 @@ from typing import Any
 
 from django.conf import settings
 
+from src.processing.normative_query import classify_normative_query
+
 logger = logging.getLogger(__name__)
+
+
+class EvidenceRows(list):
+    """List of retrieved evidence carrying non-source retrieval metadata."""
+
+    def __init__(self, iterable=(), *, reason_code: str | None = None, coverage=None):
+        super().__init__(iterable)
+        self.reason_code = reason_code
+        self.coverage = coverage or {}
 
 
 def build_relevant_context(
@@ -21,12 +32,24 @@ def build_relevant_context(
         results = service.semantic_search(query_text, k=k)
 
     if not results:
-        return "Nenhum contexto relevante encontrado.", []
+        return "Nenhum contexto relevante encontrado.", EvidenceRows(
+            reason_code=getattr(results, "reason_code", None),
+            coverage=getattr(results, "coverage", None),
+        )
 
     context_parts: list[str] = []
     used_results: list[dict[str, Any]] = []
     used_chars = 0
-    max_chars = min(max_tokens * 4, int(getattr(settings, "RAG_MAX_CONTEXT_CHARS", max_tokens * 4)))
+    overview = classify_normative_query(query_text).is_norma_overview
+    base_context_limit = int(getattr(settings, "RAG_MAX_CONTEXT_CHARS", max_tokens * 4))
+    if overview:
+        overview_limit = max(
+            8_000,
+            min(48_000, int(getattr(settings, "RAG_NORMA_OVERVIEW_MAX_CONTEXT_CHARS", 24_000))),
+        )
+        max_chars = min(max_tokens * 4, max(base_context_limit, overview_limit))
+    else:
+        max_chars = min(max_tokens * 4, base_context_limit)
     asks_for_norma_summary = bool(
         re.search(r"\b(?:ementa|assunto|tema)\b", query_text, re.IGNORECASE)
     )
@@ -38,10 +61,27 @@ def build_relevant_context(
         )
     )
 
-    for index, result in enumerate(results, 1):
+    overview_coverage = next(
+        (result.get("coverage") for result in results if result.get("coverage")), None
+    )
+    scope_note = None
+    if overview and overview_coverage:
+        if overview_coverage.get("complete"):
+            scope_note = (
+                "ESCOPO: todos os dispositivos atualmente indexados foram recuperados; o corpus "
+                "ainda pode estar incompleto ou desatualizado."
+            )
+        else:
+            scope_note = (
+                "ESCOPO: nem todos os dispositivos previstos couberam no contexto; a análise é parcial."
+            )
+        context_parts.append(scope_note)
+        used_chars += len(context_parts[-1])
+
+    for result in results:
+        citation_index = len(used_results) + 1
         dispositivo = result["dispositivo"]
         norma = dispositivo.norma
-        score = result["similarity_score"]
         tipo_getter = getattr(norma, "get_tipo_display_name", None)
         tipo_label = tipo_getter() if callable(tipo_getter) else getattr(norma, "tipo", "Lei")
         if str(tipo_label).isdigit():
@@ -58,8 +98,13 @@ def build_relevant_context(
                 f" | Vigência registrada: {effective.isoformat() if effective else 'não informada'}"
             )
 
+        coverage = result.get("coverage") or {}
+        if overview:
+            result["retrieval_strategy"] = "whole_norma"
+            result["evidence_scope"] = "complete" if coverage.get("complete") else "sampled"
+        result["citation_index"] = citation_index
         header = (
-            f"{index}. [{score:.2f}] {tipo_label} nº {norma.numero}/{norma.ano} | "
+            f"[[{citation_index}]] {tipo_label} nº {norma.numero}/{norma.ano}, "
             f"{dispositivo.get_full_identifier()}: "
         )
         full_body = f"{dispositivo.texto}{ementa_context}{temporal_context}"
@@ -78,8 +123,37 @@ def build_relevant_context(
         result["full_text"] = dispositivo.texto
         result["snippet"] = snippet
         result["evidence_text"] = snippet
+        result["snippet_truncated"] = len(snippet) < len(full_body)
+        result["citation_index"] = citation_index
         result["context_start"] = 0
         result["context_end"] = len(snippet)
+
+    if overview and overview_coverage:
+        context_complete = bool(
+            overview_coverage.get("complete")
+            and len(used_results) == int(overview_coverage.get("selected_devices", 0))
+            and not any(result["snippet_truncated"] for result in used_results)
+        )
+        actual_coverage = {
+            **overview_coverage,
+            "context_devices": len(used_results),
+            "context_articles": sum(
+                getattr(result["dispositivo"], "tipo", "") == "artigo"
+                for result in used_results
+            ),
+            "context_truncated_devices": sum(
+                result["snippet_truncated"] for result in used_results
+            ),
+            "context_complete": context_complete,
+            "complete": context_complete,
+        }
+        for result in used_results:
+            result["coverage"] = actual_coverage
+            result["evidence_scope"] = "complete" if context_complete else "sampled"
+        if not context_complete and scope_note and context_parts and context_parts[0] == scope_note:
+            context_parts[0] = (
+                "ESCOPO: nem todos os dispositivos previstos couberam no contexto; a análise é parcial."
+            )
 
     formatted_context = "\n\n".join(context_parts)
     total_chars = len(formatted_context)

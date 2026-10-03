@@ -75,7 +75,6 @@ class NormaListContractTests(TestCase):
             sapl_id=1002,
             status=Norma.Status.CONSOLIDATED,
         )
-
     def test_list_has_type_and_year_filters(self):
         response = self.client.get(
             reverse("legislation:norma_list"), {"tipo": "Lei", "ano": "2025"}
@@ -96,6 +95,17 @@ class NormaListContractTests(TestCase):
         self.assertIn("jurix-norma-grid", template)
         self.assertIn("jurix-norma-list.js", template)
         self.assertNotIn('class="norma-grid"', template)
+
+    def test_compact_library_header_places_the_single_summary_after_search(self):
+        response = self.client.get(reverse("legislation:norma_list"))
+        body = response.content.decode()
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Buscar por número, ano ou assunto.")
+        self.assertNotContains(response, "interface projetada para leitura rápida")
+        self.assertEqual(body.count('class="jurix-norma-summary"'), 1)
+        self.assertLess(body.index("id=\"norma-filter-form\""), body.index("class=\"jurix-norma-summary\""))
+        self.assertIn('class="jurix-norma-summary" id="resultados"', body)
+        self.assertIn("class=\"jurix-norma-stat-label\">resultados", body)
 
     def test_recent_order_matches_between_web_and_api_with_safe_number_fallbacks(self):
         records = [
@@ -141,3 +151,67 @@ class NormaListContractTests(TestCase):
         self.assertTrue(api_payload["success"])
         self.assertEqual(web_order[: len(expected_prefix)], expected_prefix)
         self.assertEqual(api_order, web_order)
+
+
+class ExactNormaReferenceSearchTests(TestCase):
+    def setUp(self):
+        self.referenced_norma = Norma.objects.create(
+            tipo="Lei",
+            numero="8206",
+            ano=2026,
+            ementa="Institui programa municipal para busca normativa.",
+            sapl_id=8206,
+            status=Norma.Status.CONSOLIDATED,
+        )
+        self.same_number_other_type = Norma.objects.create(
+            tipo="Lei Complementar",
+            numero="8206",
+            ano=2026,
+            ementa="Norma complementar distinta para o teste de referência.",
+            sapl_id=18206,
+            status=Norma.Status.CONSOLIDATED,
+        )
+
+    def test_formatted_number_year_reference_resolves_the_exact_norm_without_javascript(self):
+        for query in ("Lei nº 8.206/2026", "Lei 8206 de 2026"):
+            with self.subTest(query=query):
+                response = self.client.get(reverse("legislation:norma_list"), {"q": query})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(
+                    [norma.pk for norma in response.context["normas"]],
+                    [self.referenced_norma.pk],
+                )
+
+    def test_untyped_exact_reference_returns_all_same_number_types_without_expansion(self):
+        response = self.client.get(reverse("legislation:norma_list"), {"q": "8206/2026"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            {norma.pk for norma in response.context["normas"]},
+            {self.referenced_norma.pk, self.same_number_other_type.pk},
+        )
+
+    def test_formatted_reference_preserves_explicit_conflicting_type_filter(self):
+        response = self.client.get(
+            reverse("legislation:norma_list"),
+            {"q": "Lei nº 8.206/2026", "tipo": "Lei Complementar"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["normas"]), 0)
+
+    def test_missing_formatted_reference_returns_empty_results(self):
+        response = self.client.get(reverse("legislation:norma_list"), {"q": "Lei nº 99999/2026"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["normas"]), 0)
+
+    def test_client_normalized_identifier_uses_exact_number_year_and_type(self):
+        response = self.client.get(
+            reverse("legislation:norma_list"),
+            {
+                "q": "8206",
+                "tipo": "Lei",
+                "ano": "2026",
+                "referencia_exata": "1",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([norma.pk for norma in response.context["normas"]], [self.referenced_norma.pk])

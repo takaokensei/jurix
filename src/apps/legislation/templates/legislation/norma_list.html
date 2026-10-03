@@ -7,7 +7,7 @@
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Normas' %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jurix-norma-list.css' %}?v=20260930-mobile-title-rhythm1">
+<link rel="stylesheet" href="{% static 'css/jurix-norma-list.css' %}?v=20261002-norma-library-compact1">
 {% endblock %}
 
 {% block content %}
@@ -16,20 +16,7 @@
         <div>
             <span class="jurix-norma-eyebrow">Biblioteca normativa</span>
             <h1 id="normas-title" class="jurix-norma-title">Normas consolidadas</h1>
-            <p class="jurix-norma-subtitle">
-                Encontre legislação municipal consolidada com uma interface projetada para leitura rápida,
-                comparação de versões e acesso direto às fontes oficiais.
-            </p>
-        </div>
-        <div class="jurix-norma-summary" aria-label="Resumo do acervo">
-            <div class="jurix-norma-stat">
-                <span class="jurix-norma-stat-value">{{ total_consolidated }}</span>
-                <span class="jurix-norma-stat-label">normas consolidadas</span>
-            </div>
-            <div class="jurix-norma-stat">
-                <span class="jurix-norma-stat-value">{{ filtered_count }}</span>
-                <span class="jurix-norma-stat-label">resultados nesta busca</span>
-            </div>
+            <p class="jurix-norma-subtitle">Buscar por número, ano ou assunto.</p>
         </div>
     </section>
 
@@ -96,13 +83,16 @@
         </form>
 
         <div class="jurix-norma-results-bar">
-            <span class="jurix-norma-result-copy" id="resultados">
-                {% if search_query or selected_type or selected_year %}
-                    <strong>{{ filtered_count }}</strong> resultado(s) encontrados
-                {% else %}
-                    Exibindo <strong>{{ filtered_count }}</strong> normas do acervo consolidado
-                {% endif %}
-            </span>
+            <div class="jurix-norma-summary" id="resultados" aria-label="Resumo do acervo e da pesquisa">
+                <div class="jurix-norma-stat">
+                    <span class="jurix-norma-stat-value">{{ total_consolidated }}</span>
+                    <span class="jurix-norma-stat-label">no acervo</span>
+                </div>
+                <div class="jurix-norma-stat">
+                    <span class="jurix-norma-stat-value">{{ filtered_count }}</span>
+                    <span class="jurix-norma-stat-label">resultados</span>
+                </div>
+            </div>
             <div class="jurix-norma-view-switcher" aria-label="Modo de visualização">
                 <button type="button" class="jurix-norma-view-button" data-norma-view="grid" aria-label="Visualização em grade" aria-pressed="true">▦</button>
                 <button type="button" class="jurix-norma-view-button" data-norma-view="list" aria-label="Visualização em lista" aria-pressed="false">☰</button>
@@ -181,5 +171,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/jurix-norma-list.js' %}?v=20260929-identifier-search1"></script>
+<script src="{% static 'js/jurix-norma-list.js' %}?v=20261002-exact-reference2"></script>
 {% endblock %}

@@ -142,8 +142,55 @@
         return copied;
     }
 
+    function markdownWithRenderedCitations(markdownText, button) {
+        const message = button?.closest('.message');
+        const body = message?.querySelector('.message-body');
+        const sources = button?._citationSources || body?._citationSources || [];
+        const links = [];
+        body?.querySelectorAll('a.jurix-legal-reference-link').forEach((anchor) => {
+            const label = String(anchor.textContent || '').trim();
+            const href = anchor.href;
+            if (label && /^https?:$/.test(new URL(href, window.location.href).protocol)) {
+                links.push({ label, href });
+            }
+        });
+
+        const escapeLabel = (value) => String(value).replace(/\\/g, '\\\\').replace(/([\[\]])/g, '\\$1');
+        const renderPlainText = (text) => {
+            let rendered = text.replace(/\[\[(\d{1,3})\]\]/g, (marker, rawIndex) => {
+                const index = Number(rawIndex);
+                const source = sources.find((item) => Number(item?.citation_index) === index) || sources[index - 1];
+                const href = window.JurixRagUI?.buildSourceUrl?.(source);
+                if (!source || !href) return marker;
+                const label = source.citation_label || `Fonte ${index}`;
+                return `[${escapeLabel(label)}](<${href}>)`;
+            });
+            links.sort((left, right) => right.label.length - left.label.length).forEach(({ label, href }) => {
+                const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                rendered = rendered.replace(new RegExp(escaped, 'g'), (match, offset, fullText) => {
+                    // A citation marker may already have become a Markdown link.
+                    // Do not wrap its label a second time.
+                    if (fullText[offset - 1] === '[' && fullText.slice(offset + match.length).startsWith('](')) {
+                        return match;
+                    }
+                    return `[${escapeLabel(label)}](<${href}>)`;
+                });
+            });
+            return rendered;
+        };
+
+        const codeSegments = [];
+        const protectedText = String(markdownText || '').replace(/(```[\s\S]*?```|`[^`\n]*`)/g, (code) => {
+            const token = `\u0000JURIX_CODE_${codeSegments.length}\u0000`;
+            codeSegments.push(code);
+            return token;
+        });
+        return renderPlainText(protectedText).replace(/\u0000JURIX_CODE_(\d+)\u0000/g, (_token, index) => codeSegments[Number(index)]);
+    }
+
     async function copyResponseToClipboard(markdownText, button) {
         if (!markdownText || !button) return false;
+        markdownText = markdownWithRenderedCitations(markdownText, button);
         let copied = false;
         try {
             if (navigator.clipboard?.writeText) {

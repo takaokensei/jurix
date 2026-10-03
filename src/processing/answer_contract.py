@@ -5,7 +5,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 SCHEMA_VERSION = 1
-PROMPT_POLICY_VERSION = "jurix-legal-grounding-v1"
+PROMPT_POLICY_VERSION = "jurix-legal-grounding-v2"
 GROUNDING_POLICY_VERSION = "strict-grounding-v1"
 
 
@@ -29,6 +29,7 @@ def build_answer_contract(
     cached: bool = False,
     timings_ms: dict | None = None,
     generation_attempts: list[dict] | None = None,
+    reason_code: str | None = None,
 ) -> dict:
     """Build safe traceability metadata; never accept endpoint/auth config here."""
     if corpus_revision is None:
@@ -64,7 +65,20 @@ def build_answer_contract(
                 "source_id": source.get("id") or source.get("source_id"),
                 "device_id": source.get("dispositivo_id") or source.get("id"),
                 "norma_id": source.get("norma_id") or (source.get("norma") or {}).get("id"),
-                "article": source.get("numero"),
+                "citation_id": source.get("citation_id"),
+                "citation_index": source.get("citation_index"),
+                "citation_label": source.get("citation_label"),
+                "article": source.get("dispositivo_ref") or source.get("numero"),
+                "official_url": source.get("source_url")
+                or source.get("pdf_url")
+                or source.get("sapl_url"),
+                "evidence_text": str(
+                    source.get("evidence_text")
+                    or source.get("snippet")
+                    or source.get("full_text")
+                    or source.get("texto")
+                    or ""
+                )[:1600],
                 "evidence_text_present": bool(
                     source.get("evidence_text") or source.get("snippet") or source.get("texto")
                 ),
@@ -72,7 +86,7 @@ def build_answer_contract(
         )
     revision = corpus_revision or {}
     grounding_report = grounding or {}
-    return {
+    result = {
         "schema_version": SCHEMA_VERSION,
         "request_id": request_id or str(uuid4()),
         "corpus_revision": {
@@ -98,3 +112,6 @@ def build_answer_contract(
         "timings_ms": timings_ms or {},
         "generation_attempts": generation_attempts or [],
     }
+    if reason_code:
+        result["reason_code"] = reason_code
+    return result

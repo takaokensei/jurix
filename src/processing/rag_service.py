@@ -7,7 +7,7 @@ and Ollama embeddings for legal document retrieval.
 
 import logging
 import time
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from typing import Any
 
 from django.conf import settings
@@ -17,6 +17,14 @@ from src.apps.legislation.models import Dispositivo
 from src.llm_engine.ollama_service import OllamaService
 from src.observability.safe_logging import log_exception_safely
 from src.processing.cache_service import CacheService, get_cache_service
+from src.processing.rag_answer_pipeline import (
+    build_done_event,
+    insufficient_evidence_events,
+    iter_answer_chunks,
+    raise_if_cancelled,
+    run_grounded_generation,
+    stream_model_attempt,
+)
 from src.processing.rag_cache_helpers import hydrate_cached_sources
 from src.processing.rag_contract_helpers import contract, grounding_fallback
 from src.processing.rag_deterministic import deterministic_answer
@@ -34,6 +42,25 @@ from src.processing.rag_prompt import build_prompt
 logger = logging.getLogger(__name__)
 
 
+def _no_retrieval_message(reason_code: str | None) -> str:
+    if reason_code == "norm_not_in_corpus":
+        return (
+            "Não localizei essa norma no acervo do Jurix. Confira o tipo, número e ano ou "
+            "consulte a fonte oficial."
+        )
+    if reason_code == "requested_device_not_in_corpus":
+        return (
+            "Não localizei esse dispositivo no acervo do Jurix. Confira a identificação ou "
+            "consulte o texto oficial da norma."
+        )
+    if reason_code == "norm_content_not_in_corpus":
+        return (
+            "A norma foi identificada, mas seus dispositivos não estão disponíveis no acervo "
+            "do Jurix. Consulte a fonte oficial."
+        )
+    return "Não encontrei informações suficientes no acervo para responder com segurança."
+
+
 class RAGService:
     """
     Service for Retrieval-Augmented Generation using semantic search.
@@ -43,6 +70,8 @@ class RAGService:
     - Context retrieval for LLM prompts
     - Ranked results by relevance
     """
+
+    _iter_answer_chunks = staticmethod(iter_answer_chunks)
 
     PROMPT_TEMPLATE = RAG_PROMPT_TEMPLATE
 
@@ -410,8 +439,9 @@ class RAGService:
             from src.observability.metrics import RAG_REQUESTS
 
             RAG_REQUESTS.labels("no_retrieval").inc()
-            return contract(
-                answer="Não encontrei informações relevantes para responder esta pergunta.",
+            reason_code = getattr(results, "reason_code", None)
+            response = contract(
+                answer=_no_retrieval_message(reason_code),
                 sources=[],
                 source_relevance=0.0,
                 grounded=False,
@@ -423,6 +453,8 @@ class RAGService:
                 },
                 model=model,
             )
+            response["reason_code"] = reason_code
+            return response
 
         deterministic = deterministic_answer(clean_question, results)
 
@@ -472,14 +504,7 @@ class RAGService:
         )
 
         source_relevance = self._source_relevance(results)
-        validation = validate_generated_answer(
-            answer,
-            results,
-            format_answer=self._fix_markdown_formatting,
-            citation_policy=self._answer_uses_only_sources,
-            absence_policy=self._has_unsupported_absence_claim,
-            grounding_policy=self._ground_answer,
-        )
+        validation = self._validate_answer(answer, results)
         answer = validation["answer"]
         grounding_report = validation["grounding"]
         grounded = validation["grounded"]
@@ -537,6 +562,8 @@ class RAGService:
         retrieval_fingerprint: str = "",
         temperature: float = 0.3,
         text_provider: dict[str, Any] | None = None,
+        skip_cache: bool = False,
+        should_cancel: Callable[[], bool] | None = None,
     ) -> Generator[dict[str, Any], None, None]:
         """
         Stream answer generation for legal question using RAG.
@@ -568,12 +595,13 @@ class RAGService:
             else "unavailable"
         )
 
+        raise_if_cancelled(should_cancel)
         yield {"event": "status", "status": "retrieving"}
 
         from src.observability.metrics import RAG_CACHE_HITS, RAG_CACHE_MISSES
 
         # Check cache first
-        if self.use_cache and self.cache:
+        if self.use_cache and self.cache and not skip_cache:
             cache_started = time.perf_counter()
             cached_result = self.cache.get_answer(
                 clean_question,
@@ -584,6 +612,7 @@ class RAGService:
                 corpus_revision=corpus_revision,
                 generation_fingerprint=generation_fingerprint,
             )
+            raise_if_cancelled(should_cancel)
             if cached_result:
                 cache_ms = round((time.perf_counter() - cache_started) * 1000)
                 RAG_CACHE_HITS.inc()
@@ -605,7 +634,10 @@ class RAGService:
                     "cached": True,
                 }
                 cached_ans = cached_result.get("answer", "")
-                yield {"event": "chunk", "chunk": cached_ans, "provisional": False}
+                for chunk in self._iter_answer_chunks(cached_ans):
+                    raise_if_cancelled(should_cancel)
+                    yield {"event": "chunk", "chunk": chunk, "provisional": False}
+                raise_if_cancelled(should_cancel)
                 yield {
                     "event": "done",
                     "answer": cached_ans,
@@ -627,36 +659,26 @@ class RAGService:
 
         # Retrieve relevant context
         retrieval_started = time.perf_counter()
+        raise_if_cancelled(should_cancel)
         context, results = self.get_relevant_context(clean_question, k=k)
+        raise_if_cancelled(should_cancel)
         retrieval_ms = round((time.perf_counter() - retrieval_started) * 1000)
         if not results:
             from src.observability.metrics import RAG_REQUESTS
 
             RAG_REQUESTS.labels("no_retrieval").inc()
-            yield {"event": "status", "status": "insufficient_evidence"}
-            yield {"event": "sources", "sources": [], "source_relevance": 0.0, "cached": False}
-            empty_msg = "Não encontrei informações relevantes para responder esta pergunta."
-            yield {"event": "chunk", "chunk": empty_msg, "provisional": False}
-            yield {
-                "event": "done",
-                "answer": empty_msg,
-                "sources": [],
-                "source_relevance": 0.0,
-                "confidence": None,
-                "confidence_calibrated": False,
-                "grounded": False,
-                "grounding": {
-                    "grounded": False,
-                    "score": 0.0,
-                    "claims": [],
-                    "failed_claims": [],
-                },
-                "timings_ms": {
-                    "retrieval": retrieval_ms,
-                    "total_before_done": round((time.perf_counter() - request_started) * 1000),
-                },
-                "generation_attempts": [],
-            }
+            reason_code = getattr(results, "reason_code", None)
+            coverage = getattr(results, "coverage", {})
+            empty_msg = _no_retrieval_message(reason_code)
+            yield from insufficient_evidence_events(
+                answer=empty_msg,
+                reason_code=reason_code,
+                coverage=coverage,
+                retrieval_ms=retrieval_ms,
+                total_before_done_ms=lambda: round(
+                    (time.perf_counter() - request_started) * 1000
+                ),
+            )
             return
         source_relevance = self._source_relevance(results)
         yield {"event": "status", "status": "reranking"}
@@ -665,6 +687,11 @@ class RAGService:
             "sources": results,
             "source_relevance": source_relevance,
             "cached": False,
+            "retrieval_strategy": next(
+                (row.get("retrieval_strategy") for row in results if row.get("retrieval_strategy")),
+                None,
+            ),
+            "coverage": next((row.get("coverage") for row in results if row.get("coverage")), None),
         }
 
         deterministic = deterministic_answer(clean_question, results)
@@ -675,7 +702,10 @@ class RAGService:
             yield {"event": "status", "status": "grounding"}
             is_grounded = bool(grounding_report.get("grounded"))
             final_answer = deterministic if is_grounded else grounding_fallback()
-            yield {"event": "chunk", "chunk": final_answer, "provisional": False}
+            for chunk in self._iter_answer_chunks(final_answer):
+                raise_if_cancelled(should_cancel)
+                yield {"event": "chunk", "chunk": chunk, "provisional": False}
+            raise_if_cancelled(should_cancel)
             yield {
                 "event": "done",
                 "answer": final_answer,
@@ -702,65 +732,26 @@ class RAGService:
             RAG_REQUESTS,
         )
 
-        stream_provisional = bool(getattr(settings, "RAG_STREAM_PROVISIONAL_OUTPUT", False))
         yield {"event": "status", "status": "generating"}
-        grounding_report = None
-        full_answer = ""
-        generation_attempts = []
-        grounding_total_ms = 0
-        for attempt in range(2):
-            attempt_prompt = prompt
-            if attempt:
-                attempt_prompt += (
-                    "\n\nREVISÃO OBRIGATÓRIA: sua resposta anterior foi rejeitada porque continha "
-                    "afirmações não demonstradas pelo contexto. Reescreva usando apenas frases "
-                    "diretamente apoiadas pelos dispositivos acima. Não mencione ausência, "
-                    "exclusividade, completude ou consequências que não estejam literalmente "
-                    "no contexto. Entregue somente a resposta factual curta e cite o dispositivo."
-                )
-            chunks = []
-            if text_provider and text_provider.get("provider") != "ollama":
-                from src.processing.llm_provider import stream_text as stream_external_text
 
-                generation_stream = stream_external_text(
-                    attempt_prompt, text_provider, temperature=temperature, max_tokens=2048
-                )
-            else:
-                generation_stream = self.ollama.stream_text(
-                    attempt_prompt, model=model, temperature=temperature, max_tokens=2048
-                )
-            generation_started = time.perf_counter()
-            first_chunk_ms = None
-            for chunk in generation_stream:
-                if first_chunk_ms is None:
-                    first_chunk_ms = round((time.perf_counter() - generation_started) * 1000)
-                chunks.append(chunk)
-                if stream_provisional and attempt == 0:
-                    yield {"event": "chunk", "chunk": chunk, "provisional": True}
-            generation_ms = round((time.perf_counter() - generation_started) * 1000)
-            generation_attempts.append(
-                {
-                    "attempt": attempt + 1,
-                    "duration_ms": generation_ms,
-                    "time_to_first_chunk_ms": first_chunk_ms,
-                    "output_characters": sum(len(part) for part in chunks),
-                }
-            )
-            grounding_started = time.perf_counter()
-            validation = validate_generated_answer(
-                "".join(chunks),
-                results,
-                format_answer=self._fix_markdown_formatting,
-                citation_policy=self._answer_uses_only_sources,
-                absence_policy=self._has_unsupported_absence_claim,
-                grounding_policy=self._ground_answer,
-            )
-            full_answer = validation["answer"]
-            grounding_report = validation["grounding"]
-            source_only = validation["source_only"]
-            grounding_total_ms += round((time.perf_counter() - grounding_started) * 1000)
-            if validation["grounded"] and source_only:
-                break
+        generation = run_grounded_generation(
+            prompt,
+            stream_attempt=lambda attempt_prompt: stream_model_attempt(
+                attempt_prompt,
+                ollama=self.ollama,
+                model=model,
+                temperature=temperature,
+                text_provider=text_provider,
+                should_cancel=should_cancel,
+            ),
+            validate_attempt=lambda answer: self._validate_answer(answer, results),
+            should_cancel=should_cancel,
+        )
+        full_answer = generation["answer"]
+        grounding_report = generation["grounding"]
+        source_only = generation["source_only"]
+        generation_attempts = generation["generation_attempts"]
+        grounding_total_ms = generation["grounding_ms"]
 
         yield {"event": "status", "status": "grounding"}
         is_grounded = bool(grounding_report.get("grounded")) and source_only
@@ -773,12 +764,18 @@ class RAGService:
             RAG_REQUESTS.labels("grounded").inc()
             final_answer = full_answer
 
-        if not stream_provisional:
-            yield {"event": "chunk", "chunk": final_answer, "provisional": False}
+        # Stream only after grounding has accepted/rejected the complete model
+        # output. Users still get incremental rendering, but never see a draft
+        # that may later be replaced by the safe fallback.
+        for chunk in self._iter_answer_chunks(final_answer):
+            raise_if_cancelled(should_cancel)
+            yield {"event": "chunk", "chunk": chunk, "provisional": False}
 
+        raise_if_cancelled(should_cancel)
         yield {"event": "status", "status": "finalizing"}
 
         if is_grounded and self.use_cache and self.cache:
+            raise_if_cancelled(should_cancel)
             result_payload = contract(
                 answer=final_answer,
                 sources=results,
@@ -798,27 +795,31 @@ class RAGService:
                 corpus_revision=corpus_revision,
                 generation_fingerprint=generation_fingerprint,
             )
-        yield {
-            "event": "done",
-            "answer": final_answer,
-            "sources": results,
-            "confidence": None,
-            "confidence_calibrated": False,
-            "source_relevance": source_relevance,
-            "grounded": is_grounded,
-            "grounding": grounding_report,
-            "timings_ms": {
-                "retrieval": retrieval_ms,
-                "generation": sum(item["duration_ms"] for item in generation_attempts),
-                "grounding": grounding_total_ms,
-                "total_before_done": round((time.perf_counter() - request_started) * 1000),
-            },
-            "generation_attempts": generation_attempts,
-            "cached": False,
-        }
+        raise_if_cancelled(should_cancel)
+        yield build_done_event(
+            answer=final_answer,
+            sources=results,
+            source_relevance=source_relevance,
+            grounded=is_grounded,
+            grounding=grounding_report,
+            retrieval_ms=retrieval_ms,
+            grounding_ms=grounding_total_ms,
+            total_before_done_ms=round((time.perf_counter() - request_started) * 1000),
+            generation_attempts=generation_attempts,
+        )
 
     def _fix_markdown_formatting(self, text: str) -> str:
         return fix_markdown_formatting(text)
+
+    def _validate_answer(self, answer: str, results: list[dict[str, Any]]) -> dict[str, Any]:
+        return validate_generated_answer(
+            answer,
+            results,
+            format_answer=self._fix_markdown_formatting,
+            citation_policy=self._answer_uses_only_sources,
+            absence_policy=self._has_unsupported_absence_claim,
+            grounding_policy=self._ground_answer,
+        )
 
     @staticmethod
     def _answer_uses_only_sources(answer: str, results: list[dict[str, Any]]) -> bool:

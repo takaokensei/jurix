@@ -156,9 +156,9 @@
         let sources = [];
         const wrappedChunk = (chunk, chunkMetadata) => {
           const text = String(chunk || '');
-          answer += text;
+          answer = chunkMetadata?.replace ? text : answer + text;
           if (!chunkMetadata?.provisional) {
-            verifiedAnswer += text;
+            verifiedAnswer = chunkMetadata?.replace ? text : verifiedAnswer + text;
             // Retrieved sources are provisional until the terminal SSE event
             // confirms grounding. Never make them durable during generation.
             window.JurixAnonymousHistory.updateLastAssistant(localId, verifiedAnswer, [], false);

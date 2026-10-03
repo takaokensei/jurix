@@ -506,6 +506,8 @@
     display: flex !important;
     flex-direction: column !important;
     gap: 8px !important;
+    max-inline-size: 100%;
+    min-inline-size: 0;
     opacity: 0;
     transform: translateY(4px);
     transition: opacity 180ms ease, transform 180ms ease;
@@ -540,6 +542,11 @@ button.jurix-sources-pill-btn,
     line-height: 1.4 !important;
     user-select: none !important;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
+    max-inline-size: 100% !important;
+    min-inline-size: 0 !important;
+    flex-wrap: wrap !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
 }
 
 button.jurix-sources-pill-btn:hover,
@@ -550,6 +557,12 @@ button.jurix-sources-pill-btn:hover,
     background-color: rgba(37, 51, 73, 0.95) !important;
     transform: translateY(-1px) !important;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+}
+
+button.jurix-sources-pill-btn:focus-visible,
+.jurix-sources-pill-btn:focus-visible {
+    outline: 2px solid var(--figma-blue-light) !important;
+    outline-offset: 2px !important;
 }
 
 .jurix-sources-pill-badge {
@@ -564,6 +577,10 @@ button.jurix-sources-pill-btn:hover,
     border-radius: 9999px !important;
     line-height: 1.2 !important;
     border: 1px solid rgba(96, 165, 250, 0.35) !important;
+    min-inline-size: 0 !important;
+    max-inline-size: 100% !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
 }
 
 .jurix-sources-pill-action {
@@ -574,6 +591,8 @@ button.jurix-sources-pill-btn:hover,
     display: inline-flex !important;
     align-items: center !important;
     gap: 2px !important;
+    white-space: nowrap !important;
+    flex: 0 0 auto !important;
 }
 
 /* Keep the source summary readable in light mode despite legacy !important
@@ -586,6 +605,16 @@ button.jurix-sources-pill-btn:hover,
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
 }
 
+:root[data-theme="light"] .jurix-sources-pill-badge {
+    background-color: color-mix(in srgb, var(--figma-blue-primary) 12%, var(--figma-bg-surface)) !important;
+    color: var(--figma-blue-dark) !important;
+    border-color: color-mix(in srgb, var(--figma-blue-primary) 28%, var(--figma-border)) !important;
+}
+
+:root[data-theme="light"] .jurix-sources-pill-action {
+    color: var(--figma-blue-primary) !important;
+}
+
 :root[data-theme="light"] button.jurix-sources-pill-btn:hover,
 :root[data-theme="light"] .jurix-sources-pill-btn:hover {
     background-color: var(--figma-source-hover) !important;
@@ -593,30 +622,35 @@ button.jurix-sources-pill-btn:hover,
     border-color: var(--figma-blue-primary) !important;
 }
 
-@media (max-width: 480px) {
+:root[data-theme="light"] .jurix-sources-pill-btn:hover .jurix-sources-pill-action {
+    color: var(--figma-text-white) !important;
+}
+
+@media (max-width: 767px) {
+    button.jurix-sources-pill-btn,
     .jurix-sources-pill-btn {
         width: 100% !important;
         max-width: 100% !important;
-        flex-wrap: wrap !important;
+        flex-wrap: nowrap !important;
         justify-content: flex-start !important;
         gap: 6px !important;
         padding: 8px 10px !important;
+        min-height: 44px !important;
     }
 
-    .jurix-sources-pill-btn > span:not(.jurix-sources-pill-badge):not(.jurix-sources-pill-action) {
+    .jurix-sources-pill-btn > span:first-of-type {
+        min-width: 0 !important;
+        overflow-wrap: anywhere !important;
         white-space: nowrap !important;
     }
+
+    .jurix-sources-pill-badge { display: none !important; }
 
     .jurix-sources-pill-action {
         margin-left: auto !important;
         white-space: nowrap !important;
     }
 
-    .jurix-sources-pill-badge {
-        order: 1 !important;
-        margin-left: 20px !important;
-        white-space: nowrap !important;
-    }
 }
 
 /* Slide-over Side Drawer */

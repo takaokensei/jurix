@@ -40,7 +40,10 @@ from src.apps.legislation.models import (
     Norma,
 )
 from src.apps.legislation.retrieval_api import build_retrieval_options
-from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
+from src.apps.legislation.serializers import (
+    serialize_chat_session,
+    serialize_citation_sources,
+)
 from src.apps.legislation.suggestion_service import build_dynamic_suggestions
 from src.processing.adaptive_rag_service import AdaptiveRAGService
 from src.processing.answer_contract import build_answer_contract
@@ -60,6 +63,8 @@ from src.processing.generation_control import (
 )
 from src.processing.llm_provider import validate_provider_config
 from src.processing.normative_reference import parse_normative_references
+from src.processing.rag_answer_pipeline import GenerationCancelled
+from src.processing.rag_contract_helpers import no_retrieval_message
 from src.observability.safe_logging import log_exception_safely
 
 RAGService = AdaptiveRAGService
@@ -350,9 +355,9 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
         )
 
         # Format sources with centralized serializer
-        formatted_sources = [
-            serialize_dispositivo_source(source) for source in response.get("sources", [])
-        ]
+        formatted_sources = serialize_citation_sources(response.get("sources", []))
+        reason_code = response.get("reason_code")
+        answer_text = no_retrieval_message(reason_code) or response["answer"]
         answer_contract = build_answer_contract(
             question=question,
             retrieval_query=question,
@@ -374,13 +379,14 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
             grounding=response.get("grounding", {}),
             grounded=response.get("grounded") is True,
             cached=response.get("cached", False),
+            reason_code=reason_code,
         )
 
         return JsonResponse(
             {
                 "success": True,
                 "question": question,
-                "answer": response["answer"],
+                "answer": answer_text,
                 "sources": formatted_sources,
                 "confidence": response["confidence"],
                 "metadata": {
@@ -388,6 +394,7 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
                     "model": response.get("model", model),
                     "context_length": response.get("context_length", 0),
                     "cached": response.get("cached", False),
+                    "reason_code": reason_code,
                     "contract": answer_contract,
                 },
             }
@@ -688,6 +695,7 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                 temperature=temperature,
                 options=retrieval_options,
                 text_provider=text_provider,
+                should_cancel=lambda: is_generation_cancelled(generation_id),
             )
 
             stream_iterator = iter(stream_gen)
@@ -710,6 +718,8 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                 ev_type = item.get("event")
                 if ev_type == "status":
                     status = item.get("status")
+                    if status in {"queued", "retrieving", "reranking", "grounding", "generating", "finalizing"}:
+                        pipeline_stage = status
                     allowed_statuses = {
                         "queued",
                         "retrieving",
@@ -725,26 +735,36 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     if status in allowed_statuses:
                         yield f"data: {json.dumps({'type': 'status', 'status': status})}\n\n"
                 elif ev_type == "sources":
+                    retrieval_reason_code = item.get("reason_code")
                     raw_sources = item.get("sources", [])
-                    sources_list = [serialize_dispositivo_source(s) for s in raw_sources]
+                    sources_list = serialize_citation_sources(raw_sources)
                     payload = {
                         "type": "sources",
                         "sources": sources_list,
                         "confidence": item.get("confidence", 0.0),
                         "cached": item.get("cached", False),
+                        "retrieval_strategy": item.get("retrieval_strategy")
+                        or next((s.get("retrieval_strategy") for s in raw_sources if s.get("retrieval_strategy")), None),
+                        "coverage": item.get("coverage")
+                        or next((s.get("coverage") for s in raw_sources if s.get("coverage")), None),
+                        "reason_code": item.get("reason_code"),
                     }
                     yield f"data: {json.dumps(payload)}\n\n"
                 elif ev_type == "chunk":
                     chunk_text = item.get("chunk", "") or ""
+                    chunk_text = no_retrieval_message(retrieval_reason_code) or chunk_text
                     provisional = bool(item.get("provisional", False))
                     # Unverified draft output is streamed to the UI but must not
                     # become a persisted answer if the client disconnects.
-                    if not provisional:
+                    if item.get("replace"):
+                        accumulated_answer = chunk_text
+                    elif not provisional:
                         accumulated_answer += chunk_text
                     payload = {
                         "type": "chunk",
                         "chunk": chunk_text,
                         "provisional": provisional,
+                        "replace": bool(item.get("replace", False)),
                     }
                     yield f"data: {json.dumps(payload)}\n\n"
                 elif ev_type == "done":
@@ -754,6 +774,10 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                         yield f"data: {json.dumps({'type': 'status', 'status': 'cancelled'})}\n\n"
                         return
                     grounded = item.get("grounded") is True
+                    reason_code = item.get("reason_code")
+                    if not grounded and not reason_code:
+                        reason_code = retrieval_reason_code or "evidence_insufficient"
+                    final_answer = no_retrieval_message(reason_code) or item.get("answer", "")
                     answer_sources = sources_list if grounded else []
                     provenance = build_answer_contract(
                         question=question,
@@ -769,6 +793,7 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                         request_id=request_id,
                         timings_ms=item.get("timings_ms"),
                         generation_attempts=item.get("generation_attempts"),
+                        reason_code=reason_code,
                     )
                     if request.user.is_authenticated and chat_session:
                         try:
@@ -796,6 +821,7 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                         "answer": final_answer,
                         "grounded": grounded,
                         "contract": provenance,
+                        "reason_code": reason_code,
                         "session_id": chat_session.id if chat_session else None,
                         "session_slug": getattr(chat_session, "slug", None)
                         if chat_session
@@ -815,6 +841,10 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     finish_generation(generation_id, "completed")
                     yield f"data: {json.dumps({'type': 'status', 'status': 'completed'})}\n\n"
                     yield f"data: {json.dumps(payload)}\n\n"
+        except GenerationCancelled:
+            mark_stream_cancelled()
+            yield f"data: {json.dumps({'type': 'status', 'status': 'cancelled'})}\n\n"
+            return
         except Exception as e:
             log_exception_safely(logger, "Error in chatbot_stream_api stream", e)
             if is_generation_cancelled(generation_id):

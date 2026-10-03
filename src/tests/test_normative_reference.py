@@ -1,6 +1,9 @@
 import pytest
 
-from src.processing.normative_reference import parse_normative_references
+from src.processing.normative_reference import (
+    parse_normative_reference_query,
+    parse_normative_references,
+)
 
 
 @pytest.mark.parametrize(
@@ -40,3 +43,24 @@ def test_complementary_and_ordinary_laws_have_distinct_canonical_identity():
     (ordinary,) = parse_normative_references("Lei 15/2024")
     (complementary,) = parse_normative_references("Lei Complementar 15/2024")
     assert ordinary.identity != complementary.identity
+
+
+@pytest.mark.parametrize(
+    ("query", "type_key", "number", "year"),
+    [
+        ("Lei nº 8.206/2026", "lei", "8206", 2026),
+        ("Lei Complementar 8.206 de 2026", "lei_complementar", "8206", 2026),
+        ("8206/2026", "", "8206", 2026),
+    ],
+)
+def test_complete_norma_search_query_accepts_dotted_and_untyped_identifier(
+    query, type_key, number, year
+):
+    reference = parse_normative_reference_query(query)
+    assert reference is not None
+    assert reference.identity == (type_key, number, year)
+
+
+@pytest.mark.parametrize("query", ["8.20.6/2026", "Lei 8.206/20", "text 8206/2026"])
+def test_norma_search_parser_rejects_malformed_or_nonexact_queries(query):
+    assert parse_normative_reference_query(query) is None

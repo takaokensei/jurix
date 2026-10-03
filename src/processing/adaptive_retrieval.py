@@ -111,7 +111,7 @@ class RetrievalOptions:
             else "none"
         )
         return (
-            f"retrieval=v4;mode={self.mode};status={self.norma_status};scope={self.source_scope};"
+            f"retrieval=v5;mode={self.mode};status={self.norma_status};scope={self.source_scope};"
             f"tipo={self.norma_type or 'all'};ano={self.year or 'all'};"
             f"max={self.max_sources};min={self.min_similarity:.3f};"
             f"temporal={self.temporal_scope.fingerprint()};attachments={attachment_digest}"

@@ -11,7 +11,7 @@
             'a', 'hr', 'span', 'div',
         ],
         ALLOWED_ATTR: [
-            'href', 'title', 'target', 'rel', 'class', 'data-source-index', 'aria-label', 'align',
+            'href', 'title', 'target', 'rel', 'class', 'data-source-index', 'data-citation-id', 'aria-label', 'align',
         ],
         FORBID_TAGS: [
             'img', 'picture', 'source', 'video', 'audio', 'track', 'image', 'use', 'svg', 'math',
@@ -49,7 +49,7 @@
             .replace(/\n{3,}/g, '\n\n');
     }
 
-    function transformLegalBlocks(markdown) {
+    function transformLegalBlocks(markdown, sources = []) {
         const lines = String(markdown || '').split('\n');
         let inFence = false;
 
@@ -71,17 +71,20 @@
             return line.replace(/\[\[(\d{1,3})\]\]/g, (full, sourceIndex) => {
                 const index = Number.parseInt(sourceIndex, 10);
                 if (!index || index > 999) return full;
-                return `<a class="jurix-citation" href="#jurix-evidence-${index}" data-source-index="${index}" aria-label="Ver fonte ${index}">[${index}]</a>`;
+                const source = sources.find((item) => Number(item?.citation_index) === index) || sources[index - 1];
+                const label = source?.citation_label || `Fonte ${index}`;
+                const citationId = source?.citation_id ? ` data-citation-id="${escapeHtml(source.citation_id)}"` : '';
+                return `<a class="jurix-citation" href="#jurix-evidence-${index}" data-source-index="${index}"${citationId} aria-label="Ver ${escapeHtml(label)}">${escapeHtml(label)}</a>`;
             });
         }).join('\n');
     }
 
-    function normalize(markdown) {
-        return transformLegalBlocks(normalizeLists(markdown));
+    function normalize(markdown, sources = []) {
+        return transformLegalBlocks(normalizeLists(markdown), sources);
     }
 
-    function render(markdown) {
-        const source = normalize(markdown);
+    function render(markdown, sources = []) {
+        const source = normalize(markdown, sources);
         if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
             return `<p>${escapeHtml(source)}</p>`;
         }

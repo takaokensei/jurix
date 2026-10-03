@@ -194,6 +194,7 @@
       id: session.id,
       slug: session.id,
       title: session.title,
+      is_pinned: session.is_pinned === true,
       created_at: session.created_at,
       updated_at: session.updated_at,
       messages_count: session.messages.length,
@@ -212,6 +213,17 @@
     const session = state.sessions.find(item => String(item.id) === String(id));
     if (!session) return false;
     session.title = clean;
+    session.updated_at = now();
+    write(state);
+    return true;
+  }
+
+  function setPinned(id, isPinned) {
+    if (typeof isPinned !== 'boolean') return false;
+    const state = read();
+    const session = state.sessions.find(item => String(item.id) === String(id));
+    if (!session) return false;
+    session.is_pinned = isPinned;
     session.updated_at = now();
     write(state);
     return true;
@@ -242,7 +254,8 @@
     const allowedSourceFields = [
       'id', 'norma_ref', 'dispositivo_ref', 'text', 'full_text', 'sapl_url', 'pdf_url',
       'source_url', 'similarity_score', 'contribution', 'source_type', 'data_publicacao',
-      'data_vigencia',
+      'data_vigencia', 'citation_id', 'citation_index', 'citation_label',
+      'retrieval_strategy', 'evidence_scope', 'coverage',
     ];
     const state = prune(read());
     return {
@@ -279,6 +292,7 @@
     list,
     get,
     setTitle,
+    setPinned,
     remove,
     clear,
     exportData,

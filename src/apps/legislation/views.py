@@ -8,7 +8,6 @@ comparing versions.
 import json
 import logging
 import re
-import textwrap
 import uuid
 from collections import defaultdict
 from typing import Any
@@ -21,13 +20,21 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import DetailView, ListView
 
 from src.observability.safe_logging import log_exception_safely
+from src.processing.corpus_identity import get_corpus_revision
 from src.processing.legal_diff import build_legal_diff
+from src.processing.normative_reference import (
+    NormativeReference,
+    canonical_type,
+    normalize_number,
+    parse_normative_reference_query,
+)
 from src.processing.rag_service import RAGService
 from src.processing.temporal_scope import build_norma_timeline, temporal_status
 
 from .api_limits import InvalidLLMParams, parse_llm_request, rate_limit_response
 from .models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
 from .norma_ordering import order_normas_by_publication
+from .norma_pdf import build_consolidated_norma_pdf
 from .serializers import (
     serialize_dispositivo_source,
 )
@@ -83,6 +90,48 @@ def _norma_list_facets() -> tuple[list[str], list[int]]:
     return types, years
 
 
+def _group_normative_number(number: str) -> str:
+    """Return the SAPL thousands-separated variant without changing digits."""
+    return re.sub(r"(?<=\d)(?=(?:\d{3})+$)", ".", number)
+
+
+def _exact_norma_query(
+    queryset, search_query: str, *, selected_type: str = "", selected_year: str = "", forced: bool = False
+):
+    reference = parse_normative_reference_query(search_query)
+    if reference is None and forced and selected_year.isdigit() and len(selected_year) == 4:
+        digits = normalize_number(search_query)
+        if digits:
+            reference = NormativeReference(
+                type_key=canonical_type(_norma_tipo_label(selected_type)) if selected_type else "",
+                number=digits,
+                year=int(selected_year),
+            )
+    if reference is None:
+        return None
+
+    number_values = {reference.number, _group_normative_number(reference.number)}
+    exact = queryset.filter(numero__in=number_values, ano=reference.year)
+    type_values = {
+        "lei": ("Lei", "Lei Ordinária", "1"),
+        "lei_complementar": ("Lei Complementar", "2"),
+        "lei_ordinaria": ("Lei Ordinária", "1"),
+        "lei_organica": ("Lei Orgânica",),
+        "decreto": ("Decreto", "3"),
+        "decreto_lei": ("Decreto-Lei",),
+        "decreto_legislativo": ("Decreto Legislativo",),
+        "resolucao": ("Resolução", "4"),
+        "portaria": ("Portaria", "6"),
+        "emenda_constitucional": ("Emenda Constitucional",),
+    }
+    if reference.type_key:
+        choices = type_values.get(reference.type_key)
+        if choices is None:
+            return exact.none()
+        exact = exact.filter(Q(tipo__in=choices) | Q(tipo__iexact=choices[0]))
+    return exact
+
+
 class NormaListView(ListView):
     """Responsive, filterable list of consolidated municipal norms."""
 
@@ -95,7 +144,16 @@ class NormaListView(ListView):
         queryset = Norma.objects.filter(status="consolidated")
         search_query = _normalize_norma_query(self.request.GET.get("q"))
         if search_query:
-            queryset = queryset.filter(
+            selected_type = _normalize_norma_query(self.request.GET.get("tipo"))
+            selected_year = self.request.GET.get("ano", "").strip()
+            exact_query = _exact_norma_query(
+                queryset,
+                search_query,
+                selected_type=selected_type,
+                selected_year=selected_year,
+                forced=self.request.GET.get("referencia_exata") == "1",
+            )
+            queryset = exact_query if exact_query is not None else queryset.filter(
                 Q(ementa__icontains=search_query)
                 | Q(numero__icontains=search_query)
                 | Q(tipo__icontains=search_query)
@@ -215,6 +273,7 @@ class NormaDetailView(DetailView):
             context["user_collections"] = Collection.objects.filter(
                 user=self.request.user
             ).prefetch_related("normas")
+        corpus_revision = get_corpus_revision() or {}
         context.update(
             {
                 "active_nav": "normas",
@@ -226,6 +285,7 @@ class NormaDetailView(DetailView):
                 "consolidated_text": _presentation_consolidated_text(norma),
                 "timeline": build_norma_timeline(norma),
                 "temporal_status": temporal_status(norma),
+                "temporal_status_verified": corpus_revision.get("completeness") == "complete",
             }
         )
 
@@ -298,40 +358,9 @@ def norma_compare_view(request: HttpRequest, pk: int) -> HttpResponse:
 def norma_pdf_export_view(request: HttpRequest, pk: int) -> HttpResponse:
     """Generate a paginated, print-ready PDF of the consolidated norm."""
     norma = get_object_or_404(Norma, pk=pk)
-    import fitz
-
-    document = fitz.open()
     title = f"{norma.get_tipo_display_name()} nº {norma.numero}/{norma.ano}"
     body = _presentation_consolidated_text(norma) or "Texto consolidado não disponível."
-    lines = []
-    for raw_line in body.splitlines():
-        lines.extend(textwrap.wrap(raw_line, width=96, replace_whitespace=False) or [""])
-    page_lines = 52
-    for offset in range(0, len(lines) or 1, page_lines):
-        page = document.new_page(width=595, height=842)
-        page.insert_text(
-            (48, 48), "JURIX · NORMA CONSOLIDADA", fontsize=9, color=(0.18, 0.43, 0.78)
-        )
-        page.insert_text((48, 75), title, fontsize=16, fontname="hebo", color=(0.06, 0.10, 0.18))
-        page.insert_text(
-            (48, 94), "Exportação do texto consolidado", fontsize=9, color=(0.35, 0.40, 0.48)
-        )
-        page.insert_textbox(
-            fitz.Rect(48, 120, 547, 790),
-            "\n".join(lines[offset : offset + page_lines]),
-            fontsize=9.5,
-            lineheight=1.45,
-            fontname="cour",
-            color=(0.10, 0.12, 0.16),
-        )
-        page.insert_text(
-            (48, 818),
-            f"Fonte oficial: SAPL · Página {offset // page_lines + 1}",
-            fontsize=8,
-            color=(0.40, 0.44, 0.50),
-        )
-    payload = document.tobytes(garbage=4, deflate=True)
-    document.close()
+    payload = build_consolidated_norma_pdf(title, body)
     response = HttpResponse(payload, content_type="application/pdf")
     filename = f"jurix-{norma.tipo}-{norma.numero}-{norma.ano}.pdf"
     response["Content-Disposition"] = f'attachment; filename="{filename}"'

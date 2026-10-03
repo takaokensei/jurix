@@ -6,11 +6,8 @@ import re
 import unicodedata
 from collections.abc import Iterable, Mapping
 
-_NORM = re.compile(
-    r"\b(Lei(?:\s+Complementar)?|Decreto(?:\s+Legislativo)?|Resolução|Portaria)"
-    r"\s*(?:n[º°o.]?\s*)?(\d{1,7})\s*/\s*((?:19|20)\d{2})\b",
-    re.IGNORECASE,
-)
+from src.processing.normative_reference import parse_normative_references
+
 _ARTICLE = re.compile(r"\b(?:art(?:igo)?\.?)\s*(\d{1,4})\s*[º°o]?(?:\s*[a-z])?", re.IGNORECASE)
 _WORD = re.compile(r"[\wÀ-ÿ]+", re.UNICODE)
 _STOP = {
@@ -79,6 +76,14 @@ _STOP = {
     "ser",
     "previsto",
     "prevista",
+    "complementar",
+    "ordinária",
+    "ordinaria",
+    "orgânica",
+    "organica",
+    "legislativo",
+    "constitucional",
+    "emenda",
 }
 
 
@@ -93,17 +98,38 @@ def _fold(value: str) -> str:
 def build_conversation_title(question: str, sources: Iterable[Mapping[str, object]]) -> str:
     """Return a short deterministic title; topic words must occur in final evidence."""
     text = " ".join(str(question or "").split())
-    norm = _NORM.search(text)
-    article = _ARTICLE.search(text)
+    references = parse_normative_references(text)
+    reference = references[0] if len(references) == 1 else None
     norm_label = None
-    if norm:
-        kind = (
-            "Lei Complementar"
-            if norm.group(1).casefold().startswith("lei complementar")
-            else norm.group(1)
-        )
-        norm_label = f"{kind} nº {norm.group(2)}/{norm.group(3)}"
-        text = f"{text[:norm.start()]} {text[norm.end():]}"
+    if reference and reference.year:
+        type_labels = {
+            "lei": "Lei",
+            "lei_complementar": "Lei Complementar",
+            "lei_organica": "Lei Orgânica",
+            "decreto": "Decreto",
+            "decreto_lei": "Decreto-Lei",
+            "decreto_legislativo": "Decreto Legislativo",
+            "resolucao": "Resolução",
+            "portaria": "Portaria",
+            "emenda_constitucional": "Emenda Constitucional",
+            "emenda": "Emenda",
+        }
+        kind = type_labels.get(reference.type_key, reference.type_key.replace("_", " ").title())
+        number = reference.number
+        if len(number) > 3:
+            first_group_size = len(number) % 3 or 3
+            number = ".".join(
+                [number[:first_group_size], *[number[index : index + 3] for index in range(first_group_size, len(number), 3)]]
+            )
+        norm_label = f"{kind} nº {number}/{reference.year}"
+
+    article_number = None
+    if reference:
+        if not reference.ambiguous:
+            article_number = reference.article
+    else:
+        article_match = _ARTICLE.search(text)
+        article_number = article_match.group(1) if article_match else None
 
     evidence_words: set[str] = set()
     for source in sources:
@@ -128,8 +154,8 @@ def build_conversation_title(question: str, sources: Iterable[Mapping[str, objec
     if candidates:
         topic = " ".join(candidates)
         parts.append(topic[:1].upper() + topic[1:])
-    if article:
-        parts.append(f"Art. {article.group(1)}º")
+    if article_number:
+        parts.append(f"Art. {article_number}º")
     if norm_label:
         parts.append(norm_label)
     if not parts:

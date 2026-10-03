@@ -35,7 +35,10 @@ from src.apps.legislation.models import (
     Norma,
 )
 from src.apps.legislation.retrieval_api import build_retrieval_options
-from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
+from src.apps.legislation.serializers import (
+    serialize_chat_session,
+    serialize_citation_sources,
+)
 from src.apps.legislation.suggestion_service import build_dynamic_suggestions
 from src.processing.adaptive_rag_service import AdaptiveRAGService
 
@@ -73,7 +76,7 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
                     message_count=Count("messages"),
                     latest_user_content=Subquery(latest_user_message),
                 )
-                .order_by("-updated_at", "-id")[: _parse_limit(request.GET.get("limit"))]
+                .order_by("-is_pinned", "-updated_at", "-id")[: _parse_limit(request.GET.get("limit"))]
             )
             sessions_data = []
             for session in sessions:
@@ -123,9 +126,9 @@ def chat_session_by_slug_api(request: HttpRequest, slug: str) -> JsonResponse:
         return _server_error("chat session by slug API", e)
 
 
-@require_http_methods(["GET", "DELETE"])
+@require_http_methods(["GET", "PATCH", "DELETE"])
 def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonResponse:
-    """API endpoint for single chat session operations (GET detail, DELETE)."""
+    """API endpoint for single chat session operations (GET, PATCH, DELETE)."""
     if not request.user.is_authenticated:
         return JsonResponse({"success": False, "error": "Authentication required"}, status=401)
 
@@ -138,6 +141,28 @@ def chat_session_detail_api(request: HttpRequest, session_id: int) -> JsonRespon
         if request.method == "DELETE":
             session.delete()
             return JsonResponse({"success": True, "message": "Session deleted"})
+        if request.method == "PATCH":
+            try:
+                data = json.loads(request.body or b"{}")
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
+            if not isinstance(data, dict) or not data:
+                return JsonResponse({"success": False, "error": "Invalid session update"}, status=400)
+            allowed = {"title", "is_pinned"}
+            if set(data) - allowed:
+                return JsonResponse({"success": False, "error": "Unsupported session field"}, status=400)
+            if "title" in data:
+                title = data["title"]
+                if not isinstance(title, str) or not title.strip():
+                    return JsonResponse({"success": False, "error": "Invalid title"}, status=400)
+                session.title = title.strip()[:200]
+            if "is_pinned" in data:
+                if not isinstance(data["is_pinned"], bool):
+                    return JsonResponse({"success": False, "error": "Invalid pinned state"}, status=400)
+                session.is_pinned = data["is_pinned"]
+            fields = [field for field in ("title", "is_pinned") if field in data]
+            session.save(update_fields=[*fields, "updated_at"])
+            return JsonResponse({"success": True, "session": serialize_chat_session(session)})
         return _chat_session_response(session, request.GET.get("before"))
     except Exception as e:
         return _server_error("chat session detail API", e)
@@ -199,11 +224,11 @@ def chat_session_regenerate_api(request: HttpRequest, session_id: int) -> JsonRe
         )
 
         grounded = response.get("grounded") is True
-        sources = [
-            serialize_dispositivo_source(source)
-            for source in response.get("sources", [])
-            if grounded and isinstance(source, dict)
-        ]
+        sources = serialize_citation_sources(
+            [source for source in response.get("sources", []) if isinstance(source, dict)]
+            if grounded
+            else []
+        )
 
         # Replace the old answer and persist the new one atomically. A database
         # failure must not leave the session without its last usable answer.

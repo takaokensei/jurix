@@ -6,6 +6,7 @@ pytesseract) and every declared runtime dependency must be used (spaCy was insta
 """
 
 import ast
+import importlib.metadata
 import re
 import sys
 from pathlib import Path
@@ -86,6 +87,27 @@ def test_django_pin_uses_supported_lts_security_baseline():
 
 def test_installed_django_matches_declared_pin():
     assert django.VERSION[:3] == _django_pin(), "Install the declared Django pin before testing"
+
+
+def test_security_sensitive_document_dependencies_match_declared_pins():
+    requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+    expected = {
+        "requests": "2.33.0",
+        "python-dotenv": "1.2.4",
+        "pillow": "12.3.0",
+        "pymupdf": "1.28.2",
+        "pytest": "9.1.1",
+    }
+    for distribution, version in expected.items():
+        pin = re.findall(
+            rf"^{re.escape(distribution)}==([0-9]+(?:\.[0-9]+)+)\s*$",
+            requirements,
+            re.I | re.M,
+        )
+        assert pin == [version], f"{distribution} must be pinned to {version}"
+        assert importlib.metadata.version(distribution) == version, (
+            f"Install {distribution}=={version} before running dependency tests"
+        )
 
 
 def _imported_third_party():

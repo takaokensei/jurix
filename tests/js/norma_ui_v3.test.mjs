@@ -48,7 +48,7 @@ test('light theme maps semantic tokens and workspace surfaces instead of leaving
 });
 
 test('light theme gives the assistant source-summary control semantic foregrounds and surfaces', async () => {
-  const source = await read('src/apps/core/static/css/jurix-figma.css');
+  const source = await read('src/apps/core/static/css/jurix-rag.css');
   assert.match(source, /:root\[data-theme="light"\] \.jurix-sources-pill-btn\s*\{[^}]*background-color:\s*var\(--figma-bg-surface\)[^}]*color:\s*var\(--figma-text-body\)/);
   assert.match(source, /:root\[data-theme="light"\] \.jurix-sources-pill-badge\s*\{[^}]*color:\s*var\(--figma-blue-dark\)/);
   assert.match(source, /:root\[data-theme="light"\] \.jurix-sources-pill-action\s*\{[^}]*color:\s*var\(--figma-blue-primary\)/);
@@ -77,6 +77,16 @@ test('workspace pages opt into document scrolling and icon-only navigation keeps
   assert.doesNotMatch(detail, /class="dispositivo-tipo badge"/);
 });
 
+test('secondary norm actions remain discoverable when the details disclosure is closed on desktop', async () => {
+  const styles = await read('src/apps/core/static/css/jurix-legal-detail.css');
+  const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
+  assert.match(template, /<details class="legal-detail-more-actions">\s*<summary>Mais ações<\/summary>/);
+  assert.match(styles, /\.legal-detail-more-actions\s*\{[^}]*grid-column:\s*span 2/);
+  assert.match(styles, /\.legal-detail-more-actions\s*>\s*summary\s*\{[^}]*display:\s*flex/);
+  assert.doesNotMatch(styles, /\.legal-detail-more-actions\s*>\s*summary\s*\{[^}]*display:\s*none/);
+  assert.match(styles, /@media \(max-width:720px\)[\s\S]*?\.legal-detail-more-actions\s*\{[^}]*grid-column:\s*auto/);
+});
+
 test('dynamic suggestions controller uses the corpus API', async () => {
   const source = await read('src/apps/core/static/js/jurix-dynamic-suggestions.js');
   assert.match(source, /\/api\/v1\/suggestions\//);
@@ -97,9 +107,13 @@ test('norma list recognizes an exact number/year identifier as separate server f
   const source = await read('src/apps/core/static/js/jurix-norma-list.js');
   const template = await read('src/apps/legislation/templates/legislation/norma_list.html');
   assert.match(source, /function splitNormaIdentifier\(\)/);
-  assert.match(source, /search\.value = match\[1\];[\s\S]*yearFilter\.value = match\[2\]/);
+  assert.ok(source.includes("match[2].replace(/\\D/g, '')"));
+  assert.match(source, /matchingOption\.value/);
+  assert.match(source, /exactReference\.name = 'referencia_exata'/);
+  assert.match(source, /input\[name="referencia_exata"\]/);
+  assert.match(source, /search\.value = number;[\s\S]*yearFilter\.value = match\[3\]/);
   assert.match(source, /splitNormaIdentifier\(\);[\s\S]*querySelector\('button\[type="submit"\]'\)/);
-  assert.match(template, /jurix-norma-list\.js['"] %\}\?v=20260929-identifier-search1/);
+  assert.match(template, /jurix-norma-list\.js['"] %\}\?v=20261002-exact-reference2/);
 });
 
 test('norma list stylesheet contains mobile, reduced motion and print rules', async () => {
@@ -118,8 +132,8 @@ test('norma template exposes semantic filters and no hardcoded suggestion cards'
   assert.match(source, /name="ordenar"/);
   assert.match(source, /jurix-norma-grid/);
   assert.match(source, /placeholder="Número, tipo ou ementa…"/);
-  assert.match(source, /jurix-norma-list\.js['"] %\}\?v=20260929-identifier-search1/);
-  assert.match(source, /jurix-norma-list\.css['"] %\}\?v=20260930-mobile-title-rhythm1/);
+  assert.match(source, /jurix-norma-list\.js['"] %\}\?v=20261002-exact-reference2/);
+  assert.match(source, /jurix-norma-list\.css['"] %\}\?v=20261002-norma-library-compact1/);
 });
 
 test('legal search placeholder stays concise while examples remain available in the empty state', async () => {
@@ -188,7 +202,7 @@ test('workspace sidebar keeps utility actions visible while navigation can scrol
   assert.match(source, /\.workspace-sidebar\s*\{[^}]*box-sizing:\s*border-box;[^}]*overflow:\s*hidden;/);
   assert.match(source, /\.workspace-nav\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/);
   assert.match(source, /\.workspace-sidebar-bottom\s*\{[^}]*flex:\s*0\s+0\s+auto;/);
-  assert.match(template, /css\/workspace\.css['"] %\}\?v=20260930-axe-kbd-contrast1/);
+  assert.match(template, /css\/workspace\.css['"] %\}\?v=20261002-design-tokens1/);
 });
 
 test('assistant and workspace navigation share accessible outline SVG icons', async () => {
@@ -319,7 +333,7 @@ test('norm actions use a responsive grid instead of stranding the official sourc
   assert.match(styles, /@media \(max-width:520px\) \{ \.legal-detail-actions \{ grid-template-columns:minmax\(0,1fr\); \} \}/);
   assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*justify-content:\s*center/);
   assert.match(styles, /\.legal-detail-actions \.btn\s*\{[^}]*min-height:\s*44px/);
-  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260930-timeline-status1/);
+  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20261002-device-index-groups1/);
 });
 
 test('missing effective date is not presented as legal certainty in norm list or detail', async () => {
@@ -361,7 +375,7 @@ test('mobile norm detail keeps secondary metrics compact without squeezing text 
   const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
   assert.match(styles, /@media \(max-width:640px\)[\s\S]*?\.legal-detail-card \.stats-grid \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\); \}/);
   assert.match(styles, /\.legal-detail-card \.stats-grid \.stat-card:last-child \{ grid-column:1 \/ -1; \}/);
-  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20260930-timeline-status1/);
+  assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20261002-device-index-groups1/);
 });
 
 test('version comparison exposes both texts as labelled stacked evidence on mobile', async () => {
@@ -421,7 +435,7 @@ test('norma detail gives legal devices clear document hierarchy and readable bod
 test('norm detail actions keep a balanced responsive grid at desktop, tablet and phone widths', async () => {
   const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
   const styles = await read('src/apps/core/static/css/jurix-legal-detail.css');
-  assert.match(template, /jurix-legal-detail\.css['"] %\}\?v=20260930-timeline-status1/);
+  assert.match(template, /jurix-legal-detail\.css['"] %\}\?v=20261002-device-index-groups1/);
   assert.match(styles, /\.legal-detail-actions \{ display:grid; grid-template-columns:repeat\(3,minmax\(0,1fr\)\);/);
   assert.match(styles, /@media \(max-width:900px\) \{ \.legal-detail-actions \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\); \} \}/);
   assert.match(styles, /@media \(max-width:520px\) \{ \.legal-detail-actions \{ grid-template-columns:minmax\(0,1fr\); \} \}/);
@@ -430,8 +444,24 @@ test('norm detail actions keep a balanced responsive grid at desktop, tablet and
 test('norm list mobile title keeps comfortable line spacing when it wraps', async () => {
   const styles = await read('src/apps/core/static/css/jurix-norma-list.css');
   const template = await read('src/apps/legislation/templates/legislation/norma_list.html');
-  assert.equal((styles.match(/\.jurix-norma-title \{ font-size: clamp\(30px, 11vw, 44px\); line-height: 1\.12; \}/g) || []).length, 2);
-  assert.match(template, /jurix-norma-list\.css['"] %\}\?v=20260930-mobile-title-rhythm1/);
+  assert.equal((styles.match(/\.jurix-norma-title \{ font-size: clamp\(1\.875rem, 8vw, 2rem\); line-height: 1\.15; \}/g) || []).length, 2);
+  assert.match(template, /jurix-norma-list\.css['"] %\}\?v=20261002-norma-library-compact1/);
+});
+
+test('norm library uses a compact non-repetitive hero and one post-search summary block', async () => {
+  const styles = await read('src/apps/core/static/css/jurix-norma-list.css');
+  const template = await read('src/apps/legislation/templates/legislation/norma_list.html');
+  assert.match(template, /Buscar por número, ano ou assunto\./);
+  assert.doesNotMatch(template, /interface projetada para leitura rápida/);
+  const toolbar = template.slice(template.indexOf('class="jurix-norma-toolbar"'), template.indexOf('{% if normas %}'));
+  assert.ok(toolbar.indexOf('id="norma-filter-form"') < toolbar.indexOf('class="jurix-norma-summary"'));
+  assert.equal((toolbar.match(/class="jurix-norma-summary"/g) || []).length, 1);
+  assert.doesNotMatch(toolbar, /resultados nesta busca|resultado\(s\) encontrados/);
+  assert.match(styles, /\.jurix-norma-title\s*\{[^}]*font-size:\s*2rem;/);
+  assert.match(styles, /\.jurix-norma-shell\s*\{[^}]*gap:\s*24px;/);
+  assert.match(styles, /\.jurix-norma-hero\s*\{[^}]*padding:\s*20px 22px;/);
+  assert.match(styles, /@media \(max-width:\s*620px\)[\s\S]*?\.jurix-norma-summary[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(template, /name="ordenar"[\s\S]*?value="recentes"/);
 });
 
 test('quill identity is cache-busted and source reveal animates only on expansion', async () => {
@@ -463,7 +493,7 @@ test('destructive workspace states use theme-aware semantic danger tokens', asyn
   assert.match(workspaceStyles, /\.workspace-button-danger[^}]*background:\s*var\(--figma-red-action\)/);
   assert.match(workspaceStyles, /\.workspace-confirm-icon[^}]*color:\s*var\(--figma-red-soft\)/);
   assert.match(workspaceStyles, /\.workspace-confirm-error[^}]*color:\s*var\(--figma-red\)/);
-  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20260930-axe-kbd-contrast1/);
+  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20261002-design-tokens1/);
   for (const value of ['#fff', '#b42332', '#a92332', '#fecaca', '#fca5a5']) {
     assert.doesNotMatch(workspaceStyles.toLowerCase(), new RegExp(value.replace('#', '\\#')));
   }

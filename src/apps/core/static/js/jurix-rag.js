@@ -10,7 +10,7 @@
             'table', 'thead', 'tbody', 'tr', 'th', 'td',
             'a', 'hr', 'span', 'div'
         ],
-        ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'class', 'data-source-index', 'aria-label'],
+        ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'class', 'data-source-index', 'data-citation-id', 'aria-label'],
         FORBID_TAGS: ['style', 'script', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'svg', 'math'],
         FORBID_ATTR: ['style', 'onclick', 'onerror', 'onload', 'src', 'srcset', 'poster', 'action', 'formaction'],
         ALLOW_UNKNOWN_PROTOCOLS: false,
@@ -20,11 +20,12 @@
     let evidenceId = 0;
     let lastSourceTrigger = null;
     let drawerListenersBound = false;
+    let currentSourcesDrawerContext = null;
 
-    function commitMarkdown(element, markdown) {
+    function commitMarkdown(element, markdown, sources = []) {
         const container = document.getElementById('messages-container');
         const follow = container && container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-        element.innerHTML = renderMarkdown(markdown);
+        element.innerHTML = renderMarkdown(markdown, sources);
         if (follow) container.scrollTop = container.scrollHeight;
     }
 
@@ -37,10 +38,10 @@
             .replace(/'/g, '&#039;');
     }
 
-    function renderMarkdown(markdown) {
+    function renderMarkdown(markdown, sources = []) {
         const source = String(markdown || '');
         if (window.JurixMarkdown && typeof window.JurixMarkdown.render === 'function') {
-            return window.JurixMarkdown.render(source);
+            return window.JurixMarkdown.render(source, sources);
         }
         if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
             return `<p>${escapeHtml(source)}</p>`;
@@ -58,7 +59,7 @@
         current.pending = true;
         requestAnimationFrame(() => {
             current.pending = false;
-            commitMarkdown(element, current.markdown);
+            commitMarkdown(element, current.markdown, current.sources || []);
             if (current.streaming) element.classList.add('is-streaming');
             if (typeof window.scrollToBottomIfAtBottom === 'function') {
                 window.scrollToBottomIfAtBottom();
@@ -72,7 +73,7 @@
         current.markdown = markdown;
         current.pending = false;
         state.set(element, current);
-        commitMarkdown(element, markdown);
+        commitMarkdown(element, markdown, current.sources || []);
         if (typeof window.scrollToBottomIfAtBottom === 'function') {
             window.requestAnimationFrame(() => window.scrollToBottomIfAtBottom());
         }
@@ -85,6 +86,14 @@
         state.set(element, current);
         element.classList.toggle('is-streaming', isStreaming);
         element.toggleAttribute('data-streaming', isStreaming);
+    }
+
+    function setCitationSources(element, sources) {
+        if (!element) return;
+        const current = state.get(element) || {};
+        current.sources = Array.isArray(sources) ? sources : [];
+        state.set(element, current);
+        if (typeof current.markdown === 'string') scheduleRender(element, current.markdown);
     }
 
     function getStatus(error) {
@@ -161,6 +170,7 @@
             fill.setAttribute('aria-hidden', 'true');
         });
         container.querySelectorAll('.source-score').forEach((score) => {
+            if (score.closest('.jurix-rag-source--coverage, .jurix-rag-source--explicit')) return;
             const label = score.querySelector('.jurix-rag-score-label');
             const value = score.querySelector('span');
             if (!label && value) {
@@ -253,8 +263,11 @@
 
     function renderEvidenceCard(source, index = 0, options = {}) {
         const safeSource = source || {};
+        const citationIndex = Number(safeSource.citation_index) || index + 1;
+        const scopeBased = safeSource.retrieval_strategy === 'whole_norma';
+        const explicitReference = safeSource.match_kind === 'explicit_reference';
         const { normalized, percent } = getSourceScore(safeSource);
-        const band = normalized >= 0.8 ? 'high' : normalized >= 0.6 ? 'medium' : 'low';
+        const band = scopeBased ? 'coverage' : explicitReference ? 'explicit' : normalized >= 0.8 ? 'high' : normalized >= 0.6 ? 'medium' : 'low';
         const relevanceLabel = getRelevanceLabel(normalized);
         const contributionLabel = getContributionLabel(safeSource, normalized);
 
@@ -290,19 +303,26 @@
         return `
             <article
                 class="source-card jurix-rag-source jurix-rag-source--${band}${linkUrl ? ' source-card-clickable' : ''}"
-                id="jurix-evidence-${++evidenceId}"
+                id="jurix-evidence-card-${++evidenceId}"
                 aria-label="${escapeHtml(cardLabel)}"
-                data-evidence-rank="${index + 1}"
+                data-evidence-rank="${citationIndex}"
                 data-evidence-band="${band}"
                 ${linkUrl ? `data-url="${escapeHtml(linkUrl)}"` : ''}
             >
                 <div class="source-card-header">
                     ${options.showNormTitle === false ? '' : `<div class="source-title">${escapeHtml(normaRef)}</div>`}
-                    <div class="source-score" aria-label="${escapeHtml(relevanceLabel)}. Pontuação técnica: ${percent}%">
-                        <span class="jurix-rag-score-label">Relevância</span>
-                        <progress class="jurix-rag-score-meter jurix-rag-score-meter--${band}" max="100" value="${percent}" aria-hidden="true"></progress>
-                        <span class="jurix-rag-score-text">${escapeHtml(relevanceLabel)}</span>
-                    </div>
+                    ${scopeBased
+                        ? `<div class="source-score" aria-label="Dispositivo incluído no escopo da consulta"><span class="jurix-rag-score-text">${safeSource.evidence_scope === 'complete' ? 'Todos os dispositivos indexados' : 'Amostra da norma'}</span></div>`
+                        : explicitReference
+                        ? `<div class="source-score" aria-label="Dispositivo identificado pela referência normativa">
+                            <span class="jurix-rag-score-label">Tipo de identificação</span>
+                            <span class="jurix-rag-score-text">Dispositivo identificado</span>
+                        </div>`
+                        : `<div class="source-score" aria-label="${escapeHtml(relevanceLabel)}. Pontuação técnica: ${percent}%">
+                            <span class="jurix-rag-score-label">Relevância</span>
+                            <progress class="jurix-rag-score-meter jurix-rag-score-meter--${band}" max="100" value="${percent}" aria-hidden="true"></progress>
+                            <span class="jurix-rag-score-text">${escapeHtml(relevanceLabel)}</span>
+                        </div>`}
                 </div>
 
                 ${meta ? `<div class="jurix-rag-source__meta-row">${meta}</div>` : ''}
@@ -329,7 +349,7 @@
                     ${openAction}
                 </div>
 
-                <span class="jurix-rag-sr-only">${escapeHtml(relevanceLabel)}. Pontuação técnica de recuperação: ${percent}%.</span>
+                ${scopeBased || explicitReference ? '' : `<span class="jurix-rag-sr-only">${escapeHtml(relevanceLabel)}. Pontuação técnica de recuperação: ${percent}%.</span>`}
             </article>
         `;
     }
@@ -566,7 +586,7 @@
         return groups;
     }
 
-    function openSourcesDrawer(sources = [], title = 'Fontes Consultadas') {
+    function openSourcesDrawer(sources = [], title = 'Fontes Consultadas', metadata = {}) {
         const dom = ensureDrawerDOM();
         const { backdrop, panel, body, titleEl, subtitleEl } = dom;
         if (!panel || !body) return;
@@ -575,12 +595,9 @@
         const safeSources = Array.isArray(sources) ? sources : [];
         const count = safeSources.length;
         const groups = groupEvidenceByNorm(safeSources);
+        currentSourcesDrawerContext = { count, groups, metadata: { ...metadata } };
         if (titleEl) titleEl.textContent = `${title} (${count})`;
-        if (subtitleEl) {
-            const evidenceLabel = count === 1 ? 'evidência' : 'evidências';
-            const normLabel = groups.length === 1 ? 'norma' : 'normas';
-            subtitleEl.textContent = `${count} ${evidenceLabel} em ${groups.length} ${normLabel} do corpus municipal de Natal.`;
-        }
+        renderSourcesDrawerSubtitle(subtitleEl, currentSourcesDrawerContext);
 
         body.innerHTML = '';
         let syncToggleAll = () => {};
@@ -679,6 +696,36 @@
         lastSourceTrigger = null;
     }
 
+    function renderSourcesDrawerSubtitle(subtitleEl, context) {
+        if (!subtitleEl || !context) return;
+        const { count, groups, metadata } = context;
+        const evidenceLabel = count === 1 ? 'evidência' : 'evidências';
+        const normLabel = groups.length === 1 ? 'norma' : 'normas';
+        const validation = metadata.pending ? ' A resposta ainda está sendo validada.' : '';
+        const coverage = metadata.coverage;
+        const scope = coverage && !coverage.complete
+            ? ` Amostra distribuída: ${coverage.selected_articles} de ${coverage.total_articles} artigos.`
+            : '';
+        subtitleEl.textContent = `${count} ${evidenceLabel} em ${groups.length} ${normLabel} do corpus municipal de Natal.${scope}${validation}`;
+    }
+
+    function updateSourcesDrawerMetadata(metadata = {}) {
+        if (!currentSourcesDrawerContext) return;
+        currentSourcesDrawerContext.metadata = { ...currentSourcesDrawerContext.metadata, ...metadata };
+        renderSourcesDrawerSubtitle(
+            document.querySelector('#jurix-sources-drawer-panel .jurix-sources-drawer-subtitle'),
+            currentSourcesDrawerContext
+        );
+    }
+
+    function clearSourcesDrawer() {
+        const panel = document.getElementById('jurix-sources-drawer-panel');
+        if (panel?.classList.contains('is-open')) closeSourcesDrawer();
+        const body = panel?.querySelector('.jurix-sources-drawer-body');
+        body?.replaceChildren();
+        currentSourcesDrawerContext = null;
+    }
+
     document.addEventListener('click', (event) => {
         if (!event.target || !event.target.closest) return;
         const copyButton = event.target.closest('[data-copy-legal-citation]');
@@ -697,7 +744,7 @@
         if (pill) {
             event.preventDefault();
             const sources = pill._sourcesData || [];
-            openSourcesDrawer(sources, 'Fontes Consultadas');
+            openSourcesDrawer(sources, 'Fontes Consultadas', pill._sourcesMeta || {});
             return;
         }
         if (event.target.closest('#jurix-sources-drawer-close') || event.target.closest('#jurix-sources-drawer-backdrop')) {
@@ -718,7 +765,7 @@
             // that contains the citation. Open that drawer before resolving the
             // target; otherwise citation clicks silently announce "not found".
             if (sources.length > 0) {
-                openSourcesDrawer(sources, 'Fontes Consultadas');
+                openSourcesDrawer(sources, 'Fontes Consultadas', sourcesContainer?._sourcesMeta || {});
                 window.requestAnimationFrame(() => focusEvidence(sourceIndex, document));
             } else {
                 focusEvidence(sourceIndex, document);
@@ -768,6 +815,7 @@
     window.JurixRagUI = {
         scheduleRender,
         flushRender,
+        setCitationSources,
         setStreamingState,
         renderErrorState,
         enhanceSources,
@@ -778,5 +826,7 @@
         linkLegalReferences,
         openSourcesDrawer,
         closeSourcesDrawer,
+        updateSourcesDrawerMetadata,
+        clearSourcesDrawer,
     };
 })();

@@ -19,6 +19,132 @@
     text-align: center;
 }
 
+.jurix-composer-options-toggle {
+    display: none;
+}
+
+.jurix-composer-options {
+    display: flex;
+    min-width: 0;
+}
+
+.jurix-composer-textarea {
+    max-height: 30dvh;
+    overflow-y: auto;
+    resize: none;
+}
+
+@media (max-width: 767px) {
+    .figma-theme #conversation-input-bar {
+        padding-top: 8px;
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+
+    .figma-theme #conversation-input-bar .figma-smart-search-panel {
+        padding: 8px 12px;
+    }
+
+    .figma-theme #conversation-input-bar .figma-input-line {
+        min-height: 44px;
+        max-height: 30dvh;
+        gap: 8px;
+    }
+
+    .figma-theme #conversation-input-bar .jurix-composer-textarea {
+        min-height: 44px;
+        max-height: 30dvh;
+        height: auto;
+        line-height: 1.4;
+    }
+
+    .figma-theme #conversation-input-bar .jurix-composer-footer {
+        display: grid;
+        grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+        gap: 6px 10px;
+        align-items: center;
+    }
+
+    .figma-theme #conversation-input-bar .jurix-composer-options-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+        width: fit-content;
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0 10px;
+        border: 1px solid var(--figma-border);
+        border-radius: 10px;
+        background: var(--figma-bg-dropdown);
+        color: var(--figma-text-muted);
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+    }
+
+    .figma-theme #conversation-input-bar .jurix-composer-options-toggle:hover,
+    .figma-theme #conversation-input-bar .jurix-composer-options-toggle[aria-expanded="true"] {
+        border-color: var(--figma-blue-light);
+        color: var(--figma-text-white);
+    }
+
+    .figma-theme #conversation-input-bar .jurix-composer-options-toggle:focus-visible {
+        outline: 2px solid var(--figma-blue-light);
+        outline-offset: 2px;
+    }
+
+    .figma-theme #conversation-input-bar .jurix-composer-options-toggle > svg {
+        width: 16px;
+        height: 16px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        flex: 0 0 auto;
+    }
+
+    .figma-theme #conversation-input-bar .jurix-composer-options-chevron {
+        width: 13px;
+        height: 13px;
+        transition: transform 160ms ease;
+    }
+
+    .figma-theme #conversation-input-bar .jurix-composer-options-toggle[aria-expanded="true"] .jurix-composer-options-chevron {
+        transform: rotate(180deg);
+    }
+
+    .figma-theme #conversation-input-bar .jurix-composer-options:not(.is-open) {
+        display: none;
+    }
+
+    .figma-theme #conversation-input-bar .jurix-composer-options {
+        grid-column: 1 / -1;
+        width: 100%;
+    }
+
+    .figma-theme #conversation-input-bar .jurix-composer-filters {
+        width: 100%;
+    }
+
+    .figma-theme #conversation-input-bar .jurix-chat-state-indicator {
+        grid-column: 1 / -1;
+    }
+
+    .figma-theme #conversation-input-bar .jurix-composer-disclaimer {
+        justify-self: end;
+        font-size: 10px;
+        line-height: 1.3;
+        text-align: right;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .figma-theme #conversation-input-bar .jurix-composer-options-chevron {
+        transition: none;
+    }
+}
+
 #new-chat-button.disabled,
 #new-chat-button:disabled {
     opacity: 0.5;

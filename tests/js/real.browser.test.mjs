@@ -93,6 +93,44 @@ function createTestServer(handlers = {}) {
       </div><script src="/static/js/workspace.js"></script></body></html>`);
     }
 
+    if (url.pathname === '/norma-actions-test/') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(`<!doctype html><html lang="pt-BR"><head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="/static/css/jurix-figma.css">
+        <link rel="stylesheet" href="/static/css/jurix-legal-detail.css">
+      </head><body class="figma-theme"><main class="legal-detail-card">
+        <div class="legal-detail-actions">
+          <a class="btn legal-detail-primary-action" href="#assistant">Perguntar sobre esta norma</a>
+          <details class="legal-detail-more-actions"><summary>Mais ações</summary>
+            <div class="legal-detail-secondary-actions">
+              <a class="btn" href="#compare">Comparar versões</a>
+              <a class="btn" href="#tree">Visualizar árvore</a>
+              <button class="btn" type="button">Copiar citação</button>
+              <a class="btn" href="#pdf">Exportar PDF</a>
+              <a class="btn" href="#sapl">Abrir fonte oficial</a>
+            </div>
+          </details>
+        </div>
+      </main></body></html>`);
+    }
+
+    if (url.pathname === '/sources-pill-test/') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(`<!doctype html><html lang="pt-BR" data-theme="dark"><head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="/static/css/jurix-figma.css">
+        <link rel="stylesheet" href="/static/css/jurix-rag.css">
+        <style>body{margin:0;padding:16px}main{width:260px}.sources-section{width:100%}</style>
+      </head><body><main id="pill-host"><div class="sources-section">
+        <button type="button" class="jurix-sources-pill-btn" aria-label="Abrir fontes consultadas">
+          <span>100 fontes consultadas</span>
+          <span class="jurix-sources-pill-badge">Correspondência semântica e cobertura das evidências jurídicas verificadas</span>
+          <span class="jurix-sources-pill-action">Ver fontes →</span>
+        </button>
+      </div></main></body></html>`);
+    }
+
     if (url.pathname === '/settings-test/') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(`<!doctype html><html lang="pt-BR"><head>
@@ -219,6 +257,21 @@ function createTestServer(handlers = {}) {
         </div></main><script src="/static/js/jurix-legal-detail.js"></script></body></html>`);
     }
 
+    if (url.pathname === '/device-index-test/') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(`<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="/static/css/jurix-figma.css"><link rel="stylesheet" href="/static/css/jurix-legal-detail.css"></head><body class="figma-theme">
+        <main class="card legal-detail-card"><h1>Norma de teste</h1><nav class="dispositivos-index" aria-label="Índice de dispositivos"><span class="dispositivos-index-label">Ir para</span><div class="dispositivos-index-links" data-device-index>
+        <a href="#dispositivo-1" class="dispositivos-index-link" data-device-index-link aria-label="Art. 1º">Art. 1º</a>
+        <a href="#dispositivo-2" class="dispositivos-index-link" data-device-index-link aria-label="Art. 1º &gt; Inciso I">Art. 1º &gt; Inciso I</a>
+        <a href="#dispositivo-3" class="dispositivos-index-link" data-device-index-link aria-label="Art. 1º &gt; Inciso I &gt; Alínea a)">Art. 1º &gt; Inciso I &gt; Alínea a)</a>
+        <a href="#dispositivo-4" class="dispositivos-index-link" data-device-index-link aria-label="Art. 2º">Art. 2º</a></div></nav><div class="dispositivos-tree">
+        <article id="dispositivo-1" class="dispositivo-node" data-level="0" data-device-type="artigo" data-device-parent-id="" tabindex="-1"><span class="dispositivo-label">Art. 1º</span></article>
+        <article id="dispositivo-2" class="dispositivo-node" data-level="1" data-device-type="inciso" data-device-parent-id="1" tabindex="-1"><span class="dispositivo-label">Art. 1º &gt; Inciso I</span></article>
+        <article id="dispositivo-3" class="dispositivo-node" data-level="2" data-device-type="alinea" data-device-parent-id="2" tabindex="-1"><span class="dispositivo-label">Art. 1º &gt; Inciso I &gt; Alínea a)</span></article>
+        <article id="dispositivo-4" class="dispositivo-node" data-level="0" data-device-type="artigo" data-device-parent-id="" tabindex="-1"><span class="dispositivo-label">Art. 2º</span></article></div></main><script src="/static/js/jurix-legal-detail.js"></script></body></html>`);
+    }
+
     if (url.pathname === '/norma-search-test/') {
       const query = url.searchParams.get('q') || '';
       const type = url.searchParams.get('tipo') || '';
@@ -230,7 +283,7 @@ function createTestServer(handlers = {}) {
         <section aria-label="Filtros de normas"><form method="get" id="norma-filter-form">
           <input id="norma-search-input" type="search" name="q" aria-label="Pesquisar normas" value="${escapedQuery}">
           <button id="norma-search-clear" type="button" aria-label="Limpar pesquisa" ${query ? '' : 'hidden'}>×</button>
-          <select name="tipo" aria-label="Tipo"><option value="">Todos</option><option value="Lei" ${type === 'Lei' ? 'selected' : ''}>Lei</option></select>
+          <select id="norma-tipo" name="tipo" aria-label="Tipo"><option value="">Todos</option><option value="Lei" ${type === 'Lei' ? 'selected' : ''}>Lei</option><option value="Lei Complementar" ${type === 'Lei Complementar' ? 'selected' : ''}>Lei Complementar</option></select>
           <select id="norma-ano" name="ano" aria-label="Ano"><option value="">Todos</option><option value="2025" ${year === '2025' ? 'selected' : ''}>2025</option><option value="2026" ${year === '2026' ? 'selected' : ''}>2026</option></select>
           <button type="submit">Pesquisar</button>
         </form></section><p id="results">${query ? '0 resultados' : '3 resultados'}</p>
@@ -1689,7 +1742,7 @@ test('real browser: ungrounded stream sources stay hidden after anonymous histor
   }
 });
 
-test('real browser: streaming with complex markdown (tables, lists, code) and deferred sources with fade-in', async () => {
+test('real browser: sources appear as pending during streaming, while unverified drafts stay hidden', async () => {
   const markdownChunk =
     '### Parecer Jurídico\n\n' +
     'Conforme a legislação vigente:\n\n' +
@@ -1753,8 +1806,8 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
         })}\n\n`
       );
 
-      // 2. Chunks arrive
-      res.write(`data: ${JSON.stringify({ type: 'chunk', chunk: markdownChunk })}\n\n`);
+      // An unverified generation fragment must not be exposed in the UI.
+      res.write(`data: ${JSON.stringify({ type: 'chunk', chunk: 'Rascunho que não foi validado.', provisional: true })}\n\n`);
 
       // 3. Explicit test barrier: wait until the test finishes pre-inspection before releasing done!
       await donePromise;
@@ -1795,6 +1848,16 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
     await page.evaluate(() => {
       window.__pipelineStatuses = [];
       window.__ragAnnouncements = [];
+      window.__provisionalObserved = false;
+      const originalStreamAnswer = window.JurixChatAPI.streamAnswer.bind(window.JurixChatAPI);
+      window.JurixChatAPI.streamAnswer = (question, sessionId, callbacks) => {
+        const originalOnChunk = callbacks.onChunk;
+        callbacks.onChunk = (chunk, metadata) => {
+          if (metadata?.provisional) window.__provisionalObserved = true;
+          return originalOnChunk(chunk, metadata);
+        };
+        return originalStreamAnswer(question, sessionId, callbacks);
+      };
       const announce = window.JurixRagUI.announce;
       window.JurixRagUI.announce = (message) => {
         window.__ragAnnouncements.push(message);
@@ -1842,17 +1905,15 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
     }, { timeout: 6000 });
     assert.equal(await generatingIndicator.jsonValue(), 'Gerando resposta…');
 
-    // Wait for markdown table to start rendering in the stream
-    await page.waitForSelector('.message-assistant table', { timeout: 6000 });
-    await page.waitForSelector('.message-assistant pre code', { timeout: 6000 });
-    await page.waitForSelector('.message-assistant ul li', { timeout: 6000 });
-
-    // VERIFICAÇÃO RIGOROSA 1: O stream está explicitamente pausado antes do done. Fontes DEVEM ser 0!
-    const sourcesBeforeDone = await page.$$eval(
-      '.sources-section, .source-card, .evidence-card, .jurix-rag-source',
-      (els) => els.length
+    await page.waitForFunction(() => window.__provisionalObserved === true, { timeout: 6000 });
+    await page.waitForSelector('.sources-section .jurix-sources-pill-btn', { timeout: 6000 });
+    assert.equal(
+      await page.$eval('.jurix-sources-pill-badge', (badge) => badge.textContent),
+      'Verificação em andamento',
+      'sources should be visible but clearly marked as not yet validated'
     );
-    assert.equal(sourcesBeforeDone, 0, 'As fontes NÃO podem estar renderizadas antes do evento done');
+    assert.equal(await page.$eval('.message-assistant', (message) => message.textContent.includes('Rascunho em geração')), false);
+    assert.equal(await page.$eval('.message-assistant .copy-response-button', (button) => button.classList.contains('show')), false);
     await payloadPromise;
     assert.deepEqual(
       { temperature: receivedPayload?.temperature, max_sources: receivedPayload?.max_sources, model: receivedPayload?.model },
@@ -1860,31 +1921,39 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
       `saved assistant preferences must reach the streaming API payload; received ${JSON.stringify(receivedPayload)}`
     );
 
-    // Open the drawer as soon as sources appear, before chat finalization can
-    // restore focus to the composer behind the modal.
-    await page.evaluate(() => {
-      window.__drawerAutoOpened = false;
-      const observer = new MutationObserver(() => {
-        const pill = document.querySelector('.jurix-sources-pill-btn');
-        if (!pill || window.__drawerAutoOpened) return;
-        window.__drawerAutoOpened = true;
-        observer.disconnect();
-        pill.focus();
-        pill.click();
-      });
-      observer.observe(document.getElementById('messages-wrapper'), { childList: true, subtree: true });
-    });
-    // Libera a barreira para o servidor emitir o done
+    await page.click('.jurix-sources-pill-btn');
+    await page.waitForSelector('#jurix-sources-drawer-panel.is-open .source-card, #jurix-sources-drawer-panel.is-open .jurix-rag-source', { timeout: 6000 });
+    assert.equal(
+      await page.$eval('#sources-drawer-subtitle', (subtitle) => subtitle.textContent.includes('ainda está sendo validada')),
+      true,
+      'the drawer should explain that retrieved evidence is still being validated'
+    );
+
+    // Libera a barreira para o servidor emitir a resposta já validada.
     await page.evaluate(() => fetch('/api/test/release-done/'));
 
-    // VERIFICAÇÃO RIGOROSA 2: Aguardar renderização das fontes
     await page.waitForSelector('.sources-section', { timeout: 6000 });
-    await page.waitForSelector('.jurix-sources-drawer-panel.is-open', { timeout: 6000 });
+    await page.waitForSelector('.message-assistant table', { timeout: 6000 });
+    await page.waitForFunction(() => document.querySelector('.message-assistant .copy-response-button')?.classList.contains('show'));
+    await page.waitForSelector('.message-assistant pre code', { timeout: 6000 });
+    await page.waitForSelector('.message-assistant ul li', { timeout: 6000 });
     await page.waitForFunction(() => document.getElementById('chat-state-indicator')?.hidden === true, { timeout: 6000 });
+    assert.equal(await page.$eval('.jurix-sources-pill-badge', (badge) => badge.textContent), 'Fontes associadas à resposta');
+    assert.equal(
+      await page.$eval('#sources-drawer-subtitle', (subtitle) => subtitle.textContent.includes('ainda está sendo validada')),
+      false,
+      'the already-open drawer should transition out of its pending state without reconstruction'
+    );
+    await page.waitForFunction(() => {
+      const panel = document.querySelector('#jurix-sources-drawer-panel');
+      return panel?.contains(document.activeElement);
+    });
+    assert.equal(await page.$$('.message-assistant .message-content .source-card, .message-assistant .message-content .evidence-card, .message-assistant .message-content .jurix-rag-source').then((els) => els.length), 0,
+      'Os cards de evidência continuam exclusivos do drawer');
     assert.equal(
       await page.$eval('#jurix-sources-drawer-panel', (panel) => panel.contains(document.activeElement)),
       true,
-      'finishing a response must not steal focus from a drawer opened as evidence arrives'
+      'opening the completed evidence drawer must move focus inside it'
     );
     await page.evaluate(() => {
       document.dispatchEvent(new CustomEvent('jurix:chat-state', { detail: { state: 'idle' } }));
@@ -2007,6 +2076,112 @@ test('real browser: streaming with complex markdown (tables, lists, code) and de
     assert.ok(composerMenuBounds.menu.bottom <= composerMenuBounds.button.top, `O menu do composer deve abrir acima do controle perto do rodapé: ${JSON.stringify(composerMenuBounds)}`);
     assert.ok(composerMenuBounds.menu.top >= 0 && composerMenuBounds.menu.right <= composerMenuBounds.viewport.width, JSON.stringify(composerMenuBounds));
   } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: a pending chat row reconciles in place from SSE session event through persisted history', async () => {
+  let releaseRetrieval = null;
+  let retrievalGate = new Promise((resolve) => { releaseRetrieval = resolve; });
+  let sessionPersisted = false;
+  let receivedPayload = null;
+  const session = {
+    id: 914,
+    slug: 'consulta-pendente-914',
+    title: 'Resumo da consulta jurídica',
+    updated_at: '2026-10-02T12:00:00Z',
+  };
+
+  const server = createTestServer({
+    isAuthenticated: () => true,
+    '/api/test/release-retrieval/': (req, res) => {
+      releaseRetrieval();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    },
+    '/api/v1/search/answer/stream/': async (req, res) => {
+      let requestBody = '';
+      req.on('data', (chunk) => { requestBody += chunk; });
+      req.on('end', () => { receivedPayload = JSON.parse(requestBody); });
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      });
+      res.write(`data: ${JSON.stringify({ type: 'status', status: 'retrieving' })}\n\n`);
+      await retrievalGate;
+      sessionPersisted = true;
+      res.write(`data: ${JSON.stringify({ type: 'session', session_id: session.id, session_slug: session.slug })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'title', client_session_id: receivedPayload?.client_session_id, title: session.title })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'chunk', chunk: 'A norma estabelece regras municipais.', replace: true })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'done', answer: 'A norma estabelece regras municipais.', grounded: true, session_id: session.id, session_slug: session.slug })}\n\n`);
+      res.end();
+    },
+    '/api/v1/chat/sessions/': (req, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, sessions: sessionPersisted ? [session] : [] }));
+    },
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto(`http://127.0.0.1:${server.address().port}/assistente/`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#hero-search-input');
+    await page.type('#hero-search-input', 'O que prevê a norma municipal?');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('#chat-state-indicator')?.dataset.pipelineStatus === 'retrieving');
+    await page.waitForSelector('#chat-sessions-list .chat-session-item[data-session-pending="true"]');
+
+    const pendingRow = await page.evaluateHandle(() => {
+      const rows = [...document.querySelectorAll('#chat-sessions-list .chat-session-item[data-session-pending="true"]')];
+      const row = rows[0];
+      window.__pendingSessionRow = row;
+      return row;
+    });
+    assert.equal((await page.$$('#chat-sessions-list .chat-session-item[data-session-pending="true"]')).length, 1);
+    assert.equal(await page.$eval('#chat-sessions-list .chat-session-item', (row) => row.querySelector('[role="button"]')), null);
+    assert.equal(await page.$eval('#chat-sessions-list .chat-session-item', (row) => row.querySelector('button button')), null);
+    assert.equal(await page.$eval('#chat-sessions-list .chat-session-item [data-session-menu-trigger]', (button) => button.disabled), true);
+    assert.equal(await page.$eval('#chat-sessions-list', (list) => /Nenhuma conversa ainda/.test(list.textContent)), false);
+    assert.ok(receivedPayload?.client_session_id, 'the stream request and pending sidebar row must share a reconciliation id');
+    assert.equal(
+      await page.$eval('#chat-sessions-list .chat-session-item', (row) => row.dataset.clientSessionId),
+      receivedPayload.client_session_id,
+    );
+
+    await page.evaluate(() => fetch('/api/test/release-retrieval/'));
+    await page.waitForFunction(() => {
+      const row = document.querySelector('#chat-sessions-list .chat-session-item');
+      return row?.dataset.sessionId === '914' && row.dataset.pendingServer === 'true';
+    });
+    assert.equal(await page.evaluate(() => window.__pendingSessionRow === document.querySelector('#chat-sessions-list .chat-session-item')), true,
+      'the SSE session event must upgrade the existing pending row rather than replace it');
+    assert.equal(await page.$eval('#chat-sessions-list .chat-session-item [data-session-menu-trigger]', (button) => button.disabled), true,
+      'conversation actions remain unavailable while the response is streaming');
+    assert.equal((await page.$$('#chat-sessions-list [data-session-id="914"]')).length, 1);
+    assert.ok((await page.evaluate(() => window.location.pathname)).endsWith(`${session.slug}/`));
+
+    await page.waitForFunction(() => document.querySelector('.message-assistant')?.textContent.includes('A norma estabelece'));
+    await page.waitForFunction(() => document.querySelector('#chat-sessions-list .chat-session-item')?.dataset.sessionPending !== 'true');
+    assert.equal(await page.evaluate(() => window.__pendingSessionRow === document.querySelector('#chat-sessions-list .chat-session-item')), true,
+      'the final session-list refresh must preserve the original row node');
+    assert.equal((await page.$$('#chat-sessions-list [data-session-id="914"]')).length, 1);
+    assert.equal(await page.$eval('#chat-sessions-list .chat-session-item [data-session-menu-trigger]', (button) => button.disabled), false);
+    assert.equal(await page.$eval('#chat-sessions-list .chat-session-item .chat-session-main', (link) => link.getAttribute('href')),
+      `/assistente/${session.slug}/`);
+    assert.deepEqual(errors, []);
+    await pendingRow.dispose();
+  } finally {
+    releaseRetrieval();
     await browser.close();
     server.close();
   }
@@ -2396,6 +2571,167 @@ test('real browser: sidebar items stay inside the shell and fully offscreen when
     });
     assert.ok(desktopComposer.barLeft >= 0 && desktopComposer.barRight <= 1280, JSON.stringify(desktopComposer));
     assert.ok(desktopComposer.formWidth <= 1200, JSON.stringify(desktopComposer));
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: mobile composer disclosure preserves controls and stays compact across viewport changes', async () => {
+  const server = createTestServer({
+    '/composer-mobile-test/': (_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(`<!doctype html><html lang="pt-BR" data-theme="dark"><head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="/static/css/jurix-figma.css">
+        <link rel="stylesheet" href="/static/css/jurix-chat.css">
+        <link rel="stylesheet" href="/static/css/jurix-search-controls.css">
+        <style>.figma-floating-input-bar{left:0;right:0}</style>
+      </head><body class="figma-theme" data-search-options='{"mode":"hybrid","source_scope":"municipal"}'>
+        <main><div class="figma-floating-input-bar" id="conversation-input-bar">
+          <form id="chat-form" class="figma-smart-search-panel">
+            <div class="figma-input-line"><div class="figma-input-left"><textarea id="question-textarea" class="figma-hero-search-input jurix-composer-textarea" rows="1" aria-label="Pergunta"></textarea></div><button id="send-button" class="figma-action-arrow-btn" type="submit" aria-label="Enviar">Enviar</button></div>
+            <div id="jurix-attachment-previews" hidden></div>
+            <div class="figma-filters-row jurix-composer-footer">
+              <button type="button" class="jurix-composer-options-toggle" id="composer-options-toggle" aria-controls="composer-search-options" aria-expanded="false">Opções de pesquisa</button>
+              <div class="jurix-composer-options" id="composer-search-options"><div class="jurix-composer-filters">
+                <div class="figma-search-dropdown" data-control="mode"><span data-control-label>Pesquisa híbrida</span></div>
+                <div class="figma-search-dropdown" data-control="source_scope"><span data-control-label>Legislação municipal</span></div>
+                <div class="figma-search-dropdown" data-control="attachment"><span data-control-label>Anexar documento</span></div>
+              </div></div>
+              <div class="jurix-composer-disclaimer">Verifique fontes oficiais.</div>
+            </div>
+          </form>
+        </div></main><script src="/static/js/jurix-search-controls.js"></script></body></html>`);
+    },
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 360, height: 900 });
+    await page.goto(`http://127.0.0.1:${port}/composer-mobile-test/`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#composer-options-toggle');
+
+    const idle = await page.evaluate(() => {
+      const bar = document.querySelector('#conversation-input-bar').getBoundingClientRect();
+      const panel = document.querySelector('#composer-search-options');
+      return {
+        height: bar.height,
+        hiddenOptions: getComputedStyle(panel).display === 'none',
+        sendVisible: document.querySelector('#send-button').getBoundingClientRect().height >= 44,
+        toggleHeight: document.querySelector('#composer-options-toggle').getBoundingClientRect().height,
+        textareaMaxHeight: getComputedStyle(document.querySelector('#question-textarea')).maxHeight,
+        documentWidth: document.documentElement.scrollWidth,
+        viewportWidth: document.documentElement.clientWidth,
+      };
+    });
+    assert.ok(idle.height <= 180, `Composer ocioso excedeu 180px: ${JSON.stringify(idle)}`);
+    assert.equal(idle.hiddenOptions, true);
+    assert.equal(idle.sendVisible, true);
+    assert.ok(idle.toggleHeight >= 44);
+    assert.equal(idle.textareaMaxHeight, '270px');
+    assert.equal(idle.documentWidth, idle.viewportWidth);
+
+    await page.click('#composer-options-toggle');
+    assert.equal(await page.$eval('#composer-options-toggle', (button) => button.getAttribute('aria-expanded')), 'true');
+    assert.equal(await page.$$eval('#composer-search-options .figma-search-dropdown', (items) => items.length), 3);
+    await page.focus('#composer-search-options [data-control="mode"]');
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('#composer-search-options [data-jurix-control-menu]');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.$eval('#composer-search-options [data-control="mode"]', (control) => control.getAttribute('aria-expanded')), 'false');
+
+    await page.setViewport({ width: 768, height: 900 });
+    assert.equal(await page.$eval('#composer-search-options', (panel) => getComputedStyle(panel).display !== 'none'), true);
+    await page.setViewport({ width: 360, height: 900 });
+    assert.equal(await page.$eval('#composer-options-toggle', (button) => button.getAttribute('aria-expanded')), 'true');
+
+    await page.click('#composer-options-toggle');
+    assert.equal(await page.$eval('#composer-options-toggle', (button) => button.getAttribute('aria-expanded')), 'false');
+    const payload = await page.evaluate(() => window.JurixSearchControls.getPayload());
+    assert.equal(payload.mode, 'hybrid');
+    assert.equal(payload.source_scope, 'municipal');
+    assert.equal(await page.$eval('#composer-search-options', (panel) => getComputedStyle(panel).display), 'none');
+
+    await page.setViewport({ width: 768, height: 900 });
+    assert.equal(await page.$$eval('#composer-search-options .figma-search-dropdown', (items) => items.length), 3);
+    assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#composer-search-options .figma-search-dropdown')].map((item) => item.dataset.control)), ['mode', 'source_scope', 'attachment']);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: source pill actions remain visible and contained at narrow widths', async (t) => {
+  if (!executablePath) return t.skip('No Chromium-based browser executable is available.');
+  const server = createTestServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.goto(`http://127.0.0.1:${server.address().port}/sources-pill-test/`, { waitUntil: 'networkidle0' });
+    await page.keyboard.press('Tab');
+    const focusStyle = await page.evaluate(() => ({
+      focused: document.activeElement.matches('.jurix-sources-pill-btn'),
+      outlineStyle: getComputedStyle(document.activeElement).outlineStyle,
+      outlineWidth: getComputedStyle(document.activeElement).outlineWidth,
+    }));
+    assert.equal(focusStyle.focused, true);
+    assert.equal(focusStyle.outlineStyle, 'solid');
+    assert.ok(Number.parseFloat(focusStyle.outlineWidth) >= 2, `visible keyboard focus ring required: ${JSON.stringify(focusStyle)}`);
+    for (const theme of ['dark', 'light']) {
+      await page.evaluate((themeValue) => { document.documentElement.dataset.theme = themeValue; }, theme);
+      for (const width of [320, 360, 768, 1280, 1920]) {
+        await page.setViewport({ width, height: 800 });
+        for (const count of [1, 24, 100]) {
+        const geometry = await page.evaluate((countValue) => {
+          const host = document.querySelector('#pill-host').getBoundingClientRect();
+          const button = document.querySelector('.jurix-sources-pill-btn');
+          button.querySelector('span:first-child').textContent = `${countValue} ${countValue === 1 ? 'fonte consultada' : 'fontes consultadas'}`;
+          const buttonRect = button.getBoundingClientRect();
+          const count = button.querySelector('span:first-child');
+          const badge = button.querySelector('.jurix-sources-pill-badge');
+          const action = button.querySelector('.jurix-sources-pill-action');
+          const rect = (node) => {
+            const box = node.getBoundingClientRect();
+            return { left: box.left, right: box.right, width: box.width, height: box.height };
+          };
+          return {
+            host: rect(document.querySelector('#pill-host')),
+            button: rect(button), count: rect(count), badge: rect(badge), action: rect(action),
+            badgeDisplay: getComputedStyle(badge).display,
+            buttonScrollWidth: button.scrollWidth,
+            buttonClientWidth: button.clientWidth,
+            visibleAction: action.getBoundingClientRect().width > 0,
+            visibleCount: count.getBoundingClientRect().width > 0,
+            viewportWidth: document.documentElement.clientWidth,
+            theme: document.documentElement.dataset.theme,
+            hostBox: host.toJSON(),
+          };
+        }, count);
+        assert.ok(geometry.button.width <= geometry.host.width + 0.5, `${width}px ${theme} count=${count}: ${JSON.stringify(geometry)}`);
+        assert.ok(geometry.button.left >= geometry.host.left - 0.5 && geometry.button.right <= geometry.host.right + 0.5, `${width}px ${theme} count=${count}: pill escaped its content column`);
+        assert.ok(geometry.visibleAction && geometry.visibleCount, `${width}px ${theme} count=${count}: primary source controls must remain visible`);
+        assert.ok(geometry.button.height >= 44, `${width}px ${theme} count=${count}: target is below 44px`);
+        if (width <= 767) {
+          assert.equal(geometry.badgeDisplay, 'none', `${width}px ${theme} count=${count}: long badge should move out of the compact pill`);
+          assert.ok(geometry.buttonScrollWidth <= geometry.buttonClientWidth + 1, `${width}px ${theme} count=${count}: compact button has internal overflow`);
+        }
+        }
+      }
+    }
   } finally {
     await browser.close();
     server.close();
@@ -3050,6 +3386,54 @@ test('real browser: evidence drawer groups same-norm citations without hiding ar
   }
 });
 
+test('real browser: closed norm actions disclosure is visible and keyboard operable on desktop', async () => {
+  const server = createTestServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 900 });
+    await page.goto(`http://127.0.0.1:${server.address().port}/norma-actions-test/`, {
+      waitUntil: 'domcontentloaded',
+    });
+
+    const summary = await page.$('.legal-detail-more-actions > summary');
+    const desktop = await summary.evaluate((element) => ({
+      display: getComputedStyle(element).display,
+      rect: element.getBoundingClientRect().toJSON(),
+      detailsOpen: element.parentElement.open,
+      actions: [...element.parentElement.querySelectorAll('a,button')].map((action) => ({
+        label: action.innerText,
+        visible: action.checkVisibility(),
+      })),
+    }));
+    assert.equal(desktop.detailsOpen, false);
+    assert.equal(desktop.display, 'flex');
+    assert.ok(desktop.rect.width > 0 && desktop.rect.height >= 44);
+    assert.deepEqual(desktop.actions.map((action) => action.visible), [false, false, false, false, false]);
+
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    assert.equal(await summary.evaluate((element) => document.activeElement === element), true);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('.legal-detail-more-actions').open);
+    assert.deepEqual(await page.$$eval('.legal-detail-secondary-actions a, .legal-detail-secondary-actions button',
+      (actions) => actions.map((action) => action.checkVisibility())),
+    [true, true, true, true, true]);
+
+    await page.setViewport({ width: 390, height: 844 });
+    assert.ok(await summary.evaluate((element) => element.getBoundingClientRect().height >= 44));
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
 test('real browser: clearing a norma search refreshes results and preserves other filters', async () => {
   const server = createTestServer();
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -3134,6 +3518,59 @@ test('real browser: legal device full text expands, collapses, and keeps keyboar
   }
 });
 
+test('real browser: device index groups every nested deep link and opens the target article group', async () => {
+  const server = createTestServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 390, height: 844 });
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto(`http://127.0.0.1:${port}/device-index-test/#dispositivo-3`, { waitUntil: 'domcontentloaded' });
+    const layout = await page.evaluate(() => {
+      const group = document.querySelector('[data-device-index-group="dispositivo-1"]');
+      const summary = group.querySelector('summary');
+      const links = [...document.querySelectorAll('[data-device-index-link]')];
+      return {
+        width: document.documentElement.scrollWidth,
+        viewport: innerWidth,
+        groupOpen: group.open,
+        focusedTarget: document.activeElement.id,
+        summaryHeight: summary.getBoundingClientRect().height,
+        childTargets: [...group.querySelectorAll('[data-device-index-link]')].map((link) => link.hash),
+        linkHeights: links.map((link) => link.getBoundingClientRect().height),
+        hrefs: links.map((link) => link.hash),
+        visibleLabels: links.map((link) => link.textContent.trim()),
+      };
+    });
+    assert.equal(layout.width, layout.viewport, 'device index must reflow without horizontal overflow');
+    assert.equal(layout.groupOpen, true, 'a deep-linked child must reveal the corresponding article disclosure');
+    assert.equal(layout.focusedTarget, 'dispositivo-3', 'the deep link must focus the actual legal provision');
+    assert.ok(layout.summaryHeight >= 44, `disclosure summary must be touch-sized: ${layout.summaryHeight}px`);
+    assert.ok(layout.linkHeights.every((height) => height >= 44), JSON.stringify(layout.linkHeights));
+    assert.deepEqual(layout.childTargets, ['#dispositivo-2', '#dispositivo-3']);
+    assert.deepEqual(layout.hrefs, ['#dispositivo-1', '#dispositivo-2', '#dispositivo-3', '#dispositivo-4']);
+    assert.ok(layout.visibleLabels.includes('Art. 1º, Inciso I, Alínea a)'));
+
+    await page.focus('[data-device-index-group="dispositivo-1"] > summary');
+    await page.keyboard.press('Space');
+    assert.equal(await page.$eval('[data-device-index-group="dispositivo-1"]', (group) => group.open), false);
+    await page.keyboard.press('Enter');
+    assert.equal(await page.$eval('[data-device-index-group="dispositivo-1"]', (group) => group.open), true);
+    assert.deepEqual(errors, []);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
 test('real browser: exact norm number/year searches map to the number and year filters', async () => {
   const server = createTestServer();
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -3150,11 +3587,17 @@ test('real browser: exact norm number/year searches map to the number and year f
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(`http://127.0.0.1:${port}/norma-search-test/`, { waitUntil: 'domcontentloaded' });
     await page.focus('#norma-search-input');
-    await page.keyboard.type('Lei nº 8205/2026');
+    await page.keyboard.type('Lei nº 8.205/2026');
     await page.click('button[type="submit"]');
-    await page.waitForFunction(() => location.search === '?q=8205&tipo=&ano=2026');
+    await page.waitForFunction(() => location.search === '?q=8205&tipo=Lei&ano=2026&referencia_exata=1');
     assert.equal(await page.$eval('#norma-search-input', (input) => input.value), '8205');
     assert.equal(await page.$eval('#norma-ano', (select) => select.value), '2026');
+
+    await page.goto(`http://127.0.0.1:${port}/norma-search-test/`, { waitUntil: 'domcontentloaded' });
+    await page.focus('#norma-search-input');
+    await page.keyboard.type('8205/2026');
+    await page.click('button[type="submit"]');
+    await page.waitForFunction(() => location.search === '?q=8205&tipo=&ano=2026&referencia_exata=1');
     assert.deepEqual(errors, []);
   } finally {
     await browser.close();

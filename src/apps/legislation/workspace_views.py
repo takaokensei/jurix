@@ -12,9 +12,14 @@ from django.db.models import Count, OuterRef, Prefetch, Q, Subquery
 from django.shortcuts import redirect, render
 from django.utils.html import conditional_escape, mark_safe
 
+from src.processing.normative_reference import (
+    canonical_type,
+    normalize_number,
+    parse_normative_references,
+)
 from src.processing.rag_service import RAGService
 
-from .models import ChatMessage, ChatSession, Collection, Norma
+from .models import ChatMessage, ChatSession, Collection, Dispositivo, Norma
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +192,73 @@ def settings_view(request):
     )
 
 
+def _exact_normative_search_results(reference, norma_type, year):
+    """Resolve an explicit typed law/year before running semantic retrieval."""
+    if reference is None or reference.year is None:
+        return None
+    if year is not None and year != reference.year:
+        return []
+    selected_type = canonical_type(_tipo_label(norma_type)) if norma_type else ""
+    if selected_type and selected_type != reference.type_key:
+        return []
+
+    digits = normalize_number(reference.number)
+    if not digits:
+        return []
+    groups = []
+    first_group_size = len(digits) % 3 or 3
+    groups.append(digits[:first_group_size])
+    groups.extend(digits[index : index + 3] for index in range(first_group_size, len(digits), 3))
+    number_forms = {digits, ".".join(groups)}
+
+    candidates = Norma.objects.filter(
+        status="consolidated", ano=reference.year, numero__in=number_forms
+    ).order_by("pk")
+    norms = [
+        norma
+        for norma in candidates
+        if canonical_type(norma.get_tipo_display_name()) == reference.type_key
+    ]
+    if not norms:
+        return []
+
+    if reference.article:
+        article_number = normalize_number(reference.article)
+        devices = Dispositivo.objects.filter(
+            norma_id__in=[norma.pk for norma in norms], tipo="artigo", is_active=True
+        ).select_related("norma").order_by("ordem", "pk")
+        device = next(
+            (item for item in devices if normalize_number(item.numero) == article_number), None
+        )
+        if device is None:
+            return []
+        return [
+            {
+                "dispositivo": device,
+                "norma": device.norma,
+                "similarity_score": None,
+                "relevance_label": "Dispositivo identificado",
+                "hierarchy": "Referência normativa exata",
+                "texto": device.texto,
+            }
+        ]
+
+    norma = norms[0]
+    excerpt = norma.ementa or (
+        "Norma identificada pela referência exata. Consulte a ficha para os dispositivos e metadados."
+    )
+    return [
+        {
+            "dispositivo": None,
+            "norma": norma,
+            "similarity_score": None,
+            "relevance_label": "Norma identificada",
+            "hierarchy": "Referência normativa exata",
+            "texto": excerpt,
+        }
+    ]
+
+
 def legal_search_view(request):
     """Dedicated semantic/legal search surface with lexical fallback."""
     query = request.GET.get("q", "").strip()
@@ -213,66 +285,78 @@ def legal_search_view(request):
         search_mode = "não executada"
 
     if query and len(query) <= 200:
-        try:
-            retrieval = RAGService().semantic_search(
-                query_text=query,
-                # Retrieve a wider candidate set because device-level hits are
-                # collapsed to one result per norm below.
-                k=50,
-                min_similarity=min_similarity,
-                norma_type=norma_type or None,
-                year=year,
-                include_metadata=True,
-            )
-            results = retrieval["results"]
-            search_mode = retrieval["mode"]
-            if search_mode == "unavailable":
-                search_mode = "lexical"
-                search_error = (
-                    "A busca semântica está temporariamente indisponível; "
-                    "exibindo correspondências textuais."
-                )
-            results = [
-                {**result, "relevance_label": _relevance_label(result.get("similarity_score"))}
-                for result in results
-            ]
-            results = _deduplicate_search_results(results)
-        except Exception:
-            logger.warning(
-                "Semantic legal search failed; falling back to lexical search",
-                exc_info=True,
-                extra={"query_length": len(query), "year": year, "norma_type": norma_type},
-            )
+        references = parse_normative_references(query)
+        exact_reference = references[0] if len(references) == 1 else None
+        exact_results = _exact_normative_search_results(exact_reference, norma_type, year)
+        if exact_results is not None:
+            results = exact_results
             search_mode = "lexical"
-            search_error = "A busca semântica está temporariamente indisponível; exibindo correspondências textuais."
-
-        if not results and search_mode == "semantic":
-            # A zero-result semantic query is still a valid outcome; do not silently
-            # substitute a different ranking model in that case.
-            pass
-        elif search_mode == "lexical":
-            queryset = Norma.objects.filter(status="consolidated").filter(
-                Q(ementa__icontains=query)
-                | Q(numero__icontains=query)
-                | Q(tipo__icontains=query)
-                | Q(texto_consolidado__icontains=query)
-            )
-            if norma_type:
-                queryset = queryset.filter(tipo=norma_type)
-            if year:
-                queryset = queryset.filter(ano=year)
-            for norma in queryset.order_by("-ano", "-numero")[:20]:
-                results.append(
-                    {
-                        "dispositivo": None,
-                        "norma": norma,
-                        "similarity_score": None,
-                        "relevance_label": "Correspondência textual",
-                        "hierarchy": "Correspondência textual",
-                        "texto": norma.ementa or norma.texto_consolidado[:500],
-                    }
+            if not results:
+                search_error = (
+                    "Referência normativa exata não localizada no acervo municipal. "
+                    "Confira o tipo, o número e o ano informados."
                 )
-            results = _deduplicate_search_results(results)
+        else:
+            try:
+                retrieval = RAGService().semantic_search(
+                    query_text=query,
+                    # Retrieve a wider candidate set because device-level hits are
+                    # collapsed to one result per norm below.
+                    k=50,
+                    min_similarity=min_similarity,
+                    norma_type=norma_type or None,
+                    year=year,
+                    include_metadata=True,
+                )
+                results = retrieval["results"]
+                search_mode = retrieval["mode"]
+                if search_mode == "unavailable":
+                    search_mode = "lexical"
+                    search_error = (
+                        "A busca semântica está temporariamente indisponível; "
+                        "exibindo correspondências textuais."
+                    )
+                results = [
+                    {**result, "relevance_label": _relevance_label(result.get("similarity_score"))}
+                    for result in results
+                ]
+                results = _deduplicate_search_results(results)
+            except Exception:
+                logger.warning(
+                    "Semantic legal search failed; falling back to lexical search",
+                    exc_info=True,
+                    extra={"query_length": len(query), "year": year, "norma_type": norma_type},
+                )
+                search_mode = "lexical"
+                search_error = "A busca semântica está temporariamente indisponível; exibindo correspondências textuais."
+
+            if not results and search_mode == "semantic":
+                # A zero-result semantic query is still a valid outcome; do not silently
+                # substitute a different ranking model in that case.
+                pass
+            elif search_mode == "lexical":
+                queryset = Norma.objects.filter(status="consolidated").filter(
+                    Q(ementa__icontains=query)
+                    | Q(numero__icontains=query)
+                    | Q(tipo__icontains=query)
+                    | Q(texto_consolidado__icontains=query)
+                )
+                if norma_type:
+                    queryset = queryset.filter(tipo=norma_type)
+                if year:
+                    queryset = queryset.filter(ano=year)
+                for norma in queryset.order_by("-ano", "-numero")[:20]:
+                    results.append(
+                        {
+                            "dispositivo": None,
+                            "norma": norma,
+                            "similarity_score": None,
+                            "relevance_label": "Correspondência textual",
+                            "hierarchy": "Correspondência textual",
+                            "texto": norma.ementa or norma.texto_consolidado[:500],
+                        }
+                    )
+                results = _deduplicate_search_results(results)
 
     types = (
         Norma.objects.filter(status="consolidated")

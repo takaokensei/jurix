@@ -92,6 +92,14 @@
         });
     }
 
+    function updateSession(sessionId, updates) {
+        if (!sessionId) return Promise.reject(new Error('sessionId is required'));
+        return requestJson(`/api/v1/chat/sessions/${encodeURIComponent(sessionId)}/`, {
+            method: 'PATCH',
+            body: JSON.stringify(updates || {}),
+        });
+    }
+
     function regenerateSession(sessionId) {
         if (!sessionId) return Promise.reject(new Error('sessionId is required'));
         return requestJson(
@@ -103,7 +111,7 @@
         );
     }
 
-    let activeStreamController = null;
+    let activeStream = null;
     const retryTurnIds = new Map();
     let fallbackClientSessionId = '';
 
@@ -147,12 +155,16 @@
             throw new Error('question is required');
         }
 
-        if (activeStreamController) {
-            activeStreamController.abort();
-        }
+        if (activeStream) cancelStream();
 
         const controller = new AbortController();
-        activeStreamController = controller;
+        const streamState = {
+            controller,
+            cancelToken: null,
+            cancelRequested: false,
+            cancelConfirmed: false,
+        };
+        activeStream = streamState;
         let reader;
         let completed = false;
         const clientSessionId = searchOptions.client_session_id || getClientSessionId();
@@ -229,12 +241,16 @@
                 // correct when a proxy folds or fragments an event.
                 const payload = dataLines.join('\n');
                 const eventData = JSON.parse(payload);
-                if (eventData.type === 'status' && onStatus) {
-                    await onStatus(eventData.status);
+                if (eventData.type === 'status') {
+                    if (eventData.cancel_token && activeStream === streamState) {
+                        streamState.cancelToken = eventData.cancel_token;
+                    }
+                    if (eventData.status === 'cancelled') streamState.cancelConfirmed = true;
+                    if (onStatus) await onStatus(eventData.status, eventData);
                 } else if (eventData.type === 'session' && onSession) {
                     await onSession(eventData);
                 } else if (eventData.type === 'sources' && onSources) {
-                    await onSources(eventData.sources, eventData.confidence);
+                    await onSources(eventData.sources, eventData.confidence, eventData);
                 } else if (eventData.type === 'chunk' && onChunk) {
                     await onChunk(eventData.chunk, eventData);
                 } else if (eventData.type === 'done') {
@@ -271,6 +287,7 @@
             // A valid SSE stream may end immediately after the JSON payload,
             // without a final blank line. Do not lose that terminal event.
             if (buffer.trim()) await handleEvent(buffer.trim());
+            if (streamState.cancelConfirmed && !completed) return;
             if (!completed) {
                 throw Object.assign(new Error('A resposta foi interrompida antes de terminar.'), { code: 'INCOMPLETE_STREAM' });
             }
@@ -284,16 +301,48 @@
         } finally {
             try { await reader?.cancel?.(); } catch (_) { /* Preserve the original stream error. */ }
             reader?.releaseLock?.();
-            if (activeStreamController === controller) {
-                activeStreamController = null;
+            if (activeStream === streamState) {
+                activeStream = null;
             }
         }
     }
 
     function cancelStream() {
-        if (!activeStreamController) return false;
-        activeStreamController.abort();
-        activeStreamController = null;
+        const streamState = activeStream;
+        if (!streamState) return false;
+        streamState.cancelRequested = true;
+        activeStream = null;
+
+        if (!streamState.cancelToken) {
+            streamState.controller.abort();
+            return true;
+        }
+
+        // Set the server-side cancellation marker before disconnecting the SSE
+        // reader, so generator cleanup can close the provider response safely.
+        fetch('/api/v1/search/cancel/', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: buildHeaders({}, true),
+            body: JSON.stringify({ cancel_token: streamState.cancelToken }),
+        }).then(async (response) => {
+            let result = {};
+            try { result = await response.json(); } catch (_) {}
+            if (!response.ok || result.success !== true) {
+                streamState.controller.abort();
+                return;
+            }
+            if (result.cancelled === true || result.state === 'finished') {
+                streamState.cancelConfirmed = result.cancelled === true;
+                streamState.controller.abort();
+            }
+            // `finalizing`/`completed` means the server won the race; keep
+            // reading so the completed answer is not discarded locally.
+        }).catch(() => {
+            // Preserve the existing local stop behavior if the control request
+            // itself cannot be delivered. The UI must not claim server cleanup.
+            streamState.controller.abort();
+        });
         return true;
     }
 
@@ -313,6 +362,7 @@
         getSession,
         getSessionBySlug,
         deleteSession,
+        updateSession,
         regenerateSession,
         streamAnswer,
         cancelStream,

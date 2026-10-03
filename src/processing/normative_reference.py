@@ -17,6 +17,14 @@ _ARTICLE_RE = re.compile(r"\bart(?:igo)?\.?\s*(\d+)\s*[ºª°o]?", re.IGNORECASE
 _PARAGRAPH_RE = re.compile(r"§\s*(único|\d+\s*[ºª°o]?)", re.IGNORECASE)
 _ITEM_RE = re.compile(r"\binciso\s+([IVXLCDM]+)\b", re.IGNORECASE)
 _ALINEA_RE = re.compile(r"\balínea\s+([a-z])\b", re.IGNORECASE)
+_REFERENCE_QUERY_RE = re.compile(
+    r"^\s*(?:(?P<type>lei(?:\s+(?:complementar|ordin[áa]ria|org[âa]nica))?|"
+    r"decreto(?:-lei|\s+legislativo)?|resolu[çc][ãa]o|portaria|"
+    r"emenda(?:\s+constitucional)?)\s*(?:n[º°o.]?\s*)?)?"
+    r"(?P<number>(?:\d{1,6}|\d{1,3}(?:\.\d{3})+))\s*(?:/|de)\s*"
+    r"(?P<year>(?:19|20)\d{2})\s*$",
+    re.IGNORECASE,
+)
 
 
 def canonical_type(raw_type: str) -> str:
@@ -89,3 +97,20 @@ def parse_normative_references(text: str) -> tuple[NormativeReference, ...]:
             )
         )
     return tuple(result)
+
+
+def parse_normative_reference_query(text: str) -> NormativeReference | None:
+    """Parse one complete number/year search, including an optional norm type.
+
+    Unlike citation extraction in prose, this accepts an untyped identifier such
+    as ``8206/2026``. Callers must allow all matching types when type_key is empty.
+    """
+    match = _REFERENCE_QUERY_RE.fullmatch(text or "")
+    if not match:
+        return None
+    raw_type = match.group("type") or ""
+    return NormativeReference(
+        type_key=canonical_type(raw_type) if raw_type else "",
+        number=normalize_number(match.group("number")),
+        year=int(match.group("year")),
+    )

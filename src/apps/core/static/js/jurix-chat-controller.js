@@ -24,9 +24,84 @@
         completed: '',
         error: 'A última pesquisa encontrou um erro.',
     });
+    const PIPELINE_COPY = Object.freeze({
+        queued: 'Preparando consulta…',
+        retrieving: 'Buscando normas relevantes…',
+        reranking: 'Refinando as evidências…',
+        grounding: 'Conferindo as referências…',
+        generating: 'Gerando resposta…',
+        finalizing: 'Concluindo a pesquisa…',
+        insufficient_evidence: 'Conferindo o que o acervo permite afirmar…',
+        failed: 'A pesquisa não foi concluída. Você pode tentar novamente.',
+    });
+    let waitStartedAt = 0;
+    let waitTimeout = null;
+    let waitInterval = null;
 
     function getElement(id) {
         return document.getElementById(id);
+    }
+
+    function renderIndicator(indicator, label) {
+        if (!indicator) return;
+        let labelElement = indicator.querySelector('.jurix-chat-state-label');
+        let elapsedElement = indicator.querySelector('.jurix-chat-state-elapsed');
+        if (!labelElement) {
+            labelElement = document.createElement('span');
+            labelElement.className = 'jurix-chat-state-label';
+        }
+        if (!elapsedElement) {
+            elapsedElement = document.createElement('span');
+            elapsedElement.className = 'jurix-chat-state-elapsed';
+            elapsedElement.setAttribute('aria-hidden', 'true');
+        }
+        labelElement.textContent = label || '';
+        indicator.replaceChildren(labelElement, elapsedElement);
+    }
+
+    function clearWaitClock() {
+        if (waitTimeout !== null) window.clearTimeout(waitTimeout);
+        if (waitInterval !== null) window.clearInterval(waitInterval);
+        waitTimeout = null;
+        waitInterval = null;
+        waitStartedAt = 0;
+        const elapsed = getElement('chat-state-indicator')?.querySelector('.jurix-chat-state-elapsed');
+        if (elapsed) elapsed.textContent = '';
+    }
+
+    function updateElapsed() {
+        const elapsed = getElement('chat-state-indicator')?.querySelector('.jurix-chat-state-elapsed');
+        if (!elapsed || !waitStartedAt) return;
+        const seconds = Math.floor((Date.now() - waitStartedAt) / 1000);
+        if (seconds >= 10) elapsed.textContent = `· ${seconds} s`;
+    }
+
+    function startWaitClock() {
+        if (waitStartedAt) return;
+        waitStartedAt = Date.now();
+        waitTimeout = window.setTimeout(() => {
+            updateElapsed();
+            waitInterval = window.setInterval(updateElapsed, 1000);
+        }, 10000);
+    }
+
+    function setPipelineStatus(status) {
+        const indicator = getElement('chat-state-indicator');
+        if (!indicator) return false;
+        const key = String(status || '');
+        if (['completed', 'failed', 'cancelled'].includes(key)) {
+            clearWaitClock();
+            if (key !== 'completed') renderIndicator(indicator, PIPELINE_COPY[key] || STATUS_COPY[key]);
+            delete indicator.dataset.pipelineStatus;
+            return true;
+        }
+        if (!PIPELINE_COPY[key]) return false;
+        indicator.dataset.pipelineStatus = key;
+        indicator.dataset.state = key === 'generating' ? 'streaming' : key;
+        indicator.removeAttribute('hidden');
+        renderIndicator(indicator, PIPELINE_COPY[key]);
+        startWaitClock();
+        return true;
     }
 
     function focusComposer() {
@@ -90,8 +165,12 @@
 
         if (indicator) {
             indicator.dataset.state = snapshot.status;
-            indicator.textContent = STATUS_COPY[snapshot.status] || '';
+            if (snapshot.busy) startWaitClock();
+            else clearWaitClock();
+            const pipelineCopy = snapshot.busy ? PIPELINE_COPY[indicator.dataset.pipelineStatus] : '';
+            renderIndicator(indicator, pipelineCopy || STATUS_COPY[snapshot.status] || '');
             indicator.toggleAttribute('hidden', !STATUS_COPY[snapshot.status]);
+            if (snapshot.busy && pipelineCopy) indicator.removeAttribute('hidden');
             if (!snapshot.busy) {
                 delete indicator.dataset.pipelineStatus;
             }
@@ -162,6 +241,7 @@
         newConversation,
         openSession,
         dispatchFocusEvent,
+        setPipelineStatus,
     });
 
     window.JurixChatController = controller;

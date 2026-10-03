@@ -401,6 +401,12 @@ class CacheService:
                                 if hasattr(disp, "get_full_identifier")
                                 else "",
                                 "texto": disp.texto if hasattr(disp, "texto") else "",
+                                "citation_id": src.get("citation_id"),
+                                "citation_index": src.get("citation_index"),
+                                "citation_label": src.get("citation_label"),
+                                "retrieval_strategy": src.get("retrieval_strategy"),
+                                "evidence_scope": src.get("evidence_scope"),
+                                "coverage": src.get("coverage"),
                             }
                         )
                     else:

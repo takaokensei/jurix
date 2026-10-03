@@ -1,13 +1,12 @@
 from unittest.mock import Mock, patch
 
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase
 
 from src.processing.rag_service import RAGService
 
 
 class RAGStreamingSafetyTests(SimpleTestCase):
-    @override_settings(RAG_STREAM_PROVISIONAL_OUTPUT=False)
-    def test_streaming_does_not_expose_provisional_chunks(self):
+    def test_streaming_only_emits_the_answer_after_grounding(self):
         service = RAGService(use_cache=False)
         source = {
             "text": "A Lei 1234/2025 exige 3 documentos.",
@@ -36,3 +35,7 @@ class RAGStreamingSafetyTests(SimpleTestCase):
         chunks = [event for event in events if event.get("event") == "chunk"]
         assert chunks
         assert all(event.get("provisional") is False for event in chunks)
+        assert "".join(event["chunk"] for event in chunks) == "A Lei 1234/2025 exige 3 documentos."
+        assert next(i for i, event in enumerate(events) if event.get("status") == "grounding") < next(
+            i for i, event in enumerate(events) if event.get("event") == "chunk"
+        )

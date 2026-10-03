@@ -46,6 +46,36 @@ def test_answer_is_served_until_the_corpus_changes(svc):
     assert svc.get_answer("q?", k=5, model="m") is None
 
 
+def test_cached_answer_preserves_structured_citation_and_overview_metadata(svc):
+    device = SimpleNamespace(id=12, texto="Trecho jurídico", get_full_identifier=lambda: "Art. 1º")
+    coverage = {"total_articles": 4, "selected_articles": 4, "complete": True}
+    svc.set_answer(
+        "q?",
+        k=5,
+        model="m",
+        answer_data={
+            "answer": "Resposta [[1]]",
+            "sources": [{
+                "dispositivo": device,
+                "similarity_score": 0.0,
+                "distance": 1.0,
+                "citation_id": "jurix:norma:3:dispositivo:12",
+                "citation_index": 1,
+                "citation_label": "Lei nº 8.206/2026, Art. 1º",
+                "retrieval_strategy": "whole_norma",
+                "evidence_scope": "complete",
+                "coverage": coverage,
+            }],
+        },
+    )
+
+    source = svc.get_answer("q?", k=5, model="m")["sources"][0]
+    assert source["citation_id"] == "jurix:norma:3:dispositivo:12"
+    assert source["citation_index"] == 1
+    assert source["retrieval_strategy"] == "whole_norma"
+    assert source["coverage"] == coverage
+
+
 def test_search_results_are_invalidated_too(svc):
     result = {
         "dispositivo": SimpleNamespace(id=1),
