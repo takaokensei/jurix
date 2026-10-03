@@ -1,0 +1,457 @@
+[
+  {
+    "route": "",
+    "name": "home_redirect",
+    "view": "django.views.generic.base.RedirectView"
+  },
+  {
+    "route": "assistente/",
+    "name": "assistant",
+    "view": "src.apps.legislation.workspace_views.assistente_view"
+  },
+  {
+    "route": "assistente/<str:session_slug>/",
+    "name": "assistant_session",
+    "view": "src.apps.legislation.workspace_views.assistente_view"
+  },
+  {
+    "route": "configuracoes/",
+    "name": "settings",
+    "view": "src.apps.legislation.workspace_views.settings_view"
+  },
+  {
+    "route": "pesquisa/",
+    "name": "legal_search",
+    "view": "src.apps.legislation.workspace_views.legal_search_view"
+  },
+  {
+    "route": "colecoes/",
+    "name": "collections",
+    "view": "src.apps.legislation.workspace_views.collections_view"
+  },
+  {
+    "route": "colecoes/<int:pk>/",
+    "name": "collection_detail",
+    "view": "src.apps.legislation.workspace_views.collection_detail_view"
+  },
+  {
+    "route": "historico/",
+    "name": "history",
+    "view": "src.apps.legislation.workspace_views.history_view"
+  },
+  {
+    "route": "admin/",
+    "name": "index",
+    "view": "django.contrib.admin.sites.AdminSite.index"
+  },
+  {
+    "route": "admin/login/",
+    "name": "login",
+    "view": "django.contrib.admin.sites.AdminSite.login"
+  },
+  {
+    "route": "admin/logout/",
+    "name": "logout",
+    "view": "django.contrib.admin.sites.AdminSite.logout"
+  },
+  {
+    "route": "admin/password_change/",
+    "name": "password_change",
+    "view": "django.contrib.admin.sites.AdminSite.password_change"
+  },
+  {
+    "route": "admin/password_change/done/",
+    "name": "password_change_done",
+    "view": "django.contrib.admin.sites.AdminSite.password_change_done"
+  },
+  {
+    "route": "admin/autocomplete/",
+    "name": "autocomplete",
+    "view": "django.contrib.admin.sites.AdminSite.autocomplete_view"
+  },
+  {
+    "route": "admin/jsi18n/",
+    "name": "jsi18n",
+    "view": "django.contrib.admin.sites.AdminSite.i18n_javascript"
+  },
+  {
+    "route": "admin/r/<path:content_type_id>/<path:object_id>/",
+    "name": "view_on_site",
+    "view": "django.contrib.contenttypes.views.shortcut"
+  },
+  {
+    "route": "admin/auth/group/",
+    "name": "auth_group_changelist",
+    "view": "django.contrib.admin.options.ModelAdmin.changelist_view"
+  },
+  {
+    "route": "admin/auth/group/add/",
+    "name": "auth_group_add",
+    "view": "django.contrib.admin.options.ModelAdmin.add_view"
+  },
+  {
+    "route": "admin/auth/group/<path:object_id>/history/",
+    "name": "auth_group_history",
+    "view": "django.contrib.admin.options.ModelAdmin.history_view"
+  },
+  {
+    "route": "admin/auth/group/<path:object_id>/delete/",
+    "name": "auth_group_delete",
+    "view": "django.contrib.admin.options.ModelAdmin.delete_view"
+  },
+  {
+    "route": "admin/auth/group/<path:object_id>/change/",
+    "name": "auth_group_change",
+    "view": "django.contrib.admin.options.ModelAdmin.change_view"
+  },
+  {
+    "route": "admin/auth/group/<path:object_id>/",
+    "name": null,
+    "view": "django.views.generic.base.RedirectView"
+  },
+  {
+    "route": "admin/auth/user/<id>/password/",
+    "name": "auth_user_password_change",
+    "view": "django.contrib.auth.admin.UserAdmin.user_change_password"
+  },
+  {
+    "route": "admin/auth/user/",
+    "name": "auth_user_changelist",
+    "view": "django.contrib.admin.options.ModelAdmin.changelist_view"
+  },
+  {
+    "route": "admin/auth/user/add/",
+    "name": "auth_user_add",
+    "view": "django.contrib.auth.admin.UserAdmin.add_view"
+  },
+  {
+    "route": "admin/auth/user/<path:object_id>/history/",
+    "name": "auth_user_history",
+    "view": "django.contrib.admin.options.ModelAdmin.history_view"
+  },
+  {
+    "route": "admin/auth/user/<path:object_id>/delete/",
+    "name": "auth_user_delete",
+    "view": "django.contrib.admin.options.ModelAdmin.delete_view"
+  },
+  {
+    "route": "admin/auth/user/<path:object_id>/change/",
+    "name": "auth_user_change",
+    "view": "django.contrib.admin.options.ModelAdmin.change_view"
+  },
+  {
+    "route": "admin/auth/user/<path:object_id>/",
+    "name": null,
+    "view": "django.views.generic.base.RedirectView"
+  },
+  {
+    "route": "admin/legislation/norma/",
+    "name": "legislation_norma_changelist",
+    "view": "django.contrib.admin.options.ModelAdmin.changelist_view"
+  },
+  {
+    "route": "admin/legislation/norma/add/",
+    "name": "legislation_norma_add",
+    "view": "django.contrib.admin.options.ModelAdmin.add_view"
+  },
+  {
+    "route": "admin/legislation/norma/<path:object_id>/history/",
+    "name": "legislation_norma_history",
+    "view": "django.contrib.admin.options.ModelAdmin.history_view"
+  },
+  {
+    "route": "admin/legislation/norma/<path:object_id>/delete/",
+    "name": "legislation_norma_delete",
+    "view": "django.contrib.admin.options.ModelAdmin.delete_view"
+  },
+  {
+    "route": "admin/legislation/norma/<path:object_id>/change/",
+    "name": "legislation_norma_change",
+    "view": "django.contrib.admin.options.ModelAdmin.change_view"
+  },
+  {
+    "route": "admin/legislation/norma/<path:object_id>/",
+    "name": null,
+    "view": "django.views.generic.base.RedirectView"
+  },
+  {
+    "route": "admin/legislation/dispositivo/",
+    "name": "legislation_dispositivo_changelist",
+    "view": "django.contrib.admin.options.ModelAdmin.changelist_view"
+  },
+  {
+    "route": "admin/legislation/dispositivo/add/",
+    "name": "legislation_dispositivo_add",
+    "view": "django.contrib.admin.options.ModelAdmin.add_view"
+  },
+  {
+    "route": "admin/legislation/dispositivo/<path:object_id>/history/",
+    "name": "legislation_dispositivo_history",
+    "view": "django.contrib.admin.options.ModelAdmin.history_view"
+  },
+  {
+    "route": "admin/legislation/dispositivo/<path:object_id>/delete/",
+    "name": "legislation_dispositivo_delete",
+    "view": "django.contrib.admin.options.ModelAdmin.delete_view"
+  },
+  {
+    "route": "admin/legislation/dispositivo/<path:object_id>/change/",
+    "name": "legislation_dispositivo_change",
+    "view": "django.contrib.admin.options.ModelAdmin.change_view"
+  },
+  {
+    "route": "admin/legislation/dispositivo/<path:object_id>/",
+    "name": null,
+    "view": "django.views.generic.base.RedirectView"
+  },
+  {
+    "route": "admin/legislation/eventoalteracao/",
+    "name": "legislation_eventoalteracao_changelist",
+    "view": "django.contrib.admin.options.ModelAdmin.changelist_view"
+  },
+  {
+    "route": "admin/legislation/eventoalteracao/add/",
+    "name": "legislation_eventoalteracao_add",
+    "view": "django.contrib.admin.options.ModelAdmin.add_view"
+  },
+  {
+    "route": "admin/legislation/eventoalteracao/<path:object_id>/history/",
+    "name": "legislation_eventoalteracao_history",
+    "view": "django.contrib.admin.options.ModelAdmin.history_view"
+  },
+  {
+    "route": "admin/legislation/eventoalteracao/<path:object_id>/delete/",
+    "name": "legislation_eventoalteracao_delete",
+    "view": "django.contrib.admin.options.ModelAdmin.delete_view"
+  },
+  {
+    "route": "admin/legislation/eventoalteracao/<path:object_id>/change/",
+    "name": "legislation_eventoalteracao_change",
+    "view": "django.contrib.admin.options.ModelAdmin.change_view"
+  },
+  {
+    "route": "admin/legislation/eventoalteracao/<path:object_id>/",
+    "name": null,
+    "view": "django.views.generic.base.RedirectView"
+  },
+  {
+    "route": "admin/legislation/chatsession/",
+    "name": "legislation_chatsession_changelist",
+    "view": "django.contrib.admin.options.ModelAdmin.changelist_view"
+  },
+  {
+    "route": "admin/legislation/chatsession/add/",
+    "name": "legislation_chatsession_add",
+    "view": "django.contrib.admin.options.ModelAdmin.add_view"
+  },
+  {
+    "route": "admin/legislation/chatsession/<path:object_id>/history/",
+    "name": "legislation_chatsession_history",
+    "view": "django.contrib.admin.options.ModelAdmin.history_view"
+  },
+  {
+    "route": "admin/legislation/chatsession/<path:object_id>/delete/",
+    "name": "legislation_chatsession_delete",
+    "view": "django.contrib.admin.options.ModelAdmin.delete_view"
+  },
+  {
+    "route": "admin/legislation/chatsession/<path:object_id>/change/",
+    "name": "legislation_chatsession_change",
+    "view": "django.contrib.admin.options.ModelAdmin.change_view"
+  },
+  {
+    "route": "admin/legislation/chatsession/<path:object_id>/",
+    "name": null,
+    "view": "django.views.generic.base.RedirectView"
+  },
+  {
+    "route": "admin/legislation/chatmessage/",
+    "name": "legislation_chatmessage_changelist",
+    "view": "django.contrib.admin.options.ModelAdmin.changelist_view"
+  },
+  {
+    "route": "admin/legislation/chatmessage/add/",
+    "name": "legislation_chatmessage_add",
+    "view": "django.contrib.admin.options.ModelAdmin.add_view"
+  },
+  {
+    "route": "admin/legislation/chatmessage/<path:object_id>/history/",
+    "name": "legislation_chatmessage_history",
+    "view": "django.contrib.admin.options.ModelAdmin.history_view"
+  },
+  {
+    "route": "admin/legislation/chatmessage/<path:object_id>/delete/",
+    "name": "legislation_chatmessage_delete",
+    "view": "django.contrib.admin.options.ModelAdmin.delete_view"
+  },
+  {
+    "route": "admin/legislation/chatmessage/<path:object_id>/change/",
+    "name": "legislation_chatmessage_change",
+    "view": "django.contrib.admin.options.ModelAdmin.change_view"
+  },
+  {
+    "route": "admin/legislation/chatmessage/<path:object_id>/",
+    "name": null,
+    "view": "django.views.generic.base.RedirectView"
+  },
+  {
+    "route": "admin/legislation/collection/",
+    "name": "legislation_collection_changelist",
+    "view": "django.contrib.admin.options.ModelAdmin.changelist_view"
+  },
+  {
+    "route": "admin/legislation/collection/add/",
+    "name": "legislation_collection_add",
+    "view": "django.contrib.admin.options.ModelAdmin.add_view"
+  },
+  {
+    "route": "admin/legislation/collection/<path:object_id>/history/",
+    "name": "legislation_collection_history",
+    "view": "django.contrib.admin.options.ModelAdmin.history_view"
+  },
+  {
+    "route": "admin/legislation/collection/<path:object_id>/delete/",
+    "name": "legislation_collection_delete",
+    "view": "django.contrib.admin.options.ModelAdmin.delete_view"
+  },
+  {
+    "route": "admin/legislation/collection/<path:object_id>/change/",
+    "name": "legislation_collection_change",
+    "view": "django.contrib.admin.options.ModelAdmin.change_view"
+  },
+  {
+    "route": "admin/legislation/collection/<path:object_id>/",
+    "name": null,
+    "view": "django.views.generic.base.RedirectView"
+  },
+  {
+    "route": "admin/^(?P<app_label>auth|legislation)/$",
+    "name": "app_list",
+    "view": "django.contrib.admin.sites.AdminSite.app_index"
+  },
+  {
+    "route": "admin/(?P<url>.*)$",
+    "name": null,
+    "view": "django.contrib.admin.sites.AdminSite.catch_all_view"
+  },
+  {
+    "route": "normas/",
+    "name": "norma_list",
+    "view": "src.apps.legislation.views.NormaListView"
+  },
+  {
+    "route": "normas/chatbot/",
+    "name": "chatbot",
+    "view": "src.apps.legislation.views.chatbot_view"
+  },
+  {
+    "route": "normas/chatbot/<str:session_slug>/",
+    "name": "chatbot_session",
+    "view": "src.apps.legislation.views.chatbot_view"
+  },
+  {
+    "route": "normas/<int:pk>/",
+    "name": "norma_detail",
+    "view": "src.apps.legislation.views.NormaDetailView"
+  },
+  {
+    "route": "normas/<int:pk>/export/pdf/",
+    "name": "norma_pdf_export",
+    "view": "src.apps.legislation.views.norma_pdf_export_view"
+  },
+  {
+    "route": "normas/<int:pk>/compare/",
+    "name": "norma_compare",
+    "view": "src.apps.legislation.views.norma_compare_view"
+  },
+  {
+    "route": "normas/<int:pk>/tree/",
+    "name": "norma_tree",
+    "view": "src.apps.legislation.views.norma_dispositivos_tree_view"
+  },
+  {
+    "route": "api/v1/health/live/",
+    "name": "health_live",
+    "view": "src.apps.legislation.api_health.health_live_api"
+  },
+  {
+    "route": "api/v1/health/",
+    "name": "health_check",
+    "view": "src.apps.legislation.api_views.health_ready_api"
+  },
+  {
+    "route": "api/v1/health/ready/",
+    "name": "health_ready",
+    "view": "src.apps.legislation.api_views.health_ready_api"
+  },
+  {
+    "route": "api/v1/search/semantic/",
+    "name": "semantic_search",
+    "view": "src.apps.legislation.api_views.semantic_search_api"
+  },
+  {
+    "route": "api/v1/search/answer/",
+    "name": "rag_answer",
+    "view": "src.apps.legislation.api_views.rag_answer_api"
+  },
+  {
+    "route": "api/v1/search/answer/stream/",
+    "name": "rag_answer_stream",
+    "view": "src.apps.legislation.api_views.chatbot_stream_api"
+  },
+  {
+    "route": "api/v1/normas/",
+    "name": "norma_list",
+    "view": "src.apps.legislation.api_views.norma_list_api"
+  },
+  {
+    "route": "api/v1/suggestions/",
+    "name": "dynamic_suggestions",
+    "view": "src.apps.legislation.api_views.dynamic_suggestions_api"
+  },
+  {
+    "route": "api/v1/normas/<int:pk>/",
+    "name": "norma_detail",
+    "view": "src.apps.legislation.api_views.norma_detail_api"
+  },
+  {
+    "route": "api/v1/normas/<int:pk>/timeline/",
+    "name": "norma_timeline",
+    "view": "src.apps.legislation.temporal_api.norma_timeline_api"
+  },
+  {
+    "route": "api/v1/normas/<int:pk>/conflicts/",
+    "name": "norma_conflicts",
+    "view": "src.apps.legislation.temporal_api.norma_conflicts_api"
+  },
+  {
+    "route": "api/v1/chat/sessions/",
+    "name": "chat_sessions",
+    "view": "src.apps.legislation.api_views.chat_sessions_api"
+  },
+  {
+    "route": "api/v1/chat/attachments/",
+    "name": "chat-attachments",
+    "view": "src.apps.legislation.api_views.chat_attachment_api"
+  },
+  {
+    "route": "api/v1/chat/attachments/<str:attachment_id>/",
+    "name": "chat-attachment-detail",
+    "view": "src.apps.legislation.api_views.chat_attachment_detail_api"
+  },
+  {
+    "route": "api/v1/chat/sessions/<int:session_id>/",
+    "name": "chat_session_detail",
+    "view": "src.apps.legislation.api_views.chat_session_detail_api"
+  },
+  {
+    "route": "api/v1/chat/sessions/slug/<str:slug>/",
+    "name": "chat_session_by_slug",
+    "view": "src.apps.legislation.api_views.chat_session_by_slug_api"
+  },
+  {
+    "route": "api/v1/chat/sessions/<int:session_id>/regenerate/",
+    "name": "chat_session_regenerate",
+    "view": "src.apps.legislation.api_views.chat_session_regenerate_api"
+  }
+]

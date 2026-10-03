@@ -1,0 +1,93 @@
+{
+  "/api/v1/search/answer/stream/": {
+    "samples": 7,
+    "min_queries": 0,
+    "max_queries": 1,
+    "min_header_ms": 0,
+    "max_header_ms": 7
+  },
+  "/assistente/": {
+    "samples": 8,
+    "min_queries": 2,
+    "max_queries": 3,
+    "min_header_ms": 5,
+    "max_header_ms": 37
+  },
+  "/assistente/local-54e7fca1-b545-4063-b61d-2c5b7b26f5ca/": {
+    "samples": 1,
+    "min_queries": 3,
+    "max_queries": 3,
+    "min_header_ms": 6,
+    "max_header_ms": 6
+  },
+  "/api/v1/suggestions/": {
+    "samples": 7,
+    "min_queries": 2,
+    "max_queries": 2,
+    "min_header_ms": 6,
+    "max_header_ms": 15
+  },
+  "/normas/": {
+    "samples": 7,
+    "min_queries": 5,
+    "max_queries": 6,
+    "min_header_ms": 12,
+    "max_header_ms": 26
+  },
+  "/pesquisa/": {
+    "samples": 7,
+    "min_queries": 3,
+    "max_queries": 5,
+    "min_header_ms": 5,
+    "max_header_ms": 52
+  },
+  "/normas/3/": {
+    "samples": 9,
+    "min_queries": 9,
+    "max_queries": 9,
+    "min_header_ms": 39,
+    "max_header_ms": 67
+  },
+  "/configuracoes/": {
+    "samples": 8,
+    "min_queries": 2,
+    "max_queries": 2,
+    "min_header_ms": 5,
+    "max_header_ms": 9
+  },
+  "/colecoes/": {
+    "samples": 6,
+    "min_queries": 2,
+    "max_queries": 2,
+    "min_header_ms": 6,
+    "max_header_ms": 8
+  },
+  "/historico/": {
+    "samples": 6,
+    "min_queries": 1,
+    "max_queries": 1,
+    "min_header_ms": 4,
+    "max_header_ms": 6
+  },
+  "/normas/3/compare/": {
+    "samples": 6,
+    "min_queries": 4,
+    "max_queries": 4,
+    "min_header_ms": 14,
+    "max_header_ms": 16
+  },
+  "/normas/3/tree/": {
+    "samples": 6,
+    "min_queries": 3,
+    "max_queries": 3,
+    "min_header_ms": 28,
+    "max_header_ms": 52
+  },
+  "/normas/3/export/pdf/": {
+    "samples": 1,
+    "min_queries": 1,
+    "max_queries": 1,
+    "min_header_ms": 241,
+    "max_header_ms": 241
+  }
+}

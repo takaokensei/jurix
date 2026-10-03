@@ -1,0 +1,14 @@
+{
+  "findings": [
+    {
+      "path": "src/processing/rag_service.py",
+      "budget": 850,
+      "lines": 867,
+      "over_by": 17,
+      "functions": 15,
+      "classes": 1,
+      "imports": 28
+    }
+  ],
+  "passed": false
+}

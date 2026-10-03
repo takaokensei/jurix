@@ -1,0 +1,41 @@
+{
+  "method": "RGB opaco mais próximo; composição da opacidade do próprio texto; amostra escura, não certificação WCAG",
+  "samples": [
+    {
+      "background": [
+        8,
+        18,
+        32
+      ],
+      "color": "rgb(248, 250, 252)",
+      "contrast": 8.59,
+      "opacity": 0.68,
+      "selector": ".timeline-source",
+      "size": "13.3333px"
+    },
+    {
+      "background": [
+        8,
+        18,
+        32
+      ],
+      "color": "rgb(248, 250, 252)",
+      "contrast": 7.93,
+      "opacity": 0.65,
+      "selector": ".timeline-kind",
+      "size": "12.48px"
+    },
+    {
+      "background": [
+        8,
+        18,
+        32
+      ],
+      "color": "rgb(248, 250, 252)",
+      "contrast": 9.53,
+      "opacity": 0.72,
+      "selector": ".timeline-intro",
+      "size": "16px"
+    }
+  ]
+}

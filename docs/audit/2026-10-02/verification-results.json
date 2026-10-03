@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-02",
+  "purpose": "Registro dos comandos e observações realmente executados nesta auditoria; não substitui um novo baseline na implementação.",
+  "pytest": {"command": ".venv\\Scripts\\python.exe -m pytest -q --cov=src --cov-report=term:skip-covered --cov-report=json:docs/audit/2026-10-02/coverage.json", "passed": 805, "skipped": 6, "warnings": 7, "seconds": 75.10, "coverage_percent": 71.69, "exit_code": 0},
+  "javascript": {"cwd": "tests/js", "command": "npm test", "exit_code": 0, "browser_fixture_tests": 30, "aggregate_count": "Não calculado; grupos de testes executados pelo runner."},
+  "ruff": {"command": ".venv\\Scripts\\python.exe -m ruff check src config", "result": "All checks passed"},
+  "django_check": {"command": ".venv\\Scripts\\python.exe manage.py check", "result": "System check identified no issues"},
+  "django_deploy": {"command": ".venv\\Scripts\\python.exe manage.py check --deploy", "errors": ["jurix.E001", "jurix.E002", "jurix.E003"], "warning_count": 7, "interpretation": "Configuração LOCAL de desenvolvimento; não comprova configuração de um deployment externo."},
+  "migrations": {"command": ".venv\\Scripts\\python.exe manage.py showmigrations legislation ingestion", "result": "legislation 0001 a 0021 aplicadas; ingestion sem migrations; nenhuma migration executada"},
+  "pip_check": {"result": "No broken requirements found", "limitation": "Compatibilidade de metadata, não análise de vulnerabilidades ou igualdade com requirements.txt."},
+  "documentation_contract": {"result": "PASS"},
+  "architecture_budget": {"passed": false, "rag_service_lines": 867, "budget": 850},
+  "npm_audit_production": {"command": "npm audit --omit=dev --json", "vulnerabilities": 0},
+  "npm_audit_all": {"command": "npm audit --json", "high_packages": 7, "scope": "Dependências de desenvolvimento em tests/js."},
+  "git_diff_check": {"command": "git diff --check", "exit_code": 0},
+  "browser": {"origin": "http://127.0.0.1:8006", "widths": [320, 360, 768, 1280, 1920], "matrix_pages": 9, "horizontal_page_overflow": "Nenhum nos 45 casos; há clipping interno de fontes no chat.", "zoom_200": "Não executado: atalhos de zoom enviados não mudaram largura CSS nem DPR no IAB.", "core_web_vitals": "Não medidos: performance.getEntriesByType indisponível no escopo read-only do navegador; sem medição de campo."},
+  "pdf": {"download": "Executado pela interface móvel", "pages": 2, "rendered_pages": [1, 2], "text_integrity": "Falha: artigos ausentes do arquivo exportado", "renderer": "Poppler pdftoppm", "renderer_warning": "No display font for Symbol/ArialUnicode; texto extraído também confirma ausência dos artigos."},
+  "services": {"ollama": "Reachable, version 0.15.4", "configured_database": "SQLite", "docker_postgres": "Stopped", "docker_redis": "Stopped", "celery_worker": "Unhealthy; ping falhou por DNS redis:6379", "action": "Não iniciados para evitar consumir filas/dados reais"}
+}

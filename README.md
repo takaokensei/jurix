@@ -35,7 +35,7 @@ class Jurix:
             "database": "PostgreSQL 16 + pgvector",
             "ai_engine": "Ollama (llama3 via host)",
             "task_queue": "Celery + Redis",
-            "frontend": "Django Templates + HTMX",
+            "frontend": "Django Templates + CSS + JavaScript modular",
             "deployment": "Docker Compose + WSL 2"
         }
     
@@ -353,8 +353,7 @@ celery -A config worker -l info
 
 ### 📋 Sprint 1: Infraestrutura Base
 
-<img src="https://img.shields.io/badge/Status-Completed-10B981?style=for-the-badge"/>
-<img src="https://img.shields.io/badge/Completion-100%25-1e40af?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/Status-Base%20implementada-10B981?style=for-the-badge"/>
 
 </div>
 
@@ -410,8 +409,7 @@ celery -A config worker -l info
 
 <div align="center">
 
-<img src="https://img.shields.io/badge/Status-Completed-10B981?style=for-the-badge"/>
-<img src="https://img.shields.io/badge/Completion-85%25-1e40af?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/Status-Core%20implementado-10B981?style=for-the-badge"/>
 
 </div>
 
@@ -437,7 +435,7 @@ celery -A config worker -l info
 <td align="center">✅ Completo</td>
 </tr>
 <tr>
-<td align="center">🎨 Swiss Design System UI/UX</td>
+<td align="center">🎨 Shell compartilhado e tokens de interface</td>
 <td align="center">✅ Completo</td>
 </tr>
 <tr>
@@ -449,8 +447,8 @@ celery -A config worker -l info
 <td align="center">✅ Completo</td>
 </tr>
 <tr>
-<td align="center">♿ Acessibilidade WCAG 2.1 AA</td>
-<td align="center">🟡 Em validação</td>
+<td align="center">♿ Acessibilidade WCAG 2.2 AA</td>
+<td align="center">🟡 Em validação; conformidade não declarada</td>
 </tr>
 </table>
 
@@ -458,7 +456,7 @@ celery -A config worker -l info
 
 <div align="center">
 
-**356+ Normas** processadas | **5.463+ Dispositivos Legais** indexados | **1990-2025**
+O volume de normas e dispositivos depende do corpus configurado localmente; consulte a tela **Normas** ou a API para os totais atuais.
 
 </div>
 
@@ -475,26 +473,26 @@ celery -A config worker -l info
 - Copy response button (Markdown clipboard)
 - Suporte a Markdown em perguntas do usuário
 
-### Próximos Sprints
+### Próximas Etapas
 
 <table align="center">
 <tr>
 <td align="center" width="50%">
-<strong>🧠 Sprint 4: Consolidação Inteligente</strong><br/><br/>
+<strong>🧠 Qualidade da pesquisa jurídica</strong><br/><br/>
 <samp>
-• Engine de consolidação temporal<br/>
-• Detecção automática de alterações<br/>
-• Rastreabilidade jurídica completa<br/>
-• Visualização comparada de versões
+• Validar cobertura, grounding e citações<br/>
+• Exercitar PostgreSQL, Redis e Celery em QA<br/>
+• Revisar eventos temporais com fonte oficial<br/>
+• Medir recuperação com benchmark jurídico
 </samp>
 </td>
 <td align="center" width="50%">
-<strong>🚀 Sprint 5: Otimização & Deploy</strong><br/><br/>
+<strong>🚀 Preparação operacional</strong><br/><br/>
 <samp>
-• Dashboard analytics<br/>
-• Otimização de performance<br/>
-• Fine-tuning do modelo Llama3<br/>
-• Deploy produção
+• Completar testes de acessibilidade manual<br/>
+• Medir desempenho em ambiente representativo<br/>
+• Fechar gates de segurança e operação<br/>
+• Avaliar prontidão antes de qualquer deploy
 </samp>
 </td>
 </tr>
@@ -569,7 +567,7 @@ O Jurix inclui um **chatbot RAG (Retrieval-Augmented Generation)** que permite c
 
 ### 🎯 Exemplos de Uso
 
-Acesse o chatbot em: `http://localhost:8000/normas/chatbot/`
+Acesse o assistente em: `http://localhost:8000/assistente/` (Docker Compose) ou na porta configurada para a execução local.
 
 **Perguntas que o sistema pode responder:**
 
@@ -933,16 +931,17 @@ docker-compose logs --tail=100 -f web worker
 
 ## 🏁 Project Status
 
-**Status:** 🚀 **In Active Development**  
-**Version:** 1.1.0 - Swiss Design UI/UX Release  
-**Current Focus:** Swiss Design System Implementation & UI Polish  
+**Status:** 🚧 **Protótipo de pesquisa em desenvolvimento ativo**<br/>
+**Release:** sem versão de produção declarada<br/>
+**Current Focus:** confiabilidade do RAG, rastreabilidade normativa, experiência de pesquisa e validação operacional
 
 ### 📊 Estatísticas do Sistema
 
-- **356+ Normas** processadas e consolidadas (período 1990-2025)
-- **5.463+ Dispositivos Legais** indexados com embeddings vetoriais
-- **Sistema RAG** funcional com modelo Llama3 local
-- **Interface Web Premium** com Swiss Design System
+- Catálogo municipal de normas consultável; totais variam conforme o corpus instalado
+- **Sistema RAG** com recuperação híbrida, grounding e citações estruturadas
+- **Assistente** com streaming SSE, fontes no fluxo, histórico e referências oficiais
+- **Pesquisa e leitura normativa** com filtros, dispositivos, linha temporal e comparação
+- **Interface web** responsiva, com sidebar unificada, temas claro/escuro e JavaScript modular
 
 ### 🎯 Funcionalidades Principais Implementadas
 
@@ -950,34 +949,31 @@ docker-compose logs --tail=100 -f web worker
 ✅ **OCR Pipeline** completo com Tesseract  
 ✅ **Segmentação Hierárquica** refinada (suporte multiline, captura completa de texto)  
 ✅ **Busca Semântica** com pgvector e embeddings  
-✅ **Chatbot RAG** com resposta em linguagem natural e citação de fontes  
-✅ **Interface Web Premium** com Swiss Design System  
+✅ **Chatbot RAG** com resposta em linguagem natural, validação e fontes rastreáveis<br/>
+✅ **Interface Web** responsiva com tokens e componentes compartilhados<br/>
 ✅ **Command Palette** (⌘K/Ctrl+K) para navegação rápida  
 ✅ **Dark/Light Mode** com persistência e detecção automática  
 ✅ **Copy Response** button (Markdown clipboard)  
 ✅ **Markdown Support** em perguntas do usuário  
 
-### 🎨 Novidades da Versão 1.1.0 (Swiss Design Release)
+### 🎨 Estado atual da interface e pesquisa
 
-Esta versão traz uma **modernização completa da interface** seguindo os princípios do **Swiss Design System**:
+O trabalho recente unificou fluxos de assistente, normas e pesquisa, priorizando leitura jurídica, acessibilidade e feedback verificável:
 
-- **🎨 Design System Completo**: Design tokens (cores, tipografia, espaçamento 8px grid), tipografia Inter + JetBrains Mono
-- **💬 Chatbot Reimaginado**: Layout workspace, sidebar colapsável, input transparente estilo Gemini, animações suaves
-- **⌨️ Command Palette**: Navegação rápida com ⌘K/Ctrl+K, animações elegantes, ícones SVG profissionais
-- **📋 Copy Response**: Botão icon-only para copiar respostas em Markdown
-- **🌓 Theme System**: Dark/Light mode com transições suaves, detecção automática de preferência do sistema
-- **♿ Acessibilidade**: implementação de skip links, focus-visible e navegação por teclado; conformidade WCAG 2.1 AA ainda não auditada formalmente
-- **📱 Responsividade**: Layout adaptativo para mobile, tablet e desktop
-- **✨ Animações**: Transições suaves com cubic-bezier, typewriter effect, skeleton screens
+- **🎨 Tokens e shell compartilhados** para as principais telas
+- **💬 Assistente RAG** com estado explícito de validação, streaming e fontes acessíveis antes da conclusão
+- **⌨️ Busca rápida** por teclado e histórico recente
+- **📋 Cópia em Markdown** preservando referências às fontes oficiais
+- **🌓 Tema claro/escuro** e movimento reduzido respeitado
+- **♿ Recursos de teclado e foco** implementados; conformidade WCAG não auditada integralmente
+- **📱 Layout responsivo** exercitado em larguras de 320 a 1920 px; revisão manual adicional continua necessária
+- **🔎 Normas** com navegação por dispositivos, filtros e comparação de versões
 
-### 📈 Progresso do Projeto
+### 📈 Validação do Projeto
 
-**Sprint 1 (Fundação):** ✅ **100% Completo**  
-**Sprint 2-3 (IA e RAG):** ✅ **85% Completo**  
-**Sprint 4 (Consolidação):** 🔄 **20% Completo** (Em planejamento)  
-**Sprint 5 (Otimização):** ⏳ **Aguardando**
+Na suíte Python isolada de QA, a última execução registrada passou com **873 testes aprovados, 6 ignorados e 7 avisos**. A suíte JavaScript, incluindo testes em navegador real, também passou. Esses resultados não equivalem a certificação de produção.
 
-**Progresso Geral:** ~**70% do MVP concluído**
+Permanecem como gates: exercício ponta a ponta com PostgreSQL/Redis/Celery em ambiente QA, zoom de 200%, validação com tecnologia assistiva e revisão humana dos achados jurídicos/temporais. Consulte [`docs/current-status.md`](docs/current-status.md) e [`docs/audit/QA_RELEASE_CHECKLIST.md`](docs/audit/QA_RELEASE_CHECKLIST.md) para o estado e os limites detalhados.
 
 **PIBIC Report:** Available in `docs/PIBIC_RELATORIO_FINAL_ESBOCO.md`
 

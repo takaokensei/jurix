@@ -1,0 +1,571 @@
+{
+  "/assistente/local-54e7fca1-b545-4063-b61d-2c5b7b26f5ca/": {
+    "raw_local_bytes": 464128,
+    "assets": [
+      {
+        "path": "src\\apps\\core\\static\\js\\theme.js",
+        "bytes": 4886
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\vendor\\marked.min.js",
+        "bytes": 39972
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\vendor\\purify.min.js",
+        "bytes": 20894
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\config.js",
+        "bytes": 649
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-markdown.js",
+        "bytes": 4116
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-rag.js",
+        "bytes": 38448
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-anonymous-history.js",
+        "bytes": 10022
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-chat-api.js",
+        "bytes": 13097
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-api-reliability-overlay.js",
+        "bytes": 11211
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-chat-sessions.js",
+        "bytes": 4800
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-chat-state.js",
+        "bytes": 4135
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-chat-renderer.js",
+        "bytes": 10901
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-dynamic-suggestions.js",
+        "bytes": 7122
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\chat.js",
+        "bytes": 87560
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-chat-controller.js",
+        "bytes": 6234
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\command_palette.js",
+        "bytes": 19111
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-sidebar.js",
+        "bytes": 14609
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\floating-bar-sync.js",
+        "bytes": 2364
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-chat-shell.js",
+        "bytes": 13621
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-search-controls.js",
+        "bytes": 12409
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-figma.css",
+        "bytes": 49416
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\workspace.css",
+        "bytes": 33809
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-rag.css",
+        "bytes": 22824
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-markdown.css",
+        "bytes": 4288
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-chat.css",
+        "bytes": 736
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-chat-renderer.css",
+        "bytes": 5207
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-chat-controller.css",
+        "bytes": 2809
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-components.css",
+        "bytes": 4556
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-chat-sessions.css",
+        "bytes": 674
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-chat-shell.css",
+        "bytes": 3643
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-search-controls.css",
+        "bytes": 2240
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-sidebar.css",
+        "bytes": 7765
+      }
+    ]
+  },
+  "/normas/": {
+    "raw_local_bytes": 206111,
+    "assets": [
+      {
+        "path": "src\\apps\\core\\static\\js\\theme.js",
+        "bytes": 4886
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\config.js",
+        "bytes": 649
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\workspace.js",
+        "bytes": 16173
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\command_palette.js",
+        "bytes": 19111
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-anonymous-history.js",
+        "bytes": 10022
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-chat-api.js",
+        "bytes": 13097
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-sidebar.js",
+        "bytes": 14609
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-norma-list.js",
+        "bytes": 4982
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-figma.css",
+        "bytes": 49416
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\workspace.css",
+        "bytes": 33809
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-components.css",
+        "bytes": 4556
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-sidebar.css",
+        "bytes": 7765
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-norma-list.css",
+        "bytes": 27036
+      }
+    ]
+  },
+  "/normas/3/": {
+    "raw_local_bytes": 204983,
+    "assets": [
+      {
+        "path": "src\\apps\\core\\static\\js\\theme.js",
+        "bytes": 4886
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\config.js",
+        "bytes": 649
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\workspace.js",
+        "bytes": 16173
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\command_palette.js",
+        "bytes": 19111
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-anonymous-history.js",
+        "bytes": 10022
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-chat-api.js",
+        "bytes": 13097
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-sidebar.js",
+        "bytes": 14609
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-legal-detail.js",
+        "bytes": 2980
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-figma.css",
+        "bytes": 49416
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\workspace.css",
+        "bytes": 33809
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-components.css",
+        "bytes": 4556
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-sidebar.css",
+        "bytes": 7765
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-legal-detail.css",
+        "bytes": 17463
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-legacy-shell.css",
+        "bytes": 10447
+      }
+    ]
+  },
+  "/normas/3/compare/": {
+    "raw_local_bytes": 202003,
+    "assets": [
+      {
+        "path": "src\\apps\\core\\static\\js\\theme.js",
+        "bytes": 4886
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\config.js",
+        "bytes": 649
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\workspace.js",
+        "bytes": 16173
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\command_palette.js",
+        "bytes": 19111
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-anonymous-history.js",
+        "bytes": 10022
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-chat-api.js",
+        "bytes": 13097
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-sidebar.js",
+        "bytes": 14609
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-figma.css",
+        "bytes": 49416
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\workspace.css",
+        "bytes": 33809
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-components.css",
+        "bytes": 4556
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-sidebar.css",
+        "bytes": 7765
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-legacy-shell.css",
+        "bytes": 10447
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-legal-detail.css",
+        "bytes": 17463
+      }
+    ]
+  },
+  "/normas/3/tree/": {
+    "raw_local_bytes": 188527,
+    "assets": [
+      {
+        "path": "src\\apps\\core\\static\\js\\theme.js",
+        "bytes": 4886
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\config.js",
+        "bytes": 649
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\workspace.js",
+        "bytes": 16173
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\command_palette.js",
+        "bytes": 19111
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-anonymous-history.js",
+        "bytes": 10022
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-chat-api.js",
+        "bytes": 13097
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-sidebar.js",
+        "bytes": 14609
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-legal-tree.js",
+        "bytes": 3987
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-figma.css",
+        "bytes": 49416
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\workspace.css",
+        "bytes": 33809
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-components.css",
+        "bytes": 4556
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-sidebar.css",
+        "bytes": 7765
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-legacy-shell.css",
+        "bytes": 10447
+      }
+    ]
+  },
+  "/pesquisa/": {
+    "raw_local_bytes": 174093,
+    "assets": [
+      {
+        "path": "src\\apps\\core\\static\\js\\theme.js",
+        "bytes": 4886
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\config.js",
+        "bytes": 649
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\workspace.js",
+        "bytes": 16173
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\command_palette.js",
+        "bytes": 19111
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-anonymous-history.js",
+        "bytes": 10022
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-chat-api.js",
+        "bytes": 13097
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-sidebar.js",
+        "bytes": 14609
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-figma.css",
+        "bytes": 49416
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\workspace.css",
+        "bytes": 33809
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-components.css",
+        "bytes": 4556
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-sidebar.css",
+        "bytes": 7765
+      }
+    ]
+  },
+  "/configuracoes/": {
+    "raw_local_bytes": 174093,
+    "assets": [
+      {
+        "path": "src\\apps\\core\\static\\js\\theme.js",
+        "bytes": 4886
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\config.js",
+        "bytes": 649
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\workspace.js",
+        "bytes": 16173
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\command_palette.js",
+        "bytes": 19111
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-anonymous-history.js",
+        "bytes": 10022
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-chat-api.js",
+        "bytes": 13097
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-sidebar.js",
+        "bytes": 14609
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-figma.css",
+        "bytes": 49416
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\workspace.css",
+        "bytes": 33809
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-components.css",
+        "bytes": 4556
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-sidebar.css",
+        "bytes": 7765
+      }
+    ]
+  },
+  "/historico/": {
+    "raw_local_bytes": 185763,
+    "assets": [
+      {
+        "path": "src\\apps\\core\\static\\js\\theme.js",
+        "bytes": 4886
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\config.js",
+        "bytes": 649
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\workspace.js",
+        "bytes": 16173
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\command_palette.js",
+        "bytes": 19111
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-anonymous-history.js",
+        "bytes": 10022
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-chat-api.js",
+        "bytes": 13097
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-sidebar.js",
+        "bytes": 14609
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-history-actions.js",
+        "bytes": 5964
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-anonymous-history-page.js",
+        "bytes": 5706
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-figma.css",
+        "bytes": 49416
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\workspace.css",
+        "bytes": 33809
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-components.css",
+        "bytes": 4556
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-sidebar.css",
+        "bytes": 7765
+      }
+    ]
+  },
+  "/colecoes/": {
+    "raw_local_bytes": 174093,
+    "assets": [
+      {
+        "path": "src\\apps\\core\\static\\js\\theme.js",
+        "bytes": 4886
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\config.js",
+        "bytes": 649
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\workspace.js",
+        "bytes": 16173
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\command_palette.js",
+        "bytes": 19111
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-anonymous-history.js",
+        "bytes": 10022
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-chat-api.js",
+        "bytes": 13097
+      },
+      {
+        "path": "src\\apps\\core\\static\\js\\jurix-sidebar.js",
+        "bytes": 14609
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-figma.css",
+        "bytes": 49416
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\workspace.css",
+        "bytes": 33809
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-components.css",
+        "bytes": 4556
+      },
+      {
+        "path": "src\\apps\\core\\static\\css\\jurix-sidebar.css",
+        "bytes": 7765
+      }
+    ]
+  }
+}

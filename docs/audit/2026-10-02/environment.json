@@ -1,0 +1,96 @@
+{
+  "django": "5.2.17",
+  "python": "3.12.10",
+  "database_engine": "django.db.backends.sqlite3",
+  "database_is_local_sqlite": true,
+  "debug": true,
+  "cache_backend": "django.core.cache.backends.locmem.LocMemCache",
+  "llm_model": "llama3",
+  "embedding_model": "nomic-embed-text",
+  "normas": 10,
+  "consolidated": 10,
+  "devices": 189,
+  "chat_sessions_count": 1,
+  "public_examples": [
+    {
+      "id": 12,
+      "numero": "8197",
+      "ano": 2026,
+      "tipo": "Lei",
+      "data_publicacao": "2026-09-02",
+      "data_vigencia": null
+    },
+    {
+      "id": 11,
+      "numero": "8198",
+      "ano": 2026,
+      "tipo": "Lei",
+      "data_publicacao": "2026-09-09",
+      "data_vigencia": null
+    },
+    {
+      "id": 10,
+      "numero": "8199",
+      "ano": 2026,
+      "tipo": "Lei",
+      "data_publicacao": "2026-09-09",
+      "data_vigencia": null
+    },
+    {
+      "id": 9,
+      "numero": "8200",
+      "ano": 2026,
+      "tipo": "Lei",
+      "data_publicacao": "2026-09-09",
+      "data_vigencia": null
+    },
+    {
+      "id": 8,
+      "numero": "8201",
+      "ano": 2026,
+      "tipo": "Lei",
+      "data_publicacao": "2026-09-09",
+      "data_vigencia": "2026-09-09"
+    },
+    {
+      "id": 7,
+      "numero": "8202",
+      "ano": 2026,
+      "tipo": "Lei",
+      "data_publicacao": "2026-09-21",
+      "data_vigencia": null
+    },
+    {
+      "id": 6,
+      "numero": "8203",
+      "ano": 2026,
+      "tipo": "Lei",
+      "data_publicacao": "2026-09-21",
+      "data_vigencia": null
+    },
+    {
+      "id": 5,
+      "numero": "8204",
+      "ano": 2026,
+      "tipo": "Lei",
+      "data_publicacao": "2026-09-21",
+      "data_vigencia": "2026-09-21"
+    },
+    {
+      "id": 4,
+      "numero": "8205",
+      "ano": 2026,
+      "tipo": "Lei",
+      "data_publicacao": "2026-09-21",
+      "data_vigencia": null
+    },
+    {
+      "id": 3,
+      "numero": "8206",
+      "ano": 2026,
+      "tipo": "Lei",
+      "data_publicacao": "2026-09-21",
+      "data_vigencia": "2026-09-21"
+    }
+  ]
+}

@@ -1,0 +1,2507 @@
+[
+  {
+    "case": "overview",
+    "http_status": 200,
+    "events": [
+      {
+        "type": "status",
+        "ms": 5,
+        "status": "queued"
+      },
+      {
+        "type": "status",
+        "ms": 6,
+        "status": "retrieving"
+      },
+      {
+        "type": "status",
+        "ms": 31,
+        "status": "reranking"
+      },
+      {
+        "type": "sources",
+        "ms": 604,
+        "source_count": 24,
+        "sources": [
+          {
+            "citation_id": "jurix:norma:3:dispositivo:182",
+            "id": 182,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:183",
+            "id": 183,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:184",
+            "id": 184,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:185",
+            "id": 185,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:186",
+            "id": 186,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:187",
+            "id": 187,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:188",
+            "id": 188,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:189",
+            "id": 189,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:190",
+            "id": 190,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:191",
+            "id": 191,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:192",
+            "id": 192,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:193",
+            "id": 193,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:194",
+            "id": 194,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:195",
+            "id": 195,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:196",
+            "id": 196,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:197",
+            "id": 197,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:198",
+            "id": 198,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:199",
+            "id": 199,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:200",
+            "id": 200,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:201",
+            "id": 201,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:202",
+            "id": 202,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:203",
+            "id": 203,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:204",
+            "id": 204,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:3:dispositivo:205",
+            "id": 205,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          }
+        ],
+        "coverage": {
+          "strategy": "whole_norma",
+          "total_devices": 24,
+          "selected_devices": 24,
+          "total_articles": 8,
+          "selected_articles": 8,
+          "complete": true
+        },
+        "retrieval_strategy": "whole_norma",
+        "cached": false
+      },
+      {
+        "type": "status",
+        "ms": 604,
+        "status": "generating"
+      },
+      {
+        "type": "status",
+        "ms": 24823,
+        "status": "grounding"
+      },
+      {
+        "type": "status",
+        "ms": 24823,
+        "status": "insufficient_evidence"
+      },
+      {
+        "type": "chunk",
+        "ms": 24824
+      },
+      {
+        "type": "chunk",
+        "ms": 24825
+      },
+      {
+        "type": "chunk",
+        "ms": 24826
+      },
+      {
+        "type": "status",
+        "ms": 24826,
+        "status": "finalizing"
+      },
+      {
+        "type": "title",
+        "ms": 24827
+      },
+      {
+        "type": "status",
+        "ms": 24827,
+        "status": "completed"
+      },
+      {
+        "type": "done",
+        "ms": 26346,
+        "grounded": false
+      }
+    ],
+    "answer": "Não consegui confirmar essa informação com segurança nas normas recuperadas. Se puder, indique o número e o ano da lei ou o artigo que deseja consultar.",
+    "grounding": null,
+    "contract": {
+      "timings_ms": {
+        "retrieval": 25,
+        "generation": 24583,
+        "grounding": 206,
+        "total_before_done": 24820
+      },
+      "generation_attempts": [
+        {
+          "attempt": 1,
+          "duration_ms": 9209,
+          "time_to_first_chunk_ms": 1416,
+          "output_characters": 1397
+        },
+        {
+          "attempt": 2,
+          "duration_ms": 15374,
+          "time_to_first_chunk_ms": 437,
+          "output_characters": 2055
+        }
+      ],
+      "grounding": {
+        "grounded": false,
+        "score": 0.8125,
+        "strict": true,
+        "min_lexical_overlap": 0.45,
+        "claims": [
+          {
+            "claim": "A Lei nº 8206/2026 institui o Programa \"Servidor Destaque da Educação\" em escolas e centros municipais de educação infantil da rede pública municipal de ensino de Natal, com objetivo de reconhecer mensalmente os profissionais de apoio que mais se destacarem no desempenho de suas funções.",
+            "supported": true,
+            "matches": [
+              {
+                "evidence_index": 0,
+                "dispositivo_id": 182,
+                "lexical_overlap": 0.9565,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              }
+            ],
+            "citation_refs": [
+              "lei 8206/26"
+            ]
+          },
+          {
+            "claim": "**Lei nº 8206/2026, Art. 1º**.",
+            "supported": true,
+            "matches": [
+              {
+                "evidence_index": 0,
+                "dispositivo_id": 182,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 1,
+                "dispositivo_id": 183,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 2,
+                "dispositivo_id": 184,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 3,
+                "dispositivo_id": 185,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 4,
+                "dispositivo_id": 186,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 5,
+                "dispositivo_id": 187,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 6,
+                "dispositivo_id": 188,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 7,
+                "dispositivo_id": 189,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 8,
+                "dispositivo_id": 190,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 9,
+                "dispositivo_id": 191,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 10,
+                "dispositivo_id": 192,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 11,
+                "dispositivo_id": 193,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 12,
+                "dispositivo_id": 194,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 13,
+                "dispositivo_id": 195,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 14,
+                "dispositivo_id": 196,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 15,
+                "dispositivo_id": 197,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 16,
+                "dispositivo_id": 198,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 17,
+                "dispositivo_id": 199,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 18,
+                "dispositivo_id": 200,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 19,
+                "dispositivo_id": 201,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 20,
+                "dispositivo_id": 202,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 21,
+                "dispositivo_id": 203,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 23,
+                "dispositivo_id": 205,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              }
+            ],
+            "citation_refs": [
+              "lei 8206/26"
+            ]
+          },
+          {
+            "claim": "O Programa tem como finalidade valorizar os profissionais de apoio, promover o reconhecimento e a visibilidade de ações positivas no ambiente escolar, estimular o bom desempenho, ética, solidariedade e comprometimento com a comunidade escolar.",
+            "supported": false,
+            "matches": [],
+            "citation_refs": []
+          },
+          {
+            "claim": "**Lei nº 8206/2026, Art. 2º**.",
+            "supported": true,
+            "matches": [
+              {
+                "evidence_index": 0,
+                "dispositivo_id": 182,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 1,
+                "dispositivo_id": 183,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 2,
+                "dispositivo_id": 184,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 3,
+                "dispositivo_id": 185,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 4,
+                "dispositivo_id": 186,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 5,
+                "dispositivo_id": 187,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 6,
+                "dispositivo_id": 188,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 7,
+                "dispositivo_id": 189,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 8,
+                "dispositivo_id": 190,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 9,
+                "dispositivo_id": 191,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 10,
+                "dispositivo_id": 192,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 11,
+                "dispositivo_id": 193,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 12,
+                "dispositivo_id": 194,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 13,
+                "dispositivo_id": 195,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 14,
+                "dispositivo_id": 196,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 15,
+                "dispositivo_id": 197,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 16,
+                "dispositivo_id": 198,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 17,
+                "dispositivo_id": 199,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 18,
+                "dispositivo_id": 200,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 19,
+                "dispositivo_id": 201,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 20,
+                "dispositivo_id": 202,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 21,
+                "dispositivo_id": 203,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 23,
+                "dispositivo_id": 205,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              }
+            ],
+            "citation_refs": [
+              "lei 8206/26"
+            ]
+          },
+          {
+            "claim": "Serão elegíveis ao reconhecimento os profissionais que atuam em funções de suporte à educação, como porteiros, agentes de serviços gerais (ASG), agentes de desinfecção, merendeiras, assistentes de secretariado escolar, técnicos administrativos e profissionais de apoio escolar.",
+            "supported": false,
+            "matches": [],
+            "citation_refs": []
+          },
+          {
+            "claim": "**Lei nº 8206/2026, Art. 3º**.",
+            "supported": true,
+            "matches": [
+              {
+                "evidence_index": 0,
+                "dispositivo_id": 182,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 1,
+                "dispositivo_id": 183,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 2,
+                "dispositivo_id": 184,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 3,
+                "dispositivo_id": 185,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 4,
+                "dispositivo_id": 186,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 5,
+                "dispositivo_id": 187,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 6,
+                "dispositivo_id": 188,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 7,
+                "dispositivo_id": 189,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 8,
+                "dispositivo_id": 190,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 9,
+                "dispositivo_id": 191,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 10,
+                "dispositivo_id": 192,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 11,
+                "dispositivo_id": 193,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 12,
+                "dispositivo_id": 194,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 13,
+                "dispositivo_id": 195,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 14,
+                "dispositivo_id": 196,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 15,
+                "dispositivo_id": 197,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 16,
+                "dispositivo_id": 198,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 17,
+                "dispositivo_id": 199,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 18,
+                "dispositivo_id": 200,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 19,
+                "dispositivo_id": 201,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 20,
+                "dispositivo_id": 202,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 21,
+                "dispositivo_id": 203,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 23,
+                "dispositivo_id": 205,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              }
+            ],
+            "citation_refs": [
+              "lei 8206/26"
+            ]
+          },
+          {
+            "claim": "A escolha do(a) \"Servidor Destaque do Mês\" será realizada por meio de critérios definidos em cada unidade de ensino, observando os seguintes princípios: assiduidade e pontualidade, qualidade no atendimento e nas relações interpessoais, zelo pelo patrimônio e ambiente escolar, contribuição para o bom funcionamento da unidade escolar e respeito aos princípios da ética, empatia e responsabilidade.",
+            "supported": true,
+            "matches": [
+              {
+                "evidence_index": 14,
+                "dispositivo_id": 196,
+                "lexical_overlap": 0.4688,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              }
+            ],
+            "citation_refs": []
+          },
+          {
+            "claim": "**Lei nº 8206/2026, Art. 4º**.",
+            "supported": true,
+            "matches": [
+              {
+                "evidence_index": 0,
+                "dispositivo_id": 182,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 1,
+                "dispositivo_id": 183,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 2,
+                "dispositivo_id": 184,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 3,
+                "dispositivo_id": 185,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 4,
+                "dispositivo_id": 186,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 5,
+                "dispositivo_id": 187,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 6,
+                "dispositivo_id": 188,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 7,
+                "dispositivo_id": 189,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 8,
+                "dispositivo_id": 190,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 9,
+                "dispositivo_id": 191,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 10,
+                "dispositivo_id": 192,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 11,
+                "dispositivo_id": 193,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 12,
+                "dispositivo_id": 194,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 13,
+                "dispositivo_id": 195,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 14,
+                "dispositivo_id": 196,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 15,
+                "dispositivo_id": 197,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 16,
+                "dispositivo_id": 198,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 17,
+                "dispositivo_id": 199,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 18,
+                "dispositivo_id": 200,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 19,
+                "dispositivo_id": 201,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 20,
+                "dispositivo_id": 202,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 21,
+                "dispositivo_id": 203,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 23,
+                "dispositivo_id": 205,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              }
+            ],
+            "citation_refs": [
+              "lei 8206/26"
+            ]
+          },
+          {
+            "claim": "A homenagem será materializada por meio de certificado simbólico, entregue em reunião pedagógica, assembleia escolar ou momento coletivo definido pela direção da unidade de ensino.",
+            "supported": true,
+            "matches": [
+              {
+                "evidence_index": 20,
+                "dispositivo_id": 202,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              }
+            ],
+            "citation_refs": []
+          },
+          {
+            "claim": "**Lei nº 8206/2026, Art. 5º**.",
+            "supported": true,
+            "matches": [
+              {
+                "evidence_index": 0,
+                "dispositivo_id": 182,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 1,
+                "dispositivo_id": 183,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 2,
+                "dispositivo_id": 184,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 3,
+                "dispositivo_id": 185,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 4,
+                "dispositivo_id": 186,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 5,
+                "dispositivo_id": 187,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 6,
+                "dispositivo_id": 188,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 7,
+                "dispositivo_id": 189,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 8,
+                "dispositivo_id": 190,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 9,
+                "dispositivo_id": 191,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 10,
+                "dispositivo_id": 192,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 11,
+                "dispositivo_id": 193,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 12,
+                "dispositivo_id": 194,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 13,
+                "dispositivo_id": 195,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 14,
+                "dispositivo_id": 196,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 15,
+                "dispositivo_id": 197,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 16,
+                "dispositivo_id": 198,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 17,
+                "dispositivo_id": 199,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 18,
+                "dispositivo_id": 200,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 19,
+                "dispositivo_id": 201,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 20,
+                "dispositivo_id": 202,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 21,
+                "dispositivo_id": 203,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 23,
+                "dispositivo_id": 205,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              }
+            ],
+            "citation_refs": [
+              "lei 8206/26"
+            ]
+          },
+          {
+            "claim": "Ao final de cada ano letivo, será promovido um evento municipal para reunir e homenagear todos os servidores premiados ao longo do ano.",
+            "supported": true,
+            "matches": [
+              {
+                "evidence_index": 21,
+                "dispositivo_id": 203,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              }
+            ],
+            "citation_refs": []
+          },
+          {
+            "claim": "**Lei nº 8206/2026, Art. 6º**.",
+            "supported": true,
+            "matches": [
+              {
+                "evidence_index": 0,
+                "dispositivo_id": 182,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 1,
+                "dispositivo_id": 183,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 2,
+                "dispositivo_id": 184,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 3,
+                "dispositivo_id": 185,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 4,
+                "dispositivo_id": 186,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 5,
+                "dispositivo_id": 187,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 6,
+                "dispositivo_id": 188,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 7,
+                "dispositivo_id": 189,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 8,
+                "dispositivo_id": 190,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 9,
+                "dispositivo_id": 191,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 10,
+                "dispositivo_id": 192,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 11,
+                "dispositivo_id": 193,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 12,
+                "dispositivo_id": 194,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 13,
+                "dispositivo_id": 195,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 14,
+                "dispositivo_id": 196,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 15,
+                "dispositivo_id": 197,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 16,
+                "dispositivo_id": 198,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 17,
+                "dispositivo_id": 199,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 18,
+                "dispositivo_id": 200,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 19,
+                "dispositivo_id": 201,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 20,
+                "dispositivo_id": 202,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 21,
+                "dispositivo_id": 203,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 23,
+                "dispositivo_id": 205,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              }
+            ],
+            "citation_refs": [
+              "lei 8206/26"
+            ]
+          },
+          {
+            "claim": "A execução desta Lei poderá ocorrer com recursos próprios da Secretaria Municipal de Educação, por meio de parcerias com instituições públicas ou privadas, inclusive com empresas terceirizadas que prestam serviço ao município.",
+            "supported": false,
+            "matches": [],
+            "citation_refs": []
+          },
+          {
+            "claim": "**Lei nº 8206/2026, Art. 7º**.",
+            "supported": true,
+            "matches": [
+              {
+                "evidence_index": 0,
+                "dispositivo_id": 182,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 1,
+                "dispositivo_id": 183,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 2,
+                "dispositivo_id": 184,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 3,
+                "dispositivo_id": 185,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 4,
+                "dispositivo_id": 186,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 5,
+                "dispositivo_id": 187,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 6,
+                "dispositivo_id": 188,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 7,
+                "dispositivo_id": 189,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 8,
+                "dispositivo_id": 190,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 9,
+                "dispositivo_id": 191,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 10,
+                "dispositivo_id": 192,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 11,
+                "dispositivo_id": 193,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 12,
+                "dispositivo_id": 194,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 13,
+                "dispositivo_id": 195,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 14,
+                "dispositivo_id": 196,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 15,
+                "dispositivo_id": 197,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 16,
+                "dispositivo_id": 198,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 17,
+                "dispositivo_id": 199,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 18,
+                "dispositivo_id": 200,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 19,
+                "dispositivo_id": 201,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 20,
+                "dispositivo_id": 202,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 21,
+                "dispositivo_id": 203,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 23,
+                "dispositivo_id": 205,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              }
+            ],
+            "citation_refs": [
+              "lei 8206/26"
+            ]
+          },
+          {
+            "claim": "A Lei entra em vigor na data de sua publicação.",
+            "supported": true,
+            "matches": [
+              {
+                "evidence_index": 23,
+                "dispositivo_id": 205,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              }
+            ],
+            "citation_refs": []
+          },
+          {
+            "claim": "**Lei nº 8206/2026, Art. 8º**.",
+            "supported": true,
+            "matches": [
+              {
+                "evidence_index": 0,
+                "dispositivo_id": 182,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 1,
+                "dispositivo_id": 183,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 2,
+                "dispositivo_id": 184,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 3,
+                "dispositivo_id": 185,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 4,
+                "dispositivo_id": 186,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 5,
+                "dispositivo_id": 187,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 6,
+                "dispositivo_id": 188,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 7,
+                "dispositivo_id": 189,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 8,
+                "dispositivo_id": 190,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 9,
+                "dispositivo_id": 191,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 10,
+                "dispositivo_id": 192,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 11,
+                "dispositivo_id": 193,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 12,
+                "dispositivo_id": 194,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 13,
+                "dispositivo_id": 195,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 14,
+                "dispositivo_id": 196,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 15,
+                "dispositivo_id": 197,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 16,
+                "dispositivo_id": 198,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 17,
+                "dispositivo_id": 199,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 18,
+                "dispositivo_id": 200,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 19,
+                "dispositivo_id": 201,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 20,
+                "dispositivo_id": 202,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 21,
+                "dispositivo_id": 203,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              },
+              {
+                "evidence_index": 23,
+                "dispositivo_id": 205,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              }
+            ],
+            "citation_refs": [
+              "lei 8206/26"
+            ]
+          }
+        ],
+        "failed_claims": [
+          "O Programa tem como finalidade valorizar os profissionais de apoio, promover o reconhecimento e a visibilidade de ações positivas no ambiente escolar, estimular o bom desempenho, ética, solidariedade e comprometimento com a comunidade escolar.",
+          "Serão elegíveis ao reconhecimento os profissionais que atuam em funções de suporte à educação, como porteiros, agentes de serviços gerais (ASG), agentes de desinfecção, merendeiras, assistentes de secretariado escolar, técnicos administrativos e profissionais de apoio escolar.",
+          "A execução desta Lei poderá ocorrer com recursos próprios da Secretaria Municipal de Educação, por meio de parcerias com instituições públicas ou privadas, inclusive com empresas terceirizadas que prestam serviço ao município."
+        ],
+        "evidence_count": 24,
+        "matched_source_count": 23,
+        "source_diversity_ok": true,
+        "policy": {
+          "policy": "strict-grounding-v2",
+          "accepted": false,
+          "reason": "grounding_failed",
+          "cacheable": false,
+          "contract": "claim-support+numeric+negation+citation+certainty+source-boundary"
+        },
+        "baseline_score": 1.0,
+        "baseline_grounded": true
+      },
+      "grounded": false,
+      "retrieval_query": "O que prevê a Lei nº 8.206/2026? Explique seus principais dispositivos.",
+      "corpus_version": null
+    },
+    "elapsed_ms": 26347
+  },
+  {
+    "case": "article",
+    "http_status": 200,
+    "events": [
+      {
+        "type": "status",
+        "ms": 8,
+        "status": "queued"
+      },
+      {
+        "type": "status",
+        "ms": 10,
+        "status": "retrieving"
+      },
+      {
+        "type": "status",
+        "ms": 32,
+        "status": "reranking"
+      },
+      {
+        "type": "sources",
+        "ms": 44,
+        "source_count": 1,
+        "sources": [
+          {
+            "citation_id": "jurix:norma:3:dispositivo:182",
+            "id": 182,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 0.0,
+            "match_kind": null,
+            "retrieval_strategy": null
+          }
+        ],
+        "coverage": null,
+        "retrieval_strategy": null,
+        "cached": false
+      },
+      {
+        "type": "status",
+        "ms": 44,
+        "status": "generating"
+      },
+      {
+        "type": "status",
+        "ms": 4086,
+        "status": "grounding"
+      },
+      {
+        "type": "chunk",
+        "ms": 4087
+      },
+      {
+        "type": "chunk",
+        "ms": 4087
+      },
+      {
+        "type": "chunk",
+        "ms": 4088
+      },
+      {
+        "type": "chunk",
+        "ms": 4088
+      },
+      {
+        "type": "chunk",
+        "ms": 4089
+      },
+      {
+        "type": "status",
+        "ms": 4089,
+        "status": "finalizing"
+      },
+      {
+        "type": "title",
+        "ms": 4090
+      },
+      {
+        "type": "status",
+        "ms": 4090,
+        "status": "completed"
+      },
+      {
+        "type": "done",
+        "ms": 4113,
+        "grounded": true
+      }
+    ],
+    "answer": "O Programa \"Servidor Destaque da Educação\" tem como objetivo reconhecer mensalmente os profissionais de apoio que mais se destacarem no desempenho de suas funções, no âmbito das escolas e centros municipais de educação infantil da rede pública municipal de ensino de Natal. **Lei nº 8206/2026, Art. 1º**",
+    "grounding": null,
+    "contract": {
+      "timings_ms": {
+        "retrieval": 22,
+        "generation": 4051,
+        "grounding": 2,
+        "total_before_done": 4079
+      },
+      "generation_attempts": [
+        {
+          "attempt": 1,
+          "duration_ms": 4051,
+          "time_to_first_chunk_ms": 1669,
+          "output_characters": 303
+        }
+      ],
+      "grounding": {
+        "grounded": true,
+        "score": 1.0,
+        "strict": true,
+        "min_lexical_overlap": 0.45,
+        "claims": [
+          {
+            "claim": "O Programa \"Servidor Destaque da Educação\" tem como objetivo reconhecer mensalmente os profissionais de apoio que mais se destacarem no desempenho de suas funções, no âmbito das escolas e centros municipais de educação infantil da rede pública municipal de ensino de Natal.",
+            "supported": true,
+            "matches": [
+              {
+                "evidence_index": 0,
+                "dispositivo_id": 182,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              }
+            ],
+            "citation_refs": []
+          },
+          {
+            "claim": "**Lei nº 8206/2026, Art. 1º**",
+            "supported": true,
+            "matches": [
+              {
+                "evidence_index": 0,
+                "dispositivo_id": 182,
+                "lexical_overlap": 1.0,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              }
+            ],
+            "citation_refs": [
+              "lei 8206/26"
+            ]
+          }
+        ],
+        "failed_claims": [],
+        "evidence_count": 1,
+        "matched_source_count": 1,
+        "source_diversity_ok": true,
+        "policy": {
+          "policy": "strict-grounding-v2",
+          "accepted": true,
+          "reason": "verified_grounded",
+          "cacheable": true,
+          "contract": "claim-support+numeric+negation+citation+certainty+source-boundary"
+        },
+        "baseline_score": 1.0,
+        "baseline_grounded": true
+      },
+      "grounded": true,
+      "retrieval_query": "O que prevê o art. 1º da Lei nº 8206/2026?",
+      "corpus_version": null
+    },
+    "elapsed_ms": 4114
+  },
+  {
+    "case": "missing_norm",
+    "http_status": 200,
+    "events": [
+      {
+        "type": "status",
+        "ms": 5,
+        "status": "queued"
+      },
+      {
+        "type": "status",
+        "ms": 9,
+        "status": "retrieving"
+      },
+      {
+        "type": "status",
+        "ms": 72,
+        "status": "reranking"
+      },
+      {
+        "type": "sources",
+        "ms": 135,
+        "source_count": 5,
+        "sources": [
+          {
+            "citation_id": "jurix:norma:4:dispositivo:214",
+            "id": 214,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 1.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:6:dispositivo:288",
+            "id": 288,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 1.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:7:dispositivo:312",
+            "id": 312,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 1.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:9:dispositivo:346",
+            "id": 346,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 1.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          },
+          {
+            "citation_id": "jurix:norma:10:dispositivo:348",
+            "id": 348,
+            "norma_numero": null,
+            "norma_ano": null,
+            "similarity_score": 1.0,
+            "match_kind": null,
+            "retrieval_strategy": "whole_norma"
+          }
+        ],
+        "coverage": null,
+        "retrieval_strategy": "whole_norma",
+        "cached": false
+      },
+      {
+        "type": "status",
+        "ms": 135,
+        "status": "generating"
+      },
+      {
+        "type": "status",
+        "ms": 11177,
+        "status": "grounding"
+      },
+      {
+        "type": "status",
+        "ms": 11178,
+        "status": "insufficient_evidence"
+      },
+      {
+        "type": "chunk",
+        "ms": 11178
+      },
+      {
+        "type": "chunk",
+        "ms": 11180
+      },
+      {
+        "type": "chunk",
+        "ms": 11180
+      },
+      {
+        "type": "status",
+        "ms": 11181,
+        "status": "finalizing"
+      },
+      {
+        "type": "title",
+        "ms": 11181
+      },
+      {
+        "type": "status",
+        "ms": 11182,
+        "status": "completed"
+      },
+      {
+        "type": "done",
+        "ms": 11187,
+        "grounded": false
+      }
+    ],
+    "answer": "Não consegui confirmar essa informação com segurança nas normas recuperadas. Se puder, indique o número e o ano da lei ou o artigo que deseja consultar.",
+    "grounding": null,
+    "contract": {
+      "timings_ms": {
+        "retrieval": 63,
+        "generation": 11103,
+        "grounding": 0,
+        "total_before_done": 11173
+      },
+      "generation_attempts": [
+        {
+          "attempt": 1,
+          "duration_ms": 8306,
+          "time_to_first_chunk_ms": 2253,
+          "output_characters": 723
+        },
+        {
+          "attempt": 2,
+          "duration_ms": 2797,
+          "time_to_first_chunk_ms": 497,
+          "output_characters": 249
+        }
+      ],
+      "grounding": {
+        "grounded": false,
+        "score": 0.0,
+        "claims": [],
+        "failed_claims": [
+          "A resposta contém referências ou afirmações que não foram encontradas nas fontes recuperadas."
+        ]
+      },
+      "grounded": false,
+      "retrieval_query": "O que prevê a Lei nº 99999/2026?",
+      "corpus_version": null
+    },
+    "elapsed_ms": 11187
+  }
+]

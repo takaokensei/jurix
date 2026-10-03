@@ -1,0 +1,12 @@
+{
+  "context_chars": 8000,
+  "full_text_chars": 38000,
+  "evidence_chars": 7778,
+  "coverage": {
+    "complete": true,
+    "selected_devices": 1,
+    "selected_articles": 1
+  },
+  "evidence_scope": "complete",
+  "truncated": true
+}

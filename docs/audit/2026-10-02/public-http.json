@@ -1,0 +1,121 @@
+[
+  {
+    "path": "/",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "elapsed_ms": 15,
+    "redirected": true
+  },
+  {
+    "path": "/normas/chatbot/",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "elapsed_ms": 8,
+    "redirected": false
+  },
+  {
+    "path": "/admin/login/",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "elapsed_ms": 135,
+    "redirected": false
+  },
+  {
+    "path": "/colecoes/999999/",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "elapsed_ms": 11,
+    "redirected": true
+  },
+  {
+    "path": "/api/v1/health/live/",
+    "status": 200,
+    "content_type": "application/json",
+    "elapsed_ms": 4,
+    "redirected": false
+  },
+  {
+    "path": "/api/v1/health/ready/",
+    "status": 503,
+    "content_type": "application/json",
+    "elapsed_ms": 2540,
+    "redirected": false
+  },
+  {
+    "path": "/api/v1/health/",
+    "status": 503,
+    "content_type": "application/json",
+    "elapsed_ms": 2551,
+    "redirected": false
+  },
+  {
+    "path": "/api/v1/normas/",
+    "status": 200,
+    "content_type": "application/json",
+    "elapsed_ms": 15,
+    "redirected": false
+  },
+  {
+    "path": "/api/v1/normas/3/",
+    "status": 200,
+    "content_type": "application/json",
+    "elapsed_ms": 19,
+    "redirected": false
+  },
+  {
+    "path": "/api/v1/normas/3/timeline/",
+    "status": 200,
+    "content_type": "application/json",
+    "elapsed_ms": 12,
+    "redirected": false
+  },
+  {
+    "path": "/api/v1/normas/3/conflicts/",
+    "status": 200,
+    "content_type": "application/json",
+    "elapsed_ms": 9,
+    "redirected": false
+  },
+  {
+    "path": "/api/v1/suggestions/",
+    "status": 200,
+    "content_type": "application/json",
+    "elapsed_ms": 10,
+    "redirected": false
+  },
+  {
+    "path": "/api/v1/search/semantic/",
+    "status": 200,
+    "content_type": "application/json",
+    "elapsed_ms": 26,
+    "redirected": false
+  },
+  {
+    "path": "/api/v1/chat/sessions/",
+    "status": 200,
+    "content_type": "application/json",
+    "elapsed_ms": 22,
+    "redirected": false
+  },
+  {
+    "path": "/api/v1/chat/sessions/999999/",
+    "status": 401,
+    "content_type": "application/json",
+    "elapsed_ms": 4,
+    "redirected": false
+  },
+  {
+    "path": "/api/v1/chat/sessions/slug/audit-missing/",
+    "status": 401,
+    "content_type": "application/json",
+    "elapsed_ms": 4,
+    "redirected": false
+  },
+  {
+    "path": "/api/v1/chat/attachments/",
+    "status": 200,
+    "content_type": "application/json",
+    "elapsed_ms": 22,
+    "redirected": false
+  }
+]

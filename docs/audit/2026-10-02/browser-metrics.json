@@ -1,0 +1,4898 @@
+[
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Em que podemos ajudar\n                                        na sua pesquisa jurídica?"
+      }
+    ],
+    "height": 900,
+    "route": "/assistente/local-54e7fca1-b545-4063-b61d-2c5b7b26f5ca/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/vendor/marked.min.js",
+      "http://127.0.0.1:8006/static/js/vendor/purify.min.js",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/jurix-markdown.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-rag.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-api-reliability-overlay.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-chat-sessions.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-state.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-renderer.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-dynamic-suggestions.js",
+      "http://127.0.0.1:8006/static/js/chat.js?v=20261002-grounded-stream1",
+      "http://127.0.0.1:8006/static/js/jurix-chat-controller.js",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/js/floating-bar-sync.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-shell.js?v=20260930-drawer-focus2",
+      "http://127.0.0.1:8006/static/js/jurix-search-controls.js?v=20260929-mobile-menu-bounds"
+    ],
+    "scrollHeight": 900,
+    "scrollWidth": 360,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para a pesquisa",
+        "tag": "A",
+        "w": 146
+      },
+      {
+        "h": 36,
+        "id": "copy-btn-1790953662236-ksd3elm",
+        "name": "Copiar resposta em Markdown",
+        "tag": "BUTTON",
+        "w": 32
+      },
+      {
+        "h": 19,
+        "id": "",
+        "name": "Abrir Lei nº 8206/2026 no SAPL (nova aba)",
+        "tag": "A",
+        "w": 112
+      },
+      {
+        "h": 19,
+        "id": "",
+        "name": "Abrir Lei nº 8.206/2026, Art. 1º no SAPL (nova aba)",
+        "tag": "A",
+        "w": 43
+      },
+      {
+        "h": 36,
+        "id": "copy-btn-1790953662238-5dsfka3",
+        "name": "Copiar resposta em Markdown",
+        "tag": "BUTTON",
+        "w": 32
+      },
+      {
+        "h": 33,
+        "id": "",
+        "name": "Abrir painel com 1 fontes consultadas",
+        "tag": "BUTTON",
+        "w": 418
+      },
+      {
+        "h": 36,
+        "id": "copy-btn-1790953662243-2s8fs36",
+        "name": "Copiar resposta em Markdown",
+        "tag": "BUTTON",
+        "w": 32
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-rag.css?v=20260930-citation-actions2-inline3",
+      "http://127.0.0.1:8006/static/css/jurix-markdown.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat-renderer.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat-controller.css?v=20261002-grounded-stream1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-chat-sessions.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat-shell.css?v=20260929-sidebar-utilities1",
+      "http://127.0.0.1:8006/static/css/jurix-search-controls.css",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 360
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Normas consolidadas"
+      },
+      {
+        "tag": "H2",
+        "text": "Resultados das normas"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8206/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8205/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8204/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8203/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8202/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8201/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8200/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8199/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8198/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8197/2026"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-norma-list.js?v=20260929-identifier-search1"
+    ],
+    "scrollHeight": 5568,
+    "scrollWidth": 345,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 42,
+        "id": "norma-tipo",
+        "name": "Todos os tipos\n                        \n                        L",
+        "tag": "SELECT",
+        "w": 291
+      },
+      {
+        "h": 42,
+        "id": "norma-ano",
+        "name": "Todos os anos\n                        \n                        20",
+        "tag": "SELECT",
+        "w": 291
+      },
+      {
+        "h": 42,
+        "id": "norma-ordenar",
+        "name": "Mais recentes\n                        Mais antigas",
+        "tag": "SELECT",
+        "w": 291
+      },
+      {
+        "h": 30,
+        "id": "",
+        "name": "Visualização em grade",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 30,
+        "id": "",
+        "name": "Visualização em lista",
+        "tag": "BUTTON",
+        "w": 34
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-norma-list.css?v=20260930-mobile-title-rhythm1"
+    ],
+    "width": 360
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Lei nº 8206/2026"
+      },
+      {
+        "tag": "H2",
+        "text": "Estrutura Hierárquica (24 Dispositivos)"
+      },
+      {
+        "tag": "H2",
+        "text": "Informações Temporais"
+      },
+      {
+        "tag": "H2",
+        "text": "Linha do tempo normativa"
+      },
+      {
+        "tag": "H2",
+        "text": "Texto integral consolidado"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/3/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-legal-detail.js?v=20260930-device-trim1"
+    ],
+    "scrollHeight": 7803,
+    "scrollWidth": 345,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 1º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º > Inciso I",
+        "tag": "A",
+        "w": 89
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º > Inciso II",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º > Inciso III",
+        "tag": "A",
+        "w": 95
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso I",
+        "tag": "A",
+        "w": 89
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso II",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso III",
+        "tag": "A",
+        "w": 95
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso IV",
+        "tag": "A",
+        "w": 97
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso V",
+        "tag": "A",
+        "w": 93
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso VI",
+        "tag": "A",
+        "w": 97
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso VII",
+        "tag": "A",
+        "w": 100
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso VIII",
+        "tag": "A",
+        "w": 103
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso I",
+        "tag": "A",
+        "w": 89
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso II",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso III",
+        "tag": "A",
+        "w": 95
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso IV",
+        "tag": "A",
+        "w": 97
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso V",
+        "tag": "A",
+        "w": 93
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 5º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 6º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 7º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 8º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 21,
+        "id": "",
+        "name": "« Voltar para a lista",
+        "tag": "A",
+        "w": 134
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-legal-detail.css?v=20260930-timeline-status1",
+      "http://127.0.0.1:8006/static/css/jurix-legacy-shell.css"
+    ],
+    "width": 360
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Comparação de Versões - Lei nº 8206/2026"
+      },
+      {
+        "tag": "H2",
+        "text": "Diferenças textuais estruturais"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/3/compare/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 1642,
+    "scrollWidth": 345,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 21,
+        "id": "",
+        "name": "« Voltar",
+        "tag": "A",
+        "w": 54
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-legacy-shell.css?v=20260930-axe-heading1",
+      "http://127.0.0.1:8006/static/css/jurix-legal-detail.css?v=20261001-structural-compare1"
+    ],
+    "width": 360
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Estrutura Hierárquica - Lei nº 8206/2026"
+      },
+      {
+        "tag": "H2",
+        "text": "Árvore de Dispositivos"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/3/tree/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-legal-tree.js?v=20260929-tree-interactions1"
+    ],
+    "scrollHeight": 3046,
+    "scrollWidth": 345,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 21,
+        "id": "",
+        "name": "« Voltar",
+        "tag": "A",
+        "w": 54
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-legacy-shell.css?v=20260930-axe-heading1"
+    ],
+    "width": 360
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Pesquisa jurídica"
+      },
+      {
+        "tag": "H2",
+        "text": "Comece uma pesquisa"
+      }
+    ],
+    "height": 900,
+    "route": "/pesquisa/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 968,
+    "scrollWidth": 345,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Todos os tiposLei",
+        "tag": "SELECT",
+        "w": 279
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Todos os anos2026",
+        "tag": "SELECT",
+        "w": 279
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Sem limiar50%65%80%",
+        "tag": "SELECT",
+        "w": 279
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 360
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Configurações"
+      },
+      {
+        "tag": "H2",
+        "text": "Preferências de IA"
+      },
+      {
+        "tag": "H2",
+        "text": "Tema e densidade"
+      },
+      {
+        "tag": "H2",
+        "text": "Persistência local"
+      },
+      {
+        "tag": "H2",
+        "text": "Histórico local"
+      },
+      {
+        "tag": "H2",
+        "text": "Apagar o histórico deste navegador?"
+      }
+    ],
+    "height": 900,
+    "route": "/configuracoes/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 1947,
+    "scrollWidth": 345,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Ollama localOpenAIGoogle Gemini\n                    AnthropicOpen",
+        "tag": "SELECT",
+        "w": 271
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "llama3",
+        "tag": "SELECT",
+        "w": 271
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 271
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 271
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 360
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Histórico"
+      },
+      {
+        "tag": "H2",
+        "text": "Conversas deste navegador"
+      },
+      {
+        "tag": "H2",
+        "text": "Pesquisa jurídica"
+      }
+    ],
+    "height": 900,
+    "route": "/historico/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-history-actions.js?v=20260930-post-delete-focus1",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history-page.js?v=20260930-history-search-clear1"
+    ],
+    "scrollHeight": 900,
+    "scrollWidth": 360,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 360
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Coleções"
+      },
+      {
+        "tag": "H2",
+        "text": "Coleções persistentes para seu trabalho jurídico"
+      }
+    ],
+    "height": 900,
+    "route": "/colecoes/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 900,
+    "scrollWidth": 360,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 360
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Em que podemos ajudar\n                                        na sua pesquisa jurídica?"
+      }
+    ],
+    "height": 900,
+    "route": "/assistente/local-54e7fca1-b545-4063-b61d-2c5b7b26f5ca/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/vendor/marked.min.js",
+      "http://127.0.0.1:8006/static/js/vendor/purify.min.js",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/jurix-markdown.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-rag.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-api-reliability-overlay.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-chat-sessions.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-state.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-renderer.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-dynamic-suggestions.js",
+      "http://127.0.0.1:8006/static/js/chat.js?v=20261002-grounded-stream1",
+      "http://127.0.0.1:8006/static/js/jurix-chat-controller.js",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/js/floating-bar-sync.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-shell.js?v=20260930-drawer-focus2",
+      "http://127.0.0.1:8006/static/js/jurix-search-controls.js?v=20260929-mobile-menu-bounds"
+    ],
+    "scrollHeight": 900,
+    "scrollWidth": 768,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para a pesquisa",
+        "tag": "A",
+        "w": 146
+      },
+      {
+        "h": 32,
+        "id": "copy-btn-1790953666176-mlu2lx7",
+        "name": "Copiar resposta em Markdown",
+        "tag": "BUTTON",
+        "w": 32
+      },
+      {
+        "h": 19,
+        "id": "",
+        "name": "Abrir Lei nº 8206/2026 no SAPL (nova aba)",
+        "tag": "A",
+        "w": 112
+      },
+      {
+        "h": 19,
+        "id": "",
+        "name": "Abrir Lei nº 8.206/2026, Art. 1º no SAPL (nova aba)",
+        "tag": "A",
+        "w": 43
+      },
+      {
+        "h": 32,
+        "id": "copy-btn-1790953666179-rwl93md",
+        "name": "Copiar resposta em Markdown",
+        "tag": "BUTTON",
+        "w": 32
+      },
+      {
+        "h": 33,
+        "id": "",
+        "name": "Abrir painel com 1 fontes consultadas",
+        "tag": "BUTTON",
+        "w": 400
+      },
+      {
+        "h": 32,
+        "id": "copy-btn-1790953666182-4o1hend",
+        "name": "Copiar resposta em Markdown",
+        "tag": "BUTTON",
+        "w": 32
+      },
+      {
+        "h": 24,
+        "id": "question-textarea",
+        "name": "Digite sua pergunta sobre legislação",
+        "tag": "TEXTAREA",
+        "w": 618
+      },
+      {
+        "h": 36,
+        "id": "send-button",
+        "name": "Enviar pergunta",
+        "tag": "BUTTON",
+        "w": 36
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-rag.css?v=20260930-citation-actions2-inline3",
+      "http://127.0.0.1:8006/static/css/jurix-markdown.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat-renderer.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat-controller.css?v=20261002-grounded-stream1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-chat-sessions.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat-shell.css?v=20260929-sidebar-utilities1",
+      "http://127.0.0.1:8006/static/css/jurix-search-controls.css",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 768
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Normas consolidadas"
+      },
+      {
+        "tag": "H2",
+        "text": "Resultados das normas"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8206/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8205/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8204/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8203/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8202/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8201/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8200/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8199/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8198/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8197/2026"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-norma-list.js?v=20260929-identifier-search1"
+    ],
+    "scrollHeight": 4506,
+    "scrollWidth": 753,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 42,
+        "id": "norma-tipo",
+        "name": "Todos os tipos\n                        \n                        L",
+        "tag": "SELECT",
+        "w": 329
+      },
+      {
+        "h": 42,
+        "id": "norma-ano",
+        "name": "Todos os anos\n                        \n                        20",
+        "tag": "SELECT",
+        "w": 329
+      },
+      {
+        "h": 30,
+        "id": "",
+        "name": "Visualização em grade",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 30,
+        "id": "",
+        "name": "Visualização em lista",
+        "tag": "BUTTON",
+        "w": 34
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-norma-list.css?v=20260930-mobile-title-rhythm1"
+    ],
+    "width": 768
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Lei nº 8206/2026"
+      },
+      {
+        "tag": "H2",
+        "text": "Estrutura Hierárquica (24 Dispositivos)"
+      },
+      {
+        "tag": "H2",
+        "text": "Informações Temporais"
+      },
+      {
+        "tag": "H2",
+        "text": "Linha do tempo normativa"
+      },
+      {
+        "tag": "H2",
+        "text": "Texto integral consolidado"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/3/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-legal-detail.js?v=20260930-device-trim1"
+    ],
+    "scrollHeight": 6352,
+    "scrollWidth": 753,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 1º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º > Inciso I",
+        "tag": "A",
+        "w": 89
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º > Inciso II",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º > Inciso III",
+        "tag": "A",
+        "w": 95
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso I",
+        "tag": "A",
+        "w": 89
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso II",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso III",
+        "tag": "A",
+        "w": 95
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso IV",
+        "tag": "A",
+        "w": 97
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso V",
+        "tag": "A",
+        "w": 93
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso VI",
+        "tag": "A",
+        "w": 97
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso VII",
+        "tag": "A",
+        "w": 100
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso VIII",
+        "tag": "A",
+        "w": 103
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso I",
+        "tag": "A",
+        "w": 89
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso II",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso III",
+        "tag": "A",
+        "w": 95
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso IV",
+        "tag": "A",
+        "w": 97
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso V",
+        "tag": "A",
+        "w": 93
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 5º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 6º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 7º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 8º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 21,
+        "id": "",
+        "name": "« Voltar para a lista",
+        "tag": "A",
+        "w": 134
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-legal-detail.css?v=20260930-timeline-status1",
+      "http://127.0.0.1:8006/static/css/jurix-legacy-shell.css"
+    ],
+    "width": 768
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Comparação de Versões - Lei nº 8206/2026"
+      },
+      {
+        "tag": "H2",
+        "text": "Diferenças textuais estruturais"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/3/compare/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 1322,
+    "scrollWidth": 753,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 21,
+        "id": "",
+        "name": "« Voltar",
+        "tag": "A",
+        "w": 54
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-legacy-shell.css?v=20260930-axe-heading1",
+      "http://127.0.0.1:8006/static/css/jurix-legal-detail.css?v=20261001-structural-compare1"
+    ],
+    "width": 768
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Estrutura Hierárquica - Lei nº 8206/2026"
+      },
+      {
+        "tag": "H2",
+        "text": "Árvore de Dispositivos"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/3/tree/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-legal-tree.js?v=20260929-tree-interactions1"
+    ],
+    "scrollHeight": 2598,
+    "scrollWidth": 753,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 36,
+        "id": "",
+        "name": "Recolher Art. 2º",
+        "tag": "BUTTON",
+        "w": 36
+      },
+      {
+        "h": 36,
+        "id": "",
+        "name": "Recolher Art. 3º",
+        "tag": "BUTTON",
+        "w": 36
+      },
+      {
+        "h": 36,
+        "id": "",
+        "name": "Recolher Art. 4º",
+        "tag": "BUTTON",
+        "w": 36
+      },
+      {
+        "h": 21,
+        "id": "",
+        "name": "« Voltar",
+        "tag": "A",
+        "w": 54
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-legacy-shell.css?v=20260930-axe-heading1"
+    ],
+    "width": 768
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Pesquisa jurídica"
+      },
+      {
+        "tag": "H2",
+        "text": "Comece uma pesquisa"
+      }
+    ],
+    "height": 900,
+    "route": "/pesquisa/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 900,
+    "scrollWidth": 768,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Todos os tiposLei",
+        "tag": "SELECT",
+        "w": 684
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Todos os anos2026",
+        "tag": "SELECT",
+        "w": 684
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Sem limiar50%65%80%",
+        "tag": "SELECT",
+        "w": 684
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 768
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Configurações"
+      },
+      {
+        "tag": "H2",
+        "text": "Preferências de IA"
+      },
+      {
+        "tag": "H2",
+        "text": "Tema e densidade"
+      },
+      {
+        "tag": "H2",
+        "text": "Persistência local"
+      },
+      {
+        "tag": "H2",
+        "text": "Histórico local"
+      },
+      {
+        "tag": "H2",
+        "text": "Apagar o histórico deste navegador?"
+      }
+    ],
+    "height": 900,
+    "route": "/configuracoes/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 1691,
+    "scrollWidth": 753,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Ollama localOpenAIGoogle Gemini\n                    AnthropicOpen",
+        "tag": "SELECT",
+        "w": 661
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "llama3",
+        "tag": "SELECT",
+        "w": 661
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 661
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 661
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 768
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Histórico"
+      },
+      {
+        "tag": "H2",
+        "text": "Conversas deste navegador"
+      },
+      {
+        "tag": "H2",
+        "text": "Pesquisa jurídica"
+      }
+    ],
+    "height": 900,
+    "route": "/historico/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-history-actions.js?v=20260930-post-delete-focus1",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history-page.js?v=20260930-history-search-clear1"
+    ],
+    "scrollHeight": 900,
+    "scrollWidth": 768,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 768
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Coleções"
+      },
+      {
+        "tag": "H2",
+        "text": "Coleções persistentes para seu trabalho jurídico"
+      }
+    ],
+    "height": 900,
+    "route": "/colecoes/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 900,
+    "scrollWidth": 768,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 768
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Em que podemos ajudar\n                                        na sua pesquisa jurídica?"
+      }
+    ],
+    "height": 900,
+    "route": "/assistente/local-54e7fca1-b545-4063-b61d-2c5b7b26f5ca/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/vendor/marked.min.js",
+      "http://127.0.0.1:8006/static/js/vendor/purify.min.js",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/jurix-markdown.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-rag.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-api-reliability-overlay.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-chat-sessions.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-state.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-renderer.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-dynamic-suggestions.js",
+      "http://127.0.0.1:8006/static/js/chat.js?v=20261002-grounded-stream1",
+      "http://127.0.0.1:8006/static/js/jurix-chat-controller.js",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/js/floating-bar-sync.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-shell.js?v=20260930-drawer-focus2",
+      "http://127.0.0.1:8006/static/js/jurix-search-controls.js?v=20260929-mobile-menu-bounds"
+    ],
+    "scrollHeight": 900,
+    "scrollWidth": 1280,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para a pesquisa",
+        "tag": "A",
+        "w": 146
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 32,
+        "id": "copy-btn-1790953669616-qp6urox",
+        "name": "Copiar resposta em Markdown",
+        "tag": "BUTTON",
+        "w": 32
+      },
+      {
+        "h": 19,
+        "id": "",
+        "name": "Abrir Lei nº 8206/2026 no SAPL (nova aba)",
+        "tag": "A",
+        "w": 112
+      },
+      {
+        "h": 19,
+        "id": "",
+        "name": "Abrir Lei nº 8.206/2026, Art. 1º no SAPL (nova aba)",
+        "tag": "A",
+        "w": 43
+      },
+      {
+        "h": 32,
+        "id": "copy-btn-1790953669619-fz07yj7",
+        "name": "Copiar resposta em Markdown",
+        "tag": "BUTTON",
+        "w": 32
+      },
+      {
+        "h": 33,
+        "id": "",
+        "name": "Abrir painel com 1 fontes consultadas",
+        "tag": "BUTTON",
+        "w": 400
+      },
+      {
+        "h": 32,
+        "id": "copy-btn-1790953669623-zlwj8ak",
+        "name": "Copiar resposta em Markdown",
+        "tag": "BUTTON",
+        "w": 32
+      },
+      {
+        "h": 24,
+        "id": "question-textarea",
+        "name": "Digite sua pergunta sobre legislação",
+        "tag": "TEXTAREA",
+        "w": 890
+      },
+      {
+        "h": 36,
+        "id": "send-button",
+        "name": "Enviar pergunta",
+        "tag": "BUTTON",
+        "w": 36
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-rag.css?v=20260930-citation-actions2-inline3",
+      "http://127.0.0.1:8006/static/css/jurix-markdown.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat-renderer.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat-controller.css?v=20261002-grounded-stream1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-chat-sessions.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat-shell.css?v=20260929-sidebar-utilities1",
+      "http://127.0.0.1:8006/static/css/jurix-search-controls.css",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 1280
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Normas consolidadas"
+      },
+      {
+        "tag": "H2",
+        "text": "Resultados das normas"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8206/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8205/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8204/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8203/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8202/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8201/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8200/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8199/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8198/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8197/2026"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-norma-list.js?v=20260929-identifier-search1"
+    ],
+    "scrollHeight": 2276,
+    "scrollWidth": 1265,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 30,
+        "id": "",
+        "name": "Visualização em grade",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 30,
+        "id": "",
+        "name": "Visualização em lista",
+        "tag": "BUTTON",
+        "w": 34
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-norma-list.css?v=20260930-mobile-title-rhythm1"
+    ],
+    "width": 1280
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Lei nº 8206/2026"
+      },
+      {
+        "tag": "H2",
+        "text": "Estrutura Hierárquica (24 Dispositivos)"
+      },
+      {
+        "tag": "H2",
+        "text": "Informações Temporais"
+      },
+      {
+        "tag": "H2",
+        "text": "Linha do tempo normativa"
+      },
+      {
+        "tag": "H2",
+        "text": "Texto integral consolidado"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/3/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-legal-detail.js?v=20260930-device-trim1"
+    ],
+    "scrollHeight": 6300,
+    "scrollWidth": 1265,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 1º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º > Inciso I",
+        "tag": "A",
+        "w": 89
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º > Inciso II",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º > Inciso III",
+        "tag": "A",
+        "w": 95
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso I",
+        "tag": "A",
+        "w": 89
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso II",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso III",
+        "tag": "A",
+        "w": 95
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso IV",
+        "tag": "A",
+        "w": 97
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso V",
+        "tag": "A",
+        "w": 93
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso VI",
+        "tag": "A",
+        "w": 97
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso VII",
+        "tag": "A",
+        "w": 100
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso VIII",
+        "tag": "A",
+        "w": 103
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso I",
+        "tag": "A",
+        "w": 89
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso II",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso III",
+        "tag": "A",
+        "w": 95
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso IV",
+        "tag": "A",
+        "w": 97
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso V",
+        "tag": "A",
+        "w": 93
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 5º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 6º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 7º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 8º",
+        "tag": "A",
+        "w": 35
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-legal-detail.css?v=20260930-timeline-status1",
+      "http://127.0.0.1:8006/static/css/jurix-legacy-shell.css"
+    ],
+    "width": 1280
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Comparação de Versões - Lei nº 8206/2026"
+      },
+      {
+        "tag": "H2",
+        "text": "Diferenças textuais estruturais"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/3/compare/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 1300,
+    "scrollWidth": 1265,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 21,
+        "id": "",
+        "name": "« Voltar",
+        "tag": "A",
+        "w": 54
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-legacy-shell.css?v=20260930-axe-heading1",
+      "http://127.0.0.1:8006/static/css/jurix-legal-detail.css?v=20261001-structural-compare1"
+    ],
+    "width": 1280
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Estrutura Hierárquica - Lei nº 8206/2026"
+      },
+      {
+        "tag": "H2",
+        "text": "Árvore de Dispositivos"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/3/tree/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-legal-tree.js?v=20260929-tree-interactions1"
+    ],
+    "scrollHeight": 2554,
+    "scrollWidth": 1265,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 36,
+        "id": "",
+        "name": "Recolher Art. 2º",
+        "tag": "BUTTON",
+        "w": 36
+      },
+      {
+        "h": 36,
+        "id": "",
+        "name": "Recolher Art. 3º",
+        "tag": "BUTTON",
+        "w": 36
+      },
+      {
+        "h": 36,
+        "id": "",
+        "name": "Recolher Art. 4º",
+        "tag": "BUTTON",
+        "w": 36
+      },
+      {
+        "h": 21,
+        "id": "",
+        "name": "« Voltar",
+        "tag": "A",
+        "w": 54
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-legacy-shell.css?v=20260930-axe-heading1"
+    ],
+    "width": 1280
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Pesquisa jurídica"
+      },
+      {
+        "tag": "H2",
+        "text": "Comece uma pesquisa"
+      }
+    ],
+    "height": 900,
+    "route": "/pesquisa/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 900,
+    "scrollWidth": 1280,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Todos os tiposLei",
+        "tag": "SELECT",
+        "w": 300
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Todos os anos2026",
+        "tag": "SELECT",
+        "w": 300
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Sem limiar50%65%80%",
+        "tag": "SELECT",
+        "w": 300
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 1280
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Configurações"
+      },
+      {
+        "tag": "H2",
+        "text": "Preferências de IA"
+      },
+      {
+        "tag": "H2",
+        "text": "Tema e densidade"
+      },
+      {
+        "tag": "H2",
+        "text": "Persistência local"
+      },
+      {
+        "tag": "H2",
+        "text": "Histórico local"
+      },
+      {
+        "tag": "H2",
+        "text": "Apagar o histórico deste navegador?"
+      }
+    ],
+    "height": 900,
+    "route": "/configuracoes/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 1492,
+    "scrollWidth": 1265,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Ollama localOpenAIGoogle Gemini\n                    AnthropicOpen",
+        "tag": "SELECT",
+        "w": 902
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "llama3",
+        "tag": "SELECT",
+        "w": 902
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 442
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 442
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Exportar histórico JSON",
+        "tag": "BUTTON",
+        "w": 167
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Apagar histórico local",
+        "tag": "BUTTON",
+        "w": 155
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Restaurar padrão",
+        "tag": "BUTTON",
+        "w": 129
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Salvar preferências",
+        "tag": "BUTTON",
+        "w": 139
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 1280
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Histórico"
+      },
+      {
+        "tag": "H2",
+        "text": "Conversas deste navegador"
+      },
+      {
+        "tag": "H2",
+        "text": "Pesquisa jurídica"
+      }
+    ],
+    "height": 900,
+    "route": "/historico/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-history-actions.js?v=20260930-post-delete-focus1",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history-page.js?v=20260930-history-search-clear1"
+    ],
+    "scrollHeight": 900,
+    "scrollWidth": 1280,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Pesquisar",
+        "tag": "BUTTON",
+        "w": 112
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 1280
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Coleções"
+      },
+      {
+        "tag": "H2",
+        "text": "Coleções persistentes para seu trabalho jurídico"
+      }
+    ],
+    "height": 900,
+    "route": "/colecoes/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 900,
+    "scrollWidth": 1280,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Explorar normas",
+        "tag": "A",
+        "w": 125
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 1280
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Em que podemos ajudar\n                                        na sua pesquisa jurídica?"
+      }
+    ],
+    "height": 900,
+    "route": "/assistente/local-54e7fca1-b545-4063-b61d-2c5b7b26f5ca/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/vendor/marked.min.js",
+      "http://127.0.0.1:8006/static/js/vendor/purify.min.js",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/jurix-markdown.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-rag.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-api-reliability-overlay.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-chat-sessions.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-state.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-renderer.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-dynamic-suggestions.js",
+      "http://127.0.0.1:8006/static/js/chat.js?v=20261002-grounded-stream1",
+      "http://127.0.0.1:8006/static/js/jurix-chat-controller.js",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/js/floating-bar-sync.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-shell.js?v=20260930-drawer-focus2",
+      "http://127.0.0.1:8006/static/js/jurix-search-controls.js?v=20260929-mobile-menu-bounds"
+    ],
+    "scrollHeight": 900,
+    "scrollWidth": 1920,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para a pesquisa",
+        "tag": "A",
+        "w": 146
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 32,
+        "id": "copy-btn-1790953673318-z75v831",
+        "name": "Copiar resposta em Markdown",
+        "tag": "BUTTON",
+        "w": 32
+      },
+      {
+        "h": 19,
+        "id": "",
+        "name": "Abrir Lei nº 8206/2026 no SAPL (nova aba)",
+        "tag": "A",
+        "w": 112
+      },
+      {
+        "h": 19,
+        "id": "",
+        "name": "Abrir Lei nº 8.206/2026, Art. 1º no SAPL (nova aba)",
+        "tag": "A",
+        "w": 43
+      },
+      {
+        "h": 32,
+        "id": "copy-btn-1790953673321-2q45oje",
+        "name": "Copiar resposta em Markdown",
+        "tag": "BUTTON",
+        "w": 32
+      },
+      {
+        "h": 33,
+        "id": "",
+        "name": "Abrir painel com 1 fontes consultadas",
+        "tag": "BUTTON",
+        "w": 400
+      },
+      {
+        "h": 32,
+        "id": "copy-btn-1790953673325-yrgodd9",
+        "name": "Copiar resposta em Markdown",
+        "tag": "BUTTON",
+        "w": 32
+      },
+      {
+        "h": 24,
+        "id": "question-textarea",
+        "name": "Digite sua pergunta sobre legislação",
+        "tag": "TEXTAREA",
+        "w": 1530
+      },
+      {
+        "h": 36,
+        "id": "send-button",
+        "name": "Enviar pergunta",
+        "tag": "BUTTON",
+        "w": 36
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-rag.css?v=20260930-citation-actions2-inline3",
+      "http://127.0.0.1:8006/static/css/jurix-markdown.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat-renderer.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat-controller.css?v=20261002-grounded-stream1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-chat-sessions.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat-shell.css?v=20260929-sidebar-utilities1",
+      "http://127.0.0.1:8006/static/css/jurix-search-controls.css",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 1920
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Normas consolidadas"
+      },
+      {
+        "tag": "H2",
+        "text": "Resultados das normas"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8206/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8205/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8204/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8203/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8202/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8201/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8200/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8199/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8198/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8197/2026"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-norma-list.js?v=20260929-identifier-search1"
+    ],
+    "scrollHeight": 2159,
+    "scrollWidth": 1905,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 30,
+        "id": "",
+        "name": "Visualização em grade",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 30,
+        "id": "",
+        "name": "Visualização em lista",
+        "tag": "BUTTON",
+        "w": 34
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-norma-list.css?v=20260930-mobile-title-rhythm1"
+    ],
+    "width": 1920
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Lei nº 8206/2026"
+      },
+      {
+        "tag": "H2",
+        "text": "Estrutura Hierárquica (24 Dispositivos)"
+      },
+      {
+        "tag": "H2",
+        "text": "Informações Temporais"
+      },
+      {
+        "tag": "H2",
+        "text": "Linha do tempo normativa"
+      },
+      {
+        "tag": "H2",
+        "text": "Texto integral consolidado"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/3/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-legal-detail.js?v=20260930-device-trim1"
+    ],
+    "scrollHeight": 6300,
+    "scrollWidth": 1905,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 1º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º > Inciso I",
+        "tag": "A",
+        "w": 89
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º > Inciso II",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º > Inciso III",
+        "tag": "A",
+        "w": 95
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso I",
+        "tag": "A",
+        "w": 89
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso II",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso III",
+        "tag": "A",
+        "w": 95
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso IV",
+        "tag": "A",
+        "w": 97
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso V",
+        "tag": "A",
+        "w": 93
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso VI",
+        "tag": "A",
+        "w": 97
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso VII",
+        "tag": "A",
+        "w": 100
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso VIII",
+        "tag": "A",
+        "w": 103
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso I",
+        "tag": "A",
+        "w": 89
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso II",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso III",
+        "tag": "A",
+        "w": 95
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso IV",
+        "tag": "A",
+        "w": 97
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso V",
+        "tag": "A",
+        "w": 93
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 5º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 6º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 7º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 8º",
+        "tag": "A",
+        "w": 35
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-legal-detail.css?v=20260930-timeline-status1",
+      "http://127.0.0.1:8006/static/css/jurix-legacy-shell.css"
+    ],
+    "width": 1920
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Comparação de Versões - Lei nº 8206/2026"
+      },
+      {
+        "tag": "H2",
+        "text": "Diferenças textuais estruturais"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/3/compare/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 1300,
+    "scrollWidth": 1905,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 21,
+        "id": "",
+        "name": "« Voltar",
+        "tag": "A",
+        "w": 54
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-legacy-shell.css?v=20260930-axe-heading1",
+      "http://127.0.0.1:8006/static/css/jurix-legal-detail.css?v=20261001-structural-compare1"
+    ],
+    "width": 1920
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Estrutura Hierárquica - Lei nº 8206/2026"
+      },
+      {
+        "tag": "H2",
+        "text": "Árvore de Dispositivos"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/3/tree/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-legal-tree.js?v=20260929-tree-interactions1"
+    ],
+    "scrollHeight": 2533,
+    "scrollWidth": 1905,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 36,
+        "id": "",
+        "name": "Recolher Art. 2º",
+        "tag": "BUTTON",
+        "w": 36
+      },
+      {
+        "h": 36,
+        "id": "",
+        "name": "Recolher Art. 3º",
+        "tag": "BUTTON",
+        "w": 36
+      },
+      {
+        "h": 36,
+        "id": "",
+        "name": "Recolher Art. 4º",
+        "tag": "BUTTON",
+        "w": 36
+      },
+      {
+        "h": 21,
+        "id": "",
+        "name": "« Voltar",
+        "tag": "A",
+        "w": 54
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-legacy-shell.css?v=20260930-axe-heading1"
+    ],
+    "width": 1920
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Pesquisa jurídica"
+      },
+      {
+        "tag": "H2",
+        "text": "Comece uma pesquisa"
+      }
+    ],
+    "height": 900,
+    "route": "/pesquisa/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 900,
+    "scrollWidth": 1920,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Todos os tiposLei",
+        "tag": "SELECT",
+        "w": 345
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Todos os anos2026",
+        "tag": "SELECT",
+        "w": 345
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Sem limiar50%65%80%",
+        "tag": "SELECT",
+        "w": 345
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 1920
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Configurações"
+      },
+      {
+        "tag": "H2",
+        "text": "Preferências de IA"
+      },
+      {
+        "tag": "H2",
+        "text": "Tema e densidade"
+      },
+      {
+        "tag": "H2",
+        "text": "Persistência local"
+      },
+      {
+        "tag": "H2",
+        "text": "Histórico local"
+      },
+      {
+        "tag": "H2",
+        "text": "Apagar o histórico deste navegador?"
+      }
+    ],
+    "height": 900,
+    "route": "/configuracoes/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 1470,
+    "scrollWidth": 1905,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Ollama localOpenAIGoogle Gemini\n                    AnthropicOpen",
+        "tag": "SELECT",
+        "w": 1050
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "llama3",
+        "tag": "SELECT",
+        "w": 1050
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 516
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 516
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Exportar histórico JSON",
+        "tag": "BUTTON",
+        "w": 167
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Apagar histórico local",
+        "tag": "BUTTON",
+        "w": 155
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Restaurar padrão",
+        "tag": "BUTTON",
+        "w": 129
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Salvar preferências",
+        "tag": "BUTTON",
+        "w": 139
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 1920
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Histórico"
+      },
+      {
+        "tag": "H2",
+        "text": "Conversas deste navegador"
+      },
+      {
+        "tag": "H2",
+        "text": "Pesquisa jurídica"
+      }
+    ],
+    "height": 900,
+    "route": "/historico/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-history-actions.js?v=20260930-post-delete-focus1",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history-page.js?v=20260930-history-search-clear1"
+    ],
+    "scrollHeight": 900,
+    "scrollWidth": 1920,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Pesquisar",
+        "tag": "BUTTON",
+        "w": 112
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 1920
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Coleções"
+      },
+      {
+        "tag": "H2",
+        "text": "Coleções persistentes para seu trabalho jurídico"
+      }
+    ],
+    "height": 900,
+    "route": "/colecoes/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 900,
+    "scrollWidth": 1920,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 40,
+        "id": "",
+        "name": "Jurix — Assistente",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 32,
+        "id": "",
+        "name": "Ver todo o histórico",
+        "tag": "A",
+        "w": 54
+      },
+      {
+        "h": 34,
+        "id": "",
+        "name": "Opções da conversa: Pesquisa jurídica",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 32,
+        "id": "toggle-sidebar",
+        "name": "Recolher navegação",
+        "tag": "BUTTON",
+        "w": 42
+      },
+      {
+        "h": 34,
+        "id": "command-palette-trigger",
+        "name": "Abrir busca rápida (Ctrl K)",
+        "tag": "BUTTON",
+        "w": 420
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Explorar normas",
+        "tag": "A",
+        "w": 125
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 1920
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Em que podemos ajudar\n                                        na sua pesquisa jurídica?"
+      }
+    ],
+    "height": 900,
+    "route": "/assistente/local-54e7fca1-b545-4063-b61d-2c5b7b26f5ca/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/vendor/marked.min.js",
+      "http://127.0.0.1:8006/static/js/vendor/purify.min.js",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/jurix-markdown.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-rag.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-api-reliability-overlay.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-chat-sessions.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-state.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-renderer.js?v=20261001-structured-citations1",
+      "http://127.0.0.1:8006/static/js/jurix-dynamic-suggestions.js",
+      "http://127.0.0.1:8006/static/js/chat.js?v=20261002-grounded-stream1",
+      "http://127.0.0.1:8006/static/js/jurix-chat-controller.js",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/js/floating-bar-sync.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-shell.js?v=20260930-drawer-focus2",
+      "http://127.0.0.1:8006/static/js/jurix-search-controls.js?v=20260929-mobile-menu-bounds"
+    ],
+    "scrollHeight": 900,
+    "scrollWidth": 320,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para a pesquisa",
+        "tag": "A",
+        "w": 146
+      },
+      {
+        "h": 36,
+        "id": "copy-btn-1790953677393-s4yyb64",
+        "name": "Copiar resposta em Markdown",
+        "tag": "BUTTON",
+        "w": 32
+      },
+      {
+        "h": 19,
+        "id": "",
+        "name": "Abrir Lei nº 8206/2026 no SAPL (nova aba)",
+        "tag": "A",
+        "w": 112
+      },
+      {
+        "h": 19,
+        "id": "",
+        "name": "Abrir Lei nº 8.206/2026, Art. 1º no SAPL (nova aba)",
+        "tag": "A",
+        "w": 43
+      },
+      {
+        "h": 36,
+        "id": "copy-btn-1790953677396-g411asr",
+        "name": "Copiar resposta em Markdown",
+        "tag": "BUTTON",
+        "w": 32
+      },
+      {
+        "h": 33,
+        "id": "",
+        "name": "Abrir painel com 1 fontes consultadas",
+        "tag": "BUTTON",
+        "w": 418
+      },
+      {
+        "h": 36,
+        "id": "copy-btn-1790953677399-rxrcx2b",
+        "name": "Copiar resposta em Markdown",
+        "tag": "BUTTON",
+        "w": 32
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-rag.css?v=20260930-citation-actions2-inline3",
+      "http://127.0.0.1:8006/static/css/jurix-markdown.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat-renderer.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat-controller.css?v=20261002-grounded-stream1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-chat-sessions.css",
+      "http://127.0.0.1:8006/static/css/jurix-chat-shell.css?v=20260929-sidebar-utilities1",
+      "http://127.0.0.1:8006/static/css/jurix-search-controls.css",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 320
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Normas consolidadas"
+      },
+      {
+        "tag": "H2",
+        "text": "Resultados das normas"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8206/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8205/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8204/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8203/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8202/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8201/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8200/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8199/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8198/2026"
+      },
+      {
+        "tag": "H3",
+        "text": "Lei 8197/2026"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-norma-list.js?v=20260929-identifier-search1"
+    ],
+    "scrollHeight": 5670,
+    "scrollWidth": 305,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 42,
+        "id": "norma-tipo",
+        "name": "Todos os tipos\n                        \n                        L",
+        "tag": "SELECT",
+        "w": 251
+      },
+      {
+        "h": 42,
+        "id": "norma-ano",
+        "name": "Todos os anos\n                        \n                        20",
+        "tag": "SELECT",
+        "w": 251
+      },
+      {
+        "h": 42,
+        "id": "norma-ordenar",
+        "name": "Mais recentes\n                        Mais antigas",
+        "tag": "SELECT",
+        "w": 251
+      },
+      {
+        "h": 30,
+        "id": "",
+        "name": "Visualização em grade",
+        "tag": "BUTTON",
+        "w": 34
+      },
+      {
+        "h": 30,
+        "id": "",
+        "name": "Visualização em lista",
+        "tag": "BUTTON",
+        "w": 34
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-norma-list.css?v=20260930-mobile-title-rhythm1"
+    ],
+    "width": 320
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Lei nº 8206/2026"
+      },
+      {
+        "tag": "H2",
+        "text": "Estrutura Hierárquica (24 Dispositivos)"
+      },
+      {
+        "tag": "H2",
+        "text": "Informações Temporais"
+      },
+      {
+        "tag": "H2",
+        "text": "Linha do tempo normativa"
+      },
+      {
+        "tag": "H2",
+        "text": "Texto integral consolidado"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/3/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-legal-detail.js?v=20260930-device-trim1"
+    ],
+    "scrollHeight": 8257,
+    "scrollWidth": 305,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 1º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º > Inciso I",
+        "tag": "A",
+        "w": 89
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º > Inciso II",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 2º > Inciso III",
+        "tag": "A",
+        "w": 95
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso I",
+        "tag": "A",
+        "w": 89
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso II",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso III",
+        "tag": "A",
+        "w": 95
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso IV",
+        "tag": "A",
+        "w": 97
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso V",
+        "tag": "A",
+        "w": 93
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso VI",
+        "tag": "A",
+        "w": 97
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso VII",
+        "tag": "A",
+        "w": 100
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 3º > Inciso VIII",
+        "tag": "A",
+        "w": 103
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso I",
+        "tag": "A",
+        "w": 89
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso II",
+        "tag": "A",
+        "w": 92
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso III",
+        "tag": "A",
+        "w": 95
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso IV",
+        "tag": "A",
+        "w": 97
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 4º > Inciso V",
+        "tag": "A",
+        "w": 93
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 5º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 6º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 7º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 16,
+        "id": "",
+        "name": "Art. 8º",
+        "tag": "A",
+        "w": 35
+      },
+      {
+        "h": 21,
+        "id": "",
+        "name": "« Voltar para a lista",
+        "tag": "A",
+        "w": 134
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-legal-detail.css?v=20260930-timeline-status1",
+      "http://127.0.0.1:8006/static/css/jurix-legacy-shell.css"
+    ],
+    "width": 320
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Comparação de Versões - Lei nº 8206/2026"
+      },
+      {
+        "tag": "H2",
+        "text": "Diferenças textuais estruturais"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/3/compare/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 1692,
+    "scrollWidth": 305,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 21,
+        "id": "",
+        "name": "« Voltar",
+        "tag": "A",
+        "w": 54
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-legacy-shell.css?v=20260930-axe-heading1",
+      "http://127.0.0.1:8006/static/css/jurix-legal-detail.css?v=20261001-structural-compare1"
+    ],
+    "width": 320
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Estrutura Hierárquica - Lei nº 8206/2026"
+      },
+      {
+        "tag": "H2",
+        "text": "Árvore de Dispositivos"
+      }
+    ],
+    "height": 900,
+    "route": "/normas/3/tree/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-legal-tree.js?v=20260929-tree-interactions1"
+    ],
+    "scrollHeight": 3219,
+    "scrollWidth": 305,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 21,
+        "id": "",
+        "name": "« Voltar",
+        "tag": "A",
+        "w": 54
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1",
+      "http://127.0.0.1:8006/static/css/jurix-legacy-shell.css?v=20260930-axe-heading1"
+    ],
+    "width": 320
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Pesquisa jurídica"
+      },
+      {
+        "tag": "H2",
+        "text": "Comece uma pesquisa"
+      }
+    ],
+    "height": 900,
+    "route": "/pesquisa/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 989,
+    "scrollWidth": 305,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Todos os tiposLei",
+        "tag": "SELECT",
+        "w": 239
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Todos os anos2026",
+        "tag": "SELECT",
+        "w": 239
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Sem limiar50%65%80%",
+        "tag": "SELECT",
+        "w": 239
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 320
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Configurações"
+      },
+      {
+        "tag": "H2",
+        "text": "Preferências de IA"
+      },
+      {
+        "tag": "H2",
+        "text": "Tema e densidade"
+      },
+      {
+        "tag": "H2",
+        "text": "Persistência local"
+      },
+      {
+        "tag": "H2",
+        "text": "Histórico local"
+      },
+      {
+        "tag": "H2",
+        "text": "Apagar o histórico deste navegador?"
+      }
+    ],
+    "height": 900,
+    "route": "/configuracoes/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 2103,
+    "scrollWidth": 305,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "Ollama localOpenAIGoogle Gemini\n                    AnthropicOpen",
+        "tag": "SELECT",
+        "w": 231
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "llama3",
+        "tag": "SELECT",
+        "w": 231
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 231
+      },
+      {
+        "h": 42,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 231
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      },
+      {
+        "h": 13,
+        "id": "",
+        "name": "",
+        "tag": "INPUT",
+        "w": 13
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 320
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Histórico"
+      },
+      {
+        "tag": "H2",
+        "text": "Conversas deste navegador"
+      },
+      {
+        "tag": "H2",
+        "text": "Pesquisa jurídica"
+      }
+    ],
+    "height": 900,
+    "route": "/historico/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-history-actions.js?v=20260930-post-delete-focus1",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history-page.js?v=20260930-history-search-clear1"
+    ],
+    "scrollHeight": 900,
+    "scrollWidth": 320,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 320
+  },
+  {
+    "headings": [
+      {
+        "tag": "H1",
+        "text": "Coleções"
+      },
+      {
+        "tag": "H2",
+        "text": "Coleções persistentes para seu trabalho jurídico"
+      }
+    ],
+    "height": 900,
+    "route": "/colecoes/",
+    "scripts": [
+      "http://127.0.0.1:8006/static/js/theme.js?v=20260930-persist-sidebar1",
+      "http://127.0.0.1:8006/static/js/config.js",
+      "http://127.0.0.1:8006/static/js/workspace.js?v=20260930-provider-settings2",
+      "http://127.0.0.1:8006/static/js/command_palette.js?v=20260930-query-race1-sidebar2",
+      "http://127.0.0.1:8006/static/js/jurix-anonymous-history.js",
+      "http://127.0.0.1:8006/static/js/jurix-chat-api.js?v=20261001-session-actions1",
+      "http://127.0.0.1:8006/static/js/jurix-sidebar.js?v=20261001-session-actions1"
+    ],
+    "scrollHeight": 967,
+    "scrollWidth": 305,
+    "smallTargets": [
+      {
+        "h": 34,
+        "id": "",
+        "name": "Pular para o conteúdo principal",
+        "tag": "A",
+        "w": 204
+      }
+    ],
+    "styles": [
+      "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap",
+      "http://127.0.0.1:8006/static/css/jurix-figma.css?v=20260930-light-dim-contrast1-controls44",
+      "http://127.0.0.1:8006/static/css/workspace.css?v=20260930-axe-kbd-contrast1",
+      "http://127.0.0.1:8006/static/css/jurix-components.css?v=20260930-focus-outline1",
+      "http://127.0.0.1:8006/static/css/jurix-sidebar.css?v=20261002-session-actions1"
+    ],
+    "width": 320
+  }
+]

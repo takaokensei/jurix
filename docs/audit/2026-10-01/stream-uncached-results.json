@@ -1,0 +1,2973 @@
+{
+  "question": "Explique as medidas da Lei n\u00ba 8204/2026 sobre im\u00f3veis abandonados e a regulamenta\u00e7\u00e3o prevista, indicando os artigos.",
+  "elapsed_seconds": 47.428,
+  "answer_chars": 802,
+  "events": [
+    {
+      "event": "status",
+      "seconds": 0.005,
+      "keys": [
+        "status",
+        "type"
+      ],
+      "status": "queued",
+      "grounded": null
+    },
+    {
+      "event": "status",
+      "seconds": 0.005,
+      "keys": [
+        "status",
+        "type"
+      ],
+      "status": "retrieving",
+      "grounded": null
+    },
+    {
+      "event": "status",
+      "seconds": 0.076,
+      "keys": [
+        "status",
+        "type"
+      ],
+      "status": "reranking",
+      "grounded": null
+    },
+    {
+      "event": "sources",
+      "seconds": 0.128,
+      "keys": [
+        "cached",
+        "confidence",
+        "sources",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "status",
+      "seconds": 0.128,
+      "keys": [
+        "status",
+        "type"
+      ],
+      "status": "generating",
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 5.455,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 5.581,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 5.7,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 5.817,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 5.938,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 6.063,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 6.19,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 6.321,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 6.448,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 6.573,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 6.706,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 6.829,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 6.951,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 7.082,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 7.199,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 7.318,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 7.443,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 7.566,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 7.734,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 7.897,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 8.068,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 8.243,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 8.411,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 8.584,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 8.74,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 8.917,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 9.084,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 9.25,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 9.395,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 9.541,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 9.717,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 9.878,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 10.057,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 10.226,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 10.407,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 10.607,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 10.773,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 10.956,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 11.123,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 11.272,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 11.42,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 11.552,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 11.679,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 11.826,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 11.955,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 12.099,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 12.241,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 12.402,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 12.543,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 12.716,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 12.886,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 13.125,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 13.314,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 13.49,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 13.661,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 13.829,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 13.986,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 14.154,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 14.319,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 14.498,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 14.692,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 14.874,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 15.047,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 15.199,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 15.341,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 15.509,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 15.671,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 15.832,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 15.989,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 16.16,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 16.325,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 16.483,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 16.654,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 16.813,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 16.964,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 17.136,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 17.305,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 17.477,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 17.638,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 17.778,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 17.944,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 18.106,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 18.27,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 18.435,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 18.584,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 18.75,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 18.913,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 19.075,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 19.238,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 19.394,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 19.562,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 19.733,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 19.89,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 20.055,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 20.182,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 20.349,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 20.515,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 20.672,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 20.841,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 20.98,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 21.134,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 21.293,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 21.457,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 21.627,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 21.789,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 21.954,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 22.12,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 22.288,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 22.465,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 22.611,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 22.786,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 22.959,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 23.122,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 23.274,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 23.448,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 23.605,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 23.775,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 23.95,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 24.119,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 24.274,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 24.458,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 24.65,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 24.851,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 25.047,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 25.203,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 25.369,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 25.537,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 25.747,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 25.941,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 26.113,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 26.263,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 26.412,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 26.582,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 26.735,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 26.885,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 27.034,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 27.197,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 27.365,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 27.528,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 27.712,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 27.89,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 28.071,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 28.255,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 28.429,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 28.587,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 28.761,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 28.929,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 29.09,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 29.255,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 29.419,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 29.57,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 29.734,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 29.878,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 30.028,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 30.186,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 30.352,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 30.493,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 30.642,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 30.803,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 30.946,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 31.097,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 31.256,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 31.405,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 31.548,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 31.708,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 31.882,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 32.043,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 32.187,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 32.357,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 32.536,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 32.685,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 32.827,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 32.973,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 33.127,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 33.301,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 33.442,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 33.611,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 33.783,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 33.931,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 34.099,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 34.261,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 34.417,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 34.609,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 34.765,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 34.931,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 35.083,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 35.262,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 35.427,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 35.605,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 35.771,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 35.935,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 36.115,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 36.282,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 36.425,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 36.61,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 36.79,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 36.965,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 37.126,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 37.305,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 37.471,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 37.64,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 37.819,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 37.981,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 38.128,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 38.297,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 38.471,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 38.62,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 38.81,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 39.01,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 39.163,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 39.348,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 39.521,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 39.686,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 39.851,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 40.016,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 40.188,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 40.325,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 40.495,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 40.667,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 40.84,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 40.972,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 41.111,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 41.27,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 41.442,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 41.585,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 41.747,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 41.887,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 42.029,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 42.204,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 42.361,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 42.51,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 42.645,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 42.816,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 42.988,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 43.133,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 43.299,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 43.48,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 43.631,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 43.773,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 43.92,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 44.074,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 44.254,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 44.421,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 44.6,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 44.786,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 44.925,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 45.075,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 45.224,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 45.389,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 45.541,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 45.709,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 45.881,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 46.013,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 46.177,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 46.336,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 46.497,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 46.636,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 46.801,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 46.946,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 47.067,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 47.228,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "status",
+      "seconds": 47.421,
+      "keys": [
+        "status",
+        "type"
+      ],
+      "status": "grounding",
+      "grounded": null
+    },
+    {
+      "event": "status",
+      "seconds": 47.421,
+      "keys": [
+        "status",
+        "type"
+      ],
+      "status": "finalizing",
+      "grounded": null
+    },
+    {
+      "event": "status",
+      "seconds": 47.422,
+      "keys": [
+        "status",
+        "type"
+      ],
+      "status": "completed",
+      "grounded": null
+    },
+    {
+      "event": "done",
+      "seconds": 47.428,
+      "keys": [
+        "answer",
+        "grounded",
+        "session_id",
+        "session_slug",
+        "type"
+      ],
+      "status": null,
+      "grounded": true
+    }
+  ]
+}

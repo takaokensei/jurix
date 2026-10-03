@@ -1,0 +1,14 @@
+{
+  "tasks": 28,
+  "findings": 27,
+  "required_task_fields_missing": [],
+  "findings_without_task": [],
+  "referenced_screenshots_missing": [],
+  "qa_screenshots": 47,
+  "route_patterns": 91,
+  "browser_matrix_cases": 45,
+  "widths": [320, 360, 768, 1280, 1920],
+  "task_paths": "Existing paths verified; rag_answer_pipeline.py and test_generation_cancel.py used by T-026 are created by prerequisite T-022 and T-025 respectively.",
+  "method": "PowerShell regex validation of mandatory fields, finding coverage, Test-Path on screenshots and task file lists; compare git-final.json to git-baseline.json.",
+  "implementation_performed": false
+}

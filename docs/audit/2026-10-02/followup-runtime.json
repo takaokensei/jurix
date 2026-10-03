@@ -1,0 +1,405 @@
+[
+  {
+    "case": "exact_article7",
+    "status": 200,
+    "events": [
+      {
+        "type": "status",
+        "ms": 5,
+        "sources": []
+      },
+      {
+        "type": "status",
+        "ms": 6,
+        "sources": []
+      },
+      {
+        "type": "status",
+        "ms": 25,
+        "sources": []
+      },
+      {
+        "type": "sources",
+        "ms": 34,
+        "sources": [
+          204
+        ]
+      },
+      {
+        "type": "status",
+        "ms": 35,
+        "sources": []
+      },
+      {
+        "type": "status",
+        "ms": 32680,
+        "sources": []
+      },
+      {
+        "type": "status",
+        "ms": 32680,
+        "sources": []
+      },
+      {
+        "type": "chunk",
+        "ms": 32681,
+        "sources": []
+      },
+      {
+        "type": "chunk",
+        "ms": 32682,
+        "sources": []
+      },
+      {
+        "type": "chunk",
+        "ms": 32683,
+        "sources": []
+      },
+      {
+        "type": "status",
+        "ms": 32683,
+        "sources": []
+      },
+      {
+        "type": "title",
+        "ms": 32684,
+        "sources": []
+      },
+      {
+        "type": "status",
+        "ms": 32684,
+        "sources": []
+      },
+      {
+        "type": "done",
+        "ms": 32706,
+        "sources": []
+      }
+    ],
+    "answer": "Não consegui confirmar essa informação com segurança nas normas recuperadas. Se puder, indique o número e o ano da lei ou o artigo que deseja consultar.",
+    "contract": {
+      "schema_version": 1,
+      "request_id": "363a42a4-2fb4-4474-8728-0745e061d58e",
+      "corpus_revision": {
+        "revision": null,
+        "digest": null,
+        "completeness": "unknown"
+      },
+      "question": "O que prevê o artigo 7 da Lei nº 8206/2026?",
+      "retrieval_query": "O que prevê o artigo 7 da Lei nº 8206/2026?",
+      "filters": {
+        "mode": "hybrid",
+        "norma_status": "consolidated",
+        "source_scope": "municipal",
+        "max_sources": 5,
+        "min_similarity": 0.0
+      },
+      "provider": "ollama",
+      "model": "llama3",
+      "prompt_policy_version": "jurix-legal-grounding-v2",
+      "grounding_policy_version": "strict-grounding-v1",
+      "cached": false,
+      "grounded": false,
+      "source_count": 0,
+      "sources_count": 0,
+      "sources": [],
+      "discarded_sources": [],
+      "grounding": {
+        "grounded": false,
+        "score": 0.5,
+        "strict": true,
+        "min_lexical_overlap": 0.45,
+        "claims": [
+          {
+            "claim": "A execução da Lei nº 8206/2026 pode ocorrer com recursos próprios da Secretaria Municipal de Educação, por meio de parcerias com instituições públicas ou privadas, inclusive com empresas terceirizadas que prestam serviço ao município, desde que sem ônus adicional ao erário.",
+            "supported": true,
+            "matches": [
+              {
+                "evidence_index": 0,
+                "dispositivo_id": 204,
+                "lexical_overlap": 0.9583,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              }
+            ],
+            "citation_refs": [
+              "lei 8206/26"
+            ]
+          },
+          {
+            "claim": "**Lei nº 8206/2026, Art. 7º**",
+            "supported": false,
+            "matches": [],
+            "citation_refs": [
+              "lei 8206/26"
+            ]
+          }
+        ],
+        "failed_claims": [
+          "**Lei nº 8206/2026, Art. 7º**"
+        ],
+        "evidence_count": 1,
+        "matched_source_count": 1,
+        "source_diversity_ok": true,
+        "policy": {
+          "policy": "strict-grounding-v2",
+          "accepted": false,
+          "reason": "grounding_failed",
+          "cacheable": false,
+          "contract": "claim-support+numeric+negation+citation+certainty+source-boundary"
+        },
+        "baseline_score": 1.0,
+        "baseline_grounded": true
+      },
+      "claim_report": [
+        {
+          "claim": "A execução da Lei nº 8206/2026 pode ocorrer com recursos próprios da Secretaria Municipal de Educação, por meio de parcerias com instituições públicas ou privadas, inclusive com empresas terceirizadas que prestam serviço ao município, desde que sem ônus adicional ao erário.",
+          "supported": true,
+          "matches": [
+            {
+              "evidence_index": 0,
+              "dispositivo_id": 204,
+              "lexical_overlap": 0.9583,
+              "numeric_ok": true,
+              "negation_ok": true,
+              "citation_ok": true,
+              "certainty_ok": true
+            }
+          ],
+          "citation_refs": [
+            "lei 8206/26"
+          ]
+        },
+        {
+          "claim": "**Lei nº 8206/2026, Art. 7º**",
+          "supported": false,
+          "matches": [],
+          "citation_refs": [
+            "lei 8206/26"
+          ]
+        }
+      ],
+      "timings_ms": {
+        "retrieval": 19,
+        "generation": 32651,
+        "grounding": 4,
+        "total_before_done": 32677
+      },
+      "generation_attempts": [
+        {
+          "attempt": 1,
+          "duration_ms": 21241,
+          "time_to_first_chunk_ms": 8024,
+          "output_characters": 334
+        },
+        {
+          "attempt": 2,
+          "duration_ms": 11410,
+          "time_to_first_chunk_ms": 750,
+          "output_characters": 304
+        }
+      ]
+    }
+  },
+  {
+    "case": "context_article7",
+    "status": 200,
+    "events": [
+      {
+        "type": "status",
+        "ms": 6,
+        "sources": []
+      },
+      {
+        "type": "status",
+        "ms": 8,
+        "sources": []
+      },
+      {
+        "type": "status",
+        "ms": 30,
+        "sources": []
+      },
+      {
+        "type": "sources",
+        "ms": 40,
+        "sources": [
+          204
+        ]
+      },
+      {
+        "type": "status",
+        "ms": 40,
+        "sources": []
+      },
+      {
+        "type": "status",
+        "ms": 21752,
+        "sources": []
+      },
+      {
+        "type": "status",
+        "ms": 21752,
+        "sources": []
+      },
+      {
+        "type": "chunk",
+        "ms": 21753,
+        "sources": []
+      },
+      {
+        "type": "chunk",
+        "ms": 21754,
+        "sources": []
+      },
+      {
+        "type": "chunk",
+        "ms": 21755,
+        "sources": []
+      },
+      {
+        "type": "status",
+        "ms": 21755,
+        "sources": []
+      },
+      {
+        "type": "status",
+        "ms": 21755,
+        "sources": []
+      },
+      {
+        "type": "done",
+        "ms": 21772,
+        "sources": []
+      }
+    ],
+    "answer": "Não consegui confirmar essa informação com segurança nas normas recuperadas. Se puder, indique o número e o ano da lei ou o artigo que deseja consultar.",
+    "contract": {
+      "schema_version": 1,
+      "request_id": "45ef71c1-ab99-4cfc-b7eb-a62173736dfc",
+      "corpus_revision": {
+        "revision": null,
+        "digest": null,
+        "completeness": "unknown"
+      },
+      "question": "E o artigo 7?",
+      "retrieval_query": "E o artigo 7? (contexto normativo: Lei nº 8206/2026)",
+      "filters": {
+        "mode": "hybrid",
+        "norma_status": "consolidated",
+        "source_scope": "municipal",
+        "max_sources": 5,
+        "min_similarity": 0.0
+      },
+      "provider": "ollama",
+      "model": "llama3",
+      "prompt_policy_version": "jurix-legal-grounding-v2",
+      "grounding_policy_version": "strict-grounding-v1",
+      "cached": false,
+      "grounded": false,
+      "source_count": 0,
+      "sources_count": 0,
+      "sources": [],
+      "discarded_sources": [],
+      "grounding": {
+        "grounded": false,
+        "score": 0.5,
+        "strict": true,
+        "min_lexical_overlap": 0.45,
+        "claims": [
+          {
+            "claim": "A execução da Lei nº 8206/2026 pode ocorrer com recursos próprios da Secretaria Municipal de Educação, por meio de parcerias com instituições públicas ou privadas, inclusive com empresas terceirizadas que prestam serviço ao município, desde que sem ônus adicional ao erário.",
+            "supported": true,
+            "matches": [
+              {
+                "evidence_index": 0,
+                "dispositivo_id": 204,
+                "lexical_overlap": 0.9583,
+                "numeric_ok": true,
+                "negation_ok": true,
+                "citation_ok": true,
+                "certainty_ok": true
+              }
+            ],
+            "citation_refs": [
+              "lei 8206/26"
+            ]
+          },
+          {
+            "claim": "**Lei nº 8206/2026, Art. 7º**",
+            "supported": false,
+            "matches": [],
+            "citation_refs": [
+              "lei 8206/26"
+            ]
+          }
+        ],
+        "failed_claims": [
+          "**Lei nº 8206/2026, Art. 7º**"
+        ],
+        "evidence_count": 1,
+        "matched_source_count": 1,
+        "source_diversity_ok": true,
+        "policy": {
+          "policy": "strict-grounding-v2",
+          "accepted": false,
+          "reason": "grounding_failed",
+          "cacheable": false,
+          "contract": "claim-support+numeric+negation+citation+certainty+source-boundary"
+        },
+        "baseline_score": 1.0,
+        "baseline_grounded": true
+      },
+      "claim_report": [
+        {
+          "claim": "A execução da Lei nº 8206/2026 pode ocorrer com recursos próprios da Secretaria Municipal de Educação, por meio de parcerias com instituições públicas ou privadas, inclusive com empresas terceirizadas que prestam serviço ao município, desde que sem ônus adicional ao erário.",
+          "supported": true,
+          "matches": [
+            {
+              "evidence_index": 0,
+              "dispositivo_id": 204,
+              "lexical_overlap": 0.9583,
+              "numeric_ok": true,
+              "negation_ok": true,
+              "citation_ok": true,
+              "certainty_ok": true
+            }
+          ],
+          "citation_refs": [
+            "lei 8206/26"
+          ]
+        },
+        {
+          "claim": "**Lei nº 8206/2026, Art. 7º**",
+          "supported": false,
+          "matches": [],
+          "citation_refs": [
+            "lei 8206/26"
+          ]
+        }
+      ],
+      "timings_ms": {
+        "retrieval": 21,
+        "generation": 21717,
+        "grounding": 4,
+        "total_before_done": 21747
+      },
+      "generation_attempts": [
+        {
+          "attempt": 1,
+          "duration_ms": 11804,
+          "time_to_first_chunk_ms": 1275,
+          "output_characters": 352
+        },
+        {
+          "attempt": 2,
+          "duration_ms": 9913,
+          "time_to_first_chunk_ms": 606,
+          "output_characters": 304
+        }
+      ]
+    }
+  }
+]

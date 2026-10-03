@@ -1,0 +1,83 @@
+{
+  "question": "Quais a\u00e7\u00f5es est\u00e3o previstas na Lei n\u00ba 8204/2026 para im\u00f3veis abandonados? Cite os artigos relevantes.",
+  "elapsed_seconds": 0.057,
+  "answer_chars": 943,
+  "events": [
+    {
+      "event": "status",
+      "seconds": 0.003,
+      "keys": [
+        "status",
+        "type"
+      ],
+      "status": "queued",
+      "grounded": null
+    },
+    {
+      "event": "status",
+      "seconds": 0.004,
+      "keys": [
+        "status",
+        "type"
+      ],
+      "status": "retrieving",
+      "grounded": null
+    },
+    {
+      "event": "status",
+      "seconds": 0.004,
+      "keys": [
+        "status",
+        "type"
+      ],
+      "status": "finalizing",
+      "grounded": null
+    },
+    {
+      "event": "sources",
+      "seconds": 0.045,
+      "keys": [
+        "cached",
+        "confidence",
+        "sources",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "chunk",
+      "seconds": 0.05,
+      "keys": [
+        "chunk",
+        "provisional",
+        "type"
+      ],
+      "status": null,
+      "grounded": null
+    },
+    {
+      "event": "status",
+      "seconds": 0.051,
+      "keys": [
+        "status",
+        "type"
+      ],
+      "status": "completed",
+      "grounded": null
+    },
+    {
+      "event": "done",
+      "seconds": 0.057,
+      "keys": [
+        "answer",
+        "grounded",
+        "session_id",
+        "session_slug",
+        "type"
+      ],
+      "status": null,
+      "grounded": true
+    }
+  ]
+}

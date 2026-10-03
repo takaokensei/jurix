@@ -1,0 +1,128 @@
+{
+  "corpus": {
+    "normas": 10,
+    "dispositivos": 189,
+    "eventos": 0,
+    "eventos_validated": 0,
+    "embedded_devices": 189,
+    "normas_needs_review": 0
+  },
+  "grounding": {
+    "negation_inversion": {
+      "grounded": true,
+      "claims": [
+        {
+          "claim": "A lei exige autoriza\u00e7\u00e3o.",
+          "supported": true,
+          "matches": [
+            {
+              "evidence_index": 0,
+              "dispositivo_id": 1,
+              "lexical_overlap": 1.0,
+              "numeric_ok": true,
+              "negation_ok": true,
+              "citation_ok": true,
+              "certainty_ok": true
+            }
+          ],
+          "citation_refs": []
+        }
+      ]
+    },
+    "condition_omission": {
+      "grounded": true,
+      "claims": [
+        {
+          "claim": "O munic\u00edpio pode conceder o benef\u00edcio.",
+          "supported": true,
+          "matches": [
+            {
+              "evidence_index": 0,
+              "dispositivo_id": 1,
+              "lexical_overlap": 1.0,
+              "numeric_ok": true,
+              "negation_ok": true,
+              "citation_ok": true,
+              "certainty_ok": true
+            }
+          ],
+          "citation_refs": []
+        }
+      ]
+    },
+    "number_relationship_swap": {
+      "grounded": true,
+      "claims": [
+        {
+          "claim": "O prazo \u00e9 de 20 dias e a multa \u00e9 de 10 reais.",
+          "supported": true,
+          "matches": [
+            {
+              "evidence_index": 0,
+              "dispositivo_id": 1,
+              "lexical_overlap": 1.0,
+              "numeric_ok": true,
+              "negation_ok": true,
+              "citation_ok": true,
+              "certainty_ok": true
+            }
+          ],
+          "citation_refs": []
+        }
+      ]
+    }
+  },
+  "truncation": {
+    "context_length": 160,
+    "evidence_length": 1924,
+    "sentinel_in_prompt": false,
+    "sentinel_in_grounding_evidence": true
+  },
+  "exact_article_retrieval": {
+    "question": "O que prev\u00ea o art. 7\u00ba da Lei n\u00ba 8206/2026?",
+    "candidates": [
+      "Art. 8\u00ba",
+      "Art. 7\u00ba"
+    ],
+    "requested_article_exists": true
+  },
+  "followup_rewrite": "O que prev\u00ea o art. 2 da Lei n\u00ba 8205/2026?",
+  "followup_dotted_law": "E o artigo 2?",
+  "question_2001": "rejected",
+  "attachment_full_text_serialization": "preview",
+  "unknown_date_in_explicit_scope": true,
+  "render_queries": {
+    "/normas/": {
+      "status": 200,
+      "queries": 5
+    },
+    "/normas/3/": {
+      "status": 200,
+      "queries": 7
+    },
+    "/normas/3/tree/": {
+      "status": 200,
+      "queries": 2
+    },
+    "/normas/3/compare/": {
+      "status": 200,
+      "queries": 3
+    },
+    "/configuracoes/": {
+      "status": 200,
+      "queries": 1
+    },
+    "/colecoes/": {
+      "status": 200,
+      "queries": 1
+    },
+    "/historico/": {
+      "status": 200,
+      "queries": 0
+    },
+    "/pesquisa/": {
+      "status": 200,
+      "queries": 2
+    }
+  }
+}

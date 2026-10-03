@@ -1,0 +1,208 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@puppeteer/browsers": {
+      "name": "@puppeteer/browsers",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "extract-zip",
+        "proxy-agent"
+      ],
+      "effects": [
+        "puppeteer-core"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@puppeteer/browsers"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer-core",
+        "version": "25.12.0",
+        "isSemVerMajor": true
+      }
+    },
+    "basic-ftp": {
+      "name": "basic-ftp",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1240853,
+          "name": "basic-ftp",
+          "dependency": "basic-ftp",
+          "title": "basic-ftp: Quadratic-time CPU denial of service in Client.list() Unix directory-listing parser (RE_LINE backtracking)",
+          "url": "https://github.com/advisories/GHSA-c475-qrg2-pj4r",
+          "severity": "high",
+          "cwe": [
+            "CWE-1333"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<=6.2.0"
+        }
+      ],
+      "effects": [
+        "get-uri"
+      ],
+      "range": "<=6.2.0",
+      "nodes": [
+        "node_modules/basic-ftp"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer-core",
+        "version": "25.12.0",
+        "isSemVerMajor": true
+      }
+    },
+    "extract-zip": {
+      "name": "extract-zip",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1139346,
+          "name": "extract-zip",
+          "dependency": "extract-zip",
+          "title": "extract-zip unvalidated symlink path traversal",
+          "url": "https://github.com/advisories/GHSA-jmr9-qjv8-65gv",
+          "severity": "high",
+          "cwe": [
+            "CWE-22"
+          ],
+          "cvss": {
+            "score": 8.1,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N"
+          },
+          "range": "<=2.0.1"
+        },
+        {
+          "source": 1193685,
+          "name": "extract-zip",
+          "dependency": "extract-zip",
+          "title": "extract-zip allows arbitrary file writes through symlink archive entries",
+          "url": "https://github.com/advisories/GHSA-7pqw-9j4j-h8q3",
+          "severity": "high",
+          "cwe": [
+            "CWE-22"
+          ],
+          "cvss": {
+            "score": 8.1,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H"
+          },
+          "range": "<=2.0.1"
+        }
+      ],
+      "effects": [
+        "@puppeteer/browsers"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/extract-zip"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer-core",
+        "version": "25.12.0",
+        "isSemVerMajor": true
+      }
+    },
+    "get-uri": {
+      "name": "get-uri",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "basic-ftp"
+      ],
+      "effects": [
+        "pac-proxy-agent"
+      ],
+      "range": ">=5.0.0",
+      "nodes": [
+        "node_modules/get-uri"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer-core",
+        "version": "25.12.0",
+        "isSemVerMajor": true
+      }
+    },
+    "pac-proxy-agent": {
+      "name": "pac-proxy-agent",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "get-uri"
+      ],
+      "effects": [
+        "proxy-agent"
+      ],
+      "range": ">=6.0.0",
+      "nodes": [
+        "node_modules/pac-proxy-agent"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer-core",
+        "version": "25.12.0",
+        "isSemVerMajor": true
+      }
+    },
+    "proxy-agent": {
+      "name": "proxy-agent",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "pac-proxy-agent"
+      ],
+      "effects": [
+        "@puppeteer/browsers"
+      ],
+      "range": ">=6.0.0",
+      "nodes": [
+        "node_modules/proxy-agent"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer-core",
+        "version": "25.12.0",
+        "isSemVerMajor": true
+      }
+    },
+    "puppeteer-core": {
+      "name": "puppeteer-core",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "@puppeteer/browsers"
+      ],
+      "effects": [],
+      "range": "19.8.4 - 24.43.1",
+      "nodes": [
+        "node_modules/puppeteer-core"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer-core",
+        "version": "25.12.0",
+        "isSemVerMajor": true
+      }
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 7,
+      "critical": 0,
+      "total": 7
+    },
+    "dependencies": {
+      "prod": 1,
+      "dev": 113,
+      "optional": 4,
+      "peer": 0,
+      "peerOptional": 0,
+      "total": 113
+    }
+  }
+}
