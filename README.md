@@ -456,7 +456,11 @@ celery -A config worker -l info
 
 <div align="center">
 
-O volume de normas e dispositivos depende do corpus configurado localmente; consulte a tela **Normas** ou a API para os totais atuais.
+**Atualizado em 03/10/2026 — pesquisa, corpus e grafo normativo em desenvolvimento.** A base Django/PostgreSQL/pgvector e os fluxos de pesquisa continuam sendo a fundação do produto. O ciclo atual acrescenta ingestão documental rastreável, revisão humana de metadados e eventos, identidade normativa, versões temporais, relações jurídicas explícitas e expansão experimental do RAG.
+
+O código e os testes técnicos não equivalem a um corpus juridicamente validado. As verificações recentes usaram um banco PostgreSQL/Redis temporário e dados sintéticos; nenhuma importação ou ativação foi feita no banco local de produto. O uso de relações no RAG permanece opt-in e depende de relações revisadas e evidência textual suficiente. Resultados científicos ficam **não avaliados** até existir amostra municipal adjudicada por pessoas — o gate definido no protocolo é de pelo menos 20 normas-piloto humanas.
+
+O volume de normas e dispositivos depende do corpus configurado localmente; consulte a tela **Normas** ou a API para os totais atuais. Veja [`docs/research/NORMATIVE_GRAPH_DELIVERY.md`](docs/research/NORMATIVE_GRAPH_DELIVERY.md) para escopo e [`docs/research/NORMATIVE_GRAPH_OPERATIONS.md`](docs/research/NORMATIVE_GRAPH_OPERATIONS.md) para validação e ativação controlada.
 
 </div>
 

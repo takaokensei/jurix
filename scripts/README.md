@@ -24,6 +24,26 @@ manual. Os gates executados no CI estão listados em
 - `run_rag_contract_benchmark.py` — executa o contrato determinístico local
   para `benchmarks/rag/production/contract-cases.v2.jsonl`. Para casos jurídicos
   com `question`/`expected_citations`, use `run_legal_benchmark_v1.py`.
+- `evaluate_normative_graph.py` — compara predições JSONL com anotações humanas
+  ligadas a hashes; retorna `not_evaluated` enquanto não atingir o mínimo de
+  normas adjudicadas. Exemplo: `python scripts/evaluate_normative_graph.py
+  --gold <gold.jsonl> --predictions <predictions.jsonl>`.
+- `run_normative_rag_experiment.py` — analisa resultados exportados em pares
+  dos braços `baseline`, `graph` e `graph_temporal`; não chama modelo nem mede
+  geração sozinho. Exemplo: `python scripts/run_normative_rag_experiment.py
+  --input <predictions.jsonl> --output <report.json>`.
+- `benchmark_normative_pipeline.py` — microbenchmark sintético, offline e
+  limitado, de BFS/memória; não é medida de consultas SQL, API ou produção.
+  Exemplo: `python scripts/benchmark_normative_pipeline.py`.
+- `inventory_normative_archive.py` — inventaria ZIP de forma somente leitura e
+  escreve manifesto no destino explícito; não extrai documentos. Use apenas
+  em cópia permitida e revise limites/saída antes de executar.
+- `normative_qa.py` — guard de comandos para banco/Redis QA isolados. Configure
+  `JURIX_QA_ONLY=1` e `JURIX_QA_ROOT` temporário; consulte `--help`. Não é
+  mecanismo de configuração de produção.
+- `normative-product-smoke.mjs` fica em `tests/js/`, não neste diretório:
+  browser smoke limitado ao host QA `127.0.0.1:8008`, fixture map sintético e
+  diretório de evidências explícito. Nunca aponte para o banco de produto.
 
 Scripts arquivados não são gates alternativos. A auditoria de segurança
 canônica é `security_audit_v2.py`; não duplicar catálogos gerados para substituir

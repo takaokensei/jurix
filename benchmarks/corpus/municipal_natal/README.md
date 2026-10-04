@@ -17,6 +17,17 @@ benchmarks/corpus/municipal_natal/annotations.jsonl`. O validator diferencia err
 estrutural (exit 2) de gate humano ainda incompleto (exit 3). Um exemplo sintético
 ou uma sugestão de IA não satisfaz a contagem de 20 normas revisadas.
 
+Os contratos incrementais `manifest.v2.schema.json` e
+`annotation.v2.schema.json` preservam identidade por jurisdição/tipo/número/ano,
+hashes e spans de evidência. O protocolo de avaliação está em
+`graph-evaluation-protocol.md`; os schemas `rag-experiment-*.v1.schema.json`
+descrevem entradas e predições para comparação controlada do RAG. Esses arquivos
+definem formatos, não contêm gold humano nem resultados experimentais.
+
+O catálogo de casos difíceis sintéticos do QA é apenas uma lista de cenários para
+testes de regressão. Não é amostra municipal, anotação jurídica, rótulo gold ou
+evidência de precisão/recall.
+
 ## Preparação
 
 ```powershell
