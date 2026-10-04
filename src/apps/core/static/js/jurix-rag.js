@@ -198,11 +198,19 @@
     }
 
     function buildSourceUrl(source = {}) {
-        const pdfUrl = safeHttpUrl(source.pdf_url);
-        const url = pdfUrl || safeHttpUrl(source.sapl_url);
+        const isLocalArchive = source.evidence_scope === 'isolated_qa_archive';
+        const localPdfUrl = isLocalArchive ? safeHttpUrl(source.local_pdf_url) : null;
+        const pdfUrl = isLocalArchive ? localPdfUrl : safeHttpUrl(source.pdf_url);
+        const url = pdfUrl || (isLocalArchive ? null : safeHttpUrl(source.sapl_url));
         if (!url) return null;
 
         const isPdf = Boolean(pdfUrl) || new URL(url).pathname.toLowerCase().endsWith('.pdf');
+        if (source.temporal_version?.version_hash) {
+            // A reconstructed version is not a marked passage in today's PDF.
+            const versionUrl = new URL(url);
+            versionUrl.hash = '';
+            return versionUrl.href;
+        }
         // `text` is only a 200-character display preview from the API and ends in
         // "...". Use the exact full device text whenever it is available.
         const excerpt = String(source.full_text || source.text || '')
@@ -256,6 +264,9 @@
     function getContributionLabel(source, normalized) {
         const explicit = source?.contribution || source?.evidence_role || source?.source_role;
         if (explicit) return String(explicit);
+        if (source?.match_kind === 'normative_graph_relation' || source?.graph_relation) {
+            return source?.graph_relation?.label || 'Relação normativa estruturada';
+        }
         if (normalized < 0.4) return 'Contexto relacionado';
         if (source?.dispositivo_ref || source?.hierarchy) return 'Trecho de dispositivo';
         return 'Fonte normativa relacionada';
@@ -266,8 +277,12 @@
         const citationIndex = Number(safeSource.citation_index) || index + 1;
         const scopeBased = safeSource.retrieval_strategy === 'whole_norma';
         const explicitReference = safeSource.match_kind === 'explicit_reference';
+        // Restored conversations keep graph_relation but may not keep match_kind.
+        const graphRelation = safeSource.match_kind === 'normative_graph_relation'
+            || Boolean(safeSource.graph_relation && typeof safeSource.graph_relation === 'object');
+        const isLocalArchive = safeSource.evidence_scope === 'isolated_qa_archive';
         const { normalized, percent } = getSourceScore(safeSource);
-        const band = scopeBased ? 'coverage' : explicitReference ? 'explicit' : normalized >= 0.8 ? 'high' : normalized >= 0.6 ? 'medium' : 'low';
+        const band = scopeBased ? 'coverage' : explicitReference ? 'explicit' : graphRelation ? 'relation' : isLocalArchive ? 'archive' : normalized >= 0.8 ? 'high' : normalized >= 0.6 ? 'medium' : 'low';
         const relevanceLabel = getRelevanceLabel(normalized);
         const contributionLabel = getContributionLabel(safeSource, normalized);
 
@@ -275,6 +290,7 @@
         const dispositivoRef = safeSource.dispositivo_ref || '';
         const sourceType = safeSource.source_type || safeSource.tipo || safeSource.type || '';
         const status = safeSource.status_label || safeSource.vigencia || safeSource.situacao || '';
+        const temporalVersion = safeSource.temporal_version;
         const snippet = String(safeSource.text || safeSource.full_text || '').trim();
         const linkUrl = buildSourceUrl(safeSource);
         const cardLabel = `Fonte jurídica ${index + 1}: ${normaRef}`;
@@ -283,22 +299,37 @@
             dispositivoRef ? `<span class="jurix-rag-source__meta-item">${escapeHtml(dispositivoRef)}</span>` : '',
             sourceType ? `<span class="jurix-rag-source__meta-item">${escapeHtml(sourceType)}</span>` : '',
             status ? `<span class="jurix-rag-source__meta-item jurix-rag-source__meta-item--status">${escapeHtml(status)}</span>` : '',
+            temporalVersion?.as_of ? `<span class="jurix-rag-source__meta-item">Redação histórica projetada em ${escapeHtml(temporalVersion.as_of)}</span>` : '',
         ].join('');
 
+        const openLabel = isLocalArchive
+            ? 'Abrir PDF do acervo'
+            : linkUrl?.includes('sapl') ? 'Abrir no SAPL' : 'Abrir fonte oficial';
+        const additionalSaplAction = isLocalArchive && safeHttpUrl(safeSource.sapl_url)
+            ? `<a class="jurix-rag-source__open jurix-rag-source__open--secondary" href="${escapeHtml(safeHttpUrl(safeSource.sapl_url))}" target="_blank" rel="noopener noreferrer" title="Abrir o registro correspondente no SAPL">Ver registro SAPL <span aria-hidden="true">↗</span></a>`
+            : '';
         const openAction = linkUrl
             ? `
                 <a
                     class="jurix-rag-source__open"
                     href="${escapeHtml(linkUrl)}"
+                    aria-label="${escapeHtml(`${openLabel}: ${normaRef}${dispositivoRef ? `, ${dispositivoRef}` : ''}`)}"
                     target="_blank"
                     rel="noopener noreferrer"
                 >
-                    ${linkUrl.includes('sapl') ? 'Abrir no SAPL' : 'Abrir fonte oficial'}
+                    ${openLabel}
                     <span aria-hidden="true">↗</span>
                 </a>
-            `
+            ` + additionalSaplAction
             : '';
-        const citationText = `${normaRef}${dispositivoRef ? `, ${dispositivoRef}` : ''}${snippet ? `: “${snippet}”` : ''}`;
+        const citationLabel = safeSource.citation_label || `${normaRef}${dispositivoRef ? `, ${dispositivoRef}` : ''}`;
+        const escapedCitationLabel = citationLabel
+            .replace(/\\/g, '\\\\')
+            .replace(/\[/g, '\\[')
+            .replace(/\]/g, '\\]');
+        const citationText = linkUrl
+            ? `[${escapedCitationLabel}](<${linkUrl}>)${snippet ? ` — “${snippet}”` : ''}`
+            : `${citationLabel}${snippet ? `: “${snippet}”` : ''}`;
 
         return `
             <article
@@ -317,6 +348,14 @@
                         ? `<div class="source-score" aria-label="Dispositivo identificado pela referência normativa">
                             <span class="jurix-rag-score-label">Tipo de identificação</span>
                             <span class="jurix-rag-score-text">Dispositivo identificado</span>
+                        </div>`
+                        : graphRelation
+                        ? `<div class="source-score" aria-label="Relação normativa estruturada; não é uma pontuação de similaridade">
+                            <span class="jurix-rag-score-text">Relação normativa</span>
+                        </div>`
+                        : isLocalArchive
+                        ? `<div class="source-score" aria-label="Trecho recuperado para esta consulta; correspondência não representa validação jurídica e a extração segue pendente de revisão">
+                            <span class="jurix-rag-score-text">Trecho recuperado</span>
                         </div>`
                         : `<div class="source-score" aria-label="${escapeHtml(relevanceLabel)}. Pontuação técnica: ${percent}%">
                             <span class="jurix-rag-score-label">Relevância</span>
@@ -349,7 +388,7 @@
                     ${openAction}
                 </div>
 
-                ${scopeBased || explicitReference ? '' : `<span class="jurix-rag-sr-only">${escapeHtml(relevanceLabel)}. Pontuação técnica de recuperação: ${percent}%.</span>`}
+                ${scopeBased || explicitReference || graphRelation || isLocalArchive ? '' : `<span class="jurix-rag-sr-only">${escapeHtml(relevanceLabel)}. Pontuação técnica de recuperação: ${percent}%.</span>`}
             </article>
         `;
     }
@@ -385,7 +424,10 @@
             const inciso = device.match(/\binciso\s+([IVXLCDM]+)\b/i)?.[1]?.toUpperCase();
             const href = buildSourceUrl(source);
             const identity = normKey(norm.match(normPattern));
-            return identity && href ? { identity, article, inciso, href, label: norm + ', ' + device, device } : null;
+            return identity && href ? {
+                identity, article, inciso, href, label: norm + ', ' + device, device,
+                localArchive: source?.evidence_scope === 'isolated_qa_archive',
+            } : null;
         }).filter(Boolean);
         if (!references.length) return;
 
@@ -451,7 +493,9 @@
                 anchor.href = targetHref;
                 anchor.target = '_blank';
                 anchor.rel = 'noopener noreferrer';
-                anchor.title = 'Abrir ' + targetLabel + ' no SAPL (nova aba)';
+                anchor.title = reference.localArchive
+                    ? 'Abrir ' + targetLabel + ' no PDF do acervo local (nova aba)'
+                    : 'Abrir ' + targetLabel + ' no SAPL (nova aba)';
                 anchor.setAttribute('aria-label', anchor.title);
                 anchor.textContent = token;
                 fragment.append(anchor);
@@ -701,12 +745,31 @@
         const { count, groups, metadata } = context;
         const evidenceLabel = count === 1 ? 'evidência' : 'evidências';
         const normLabel = groups.length === 1 ? 'norma' : 'normas';
-        const validation = metadata.pending ? ' A resposta ainda está sendo validada.' : '';
+        const validation = metadata.cancelled
+            ? ' A geração foi interrompida; estas fontes não foram validadas como suporte da resposta.'
+            : metadata.pending ? ' A resposta ainda está sendo validada.' : '';
         const coverage = metadata.coverage;
-        const scope = coverage && !coverage.complete
-            ? ` Amostra distribuída: ${coverage.selected_articles} de ${coverage.total_articles} artigos.`
+        const selectedArticles = Number(coverage?.selected_articles);
+        const totalArticles = Number(coverage?.total_articles);
+        const hasArticleCoverage = Number.isFinite(selectedArticles)
+            && Number.isFinite(totalArticles)
+            && totalArticles > 0
+            && selectedArticles >= 0
+            && selectedArticles <= totalArticles;
+        const scope = coverage?.complete === false && hasArticleCoverage
+            ? ` Amostra distribuída: ${selectedArticles} de ${totalArticles} artigos.`
             : '';
-        subtitleEl.textContent = `${count} ${evidenceLabel} em ${groups.length} ${normLabel} do corpus municipal de Natal.${scope}${validation}`;
+        const sourceRows = groups.flatMap((group) => group.sources.map(({ source }) => source));
+        const hasSyntheticSource = sourceRows.some((source) => source?.synthetic_fixture === true);
+        const hasQaSource = sourceRows.some((source) => source?.evidence_scope === 'isolated_qa_archive');
+        const isArchiveCorpus = (typeof coverage?.corpus === 'string' && /acervo histórico local/i.test(coverage.corpus))
+            || hasQaSource;
+        const corpusLabel = hasSyntheticSource
+            ? ' de fixtures sintéticas de QA; não representam normas reais nem evidência jurídica'
+            : isArchiveCorpus
+            ? ' do acervo histórico local; a extração e os metadados ainda estão sob revisão'
+            : ' do corpus municipal de Natal';
+        subtitleEl.textContent = `${count} ${evidenceLabel} em ${groups.length} ${normLabel}${corpusLabel}.${scope}${validation}`;
     }
 
     function updateSourcesDrawerMetadata(metadata = {}) {

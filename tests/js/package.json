@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "node run-tests.mjs",
-    "test:responsive": "node responsive-breakpoint-smoke.mjs"
+    "test:responsive": "node responsive-breakpoint-smoke.mjs",
+    "test:product-smoke": "node normative-product-smoke.mjs"
   },
   "devDependencies": {
     "jsdom": "^26.1.0",

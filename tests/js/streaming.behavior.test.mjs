@@ -121,11 +121,14 @@ test('SSE sources render immediately as pending and completion updates the same 
   const completion = chat.slice(doneCallback, doneCallback + 3400);
   assert.match(completion, /doneData\.grounded === true \? finalSources : \[\]/);
   assert.match(completion, /if \(!streamElements\.sourcesContainer\.querySelector\('\.jurix-sources-pill-btn'\)\)/);
+  assert.match(completion, /source\?\.synthetic_fixture === true/);
+  assert.match(completion, /Fixture sintética de QA/);
   assert.match(completion, /updateSourcesDrawerMetadata\?\.\(\{ pending: false \}\)/);
   assert.match(completion, /linkLegalReferences\(streamElements\.messageBody, answerSources\)/);
   assert.match(completion, /if \(accumulatedText !== finalAnswer\)/);
   assert.match(chat, /Never expose unverified model output/);
   const sourcePill = chat.slice(chat.indexOf('function showSourcesGradually'), chat.indexOf('function createSourceCard'));
+  assert.match(sourcePill, /aria-label="Abrir painel com \$\{orderedSources\.length\} \$\{orderedSources\.length === 1 \? 'fonte consultada' : 'fontes consultadas'\}"/);
   assert.match(sourcePill, /Verificação em andamento/);
   assert.doesNotMatch(sourcePill, /topRawScore|Alta correspondência|Boa correspondência|Correspondência parcial/);
 
@@ -135,6 +138,19 @@ test('SSE sources render immediately as pending and completion updates the same 
 
   const rag = read('jurix-rag.js');
   assert.match(rag, /window\.scrollToBottomIfAtBottom\(\)/);
+});
+
+test('cancelling a stream marks already retrieved sources as unvalidated, not answer support', () => {
+  const chat = read('chat.js');
+  const cancelHandler = chat.slice(
+    chat.indexOf("sendButton.addEventListener('click'"),
+    chat.indexOf("chatForm.addEventListener('submit'"),
+  );
+  assert.match(cancelHandler, /Não validadas — geração cancelada/);
+  assert.match(cancelHandler, /pending: false,\s+cancelled: true/);
+  assert.match(cancelHandler, /updateSourcesDrawerMetadata\?\.\(\{\s*pending: false,\s*cancelled: true/);
+  const rag = read('jurix-rag.js');
+  assert.match(rag, /A geração foi interrompida; estas fontes não foram validadas como suporte da resposta/);
 });
 
 test('copy answer falls back when Clipboard API is unavailable and announces success', async () => {
@@ -323,6 +339,136 @@ test('source drawer groups repeated norms without merging article evidence or ci
   dom.window.close();
 });
 
+test('source drawer labels QA evidence and omits article coverage when counts are absent', () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+    pretendToBeVisual: true,
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-rag.js'));
+  w.JurixRagUI.openSourcesDrawer(
+    [{ norma: 'Lei nº 6.021/2009', dispositivo_ref: 'Art. 1º', text: 'Trecho de teste.' }],
+    'Fontes Consultadas',
+    { coverage: { corpus: 'acervo histórico local (lote de 40 documentos)', sources_retrieved: 1 } },
+  );
+
+  const subtitle = w.document.querySelector('#sources-drawer-subtitle')?.textContent || '';
+  assert.match(subtitle, /acervo histórico local/);
+  assert.match(subtitle, /extração e os metadados ainda estão sob revisão/);
+  assert.doesNotMatch(subtitle, /undefined|Amostra distribuída/);
+
+  w.JurixRagUI.closeSourcesDrawer();
+  dom.window.close();
+});
+
+test('source drawer keeps QA warning when restored sources lack stream metadata', () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+    pretendToBeVisual: true,
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-rag.js'));
+  w.JurixRagUI.openSourcesDrawer([
+    {
+      norma: 'Lei nº 6.021/2009',
+      dispositivo_ref: 'Art. 1º',
+      text: 'Trecho de teste.',
+      evidence_scope: 'isolated_qa_archive',
+      source_type: 'Acervo histórico local — extração pendente de revisão',
+    },
+  ]);
+
+  const subtitle = w.document.querySelector('#sources-drawer-subtitle')?.textContent || '';
+  assert.match(subtitle, /acervo histórico local/);
+  assert.match(subtitle, /extração e os metadados ainda estão sob revisão/);
+  assert.doesNotMatch(subtitle, /corpus municipal de Natal/);
+
+  w.JurixRagUI.closeSourcesDrawer();
+  dom.window.close();
+});
+
+test('unreviewed archive evidence does not present retrieval score as legal confidence', () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-rag.js'));
+  const holder = w.document.createElement('div');
+  holder.innerHTML = w.JurixRagUI.renderEvidenceCard({
+    norma: 'Lei Complementar nº 120/2010',
+    dispositivo_ref: 'Art. 17',
+    text: 'Trecho extraído do PDF.',
+    evidence_scope: 'isolated_qa_archive',
+    source_type: 'Acervo histórico local — extração pendente de revisão',
+    similarity_score: 1,
+  });
+
+  assert.match(holder.textContent, /Trecho recuperado/);
+  assert.match(holder.textContent, /extração pendente de revisão/);
+  assert.doesNotMatch(holder.innerHTML, /100%|Alta correspondência|Pontuação técnica/);
+  assert.equal(holder.querySelector('.jurix-rag-score-meter'), null);
+  dom.window.close();
+});
+
+test('source drawer clearly identifies synthetic legal fixtures and never calls them municipal corpus', () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+    pretendToBeVisual: true,
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-rag.js'));
+  w.JurixRagUI.openSourcesDrawer([
+    {
+      norma_ref: 'Lei nº 9.001/2020',
+      dispositivo_ref: 'Art. 1º',
+      text: 'Fixture de teste.',
+      synthetic_fixture: true,
+      source_type: 'Fixture sintética de QA — não representa legislação real',
+    },
+  ]);
+
+  const subtitle = w.document.querySelector('#sources-drawer-subtitle')?.textContent || '';
+  assert.match(subtitle, /fixtures sintéticas de QA/);
+  assert.match(subtitle, /não representam normas reais/);
+  assert.doesNotMatch(subtitle, /corpus municipal de Natal/);
+  const card = w.JurixRagUI.renderEvidenceCard({
+    norma_ref: 'Lei nº 9.001/2020',
+    dispositivo_ref: 'Art. 1º',
+    synthetic_fixture: true,
+    source_type: 'Fixture sintética de QA — não representa legislação real',
+  });
+  assert.match(card, /Fixture sintética de QA/);
+  assert.match(card, /não representa legislação real/);
+
+  w.JurixRagUI.closeSourcesDrawer();
+  dom.window.close();
+});
+
+test('source drawer reports a sampled whole-norm count only when both counts are available', () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+    pretendToBeVisual: true,
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-rag.js'));
+  w.JurixRagUI.openSourcesDrawer(
+    [{ norma: 'Lei nº 9.001/2020', dispositivo_ref: 'Art. 1º', text: 'Trecho de teste.' }],
+    'Fontes Consultadas',
+    { coverage: { complete: false, selected_articles: 3, total_articles: 8 } },
+  );
+
+  const subtitle = w.document.querySelector('#sources-drawer-subtitle')?.textContent || '';
+  assert.match(subtitle, /Amostra distribuída: 3 de 8 artigos/);
+
+  w.JurixRagUI.closeSourcesDrawer();
+  dom.window.close();
+});
+
 test('whole-norm evidence is shown as coverage, not as a fabricated similarity score', () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     url: 'http://localhost/assistente/', runScripts: 'dangerously',
@@ -358,6 +504,28 @@ test('an exact normative reference is labeled without presenting similarity as c
 
   assert.match(holder.textContent, /Dispositivo identificado/);
   assert.doesNotMatch(holder.innerHTML, /jurix-rag-score-meter|correspondência|\b0%/i);
+  w.close();
+});
+
+test('graph-linked evidence is labeled as a normative relation, not low semantic relevance', () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously',
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-rag.js'));
+  const holder = w.document.createElement('div');
+  holder.innerHTML = w.JurixRagUI.renderEvidenceCard({
+    norma_ref: 'Lei nº 9.002/2021',
+    dispositivo_ref: 'Art. 1º',
+    evidence_scope: 'relation_context',
+    similarity_score: 0,
+    graph_relation: { label: 'relação normativa alteracao' },
+  }, 0);
+
+  assert.match(holder.textContent, /Relação normativa/);
+  assert.match(holder.textContent, /relação normativa alteracao/);
+  assert.match(holder.innerHTML, /jurix-rag-source--relation/);
+  assert.doesNotMatch(holder.innerHTML, /jurix-rag-score-meter|Baixa correspondência|Pontuação técnica/);
   w.close();
 });
 

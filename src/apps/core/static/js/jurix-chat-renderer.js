@@ -146,6 +146,14 @@
         const message = button?.closest('.message');
         const body = message?.querySelector('.message-body');
         const sources = button?._citationSources || body?._citationSources || [];
+        const sourceForCitation = (index) => {
+            const exact = sources.find((item) => Number(item?.citation_index) === index);
+            if (exact) return exact;
+            if (!sources.some((item) => Number.isInteger(Number(item?.citation_index)))) {
+                return sources[index - 1] || null;
+            }
+            return null;
+        };
         const links = [];
         body?.querySelectorAll('a.jurix-legal-reference-link').forEach((anchor) => {
             const label = String(anchor.textContent || '').trim();
@@ -159,7 +167,7 @@
         const renderPlainText = (text) => {
             let rendered = text.replace(/\[\[(\d{1,3})\]\]/g, (marker, rawIndex) => {
                 const index = Number(rawIndex);
-                const source = sources.find((item) => Number(item?.citation_index) === index) || sources[index - 1];
+                const source = sourceForCitation(index);
                 const href = window.JurixRagUI?.buildSourceUrl?.(source);
                 if (!source || !href) return marker;
                 const label = source.citation_label || `Fonte ${index}`;

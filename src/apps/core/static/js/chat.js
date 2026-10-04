@@ -151,20 +151,6 @@
         }
     });
 
-    // The hero search form used to run its logic in an inline onsubmit (blocked by CSP without
-    // 'unsafe-inline'); a real submit listener replaces it, same behaviour.
-    const heroSearchForm = document.getElementById('hero-search-form');
-    if (heroSearchForm) {
-        heroSearchForm.addEventListener('submit', (event) => {
-            event.preventDefault();
-            const input = document.getElementById('hero-search-input');
-            const value = input ? input.value.trim() : '';
-            if (value && window.jurixChat && window.jurixChat.askQuestion) {
-                window.jurixChat.askQuestion(value);
-            }
-        });
-    }
-
     // Source cards carry the URL in a data attribute and are opened by ONE delegated listener,
     // instead of an inline onclick that interpolated the URL into JavaScript.
     document.addEventListener('click', (event) => {
@@ -966,15 +952,19 @@
         // Array order is the citation contract: source index N resolves to
         // citation marker [[N]]. Never rank-sort the rendered evidence.
         const orderedSources = [...sources];
+        const hasSyntheticFixture = orderedSources.some((source) => source?.synthetic_fixture === true);
+        const badgeLabel = hasSyntheticFixture
+            ? 'Fixture sintética de QA'
+            : metadata.pending ? 'Verificação em andamento' : 'Fontes associadas à resposta';
 
         const headerHtml = `
             <div class="sources-section">
-                <button type="button" class="jurix-sources-pill-btn" aria-label="Abrir painel com ${orderedSources.length} fontes consultadas">
+                <button type="button" class="jurix-sources-pill-btn" aria-label="Abrir painel com ${orderedSources.length} ${orderedSources.length === 1 ? 'fonte consultada' : 'fontes consultadas'}">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2">
                         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                     </svg>
                     <span>${orderedSources.length} ${orderedSources.length === 1 ? 'fonte consultada' : 'fontes consultadas'}</span>
-                    <span class="jurix-sources-pill-badge">${metadata.pending ? 'Verificação em andamento' : 'Fontes associadas à resposta'}</span>
+                    <span class="jurix-sources-pill-badge">${badgeLabel}</span>
                     <span class="jurix-sources-pill-action">Ver fontes →</span>
                 </button>
             </div>
@@ -1056,15 +1046,17 @@
         const normaRef = source.norma || source.norma_ref || 'Norma';
         const dispositivoRef = source.dispositivo_ref || '';
         const snippet = source.text || source.full_text || '';
+        const isLocalArchive = source.evidence_scope === 'isolated_qa_archive';
         const linkUrl = window.JurixRagUI?.buildSourceUrl?.(source)
-            || safeHttpUrl(source.pdf_url)
-            || safeHttpUrl(source.sapl_url);
+            || (isLocalArchive
+                ? safeHttpUrl(source.local_pdf_url)
+                : safeHttpUrl(source.pdf_url) || safeHttpUrl(source.sapl_url));
 
         const cardClasses = linkUrl ? 'source-card source-card-clickable jurix-rag-source' : 'source-card jurix-rag-source';
         const dataUrlAttr = linkUrl ? `data-url="${escapeAttr(linkUrl)}"` : '';
 
         return `
-            <div class="${cardClasses}" ${dataUrlAttr} title="${linkUrl ? 'Clique para abrir no SAPL/PDF' : ''}">
+            <div class="${cardClasses}" ${dataUrlAttr} title="${linkUrl ? escapeAttr(openTitle) : ''}">
                 <div class="source-card-header">
                     <div class="source-title">${escapeHtml(normaRef)}</div>
                     <div class="source-score">
@@ -1441,6 +1433,22 @@
                         }, { once: true });
                         elements.messageDiv.querySelector('.message-actions')?.append(retry);
                     }
+                    if (elements?.sourcesContainer) {
+                        const pill = elements.sourcesContainer.querySelector('.jurix-sources-pill-btn');
+                        const badge = pill?.querySelector('.jurix-sources-pill-badge');
+                        if (badge) badge.textContent = 'Não validadas — geração cancelada';
+                        const cancelledMetadata = {
+                            ...(elements.sourcesContainer._sourcesMeta || {}),
+                            pending: false,
+                            cancelled: true,
+                        };
+                        elements.sourcesContainer._sourcesMeta = cancelledMetadata;
+                        if (pill) pill._sourcesMeta = cancelledMetadata;
+                        window.JurixRagUI?.updateSourcesDrawerMetadata?.({
+                            pending: false,
+                            cancelled: true,
+                        });
+                    }
                 });
             }
             chatForm.addEventListener('submit', async (e) => {
@@ -1556,6 +1564,9 @@
 
     async function streamAssistantResponse(question, sessionId, onChunk, onSources, onDone, onError, onStatus, retryExistingQuestion = false, retryOfTurnId = null) {
         const controls = window.JurixSearchControls?.getPayload?.() || {};
+        // The corpus mode belongs to the page/request context, not to the
+        // composer element (which can be replaced while a new chat is created).
+        const archiveQaMode = document.body?.dataset.qaArchiveCorpus === 'true';
         return chatAPI.streamAnswer(question, sessionId, {
             onSession(data) {
                 currentSessionId = data.session_id;
@@ -1568,7 +1579,9 @@
                     : data.session_id
                         ? `${config.chatbotUrl}${encodeURIComponent(data.session_id)}/`
                         : null;
-                if (sessionPath) window.history.replaceState({}, '', sessionPath);
+                if (sessionPath) {
+                    window.history.replaceState({}, '', archiveQaMode ? `${sessionPath}?corpus=archive-qa` : sessionPath);
+                }
             },
             onChunk,
             onSources,
@@ -1585,6 +1598,9 @@
             retryExistingQuestion,
             searchOptions: {
                 ...controls,
+                ...(archiveQaMode
+                    ? { qa_archive_corpus: true }
+                    : {}),
                 ...(sessionId == null && pendingSessionClientId
                     ? { client_session_id: pendingSessionClientId }
                     : {}),
@@ -1684,7 +1700,14 @@
                                 }
                                 const pill = streamElements.sourcesContainer.querySelector('.jurix-sources-pill-btn');
                                 const badge = pill?.querySelector('.jurix-sources-pill-badge');
-                                if (badge) badge.textContent = 'Fontes associadas à resposta';
+                                const hasSyntheticFixture = answerSources.some(
+                                    (source) => source?.synthetic_fixture === true
+                                );
+                                if (badge) {
+                                    badge.textContent = hasSyntheticFixture
+                                        ? 'Fixture sintética de QA'
+                                        : 'Fontes associadas à resposta';
+                                }
                                 if (pill) pill._sourcesMeta = { ...(pill._sourcesMeta || {}), pending: false };
                                 streamElements.sourcesContainer._sourcesMeta = { ...(streamElements.sourcesContainer._sourcesMeta || {}), pending: false };
                                 window.JurixRagUI?.updateSourcesDrawerMetadata?.({ pending: false });
@@ -1724,7 +1747,8 @@
                                 }
                                 if (doneData.session_slug) {
                                     const sessionUrl = `${config.chatbotUrl}${doneData.session_slug}/`;
-                                    window.history.replaceState({}, '', sessionUrl);
+                                    const archiveQa = document.body?.dataset.qaArchiveCorpus === 'true';
+                                    window.history.replaceState({}, '', archiveQa ? `${sessionUrl}?corpus=archive-qa` : sessionUrl);
                                 }
                                 if (wasNewSession) animateSessionCreated();
                                 await loadChatSessions();

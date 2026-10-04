@@ -255,6 +255,39 @@ test('source card: a legitimate https URL (with & and query) still opens in a ne
   assert.match(String(opened[0][2] || ''), /noopener/, 'the new tab must not get window.opener');
 });
 
+test('local archive evidence opens its archived PDF and separately exposes an exact SAPL match', async () => {
+  const localPdf = '/normas/documentos/00000000-0000-0000-0000-000000000001/pdf/';
+  const { opened, card } = await renderWithSource(source({
+    evidence_scope: 'isolated_qa_archive',
+    source_type: 'Acervo histórico local — extração pendente de revisão',
+    local_pdf_url: localPdf,
+    pdf_url: 'https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2010/9076/lc_118_10.pdf',
+    sapl_url: 'https://sapl.natal.rn.leg.br/norma/9076/',
+    norma_ref: 'Lei Complementar nº 120/2010',
+    dispositivo_ref: 'Art. 3º',
+    full_text: 'Art. 3º Texto arquivado para consulta.',
+  }));
+  const archiveLink = card.querySelector('.jurix-rag-source__open:not(.jurix-rag-source__open--secondary)');
+  const saplLink = card.querySelector('.jurix-rag-source__open--secondary');
+  assert.equal(archiveLink.href, `http://localhost${localPdf}#:~:text=${encodeURIComponent('Art. 3º Texto arquivado para consulta.')}`);
+  assert.match(archiveLink.textContent, /Abrir PDF do acervo/);
+  assert.equal(saplLink.href, 'https://sapl.natal.rn.leg.br/norma/9076/');
+  card.click();
+  assert.equal(opened[0][0], archiveLink.href);
+  assert.equal(opened[0][1], '_blank');
+});
+
+test('archive citation does not fall back to an unmatched SAPL record or other external PDF', async () => {
+  const { card } = await renderWithSource(source({
+    evidence_scope: 'isolated_qa_archive',
+    local_pdf_url: null,
+    pdf_url: 'https://sapl.natal.rn.leg.br/media/incorrect.pdf',
+    sapl_url: 'https://sapl.natal.rn.leg.br/norma/999/',
+  }));
+  assert.equal(card.querySelector('.jurix-rag-source__open'), null);
+  assert.equal(card.dataset.url, undefined);
+});
+
 test('source card: PDF link opens at the cited excerpt using a safe UTF-8 text fragment', async () => {
   const excerpt = 'Fica instituído, no Calendário Oficial de Eventos do Município de Natal, o Dia da Educação Popular.';
   const url = 'https://sapl.natal.rn.leg.br/media/lei.pdf';
@@ -300,6 +333,27 @@ test('assistant references to a sourced law article link directly to the officia
   assert.equal(links[1].target, '_blank');
   assert.equal(links[1].rel, 'noopener noreferrer');
   assert.ok(links[1].href.includes(encodeURIComponent(sourceText)), 'the article opens its cited excerpt');
+  window.close();
+});
+
+test('assistant references backed by archived PDFs are labelled as local-file links, not SAPL links', async () => {
+  const archived = source({
+    evidence_scope: 'isolated_qa_archive',
+    norma_ref: 'Lei Complementar nº 118/2010',
+    dispositivo_ref: 'Art. 3º',
+    local_pdf_url: '/normas/documentos/00000000-0000-0000-0000-000000000001/pdf/',
+    full_text: 'Art. 3º Texto jurídico arquivado.',
+  });
+  const { window } = await renderWithSource();
+  const body = window.document.createElement('div');
+  body.innerHTML = window.JurixMarkdown.render('Conforme **Lei Complementar nº 118/2010, Art. 3º**, aplica-se a regra.');
+  window.JurixRagUI.linkLegalReferences(body, [archived]);
+  const articleLink = [...body.querySelectorAll('.jurix-legal-reference-link')]
+    .find((link) => link.textContent === 'Art. 3º');
+  assert.ok(articleLink);
+  assert.match(articleLink.title, /PDF do acervo local/);
+  assert.doesNotMatch(articleLink.title, /SAPL/);
+  assert.ok(articleLink.href.startsWith('http://localhost/normas/documentos/'));
   window.close();
 });
 

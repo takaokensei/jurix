@@ -40,6 +40,17 @@
             .replace(/'/g, '&#039;');
     }
 
+    function sourceForCitation(sources, index) {
+        const rows = Array.isArray(sources) ? sources : [];
+        const exact = rows.find((item) => Number(item?.citation_index) === index);
+        if (exact) return exact;
+        // Legacy history without indices relies on the original array-order contract.
+        if (!rows.some((item) => Number.isInteger(Number(item?.citation_index)))) {
+            return rows[index - 1] || null;
+        }
+        return null;
+    }
+
     function normalizeLists(markdown) {
         return String(markdown || '')
             .replace(/([•\-])\s+([^•\n]+?);\s+([•\-])/g, '$1 $2\n$3')
@@ -71,7 +82,8 @@
             return line.replace(/\[\[(\d{1,3})\]\]/g, (full, sourceIndex) => {
                 const index = Number.parseInt(sourceIndex, 10);
                 if (!index || index > 999) return full;
-                const source = sources.find((item) => Number(item?.citation_index) === index) || sources[index - 1];
+                const source = sourceForCitation(sources, index);
+                if (!source) return full;
                 const label = source?.citation_label || `Fonte ${index}`;
                 const citationId = source?.citation_id ? ` data-citation-id="${escapeHtml(source.citation_id)}"` : '';
                 return `<a class="jurix-citation" href="#jurix-evidence-${index}" data-source-index="${index}"${citationId} aria-label="Ver ${escapeHtml(label)}">${escapeHtml(label)}</a>`;

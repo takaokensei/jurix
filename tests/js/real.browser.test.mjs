@@ -1728,6 +1728,20 @@ test('real browser: ungrounded stream sources stay hidden after anonymous histor
     await page.type('#hero-search-input', 'Pergunta de teste sem evidência');
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => document.querySelector('.message-assistant')?.textContent.includes('Resposta sem fundamentação suficiente.'));
+    await page.waitForFunction(() => {
+      try {
+        const history = JSON.parse(localStorage.getItem('jurix:anonymous-history:v2') || '{}');
+        const messages = history.sessions?.[0]?.messages || [];
+        const last = messages[messages.length - 1];
+        return last?.grounded === false
+          && last?.content === 'Resposta sem fundamentação suficiente.'
+          && Array.isArray(last?.sources)
+          && last.sources.length === 0;
+      } catch { return false; }
+    });
+    // The anonymous-history overlay persists the terminal answer before the
+    // chat's post-done UI callback removes the pending evidence affordance.
+    await page.waitForFunction(() => document.querySelectorAll('.jurix-sources-pill-btn').length === 0);
     assert.equal(await page.$$('.jurix-sources-pill-btn').then((items) => items.length), 0);
 
     await page.reload({ waitUntil: 'domcontentloaded' });

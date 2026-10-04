@@ -68,6 +68,153 @@
     padding-top: 24px;
 }
 
+.jurix-archive-candidates {
+    padding: 22px;
+    border: 1px solid var(--norma-border-strong);
+    border-radius: var(--norma-radius);
+    background: var(--norma-panel-soft);
+}
+
+.jurix-archive-candidates-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.jurix-archive-candidates-heading h2 {
+    margin: 0 0 8px;
+    color: var(--norma-text);
+    font-size: clamp(20px, 2vw, 26px);
+    line-height: 1.25;
+}
+
+.jurix-archive-candidates-heading p {
+    max-width: 760px;
+    margin: 0;
+    color: var(--norma-text-soft);
+    line-height: 1.6;
+}
+
+.jurix-archive-candidates-count,
+.jurix-archive-candidate-status {
+    flex: 0 0 auto;
+    padding: 5px 9px;
+    border: 1px solid var(--norma-border-strong);
+    border-radius: 999px;
+    color: var(--norma-accent);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.jurix-archive-candidates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
+    gap: 12px;
+}
+
+.jurix-archive-candidate {
+    min-width: 0;
+    padding: 15px;
+    border: 1px solid var(--norma-border);
+    border-radius: 13px;
+    background: var(--norma-panel);
+}
+
+.jurix-archive-candidate-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--norma-text-muted);
+    font-size: 11px;
+}
+
+.jurix-archive-candidate h3 {
+    margin: 13px 0 6px;
+    color: var(--norma-text);
+    font-size: 16px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.jurix-archive-candidate-filename,
+.jurix-archive-candidate-extraction,
+.jurix-archive-candidate-note {
+    margin: 0;
+    color: var(--norma-text-muted);
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.jurix-archive-candidate-note {
+    margin-top: 10px;
+    color: var(--norma-text-soft);
+}
+
+.jurix-archive-candidate-filters {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.5fr) repeat(3, minmax(150px, 1fr));
+    align-items: end;
+    gap: 12px;
+    margin: 20px 0 8px;
+}
+
+.jurix-archive-candidate-search-field,
+.jurix-archive-candidate-select-field { display: grid; gap: 6px; }
+
+.jurix-archive-candidate-filters label {
+    color: var(--norma-text-muted);
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.jurix-archive-candidate-filters input,
+.jurix-archive-candidate-filters select {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--norma-border);
+    border-radius: 10px;
+    background: var(--norma-panel);
+    color: var(--norma-text);
+    font: inherit;
+}
+
+.jurix-archive-candidate-filters input::placeholder { color: var(--norma-text-muted); }
+
+.jurix-archive-candidate-filters input:focus-visible,
+.jurix-archive-candidate-filters select:focus-visible {
+    outline: 2px solid var(--norma-accent);
+    outline-offset: 2px;
+}
+
+.jurix-archive-candidate-filter-summary {
+    min-height: 1.5em;
+    margin: 0 0 12px;
+    color: var(--norma-text-muted);
+    font-size: 12px;
+}
+
+.jurix-archive-candidates-no-results {
+    margin: 12px 0 0;
+    padding: 16px;
+    border: 1px dashed var(--norma-border-strong);
+    border-radius: 12px;
+    color: var(--norma-text-soft);
+    text-align: center;
+}
+
+.jurix-archive-candidate[hidden] { display: none !important; }
+
+@media (max-width: 560px) {
+    .jurix-archive-candidates { padding: 16px; }
+    .jurix-archive-candidates-heading { flex-direction: column; }
+    .jurix-archive-candidate-filters { grid-template-columns: 1fr; }
+}
+
 .jurix-norma-hero {
     display: grid;
     grid-template-columns: minmax(0, 1fr);

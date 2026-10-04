@@ -42,6 +42,33 @@
     return new Date().toISOString();
   }
 
+  function pickFields(value, fields) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    return Object.fromEntries(fields
+      .filter(key => Object.prototype.hasOwnProperty.call(value, key))
+      .map(key => [key, value[key]]));
+  }
+
+  function exportSource(source, allowedFields) {
+    const result = Object.fromEntries(allowedFields
+      .filter(key => Object.prototype.hasOwnProperty.call(source || {}, key)
+        && !['temporal_version', 'graph_relation'].includes(key))
+      .map(key => [key, source[key]]));
+    const temporal = pickFields(source?.temporal_version, [
+      'as_of', 'legal_status', 'version_hash', 'policy', 'input_hash',
+      'source_document_id', 'effective_on',
+    ]);
+    const relation = pickFields(source?.graph_relation, [
+      'event_id', 'intent', 'role', 'label', 'review_status', 'effective_status',
+      'effective_on', 'publication_on', 'resolution', 'action', 'quote',
+      'source_norma_id', 'target_norma_id', 'source_device_key', 'target_device_key',
+      'official_url',
+    ]);
+    if (temporal) result.temporal_version = temporal;
+    if (relation) result.graph_relation = relation;
+    return result;
+  }
+
   function newId() {
     if (window.crypto?.randomUUID) return `local-${window.crypto.randomUUID()}`;
     return `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -252,10 +279,12 @@
 
   function exportData() {
     const allowedSourceFields = [
-      'id', 'norma_ref', 'dispositivo_ref', 'text', 'full_text', 'sapl_url', 'pdf_url',
+      'id', 'source_id', 'norma_ref', 'dispositivo_ref', 'text', 'full_text', 'sapl_url', 'pdf_url', 'local_pdf_url',
       'source_url', 'similarity_score', 'contribution', 'source_type', 'data_publicacao',
       'data_vigencia', 'citation_id', 'citation_index', 'citation_label',
-      'retrieval_strategy', 'evidence_scope', 'coverage',
+      'retrieval_strategy', 'evidence_scope', 'coverage', 'dispositivo_structural_key',
+      'synthetic_fixture',
+      'temporal_version', 'graph_relation',
     ];
     const state = prune(read());
     return {
@@ -273,9 +302,7 @@
           grounded: message.role === 'assistant' && message.grounded === true,
           sources: message.role === 'assistant' && message.grounded === true
             ? (Array.isArray(message.sources) ? message.sources : []).slice(0, 20).map(source =>
-              Object.fromEntries(allowedSourceFields
-                .filter(key => Object.prototype.hasOwnProperty.call(source || {}, key))
-                .map(key => [key, source[key]])))
+              exportSource(source, allowedSourceFields))
             : [],
         })),
       })),

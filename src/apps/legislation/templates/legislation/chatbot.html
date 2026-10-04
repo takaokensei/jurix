@@ -30,6 +30,7 @@
       data-chatbot-url="{% url 'workspace:assistant' %}"
       data-norma-list-url="{% url 'legislation:norma_list' %}"
       data-question-max-length="{{ max_question_length }}"
+      data-qa-archive-corpus="{{ qa_archive_mode|yesno:'true,false' }}"
       data-logo-icon-url="{% static 'img/logo-icon.svg' %}?v=20260930-quill1"
       data-user-name="{{ request.user.first_name|default:request.user.username|title }}">
     <!-- Skip link for keyboard accessibility -->
@@ -52,6 +53,14 @@
                     <line x1="12" y1="8" x2="12.01" y2="8"></line>
                 </svg>
                 <span><strong>Modo Consulta Pública:</strong> As pesquisas realizadas serão mantidas temporariamente durante sua sessão.</span>
+            </div>
+            {% endif %}
+            {% if qa_archive_mode %}
+            <div class="anonymous-banner jurix-anonymous-banner" role="status">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 3 2.8 19h18.4L12 3Z"></path><path d="M12 9v4m0 3h.01"></path>
+                </svg>
+                <span><strong>Acervo histórico local:</strong> respostas usam extrações dos PDFs arquivados. Metadados e segmentação estão sob revisão; abra o PDF citado para conferir o texto original.</span>
             </div>
             {% endif %}
             
@@ -182,7 +191,7 @@
             
             <!-- Floating bottom input bar (active during ongoing chat conversation) -->
             <div class="figma-floating-input-bar jurix-floating-input-initial" id="conversation-input-bar">
-                <form id="chat-form" class="figma-smart-search-panel" role="search" aria-label="Formulário de pesquisa de legislação">
+                <form id="chat-form" class="figma-smart-search-panel" role="search" aria-label="Formulário de pesquisa de legislação" data-qa-archive-mode="{{ qa_archive_mode|yesno:'true,false' }}">
                     <div class="figma-input-line">
                         <div class="figma-input-left">
                             <textarea 
@@ -289,7 +298,7 @@
     <!-- Jurix Configuration: read from data-* attributes on <body> by config.js (CSP: no inline script) -->
     <script src="{% static 'js/config.js' %}"></script>
     <script src="{% static 'js/jurix-markdown.js' %}?v=20261001-structured-citations1"></script>
-    <script src="{% static 'js/jurix-rag.js' %}?v=20261001-structured-citations1"></script>
+    <script src="{% static 'js/jurix-rag.js' %}?v=20261004-archive-pdf-citations1"></script>
     <script src="{% static 'js/jurix-anonymous-history.js' %}"></script>
     <script src="{% static 'js/jurix-chat-api.js' %}?v=20261002-session-actions1"></script>
     <script src="{% static 'js/jurix-api-reliability-overlay.js' %}?v=20261001-structured-citations1"></script>
@@ -297,7 +306,7 @@
     <script src="{% static 'js/jurix-chat-state.js' %}"></script>
     <script src="{% static 'js/jurix-chat-renderer.js' %}?v=20261001-structured-citations1"></script>
     <script src="{% static 'js/jurix-dynamic-suggestions.js' %}"></script>
-    <script src="{% static 'js/chat.js' %}?v=20261002-grounded-stream1"></script>
+    <script src="{% static 'js/chat.js' %}?v=20261004-source-label-singular1"></script>
     <script src="{% static 'js/jurix-chat-controller.js' %}"></script>
     <script src="{% static 'js/command_palette.js' %}?v=20260930-query-race1-sidebar2"></script>
     <script src="{% static 'js/jurix-sidebar.js' %}?v=20261002-session-actions1"></script>

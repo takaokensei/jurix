@@ -181,17 +181,22 @@ test('restored conversation reveals the floating composer after the welcome stat
   assert.equal(composer.classList.contains('is-hidden'), false);
 });
 
-test('the hero search form still submits the question (no inline onsubmit)', async () => {
+test('the hero search form submits once and leaves the composer empty (no inline onsubmit)', async () => {
   const window = await bootUnderCsp();
-  const asked = [];
-  window.jurixChat.askQuestion = (q) => asked.push(q);
+  const heroInput = window.document.getElementById('hero-search-input');
+  const composer = window.document.getElementById('question-textarea');
+  const form = window.document.getElementById('chat-form');
+  const submittedQuestions = [];
+  form.addEventListener('submit', () => submittedQuestions.push(composer.value), { capture: true });
 
-  window.document.getElementById('hero-search-input').value = '  Qual o prazo do alvará?  ';
+  heroInput.value = '  Qual o prazo do alvará?  ';
   window.document.getElementById('hero-search-form')
     .dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
   await tick();
 
-  assert.deepEqual(asked, ['Qual o prazo do alvará?']);
+  assert.deepEqual(submittedQuestions, ['Qual o prazo do alvará?']);
+  assert.equal(heroInput.value, '');
+  assert.equal(composer.value, '');
 });
 
 test('every suggestion card and recent-search row still asks its question on click', async () => {
