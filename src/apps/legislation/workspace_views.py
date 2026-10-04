@@ -19,7 +19,7 @@ from src.processing.normative_reference import (
 )
 from src.processing.rag_service import RAGService
 
-from .models import ChatMessage, ChatSession, Collection, Dispositivo, Norma
+from .models import ChatMessage, ChatSession, Collection, Dispositivo, Norma, NormaTopic, Topic
 
 logger = logging.getLogger(__name__)
 
@@ -265,6 +265,7 @@ def legal_search_view(request):
     norma_type = request.GET.get("tipo", "").strip()
     year_raw = request.GET.get("ano", "").strip()
     min_similarity_raw = request.GET.get("similaridade", "0.0").strip()
+    topic_code = request.GET.get("tema", "").strip()[:64]
 
     try:
         year = int(year_raw) if year_raw else None
@@ -279,6 +280,11 @@ def legal_search_view(request):
     results = []
     search_mode = "semantic"
     search_error = ""
+    empty_state_title = "Nenhuma correspondência semântica encontrada."
+    empty_state_description = (
+        "Tente um termo mais amplo ou reduza o limiar. Para localizar uma norma específica "
+        "por número ou ementa, use a busca direta no acervo."
+    )
 
     if len(query) > 200:
         search_error = "Busca muito longa (máximo de 200 caracteres)."
@@ -295,6 +301,11 @@ def legal_search_view(request):
                 search_error = (
                     "Referência normativa exata não localizada no acervo municipal. "
                     "Confira o tipo, o número e o ano informados."
+                )
+                empty_state_title = "Norma não encontrada no acervo"
+                empty_state_description = (
+                    "Não há uma norma com essa referência exata no acervo municipal. "
+                    "Confira o tipo, o número e o ano ou pesquise por um assunto relacionado."
                 )
         else:
             try:
@@ -321,6 +332,7 @@ def legal_search_view(request):
                     for result in results
                 ]
                 results = _deduplicate_search_results(results)
+
             except Exception:
                 logger.warning(
                     "Semantic legal search failed; falling back to lexical search",
@@ -358,6 +370,19 @@ def legal_search_view(request):
                     )
                 results = _deduplicate_search_results(results)
 
+    topic_options = list(Topic.objects.filter(active=True).order_by("label").values("code", "label"))
+    if topic_code:
+        confirmed_norma_ids = set(NormaTopic.objects.filter(
+            topic__code=topic_code,
+            topic__active=True,
+            status=NormaTopic.Status.CONFIRMED,
+        ).values_list("norma_id", flat=True))
+        results = [
+            result for result in results
+            if (norma := (result.get("norma") or getattr(result.get("dispositivo"), "norma", None)))
+            and norma.pk in confirmed_norma_ids
+        ]
+
     types = (
         Norma.objects.filter(status="consolidated")
         .values_list("tipo", flat=True)
@@ -393,10 +418,14 @@ def legal_search_view(request):
             "norma_type": norma_type,
             "year": year,
             "min_similarity": min_similarity,
+            "topic_code": topic_code,
+            "topics": topic_options,
             "results": results,
             "result_count": len(results),
             "search_mode": search_mode,
             "search_error": search_error,
+            "empty_state_title": empty_state_title,
+            "empty_state_description": empty_state_description,
             "types": type_options,
             "years": years,
             "active_nav": "search",

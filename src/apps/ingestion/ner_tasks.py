@@ -33,6 +33,79 @@ from .task_support import _invalidate_rag_cache, _mark_norma_failed, _resolve_no
 logger = logging.getLogger(__name__)
 
 
+def _normalize_with_offsets(value: str) -> tuple[str, list[int]]:
+    """Collapse whitespace for quote matching while retaining source indexes."""
+    normalized = []
+    offsets = []
+    index = 0
+    while index < len(value):
+        if value[index].isspace():
+            end = index + 1
+            while end < len(value) and value[end].isspace():
+                end += 1
+            normalized.append(" ")
+            offsets.append(index)
+            index = end
+        else:
+            normalized.append(value[index])
+            offsets.append(index)
+            index += 1
+    return "".join(normalized), offsets
+
+
+def _map_event_evidence(dispositivo: Dispositivo, evidence: dict) -> dict:
+    result = {"schema_version": 2, "device_evidence": evidence}
+    norma = dispositivo.norma
+    document = getattr(norma, "documento_base", None)
+    extraction = getattr(document, "accepted_extraction", None) if document else None
+    if not document or not extraction:
+        result["source_status"] = "legacy_source_unlinked"
+        return result
+
+    result.update({
+        "document_public_id": str(document.public_id),
+        "document_key": document.document_key,
+        "content_sha256": document.content_sha256,
+        "extraction_sha256": extraction.extraction_sha256,
+        "structural_key": dispositivo.structural_key,
+    })
+    segment = extraction.dispositivos_documentais.filter(
+        structural_key=dispositivo.structural_key
+    ).first()
+    if not segment:
+        result["source_status"] = "document_device_not_found"
+        return result
+    source_text = segment.texto
+    normalized_source, source_offsets = _normalize_with_offsets(source_text)
+    normalized_quote, _ = _normalize_with_offsets(str(evidence.get("quote") or ""))
+    positions = []
+    cursor = 0
+    while normalized_quote and (found := normalized_source.find(normalized_quote, cursor)) >= 0:
+        positions.append(found)
+        cursor = found + 1
+    if len(positions) != 1:
+        result["source_status"] = "quote_not_unique_or_not_found"
+        return result
+    normalized_start = positions[0]
+    normalized_end = normalized_start + len(normalized_quote) - 1
+    local_start = source_offsets[normalized_start]
+    local_end = source_offsets[normalized_end] + 1
+    start = segment.start_offset + local_start
+    end = segment.start_offset + local_end
+    result.update({
+        "source_status": "verified_span",
+        "source_start_offset": start,
+        "source_end_offset": end,
+        "source_quote": extraction.legal_text[start:end],
+        "page": next(
+            (span.get("page") for span in extraction.page_map_json
+             if span.get("start", 0) <= start < span.get("end", 0)),
+            None,
+        ),
+    })
+    return result
+
+
 def _persist_embedding_if_current(
     *, dispositivo_id: int, source_revision: str, model: str, embedding: list[float]
 ) -> bool:
@@ -150,11 +223,12 @@ def extract_entities_task(self, norma_id: int) -> dict[str, Any]:
                     if event_data.get("norma_referenciada"):
                         norma_info = event_data["norma_referenciada"]
                         # Attempt to find the referenced norma
-                        norma_alvo = _resolve_norma_reference(
-                            tipo=norma_info.get("tipo", ""),
-                            numero=norma_info.get("numero", ""),
-                            ano=norma_info.get("ano", ""),
-                        )
+                        if event_data.get("target_resolution") != "ambiguous_multiple_normas":
+                            norma_alvo = _resolve_norma_reference(
+                                tipo=norma_info.get("tipo", ""),
+                                numero=norma_info.get("numero", ""),
+                                ano=norma_info.get("ano", ""),
+                            )
 
                     # Handle self-references (desta Lei)
                     if event_data["referencia_tipo"] == "self_reference":
@@ -171,6 +245,20 @@ def extract_entities_task(self, norma_id: int) -> dict[str, Any]:
                         referencia_tipo=event_data["referencia_tipo"][:50],
                         referencia_numero=event_data["referencia_numero"][:50],
                     )
+                    evidence = event_data.get("evidence") or {}
+                    evento.evidence_json = _map_event_evidence(dispositivo, evidence)
+                    reference = event_data.get("norma_referenciada") or {}
+                    evento.target_reference_json = {
+                        "schema_version": 1,
+                        "kind": "self_reference" if event_data["referencia_tipo"] == "self_reference" else "normative_reference",
+                        "type_candidate": reference.get("tipo"),
+                        "number_candidate": reference.get("numero"),
+                        "year_candidate": reference.get("ano") or None,
+                        "structural_type": event_data["referencia_tipo"],
+                        "structural_number": event_data["referencia_numero"],
+                        "resolution_status": event_data.get("target_resolution", "unresolved"),
+                        "jurisdiction_status": "unknown",
+                    }
                     occurrence_key = (
                         dispositivo.pk,
                         evento.acao,
@@ -191,6 +279,7 @@ def extract_entities_task(self, norma_id: int) -> dict[str, Any]:
                         reference_number=evento.referencia_numero,
                         target_norma_id=norma_alvo.pk if norma_alvo else None,
                         occurrence=occurrence,
+                        evidence=evento.evidence_json,
                     )
                     evento.revision_fingerprint = fingerprint
                     evento.provenance_json = provenance
@@ -230,6 +319,7 @@ def extract_entities_task(self, norma_id: int) -> dict[str, Any]:
                         reference_number=existing.referencia_numero,
                         target_norma_id=existing.norma_alvo_id,
                         occurrence=occurrence,
+                        evidence=existing.evidence_json,
                     )
                     existing.revision_fingerprint = fingerprint
                     existing.provenance_json = provenance

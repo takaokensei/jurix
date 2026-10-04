@@ -43,13 +43,28 @@ _PUBLICATION_DATE_RE = re.compile(
     re.IGNORECASE,
 )
 _EDITORIAL_MARKERS_RE = re.compile(
-    r"\b(?:Sala\s+das\s+Sess(?:ões|oes)|Publicad[oa]\s+no\s+Di[aá]rio\s+Oficial|Autoria\s*:|ESTADO\s+DO\s+RIO\s+GRANDE\s+DO\s+NORTE)\b",
+    r"\b(?:Sala\s+das\s+Sess(?:ões|oes)|Publicad[oa]\s+no\s+Di[aá]rio\s+Oficial|Autoria\s*:|"
+    r"ESTADO\s+DO\s+RIO\s+GRANDE\s+DO\s+NORTE|"
+    r"Pal[aá]cio\s+Felipe\s+Camar[aã]o\s*,?\s+em\s+Natal\s*,?\s+"
+    r"\d{1,2}\s+de\s+[A-Za-zÀ-ÿ]+\s+de\s+\d{4})\b",
     re.IGNORECASE,
 )
 _PUBLICATION_EFFECT_RE = re.compile(
     r"\bentr(?:a|ará)\s+em\s+vigor\s+na\s+data\s+de\s+(?:sua\s+)?publica[çc][ãa]o\b",
     re.IGNORECASE,
 )
+_NORMATIVE_APPENDIX_RE = re.compile(
+    r"^[ \t]*(?:ANEXO(?:[ \t]+[IVXLCDM0-9]+)?|ADENDO(?:[ \t]+[IVXLCDM0-9]+)?|"
+    r"AP[EÊ]NDICE(?:[ \t]+[IVXLCDM0-9]+)?|QUADRO(?:[ \t]+[IVXLCDM0-9]+)?|"
+    r"TABELA(?:[ \t]+[IVXLCDM0-9]+)?)(?:[ \t]*[-–—:].*)?$",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+
+def find_normative_appendix_start(text: str, *, after: int = 0) -> int | None:
+    """Return the offset of the first standalone normative appendix heading."""
+    match = _NORMATIVE_APPENDIX_RE.search(text or "", max(0, after))
+    return match.start() if match else None
 
 
 def extract_publication_metadata(text: str) -> dict[str, Any]:
@@ -72,28 +87,70 @@ def extract_publication_metadata(text: str) -> dict[str, Any]:
     }
 
 
-def strip_closing_editorial_metadata(text: str) -> str:
-    """Remove a publication/signature colophon that OCR appended to the last article."""
-    candidates = list(_EDITORIAL_MARKERS_RE.finditer(text or ""))
+def classify_closing_segments(text: str) -> list[dict[str, Any]]:
+    """Classify a confirmed final colophon separately from any normative annex.
+
+    Returned offsets address the exact input text. A session phrase without a
+    corroborating publication/signature marker remains legal text.
+    """
+    source = text or ""
+    candidates = list(_EDITORIAL_MARKERS_RE.finditer(source))
     if not candidates:
-        return text
-    last_article = list(LegalTextParser.MARKER_PATTERNS["artigo"].finditer(text))
-    if not last_article:
-        return text
+        return [{"kind": "legal_body", "start": 0, "end": len(source), "text": source}]
+    articles = list(LegalTextParser.MARKER_PATTERNS["artigo"].finditer(source))
     for marker in candidates:
-        suffix = text[marker.start() :]
-        # A session phrase alone can occur in substantive text; require a
-        # corroborating signature/publication marker in the same closing tail.
+        articles_before_marker = [article for article in articles if article.start() < marker.start()]
+        if not articles_before_marker:
+            continue
+        suffix = source[marker.start() :]
         corroborated = bool(
             re.search(
-                r"\b(?:Publicad[oa]\s+no\s+Di[aá]rio\s+Oficial|Autoria\s*:|Presidente|Primeiro\s+Secret[aá]rio|Segunda\s+Secret[aá]ria)\b",
+                r"\b(?:Publicad[oa]\s+no\s+Di[aá]rio\s+Oficial|Autoria\s*:|Presidente|"
+                r"Primeiro\s+Secret[aá]rio|Segunda\s+Secret[aá]ria|Prefeit[oa])\b",
                 suffix,
                 re.IGNORECASE,
             )
         )
-        if marker.start() > last_article[-1].start() and corroborated:
-            return text[: marker.start()].rstrip()
-    return text
+        if not corroborated:
+            continue
+        appendix = _NORMATIVE_APPENDIX_RE.search(suffix)
+        if not appendix and any(article.start() > marker.start() for article in articles):
+            continue
+        appendix_start = marker.start() + appendix.start() if appendix else None
+        if appendix_start is None:
+            return [
+                {"kind": "legal_body", "start": 0, "end": marker.start(), "text": source[: marker.start()]},
+                {"kind": "editorial_colophon", "start": marker.start(), "end": len(source), "text": suffix},
+            ]
+        return [
+            {"kind": "legal_body", "start": 0, "end": marker.start(), "text": source[: marker.start()]},
+            {
+                "kind": "editorial_colophon",
+                "start": marker.start(),
+                "end": appendix_start,
+                "text": source[marker.start() : appendix_start],
+            },
+            {
+                "kind": "normative_appendix",
+                "start": appendix_start,
+                "end": len(source),
+                "text": source[appendix_start:],
+            },
+        ]
+    return [{"kind": "legal_body", "start": 0, "end": len(source), "text": source}]
+
+
+def strip_closing_editorial_metadata(text: str) -> str:
+    """Mask a final colophon without changing offsets or discarding an annex."""
+    segments = classify_closing_segments(text)
+    chars = list(text or "")
+    for segment in segments:
+        if segment["kind"] != "editorial_colophon":
+            continue
+        for index in range(segment["start"], segment["end"]):
+            if chars[index] not in "\r\n":
+                chars[index] = " "
+    return "".join(chars)
 
 
 class LegalTextParser:

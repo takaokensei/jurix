@@ -1,0 +1,16 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block after_field_sets %}
+  {{ block.super }}
+  {% if original and has_change_permission %}
+    <fieldset class="module aligned">
+      <h2>Revisão humana</h2>
+      <div class="form-row">
+        <p>Estado: <strong>{{ review_status }}</strong></p>
+        <p>A confirmação revisa somente a relação com a norma/dispositivo. Não confirma data de efeito jurídico.</p>
+        <p><a class="button" href="{% url 'admin:legislation_eventoalteracao_review' original.pk %}">Revisar relação e evidência</a></p>
+      </div>
+    </fieldset>
+  {% endif %}
+{% endblock %}

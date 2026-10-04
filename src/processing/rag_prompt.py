@@ -45,6 +45,13 @@ INSTRUÇÕES:
   que a síntese se limita aos dispositivos recuperados; não a apresente como análise integral.
 - Para consultas sobre uma norma inteira, sintetize os temas sustentados pelas fontes recuperadas,
   sem criar um subtítulo para cada artigo.
+- Quando o contexto marcar uma relação normativa, trate-a conforme a ação e o status apresentados.
+  Uma remissão/REFERENCIA demonstra apenas referência, não alteração, revogação ou regulamentação.
+  Uma relação só sustenta afirmação sobre o texto-alvo se o dispositivo-alvo também estiver entre
+  as evidências; a existência de uma aresta no grafo, isoladamente, não comprova o conteúdo legal.
+- Evidências adicionadas pelo grafo são contexto relacionado, não um aumento automático de confiança.
+  Descreva data e efeito apenas quando o contexto indicar status confirmado; candidato, desconhecido
+  ou pendente não deve ser apresentado como efeito jurídico ocorrido.
 - NUNCA invente ou alucine informações legais
 
 RESPOSTA:"""

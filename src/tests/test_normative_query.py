@@ -25,3 +25,18 @@ def test_ambiguous_multiple_normas_do_not_force_whole_norma_retrieval():
         classify_normative_query("O que prevê a Lei nº 8.206/2026 e a Lei nº 8.205/2026?").kind
         == "general"
     )
+
+
+def test_abbreviated_complementary_law_overview_uses_broad_retrieval():
+    plan = classify_normative_query("Quais são os principais eixos da LC nº 120/2010?")
+
+    assert plan.kind == "norma_overview"
+    assert plan.reference.identity == ("lei_complementar", "120", 2010)
+
+
+def test_abbreviated_law_article_still_uses_provision_retrieval():
+    plan = classify_normative_query("O que prevê o Art. 17 da LC nº 120/2010?")
+
+    assert plan.kind == "provision"
+    assert plan.reference.identity == ("lei_complementar", "120", 2010)
+    assert plan.reference.article == "17"

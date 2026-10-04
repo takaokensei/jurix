@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jurix.local/schemas/rag-experiment-prediction-v1.json",
+  "title": "Predição RAG pareada por braço",
+  "type": "object",
+  "required": ["case_id", "arm", "repeat", "corpus_revision", "model", "temperature", "token_budget", "hardware", "cache_state", "retrieved_source_ids", "cited_citation_ids", "expected_source_ids", "expected_citation_ids", "expected_versions", "cited_versions", "abstained", "ttft_ms", "final_ms"],
+  "properties": {
+    "case_id": {"type": "string", "minLength": 1},
+    "arm": {"enum": ["baseline", "graph", "graph_temporal"]},
+    "repeat": {"type": "integer", "minimum": 0},
+    "corpus_revision": {"type": "string", "minLength": 1},
+    "model": {"type": "string", "minLength": 1},
+    "temperature": {"type": "number", "minimum": 0, "maximum": 2},
+    "token_budget": {"type": "integer", "minimum": 1},
+    "hardware": {"type": "string", "minLength": 1},
+    "cache_state": {"enum": ["cold", "warm"]},
+    "retrieved_source_ids": {"type": "array", "items": {"type": "string"}},
+    "cited_citation_ids": {"type": "array", "items": {"type": "string"}},
+    "expected_source_ids": {"type": "array", "items": {"type": "string"}},
+    "expected_citation_ids": {"type": "array", "items": {"type": "string"}},
+    "expected_versions": {"type": "object", "additionalProperties": {"type": "string"}},
+    "cited_versions": {"type": "object", "additionalProperties": {"type": "string"}},
+    "expected_abstain": {"type": "boolean"},
+    "abstained": {"type": "boolean"},
+    "human_evidence_review": {"type": "boolean", "default": false},
+    "ttft_ms": {"type": "number", "minimum": 0},
+    "final_ms": {"type": "number", "minimum": 0}
+  },
+  "additionalProperties": false
+}

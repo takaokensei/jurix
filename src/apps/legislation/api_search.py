@@ -436,6 +436,12 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
     except (json.JSONDecodeError, UnicodeDecodeError):
         return JsonResponse({"success": False, "error": "Invalid request body"}, status=400)
 
+    archive_qa = data.get("qa_archive_corpus", False)
+    if not isinstance(archive_qa, bool):
+        return JsonResponse({"success": False, "error": "Escopo do corpus de teste inválido."}, status=400)
+    if archive_qa and not getattr(settings, "NORMATIVE_ARCHIVE_ASSISTANT_ENABLED", False):
+        return JsonResponse({"success": False, "error": "Corpus de teste indisponível."}, status=404)
+
     session_id = data.get("session_id")
     if session_id is not None and (isinstance(session_id, bool) or not isinstance(session_id, int)):
         return JsonResponse({"success": False, "error": "Invalid session_id"}, status=400)
@@ -478,6 +484,7 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
         "as_of": retrieval_options.as_of,
         "published_from": retrieval_options.published_from,
         "published_to": retrieval_options.published_to,
+        "corpus": "archive-qa-unvalidated" if archive_qa else "consolidated",
     }
 
     # Session management
@@ -529,6 +536,7 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                         "temperature": temperature,
                         "retrieval": retrieval_options.fingerprint(),
                         "provider": text_provider,
+                        "qa_archive_corpus": archive_qa,
                         "retry_of": str(retry_of_client_turn_id or ""),
                     }
                     chat_turn, created_turn = reserve_authenticated_turn(
@@ -686,17 +694,30 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                 yield f"data: {json.dumps({'type': 'status', 'status': 'completed'})}\n\n"
                 yield f"data: {json.dumps({'type': 'done', 'answer': final_answer, **metadata, 'sources': [], 'contract': provenance})}\n\n"
                 return
-            rag_service = RAGService()
             retrieval_question = _resolve_article_followup(question, context_question)
-            stream_gen = rag_service.stream_answer_question(
-                retrieval_question,
-                k=k,
-                model=model,
-                temperature=temperature,
-                options=retrieval_options,
-                text_provider=text_provider,
-                should_cancel=lambda: is_generation_cancelled(generation_id),
-            )
+            rag_service = RAGService()
+            if archive_qa:
+                from src.processing.qa_archive_rag import stream_archive_qa_answer
+
+                stream_gen = stream_archive_qa_answer(
+                    retrieval_question,
+                    k=k,
+                    model=model,
+                    temperature=temperature,
+                    text_provider=text_provider,
+                    ollama=rag_service.ollama,
+                    should_cancel=lambda: is_generation_cancelled(generation_id),
+                )
+            else:
+                stream_gen = rag_service.stream_answer_question(
+                    retrieval_question,
+                    k=k,
+                    model=model,
+                    temperature=temperature,
+                    options=retrieval_options,
+                    text_provider=text_provider,
+                    should_cancel=lambda: is_generation_cancelled(generation_id),
+                )
 
             stream_iterator = iter(stream_gen)
             while True:

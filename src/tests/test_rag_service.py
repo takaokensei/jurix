@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from django.conf import settings
+from django.db import connection
 
 from src.apps.legislation.models import Dispositivo, Norma
 from src.processing.cache_service import CacheService
@@ -22,6 +23,10 @@ class TestRAGService:
 
     """Test suite for RAGService with mocked Ollama."""
 
+    @pytest.mark.skipif(
+        connection.vendor != "sqlite",
+        reason="Este caso testa o fallback lexical específico de SQLite.",
+    )
     def test_sqlite_search_applies_norm_type_and_year_before_candidate_limit(self, db):
         for index in range(50):
             norma = Norma.objects.create(

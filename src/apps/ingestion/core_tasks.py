@@ -21,6 +21,7 @@ from PIL import Image
 
 from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
 from src.clients.sapl.sapl_client import SaplAPIClient
+from src.clients.sapl.sapl_types import classify_sapl_type
 from src.llm_engine.ollama_service import OllamaService
 from src.processing.cache_service import get_cache_service
 from src.processing.consolidation_engine import ConsolidationEngine
@@ -28,7 +29,7 @@ from src.processing.legal_parser import LegalTextParser
 from src.processing.ner_extractor import LegalNERExtractor
 
 from .download_tasks import download_pdf_task
-from .task_support import _invalidate_rag_cache, _normalize_norma_tipo
+from .task_support import _invalidate_rag_cache
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,7 @@ def ingest_normas_task(
         "created": 0,
         "updated": 0,
         "failed": 0,
+        "norma_ids": [],
         "errors": [],
         "download_tasks": [],  # IDs das tasks de download disparadas
     }
@@ -107,6 +109,7 @@ def ingest_normas_task(
                     stats["created"] += 1
                 else:
                     stats["updated"] += 1
+                stats["norma_ids"].append(int(result["norma_id"]))
 
                 # Registrar task de download se foi disparada
                 if "download_task_id" in result:
@@ -163,9 +166,9 @@ def _process_norma_data(norma_data: dict[str, Any], auto_download: bool = False)
         raise ValueError("Norma sem ID no payload da API")
 
     # Extrair campos principais
-    tipo_dict = norma_data.get("tipo", {})
-    tipo_value = tipo_dict.get("descricao", "") if isinstance(tipo_dict, dict) else tipo_dict
-    tipo = _normalize_norma_tipo(tipo_value)
+    tipo_value = norma_data.get("tipo", {})
+    type_metadata = classify_sapl_type(tipo_value)
+    tipo = str(type_metadata["public_label"])
 
     numero = norma_data.get("numero", "")
     ano = norma_data.get("ano")
@@ -221,7 +224,10 @@ def _process_norma_data(norma_data: dict[str, Any], auto_download: bool = False)
             "data_vigencia": data_vigencia,
             "pdf_url": pdf_url,
             "sapl_url": sapl_url,
-            "sapl_metadata": norma_data,  # Salvar payload bruto
+            "sapl_metadata": {
+                **norma_data,
+                "_jurix_type_catalog": type_metadata,
+            },  # Preserve payload bruto e normalize tipos sem perder códigos desconhecidos.
             "status": preserved_status,  # Não desconsolida normas existentes
         },
     )

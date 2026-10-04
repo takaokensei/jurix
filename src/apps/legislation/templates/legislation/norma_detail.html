@@ -6,16 +6,23 @@
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Norma' %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261002-device-index-groups1">
+<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261004-precedent-check-v1">
 <link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}">
+<link rel="stylesheet" href="{% static 'css/jurix-normative-graph.css' %}?v=20261003-2">
 {% endblock %}
 
 {% block content %}
 <div class="card legal-detail-card">
     <div class="legal-detail-heading">
-        <div><span class="legal-detail-eyebrow">Norma consolidada</span><h1>{{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }}</h1></div>
+        <div><span class="legal-detail-eyebrow">Norma municipal</span><h1>{{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }}</h1></div>
         <span class="badge badge-success">{{ norma.get_status_display }}</span>
     </div>
+
+    {% if synthetic_fixture %}
+    <p class="historical-message historical-message--warning" role="note">
+        <strong>Fixture sintética de QA.</strong> Este exemplo serve apenas para testar o grafo e a linha do tempo; não representa uma norma real nem uma validação jurídica.
+    </p>
+    {% endif %}
 
     <dl class="legal-detail-dates" aria-label="Publicação e vigência">
         <div><dt>Publicação</dt><dd>{% if norma.data_publicacao %}<time datetime="{{ norma.data_publicacao|date:'c' }}">{{ norma.data_publicacao|date:'d/m/Y' }}</time>{% else %}<span>Não registrada</span>{% endif %}</dd></div>
@@ -62,6 +69,7 @@
           <summary>Mais ações</summary>
           <div class="legal-detail-secondary-actions">
         <a href="{% url 'legislation:norma_compare' norma.pk %}" class="btn">Comparar Versões</a>
+        <a href="{% url 'legislation:norma_compare' norma.pk %}?history=1&amp;mode=precedent" class="btn btn-secondary">Checar alteração desde uma decisão</a>
         <a href="{% url 'legislation:norma_tree' norma.pk %}" class="btn btn-secondary">Visualizar Árvore</a>
         <button type="button" class="btn btn-secondary" data-copy-citation="{{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }} — {{ norma.ementa|default:'Norma municipal consolidada' }}">Copiar citação</button>
         <a href="{% url 'legislation:norma_pdf_export' norma.pk %}" class="btn btn-secondary" download>Exportar PDF</a>
@@ -93,7 +101,7 @@
 
 {% if dispositivos %}
 <div class="card legal-detail-card">
-    <h2>Estrutura Hierárquica ({{ dispositivos.count }} Dispositivos)</h2>
+    <h2>Estrutura hierárquica ({{ dispositivos.count }} {% if dispositivos.count == 1 %}dispositivo{% else %}dispositivos{% endif %})</h2>
     {% if dispositivos.count > 3 %}
     <nav class="dispositivos-index" aria-label="Índice de dispositivos">
         <span class="dispositivos-index-label">Ir para</span>
@@ -119,6 +127,7 @@
                 Ver texto completo
             </button>
             {% endif %}
+            <a class="device-history-link" href="{% url 'legislation:norma_compare' norma.pk %}?history=1&amp;mode=precedent&amp;device_id={{ disp.pk }}">Conferir histórico deste dispositivo</a>
         </article>
         {% endfor %}
     </div>
@@ -177,11 +186,19 @@
         <li class="norma-timeline-item">
             <div>
                 {% if item.date %}<time datetime="{{ item.date }}">{{ item.date_display|default:item.date }}</time>{% else %}<span>Data não informada</span>{% endif %}
-                <div class="timeline-kind">{% if item.kind == 'publication' %}Publicação{% elif item.kind == 'effective' %}Início de vigência registrado{% elif item.kind == 'event' %}{% if item.validated %}Evento normativo validado{% else %}Evento extraído — pendente de revisão{% endif %}{% else %}Evento normativo{% endif %}</div>
+                <div class="timeline-kind">{% if item.kind == 'publication' %}Publicação{% elif item.kind == 'effective' %}Início de vigência registrado{% elif item.kind == 'event' %}{% if item.timeline_role == 'source' and item.effective_date_status == 'not_applicable' %}Referência desta norma a outra{% elif item.timeline_role == 'source' %}Efeito desta norma sobre outra{% elif item.validated %}Relação e efeito revisados{% elif item.effective_date_status == 'not_applicable' and item.relation_status == 'confirmed' %}Referência revisada · sem efeito de alteração{% elif item.relation_status == 'confirmed' %}Vínculo revisado · efeito não confirmado{% else %}Candidato extraído · não confirmado{% endif %}{% else %}Evento normativo{% endif %}</div>
             </div>
             <div>
                 <strong>{{ item.title }}</strong>
                 <p class="timeline-description">{{ item.description }}</p>
+                {% if item.kind == 'event' %}
+                    {% if item.target_label %}<small class="timeline-target"><strong>Dispositivo indicado:</strong> {{ item.target_label }}</small>{% endif %}
+                    {% if item.effective_date_status == 'confirmed' and item.date_display %}<small class="timeline-effect-date"><strong>Efeito jurídico revisado:</strong> {{ item.date_display }}{% if item.effect_scope == 'parcial' %} — restrito ao dispositivo indicado; não significa revogação total da norma.{% endif %}</small>
+                    {% elif item.candidate_effective_date_display %}<small class="temporal-disclaimer"><strong>Data de efeito candidata:</strong> {{ item.candidate_effective_date_display }} — ainda não confirmada por revisão jurídica.</small>
+                    {% elif item.relation_status == 'confirmed' and item.effective_date_status != 'not_applicable' %}<small class="temporal-disclaimer">A relação foi revisada, mas a data de efeito jurídico ainda não foi confirmada.</small>
+                    {% elif item.pending %}<small class="temporal-disclaimer">Candidato automático. Não use como prova de alteração vigente sem revisão jurídica.</small>{% endif %}
+                    {% if item.extraction_signal %}<small class="timeline-source">Sinal do extrator: {{ item.extraction_signal|floatformat:2 }} (não representa confiança jurídica).</small>{% endif %}
+                {% endif %}
                 {% if item.publication_date %}<small class="timeline-source-date">Publicação da fonte: <time datetime="{{ item.publication_date }}">{{ item.publication_date_display|default:item.publication_date }}</time></small>{% endif %}
                 {% if item.source_norma %}<small class="timeline-source">Fonte: {{ item.source_norma }}</small>{% endif %}
             </div>
@@ -191,40 +208,29 @@
 </div>
 {% endif %}
 
+{% if normative_graph_enabled %}
+{% include 'legislation/_norma_relations.html' with norma=norma %}
+{% endif %}
+
 {% if eventos_recebidos %}
 <div class="card legal-detail-card">
-    <h2>Eventos de Alteração ({{ eventos_recebidos.count }})</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Ação</th>
-                <th>Fonte</th>
-                <th>Alvo</th>
-                <th>Confiança</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for evento in eventos_recebidos %}
-            <tr>
-                <td>
-                    <span class="badge badge-info">{{ evento.get_acao_display }}</span>
-                </td>
-                <td>
-                    {{ evento.dispositivo_fonte.norma.get_tipo_display_name }} nº {{ evento.dispositivo_fonte.norma.numero }}/{{ evento.dispositivo_fonte.norma.ano }}
-                    <br><small>{{ evento.dispositivo_fonte }}</small>
-                </td>
-                <td>
-                    {% if evento.dispositivo_alvo %}
-                    {{ evento.dispositivo_alvo }}
-                    {% else %}
-                    <em>{{ evento.target_text|truncatewords:10 }}</em>
-                    {% endif %}
-                </td>
-                <td>{{ evento.extraction_confidence|floatformat:2 }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <h2>Relações extraídas ({{ eventos_recebidos|length }})</h2>
+    <p class="timeline-intro">Os registros abaixo vêm da extração automática. Um vínculo e sua data de efeito só são tratados como confirmados após revisão jurídica.</p>
+    <div class="relation-extraction-list">
+        {% for evento in eventos_recebidos %}
+        <article class="relation-extraction-card">
+            <div class="relation-extraction-heading">
+                <span class="badge badge-info">{{ evento.get_acao_display }}</span>
+                <span class="badge {% if evento.review_status == 'confirmed' %}badge-success{% elif evento.review_status == 'rejected' %}badge-neutral{% else %}badge-warning{% endif %}">{{ evento.review_status_label }}</span>
+            </div>
+            <dl class="relation-extraction-details">
+                <div><dt>Norma de origem</dt><dd>{{ evento.dispositivo_fonte.norma.get_tipo_display_name }} nº {{ evento.dispositivo_fonte.norma.numero }}/{{ evento.dispositivo_fonte.norma.ano }}<small>{{ evento.dispositivo_fonte }}</small></dd></div>
+                <div><dt>Alvo indicado</dt><dd>{% if evento.dispositivo_alvo %}{{ evento.dispositivo_alvo }}{% else %}<em>{{ evento.target_text|truncatewords:10 }}</em>{% endif %}</dd></div>
+                <div><dt>Sinal do extrator</dt><dd>{{ evento.extraction_signal_display }}</dd></div>
+            </dl>
+        </article>
+        {% endfor %}
+    </div>
 </div>
 {% endif %}
 
@@ -250,4 +256,5 @@
 
 {% block extra_js %}
 <script src="{% static 'js/jurix-legal-detail.js' %}?v=20261002-device-index-groups1" defer></script>
+<script src="{% static 'js/jurix-normative-graph.js' %}?v=20261003-2" defer></script>
 {% endblock %}

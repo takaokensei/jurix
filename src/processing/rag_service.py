@@ -286,7 +286,7 @@ class RAGService:
                 d.id: d
                 for d in Dispositivo.objects.filter(
                     id__in=dispositivo_ids, is_active=True
-                ).select_related("norma", "dispositivo_pai")
+                ).select_related("norma__documento_base", "dispositivo_pai")
             }
 
             for raw_result in raw_results:

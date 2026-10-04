@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jurix.local/schemas/municipal-annotation-v2.json",
+  "title": "Anotação normativa rastreável Jurix v2",
+  "type": "object",
+  "required": ["schema_version", "annotation_id", "norma_key", "document_key", "revision", "scope", "annotator_id", "review", "spans", "events"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "annotation_id": {"type": "string", "minLength": 1},
+    "norma_key": {"type": "string", "minLength": 1},
+    "document_key": {"type": "string", "minLength": 1},
+    "revision": {
+      "type": "object",
+      "required": ["source_text_sha256", "text_version", "extractor_version"],
+      "properties": {
+        "source_text_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "text_version": {"type": "string", "minLength": 1},
+        "extractor_version": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "scope": {
+      "type": "object",
+      "required": ["kind", "jurisdiction", "as_of"],
+      "properties": {
+        "kind": {"enum": ["device", "norma", "temporal"]},
+        "jurisdiction": {"type": "string", "minLength": 1},
+        "as_of": {"type": ["string", "null"], "format": "date"}
+      },
+      "additionalProperties": false
+    },
+    "annotator_id": {"type": "string", "minLength": 1},
+    "review": {
+      "type": "object",
+      "required": ["status", "reviewer_id", "reviewed_at", "review_kind"],
+      "properties": {
+        "status": {"enum": ["pending", "adjudicated", "excluded"]},
+        "reviewer_id": {"type": ["string", "null"]},
+        "reviewed_at": {"type": ["string", "null"], "format": "date-time"},
+        "review_kind": {"enum": ["synthetic", "human"]}
+      },
+      "additionalProperties": false
+    },
+    "spans": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["span_id", "device_key", "parent_device_key", "label", "start", "end", "quote"],
+        "properties": {
+          "span_id": {"type": "string", "minLength": 1},
+          "device_key": {"type": "string", "minLength": 1},
+          "parent_device_key": {"type": ["string", "null"]},
+          "label": {"enum": ["artigo", "paragrafo", "paragrafo_unico", "inciso", "alinea", "item", "anexo"]},
+          "start": {"type": "integer", "minimum": 0},
+          "end": {"type": "integer", "minimum": 1},
+          "quote": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["event_id", "action", "source_span_id", "target_norma_key", "target_device_key", "scope", "revision", "effective_date", "resolution", "evidence"],
+        "properties": {
+          "event_id": {"type": "string", "minLength": 1},
+          "action": {"enum": ["REVOGA", "ALTERA", "ADICIONA", "SUBSTITUI", "REGULAMENTA", "REFERENCIA"]},
+          "source_span_id": {"type": "string", "minLength": 1},
+          "target_norma_key": {"type": ["string", "null"]},
+          "target_device_key": {"type": ["string", "null"]},
+          "scope": {"type": "string", "minLength": 1},
+          "revision": {"type": "string", "minLength": 1},
+          "effective_date": {
+            "type": "object",
+            "required": ["value", "status", "basis"],
+            "properties": {
+              "value": {"type": ["string", "null"], "format": "date"},
+              "status": {"enum": ["unknown", "candidate", "confirmed"]},
+              "basis": {"type": ["string", "null"]}
+            },
+            "additionalProperties": false
+          },
+          "resolution": {"enum": ["resolved", "unresolved", "pending_review"]},
+          "evidence": {
+            "type": "object",
+            "required": ["quote", "start", "end", "source_text_sha256"],
+            "properties": {
+              "quote": {"type": "string", "minLength": 1},
+              "start": {"type": "integer", "minimum": 0},
+              "end": {"type": "integer", "minimum": 1},
+              "source_text_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

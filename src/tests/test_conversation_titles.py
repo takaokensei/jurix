@@ -55,3 +55,19 @@ def test_title_keeps_article_and_law_reference_without_inventing_a_topic():
         build_conversation_title("O que prevê o Art. 7º da Lei nº 8.206/2026?", [])
         == "Art. 7º — Lei nº 8.206/2026"
     )
+
+
+def test_title_ignores_instruction_words_that_also_appear_in_legal_evidence():
+    sources = [
+        {
+            "norma_ref": "Lei Complementar nº 120/2010",
+            "full_text": "Cada unidade deve observar as regras correspondentes desta Lei. Os artigos e dispositivos definem os temas principais.",
+        }
+    ]
+
+    title = build_conversation_title(
+        "Resuma os principais temas da Lei Complementar nº 120/2010 e vincule cada afirmação aos artigos correspondentes.",
+        sources,
+    )
+
+    assert title == "Lei Complementar nº 120/2010"

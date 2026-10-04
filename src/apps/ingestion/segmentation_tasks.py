@@ -14,6 +14,7 @@ import fitz
 import pytesseract
 from celery import shared_task
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import connection, transaction
 from django.db.models import F
 from django.utils import timezone
@@ -32,12 +33,41 @@ from src.processing.device_revision import (
     revision_fingerprint,
     structural_key,
 )
+from src.processing.document_segmentation import segment_document_extraction
 from src.processing.legal_parser import LegalTextParser, extract_publication_metadata
 from src.processing.ner_extractor import LegalNERExtractor
 
 from .task_support import _invalidate_rag_cache, _mark_norma_failed
 
 logger = logging.getLogger(__name__)
+
+
+@shared_task(bind=True, name="ingestion.segment_document_extraction_task", max_retries=2, default_retry_delay=60)
+def segment_document_extraction_task(self, extraction_id: int) -> dict[str, Any]:
+    """Create immutable document-level device rows for the accepted base extraction."""
+    try:
+        result = segment_document_extraction(extraction_id)
+        return {
+            "success": True,
+            "extraction_id": result.extraction_id,
+            "devices_created": result.created,
+            "unchanged": result.unchanged,
+            "review_diagnostics": list(result.diagnostics),
+            "legacy_device_map": result.legacy_device_map,
+        }
+    except ValidationError as exc:
+        logger.info(
+            "Document extraction segmentation requires review: extraction_id=%s",
+            extraction_id,
+        )
+        return {"success": False, "extraction_id": extraction_id, "requires_review": True, "error": str(exc)}
+    except Exception as exc:
+        logger.warning(
+            "Document extraction segmentation refused or failed: extraction_id=%s error_type=%s",
+            extraction_id,
+            type(exc).__name__,
+        )
+        raise self.retry(exc=exc) from exc
 
 
 @shared_task(bind=True, name="ingestion.segment_text_task", max_retries=2, default_retry_delay=60)

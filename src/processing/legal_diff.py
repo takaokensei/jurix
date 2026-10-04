@@ -126,3 +126,120 @@ def build_legal_diff(original_text: str, consolidated_text: str) -> list[dict[st
             }
         )
     return rows
+
+
+def build_version_diff(
+    before_devices,
+    after_devices,
+    *,
+    before_complete: bool,
+    after_complete: bool,
+) -> list[dict[str, object]]:
+    """Compare immutable projected devices without treating partial absence as deletion."""
+
+    def index_devices(devices):
+        indexed = {}
+        for item in devices:
+            source = item.get("source") if isinstance(item, dict) else item.source
+            key = (item.get("structural_key") if isinstance(item, dict) else None) or source.structural_key
+            if not key or key in indexed:
+                raise ValueError("dispositivos projetados exigem structural_key única")
+            text = item.get("text", "") if isinstance(item, dict) else item.text
+            status = item.get("legal_status", "unknown") if isinstance(item, dict) else item.legal_status
+            order = item.get("order", 0) if isinstance(item, dict) else getattr(source, "ordem", 0)
+            if isinstance(item, dict):
+                label = item.get("label") or _structural_display_label(key)
+            else:
+                label = _device_display_label(source.tipo, source.numero)
+            indexed[key] = {
+                "key": key,
+                "label": label,
+                "text": str(text or ""),
+                "status": str(status or "unknown"),
+                "order": order,
+            }
+        return indexed
+
+    before = index_devices(before_devices)
+    after = index_devices(after_devices)
+    keys = sorted(
+        before.keys() | after.keys(),
+        key=lambda key: ((before.get(key) or after[key])["order"], key),
+    )
+    rows = []
+    complete_pair = before_complete and after_complete
+    for key in keys:
+        old = before.get(key)
+        new = after.get(key)
+        old_text = old["text"] if old else ""
+        new_text = new["text"] if new else ""
+        old_status = old["status"] if old else None
+        new_status = new["status"] if new else None
+        if old is None or new is None:
+            if not complete_pair:
+                kind, label = "coverage_unknown", "Ausência não conclusiva — cobertura parcial"
+            elif old is None:
+                kind, label = "added", "Dispositivo adicionado entre as projeções"
+            else:
+                kind, label = "removed", "Dispositivo ausente na projeção posterior"
+        elif "vetoed" in {old_status, new_status} and old_status != new_status:
+            kind, label = "vetoed", "Dispositivo vetado em uma das projeções"
+        elif new_status == "revoked" and old_status != "revoked":
+            kind, label = "revoked", "Dispositivo marcado como revogado na projeção posterior"
+        elif _compact(old_text) != _compact(new_text):
+            kind, label = "changed", "Diferença textual estrutural — não equivale à validação jurídica da alteração"
+        elif old_status != new_status:
+            kind, label = "status_changed", "Situação do dispositivo difere entre projeções"
+        elif old_text != new_text:
+            kind, label = "formatting", "Diferença somente de formatação"
+        else:
+            kind, label = "equal", "Texto e situação equivalentes nas projeções"
+        rows.append(
+            {
+                "structural_key": key,
+                "device_label": (new or old)["label"],
+                "before": old_text,
+                "after": new_text,
+                "before_status": old_status,
+                "after_status": new_status,
+                "kind": kind,
+                "label": label,
+            }
+        )
+    return rows
+
+
+def _device_display_label(kind: object, number: object) -> str:
+    """Translate parser device types into short, readable Brazilian legal labels."""
+    normalized = str(kind or "").strip().casefold().replace("-", "_")
+    number = str(number or "").strip()
+    labels = {
+        "artigo": "Art.",
+        "art": "Art.",
+        "paragrafo": "§",
+        "parágrafo": "§",
+        "paragrafo_unico": "Parágrafo único",
+        "inciso": "Inciso",
+        "alinea": "Alínea",
+        "item": "Item",
+    }
+    label = labels.get(normalized, "Dispositivo")
+    return f"{label} {number}".strip()
+
+
+def _structural_display_label(key: str) -> str:
+    """Readable fallback for lightweight adapter/test dictionaries."""
+    match = re.fullmatch(r"art:(\d+)(?::par:([^:]+))?(?::inc:([^:]+))?(?::al:([^:]+))?(?:#\d+)?", key)
+    if not match:
+        return "Dispositivo normativo"
+    article, paragraph, inciso, alinea = match.groups()
+    parts = [f"Art. {article}º"]
+    if paragraph == "unico":
+        parts.append("parágrafo único")
+    elif paragraph:
+        parts.append(f"§ {paragraph}º")
+    if inciso:
+        parts.append(f"inciso {inciso}")
+    if alinea:
+        parts.append(f"alínea {alinea}")
+    return ", ".join(parts)

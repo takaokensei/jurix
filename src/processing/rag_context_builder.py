@@ -65,7 +65,33 @@ def build_relevant_context(
         (result.get("coverage") for result in results if result.get("coverage")), None
     )
     scope_note = None
-    if overview and overview_coverage:
+    temporal_example = next(
+        (result.get("temporal_version") for result in results if result.get("temporal_version")),
+        None,
+    )
+    temporal_coverage = next(
+        (
+            result.get("coverage")
+            for result in results
+            if isinstance(result.get("temporal_version"), dict) and result.get("coverage")
+        ),
+        None,
+    )
+    if temporal_example:
+        completeness = (
+            "cobertura completa dos dispositivos projetados"
+            if temporal_coverage and temporal_coverage.get("complete")
+            else "cobertura parcial; não infira conteúdo ausente"
+        )
+        scope_note = (
+            f"ESCOPO TEMPORAL OBRIGATÓRIO: responda exclusivamente sobre a redação projetada "
+            f"pelo Jurix em {temporal_example.get('as_of')}. Esta projeção não afirma a situação "
+            f"jurídica atual nem substitui a fonte oficial; há {completeness}. "
+            "Não complete lacunas com o texto consolidado atual."
+        )
+        context_parts.append(scope_note)
+        used_chars += len(scope_note)
+    elif overview and overview_coverage:
         if overview_coverage.get("complete"):
             scope_note = (
                 "ESCOPO: todos os dispositivos atualmente indexados foram recuperados; o corpus "
@@ -90,24 +116,52 @@ def build_relevant_context(
         ementa = getattr(norma, "ementa", "") or ""
         ementa_context = f" | Ementa: {ementa}" if asks_for_norma_summary and ementa else ""
         temporal_context = ""
+        source_temporal = result.get("temporal_version")
         if asks_for_temporal_status:
-            publication = getattr(norma, "data_publicacao", None)
-            effective = getattr(norma, "data_vigencia", None)
-            temporal_context = (
-                f" | Publicação: {publication.isoformat() if publication else 'não informada'}"
-                f" | Vigência registrada: {effective.isoformat() if effective else 'não informada'}"
-            )
+            if isinstance(source_temporal, dict):
+                temporal_context = (
+                    f" | Situação na projeção de {source_temporal.get('as_of')}: "
+                    f"{source_temporal.get('status_note') or source_temporal.get('legal_status')}"
+                )
+            else:
+                publication = getattr(norma, "data_publicacao", None)
+                effective = getattr(norma, "data_vigencia", None)
+                temporal_context = (
+                    f" | Publicação: {publication.isoformat() if publication else 'não informada'}"
+                    f" | Vigência registrada: {effective.isoformat() if effective else 'não informada'}"
+                )
 
         coverage = result.get("coverage") or {}
         if overview:
             result["retrieval_strategy"] = "whole_norma"
             result["evidence_scope"] = "complete" if coverage.get("complete") else "sampled"
         result["citation_index"] = citation_index
+        temporal_version = source_temporal
+        temporal_marker = (
+            f" | redação projetada pelo Jurix em {temporal_version.get('as_of')}"
+            if isinstance(temporal_version, dict)
+            else ""
+        )
         header = (
             f"[[{citation_index}]] {tipo_label} nº {norma.numero}/{norma.ano}, "
-            f"{dispositivo.get_full_identifier()}: "
+            f"{dispositivo.get_full_identifier()}{temporal_marker}: "
         )
         full_body = f"{dispositivo.texto}{ementa_context}{temporal_context}"
+        graph_relation = result.get("graph_relation")
+        if isinstance(graph_relation, dict):
+            relation_header = (
+                f"\n[RELAÇÃO REVISADA: {graph_relation.get('label')}; "
+                f"status temporal: {graph_relation.get('effective_status') or 'não confirmado'}; "
+                f"data de efeito: {graph_relation.get('effective_on') or 'não confirmada'}; "
+                f"papel desta evidência: {graph_relation.get('role')}"
+            )
+            quote = str(graph_relation.get("quote") or "").strip()
+            relation_quote = f"; trecho da relação: {quote}" if quote else ""
+            full_body += f"{relation_header}{relation_quote}]"
+        if isinstance(temporal_version, dict):
+            status_note = str(temporal_version.get("status_note") or "").strip()
+            if status_note:
+                full_body += f"\n[METADADO TEMPORAL — não integra a redação legal: {status_note}]"
         separator = "\n\n" if context_parts else ""
         remaining = max_chars - used_chars - len(separator)
         body_budget = remaining - len(header)
@@ -152,7 +206,11 @@ def build_relevant_context(
             result["evidence_scope"] = "complete" if context_complete else "sampled"
         if not context_complete and scope_note and context_parts and context_parts[0] == scope_note:
             context_parts[0] = (
-                "ESCOPO: nem todos os dispositivos previstos couberam no contexto; a análise é parcial."
+                f"ESCOPO TEMPORAL OBRIGATÓRIO: responda exclusivamente sobre a redação projetada "
+                f"pelo Jurix em {temporal_example.get('as_of')}. A cobertura é parcial; não infira "
+                "conteúdo ausente nem complete lacunas com o texto consolidado atual."
+                if temporal_example
+                else "ESCOPO: nem todos os dispositivos previstos couberam no contexto; a análise é parcial."
             )
 
     formatted_context = "\n\n".join(context_parts)

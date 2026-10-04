@@ -1,9 +1,30 @@
 import pytest
 
 from src.processing.normative_reference import (
+    canonical_type,
     parse_normative_reference_query,
     parse_normative_references,
 )
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("LC", "lei_complementar"),
+        ("LeiComplementar", "lei_complementar"),
+        ("lei complementar", "lei_complementar"),
+        ("Lei Ordinária", "lei"),
+        ("LeiOrganica", "lei_organica"),
+        ("leiPromulgada", "lei_promulgada"),
+        ("Decreto Legislativo", "decreto_legislativo"),
+        ("Decreto Executivo", "decreto"),
+        ("Decreto-Lei", "decreto_lei"),
+    ],
+)
+def test_canonical_type_accepts_catalog_and_filename_aliases_without_conflating_types(
+    raw, expected
+):
+    assert canonical_type(raw) == expected
 
 
 @pytest.mark.parametrize(
@@ -12,6 +33,7 @@ from src.processing.normative_reference import (
         ("Lei nº 8.205/2026", "lei", "8205", 2026),
         ("Lei n. 8205 de 2026", "lei", "8205", 2026),
         ("Lei Complementar nº 8.205/2026", "lei_complementar", "8205", 2026),
+        ("LC nº 120/2010", "lei_complementar", "120", 2010),
         ("Decreto-Lei 12/1940", "decreto_lei", "12", 1940),
         ("Decreto Legislativo nº 12/2025", "decreto_legislativo", "12", 2025),
         ("Resolução nº 12/2025", "resolucao", "12", 2025),

@@ -4,13 +4,15 @@ URL configuration for legislation app.
 
 from django.urls import path
 
-from . import views
+from . import document_views, views
 
 app_name = "legislation"
 
 urlpatterns = [
     # List view
     path("", views.NormaListView.as_view(), name="norma_list"),
+    path("documentos/<uuid:document_id>/", document_views.document_evidence_view, name="document_evidence"),
+    path("documentos/<uuid:document_id>/pdf/", document_views.document_pdf_view, name="document_pdf"),
     # Chatbot interface (available under /normas/chatbot/ and /assistente/)
     path("chatbot/", views.chatbot_view, name="chatbot"),
     path("chatbot/<str:session_slug>/", views.chatbot_view, name="chatbot_session"),

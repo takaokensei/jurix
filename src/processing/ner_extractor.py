@@ -43,7 +43,7 @@ class LegalNERExtractor:
         "ADICIONA": r"\b(adicion[a-z]+|acrescen[a-z]+|inclui[a-z]*|ficam?\s+adicionad[oa]s?)\b",
         "SUBSTITUI": r"\b(substitu[íi][a-z]*|ficam?\s+substitu[íi]d[oa]s?)\b",
         "REGULAMENTA": r"\b(regulamenta[a-z]*|disciplina[a-z]*)\b",
-        "REFERENCIA": r"\b(conforme|nos\s+termos|de\s+acordo\s+com|previsto|disposto)\b",
+        "REFERENCIA": r"\b(conforme|nos\s+termos|de\s+acordo\s+com|previsto|disposto|refer[eê]ncia|referencia)\b",
     }
 
     # Priority for resolving overlapping matches
@@ -86,6 +86,36 @@ class LegalNERExtractor:
     def _is_abbreviation(cls, prefix: str) -> bool:
         return prefix.lower().endswith(cls.ABBREVIATIONS)
 
+    @staticmethod
+    def _year_value(value: str | None) -> str:
+        raw = (value or "").strip().casefold()
+        if raw.isdigit():
+            return raw
+        unit = {
+            "um": 1, "uma": 1, "dois": 2, "duas": 2, "três": 3, "tres": 3,
+            "quatro": 4, "cinco": 5, "seis": 6, "sete": 7, "oito": 8, "nove": 9,
+            "dez": 10, "onze": 11, "doze": 12, "treze": 13, "catorze": 14,
+            "quatorze": 14, "quinze": 15, "dezesseis": 16, "dezessete": 17,
+            "dezoito": 18, "dezenove": 19,
+        }
+        tens = {"vinte": 20, "trinta": 30, "quarenta": 40, "cinquenta": 50,
+                "sessenta": 60, "setenta": 70, "oitenta": 80, "noventa": 90}
+        hundreds = {"cento": 100, "duzentos": 200, "trezentos": 300, "quatrocentos": 400,
+                    "quinhentos": 500, "seiscentos": 600, "setecentos": 700,
+                    "oitocentos": 800, "novecentos": 900}
+        words = {**unit, **tens, **hundreds}
+        tokens = [token for token in re.split(r"\s+|\be\b", raw) if token]
+        if tokens[:2] == ["dois", "mil"]:
+            total, tail = 2000, tokens[2:]
+        elif tokens[:1] == ["mil"]:
+            total, tail = 1000, tokens[1:]
+        else:
+            return ""
+        if any(token not in words for token in tail):
+            return ""
+        total += sum(words[token] for token in tail)
+        return str(total) if 1000 <= total <= 2099 else ""
+
     PARAGRAPH_PATTERN = re.compile(
         r"(?:\bpar[áa]grafo|[§¶])\s*(?:n[º°]?\s*)?([\d]+[º°]?|[ÚUú]nico)", re.IGNORECASE
     )
@@ -95,9 +125,14 @@ class LegalNERExtractor:
     ALINEA_PATTERN = re.compile(r"\bal[íi]nea\s+[\'\"“]?([a-z])[\'\"”]?\)?", re.IGNORECASE)
 
     # Complex law reference (Lei X/YYYY, LC X/YYYY, Decreto X/YYYY)
+    _YEAR_UNIT_RE = r"um|uma|dois|duas|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|catorze|quatorze|quinze|dezesseis|dezessete|dezoito|dezenove"
+    _YEAR_TENS_RE = rf"vinte(?:\s+e\s+(?:{_YEAR_UNIT_RE}))?|trinta(?:\s+e\s+(?:{_YEAR_UNIT_RE}))?|quarenta(?:\s+e\s+(?:{_YEAR_UNIT_RE}))?|cinquenta(?:\s+e\s+(?:{_YEAR_UNIT_RE}))?|sessenta(?:\s+e\s+(?:{_YEAR_UNIT_RE}))?|setenta(?:\s+e\s+(?:{_YEAR_UNIT_RE}))?|oitenta(?:\s+e\s+(?:{_YEAR_UNIT_RE}))?|noventa(?:\s+e\s+(?:{_YEAR_UNIT_RE}))?"
+    _YEAR_HUNDRED_RE = r"cento|duzentos|trezentos|quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos"
+    _YEAR_WORD_RE = rf"(?:mil(?:\s+novecentos(?:\s+e\s+(?:{_YEAR_TENS_RE}))?)?|dois\s+mil(?:\s+e\s+(?:{_YEAR_HUNDRED_RE}|{_YEAR_TENS_RE}|{_YEAR_UNIT_RE}))?)"
     LEI_PATTERN = re.compile(
         r"\b(lei\s+(?:complementar|ordinária|delegada)?|lc|decreto|resolução)\s*"
-        r"(?:n[º°]?\s*)?([\d.,]+)\s*[/\-]?\s*(\d{4})?",
+        rf"(?:n[º°]?\s*)?([\d.,]+)(?:\s*[/\-]\s*(\d{{4}}|{_YEAR_WORD_RE})|"
+        rf"\s*,?\s+de\s+(?:(?:\d{{1,2}}\s+de\s+[A-Za-zÀ-ÿ]+\s+de\s+)?(\d{{4}}|{_YEAR_WORD_RE})))?",
         re.IGNORECASE,
     )
 
@@ -144,7 +179,7 @@ class LegalNERExtractor:
             last_match = global_law_matches[-1]
             tipo_lei = last_match.group(1).strip()
             numero = last_match.group(2).strip()
-            ano = last_match.group(3) if last_match.group(3) else ""
+            ano = self._year_value(last_match.group(3) or last_match.group(4))
             global_norma_info = {
                 "tipo": tipo_lei,
                 "numero": numero,
@@ -210,6 +245,15 @@ class LegalNERExtractor:
 
             if elem_refs:
                 for ref in elem_refs:
+                    evidence = self._build_evidence(
+                        texto, action_data, context_start, [ref, *statute_refs]
+                    )
+                    target_resolution = (
+                        "ambiguous_multiple_normas" if len(statute_refs) > 1
+                        else "range_unresolved" if re.search(r"\ba\b", ref["numero"], re.IGNORECASE)
+                        else "candidate" if local_norma_info
+                        else "unresolved"
+                    )
                     events.append(
                         {
                             "acao": action,
@@ -219,10 +263,16 @@ class LegalNERExtractor:
                             "extraction_confidence": ref["confidence"],
                             "extraction_method": "regex",
                             "norma_referenciada": local_norma_info,
+                            "evidence": evidence,
+                            "target_resolution": target_resolution,
                         }
                     )
             elif statute_refs:
                 for ref in statute_refs:
+                    evidence = self._build_evidence(texto, action_data, context_start, [ref])
+                    target_resolution = "ambiguous_multiple_normas" if len(statute_refs) > 1 else (
+                        "candidate" if ref.get("norma_info") or local_norma_info else "unresolved"
+                    )
                     events.append(
                         {
                             "acao": action,
@@ -232,6 +282,8 @@ class LegalNERExtractor:
                             "extraction_confidence": ref["confidence"],
                             "extraction_method": "regex",
                             "norma_referenciada": ref.get("norma_info") or local_norma_info,
+                            "evidence": evidence,
+                            "target_resolution": target_resolution,
                         }
                     )
             else:
@@ -245,10 +297,39 @@ class LegalNERExtractor:
                         "extraction_confidence": 0.5,
                         "extraction_method": "regex",
                         "norma_referenciada": local_norma_info,
+                        "evidence": self._build_evidence(texto, action_data, context_start, None),
+                        "target_resolution": "unresolved",
                     }
                 )
 
         return events
+
+    @staticmethod
+    def _build_evidence(texto, action_data, context_start, references):
+        action_start, action_end = action_data["span"]
+        reference_spans = [
+            ref.get("span") for ref in (references or []) if ref.get("span")
+        ]
+        if reference_spans:
+            target_start = context_start + min(span[0] for span in reference_spans)
+            target_end = context_start + max(span[1] for span in reference_spans)
+        else:
+            target_start, target_end = action_start, action_end
+        start = min(action_start, target_start)
+        end = max(action_end, target_end)
+        return {
+            "schema_version": 2,
+            "offset_unit": "python_unicode_codepoint",
+            "start_offset": start,
+            "end_offset": end,
+            "action_start_offset": action_start,
+            "action_end_offset": action_end,
+            "target_start_offset": target_start,
+            "target_end_offset": target_end,
+            "action_quote": texto[action_start:action_end],
+            "target_quote": texto[target_start:target_end],
+            "quote": texto[start:end],
+        }
 
     @staticmethod
     def _sentence_start(texto: str, lower: int, upper: int) -> int:
@@ -353,7 +434,7 @@ class LegalNERExtractor:
         for match in self.LEI_PATTERN.finditer(texto):
             tipo_lei = match.group(1).strip()
             numero = match.group(2).strip()
-            ano = match.group(3) if match.group(3) else ""
+            ano = self._year_value(match.group(3) or match.group(4))
             ref_text = match.group(0)
 
             references.append(
@@ -361,6 +442,7 @@ class LegalNERExtractor:
                     "tipo": tipo_lei.lower(),
                     "numero": f"{numero}/{ano}" if ano else numero,
                     "text": ref_text,
+                    "span": [match.start(), match.end()],
                     "confidence": 0.95 if ano else 0.75,
                     "norma_info": {"tipo": tipo_lei, "numero": numero, "ano": ano} if ano else None,
                 }
@@ -373,6 +455,7 @@ class LegalNERExtractor:
                     "tipo": "self_reference",
                     "numero": "",
                     "text": match.group(0),
+                    "span": [match.start(), match.end()],
                     "confidence": 0.95,
                     "norma_info": None,
                 }
@@ -386,6 +469,7 @@ class LegalNERExtractor:
                         "tipo": "artigo",
                         "numero": numero,
                         "text": match.group(0),
+                        "span": [match.start(), match.end()],
                         "confidence": 0.9,
                         "norma_info": None,
                     }
@@ -399,6 +483,7 @@ class LegalNERExtractor:
                     "tipo": "paragrafo",
                     "numero": numero,
                     "text": match.group(0),
+                    "span": [match.start(), match.end()],
                     "confidence": 0.9,
                     "norma_info": None,
                 }
@@ -412,6 +497,7 @@ class LegalNERExtractor:
                     "tipo": "inciso",
                     "numero": numero,
                     "text": match.group(0),
+                    "span": [match.start(), match.end()],
                     "confidence": 0.9,
                     "norma_info": None,
                 }
@@ -425,6 +511,7 @@ class LegalNERExtractor:
                     "tipo": "alinea",
                     "numero": numero,
                     "text": match.group(0),
+                    "span": [match.start(), match.end()],
                     "confidence": 0.9,
                     "norma_info": None,
                 }

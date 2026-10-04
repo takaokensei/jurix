@@ -5,6 +5,7 @@ import logging
 import os
 import time
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 from django.conf import settings
@@ -106,6 +107,7 @@ class SaplTransportMixin:
 
     def _make_request_url(self, url: str) -> dict[str, Any]:
         """Follow a pagination URL returned by SAPL without rebuilding its query."""
+        self.validate_pagination_url(url)
         headers = self._get_headers()
         try:
             response = self.session.get(
@@ -121,6 +123,22 @@ class SaplTransportMixin:
         except ValueError:
             logger.error("Resposta JSON inválida ao seguir paginação SAPL: %s", url, exc_info=True)
             raise
+
+    def validate_pagination_url(self, url: str) -> str:
+        """Reject pagination links that escape the configured SAPL API origin/path."""
+        base = urlparse(self.base_url)
+        candidate = urlparse(str(url or ""))
+        base_path = base.path.rstrip("/")
+        if (
+            candidate.scheme != base.scheme
+            or candidate.netloc.lower() != base.netloc.lower()
+            or candidate.username
+            or candidate.password
+            or candidate.fragment
+            or not (candidate.path == base_path or candidate.path.startswith(f"{base_path}/"))
+        ):
+            raise ValueError("SAPL pagination URL escaped the configured API origin/path")
+        return candidate.geturl()
 
     def close(self):
         """Fecha a sessão HTTP."""

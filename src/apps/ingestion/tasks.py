@@ -21,6 +21,15 @@ from .download_tasks import (
     incremental_sync_sapl_task,
 )
 from .ner_tasks import extract_entities_task, generate_embedding_task
+from .normative_tasks import (
+    claim_normative_work_item_task,
+    dispatch_normative_work_batch_task,
+    enqueue_normative_impact_task,
+    fail_normative_stage_task,
+    finish_normative_stage_task,
+    process_normative_work_item_task,
+    review_normative_work_item_task,
+)
 from .ocr_tasks import ocr_pdf_task
 from .segmentation_tasks import segment_text_task
 from .task_support import get_cache_service
@@ -59,10 +68,15 @@ def _mark_norma_failed(norma_id, label, exc, *, set_failed_status=True):
 
 __all__ = [
     "bulk_ingest_normas_task",
+    "claim_normative_work_item_task",
     "cleanup_chat_attachments",
     "consolidate_norma_task",
     "download_pdf_task",
+    "dispatch_normative_work_batch_task",
     "extract_entities_task",
+    "enqueue_normative_impact_task",
+    "fail_normative_stage_task",
+    "finish_normative_stage_task",
     "full_sync_sapl_task",
     "generate_embedding_task",
     "incremental_sync_sapl_task",
@@ -70,5 +84,7 @@ __all__ = [
     "ingest_normas_task",
     "ingest_sapl_corpus_task",
     "ocr_pdf_task",
+    "review_normative_work_item_task",
+    "process_normative_work_item_task",
     "segment_text_task",
 ]

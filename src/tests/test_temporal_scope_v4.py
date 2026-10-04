@@ -53,7 +53,7 @@ def test_temporal_status_requires_registered_effective_date():
 
 
 @pytest.mark.django_db
-def test_unvalidated_and_partial_revocations_do_not_mark_the_whole_norma_revoked():
+def test_legacy_validated_flags_without_review_do_not_apply_revocation():
     from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
 
     target = Norma.objects.create(
@@ -88,8 +88,8 @@ def test_unvalidated_and_partial_revocations_do_not_mark_the_whole_norma_revoked
     assert temporal_status(target, as_of=date(2025, 1, 1)) == "vigente"
     event.validado = True
     event.save(update_fields=["validado"])
-    assert temporal_status(target, as_of=date(2025, 1, 1)) == "parcialmente_revogada"
+    assert temporal_status(target, as_of=date(2025, 1, 1)) == "vigente"
 
     event.dispositivo_alvo = None
     event.save(update_fields=["dispositivo_alvo"])
-    assert temporal_status(target, as_of=date(2025, 1, 1)) == "revogada"
+    assert temporal_status(target, as_of=date(2025, 1, 1)) == "vigente"

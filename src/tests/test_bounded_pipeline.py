@@ -26,3 +26,19 @@ def test_empty_page_stops_at_real_total():
         result = bounded_sapl_ingest_task.run(max_normas=500, batch_size=25)
     assert result["processed"] == 0
     assert apply.call_count == 1
+
+
+@pytest.mark.django_db
+def test_bounded_ingest_scopes_second_pass_to_normas_from_successful_pages(mocker):
+    fake = MagicMock()
+    fake.successful.return_value = True
+    fake.result = {"total_fetched": 1, "norma_ids": [41]}
+    reconcile = mocker.patch(
+        "src.processing.target_reconciliation.reconcile_unresolved_event_targets",
+        return_value={"inspected": 0, "resolved": 0, "remaining_unresolved": 0},
+    )
+    with patch("src.apps.ingestion.tasks.ingest_normas_task.apply", return_value=fake):
+        result = bounded_sapl_ingest_task.run(max_normas=1, batch_size=1)
+
+    assert result["norma_ids"] == [41]
+    reconcile.assert_called_once_with(limit=10, target_norma_ids={41})

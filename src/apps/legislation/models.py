@@ -91,6 +91,18 @@ class Norma(TimeStampedModel):
         help_text="Payload JSON bruto retornado pela API SAPL",
     )
 
+    # Aditive identity/document links. Legacy rows remain unlinked until reviewed.
+    identity_key = models.CharField(max_length=300, unique=True, null=True, blank=True)
+    identity_json = models.JSONField(default=dict, blank=True)
+    data_norma = models.DateField(null=True, blank=True, db_index=True)
+    documento_base = models.ForeignKey(
+        "legislation.DocumentoNormativo",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="normas_como_documento_base",
+    )
+
     # Controle de Processamento (Pipeline Status)
     class Status(models.TextChoices):
         PENDING = "pending", "Pendente"
@@ -570,6 +582,31 @@ class EventoAlteracao(TimeStampedModel):
         blank=True,
         help_text="Proveniência da extração, sem credenciais ou dados de requisição.",
     )
+    target_reference_json = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Candidato tipado de identidade/alvo; não constitui validação jurídica.",
+    )
+    evidence_json = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Citação literal e spans da extração que sustentam o evento candidato.",
+    )
+    effective_on = models.DateField(null=True, blank=True, db_index=True)
+    effective_date_status = models.CharField(
+        max_length=16,
+        choices=[("unknown", "Desconhecida"), ("candidate", "Candidata"), ("confirmed", "Confirmada")],
+        default="unknown",
+        db_index=True,
+    )
+    effective_date_basis = models.JSONField(default=dict, blank=True)
+    review_revision = models.ForeignKey(
+        "legislation.RevisaoJuridica",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="eventos_revisados",
+    )
     is_active = models.BooleanField(
         default=True,
         db_index=True,
@@ -840,3 +877,14 @@ class ChatMessage(TimeStampedModel):
     def __str__(self) -> str:
         preview = self.content[:50] + ("..." if len(self.content) > 50 else "")
         return f"{self.get_role_display()}: {preview}"
+
+
+# Explicit imports register models defined in cohesive modules without introducing
+# a reverse import from those modules back to this one.
+from src.apps.legislation.document_models import (  # noqa: E402,F401
+    DocumentoDispositivo,
+    DocumentoNormativo,
+    ExtracaoDocumento,
+)
+from src.apps.legislation.review_models import RevisaoJuridica  # noqa: E402,F401
+from src.apps.legislation.topic_models import NormaTopic, Topic  # noqa: E402,F401

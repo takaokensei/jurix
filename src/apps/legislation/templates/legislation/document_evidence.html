@@ -1,0 +1,38 @@
+{% extends 'legislation/workspace/base.html' %}
+{% load static %}
+{% block title %}Evidência documental — Jurix{% endblock %}
+{% block section_name %}Evidência documental{% endblock %}
+{% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Evidência documental' %}{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261004-candidate-evidence-v1">{% endblock %}
+{% block content %}
+<main class="card legal-detail-card document-evidence-page" aria-labelledby="evidence-title">
+  <p class="legal-detail-eyebrow">Documento normativo versionado</p>
+  <h1 id="evidence-title">{% if document.norma_id %}{{ document.norma }}{% elif candidate_identity_label %}{{ candidate_identity_label }}{% else %}{{ document.original_filename|default:'Documento em revisão' }}{% endif %}</h1>
+  {% if candidate_identity_label and not document.norma_id %}<p class="document-evidence-filename"><strong>Arquivo recebido:</strong> {{ document.original_filename }}</p>{% endif %}
+  {% if document.source_kind == 'archive' %}<p class="historical-message historical-message--warning" role="note"><strong>Documento do acervo histórico local.</strong> O PDF arquivado permanece preservado; a identificação normativa, a extração do texto e a segmentação precisam de revisão antes de integrar o corpus consolidado.</p>{% endif %}
+  {% if candidate_extraction %}<p class="historical-message historical-message--warning" role="note"><strong>Texto extraído automaticamente — rascunho não revisado.</strong> A extração abaixo não está aceita nem promove o documento. Compare cada trecho com o PDF antes de usar em uma análise jurídica.</p>{% endif %}
+  <dl class="relation-extraction-details document-evidence-metadata">
+    <div><dt>Tipo de fonte</dt><dd>{{ document.get_source_kind_display }}</dd></div>
+    <div><dt>Situação da revisão</dt><dd>{{ document.get_review_status_display }}</dd></div>
+    <div><dt>Condição de uso</dt><dd>{{ document.get_condition_of_use_display }}</dd></div>
+    <div><dt>Integridade do arquivo</dt><dd><code>{{ document.content_sha256 }}</code></dd></div>
+    {% if extraction %}<div><dt>{% if candidate_extraction %}Rascunho de extração{% else %}Versão da extração{% endif %}</dt><dd>{{ extraction.text_version }} · {{ extraction.page_count }} páginas · {{ extraction.get_status_display }}</dd></div>{% endif %}
+  </dl>
+  <div class="legal-detail-actions document-evidence-actions">
+    {% if official_url %}<a class="btn btn-secondary" href="{{ official_url }}" target="_blank" rel="noopener noreferrer">Abrir fonte oficial (nova aba)</a>{% endif %}
+    {% if local_pdf_available %}<a class="btn btn-primary" href="{% url 'legislation:document_pdf' document.public_id %}" target="_blank" rel="noopener noreferrer">Abrir PDF arquivado (nova aba)</a>{% endif %}
+    <a class="btn btn-secondary" href="{% url 'legislation:norma_list' %}#archive-candidates-title">Voltar aos candidatos do acervo</a>
+  </div>
+  {% if extraction %}
+    {% if devices %}<nav class="document-evidence-index" aria-label="Dispositivos extraídos"><h2>Índice do documento</h2><ul>{% for device in devices %}<li><a href="#device-{{ device.structural_key }}">{{ device.tipo }} {{ device.numero }}</a></li>{% endfor %}</ul></nav>{% endif %}
+    {% if devices %}<section aria-label="Texto documental">
+      {% for device in devices %}<article id="device-{{ device.structural_key }}" class="document-evidence-device"><h2>{{ device.tipo }} {{ device.numero }}</h2><pre>{{ device.texto }}</pre></article>{% endfor %}
+    </section>{% else %}<section class="document-evidence-device" aria-label="Texto extraído sem segmentação">
+      <h2>Texto extraído sem segmentação</h2>
+      <p class="temporal-disclaimer">Não há índice confiável de artigos nesta extração. Confira a numeração e os limites de cada dispositivo diretamente no PDF.</p>
+      <details open><summary>Texto integral extraído (rascunho)</summary><pre class="document-evidence-raw-text">{{ extraction.legal_text|default:extraction.raw_text }}</pre></details>
+    </section>{% endif %}
+  {% else %}<p>Não há extração disponível para esta revisão.</p>{% endif %}
+  {% if document.norma_id %}<p><a href="{% url 'legislation:norma_detail' document.norma_id %}">Voltar à norma</a></p>{% endif %}
+</main>
+{% endblock %}

@@ -13,15 +13,17 @@ from collections import defaultdict
 from typing import Any
 
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import DetailView, ListView
 
 from src.observability.safe_logging import log_exception_safely
 from src.processing.corpus_identity import get_corpus_revision
-from src.processing.legal_diff import build_legal_diff
+from src.processing.legal_diff import build_legal_diff, build_version_diff
 from src.processing.normative_reference import (
     NormativeReference,
     canonical_type,
@@ -29,9 +31,10 @@ from src.processing.normative_reference import (
     parse_normative_reference_query,
 )
 from src.processing.rag_service import RAGService
-from src.processing.temporal_scope import build_norma_timeline, temporal_status
+from src.processing.temporal_scope import build_norma_timeline, parse_iso_date, temporal_status
 
 from .api_limits import InvalidLLMParams, parse_llm_request, rate_limit_response
+from .document_models import DocumentoDispositivo, DocumentoNormativo, ExtracaoDocumento
 from .models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
 from .norma_ordering import order_normas_by_publication
 from .norma_pdf import build_consolidated_norma_pdf
@@ -215,6 +218,85 @@ class NormaListView(ListView):
         # state as the list itself.
         context["total_consolidated"] = Norma.objects.filter(status="consolidated").count()
 
+        # Keep unreviewed archive imports out of the consolidated corpus/RAG.
+        # The isolated QA app gets a separate, clearly labelled view so real
+        # PDFs are visible for inspection without presenting them as official.
+        context["archive_candidates"] = []
+        if getattr(settings, "NORMATIVE_ARCHIVE_ENABLED", False):
+            candidates = DocumentoNormativo.objects.filter(
+                source_kind=DocumentoNormativo.SourceKind.ARCHIVE,
+                norma__isnull=True,
+                review_status__in=(
+                    DocumentoNormativo.ReviewStatus.PENDING,
+                    DocumentoNormativo.ReviewStatus.IN_REVIEW,
+                ),
+            ).prefetch_related(
+                Prefetch(
+                    "extracoes",
+                    queryset=ExtracaoDocumento.objects.only(
+                        "pk", "documento_id", "created_at", "status", "page_count"
+                    ).order_by("-created_at", "-pk").prefetch_related(
+                        Prefetch(
+                            "dispositivos_documentais",
+                            queryset=DocumentoDispositivo.objects.only("pk", "extracao_id"),
+                            to_attr="qa_candidate_devices",
+                        )
+                    ),
+                    to_attr="qa_candidate_extractions",
+                )
+            ).order_by("entry_index", "pk")[:40]
+            type_labels = {
+                "lei": "Lei Ordinária",
+                "lei_ordinaria": "Lei Ordinária",
+                "lei_complementar": "Lei Complementar",
+                "decreto": "Decreto",
+                "lei_promulgada": "Lei Promulgada",
+            }
+            for document in candidates:
+                metadata = document.metadata_json or {}
+                identity = metadata.get("identity_candidate") or {}
+                extraction = (document.qa_candidate_extractions or [None])[0]
+                number, year = identity.get("number"), identity.get("year")
+                draft_device_count = len(extraction.qa_candidate_devices) if extraction else 0
+                if extraction and draft_device_count:
+                    page_label = "página" if extraction.page_count == 1 else "páginas"
+                    device_label = "dispositivo identificado" if draft_device_count == 1 else "dispositivos identificados"
+                    extraction_summary = (
+                        f"Extração {extraction.get_status_display().lower()} · "
+                        f"{extraction.page_count} {page_label} · "
+                        f"{draft_device_count} {device_label} no rascunho"
+                    )
+                elif extraction:
+                    page_label = "página" if extraction.page_count == 1 else "páginas"
+                    extraction_summary = (
+                        f"Extração {extraction.get_status_display().lower()} · "
+                        f"{extraction.page_count} {page_label} · segmentação de dispositivos pendente"
+                    )
+                else:
+                    extraction_summary = "Nenhuma extração de texto disponível"
+                label = (
+                    f"{type_labels.get(identity.get('type'), 'Norma')} nº {number}/{year}"
+                    if number and year
+                    else document.original_filename
+                )
+                context["archive_candidates"].append({
+                    "label": label,
+                    "filename": document.original_filename,
+                    "evidence_url": reverse(
+                        "legislation:document_evidence", kwargs={"document_id": document.public_id}
+                    ),
+                    "entry_index": document.entry_index,
+                    "identity_resolved": bool(metadata.get("identity_key")),
+                    "review_status": document.get_review_status_display(),
+                    "review_status_key": document.review_status,
+                    "extraction_status": extraction.status if extraction else "none",
+                    "extraction_summary": extraction_summary,
+                })
+        context["archive_candidate_count"] = len(context["archive_candidates"])
+        context["archive_assistant_enabled"] = getattr(
+            settings, "NORMATIVE_ARCHIVE_ASSISTANT_ENABLED", False
+        )
+
         page_obj = context.get("page_obj")
         context["filtered_count"] = (
             page_obj.paginator.count if page_obj is not None else self.object_list.count()
@@ -247,6 +329,21 @@ class NormaDetailView(DetailView):
             .select_related("dispositivo_fonte", "dispositivo_fonte__norma", "dispositivo_alvo")
             .order_by("created_at")
         )
+        from src.apps.legislation.event_review import event_review_status
+
+        eventos_recebidos = list(eventos_recebidos)
+        for evento in eventos_recebidos:
+            evento.review_status = event_review_status(evento)
+            evento.review_status_label = {
+                "confirmed": "Relação revisada",
+                "rejected": "Candidato rejeitado",
+                "pending": "Extração pendente de revisão",
+            }.get(evento.review_status, "Estado de revisão desconhecido")
+            evento.extraction_signal_display = (
+                f"{evento.extraction_confidence:.0%} — sinal do extrator"
+                if evento.extraction_confidence and evento.extraction_confidence > 0
+                else "Não calibrado"
+            )
 
         # Get all dispositivos for this norma
         dispositivos = (
@@ -261,7 +358,7 @@ class NormaDetailView(DetailView):
         # Statistics
         stats = {
             "total_dispositivos": dispositivos.count(),
-            "total_eventos": eventos_recebidos.count(),
+            "total_eventos": len(eventos_recebidos),
             "total_chars": len(norma.texto_consolidado) if norma.texto_consolidado else 0,
             "has_original": bool(norma.texto_original),
             "has_consolidated": bool(norma.texto_consolidado),
@@ -277,6 +374,11 @@ class NormaDetailView(DetailView):
         context.update(
             {
                 "active_nav": "normas",
+                "synthetic_fixture": bool(
+                    norma.documento_base_id
+                    and isinstance(norma.documento_base.metadata_json, dict)
+                    and norma.documento_base.metadata_json.get("synthetic") is True
+                ),
                 "eventos_recebidos": eventos_recebidos,
                 "official_source_url": canonical_norma_url(norma),
                 "dispositivos": dispositivos,
@@ -286,6 +388,7 @@ class NormaDetailView(DetailView):
                 "timeline": build_norma_timeline(norma),
                 "temporal_status": temporal_status(norma),
                 "temporal_status_verified": corpus_revision.get("completeness") == "complete",
+                "normative_graph_enabled": getattr(settings, "NORMATIVE_GRAPH_ENABLED", False),
             }
         )
 
@@ -304,6 +407,146 @@ def norma_compare_view(request: HttpRequest, pk: int) -> HttpResponse:
         Rendered comparison page
     """
     norma = get_object_or_404(Norma, pk=pk)
+
+    # Historical comparison is explicit and separate from the legacy OCR-vs-
+    # consolidation view below. Never substitute today's text for a missing
+    # historical projection.
+    precedent_mode = request.GET.get("mode") == "precedent"
+    historical_mode = (
+        "from_as_of" in request.GET
+        or "to_as_of" in request.GET
+        or request.GET.get("history") == "1"
+        or precedent_mode
+    )
+    dates_submitted = "from_as_of" in request.GET or (
+        "to_as_of" in request.GET and not precedent_mode
+    )
+    today = timezone.localdate().isoformat()
+    selected_device = None
+    selected_device_id = request.GET.get("device_id", "")[:20]
+    if precedent_mode and selected_device_id.isdecimal():
+        selected_device = norma.dispositivos.filter(pk=int(selected_device_id)).first()
+    historical_context = {
+        "historical_mode": historical_mode,
+        "precedent_mode": precedent_mode,
+        "history_enabled": getattr(settings, "NORMATIVE_HISTORY_ENABLED", False),
+        "synthetic_fixture": bool(
+            norma.documento_base_id
+            and isinstance(norma.documento_base.metadata_json, dict)
+            and norma.documento_base.metadata_json.get("synthetic") is True
+        ),
+        "from_as_of": request.GET.get("from_as_of", "")[:10],
+        "to_as_of": request.GET.get("to_as_of", today if precedent_mode else "")[:10],
+        "selected_device": selected_device,
+        "historical_errors": [],
+        "historical_rows": [],
+        "historical_timeline": [],
+        "historical_available": False,
+        "historical_notice": "",
+        "before_projection": None,
+        "after_projection": None,
+    }
+    if historical_mode:
+        if not historical_context["history_enabled"]:
+            historical_context["historical_notice"] = (
+                "A comparação histórica está indisponível nesta instalação. "
+                "Nenhuma versão atual foi apresentada como se fosse histórica."
+            )
+        elif dates_submitted:
+            try:
+                before_date = parse_iso_date(request.GET.get("from_as_of"), "Data inicial")
+                after_date = parse_iso_date(request.GET.get("to_as_of"), "Data final")
+                if before_date is None or after_date is None:
+                    raise ValueError("Informe as duas datas para comparar as versões.")
+                if before_date > after_date:
+                    raise ValueError("A data inicial deve ser anterior ou igual à data final.")
+                if after_date > timezone.localdate():
+                    raise ValueError("A data final não pode estar no futuro.")
+                if precedent_mode and selected_device_id and selected_device is None:
+                    raise ValueError("O dispositivo selecionado não pertence a esta norma.")
+            except ValueError as exc:
+                historical_context["historical_errors"].append(str(exc))
+            else:
+                from src.apps.legislation.document_models import (
+                    DocumentoNormativo,
+                    NormativeSnapshot,
+                )
+                from src.processing.normative_projection import project_norma_as_of
+
+                before = project_norma_as_of(norma, before_date)
+                after = project_norma_as_of(norma, after_date)
+                historical_context["before_projection"] = before
+                historical_context["after_projection"] = after
+                terminal_status = NormativeSnapshot.Status.NOT_RECONSTRUCTABLE
+                if before.status == terminal_status or after.status == terminal_status:
+                    historical_context["historical_notice"] = (
+                        "Não foi possível reconstruir com segurança uma das datas solicitadas. "
+                        "O texto consolidado atual não será usado como substituto."
+                    )
+                else:
+                    is_complete = NormativeSnapshot.Status.COMPLETE
+                    historical_context["historical_rows"] = build_version_diff(
+                        before.devices,
+                        after.devices,
+                        before_complete=before.status == is_complete,
+                        after_complete=after.status == is_complete,
+                    )
+                    if selected_device is not None:
+                        historical_context["historical_rows"] = [
+                            row
+                            for row in historical_context["historical_rows"]
+                            if row["structural_key"] == selected_device.structural_key
+                        ]
+                        if not historical_context["historical_rows"]:
+                            historical_context["historical_notice"] = (
+                                f"{selected_device.get_full_identifier()} não está presente nas "
+                                "projeções desta comparação. Isso não confirma revogação nem ausência jurídica."
+                            )
+                    status_labels = {
+                        NormativeSnapshot.Status.COMPLETE: "completa",
+                        NormativeSnapshot.Status.PARTIAL: "parcial",
+                        NormativeSnapshot.Status.NOT_RECONSTRUCTABLE: "não reconstruível",
+                    }
+                    historical_context["before_status_label"] = status_labels.get(
+                        before.status, "desconhecida"
+                    )
+                    historical_context["after_status_label"] = status_labels.get(
+                        after.status, "desconhecida"
+                    )
+                    device_status_labels = {
+                        "in_force": "vigente na projeção",
+                        "revoked": "revogado na projeção",
+                        "vetoed": "vetado na projeção",
+                        "unknown": "situação desconhecida",
+                    }
+                    for row in historical_context["historical_rows"]:
+                        row["before_status_label"] = device_status_labels.get(
+                            row["before_status"], "não disponível"
+                        )
+                        row["after_status_label"] = device_status_labels.get(
+                            row["after_status"], "não disponível"
+                        )
+                    historical_context["historical_available"] = True
+                    timeline_order = {"publication": 0, "effective": 1, "event": 2}
+                    historical_context["historical_timeline"] = sorted(
+                        build_norma_timeline(norma, as_of=after_date),
+                        key=lambda item: (
+                            item.get("date") or item.get("availability_date") or "9999-99-99",
+                            timeline_order.get(item.get("kind"), 3),
+                            item.get("title", ""),
+                        ),
+                    )
+                    republications = DocumentoNormativo.objects.filter(
+                        norma=norma,
+                        role=DocumentoNormativo.Role.REPUBLICATION,
+                        review_status=DocumentoNormativo.ReviewStatus.APPROVED,
+                    ).order_by("created_at", "pk")
+                    historical_context["republication_count"] = republications.count()
+                    historical_context["coverage_note"] = (
+                        "As redações abaixo são uma consolidação histórica do Jurix, "
+                        "projetada a partir de documentos revisados e eventos disponíveis no corpus; "
+                        "não substituem publicação oficial."
+                    )
 
     # Bound synchronous structural matching; no partial comparison is exposed
     # when an OCR document exceeds the configured resource budget.
@@ -351,6 +594,7 @@ def norma_compare_view(request: HttpRequest, pk: int) -> HttpResponse:
         "comparison_label": "Diferenças textuais estruturais",
         "legal_changes_validated": False,
     }
+    context.update(historical_context)
 
     return render(request, "legislation/norma_compare.html", context)
 
@@ -480,6 +724,10 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
             "current_session_slug": session_slug,
             "prefill_question": prefill_question,
             "max_question_length": settings.LLM_MAX_QUESTION_LENGTH,
+            "qa_archive_mode": (
+                getattr(settings, "NORMATIVE_ARCHIVE_ASSISTANT_ENABLED", False)
+                and request.GET.get("corpus") == "archive-qa"
+            ),
         }
         return render(request, "legislation/chatbot.html", context)
 

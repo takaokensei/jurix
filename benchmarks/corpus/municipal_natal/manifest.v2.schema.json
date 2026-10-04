@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jurix.local/schemas/municipal-manifest-v2.json",
+  "title": "Registro documental normativo municipal Jurix v2",
+  "type": "object",
+  "required": ["schema_version", "norma_key", "document_key", "sapl_id", "norma", "document", "text", "provenance", "condition_of_use", "pilot", "human_review"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "norma_key": {"type": "string", "minLength": 1},
+    "document_key": {"type": "string", "minLength": 1},
+    "sapl_id": {"type": ["integer", "null"], "minimum": 1},
+    "norma": {
+      "type": "object",
+      "required": ["tipo", "numero", "ano", "jurisdicao"],
+      "properties": {
+        "tipo": {"type": "string", "minLength": 1},
+        "numero": {"type": "string", "minLength": 1},
+        "ano": {"type": ["integer", "null"], "minimum": 1000, "maximum": 9999},
+        "jurisdicao": {"type": "string", "minLength": 1},
+        "ementa": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "document": {
+      "type": "object",
+      "required": ["source_kind", "source_ref", "sha256", "official_url", "role"],
+      "properties": {
+        "source_kind": {"enum": ["archive", "sapl", "official_gazette"]},
+        "source_ref": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "archive_sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+        "entry_index": {"type": ["integer", "null"], "minimum": 0},
+        "pdf_path": {"type": ["string", "null"]},
+        "official_url": {"type": ["string", "null"], "format": "uri"},
+        "role": {"enum": ["original", "republicacao", "retificacao", "anexo", "indeterminado"]}
+      },
+      "additionalProperties": false
+    },
+    "text": {
+      "type": "object",
+      "required": ["path", "sha256", "text_version", "extractor_version", "ocr_status"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "text_version": {"type": "string", "minLength": 1},
+        "extractor_version": {"type": "string", "minLength": 1},
+        "ocr_status": {"enum": ["native", "ocr_reviewed", "ocr_unreviewed", "mixed_reviewed", "mixed_unreviewed", "unreadable"]}
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["retrieved_at", "selection_rationale"],
+      "properties": {
+        "retrieved_at": {"type": "string", "format": "date-time"},
+        "selection_rationale": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "condition_of_use": {"enum": ["unknown", "public_record_reviewed", "permission_required", "licensed"]},
+    "pilot": {"enum": ["not_selected", "candidate", "technical_pilot", "approved"]},
+    "human_review": {
+      "type": "object",
+      "required": ["status", "reviewer_id", "reviewed_at", "review_kind"],
+      "properties": {
+        "status": {"enum": ["not_reviewed", "in_review", "approved", "rejected"]},
+        "reviewer_id": {"type": ["string", "null"]},
+        "reviewed_at": {"type": ["string", "null"], "format": "date-time"},
+        "review_kind": {"enum": ["synthetic", "human"]}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

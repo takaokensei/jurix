@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+from celery.schedules import crontab
 from dotenv import load_dotenv
 
 if not os.getenv("DJANGO_SKIP_DOTENV"):
@@ -233,19 +234,35 @@ CELERY_BEAT_SCHEDULE = {
         "task": "ingestion.cleanup_chat_attachments",
         "schedule": 1800.0,
     },
-    "incremental-sapl-sync": {
-        "task": "ingestion.incremental_sync_sapl_task",
-        "schedule": float(os.getenv("SAPL_INCREMENTAL_SYNC_SECONDS", "900")),
-        "kwargs": {
-            "limit": int(os.getenv("SAPL_INCREMENTAL_SYNC_LIMIT", "100")),
-        },
-    },
 }
+
+# SAPL synchronization can write metadata and review markers. Keep its beat
+# entries opt-in so defining a schedule never starts a real sync by itself.
+SAPL_SYNC_SCHEDULE_ENABLED = env_bool("SAPL_SYNC_SCHEDULE_ENABLED", False)
+if SAPL_SYNC_SCHEDULE_ENABLED:
+    sapl_incremental_limit = max(
+        1, min(50, int(os.getenv("SAPL_INCREMENTAL_SYNC_LIMIT", "50")))
+    )
+    CELERY_BEAT_SCHEDULE.update(
+        {
+            "incremental-sapl-sync-daily": {
+                "task": "ingestion.incremental_sync_sapl_task",
+                "schedule": crontab(hour=2, minute=0),
+                "kwargs": {"limit": sapl_incremental_limit},
+            },
+            "sapl-full-sweep-weekly": {
+                "task": "ingestion.full_sync_sapl_task",
+                "schedule": crontab(day_of_week="sun", hour=3, minute=0),
+                "kwargs": {"limit": 50},
+            },
+        }
+    )
 
 # Readiness probes should normally include Ollama because the RAG API cannot
 # satisfy its primary workload without it. Disable this only for deployments
 # that intentionally separate API liveness from model availability.
 READINESS_REQUIRE_OLLAMA = env_bool("READINESS_REQUIRE_OLLAMA", True)
+NORMATIVE_ARCHIVE_REVIEW_UI_ENABLED = False
 
 # Cache Configuration (Redis with LocMem fallback for local development)
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")

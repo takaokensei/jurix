@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 
 _REFERENCE_RE = re.compile(
-    r"\b(?P<type>lei(?:\s+(?:complementar|ordin[áa]ria|org[âa]nica))?|"
-    r"decreto(?:-lei|\s+legislativo)?|resolu[çc][ãa]o|portaria|"
-    r"emenda(?:\s+constitucional)?)\s*"
+    r"\b(?P<type>lei(?:\s+(?:complementar|ordin[áa]ria|org[âa]nica|promulgada))?|"
+    r"decreto(?:-lei|\s+(?:legislativo|executivo))?|resolu[çc][ãa]o|portaria|"
+    r"emenda(?:\s+constitucional)?|lc)\s*"
     r"(?:n[º°o.]?\s*)?(?P<number>\d[\d.]*)"
     r"(?:\s*(?:/|de)\s*(?P<year>(?:19|20)\d{2}))?",
     re.IGNORECASE,
@@ -18,9 +19,9 @@ _PARAGRAPH_RE = re.compile(r"§\s*(único|\d+\s*[ºª°o]?)", re.IGNORECASE)
 _ITEM_RE = re.compile(r"\binciso\s+([IVXLCDM]+)\b", re.IGNORECASE)
 _ALINEA_RE = re.compile(r"\balínea\s+([a-z])\b", re.IGNORECASE)
 _REFERENCE_QUERY_RE = re.compile(
-    r"^\s*(?:(?P<type>lei(?:\s+(?:complementar|ordin[áa]ria|org[âa]nica))?|"
-    r"decreto(?:-lei|\s+legislativo)?|resolu[çc][ãa]o|portaria|"
-    r"emenda(?:\s+constitucional)?)\s*(?:n[º°o.]?\s*)?)?"
+    r"^\s*(?:(?P<type>lei(?:\s+(?:complementar|ordin[áa]ria|org[âa]nica|promulgada))?|"
+    r"decreto(?:-lei|\s+(?:legislativo|executivo))?|resolu[çc][ãa]o|portaria|"
+    r"emenda(?:\s+constitucional)?|lc)\s*(?:n[º°o.]?\s*)?)?"
     r"(?P<number>(?:\d{1,6}|\d{1,3}(?:\.\d{3})+))\s*(?:/|de)\s*"
     r"(?P<year>(?:19|20)\d{2})\s*$",
     re.IGNORECASE,
@@ -30,17 +31,28 @@ _REFERENCE_QUERY_RE = re.compile(
 def canonical_type(raw_type: str) -> str:
     """Return a stable type key without conflating different kinds of norms."""
     normalized = " ".join((raw_type or "").lower().split())
-    normalized = normalized.replace("ordinária", "ordinaria").replace("orgânica", "organica")
-    normalized = normalized.replace("resolução", "resolucao").replace("resolucão", "resolucao")
-    normalized = normalized.replace("emenda constitucional", "emenda_constitucional")
+    folded = unicodedata.normalize("NFKD", normalized)
+    folded = "".join(char for char in folded if not unicodedata.combining(char))
+    compact = re.sub(r"[^a-z0-9]", "", folded)
     return {
-        "lei ordinaria": "lei",
-        "lei complementar": "lei_complementar",
-        "lei organica": "lei_organica",
-        "decreto-lei": "decreto_lei",
-        "decreto legislativo": "decreto_legislativo",
+        "lei": "lei",
+        "leio": "lei",
+        "leilo": "lei",
+        "leiordinaria": "lei",
+        "leicomplementar": "lei_complementar",
+        "lc": "lei_complementar",
+        "leiorganica": "lei_organica",
+        "leipromulgada": "lei_promulgada",
+        "lp": "lei_promulgada",
+        "decreto": "decreto",
+        "decretoexecutivo": "decreto",
+        "decretolegislativo": "decreto_legislativo",
+        "decretolei": "decreto_lei",
         "resolucao": "resolucao",
-    }.get(normalized, normalized.replace(" ", "_"))
+        "portaria": "portaria",
+        "emenda": "emenda",
+        "emendaconstitucional": "emenda_constitucional",
+    }.get(compact, "_".join(folded.split()))
 
 
 def normalize_number(raw_number: str) -> str:

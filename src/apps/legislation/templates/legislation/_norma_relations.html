@@ -1,0 +1,41 @@
+<section class="card legal-detail-card normative-relations" data-normative-relations
+         data-api-url="{% url 'legislation_api:norma_relations' norma.pk %}">
+  <details data-relations-disclosure>
+    <summary class="normative-relations__summary" data-relations-toggle>
+      <span>
+        <span class="normative-relations__eyebrow">Relações normativas</span>
+        <span class="normative-relations__title">Explore alterações e referências</span>
+      </span>
+      <span class="normative-relations__summary-hint">Carregar relações</span>
+    </summary>
+    <div class="normative-relations__body">
+      <p class="normative-relations__intro">São exibidos apenas vínculos disponíveis para consulta pública. Uma referência indica relação entre normas e não significa, por si só, alteração ou revogação.</p>
+      <div class="normative-relations__controls">
+        <label for="relations-action-{{ norma.pk }}">Filtrar por tipo de relação</label>
+        <select id="relations-action-{{ norma.pk }}" data-relations-action>
+          <option value="">Todas as relações</option>
+          <option value="ALTERA">Altera</option>
+          <option value="SUBSTITUI">Substitui</option>
+          <option value="ADICIONA">Adiciona</option>
+          <option value="REVOGA">Revoga</option>
+          <option value="REGULAMENTA">Regulamenta</option>
+          <option value="REFERENCIA">Referência</option>
+        </select>
+        <button type="button" class="normative-relations__retry" data-relations-retry hidden>Tentar novamente</button>
+      </div>
+      <p class="normative-relations__status" data-relations-status role="status" aria-live="polite" aria-atomic="true">Abra esta seção para carregar as relações da norma.</p>
+      <p class="normative-relations__truncated" data-relations-truncated hidden>O limite de exploração foi atingido; a lista mostra os vínculos retornados. Use o filtro ou abra uma norma relacionada para continuar.</p>
+      <div class="normative-relations__graph-wrap" data-relations-graph-wrap hidden>
+        <svg class="normative-relations__svg" data-relations-svg aria-hidden="true" focusable="false"></svg>
+      </div>
+      <ul class="normative-relations__list" data-relations-list aria-label="Relações normativas"></ul>
+      <aside class="normative-relations__panel" data-relations-panel hidden tabindex="-1" aria-labelledby="relations-panel-title-{{ norma.pk }}">
+        <div class="normative-relations__panel-head">
+          <h3 id="relations-panel-title-{{ norma.pk }}">Detalhes do vínculo</h3>
+          <button type="button" class="normative-relations__close" data-relations-close aria-label="Fechar detalhes do vínculo">Fechar</button>
+        </div>
+        <div data-relations-panel-content></div>
+      </aside>
+    </div>
+  </details>
+</section>

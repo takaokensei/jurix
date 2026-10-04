@@ -1,0 +1,357 @@
+import hashlib
+import os
+import tempfile
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import Mock
+
+import pytest
+import requests
+from django.test import SimpleTestCase, override_settings
+
+from src.apps.ingestion import sapl_sync
+from src.apps.ingestion.sapl_document_sync import (
+    SaplDocumentCandidateError,
+    _storage_root,
+    stage_sapl_pdf_candidate,
+)
+from src.apps.legislation.document_models import DocumentoNormativo
+from src.apps.legislation.models import Norma
+from src.clients.sapl.sapl_client import SaplAPIClient
+
+
+def _response(*, status=200, body=b"%PDF-1.7\nqa", headers=None):
+    response = Mock()
+    response.status_code = status
+    response.headers = headers or {"Content-Length": str(len(body)), "ETag": '"v2"'}
+    response.iter_content.return_value = [body]
+    response.raise_for_status.return_value = None
+    return response
+
+
+class SaplPdfCandidateDownloadTests(SimpleTestCase):
+    def setUp(self):
+        self.client = SaplAPIClient(base_url="https://sapl.test/api", timeout=1)
+        self.addCleanup(self.client.close)
+        self._temporary_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temporary_directory.cleanup)
+        self.tmp_path = Path(self._temporary_directory.name)
+
+    def test_downloads_bounded_pdf_atomically_and_returns_content_identity(self):
+        body = b"%PDF-1.7\nqa candidate"
+        response = _response(body=body)
+        self.client.session.get = Mock(return_value=response)
+        target = self.tmp_path / "candidate.part.pdf"
+
+        result = self.client.download_pdf_version(
+            "https://sapl.test/media/law.pdf", target
+        )
+
+        assert target.read_bytes() == body
+        assert result["content_sha256"] == hashlib.sha256(body).hexdigest()
+        assert result["size_bytes"] == len(body)
+        assert result["etag"] == '"v2"'
+        self.client.session.get.assert_called_once()
+        assert self.client.session.get.call_args.kwargs["allow_redirects"] is False
+        assert list(self.tmp_path.iterdir()) == [target]
+        response.close.assert_called_once()
+
+    def test_rejects_cross_origin_url_without_network_request(self):
+        self.client.session.get = Mock()
+
+        with pytest.raises(ValueError, match="origin"):
+            self.client.download_pdf_version(
+                "https://foreign.test/media/law.pdf", self.tmp_path / "candidate.pdf"
+            )
+
+        self.client.session.get.assert_not_called()
+        assert list(self.tmp_path.iterdir()) == []
+
+    def test_refuses_redirect_response_without_following_it(self):
+        response = _response(status=302, body=b"", headers={"Location": "https://foreign.test/file"})
+        self.client.session.get = Mock(return_value=response)
+
+        with pytest.raises(requests.RequestException, match="status: 302"):
+            self.client.download_pdf_version(
+                "https://sapl.test/media/law.pdf", self.tmp_path / "candidate.pdf"
+            )
+
+        assert self.client.session.get.call_args.kwargs["allow_redirects"] is False
+        assert list(self.tmp_path.iterdir()) == []
+        response.close.assert_called_once()
+
+    @override_settings(SAPL_DOWNLOAD_MAX_BYTES=8)
+    def test_rejects_oversized_content_length_and_cleans_staging_file(self):
+        response = _response(body=b"", headers={"Content-Length": "9"})
+        self.client.session.get = Mock(return_value=response)
+
+        with pytest.raises(ValueError, match="byte limit"):
+            self.client.download_pdf_version(
+                "https://sapl.test/media/law.pdf", self.tmp_path / "candidate.pdf"
+            )
+
+        assert list(self.tmp_path.iterdir()) == []
+        response.close.assert_called_once()
+
+    @override_settings(SAPL_DOWNLOAD_MAX_BYTES=8)
+    def test_rejects_stream_that_exceeds_limit_and_cleans_staging_file(self):
+        response = _response(body=b"", headers={})
+        response.iter_content.return_value = [b"%PDF-1.7", b"oversized"]
+        self.client.session.get = Mock(return_value=response)
+
+        with pytest.raises(ValueError, match="byte limit"):
+            self.client.download_pdf_version(
+                "https://sapl.test/media/law.pdf", self.tmp_path / "candidate.pdf"
+            )
+
+        assert list(self.tmp_path.iterdir()) == []
+        response.close.assert_called_once()
+
+    def test_rejects_non_pdf_payload_and_preserves_existing_target(self):
+        response = _response(body=b"not a pdf")
+        self.client.session.get = Mock(return_value=response)
+        target = self.tmp_path / "candidate.pdf"
+        target.write_bytes(b"existing version")
+
+        with pytest.raises(ValueError, match="does not contain a PDF"):
+            self.client.download_pdf_version(
+                "https://sapl.test/media/law.pdf", self.tmp_path / "candidate.new.pdf"
+            )
+
+        with pytest.raises(FileExistsError, match="already exists"):
+            self.client.download_pdf_version("https://sapl.test/media/law.pdf", target)
+
+        self.client.session.get.assert_called_once()
+        assert target.read_bytes() == b"existing version"
+        assert sorted(path.name for path in self.tmp_path.iterdir()) == [
+            "candidate.pdf",
+        ]
+
+
+class SaplPdfCandidateStagingTests(SimpleTestCase):
+    def setUp(self):
+        self._temporary_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temporary_directory.cleanup)
+        self.tmp_path = Path(self._temporary_directory.name)
+        (self.tmp_path / "media").mkdir()
+        previous_qa_only = os.environ.get("JURIX_QA_ONLY")
+        os.environ["JURIX_QA_ONLY"] = "1"
+        if previous_qa_only is None:
+            self.addCleanup(os.environ.pop, "JURIX_QA_ONLY", None)
+        else:
+            self.addCleanup(os.environ.__setitem__, "JURIX_QA_ONLY", previous_qa_only)
+        self.settings_override = override_settings(
+            QA_ROOT=self.tmp_path,
+            MEDIA_ROOT=self.tmp_path / "media",
+            NORMATIVE_ARCHIVE_ROOT=self.tmp_path / "media" / "normative-archive",
+            NORMATIVE_ARCHIVE_ENABLED=True,
+        )
+        self.settings_override.enable()
+        self.addCleanup(self.settings_override.disable)
+
+    def test_candidate_is_staged_by_hash_and_never_promoted(self):
+        from unittest.mock import patch
+
+        body = b"%PDF-1.7\nimmutable revision"
+        digest = hashlib.sha256(body).hexdigest()
+        norma = Norma(
+            tipo="Lei",
+            numero="55",
+            ano=2026,
+            sapl_id=55,
+            identity_key="municipal:lei:55:2026",
+            identity_json={"scope": "municipal"},
+            pdf_path="accepted/current.pdf",
+            texto_consolidado="Texto atualmente aceito",
+        )
+        client = Mock()
+
+        def download(_url, destination):
+            Path(destination).write_bytes(body)
+            return {
+                "content_sha256": digest,
+                "size_bytes": len(body),
+                "etag": '"revision-2"',
+                "last_modified": "",
+            }
+
+        client.download_pdf_version.side_effect = download
+        client._validated_sapl_pdf_url.return_value = "https://sapl.test/media/law.pdf"
+        candidate = SimpleNamespace(
+            content_sha256=digest,
+            storage_key=(Path("sha256") / digest[:2] / digest[2:4] / f"{digest}.pdf").as_posix(),
+        )
+        with patch.object(
+            DocumentoNormativo.objects,
+            "filter",
+            return_value=Mock(order_by=Mock(return_value=Mock(first=Mock(return_value=None)))),
+        ), patch.object(
+            DocumentoNormativo.objects,
+            "get_or_create",
+            return_value=(candidate, True),
+        ) as get_or_create:
+            result, created = stage_sapl_pdf_candidate(
+                client=client,
+                norma=norma,
+                pdf_url="https://sapl.test/media/law.pdf",
+                remote_fingerprint='etag:"revision-2"',
+            )
+
+        assert result is candidate
+        assert created is True
+        defaults = get_or_create.call_args.kwargs["defaults"]
+        assert defaults["norma"] is norma
+        assert defaults["role"] == DocumentoNormativo.Role.UNDETERMINED
+        assert defaults["condition_of_use"] == DocumentoNormativo.ConditionOfUse.UNKNOWN
+        assert defaults["review_status"] == DocumentoNormativo.ReviewStatus.PENDING
+        assert defaults["extraction_status"] == DocumentoNormativo.ExtractionStatus.PENDING
+        assert defaults["content_sha256"] == digest
+        assert defaults["metadata_json"]["remote_fingerprint"] == 'etag:"revision-2"'
+        assert norma.pdf_path == "accepted/current.pdf"
+        assert norma.texto_consolidado == "Texto atualmente aceito"
+        blob = self.tmp_path / "media" / "normative-archive" / defaults["storage_key"]
+        assert blob.read_bytes() == body
+
+    def test_candidate_rejects_download_that_does_not_match_observed_fingerprint(self):
+        from unittest.mock import patch
+
+        body = b"%PDF-1.7\nother revision"
+        norma = Norma(tipo="Lei", numero="56", ano=2026, sapl_id=56)
+        client = Mock()
+
+        def download(_url, destination):
+            Path(destination).write_bytes(body)
+            return {
+                "content_sha256": hashlib.sha256(body).hexdigest(),
+                "size_bytes": len(body),
+                "etag": '"other"',
+                "last_modified": "",
+            }
+
+        client.download_pdf_version.side_effect = download
+        with patch.object(
+            DocumentoNormativo.objects,
+            "filter",
+            return_value=Mock(order_by=Mock(return_value=Mock(first=Mock(return_value=None)))),
+        ), pytest.raises(SaplDocumentCandidateError, match="does not match"):
+            stage_sapl_pdf_candidate(
+                client=client,
+                norma=norma,
+                pdf_url="https://sapl.test/media/law.pdf",
+                remote_fingerprint='etag:"observed"',
+            )
+
+        assert list((self.tmp_path / "media" / "normative-archive" / ".staging").iterdir()) == []
+
+    def test_existing_fingerprint_candidate_is_reused_without_download(self):
+        from unittest.mock import patch
+
+        norma = Norma(tipo="Lei", numero="59", ano=2026, sapl_id=59)
+        existing = SimpleNamespace(content_sha256="a" * 64, storage_key="sha256/existing.pdf")
+        query = Mock()
+        query.order_by.return_value.first.return_value = existing
+        client = Mock()
+        with patch.object(DocumentoNormativo.objects, "filter", return_value=query):
+            candidate, created = stage_sapl_pdf_candidate(
+                client=client,
+                norma=norma,
+                pdf_url="https://sapl.test/media/law.pdf",
+                remote_fingerprint='etag:"already-staged"',
+            )
+
+        assert candidate is existing
+        assert created is False
+        client.download_pdf_version.assert_not_called()
+
+    def test_qa_staging_refuses_a_storage_root_outside_the_qa_directory(self):
+        outside = self.tmp_path.parent / f"{self.tmp_path.name}-outside"
+        with override_settings(NORMATIVE_ARCHIVE_ROOT=outside), pytest.raises(
+            SaplDocumentCandidateError, match="escaped the QA root"
+        ):
+            _storage_root()
+
+    def test_disabled_archive_feature_refuses_before_download(self):
+        norma = Norma(tipo="Lei", numero="60", ano=2026, sapl_id=60)
+        client = Mock()
+        with override_settings(NORMATIVE_ARCHIVE_ENABLED=False), pytest.raises(
+            SaplDocumentCandidateError, match="disabled"
+        ):
+            stage_sapl_pdf_candidate(
+                client=client,
+                norma=norma,
+                pdf_url="https://sapl.test/media/law.pdf",
+                remote_fingerprint='etag:"disabled"',
+            )
+
+        client.download_pdf_version.assert_not_called()
+
+    @override_settings(NORMATIVE_ARCHIVE_ENABLED=True)
+    def test_pending_change_stages_and_attaches_candidate(self):
+        from unittest.mock import patch
+
+        fingerprint = 'etag:"revision-3"'
+        norma = SimpleNamespace(
+            sapl_id=57,
+            sapl_metadata={"_jurix_pending_pdf_change": {"fingerprint": fingerprint}},
+        )
+        candidate = SimpleNamespace(public_id="candidate-uuid", document_key="candidate-key")
+        client = Mock()
+        with patch.object(
+            Norma.objects,
+            "filter",
+            return_value=Mock(first=Mock(return_value=norma)),
+        ), patch(
+            "src.apps.ingestion.sapl_document_sync.stage_sapl_pdf_candidate",
+            return_value=(candidate, True),
+        ) as stage, patch.object(
+            sapl_sync, "_attach_pdf_candidate", return_value=True
+        ) as attach:
+            staged = sapl_sync._stage_pending_pdf_candidate(
+                client,
+                {"id": 57, "texto_integral": "https://sapl.test/media/law.pdf"},
+                fingerprint,
+            )
+
+        assert staged is True
+        stage.assert_called_once_with(
+            client=client,
+            norma=norma,
+            pdf_url="https://sapl.test/media/law.pdf",
+            remote_fingerprint=fingerprint,
+        )
+        attach.assert_called_once_with(57, fingerprint, candidate)
+
+    @override_settings(NORMATIVE_ARCHIVE_ENABLED=True)
+    def test_attached_candidate_is_not_downloaded_again(self):
+        from unittest.mock import patch
+
+        fingerprint = 'etag:"revision-4"'
+        norma = SimpleNamespace(
+            sapl_id=58,
+            sapl_metadata={
+                "_jurix_pending_pdf_change": {
+                    "fingerprint": fingerprint,
+                    "document_public_id": "existing-candidate",
+                }
+            },
+        )
+        client = Mock()
+        with patch.object(
+            Norma.objects,
+            "filter",
+            return_value=Mock(first=Mock(return_value=norma)),
+        ), patch.object(
+            DocumentoNormativo.objects,
+            "filter",
+            return_value=Mock(exists=Mock(return_value=True)),
+        ), patch(
+            "src.apps.ingestion.sapl_document_sync.stage_sapl_pdf_candidate"
+        ) as stage:
+            staged = sapl_sync._stage_pending_pdf_candidate(
+                client,
+                {"id": 58, "texto_integral": "https://sapl.test/media/law.pdf"},
+                fingerprint,
+            )
+
+        assert staged is False
+        stage.assert_not_called()

@@ -31,6 +31,12 @@ from src.processing.grounding_service import build_article_family_evidence, extr
 
 _WORD_RE = re.compile(r"[A-Za-zÀ-ÿ]{3,}", re.UNICODE)
 _NUMBER_RE = re.compile(r"\b\d+(?:[.,]\d+)?\b")
+_LEGAL_CITATION_NUMBER_RE = re.compile(
+    r"\b(lei(?:\s+complementar|\s+ordinária|\s+orgânica)?|decreto(?:-lei|\s+legislativo)?|"
+    r"resolução|emenda(?:\s+constitucional)?|portaria)\s+n?[º°o.]*\s*"
+    r"([\d.]+)\s*[/,]\s*(\d{2,4})(?!\d)",
+    re.IGNORECASE,
+)
 _YEAR_RE = re.compile(r"\b(?:19|20)\d{2}\b")
 _NEGATION_RE = re.compile(
     r"\b(?:não|nunca|jamais|sem|nenhum|nenhuma|proibid[oa]s?|vedad[oa]s?|ved[aa]m?|pro[íi]b[ea]m?|proibi[çc][ãa]o|veda[çc][ãa]o|impede|impedir|impossibilita|impossibilitar)\b",
@@ -271,7 +277,19 @@ def _tokens(text: str) -> set[str]:
 
 
 def _numbers(text: str) -> set[str]:
-    values = {match.replace(",", ".") for match in _NUMBER_RE.findall(text or "")}
+    # The number portion of a legal citation is an identifier, not a numeric
+    # fact. Canonicalize Brazilian thousands separators before comparing it:
+    # structured metadata may contain 9001 while prose cites 9.001.
+    normalized_text = _LEGAL_CITATION_NUMBER_RE.sub(
+        lambda match: (
+            f"{match.group(1)} {match.group(2).replace('.', '')}/{match.group(3)}"
+        ),
+        text or "",
+    )
+    # Citation markers are checked against the evidence list by citation
+    # policy; their ordinal is not a legal quantity that must occur in text.
+    normalized_text = re.sub(r"\[\[\d{1,3}\]\]", " ", normalized_text)
+    values = {match.replace(",", ".") for match in _NUMBER_RE.findall(normalized_text)}
     values.update(_YEAR_RE.findall(text or ""))
     return values
 
@@ -421,6 +439,7 @@ def evaluate_strict_grounding(
 
     for claim in claims:
         matches: list[dict[str, Any]] = []
+        rejected_matches: list[dict[str, Any]] = []
         for index, item in enumerate(evidence):
             match = _match_claim(claim, item)
             match = EvidenceMatch(
@@ -446,6 +465,22 @@ def evaluate_strict_grounding(
                         "certainty_ok": match.certainty_ok,
                     }
                 )
+            else:
+                claim_numbers = _numbers(claim.text)
+                evidence_numbers = _numbers(f"{item.norma_ref} {item.identifier} {item.text}")
+                rejected_matches.append(
+                    {
+                        "evidence_index": index,
+                        "lexical_overlap": match.lexical_overlap,
+                        "lexical_ok": match.lexical_overlap
+                        >= float(getattr(settings, "RAG_STRICT_MIN_LEXICAL_OVERLAP", 0.45)),
+                        "numeric_ok": match.numeric_ok,
+                        "unmatched_numbers": sorted(claim_numbers - evidence_numbers),
+                        "negation_ok": match.negation_ok,
+                        "citation_ok": match.citation_ok,
+                        "certainty_ok": match.certainty_ok,
+                    }
+                )
 
         supported = bool(matches)
         if not supported:
@@ -455,6 +490,7 @@ def evaluate_strict_grounding(
                 "claim": claim.text,
                 "supported": supported,
                 "matches": matches,
+                "rejected_matches": rejected_matches,
                 "citation_refs": list(claim.citation_refs),
             }
         )

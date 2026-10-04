@@ -24,16 +24,19 @@ from src.clients.sapl.sapl_client import SaplAPIClient
 from src.llm_engine.ollama_service import OllamaService
 from src.processing.cache_service import get_cache_service
 from src.processing.consolidation_engine import ConsolidationEngine
+from src.processing.document_metadata import normalize_document_number
 from src.processing.legal_parser import LegalTextParser
 from src.processing.ner_extractor import LegalNERExtractor
+from src.processing.normative_reference import canonical_type
 
 logger = logging.getLogger(__name__)
 
 
 def _normalize_norma_tipo(value: Any) -> str:
     """Convert SAPL type codes into the public legal type label."""
-    raw = str(value or "").strip()
-    return {"1": "Lei"}.get(raw, raw)
+    from src.clients.sapl.sapl_types import classify_sapl_type
+
+    return str(classify_sapl_type(value)["public_label"])
 
 
 def _configure_tesseract() -> None:
@@ -104,17 +107,18 @@ def _resolve_norma_reference(tipo: str, numero: str, ano: str) -> Norma | None:
         return None
 
     try:
-        # Normalize tipo for matching
-        tipo_normalized = tipo.strip().lower()
-        numero_clean = numero.strip()
+        type_key = canonical_type(tipo)
+        number_key = normalize_document_number(numero)
         ano_int = int(ano)
-
-        # Try exact match
-        norma = Norma.objects.filter(
-            tipo__iexact=tipo_normalized, numero=numero_clean, ano=ano_int
-        ).first()
-
-        return norma
+        if not type_key or not number_key or not 1000 <= ano_int <= 9999:
+            return None
+        matches = [
+            norma
+            for norma in Norma.objects.filter(ano=ano_int).only("id", "tipo", "numero")
+            if canonical_type(norma.tipo) == type_key
+            and normalize_document_number(norma.numero) == number_key
+        ]
+        return matches[0] if len(matches) == 1 else None
     except Exception as e:
         logger.debug(f"Could not resolve norma reference: {tipo} {numero}/{ano}: {e}")
         return None

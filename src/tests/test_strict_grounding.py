@@ -126,6 +126,17 @@ def test_strict_grounding_reports_exact_failure_reason_shape():
     claim = report["claims"][0]
     assert claim["supported"] is False
     assert "matches" in claim
+    assert claim["rejected_matches"]
+    assert set(claim["rejected_matches"][0]) == {
+        "evidence_index",
+        "lexical_overlap",
+        "lexical_ok",
+        "numeric_ok",
+        "unmatched_numbers",
+        "negation_ok",
+        "citation_ok",
+        "certainty_ok",
+    }
     assert "citation_refs" in claim
 
 
@@ -266,3 +277,43 @@ def test_truncated_device_is_not_used_to_create_composite_evidence():
         for claim in report["claims"]
         for match in claim["matches"]
     )
+
+
+@override_settings(RAG_STRICT_MIN_LEXICAL_OVERLAP=0.45)
+def test_whole_norm_overview_answer_with_supported_deadline_and_citation_is_grounded():
+    from src.processing.rag_generation import validate_generated_answer
+
+    norma = SimpleNamespace(id=1, numero="9001", ano=2020, tipo="Lei")
+    article = SimpleNamespace(
+        id=5,
+        tipo="artigo",
+        numero="5º",
+        norma_id=1,
+        norma=norma,
+        dispositivo_pai=None,
+        dispositivo_pai_id=None,
+        texto="Art. 5º O prazo é de dez dias.",
+    )
+    evidence = {
+        **_family_source(5, article.texto, "artigo", None),
+        "dispositivo": article,
+        "dispositivo_id": 5,
+        # The evidence comes from the structured model (9001), while the LLM
+        # may apply the conventional thousands separator (9.001).
+        "norma_ref": "Lei nº 9001/2020",
+        "identifier": "Art. 5º",
+        "full_text": article.texto,
+        # Context evidence excludes the external citation marker; its index is
+        # validated against the source list, not against legal text.
+        "evidence_text": "Lei nº 9001/2020, Art. 5º: Art. 5º O prazo é de dez dias.",
+        "citation_index": 1,
+        "citation_id": "jurix:norma:1:dispositivo:5",
+    }
+
+    result = validate_generated_answer(
+        "A Lei nº 9.001/2020 prevê que o prazo é de dez dias, como estabelece o Art. 5º da referida lei [[1]].",
+        [evidence],
+    )
+
+    assert result["grounded"] is True
+    assert result["source_only"] is True

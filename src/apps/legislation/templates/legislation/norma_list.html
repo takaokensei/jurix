@@ -7,7 +7,7 @@
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Normas' %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jurix-norma-list.css' %}?v=20261002-norma-library-compact1">
+<link rel="stylesheet" href="{% static 'css/jurix-norma-list.css' %}?v=20261004-archive-review-filters2">
 {% endblock %}
 
 {% block content %}
@@ -92,6 +92,12 @@
                     <span class="jurix-norma-stat-value">{{ filtered_count }}</span>
                     <span class="jurix-norma-stat-label">resultados</span>
                 </div>
+                {% if archive_candidate_count %}
+                <div class="jurix-norma-stat jurix-norma-stat-pending">
+                    <span class="jurix-norma-stat-value">{{ archive_candidate_count }}</span>
+                    <span class="jurix-norma-stat-label">PDFs em revisão</span>
+                </div>
+                {% endif %}
             </div>
             <div class="jurix-norma-view-switcher" aria-label="Modo de visualização">
                 <button type="button" class="jurix-norma-view-button" data-norma-view="grid" aria-label="Visualização em grade" aria-pressed="true">▦</button>
@@ -158,6 +164,8 @@
         <p>
             {% if search_query or selected_type or selected_year %}
                 Não encontramos normas para os filtros atuais. Tente ampliar a pesquisa ou remover um dos filtros.
+            {% elif archive_candidate_count %}
+                Ainda não há normas consolidadas. Os documentos do acervo histórico local aparecem abaixo; o PDF original pode ser consultado, enquanto metadados e segmentação passam por revisão antes da consolidação.
             {% else %}
                 O acervo consolidado ainda não possui normas disponíveis para consulta.
             {% endif %}
@@ -165,6 +173,86 @@
         {% if search_query or selected_type or selected_year %}
         <a class="jurix-norma-primary-button" href="{% url 'legislation:norma_list' %}">Limpar filtros</a>
         {% endif %}
+        {% if archive_candidate_count %}
+        <a class="jurix-norma-secondary-button" href="#archive-candidates-title">Ver os {{ archive_candidate_count }} PDFs em revisão</a>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {% if archive_candidates %}
+    <section class="jurix-archive-candidates" aria-labelledby="archive-candidates-title">
+        <div class="jurix-archive-candidates-heading">
+            <div>
+                <span class="jurix-norma-eyebrow">Acervo histórico local</span>
+                <h2 id="archive-candidates-title">Documentos para consolidação</h2>
+                <p>Estes documentos compõem o acervo histórico local e estão disponíveis para consulta. Ainda não foram consolidados no corpus principal; metadados e segmentação permanecem sob revisão. O assistente pode citar o PDF arquivado e, quando houver correspondência inequívoca, abrir o registro correspondente no SAPL.</p>
+                {% if archive_assistant_enabled %}
+                <a class="jurix-norma-primary-button" href="{% url 'workspace:assistant' %}?new=1&amp;corpus=archive-qa">Perguntar ao assistente sobre o acervo</a>
+                {% endif %}
+            </div>
+            <span class="jurix-archive-candidates-count">{{ archive_candidate_count }} candidatos</span>
+        </div>
+        <div class="jurix-archive-candidate-filters" aria-label="Filtros dos PDFs em revisão">
+            <div class="jurix-archive-candidate-search-field">
+                <label for="archive-candidate-search">Localizar documento</label>
+                <input id="archive-candidate-search" type="search" autocomplete="off" spellcheck="false"
+                    value="{{ request.GET.q|default:'' }}"
+                    placeholder="Número, ano, tipo ou nome do arquivo" aria-controls="archive-candidates-list">
+            </div>
+            <div class="jurix-archive-candidate-select-field">
+                <label for="archive-candidate-identity">Identificação</label>
+                <select id="archive-candidate-identity" aria-controls="archive-candidates-list">
+                    <option value="all">Todas</option>
+                    <option value="resolved">Reconhecida automaticamente</option>
+                    <option value="unresolved">Precisa de identificação</option>
+                </select>
+            </div>
+            <div class="jurix-archive-candidate-select-field">
+                <label for="archive-candidate-status">Revisão</label>
+                <select id="archive-candidate-status" aria-controls="archive-candidates-list">
+                    <option value="all">Todos os status</option>
+                    <option value="pending">Pendente</option>
+                    <option value="in_review">Em revisão</option>
+                </select>
+            </div>
+            <div class="jurix-archive-candidate-select-field">
+                <label for="archive-candidate-extraction">Texto extraído</label>
+                <select id="archive-candidate-extraction" aria-controls="archive-candidates-list">
+                    <option value="all">Todos os estados</option>
+                    <option value="complete">Completo</option>
+                    <option value="partial">Parcial</option>
+                    <option value="unreadable">Ilegível</option>
+                    <option value="none">Sem extração</option>
+                </select>
+            </div>
+        </div>
+        <p class="jurix-archive-candidate-filter-summary" id="archive-candidate-filter-summary" role="status" aria-live="polite">
+            Exibindo {{ archive_candidate_count }} de {{ archive_candidate_count }} documentos.
+        </p>
+        <div class="jurix-archive-candidates-grid" id="archive-candidates-list">
+            {% for candidate in archive_candidates %}
+            <article class="jurix-archive-candidate"
+                data-search="{{ candidate.label }} {{ candidate.filename }} {{ candidate.entry_index }}"
+                data-identity="{% if candidate.identity_resolved %}resolved{% else %}unresolved{% endif %}"
+                data-review-status="{{ candidate.review_status_key }}"
+                data-extraction-status="{{ candidate.extraction_status }}">
+                <div class="jurix-archive-candidate-meta">
+                    <span>PDF · entrada {{ candidate.entry_index }}</span>
+                    <span class="jurix-archive-candidate-status">{{ candidate.review_status }}</span>
+                </div>
+                <h3>{{ candidate.label }}</h3>
+                <p class="jurix-archive-candidate-filename">{{ candidate.filename }}</p>
+                <p class="jurix-archive-candidate-extraction">{{ candidate.extraction_summary }}</p>
+                <p class="jurix-archive-candidate-note">
+                    {% if candidate.identity_resolved %}Identidade candidata reconhecida; falta revisão humana.{% else %}Identidade não resolvida automaticamente; requer revisão humana.{% endif %}
+                </p>
+                <a class="jurix-norma-secondary-button" href="{{ candidate.evidence_url }}">Inspecionar PDF e texto extraído <span class="sr-only">de {{ candidate.label }}</span></a>
+            </article>
+            {% endfor %}
+        </div>
+        <p class="jurix-archive-candidates-no-results" id="archive-candidates-no-results" hidden>
+            Nenhum documento corresponde aos filtros. Ajuste os termos ou selecione “Todas”.
+        </p>
     </section>
     {% endif %}
 </div>
@@ -172,4 +260,5 @@
 
 {% block extra_js %}
 <script src="{% static 'js/jurix-norma-list.js' %}?v=20261002-exact-reference2"></script>
+{% if archive_candidates %}<script src="{% static 'js/jurix-archive-candidate-filter.js' %}?v=20261004-candidate-filters3"></script>{% endif %}
 {% endblock %}

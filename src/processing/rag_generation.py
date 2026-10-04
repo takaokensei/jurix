@@ -118,6 +118,10 @@ def validate_generated_answer(
         }
     )
     grounded = bool(report.get("grounded")) and source_only
+    if grounded:
+        from src.processing.citation_enrichment import attach_grounded_citations
+
+        normalized = attach_grounded_citations(normalized, report, results)
     return {
         "answer": normalized if grounded else grounding_fallback(),
         "grounding": report,

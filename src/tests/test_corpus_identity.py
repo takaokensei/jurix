@@ -1,6 +1,12 @@
 import pytest
 
-from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
+from src.apps.legislation.models import (
+    Dispositivo,
+    DocumentoNormativo,
+    EventoAlteracao,
+    ExtracaoDocumento,
+    Norma,
+)
 from src.apps.operations.models import CorpusRevision
 from src.processing.corpus_identity import get_corpus_revision, refresh_corpus_revision
 
@@ -69,3 +75,35 @@ def test_corpus_revision_is_recreated_when_the_seed_row_is_missing():
     assert revision["revision"] == 0
     assert revision["changed"] is False
     assert CorpusRevision.objects.filter(key="municipal").exists()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_staged_document_is_excluded_until_base_and_extraction_are_selected():
+    norma = Norma.objects.create(tipo="Lei", numero="99601", ano=2026)
+    before = refresh_corpus_revision()
+    document = DocumentoNormativo.objects.create(
+        document_key="a" * 64,
+        source_kind="archive",
+        source_ref="sistema2/pdfs/99601.pdf",
+        content_sha256="b" * 64,
+    )
+    extraction = ExtracaoDocumento.objects.create(
+        documento=document,
+        extractor_version="pymupdf-test",
+        policy_fingerprint="c" * 64,
+        text_version="technical_text_v1",
+        legal_text="Art. 1º Texto de QA.",
+    )
+    staged = refresh_corpus_revision()
+    assert staged["digest"] == before["digest"]
+    assert staged["changed"] is False
+
+    norma.documento_base = document
+    norma.save(update_fields=["documento_base"])
+    selected = get_corpus_revision()
+    assert selected["digest"] != staged["digest"]
+
+    document.accepted_extraction = extraction
+    document.save(update_fields=["accepted_extraction"])
+    accepted = get_corpus_revision()
+    assert accepted["digest"] != selected["digest"]

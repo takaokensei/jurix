@@ -24,6 +24,7 @@ from src.clients.sapl.sapl_client import SaplAPIClient
 from src.llm_engine.ollama_service import OllamaService
 from src.processing.cache_service import get_cache_service
 from src.processing.consolidation_engine import ConsolidationEngine
+from src.processing.document_extraction import extract_pdf_document
 from src.processing.legal_parser import LegalTextParser
 from src.processing.ner_extractor import LegalNERExtractor
 
@@ -85,9 +86,11 @@ def ocr_pdf_task(self, norma_id: int) -> dict[str, Any]:
 
         logger.info(f"[Task {task_id}] Abrindo PDF: {norma.pdf_path}")
 
-        # Abrir PDF com PyMuPDF
+        # OCR is selective: native text remains preferred unless an image-backed
+        # page has objectively insufficient/corrupt text.
         pdf_document = fitz.open(norma.pdf_path)
         total_pages = len(pdf_document)
+        pdf_document.close()
 
         logger.info(f"[Task {task_id}] PDF tem {total_pages} página(s)")
 
@@ -120,48 +123,39 @@ def ocr_pdf_task(self, norma_id: int) -> dict[str, Any]:
                 "processing_time": time.time() - start_time,
             }
 
-        # Extrair texto de cada página
-        extracted_text_pages = []
-
-        for page_num in range(total_pages):
-            page = pdf_document[page_num]
-
-            # Tentar extrair texto nativo primeiro (mais rápido e preciso)
-            native_text = page.get_text("text").strip()
-
-            if native_text and len(native_text) > 100:
-                # Texto nativo encontrado (PDF com texto embutido)
-                logger.debug(f"[Task {task_id}] Página {page_num + 1}: Usando texto nativo")
-                extracted_text_pages.append(native_text)
-            else:
-                # Texto nativo insuficiente, usar OCR
-                logger.debug(f"[Task {task_id}] Página {page_num + 1}: Aplicando OCR com Tesseract")
-
-                # Converter página em imagem (DPI 300 para melhor qualidade)
-                pix = page.get_pixmap(dpi=300)
-                img_bytes = pix.tobytes("png")
-                img = Image.open(io.BytesIO(img_bytes))
-
-                # Aplicar Tesseract OCR (português)
-                _configure_tesseract()
-                ocr_text = pytesseract.image_to_string(
-                    img,
-                    lang="por",
-                    config="--psm 6",  # Assume block of text
-                )
-
-                extracted_text_pages.append(ocr_text.strip())
-
-        pdf_document.close()
-
-        # Consolidar texto de todas as páginas
-        full_text = "\n\n".join(
-            [
-                f"--- Página {i + 1} ---\n{text}"
-                for i, text in enumerate(extracted_text_pages)
-                if text
-            ]
+        _configure_tesseract()
+        extraction = extract_pdf_document(
+            norma.pdf_path,
+            max_pages=max_pages,
+            ocr_timeout_seconds=90,
         )
+        full_text = extraction["legal_text"]
+        methods = extraction["quality"]["page_methods"]
+        logger.info(
+            "[Task %s] Extração por página: %s nativas, %s OCR, %s ilegíveis",
+            task_id,
+            methods["native"],
+            methods["ocr"],
+            methods["unreadable"],
+        )
+
+        if not extraction["complete"]:
+            error_msg = (
+                "Extração documental incompleta; páginas ilegíveis ou vazias: "
+                f"{extraction['quality']['unreadable_pages']}"
+            )
+            norma.needs_review = True
+            norma.processing_error = error_msg
+            norma.status = "pdf_downloaded"
+            norma.save(update_fields=["needs_review", "processing_error", "status", "updated_at"])
+            return {
+                "success": False,
+                "needs_review": True,
+                "error": error_msg,
+                "norma_id": norma_id,
+                "pages_processed": total_pages,
+                "page_methods": methods,
+            }
 
         total_chars = len(full_text)
         processing_time = time.time() - start_time
@@ -172,17 +166,19 @@ def ocr_pdf_task(self, norma_id: int) -> dict[str, Any]:
             logger.warning(f"[Task {task_id}] {error_msg}")
             norma.needs_review = True
             norma.processing_error = error_msg
-            norma.status = "ocr_processing"  # Manter como processando para retry
+            norma.status = "pdf_downloaded"
+            # Preserve previously stored text; an empty extraction is never certified.
             norma.save(update_fields=["needs_review", "processing_error", "status", "updated_at"])
-
-            # Retry
-            raise self.retry(exc=Exception(error_msg), countdown=120 * (2**self.request.retries))
+            return {"success": False, "needs_review": True, "error": error_msg, "norma_id": norma_id}
 
         # Salvar texto extraído
         norma.texto_original = full_text
         norma.status = "ocr_completed"
+        norma.needs_review = extraction["needs_review"]
         norma.processing_error = ""  # Limpar erros
-        norma.save(update_fields=["texto_original", "status", "processing_error", "updated_at"])
+        norma.save(
+            update_fields=["texto_original", "status", "needs_review", "processing_error", "updated_at"]
+        )
 
         logger.info(
             f"[Task {task_id}] OCR concluído com sucesso: Norma {norma} "
@@ -196,6 +192,10 @@ def ocr_pdf_task(self, norma_id: int) -> dict[str, Any]:
             "pages_processed": total_pages,
             "total_chars": total_chars,
             "processing_time": processing_time,
+            "page_methods": methods,
+            "extraction_sha256": extraction["extraction_sha256"],
+            "policy_fingerprint": extraction["policy_fingerprint"],
+            "needs_review": extraction["needs_review"],
         }
 
     except Norma.DoesNotExist:

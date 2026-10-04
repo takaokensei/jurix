@@ -72,3 +72,33 @@ def ordered_hierarchy_rows(rows: list[dict]) -> list[dict]:
     for row in rows:
         visit(row["index"], set())
     return ordered
+
+
+def legacy_device_identity_map(devices) -> dict[str, int]:
+    """Map stable structural keys to existing legacy PKs without changing rows."""
+    by_id = {device.pk: device for device in devices}
+    cache: dict[int, str] = {}
+
+    def key_for(device_id: int, active: set[int]) -> str:
+        if device_id in cache:
+            return cache[device_id]
+        if device_id in active:
+            raise ValueError("A hierarquia legada contém ciclo; reconciliação documental recusada.")
+        device = by_id[device_id]
+        active.add(device_id)
+        parent = device.dispositivo_pai
+        if parent and (parent.pk not in by_id or parent.norma_id != device.norma_id):
+            raise ValueError("Dispositivo legado tem pai fora da Norma carregada.")
+        parent_key = key_for(parent.pk, active) if parent else "root"
+        result = device.structural_key or structural_key(parent_key, device.tipo, device.numero)
+        active.remove(device_id)
+        cache[device_id] = result
+        return result
+
+    result = {}
+    for device_id in by_id:
+        key = key_for(device_id, set())
+        if key in result:
+            raise ValueError("A Norma possui dispositivos legados com identidade estrutural duplicada.")
+        result[key] = device_id
+    return result

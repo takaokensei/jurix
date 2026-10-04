@@ -7,15 +7,79 @@
 {% block extra_css %}
 {% load static %}
 <link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}?v=20260930-axe-heading1">
-<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261001-structural-compare1">
+<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261004-precedent-check-v1">
 {% endblock %}
 
 {% block content %}
 <div class="card">
     <h1 class="legal-page-heading">Comparação de Versões - {{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }}</h1>
+    {% if synthetic_fixture %}
+    <p class="historical-message historical-message--warning" role="note">
+        <strong>Fixture sintética de QA.</strong> Esta comparação serve apenas para testar a projeção temporal; não representa uma norma real nem uma validação jurídica.
+    </p>
+    {% endif %}
+    {% if historical_mode %}
+    <section class="historical-compare" aria-labelledby="historical-compare-title">
+        <h2 id="historical-compare-title">{% if precedent_mode %}Checar mudanças desde a data de uma decisão{% else %}Comparar redações em duas datas{% endif %}</h2>
+        <p class="compare-intro">A comparação usa projeções temporais auditáveis. Ela representa a consolidação do Jurix, não uma reprodução oficial do SAPL.</p>
+        {% if precedent_mode %}<p class="historical-message historical-message--warning" role="note"><strong>Conferência temporal, não análise de precedente.</strong> Informe a data da decisão e compare a redação projetada com a atual. O Jurix não identifica automaticamente as normas citadas na decisão, não determina qual data rege os fatos do processo e não avalia validade, força vinculante ou aplicabilidade do precedente. Se a projeção não tiver cobertura revisada, não use a ausência de texto como prova de revogação.</p>{% endif %}
+        <form class="historical-date-form" method="get" action="{% url 'legislation:norma_compare' norma.pk %}" data-default-from="{{ from_as_of }}" data-default-to="{{ to_as_of }}">
+            {% if precedent_mode %}<input type="hidden" name="history" value="1"><input type="hidden" name="mode" value="precedent">{% endif %}
+            {% if selected_device %}<input type="hidden" name="device_id" value="{{ selected_device.pk }}">{% endif %}
+            <div class="historical-date-field">
+                <label for="from-as-of">{% if precedent_mode %}Data da decisão{% else %}Versão em{% endif %}</label>
+                <input id="from-as-of" name="from_as_of" type="date" value="{{ from_as_of }}" required>
+            </div>
+            <span class="historical-date-separator" aria-hidden="true">→</span>
+            <div class="historical-date-field">
+                <label for="to-as-of">{% if precedent_mode %}Comparar com a redação em{% else %}Comparar com{% endif %}</label>
+                <input id="to-as-of" name="to_as_of" type="date" value="{{ to_as_of }}" required>
+            </div>
+            <button class="btn btn-primary" type="submit">Comparar datas</button>
+        </form>
+        {% if selected_device %}<p class="historical-message" role="status">Dispositivo em foco: <strong>{{ selected_device.get_full_identifier }}</strong>. A comparação limita as diferenças a esse dispositivo da norma.</p>{% endif %}
+        {% for error in historical_errors %}<p class="historical-message historical-message--error" role="alert">{{ error }}</p>{% endfor %}
+        {% if not history_enabled %}<p class="historical-message" role="status">{{ historical_notice }}</p>{% endif %}
+        {% if historical_notice and history_enabled %}<p class="historical-message" role="status">{{ historical_notice }}</p>{% endif %}
+        {% if historical_available %}
+        <p class="historical-message" role="note">{{ coverage_note }} Cobertura inicial: {{ before_projection.coverage.device_count }} dispositivos em {{ from_as_of }}; cobertura final: {{ after_projection.coverage.device_count }} em {{ to_as_of }}. Estado inicial: <strong>{{ before_status_label }}</strong>; final: <strong>{{ after_status_label }}</strong>.</p>
+        {% if before_projection.status != "complete" or after_projection.status != "complete" %}
+        <p class="historical-message historical-message--warning" role="status">Cobertura parcial: ausências não são tratadas como adições ou revogações sem evidência suficiente. Eventos aplicados: {{ after_projection.coverage.applied_event_ids|length }}; eventos pendentes ou conflitantes: {{ after_projection.coverage.pending_event_ids|length }}.</p>
+        {% endif %}
+        <div class="historical-diff-list" aria-label="Diferenças entre as projeções históricas">
+            {% for row in historical_rows %}
+            <article class="historical-diff-row historical-diff-{{ row.kind }}">
+                <div class="historical-diff-heading">
+                    <span class="historical-diff-symbol" aria-hidden="true">{% if row.kind == "added" %}+{% elif row.kind == "removed" %}−{% elif row.kind == "vetoed" %}V{% elif row.kind == "revoked" %}R{% elif row.kind == "coverage_unknown" %}?{% elif row.kind == "equal" %}={% else %}Δ{% endif %}</span>
+                    <strong>{{ row.label }}</strong>
+                    <span class="historical-device-label">{{ row.device_label }}</span>
+                </div>
+                <div class="historical-diff-columns">
+                    <section aria-label="Redação em {{ from_as_of }}"><h3>Em {{ from_as_of }}</h3>{% if row.before %}<pre>{{ row.before }}</pre>{% else %}<p class="compare-side-empty">Sem dispositivo nesta projeção</p>{% endif %}{% if row.before_status %}<small>Situação: {{ row.before_status_label }}</small>{% endif %}</section>
+                    <section aria-label="Redação em {{ to_as_of }}"><h3>Em {{ to_as_of }}</h3>{% if row.after %}<pre>{{ row.after }}</pre>{% else %}<p class="compare-side-empty">Sem dispositivo nesta projeção</p>{% endif %}{% if row.after_status %}<small>Situação: {{ row.after_status_label }}</small>{% endif %}</section>
+                </div>
+            </article>
+            {% empty %}<p class="compare-empty">Nenhum dispositivo foi encontrado nas projeções selecionadas.</p>{% endfor %}
+        </div>
+        <section class="historical-timeline" aria-labelledby="historical-timeline-title">
+            <h2 id="historical-timeline-title">Linha do tempo até {{ to_as_of }}</h2>
+            <ul>
+                {% for item in historical_timeline %}
+                <li><span class="historical-kind">{% if item.kind == "publication" %}Publicação{% elif item.kind == "effective" %}Efeito/vigência registrada{% elif item.pending %}Pendência de revisão{% else %}Evento normativo{% endif %}</span><strong>{% if item.date_display %}{{ item.date_display }} · {% endif %}{{ item.title }}</strong><p>{{ item.description }}</p>{% if item.source_norma %}<small>Fonte: {{ item.source_norma }}</small>{% endif %}{% if item.source_norma_id %}<a href="{% url 'legislation:norma_detail' item.source_norma_id %}">Abrir norma fonte</a>{% endif %}{% if item.target_dispositivo_id %}<a href="{% url 'legislation:norma_detail' norma.pk %}#dispositivo-{{ item.target_dispositivo_id }}">Abrir dispositivo relacionado</a>{% endif %}</li>
+                {% empty %}<li>Não há marcos temporais registrados para esta data.</li>{% endfor %}
+                {% if republication_count %}<li><span class="historical-kind">Republicação registrada</span><strong>{{ republication_count }} documento(s) revisado(s)</strong><p>A existência de republicação não confirma, por si só, uma nova redação ou data de efeito jurídico.</p></li>{% else %}<li><span class="historical-kind">Republicação</span><strong>Nenhuma republicação revisada registrada</strong><p>Arquivos candidatos sem revisão não são usados para afirmar data ou alteração.</p></li>{% endif %}
+                {% if after_projection.coverage.pending_event_ids %}<li><span class="historical-kind">Pendente</span><strong>{{ after_projection.coverage.pending_event_ids|length }} evento(s) não aplicados</strong><p>Eventos pendentes, conflitantes ou sem sustentação temporal não entram na redação projetada.</p></li>{% endif %}
+            </ul>
+        </section>
+        <p class="compare-method-note" role="note">As datas ficam na URL e podem ser restauradas pelo histórico do navegador. O diff é estrutural e informativo; não declara validade jurídica de uma alteração.</p>
+        {% endif %}
+        </section>
+    </div>
+    {% else %}
     <p class="compare-intro">
         Compare dispositivos alinhados pela hierarquia normativa entre o OCR original e o texto consolidado.
     </p>
+    {% if history_enabled %}<p><a class="btn btn-secondary" href="{% url 'legislation:norma_compare' norma.pk %}?history=1">Comparar redações em datas históricas</a></p>{% endif %}
     <p class="compare-method-note" role="note">
         Estas são diferenças textuais automáticas, não alterações jurídicas validadas. OCR, quebras de linha, cabeçalhos e consolidação podem gerar diferenças sem representar uma alteração jurídica. Confira o texto integral e os eventos normativos revisados antes de tirar conclusões.
     </p>
@@ -100,8 +164,13 @@
     </table>
 </div>
 {% endif %}
+    {% endif %}
 
 <div class="compare-back">
     <a href="{% url 'legislation:norma_detail' norma.pk %}" class="btn btn-secondary">« Voltar</a>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/jurix-temporal-compare.js' %}?v=20261004-history-sync1" defer></script>
 {% endblock %}

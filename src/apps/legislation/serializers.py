@@ -9,7 +9,12 @@ Provides centralized and consistent serialization for:
 
 import logging
 import re
+from datetime import date
 from typing import Any
+from urllib.parse import urlparse, urlsplit, urlunsplit
+
+from django.conf import settings
+from django.urls import NoReverseMatch, reverse
 
 from src.apps.legislation.source_urls import (
     canonical_norma_url,
@@ -19,6 +24,66 @@ from src.apps.legislation.source_urls import (
 from src.processing.temporal_scope import temporal_state_from_dates
 
 logger = logging.getLogger(__name__)
+
+_ARCHIVE_NORMA_LABEL = re.compile(
+    r"^(?P<type>Lei(?:\s+Complementar|\s+Ordinária|\s+Orgânica|\s+Promulgada)?|"
+    r"Decreto(?:-Lei|\s+Legislativo|\s+Executivo)?|Resolução|Portaria)\s+"
+    r"(?:n[º°o.]?\s*)?(?P<number>[\d.]+)/(?P<year>\d{4})$",
+    re.IGNORECASE,
+)
+
+
+def _legacy_archive_document_id(source: dict[str, Any], norma_ref: str) -> str | None:
+    """Recover the local PDF for old saved citations only when the source is unique."""
+    if not getattr(settings, "NORMATIVE_ARCHIVE_ASSISTANT_ENABLED", False):
+        return None
+    match = _ARCHIVE_NORMA_LABEL.fullmatch(str(norma_ref or "").strip())
+    excerpt = re.sub(r"\s+", " ", str(source.get("full_text") or source.get("text") or "")).strip()
+    if not match or len(excerpt) < 30:
+        return None
+
+    from src.apps.legislation.document_models import DocumentoNormativo, ExtracaoDocumento
+    from src.processing.document_metadata import (
+        TYPE_SERIES,
+        build_normative_identity,
+        normalize_document_number,
+    )
+    from src.processing.normative_reference import canonical_type
+
+    type_key = canonical_type(match.group("type"))
+    identity = build_normative_identity(
+        jurisdiction="BR-RN-NATAL",
+        raw_type=type_key,
+        series=TYPE_SERIES.get(type_key),
+        number=normalize_document_number(match.group("number")),
+        year=match.group("year"),
+    )
+    if not identity.identity_key:
+        return None
+    candidates = list(
+        DocumentoNormativo.objects.filter(
+            source_kind=DocumentoNormativo.SourceKind.ARCHIVE,
+            review_status__in=(
+                DocumentoNormativo.ReviewStatus.PENDING,
+                DocumentoNormativo.ReviewStatus.IN_REVIEW,
+            ),
+            metadata_json__identity_key=identity.identity_key,
+            conflicts_json=[],
+        ).order_by("entry_index", "pk")[:3]
+    )
+    matches = []
+    folded_excerpt = excerpt.casefold()
+    for document in candidates:
+        extraction = document.extracoes.order_by("-created_at", "-pk").first()
+        if extraction is None or extraction.status not in {
+            ExtracaoDocumento.Status.COMPLETE,
+            ExtracaoDocumento.Status.PARTIAL,
+        }:
+            continue
+        extracted = re.sub(r"\s+", " ", extraction.legal_text or "").casefold()
+        if folded_excerpt in extracted:
+            matches.append(str(document.public_id))
+    return matches[0] if len(matches) == 1 else None
 
 
 def _relevance_band(score: float) -> str:
@@ -76,6 +141,87 @@ def _citation_id(norma_id: object, device_id: object, fallback: object = None) -
     return None
 
 
+def _safe_temporal_version(value: object) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        return None
+    version_hash = str(value.get("version_hash") or "")
+    input_hash = str(value.get("input_hash") or "")
+    as_of = str(value.get("as_of") or "")[:10]
+    try:
+        date.fromisoformat(as_of)
+    except ValueError:
+        return None
+    if not re.fullmatch(r"[a-fA-F0-9]{64}", version_hash):
+        return None
+    result = {
+        "as_of": as_of,
+        "legal_status": str(value.get("legal_status") or "unknown")[:24],
+        "version_hash": version_hash.lower(),
+        "policy": str(value.get("policy") or "")[:80],
+    }
+    if re.fullmatch(r"[a-fA-F0-9]{64}", input_hash):
+        result["input_hash"] = input_hash.lower()
+    provenance = value.get("provenance")
+    if isinstance(provenance, dict):
+        source_id = str(provenance.get("base_document_id") or "")
+        if re.fullmatch(r"[0-9a-fA-F-]{36}", source_id):
+            result["source_document_id"] = source_id.lower()
+        effective_on = str(provenance.get("effective_on") or "")
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", effective_on):
+            result["effective_on"] = effective_on
+    return result
+
+
+def _safe_graph_relation(value: object) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        return None
+    action = str(value.get("action") or "").upper()
+    if action not in {"ALTERA", "SUBSTITUI", "ADICIONA", "REVOGA", "REFERENCIA"}:
+        return None
+    result = {
+        key: str(value[key])[:160]
+        for key in (
+            "event_id", "intent", "role", "label", "review_status",
+            "effective_status", "effective_on", "publication_on", "resolution",
+        )
+        if value.get(key) is not None
+    }
+    result["action"] = action
+    quote = str(value.get("quote") or "").strip()
+    if quote:
+        result["quote"] = quote[:1200]
+    for key in ("source_norma_id", "target_norma_id"):
+        try:
+            result[key] = int(value[key]) if value.get(key) is not None else None
+        except (TypeError, ValueError):
+            result[key] = None
+    for key in ("source_device_key", "target_device_key"):
+        candidate = str(value.get(key) or "")
+        if re.fullmatch(r"[a-fA-F0-9]{64}", candidate):
+            result[key] = candidate.lower()
+    official_url = str(value.get("official_url") or "")
+    parsed = urlparse(official_url)
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        result["official_url"] = official_url[:1000]
+    return result
+
+
+def _citation_identity(norma_id, disp_id, structural_key, temporal_version):
+    if temporal_version and norma_id and structural_key:
+        return (
+            f"jurix:norma:{norma_id}:version:{temporal_version['version_hash']}"
+            f":device:{structural_key}"
+        )
+    return _citation_id(norma_id, disp_id)
+
+
+def _without_url_fragment(value: str | None) -> str | None:
+    if not value:
+        return value
+    parts = urlsplit(value)
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, parts.query, ""))
+
+
 def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
     """
     Serialize a RAG source into a sanitized, frontend-ready dictionary.
@@ -110,6 +256,7 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
     if disp:
         # Source from model instance
         norma = None
+        synthetic_fixture = False
         try:
             norma = disp.norma
             tipo_getter = getattr(norma, "get_tipo_display_name", None)
@@ -119,6 +266,11 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
             norma_numero = _format_legal_number(getattr(norma, "numero", ""))
             norma_ano = getattr(norma, "ano", "")
             norma_id = getattr(norma, "id", None)
+            base_document = getattr(norma, "documento_base", None)
+            base_metadata = getattr(base_document, "metadata_json", {})
+            synthetic_fixture = (
+                isinstance(base_metadata, dict) and base_metadata.get("synthetic") is True
+            )
             pdf_url = getattr(norma, "pdf_url", None) or None
             sapl_url = canonical_norma_url(norma)
             publication_date = getattr(norma, "data_publicacao", None)
@@ -128,8 +280,10 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
             norma_tipo, norma_numero, norma_ano = "Lei", "", ""
             norma_id, pdf_url, sapl_url = None, None, None
             publication_date, effective_date = None, None
+            synthetic_fixture = False
 
         disp_id = getattr(disp, "id", None)
+        structural_key = str(getattr(disp, "structural_key", "") or "")
         disp_texto = str(getattr(disp, "texto", "") or "")
         disp_identifier = disp.get_full_identifier() if hasattr(disp, "get_full_identifier") else ""
         hierarchy = (
@@ -149,6 +303,22 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
             else f"{norma_tipo} {norma_numero}/{norma_ano}".strip()
         )
         citation_label = _legal_citation_label(norma_ref_str, disp_identifier)
+        temporal_version = _safe_temporal_version(source.get("temporal_version"))
+        source_url = public_source_url(norma) if norma is not None else None
+        if temporal_version:
+            citation_label += f" (redação projetada pelo Jurix em {temporal_version['as_of']})"
+            pdf_url = _without_url_fragment(pdf_url)
+            sapl_url = _without_url_fragment(sapl_url)
+            source_url = _without_url_fragment(source_url)
+        graph_relation = _safe_graph_relation(source.get("graph_relation"))
+        contribution = "Trecho de dispositivo"
+        source_type = "Fonte normativa primária"
+        if synthetic_fixture:
+            source_type = "Fixture sintética de QA — não representa legislação real"
+        if graph_relation:
+            contribution = graph_relation.get("label") or "Contexto de relação normativa"
+            if not synthetic_fixture:
+                source_type = "Contexto de relação normativa"
 
         return {
             "id": disp_id,
@@ -156,30 +326,38 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
             "full_text": disp_texto,
             "similarity_score": similarity,
             "relevance_band": _relevance_band(similarity),
-            "contribution": "Dispositivo incluído na visão da norma"
+            "contribution": graph_relation.get("label")
+            if graph_relation
+            else "Dispositivo incluído na visão da norma"
             if source.get("retrieval_strategy") == "whole_norma"
-            else "Trecho de dispositivo",
-            "source_type": "Fonte normativa primária",
+            else contribution,
+            "source_type": source_type,
             "distance": distance,
             "match_kind": source.get("match_kind"),
             "norma_ref": norma_ref_str,
             "norma_id": norma_id,
             "dispositivo_ref": disp_identifier,
-            "citation_id": _citation_id(norma_id, disp_id),
+            "citation_id": _citation_identity(
+                norma_id, disp_id, structural_key, temporal_version
+            ),
             "citation_label": citation_label,
             "retrieval_strategy": source.get("retrieval_strategy"),
             "evidence_scope": source.get("evidence_scope"),
+            "synthetic_fixture": synthetic_fixture,
             "coverage": source.get("coverage"),
             "hierarchy": hierarchy,
             "pdf_url": pdf_url,
             "sapl_url": sapl_url,
-            "source_url": public_source_url(norma) if norma is not None else None,
+            "source_url": source_url,
             "data_publicacao": publication_date.isoformat() if publication_date else None,
             "data_vigencia": effective_date.isoformat() if effective_date else None,
             "temporal_status": temporal_state_from_dates(norma)
             if norma is not None
             else "data_indeterminada",
             "dispositivo_id": disp_id,
+            "dispositivo_structural_key": structural_key or None,
+            "temporal_version": temporal_version,
+            "graph_relation": graph_relation,
         }
 
     # Fallback for cached or dict-only source
@@ -194,9 +372,37 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
 
     dispositivo_ref = source.get("dispositivo_ref", norma_ref)
     norma_id = source.get("norma_id")
+    structural_key = str(source.get("dispositivo_structural_key") or source.get("structural_key") or "")
+    temporal_version = _safe_temporal_version(source.get("temporal_version"))
+    citation_label = source.get("citation_label") or _legal_citation_label(norma_ref, dispositivo_ref)
+    is_local_archive = source.get("evidence_scope") == "isolated_qa_archive"
+    source_id = source.get("source_id") if is_local_archive else None
+    if is_local_archive and not source_id:
+        source_id = _legacy_archive_document_id(source, norma_ref)
+    source_type = source.get("source_type", "Fonte normativa primária")
+    if is_local_archive:
+        citation_label = re.sub(
+            r"\s*\(PDF de teste\)\s*$", "", str(citation_label), flags=re.IGNORECASE
+        )
+        source_type = "Acervo histórico local — extração pendente de revisão"
+        contribution = "Trecho da extração do PDF arquivado; transcrição pendente de revisão"
+    if temporal_version and "redação projetada pelo Jurix" not in citation_label:
+        citation_label += f" (redação projetada pelo Jurix em {temporal_version['as_of']})"
+    graph_relation = _safe_graph_relation(source.get("graph_relation"))
     citation_id = source.get("citation_id") or _citation_id(
         norma_id, disp_id, source.get("source_id")
     )
+    if temporal_version:
+        citation_id = _citation_identity(norma_id, disp_id, structural_key, temporal_version)
+    local_pdf_url = None
+    if source_id:
+        try:
+            local_pdf_url = reverse(
+                "legislation:document_pdf",
+                kwargs={"document_id": source_id},
+            )
+        except (NoReverseMatch, TypeError, ValueError):
+            local_pdf_url = None
     return {
         "id": disp_id,
         "text": disp_texto[:200] + ("..." if len(disp_texto) > 200 else ""),
@@ -204,25 +410,30 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
         "similarity_score": similarity,
         "relevance_band": _relevance_band(similarity),
         "contribution": contribution,
-        "source_type": source.get("source_type", "Fonte normativa primária"),
+        "source_type": source_type,
         "distance": distance,
         "match_kind": source.get("match_kind"),
         "norma_ref": norma_ref,
         "norma_id": norma_id,
         "dispositivo_ref": dispositivo_ref,
         "citation_id": citation_id,
-        "citation_label": source.get("citation_label")
-        or _legal_citation_label(norma_ref, dispositivo_ref),
+        "citation_label": citation_label,
+        "source_id": str(source_id) if source_id else None,
         "retrieval_strategy": source.get("retrieval_strategy"),
         "evidence_scope": source.get("evidence_scope"),
+        "synthetic_fixture": source.get("synthetic_fixture") is True,
         "coverage": source.get("coverage"),
         "hierarchy": source.get("hierarchy", ""),
         "pdf_url": source.get("pdf_url"),
+        "local_pdf_url": local_pdf_url,
         "sapl_url": canonical_sapl_url(source.get("sapl_url"), source.get("sapl_id")),
         "data_publicacao": source.get("data_publicacao"),
         "data_vigencia": source.get("data_vigencia"),
         "temporal_status": source.get("temporal_status", "data_indeterminada"),
         "dispositivo_id": disp_id,
+        "dispositivo_structural_key": structural_key or None,
+        "temporal_version": temporal_version,
+        "graph_relation": graph_relation,
     }
 
 
@@ -262,7 +473,7 @@ def serialize_chat_message(message: Any) -> dict[str, Any]:
         "id": message.id,
         "role": message.role,
         "content": message.content,
-        "sources": message.sources_json if is_assistant else [],
+        "sources": serialize_citation_sources(message.sources_json or []) if is_assistant else [],
         "metadata": message.metadata_json if is_assistant else {},
         "created_at": message.created_at.isoformat() if message.created_at else None,
     }

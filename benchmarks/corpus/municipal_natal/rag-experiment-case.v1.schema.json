@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jurix.local/schemas/rag-experiment-case-v1.json",
+  "title": "Caso congelado de experimento RAG pareado",
+  "type": "object",
+  "required": ["case_id", "query", "expected_source_ids", "expected_citation_ids", "expected_versions", "expected_abstain", "relation_chain_keys"],
+  "properties": {
+    "case_id": {"type": "string", "minLength": 1},
+    "query": {"type": "string", "minLength": 1},
+    "expected_source_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "expected_citation_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "expected_versions": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^[a-f0-9]{64}$"}},
+    "expected_abstain": {"type": "boolean"},
+    "relation_chain_keys": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "human_evidence_review": {"type": "boolean", "default": false}
+  },
+  "additionalProperties": false
+}

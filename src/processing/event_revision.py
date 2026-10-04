@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 
-EXTRACTOR_VERSION = "regex-v1"
+EXTRACTOR_VERSION = "regex-v2"
 
 
 def event_revision_identity(
@@ -20,6 +20,7 @@ def event_revision_identity(
     target_norma_id: int | None,
     occurrence: int,
     extractor_version: str = EXTRACTOR_VERSION,
+    evidence: dict[str, object] | None = None,
 ) -> tuple[str, dict[str, object]]:
     """Fingerprint source evidence plus extraction output; return safe provenance."""
 
@@ -27,7 +28,7 @@ def event_revision_identity(
         return re.sub(r"\s+", " ", str(value or "")).strip().casefold()
 
     provenance: dict[str, object] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "extractor_version": extractor_version,
         "source_identity": source_identity,
         "source_revision": source_revision,
@@ -37,6 +38,7 @@ def event_revision_identity(
         "reference_number": normalize(reference_number),
         "target_norma_id": target_norma_id,
         "occurrence": occurrence,
+        "evidence": evidence or {},
     }
     payload = json.dumps(provenance, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest(), provenance

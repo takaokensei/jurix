@@ -6,8 +6,10 @@ from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import Client, override_settings
 
+from src.apps.legislation.document_models import DocumentoNormativo, ExtracaoDocumento
 from src.apps.legislation.models import ChatMessage, ChatSession, Dispositivo, Norma
 from src.apps.legislation.workspace_views import _deduplicate_search_results, _rank_history
 from src.apps.operations.models import CorpusRevision
@@ -118,6 +120,53 @@ def test_norma_detail_does_not_claim_currently_in_force_when_corpus_completeness
     assert '<span class="badge badge-success">Vigente</span>' not in body
 
 
+def test_pending_norma_detail_does_not_call_the_record_consolidated():
+    norma = Norma.objects.create(
+        tipo="Lei",
+        numero="9001",
+        ano=2020,
+        status="pending",
+        texto_original="Art. 1º Texto sintético.",
+    )
+
+    body = Client().get(f"/normas/{norma.pk}/").content.decode("utf-8")
+
+    assert "Norma municipal" in body
+    assert '<span class="badge badge-success">Consolidada</span>' not in body
+
+
+def test_norma_detail_explicitly_labels_synthetic_qa_fixture():
+    norma = Norma.objects.create(
+        tipo="Lei",
+        numero="9001",
+        ano=2020,
+        status="pending",
+        texto_original="Art. 5º O prazo é de dez dias.",
+    )
+    document = DocumentoNormativo.objects.create(
+        document_key="b" * 64,
+        norma=norma,
+        source_kind=DocumentoNormativo.SourceKind.LEGACY,
+        source_ref="jurix-synthetic-qa:test",
+        original_filename="[SINTÉTICO QA] Lei 9001/2020.pdf",
+        content_sha256="c" * 64,
+        metadata_json={"synthetic": True},
+    )
+    norma.documento_base = document
+    norma.save(update_fields=["documento_base"])
+
+    body = Client().get(f"/normas/{norma.pk}/").content.decode("utf-8")
+
+    assert "Fixture sintética de QA." in body
+    assert "não representa uma norma real nem uma validação jurídica" in body
+
+    comparison = Client().get(
+        f"/normas/{norma.pk}/compare/?from_as_of=2020-01-01&to_as_of=2020-01-02"
+    ).content.decode("utf-8")
+    assert "Fixture sintética de QA." in comparison
+    assert "não representa uma norma real nem uma validação jurídica" in comparison
+
+
 def test_collections_and_assistant_copy_describe_only_available_products():
     anonymous = Client()
     collections = anonymous.get("/colecoes/").content.decode()
@@ -202,6 +251,16 @@ def test_semantic_search_empty_state_omits_none_year_from_catalog_link():
     assert "ano=None" not in body
 
 
+def test_exact_normative_search_not_found_uses_nonsemantic_empty_state():
+    response = Client().get("/pesquisa/", {"q": "Lei nº 9001/2020"})
+    body = response.content.decode("utf-8")
+
+    assert response.status_code == 200
+    assert "Referência normativa exata não localizada no acervo municipal." in body
+    assert "Norma não encontrada no acervo" in body
+    assert "Nenhuma correspondência semântica encontrada." not in body
+
+
 def test_history_page_paginates_authenticated_sessions():
     user = get_user_model().objects.create_user(username="history-page", password="pass")
     ChatSession.objects.bulk_create(
@@ -246,6 +305,56 @@ def test_norma_list_corpus_total_matches_current_database(norma):
     assert 'class="jurix-norma-stat-value">1<' in body
     assert 'class="jurix-norma-stat-label">no acervo<' in body
     assert 'class="jurix-norma-stat-label">resultados<' in body
+
+
+def test_norma_list_surfaces_archive_candidates_only_in_qa():
+    document = DocumentoNormativo.objects.create(
+        document_key="a" * 64,
+        source_kind=DocumentoNormativo.SourceKind.ARCHIVE,
+        source_ref="archive:qa-fixture:entry:9876",
+        archive_sha256="b" * 64,
+        entry_index=9876,
+        entry_name="sistema2/pdfs/LeiComplementar_20211220_198_.pdf",
+        original_filename="LeiComplementar_20211220_198_.pdf",
+        role=DocumentoNormativo.Role.ORIGINAL,
+        storage_key="sha256/aa/bb/example.pdf",
+        size_bytes=123,
+        content_sha256="c" * 64,
+        metadata_json={
+            "identity_key": "BR-RN-NATAL|lei_complementar|lc|198|2021",
+            "identity_candidate": {"type": "lei_complementar", "number": "198", "year": 2021},
+        },
+        review_status=DocumentoNormativo.ReviewStatus.PENDING,
+    )
+    ExtracaoDocumento.objects.create(
+        documento=document,
+        extractor_version="pymupdf-qa-test",
+        policy_fingerprint="d" * 64,
+        text_version="technical_text_v1",
+        legal_text="Texto extraído para validar o estado de segmentação.",
+        page_count=1,
+        status=ExtracaoDocumento.Status.COMPLETE,
+    )
+
+    with override_settings(NORMATIVE_ARCHIVE_ENABLED=False):
+        production_body = Client().get("/normas/").content.decode()
+    assert "Documentos para consolidação" not in production_body
+    with override_settings(NORMATIVE_ARCHIVE_ENABLED=True):
+        body = Client().get("/normas/").content.decode()
+
+    assert "Documentos para consolidação" in body
+    assert "Lei Complementar nº 198/2021" in body
+    assert "Estes documentos compõem o acervo histórico local e estão disponíveis para consulta." in body
+    assert "Ainda não foram consolidados no corpus principal" in body
+    assert "Identidade candidata reconhecida; falta revisão humana." in body
+    assert 'id="archive-candidate-search"' in body
+    assert 'id="archive-candidate-identity"' in body
+    assert 'id="archive-candidate-extraction"' in body
+    assert 'data-identity="resolved"' in body
+    assert 'data-review-status="pending"' in body
+    assert 'data-extraction-status="complete"' in body
+    assert "Extração completa · 1 página · segmentação de dispositivos pendente" in body
+    assert 'Exibindo 1 de 1 documentos.' in body
 
 
 def test_norma_list_rewrites_legacy_sapl_detail_url(norma):
@@ -506,6 +615,10 @@ def test_legal_search_collapses_multiple_device_hits_per_norm(norma):
         assert bounded.json()["pagination"]["page_size"] == 1
 
 
+@pytest.mark.skipif(
+    connection.vendor != "sqlite",
+    reason="Este caso testa o fallback lexical específico de SQLite.",
+)
 def test_legal_search_labels_sqlite_lexical_fallback_as_text_search(norma):
     Dispositivo.objects.create(
         norma=norma,

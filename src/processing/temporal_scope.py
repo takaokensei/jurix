@@ -10,6 +10,8 @@ from typing import Any
 from django.db.models import Q
 from django.utils import timezone
 
+from src.processing.event_temporal_policy import event_temporal_decision
+
 
 @dataclass(frozen=True)
 class TemporalScope:
@@ -77,14 +79,14 @@ def revoked_norma_ids(norma_ids: Iterable[int], as_of: date | None) -> set[int]:
     events = (
         EventoAlteracao.objects.filter(acao="REVOGA", is_active=True)
         .filter(Q(norma_alvo_id__in=ids) | Q(dispositivo_alvo__norma_id__in=ids))
-        .select_related("dispositivo_fonte__norma", "dispositivo_alvo")
+        .select_related("dispositivo_fonte__norma", "dispositivo_alvo", "review_revision")
     )
     revoked: set[int] = set()
     for event in events:
-        source_norma = getattr(event.dispositivo_fonte, "norma", None)
-        if not event.validado:
+        temporal = event_temporal_decision(event)
+        if not event.validado or not temporal.operative:
             continue
-        effective_date = getattr(source_norma, "data_vigencia", None)
+        effective_date = temporal.effective_on
         if effective_date is None or effective_date > as_of:
             continue
         # A targeted dispositivo is a partial event; it does not revoke the
@@ -105,13 +107,14 @@ def revoked_dispositivo_ids(norma_ids: Iterable[int], as_of: date | None) -> set
         acao="REVOGA",
         is_active=True,
         dispositivo_alvo__norma_id__in=ids,
-    ).select_related("dispositivo_fonte__norma")
+    ).select_related("dispositivo_fonte__norma", "review_revision")
     revoked: set[int] = set()
     for event in events:
-        source_norma = getattr(event.dispositivo_fonte, "norma", None)
-        effective_date = getattr(source_norma, "data_vigencia", None)
+        temporal = event_temporal_decision(event)
+        effective_date = temporal.effective_on
         if (
             event.validado
+            and temporal.operative
             and effective_date is not None
             and effective_date <= as_of
             and event.dispositivo_alvo_id
@@ -148,14 +151,22 @@ def _partially_revoked(norma_id: int, as_of: date) -> bool:
         return False
     from src.apps.legislation.models import EventoAlteracao
 
-    return EventoAlteracao.objects.filter(
+    events = EventoAlteracao.objects.filter(
         acao="REVOGA",
         validado=True,
         is_active=True,
         dispositivo_alvo__norma_id=norma_id,
-        dispositivo_fonte__norma__data_vigencia__isnull=False,
-        dispositivo_fonte__norma__data_vigencia__lte=as_of,
-    ).exists()
+    ).select_related("dispositivo_fonte__norma", "review_revision")
+    for event in events:
+        temporal = event_temporal_decision(event)
+        if (
+            event.validado
+            and temporal.operative
+            and temporal.effective_on
+            and temporal.effective_on <= as_of
+        ):
+            return True
+    return False
 
 
 def matches_temporal_scope(
@@ -221,46 +232,151 @@ def build_norma_timeline(norma, *, as_of: date | None = None) -> list[dict[str, 
 
     events = (
         EventoAlteracao.objects.filter(
-            Q(norma_alvo=norma) | Q(dispositivo_alvo__norma=norma), is_active=True
+            Q(norma_alvo=norma)
+            | Q(dispositivo_alvo__norma=norma)
+            | Q(dispositivo_fonte__norma=norma),
+            is_active=True,
         )
-        .select_related("dispositivo_fonte__norma", "dispositivo_alvo", "norma_alvo")
+        .select_related(
+            "dispositivo_fonte__norma", "dispositivo_alvo", "norma_alvo", "review_revision"
+        )
         .distinct()
         .order_by("dispositivo_fonte__norma__data_publicacao", "created_at", "id")
     )
     for event in events:
         source = event.dispositivo_fonte.norma
+        is_outgoing_event = source.id == norma.id
         # A self-reference is not a normative change.  SAPL extraction often
         # creates these from citations inside the body of the same norm; if we
         # render them as timeline events the UI falsely suggests an alteration
         # and overwhelms the genuinely relevant history.
-        if source.id == norma.id:
-            continue
-        source_date = source.data_publicacao
-        effective_date = source.data_vigencia if event.validado else None
-        if as_of is not None and (
-            not event.validado or effective_date is None or effective_date > as_of
+        if is_outgoing_event and (
+            event.norma_alvo_id == norma.id
+            or (
+                event.dispositivo_alvo_id
+                and event.dispositivo_alvo
+                and event.dispositivo_alvo.norma_id == norma.id
+            )
         ):
             continue
-        pending = not event.validado
+        source_date = source.data_publicacao
+        temporal = event_temporal_decision(event)
+        from src.apps.legislation.event_review import event_review_status
+
+        relation_status = event_review_status(event)
+        effective_date = temporal.effective_on if temporal.status == "confirmed" else None
+        candidate_effective_date = (
+            temporal.effective_on if temporal.status == "candidate" else None
+        )
+        if as_of is not None:
+            if temporal.status == "not_applicable":
+                if temporal.publication_on is None or temporal.publication_on > as_of:
+                    continue
+            elif not temporal.operative or effective_date is None or effective_date > as_of:
+                continue
+        pending = relation_status != "confirmed" or temporal.status not in {
+            "confirmed",
+            "not_applicable",
+        }
+        if temporal.status == "not_applicable":
+            title = "Referência documental"
+        elif relation_status != "confirmed":
+            title = "Evento extraído — vínculo pendente de revisão"
+        elif temporal.status != "confirmed":
+            title = "Evento confirmado — efeito temporal indeterminado"
+        else:
+            title = event.get_acao_display()
+        if is_outgoing_event and title == event.get_acao_display():
+            prefix = (
+                "Relação desta norma — "
+                if temporal.status == "not_applicable"
+                else "Efeito em outra norma — "
+            )
+            title = f"{prefix}{title}"
+        action = (event.acao or "").upper()
+        target_label = (
+            event.dispositivo_alvo.get_caminho_completo()
+            if event.dispositivo_alvo_id and event.dispositivo_alvo
+            else event.target_text
+        )
+        effect_scope = (
+            "total"
+            if action == "REVOGA" and not event.dispositivo_alvo_id
+            else "parcial"
+            if action == "REVOGA" and event.dispositivo_alvo_id
+            else "indeterminado"
+        )
+        source_label = f"{source}, {event.dispositivo_fonte.get_caminho_completo()}"
+        if event.dispositivo_alvo_id and event.dispositivo_alvo:
+            target_description = (
+                f"{event.dispositivo_alvo.get_caminho_completo()} da {event.dispositivo_alvo.norma}"
+            )
+        elif event.target_text:
+            target_description = event.target_text
+        elif event.norma_alvo_id and event.norma_alvo:
+            target_description = f"dispositivos da {event.norma_alvo}"
+        else:
+            target_description = target_label
+        verbs = {
+            "REFERENCIA": "menciona",
+            "REGULAMENTA": "regulamenta",
+            "REVOGA": "revoga",
+            "ALTERA": "altera",
+            "ADICIONA": "adiciona conteúdo a",
+            "SUBSTITUI": "substitui",
+        }
+        description = (
+            f"{source_label} {verbs[action]} {target_description}."
+            if action in verbs
+            else event.get_descricao_completa()
+        )
         items.append(
             {
                 "kind": "event",
                 "date": effective_date.isoformat() if effective_date else None,
                 "date_display": date_display(effective_date),
+                "candidate_effective_date": candidate_effective_date.isoformat()
+                if candidate_effective_date
+                else None,
+                "candidate_effective_date_display": date_display(candidate_effective_date),
                 "publication_date": source_date.isoformat() if source_date else None,
                 "publication_date_display": date_display(source_date),
-                "title": "Evento extraído — pendente de revisão"
-                if pending
-                else event.get_acao_display(),
+                "availability_date": temporal.publication_on.isoformat()
+                if temporal.status == "not_applicable" and temporal.publication_on
+                else None,
+                "title": title,
+                "timeline_role": "source" if is_outgoing_event else "target",
                 "action": event.get_acao_display(),
-                "description": event.get_descricao_completa(),
+                "description": description,
                 "source_norma": str(source),
                 "source_norma_id": source.id,
                 "target_text": event.target_text,
+                "target_label": target_label,
                 "target_dispositivo_id": event.dispositivo_alvo_id,
-                "validated": bool(event.validado),
-                "confidence": float(event.extraction_confidence or 0.0),
+                "validated": relation_status == "confirmed" and temporal.status == "confirmed",
+                "pending": pending,
+                "relation_status": relation_status,
+                "effective_date_status": temporal.status,
+                "effect_scope": effect_scope,
+                "temporal_basis": temporal.basis,
+                "temporal_reason": temporal.reason,
+                # Extraction confidence is a model signal, never legal certainty.
+                # A stored zero is also the legacy default for missing calibration.
+                "extraction_signal": (
+                    float(event.extraction_confidence)
+                    if event.extraction_confidence and event.extraction_confidence > 0
+                    else None
+                ),
             }
         )
-    items.sort(key=lambda item: (item["date"] or "9999-99-99", item["kind"], item["title"]))
+    items.sort(
+        key=lambda item: (
+            item["date"]
+            or item.get("candidate_effective_date")
+            or item.get("availability_date")
+            or "9999-99-99",
+            {"publication": 0, "effective": 1, "event": 2}.get(item["kind"], 3),
+            item["title"],
+        )
+    )
     return items

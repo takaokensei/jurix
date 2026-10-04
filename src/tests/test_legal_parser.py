@@ -8,7 +8,12 @@ import textwrap
 
 import pytest
 
-from src.processing.legal_parser import LegalTextParser, extract_publication_metadata
+from src.processing.legal_parser import (
+    LegalTextParser,
+    classify_closing_segments,
+    extract_publication_metadata,
+    strip_closing_editorial_metadata,
+)
 
 
 @pytest.fixture
@@ -525,6 +530,46 @@ ESTADO DO RIO GRANDE DO NORTE
     articles = [item for item in parser.parse_legal_text(text) if item["tipo"] == "artigo"]
     assert articles[-1]["numero"] == "4º"
     assert articles[-1]["texto"].strip() == "Esta Lei entra em vigor na data de sua publicação."
+
+
+def test_last_article_excludes_natal_mayoral_palace_signature(parser):
+    text = (
+        "Art. 3º Esta lei estabelece as penalidades cabíveis.\n"
+        "Art. 4º. Esta lei entrará em vigor na data de sua publicação, revogando todas as disposições em contrário.\n"
+        "Palácio Felipe Camarão, em Natal, 28 de dezembro de 2009.\n"
+        "Micarla de Sousa\nPrefeita"
+    )
+
+    articles = [item for item in parser.parse_legal_text(text) if item["tipo"] == "artigo"]
+
+    assert articles[-1]["numero"] == "4º"
+    assert articles[-1]["texto"].strip() == (
+        "Esta lei entrará em vigor na data de sua publicação, revogando todas as disposições em contrário."
+    )
+
+
+def test_closing_colophon_is_removed_but_normative_addendum_is_preserved(parser):
+    text = """Art. 4º Esta Lei entra em vigor na data de sua publicação.
+Sala das Sessões, em Natal, 20 de agosto de 2026. Presidente.
+Publicada no Diário Oficial do Município em: 21/9/2026 Autoria: Câmara.
+ANEXO I — CRONOGRAMA ORÇAMENTÁRIO
+Art. 1º A execução observará o limite anual previsto no quadro abaixo.
+"""
+    segments = classify_closing_segments(text)
+    assert [segment["kind"] for segment in segments] == [
+        "legal_body",
+        "editorial_colophon",
+        "normative_appendix",
+    ]
+    cleaned = strip_closing_editorial_metadata(text)
+    assert len(cleaned) == len(text)
+    assert "Presidente" not in cleaned
+    assert "ANEXO I — CRONOGRAMA ORÇAMENTÁRIO" in cleaned
+    assert "limite anual" in cleaned
+    articles = [item for item in parser.parse_legal_text(text) if item["tipo"] == "artigo"]
+    assert [item["numero"] for item in articles] == ["4º", "1º"]
+    assert "Presidente" not in articles[0]["texto"]
+    assert "limite anual" in articles[1]["texto"]
 
 
 def test_publication_metadata_uses_diario_date_only_for_explicit_publication_effective_clause():

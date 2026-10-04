@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from typing import Any
 
@@ -10,11 +11,16 @@ from src.processing.adaptive_retrieval import (
     RetrievalOptions,
     attachment_context,
 )
+from src.processing.graph_retrieval import expand_relation_evidence
 from src.processing.normative_query import classify_normative_query
 from src.processing.normative_reference import canonical_type, parse_normative_references
 from src.processing.rag_context_builder import EvidenceRows
 from src.processing.rag_service import RAGService
 from src.processing.target_resolver import article_key
+from src.processing.temporal_retrieval import (
+    retrieve_historical_corpus,
+    retrieve_historical_norma,
+)
 from src.processing.temporal_scope import (
     matches_temporal_scope,
     revoked_dispositivo_ids,
@@ -23,6 +29,17 @@ from src.processing.temporal_scope import (
 
 NORMA_OVERVIEW_MAX_SOURCES = 48
 NORMA_OVERVIEW_ALL_DEVICES_LIMIT = 48
+logger = logging.getLogger(__name__)
+
+
+def _with_graph_trace(rows, trace):
+    enriched = EvidenceRows(
+        rows,
+        reason_code=getattr(rows, "reason_code", None),
+        coverage=getattr(rows, "coverage", None),
+    )
+    enriched.graph_trace = trace
+    return enriched
 
 
 class AdaptiveRAGService(RAGService):
@@ -38,6 +55,42 @@ class AdaptiveRAGService(RAGService):
         if isinstance(value, RetrievalOptions):
             return value
         return RetrievalOptions(max_sources=12)
+
+    @staticmethod
+    def _expand_relation_rows(rows, query_text, options, query_plan):
+        """Expand only explicit relation questions and preserve baseline errors."""
+        if not rows or not query_plan.relation_intent:
+            return rows
+        from django.conf import settings
+
+        if not getattr(settings, "RAG_GRAPH_CONTEXT_ENABLED", False):
+            return rows
+        if options.temporal_scope.as_of is not None:
+            # Current Dispositivo text is not admissible evidence for an older
+            # version. Keep the date-compatible baseline rather than mixing it.
+            trace = {
+                "enabled": False,
+                "intent": query_plan.relation_intent,
+                "discarded": [{"reason": "historical_graph_text_not_projected"}],
+            }
+            logger.info("Graph retrieval skipped for historical query", extra={"graph_trace": trace})
+            return _with_graph_trace(rows, trace)
+        expanded, trace = expand_relation_evidence(
+            query_text,
+            rows,
+            relation_intent=query_plan.relation_intent,
+            as_of=None,
+            max_additional=8,
+        )
+        logger.info("Normative graph retrieval completed", extra={"graph_trace": trace})
+        return _with_graph_trace(
+            EvidenceRows(
+                expanded,
+                reason_code=getattr(rows, "reason_code", None),
+                coverage=getattr(rows, "coverage", None),
+            ),
+            trace,
+        )
 
     def get_relevant_context(self, query_text: str, k: int = 5, max_tokens: int = 2000):
         """Use explicitly attached documents as the authoritative corpus."""
@@ -143,7 +196,7 @@ class AdaptiveRAGService(RAGService):
         for norma in cited_normas:
             all_disps = list(
                 Dispositivo.objects.filter(norma_id=norma.id, is_active=True)
-                .select_related("norma", "dispositivo_pai")
+                .select_related("norma__documento_base", "dispositivo_pai")
                 .order_by("ordem")
             )
             if not all_disps:
@@ -419,6 +472,86 @@ class AdaptiveRAGService(RAGService):
             "total_devices": 0,
             "selected_devices": 0,
         }
+        if options.temporal_scope.as_of is not None:
+            temporal_normas = cited_normas
+            if norma_id is not None:
+                from src.apps.legislation.models import Norma
+
+                selected_norma = Norma.objects.filter(pk=norma_id).first()
+                temporal_normas = [selected_norma] if selected_norma else []
+            if len(temporal_normas) > 1:
+                return EvidenceRows(
+                    reason_code="ambiguous_historical_norma_scope",
+                    coverage={
+                        **empty_coverage,
+                        "as_of": options.temporal_scope.as_of.isoformat(),
+                        "complete": False,
+                        "reason": "historical_request_names_multiple_normas",
+                    },
+                )
+            if temporal_normas:
+                norma = temporal_normas[0]
+                if (
+                    options.norma_status != "all"
+                    and getattr(norma, "status", None) != options.norma_status
+                ):
+                    return EvidenceRows(
+                        reason_code="historical_norma_outside_scope",
+                        coverage={**empty_coverage, "as_of": options.temporal_scope.as_of.isoformat()},
+                    )
+                if options.year is not None and norma.ano != options.year:
+                    return EvidenceRows(
+                        reason_code="historical_norma_outside_scope",
+                        coverage={**empty_coverage, "as_of": options.temporal_scope.as_of.isoformat()},
+                    )
+                if options.source_scope != "all":
+                    source_url = str(getattr(norma, "sapl_url", "") or "").lower()
+                    if source_url and "sapl.natal.rn.leg.br" not in source_url:
+                        return EvidenceRows(
+                            reason_code="historical_norma_outside_scope",
+                            coverage={**empty_coverage, "as_of": options.temporal_scope.as_of.isoformat()},
+                        )
+                if options.norma_type:
+                    display = getattr(norma, "get_tipo_display_name", None)
+                    actual_type = canonical_type(
+                        display() if callable(display) else getattr(norma, "tipo", "")
+                    )
+                    if actual_type != canonical_type(options.norma_type):
+                        return EvidenceRows(
+                            reason_code="historical_norma_outside_scope",
+                            coverage={**empty_coverage, "as_of": options.temporal_scope.as_of.isoformat()},
+                        )
+                overview_selector = self._select_norma_overview_devices if norma_overview else None
+                return retrieve_historical_norma(
+                    norma,
+                    query_text,
+                    options.temporal_scope.as_of,
+                    max_sources=(
+                        NORMA_OVERVIEW_MAX_SOURCES
+                        if norma_overview
+                        else min(max(1, k), options.max_sources)
+                    ),
+                    overview_selector=overview_selector,
+                    scope=options.temporal_scope,
+                )
+            if exact_reference:
+                return EvidenceRows(
+                    reason_code="norm_not_in_corpus",
+                    coverage={
+                        **empty_coverage,
+                        "as_of": options.temporal_scope.as_of.isoformat(),
+                    },
+                )
+            return retrieve_historical_corpus(
+                query_text,
+                options.temporal_scope.as_of,
+                max_sources=min(max(1, k), options.max_sources),
+                scope=options.temporal_scope,
+                norma_status=options.norma_status,
+                source_scope=options.source_scope,
+                norma_type=options.norma_type,
+                year=options.year,
+            )
         if exact_reference and norma_id is None and not cited_normas:
             return EvidenceRows(reason_code="norm_not_in_corpus", coverage=empty_coverage)
         cited_ids = {n.id for n in cited_normas}
@@ -431,9 +564,13 @@ class AdaptiveRAGService(RAGService):
         )
         cited_rows = self._filter_status(cited_rows, options)
         if norma_overview and cited_rows:
-            return cited_rows[:NORMA_OVERVIEW_MAX_SOURCES]
+            return self._expand_relation_rows(
+                cited_rows[:NORMA_OVERVIEW_MAX_SOURCES], query_text, options, query_plan
+            )
         if any(row.get("match_kind") == "explicit_reference" for row in cited_rows):
-            return cited_rows[: min(k, options.max_sources)]
+            return self._expand_relation_rows(
+                cited_rows[: min(k, options.max_sources)], query_text, options, query_plan
+            )
         if exact_reference and cited_normas and (
             query_plan.is_norma_overview or query_plan.reference is not None
         ):
@@ -455,24 +592,26 @@ class AdaptiveRAGService(RAGService):
             for row in rows:
                 row["retrieval_score"] = float(row.get("similarity_score") or 0.0)
                 row["semantic_score"] = row["retrieval_score"]
-            return self._select_with_citation_priority(
+            selected = self._select_with_citation_priority(
                 cited_rows,
                 rows,
                 max_sources=min(k, options.max_sources),
                 min_similarity=min_similarity,
                 cited_norma_ids=cited_ids,
             )
+            return self._expand_relation_rows(selected, query_text, options, query_plan)
 
         candidate_k = max(k, min(50, options.max_sources * 3))
         if options.mode == "lexical":
             rows = AdaptiveRetriever(self)._lexical(query_text, candidate_k, options)
-            return self._select_with_citation_priority(
+            selected = self._select_with_citation_priority(
                 cited_rows,
                 rows,
                 max_sources=min(k, options.max_sources),
                 min_similarity=min_similarity,
                 cited_norma_ids=cited_ids,
             )
+            return self._expand_relation_rows(selected, query_text, options, query_plan)
 
         semantic = super().semantic_search(
             query_text=query_text,
@@ -486,13 +625,14 @@ class AdaptiveRAGService(RAGService):
             row["retrieval_score"] = row["semantic_score"]
         lexical = AdaptiveRetriever(self)._lexical(query_text, candidate_k, options)
         rows = AdaptiveRetriever._merge(semantic, lexical, "hybrid")
-        return self._select_with_citation_priority(
+        selected = self._select_with_citation_priority(
             cited_rows,
             rows,
             max_sources=min(k, options.max_sources),
             min_similarity=min_similarity,
             cited_norma_ids=cited_ids,
         )
+        return self._expand_relation_rows(selected, query_text, options, query_plan)
 
     @staticmethod
     def _filter_status(rows, options):
@@ -541,7 +681,9 @@ class AdaptiveRAGService(RAGService):
                 model=model,
                 temperature=temperature,
                 force_refresh=(
-                    force_refresh or self._has_unambiguous_versioned_reference(question)
+                    force_refresh
+                    or self._has_unambiguous_versioned_reference(question)
+                    or self._options().temporal_scope.as_of is not None
                 ),
                 retrieval_fingerprint=self._options().fingerprint(),
             )
@@ -568,7 +710,10 @@ class AdaptiveRAGService(RAGService):
                 temperature=temperature,
                 text_provider=text_provider,
                 retrieval_fingerprint=self._options().fingerprint(),
-                skip_cache=self._has_unambiguous_versioned_reference(question),
+                skip_cache=(
+                    self._has_unambiguous_versioned_reference(question)
+                    or self._options().temporal_scope.as_of is not None
+                ),
                 should_cancel=should_cancel,
             )
         finally:

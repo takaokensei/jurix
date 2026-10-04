@@ -18,7 +18,7 @@ def hydrate_cached_sources(
     devices = {
         device.id: device
         for device in dispositivo_model.objects.filter(id__in=device_ids).select_related(
-            "norma", "dispositivo_pai"
+            "norma__documento_base", "dispositivo_pai"
         )
     }
     for source in sources:

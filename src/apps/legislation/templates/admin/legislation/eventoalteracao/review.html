@@ -1,0 +1,41 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrahead %}{{ block.super }}{{ media }}{% endblock %}
+
+{% block content %}
+  <div id="content-main">
+    <h1>{{ title }}</h1>
+    <p>Estado atual: <strong>{{ review_status }}</strong></p>
+    <p>Esta decisão confirma ou rejeita a relação evento → alvo. Ela não confirma a data de efeito jurídico.</p>
+
+    <div class="module">
+      <h2>Texto literal da fonte</h2>
+      <pre class="jurix-pre-wrap">{{ source_text }}</pre>
+    </div>
+    <div class="module">
+      <h2>Evidência e offsets</h2>
+      <pre class="jurix-pre-wrap">{{ evidence_json }}</pre>
+    </div>
+    <div class="module">
+      <h2>Referência estruturada</h2>
+      <pre class="jurix-pre-wrap">{{ target_json }}</pre>
+    </div>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="submit-row">
+        <input type="submit" value="Registrar decisão" class="default">
+        <a href="{% url 'admin:legislation_eventoalteracao_change' event.pk %}">Cancelar</a>
+      </div>
+    </form>
+    {% if review_status == "confirmed" %}
+      <div class="module">
+        <h2>Data de efeito jurídico</h2>
+        <p>A data exige evidência literal e uma decisão independente da confirmação do alvo.</p>
+        <p><a class="button" href="{% url 'admin:legislation_eventoalteracao_temporal_review' event.pk %}">Revisar data de efeito</a></p>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

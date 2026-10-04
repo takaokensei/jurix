@@ -34,6 +34,7 @@ def bounded_sapl_ingest_task(
     offset = max(0, int(offset))
     pages = 0
     processed = 0
+    imported_norma_ids: set[int] = set()
     failures: list[dict[str, Any]] = []
 
     while processed < max_normas:
@@ -54,6 +55,9 @@ def bounded_sapl_ingest_task(
 
         value = result.result if isinstance(result.result, dict) else {}
         fetched = int(value["total_fetched"])
+        imported_norma_ids.update(
+            int(norma_id) for norma_id in value.get("norma_ids", []) if norma_id
+        )
         processed += max(0, min(fetched, page_limit))
         offset += page_limit
 
@@ -63,13 +67,17 @@ def bounded_sapl_ingest_task(
 
     from src.processing.target_reconciliation import reconcile_unresolved_event_targets
 
-    reconciliation = reconcile_unresolved_event_targets(limit=max_normas * 10)
+    reconciliation = reconcile_unresolved_event_targets(
+        limit=max_normas * 10,
+        target_norma_ids=imported_norma_ids,
+    )
 
     return {
         "success": not failures,
         "pages": pages,
         "requested": max_normas,
         "processed": processed,
+        "norma_ids": sorted(imported_norma_ids),
         "next_offset": offset,
         "failures": failures,
         "target_reconciliation": reconciliation,

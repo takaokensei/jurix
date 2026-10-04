@@ -15,6 +15,7 @@
         <label>Tipo<select name="tipo"><option value="">Todos os tipos</option>{% for item in types %}<option value="{{ item.value }}"{% if norma_type == item.value %} selected{% endif %}>{{ item.label }}</option>{% endfor %}</select></label>
         <label>Ano<select name="ano"><option value="">Todos os anos</option>{% for item in years %}<option value="{{ item }}"{% if year == item %} selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
         <label>Relevância mínima<select name="similaridade"><option value="0"{% if min_similarity == 0 %} selected{% endif %}>Sem limiar</option><option value="0.5"{% if min_similarity == 0.5 %} selected{% endif %}>50%</option><option value="0.65"{% if min_similarity == 0.65 %} selected{% endif %}>65%</option><option value="0.8"{% if min_similarity == 0.8 %} selected{% endif %}>80%</option></select></label>
+        <label>Tema confirmado<select name="tema"><option value="">Todos os temas</option>{% for item in topics %}<option value="{{ item.code }}"{% if topic_code == item.code %} selected{% endif %}>{{ item.label }}</option>{% endfor %}</select></label>
     </div>
     <button class="workspace-button workspace-button-primary" type="submit">Pesquisar</button>
 </form>
@@ -47,8 +48,8 @@
     </div>
     {% elif query %}
     <div class="workspace-empty-state workspace-search-empty">
-        <strong>Nenhuma correspondência semântica encontrada.</strong>
-        <p>Tente um termo mais amplo ou reduza o limiar. Para localizar uma norma específica por número ou ementa, use a busca direta no acervo.</p>
+        <strong>{{ empty_state_title }}</strong>
+        <p>{{ empty_state_description }}</p>
         <a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_list' %}?q={{ query|urlencode }}&amp;tipo={{ norma_type|urlencode }}&amp;ano={{ year|default_if_none:''|urlencode }}">Buscar no acervo normativo</a>
     </div>
     {% else %}

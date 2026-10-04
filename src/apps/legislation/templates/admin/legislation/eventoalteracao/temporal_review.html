@@ -1,0 +1,24 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrahead %}{{ block.super }}{{ media }}{% endblock %}
+
+{% block content %}
+  <div id="content-main">
+    <h1>{{ title }}</h1>
+    <p>Vínculo com o alvo: <strong>{{ review_status }}</strong></p>
+    <p>Esta etapa revisa somente a data de efeito. A relação evento → alvo deve ser confirmada separadamente. Efeitos condicionais ou retroativos não são inferidos.</p>
+    <div class="module">
+      <h2>Texto literal da fonte</h2>
+      <pre class="jurix-pre-wrap">{{ source_text }}</pre>
+    </div>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="submit-row">
+        <input type="submit" value="Registrar revisão temporal" class="default">
+        <a href="{% url 'admin:legislation_eventoalteracao_change' event.pk %}">Cancelar</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}
