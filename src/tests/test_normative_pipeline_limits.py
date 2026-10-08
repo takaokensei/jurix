@@ -2,7 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from scripts.benchmark_normative_pipeline import MAX_QUERY_EDGES, MAX_QUERY_NODES, benchmark
+from scripts.benchmark_normative_api_qa import EVENT_COUNTS, MAX_RESPONSE_EDGES, MAX_RESPONSE_NODES
+from scripts.benchmark_normative_pipeline import MAX_QUERY_EDGES, MAX_QUERY_NODES, SIZES, benchmark
 
 
 def test_offline_benchmark_uses_fixed_sizes_and_bounded_graph_queries():
@@ -13,6 +14,12 @@ def test_offline_benchmark_uses_fixed_sizes_and_bounded_graph_queries():
     assert all(row["query_nodes"] <= MAX_QUERY_NODES for row in report["results"])
     assert all(row["query_edges"] <= MAX_QUERY_EDGES for row in report["results"])
     assert all(row["peak_allocated_bytes"] > 0 for row in report["results"])
+
+
+def test_postgres_qa_benchmark_covers_same_fixed_sizes_and_api_caps():
+    assert EVENT_COUNTS == SIZES == (1, 10, 40, 300, 1000)
+    assert MAX_RESPONSE_NODES == 40
+    assert MAX_RESPONSE_EDGES == 80
 
 
 def test_graph_frontend_assets_remain_within_raw_bundle_budget():

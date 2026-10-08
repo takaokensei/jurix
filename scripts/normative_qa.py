@@ -72,6 +72,7 @@ def _qa_environment() -> dict[str, str]:
         "JURIX_ATTACHMENT_ROOT",
         "JURIX_ATTACHMENT_STAGING_DIR",
         "OLLAMA_BASE_URL",
+        "JURIX_QA_REVIEWER_PASSWORD",
     ):
         env.pop(key, None)
     env.update(
@@ -115,6 +116,23 @@ def _allowed_command(command: list[str]) -> list[str]:
                 ("showmigrations",),
                 ("runserver", "127.0.0.1:8007", "--noreload"),
                 ("runserver", "127.0.0.1:8009", "--noreload"),
+                ("runserver", "127.0.0.1:8010", "--noreload"),
+                ("runserver", "127.0.0.1:8011", "--noreload"),
+                ("runserver", "127.0.0.1:8012", "--noreload"),
+                ("runserver", "127.0.0.1:8013", "--noreload"),
+                ("runserver", "127.0.0.1:8014", "--noreload"),
+                ("runserver", "127.0.0.1:8015", "--noreload"),
+                ("runserver", "127.0.0.1:8016", "--noreload"),
+                ("runserver", "127.0.0.1:8017", "--noreload"),
+                ("runserver", "127.0.0.1:8018", "--noreload"),
+                ("runserver", "127.0.0.1:8019", "--noreload"),
+                ("runserver", "127.0.0.1:8020", "--noreload"),
+                ("runserver", "127.0.0.1:8021", "--noreload"),
+                ("runserver", "127.0.0.1:8022", "--noreload"),
+                ("runserver", "127.0.0.1:8023", "--noreload"),
+                ("runserver", "127.0.0.1:8024", "--noreload"),
+                ("runserver", "127.0.0.1:8025", "--noreload"),
+                ("runserver", "127.0.0.1:8026", "--noreload"),
             }
             command_args = args[1:]
             if tuple(command_args) not in allowed:
@@ -129,10 +147,54 @@ def _allowed_command(command: list[str]) -> list[str]:
                     options = command_args[1:]
                     if "--archive" not in options or "--manifest" not in options:
                         raise ValueError("archive import requires explicit archive and manifest paths")
+                elif command_args[:1] == ["stage_normative_corpus"]:
+                    allowed_flags = {
+                        "--archive", "--manifest", "--batch-size", "--byte-budget",
+                        "--time-budget-seconds", "--resume", "--dry-run", "--apply",
+                    }
+                    options = command_args[1:]
+                    if any(item.startswith("--") and item not in allowed_flags for item in options):
+                        raise ValueError("corpus staging flag is not on the QA allowlist")
+                    if "--archive" not in options or "--manifest" not in options:
+                        raise ValueError("corpus staging requires explicit archive and manifest paths")
+                    manifest_index = options.index("--manifest")
+                    if manifest_index + 1 >= len(options):
+                        raise ValueError("corpus staging --manifest requires a path")
+                    manifest_path = Path(options[manifest_index + 1]).resolve()
+                    qa_root_value = os.environ.get("JURIX_QA_ROOT")
+                    if not qa_root_value:
+                        raise ValueError("corpus staging requires JURIX_QA_ROOT")
+                    qa_root = Path(qa_root_value).resolve()
+                    if not manifest_path.is_relative_to(qa_root) or manifest_path == qa_root:
+                        raise ValueError("corpus staging manifest must stay inside JURIX_QA_ROOT")
                 elif command_args[:1] == ["seed_normative_qa"]:
                     options = command_args[1:]
                     if options[:1] != ["--output"] or len(options) != 2:
                         raise ValueError("synthetic seed requires one explicit --output path")
+                elif command_args[:1] == ["build_pilot_manifest"]:
+                    allowed_flags = {
+                        "--schema-version", "--output", "--corpus-limit", "--pilot-size",
+                        "--document-sample-size",
+                    }
+                    options = command_args[1:]
+                    if any(item.startswith("--") and item not in allowed_flags for item in options):
+                        raise ValueError("pilot manifest flag is not on the QA allowlist")
+                    if "--output" not in options:
+                        raise ValueError("QA pilot manifest requires an explicit output path")
+                    output_index = options.index("--output")
+                    if output_index + 1 >= len(options):
+                        raise ValueError("QA pilot manifest --output requires a path")
+                    output_path = Path(options[output_index + 1]).resolve()
+                    if not output_path.is_relative_to(Path(os.environ["JURIX_QA_ROOT"]).resolve()):
+                        raise ValueError("QA pilot manifest output must stay inside JURIX_QA_ROOT")
+                elif command_args[:1] == ["diagnose_qa_archive_overview"]:
+                    options = command_args[1:]
+                    if len(options) != 2 or options[0] != "--output":
+                        raise ValueError("QA overview diagnostic requires exactly one --output path")
+                    output_path = Path(options[1]).resolve()
+                    qa_root = Path(os.environ["JURIX_QA_ROOT"]).resolve()
+                    if not output_path.is_relative_to(qa_root) or output_path == qa_root:
+                        raise ValueError("QA overview diagnostic output must stay inside JURIX_QA_ROOT")
                 elif command_args[:1] == ["build_normative_snapshots"]:
                     allowed_flags = {"--as-of", "--norma-id", "--limit", "--apply"}
                     options = command_args[1:]
@@ -173,6 +235,31 @@ def _allowed_command(command: list[str]) -> list[str]:
             pass
         elif args[:1] == ["scripts/validate_documentation_contract.py"]:
             pass
+        elif args == ["scripts/benchmark_normative_api_qa.py"]:
+            pass
+        elif args[:1] == ["scripts/collect_normative_rag_experiment.py"]:
+            allowed_flags = {
+                "--cases", "--output", "--max-cases", "--temperature", "--max-sources",
+                "--no-warm-cache",
+            }
+            options = args[1:]
+            if options == ["--help"]:
+                pass
+            elif any(item.startswith("--") and item not in allowed_flags for item in options):
+                raise ValueError("RAG experiment collector received an unsupported flag")
+            else:
+                if "--cases" not in options or "--output" not in options:
+                    raise ValueError("RAG experiment collector requires explicit cases and output")
+                if options.index("--cases") + 1 >= len(options) or options.index("--output") + 1 >= len(options):
+                    raise ValueError("RAG experiment collector path option has no value")
+                cases_path = Path(options[options.index("--cases") + 1]).resolve()
+                output_path = Path(options[options.index("--output") + 1]).resolve()
+                cases_root = (ROOT / "benchmarks" / "corpus" / "municipal_natal").resolve()
+                qa_root = Path(os.environ["JURIX_QA_ROOT"]).resolve()
+                if not cases_path.is_relative_to(cases_root):
+                    raise ValueError("RAG experiment cases must be inside the municipal QA benchmark directory")
+                if not output_path.is_relative_to(qa_root) or output_path == qa_root:
+                    raise ValueError("RAG experiment output must stay inside JURIX_QA_ROOT")
         elif args[:1] == ["scripts/inventory_normative_archive.py"]:
             if len(args) != 5 or args[1] != "--archive" or args[3] != "--output":
                 raise ValueError("inventory command requires --archive and --output only")
@@ -183,7 +270,37 @@ def _allowed_command(command: list[str]) -> list[str]:
         return ["npm.cmd", *args]
     if executable == "node" and args == ["tests/js/normative-product-smoke.mjs"]:
         return ["node.exe", *args]
+    if executable == "node" and args == ["tests/js/normative-rag-live-smoke.mjs"]:
+        return ["node.exe", *args]
+    if executable == "node" and args == ["tests/js/normative-admin-review.browser.test.mjs"]:
+        return ["node.exe", *args]
+    if executable == "node" and args == ["tests/js/normative-collections.browser.test.mjs"]:
+        return ["node.exe", *args]
     raise ValueError("command is not on the QA allowlist")
+
+
+def _command_environment(env: dict[str, str], command: list[str]) -> dict[str, str]:
+    """Expose the temporary reviewer credential only to synthetic seed and review QA."""
+    scoped = env.copy()
+    scoped.pop("JURIX_QA_REVIEWER_PASSWORD", None)
+    parts = command[1:] if command[:1] == ["--"] else command
+    if (
+        parts[:2] == ["python", "manage.py"]
+        and parts[2:3] == ["seed_normative_qa"]
+        and os.environ.get("JURIX_QA_REVIEWER_PASSWORD")
+    ):
+        scoped["JURIX_QA_REVIEWER_PASSWORD"] = os.environ["JURIX_QA_REVIEWER_PASSWORD"]
+    elif (
+        parts == ["node", "tests/js/normative-admin-review.browser.test.mjs"]
+        and os.environ.get("JURIX_QA_REVIEWER_PASSWORD")
+    ):
+        scoped["JURIX_QA_REVIEWER_PASSWORD"] = os.environ["JURIX_QA_REVIEWER_PASSWORD"]
+    elif (
+        parts == ["node", "tests/js/normative-collections.browser.test.mjs"]
+        and os.environ.get("JURIX_QA_REVIEWER_PASSWORD")
+    ):
+        scoped["JURIX_QA_REVIEWER_PASSWORD"] = os.environ["JURIX_QA_REVIEWER_PASSWORD"]
+    return scoped
 
 
 def _check_tcp(host: str, port: int, label: str) -> tuple[bool, str]:
@@ -216,7 +333,8 @@ def main() -> int:
                 print(message)
             return 0 if all(ok for ok, _ in results) else 2
         command = _allowed_command(options.run)
-        return subprocess.run(command, cwd=ROOT, env=env, check=False).returncode
+        command_env = _command_environment(env, options.run)
+        return subprocess.run(command, cwd=ROOT, env=command_env, check=False).returncode
     except (ValueError, OSError) as exc:
         print(f"QA guard: {exc}", file=sys.stderr)
         return 2
