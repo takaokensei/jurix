@@ -1,0 +1,61 @@
+{
+  "captured_at_utc": "2026-10-06T13:03:50Z",
+  "purpose": "Read-only diagnosis for T-023/R23; no sync, PDF download, or database write was performed.",
+  "endpoint": "https://sapl.natal.rn.leg.br/api/norma/normajuridica/",
+  "observations": [
+    {
+      "query": "limit=1&offset=0",
+      "request_succeeded": true,
+      "count": 1,
+      "results_length": 10,
+      "first_id": 9393,
+      "has_next": false
+    },
+    {
+      "query": "limit=1&offset=1",
+      "request_succeeded": true,
+      "count": 1,
+      "results_length": 10,
+      "first_id": 9393,
+      "has_next": false
+    },
+    {
+      "query": "limit=10&offset=10",
+      "request_succeeded": true,
+      "count": 1,
+      "results_length": 10,
+      "first_id": 9393,
+      "has_next": false
+    },
+    {
+      "query": "ano=2026&limit=10&offset=0",
+      "request_succeeded": true,
+      "count": 1,
+      "results_length": 10,
+      "result_years": [2026],
+      "result_type_codes": ["1", "2"],
+      "first_id": 9393,
+      "has_next": false
+    },
+    {
+      "query": "page=2",
+      "request_succeeded": true,
+      "count": 1,
+      "results_length": 10,
+      "first_id": 9382,
+      "last_id": 9392,
+      "has_next": false
+    },
+    {
+      "query": "page=3",
+      "request_succeeded": true,
+      "count": 1,
+      "results_length": 10,
+      "first_id": 9372,
+      "last_id": 9362,
+      "has_next": false
+    }
+  ],
+  "conclusion": "The endpoint returns ten records while declaring count=1 and next=false; limit/offset requests return the same first ID. page=2 and page=3 return different first IDs, but the response metadata still cannot establish completeness. Full synchronization must remain unrun and must not mark local records missing until a reliable bounded pagination/completeness contract is confirmed.",
+  "side_effects": "None. GET-only requests; no credentials, POST, PDF download, import, or database mutation."
+}

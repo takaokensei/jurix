@@ -1,0 +1,26 @@
+{
+  "captured_at_utc": "2026-10-06T14:33:41Z",
+  "purpose": "Full read-only audit of SAPL Natal public catalogue pagination for T-023/R23. No synchronization, PDF download, or database write was performed.",
+  "endpoint": "https://sapl.natal.rn.leg.br/api/norma/normajuridica/",
+  "method": "GET",
+  "requested_pages": 936,
+  "advertised_pages": 936,
+  "advertised_entries": 9353,
+  "unique_record_ids_seen_in_memory": 9353,
+  "duplicate_record_ids": 0,
+  "first_range": [1, 10],
+  "last_range": [9351, 9353],
+  "all_ranges_contiguous": true,
+  "reached_advertised_last_page": true,
+  "http_or_metadata_errors": [],
+  "retries": 0,
+  "elapsed_seconds": 345.6,
+  "transient_observation": "A separate initial scan received HTTP 404 once at page 378 after pages 1-377; direct GETs of pages 377-379 and this complete scan subsequently succeeded. No retry was needed in the complete scan.",
+  "limitations": [
+    "This verifies catalogue pagination and ID uniqueness only for this traversal; it is not an immutable snapshot guarantee.",
+    "Record payloads were used only in memory to validate ID presence/uniqueness; no record text was written to the evidence file.",
+    "No PDF bytes, document hashes, SAPL-to-local identity reconciliation, or local corpus freshness were tested.",
+    "This does not authorize a full synchronization or mark local records missing."
+  ],
+  "side_effects": "Public metadata GET requests only; no credentials, PDF downloads, imports, synchronization, or database writes."
+}

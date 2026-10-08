@@ -1,0 +1,58 @@
+{
+  "captured_at_local": "2026-10-06",
+  "purpose": "Read-only SAPL Natal pagination boundary check for R23/T-023. Requests only pages 1, 2, 3, and 936; no synchronization, PDF download, or database writes.",
+  "endpoint": "https://sapl.natal.rn.leg.br/api/norma/normajuridica/",
+  "request_method": "GET",
+  "pages": [
+    {
+      "requested_page": 1,
+      "metadata_page": 1,
+      "total_entries": 9353,
+      "total_pages": 936,
+      "start_index": 1,
+      "end_index": 10,
+      "next_page": 2,
+      "previous_page": null,
+      "result_count": 10,
+      "result_ids": [9393, 9391, 9390, 9389, 9388, 9387, 9386, 9385, 9384, 9383]
+    },
+    {
+      "requested_page": 2,
+      "metadata_page": 2,
+      "total_entries": 9353,
+      "total_pages": 936,
+      "start_index": 11,
+      "end_index": 20,
+      "next_page": 3,
+      "previous_page": 1,
+      "result_count": 10,
+      "result_ids": [9382, 9381, 9380, 9379, 9378, 9377, 9376, 9375, 9374, 9392]
+    },
+    {
+      "requested_page": 3,
+      "metadata_page": 3,
+      "total_entries": 9353,
+      "total_pages": 936,
+      "start_index": 21,
+      "end_index": 30,
+      "next_page": 4,
+      "previous_page": 2,
+      "result_count": 10,
+      "result_ids": [9372, 9373, 9370, 9369, 9368, 9367, 9366, 9365, 9363, 9362]
+    },
+    {
+      "requested_page": 936,
+      "metadata_page": 936,
+      "total_entries": 9353,
+      "total_pages": 936,
+      "start_index": 9351,
+      "end_index": 9353,
+      "next_page": null,
+      "previous_page": 935,
+      "result_count": 3,
+      "result_ids": [1757, 1752, 1751]
+    }
+  ],
+  "interpretation": "The first three pages and terminal page agree on total_entries=9353 and total_pages=936. The final page has the expected three remaining records, contiguous one-based range 9351-9353, previous_page=935, and no next page. This is a boundary sample, not a full-corpus integrity scan and not proof that intermediate pages contain no duplicates or omissions.",
+  "side_effects": "None. Four public metadata pages were read with GET. Result text, PDF data, credentials, user data, local database, and SAPL records were not modified."
+}

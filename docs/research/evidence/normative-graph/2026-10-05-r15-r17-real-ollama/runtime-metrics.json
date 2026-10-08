@@ -1,0 +1,124 @@
+{
+  "recorded_at": "2026-10-05",
+  "environment": {
+    "web": "http://127.0.0.1:8011",
+    "qa_only": true,
+    "database": "dedicated temporary PostgreSQL QA on 127.0.0.1:55432",
+    "redis": "dedicated temporary Redis QA on 127.0.0.1:16380",
+    "ollama": "host-local 127.0.0.1:11434",
+    "corpus": "archived 40-PDF QA batch; LC 120/2010 extraction is unreviewed and is not gold data"
+  },
+  "r15_stream_observations": [
+    {
+      "run": 1,
+      "provider": "ollama",
+      "model": "llama3",
+      "source_count": 2,
+      "sources_ms": 168,
+      "first_rendered_text_ms": 4544,
+      "done_ms": 5440,
+      "chunk_events": 2,
+      "grounded": true,
+      "reason_code": "generation_partial_after_grounded_prefix"
+    },
+    {
+      "run": 2,
+      "provider": "ollama",
+      "model": "llama3",
+      "source_count": 2,
+      "sources_ms": 313,
+      "drawer_opened_ms": 315,
+      "first_rendered_text_ms": 1374,
+      "done_ms": 2938,
+      "chunk_events": 2,
+      "drawer_open_after_done": true,
+      "grounded": true,
+      "reason_code": "generation_partial_after_grounded_prefix"
+    },
+    {
+      "run": 3,
+      "provider": "ollama",
+      "model": "llama3",
+      "source_count": 2,
+      "sources_ms": 197,
+      "drawer_opened_ms": 199,
+      "first_rendered_text_ms": 4883,
+      "done_ms": 4920,
+      "chunk_events": 8,
+      "sse_text_equals_done_answer": true,
+      "grounded": true,
+      "reason_code": "qa_archive_comparison_evidence_fallback"
+    }
+  ],
+  "r17_browser_observation": {
+    "drawer_open_when_response_actions_available": true,
+    "copy_action_succeeded_with_isolated_clipboard_stub": true,
+    "copied_markdown_link_count": 4,
+    "raw_citation_markers_remaining": 0,
+    "raw_html_present": false,
+    "reload_kept_session_url_and_query": true,
+    "assistant_messages_restored": 1,
+    "sources_pill_restored": true,
+    "resolved_citation_links_restored": 2
+  },
+  "r18_browser_observation": {
+    "cancelled_turn": {
+      "retrieved_sources": 2,
+      "retry_button_visible_and_clickable": true,
+      "source_badge_marks_unvalidated": true,
+      "user_messages_before_retry": 1,
+      "assistant_messages_before_retry": 1
+    },
+    "retry": {
+      "completed": true,
+      "grounded": true,
+      "user_messages_after_retry": 1,
+      "assistant_messages_after_retry": 1,
+      "sources_pill_present": true
+    },
+    "insufficient_evidence": {
+      "events": ["queued", "retrieving", "insufficient_evidence", "completed"],
+      "source_count": 0,
+      "network_error_shown": false,
+      "assistant_response_present": true
+    }
+  },
+  "r16_browser_observation": {
+    "question_scope": "explicit Art. 18 of LC 120/2010 in the archived-PDF corpus",
+    "inline_references": 2,
+    "article_reference": {
+      "target": "_blank",
+      "opens_local_archived_pdf": true,
+      "text_fragment_present": true,
+      "http_status": 200,
+      "content_type": "application/pdf"
+    },
+    "whole_norm_reference": {
+      "target": "_blank",
+      "opens_same_base_pdf": true,
+      "text_fragment_present": false
+    }
+  },
+  "r19_browser_observation": {
+    "theme_only_route": "/pesquisa/?tema=urbanismo&tipo=Lei&ano=2026",
+    "thematic_query_route": "/pesquisa/?q=zoneamento&tema=urbanismo",
+    "http_statuses": [200, 200],
+    "theme_filter_preserved": true,
+    "theme_only_mode_label": "Tema confirmado",
+    "non_legal_effect_caveat_visible": true,
+    "candidate_tags_rendered_as_confirmed": false,
+    "confirmed_topic_results_available_in_isolated_browser_db": false,
+    "empty_state_for_theme_only_filter": "Nenhuma norma com esse tema confirmado",
+    "note": "Runtime QA database contains no confirmed NormaTopic rows; positive filtered-listing behavior is covered by a fresh test database, not represented as live-corpus results."
+  },
+  "regression_found_and_fixed": {
+    "issue": "The message-actions row used to hide the cancel retry because it had no .show action child.",
+    "fix": "Keep message-actions visible when it contains .jurix-interrupted-retry.",
+    "files": [
+      "src/apps/core/static/css/jurix-chat-renderer.css",
+      "tests/js/streaming.behavior.test.mjs"
+    ],
+    "verification": "45 streaming behavior tests passed; Chromium QA cancellation and retry completed without duplicate messages."
+  },
+  "data_handling": "No answer text, source excerpts, personal data, or screenshot was saved. No application, production corpus, or production database was modified."
+}

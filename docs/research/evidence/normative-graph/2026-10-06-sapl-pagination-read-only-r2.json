@@ -1,0 +1,52 @@
+{
+  "captured_at_utc": "2026-10-06T13:10:02Z",
+  "purpose": "Read-only confirmation of SAPL Natal nested pagination metadata for T-023/R23. No sync, PDF download, or database write was performed.",
+  "endpoint": "https://sapl.natal.rn.leg.br/api/norma/normajuridica/",
+  "request_method": "GET",
+  "pages": [
+    {
+      "requested_page": 1,
+      "metadata_page": 1,
+      "total_entries": 9353,
+      "total_pages": 936,
+      "start_index": 1,
+      "end_index": 10,
+      "next_page": 2,
+      "previous_page": null,
+      "next_link_host": "sapl.natal.rn.leg.br",
+      "next_link_scheme": "http",
+      "result_count": 10,
+      "result_ids": [9393, 9391, 9390, 9389, 9388, 9387, 9386, 9385, 9384, 9383]
+    },
+    {
+      "requested_page": 2,
+      "metadata_page": 2,
+      "total_entries": 9353,
+      "total_pages": 936,
+      "start_index": 11,
+      "end_index": 20,
+      "next_page": 3,
+      "previous_page": 1,
+      "next_link_host": "sapl.natal.rn.leg.br",
+      "next_link_scheme": "http",
+      "result_count": 10,
+      "result_ids": [9382, 9381, 9380, 9379, 9378, 9377, 9376, 9375, 9374, 9392]
+    },
+    {
+      "requested_page": 3,
+      "metadata_page": 3,
+      "total_entries": 9353,
+      "total_pages": 936,
+      "start_index": 21,
+      "end_index": 30,
+      "next_page": 4,
+      "previous_page": 2,
+      "next_link_host": "sapl.natal.rn.leg.br",
+      "next_link_scheme": "http",
+      "result_count": 10,
+      "result_ids": [9372, 9373, 9370, 9369, 9368, 9367, 9366, 9365, 9363, 9362]
+    }
+  ],
+  "interpretation": "The endpoint has a nested pagination.links.next contract and coherent page/total_entries/total_pages/start_index/end_index fields on the first three pages. The top-level count=1 and top-level next=null observed in the prior probe are not authoritative for this deployment. Returned continuation links use HTTP despite the HTTPS API endpoint; client code must validate host and API path, then upgrade the scheme to HTTPS before requesting. This bounded three-page sample does not certify a complete 936-page scan or authorize full sync.",
+  "side_effects": "None. Three pages of public metadata were read with GET; no result payload text, PDF, credentials, or user data was stored; no import, sync, or database mutation occurred."
+}

@@ -1,0 +1,537 @@
+{
+  "baseUrl": "http://127.0.0.1:8021",
+  "dataset": "synthetic_not_gold",
+  "checks": [
+    {
+      "route": "/assistente/",
+      "width": 320,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 320,
+      "documentWidth": 320,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/pesquisa/",
+      "width": 320,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 320,
+      "documentWidth": 320,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/normas/",
+      "width": 320,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 320,
+      "documentWidth": 320,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/colecoes/",
+      "width": 320,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 320,
+      "documentWidth": 320,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/historico/",
+      "width": 320,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 320,
+      "documentWidth": 320,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/configuracoes/",
+      "width": 320,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 320,
+      "documentWidth": 320,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/assistente/",
+      "width": 360,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 360,
+      "documentWidth": 360,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/pesquisa/",
+      "width": 360,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 360,
+      "documentWidth": 360,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/normas/",
+      "width": 360,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 360,
+      "documentWidth": 360,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/colecoes/",
+      "width": 360,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 360,
+      "documentWidth": 360,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/historico/",
+      "width": 360,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 360,
+      "documentWidth": 360,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/configuracoes/",
+      "width": 360,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 360,
+      "documentWidth": 360,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/assistente/",
+      "width": 768,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/pesquisa/",
+      "width": 768,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/normas/",
+      "width": 768,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/colecoes/",
+      "width": 768,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/historico/",
+      "width": 768,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/configuracoes/",
+      "width": 768,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 768,
+      "documentWidth": 768,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/assistente/",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/pesquisa/",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/normas/",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/colecoes/",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/historico/",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/configuracoes/",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/assistente/",
+      "width": 1920,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1920,
+      "documentWidth": 1920,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/pesquisa/",
+      "width": 1920,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1920,
+      "documentWidth": 1920,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/normas/",
+      "width": 1920,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1920,
+      "documentWidth": 1920,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/colecoes/",
+      "width": 1920,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1920,
+      "documentWidth": 1920,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/historico/",
+      "width": 1920,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1920,
+      "documentWidth": 1920,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/configuracoes/",
+      "width": 1920,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1920,
+      "documentWidth": 1920,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/assistente/",
+      "interaction": "empty-assistant-starts-at-top-with-hero-below-banner",
+      "width": 1280,
+      "height": 900,
+      "scrollTop": 0,
+      "heroTop": 157,
+      "bannerBottom": 103,
+      "welcomeVisible": true
+    },
+    {
+      "route": "/normas/1/",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/normas/1/",
+      "interaction": "R02-ordinary-law-identity",
+      "heading": "Lei nº 9901/2090"
+    },
+    {
+      "route": "/normas/2/",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/normas/2/",
+      "interaction": "R02-complementary-law-identity",
+      "heading": "Lei Complementar nº 9901/2090"
+    },
+    {
+      "route": "/normas/3/",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/normas/3/",
+      "interaction": "R08-publication-and-effect-separate",
+      "publication": "2021-01-10",
+      "effectiveDate": "2021-03-01"
+    },
+    {
+      "route": "http://127.0.0.1:8021/normas/3/compare/?from_as_of=2021-02-28&to_as_of=2021-03-01",
+      "interaction": "R07-R09-historical-diff-reload-back-forward",
+      "dateFrom": "2021-02-28",
+      "dateTo": "2021-03-01",
+      "beforeTextVisible": true,
+      "afterTextVisible": true
+    },
+    {
+      "route": "/normas/15/compare/",
+      "interaction": "R10-missing-original-safe-abstention",
+      "noticeVisible": true,
+      "currentTextNotPresentedAsHistorical": true
+    },
+    {
+      "route": "/normas/3/",
+      "interaction": "R03-reviewed-relation-and-evidence",
+      "groupCount": 1,
+      "svgEdgeCount": 1,
+      "relationPanelText": "Lei nº 9002/2021 → Lei nº 9001/2020\n\nAltera\n\nLei nº 9002/2021 — Lei nº 9001/2020\n\nDispositivo de origem: Artigo 1º\n\nDispositivo de destino: Artigo 5º\n\nRevisão do vínculo: confirmado\n\nEfeito registrado em 2021-03-01\n\nArt. 5º da Lei 9001/2020\nAbrir evidência documental"
+    },
+    {
+      "route": "/normas/7/",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/normas/7/",
+      "interaction": "R04-multiple-device-references-grouped",
+      "groupCount": 1,
+      "eventCount": 2,
+      "bothTargetArticlesVisible": true,
+      "noDuplicateAfterReopen": true
+    },
+    {
+      "route": "/normas/5/",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/normas/5/",
+      "interaction": "R06-slow-503-retry",
+      "slowStateVisible": true,
+      "errorState": "Não foi possível carregar as relações agora. Tente novamente.",
+      "retryVisible": true,
+      "filterPreserved": true,
+      "retryHiddenAfterSuccess": true
+    },
+    {
+      "route": "/pesquisa/?q=Lei%20n%C2%BA%209001%2F2020",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "errors": []
+    },
+    {
+      "route": "/configuracoes/",
+      "interaction": "sidebar-collapse-persists-across-routes",
+      "sidebarWidth": "72px",
+      "sidebarIcons": 10
+    },
+    {
+      "route": "/normas/5/",
+      "interaction": "R24-mobile-detail-back-target",
+      "width": 158.421875,
+      "height": 44,
+      "left": 14,
+      "right": 172.421875
+    },
+    {
+      "route": "/assistente/",
+      "theme": "light",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "bodyBackground": "rgb(247, 249, 252)",
+      "errors": []
+    },
+    {
+      "route": "/pesquisa/",
+      "theme": "light",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "bodyBackground": "rgb(247, 249, 252)",
+      "errors": []
+    },
+    {
+      "route": "/normas/",
+      "theme": "light",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "bodyBackground": "rgb(247, 249, 252)",
+      "errors": []
+    },
+    {
+      "route": "/colecoes/",
+      "theme": "light",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "bodyBackground": "rgb(247, 249, 252)",
+      "errors": []
+    },
+    {
+      "route": "/historico/",
+      "theme": "light",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "bodyBackground": "rgb(247, 249, 252)",
+      "errors": []
+    },
+    {
+      "route": "/configuracoes/",
+      "theme": "light",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "mainVisible": true,
+      "bodyBackground": "rgb(247, 249, 252)",
+      "errors": []
+    }
+  ],
+  "failures": [],
+  "evidence": [
+    "C:\\Jurix\\docs\\research\\evidence\\normative-graph\\2026-10-06-empty-assistant-scroll-r3\\empty-assistant-home-viewport.png",
+    "C:\\Jurix\\docs\\research\\evidence\\normative-graph\\2026-10-06-empty-assistant-scroll-r3\\norma-timeline-publicacao-efeito-desktop.png",
+    "C:\\Jurix\\docs\\research\\evidence\\normative-graph\\2026-10-06-empty-assistant-scroll-r3\\norma-comparacao-D-1-D-desktop.png",
+    "C:\\Jurix\\docs\\research\\evidence\\normative-graph\\2026-10-06-empty-assistant-scroll-r3\\historico-sem-original-abstencao-desktop.png",
+    "C:\\Jurix\\docs\\research\\evidence\\normative-graph\\2026-10-06-empty-assistant-scroll-r3\\norma-grafo-relacao-visao-geral-desktop.png",
+    "C:\\Jurix\\docs\\research\\evidence\\normative-graph\\2026-10-06-empty-assistant-scroll-r3\\norma-grafo-relacao-revisada-desktop.png",
+    "C:\\Jurix\\docs\\research\\evidence\\normative-graph\\2026-10-06-empty-assistant-scroll-r3\\norma-duas-remissoes-grupo-desktop.png",
+    "C:\\Jurix\\docs\\research\\evidence\\normative-graph\\2026-10-06-empty-assistant-scroll-r3\\norma-remissoes-recebidas-expandido-desktop.png",
+    "C:\\Jurix\\docs\\research\\evidence\\normative-graph\\2026-10-06-empty-assistant-scroll-r3\\pesquisa-referencia-ausente-desktop.png",
+    "C:\\Jurix\\docs\\research\\evidence\\normative-graph\\2026-10-06-empty-assistant-scroll-r3\\norma-mobile-320.png",
+    "C:\\Jurix\\docs\\research\\evidence\\normative-graph\\2026-10-06-empty-assistant-scroll-r3\\light-assistente.png",
+    "C:\\Jurix\\docs\\research\\evidence\\normative-graph\\2026-10-06-empty-assistant-scroll-r3\\light-normas.png"
+  ],
+  "summary": {
+    "viewportRouteChecks": 42,
+    "interactionChecks": 11,
+    "lightThemeRouteChecks": 6,
+    "failures": 0
+  }
+}
