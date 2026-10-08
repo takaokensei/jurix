@@ -34,15 +34,15 @@ O helper T-001 deve carregar URLs **somente de fixtures QA** para subprocessos e
 
 O settings QA deve manter o root em todas as sessões usadas pelo web/worker; abrir outra shell não pode criar automaticamente um root diferente e deixar web sem acesso aos documentos importados.
 
-Antes de escolher 8007/55432/16380, verificar listeners e serviços. Não matar processo existente para liberar porta. Se o compose já estiver ativo com outro projeto, parar e selecionar isolamento alternativo documentado, sem editar `.env` ou anexar worker a Redis real.
+Antes de escolher 8007/8009/8010/8011/8012/8013/8014/8015/8016/8017/8018/8019/8020/8021/8022/8023/55432/16380, verificar listeners e serviços. Não matar processo existente para liberar porta. Se o compose já estiver ativo com outro projeto, parar e selecionar isolamento alternativo documentado, sem editar `.env` ou anexar worker a Redis real.
 
 ```powershell
-Get-NetTCPConnection -State Listen -LocalPort 8007,55432,16380 -ErrorAction SilentlyContinue |
+Get-NetTCPConnection -State Listen -LocalPort 8007,8009,8010,8011,8012,8013,8014,8015,8016,8017,8018,8019,8020,8021,8022,8023,55432,16380 -ErrorAction SilentlyContinue |
   Select-Object LocalAddress,LocalPort,OwningProcess
 docker compose -p jurix-normative-qa -f docker-compose.audit.yml ps
 ```
 
-Se houver conflito, T-001 pode ser dividida para criar override QA de portas e atualizar guards/testes. Isso é mudança de escopo explícita, não gambiarra no banco real.
+Se houver conflito, T-001 pode ser dividida para criar override QA de portas e atualizar guards/testes; 8012 é o fallback QA, 8013–8023 são portas de verificação de código fresco quando as anteriores já estiverem em uso. Isso é mudança de escopo explícita, não gambiarra no banco real.
 
 ## 2. Serviços e servidor web
 
@@ -224,7 +224,7 @@ Copiar resposta, colar em editor de texto QA e examinar Markdown. Esperado: hype
 
 ### R18 — Cancelamento e resultado insuficiente
 
-Cancelar uma geração; tentar novamente; provocar insuficiência em fixture. Esperado: sem duplicar mensagens/turnos; partial/cancelled diferenciados; fonte não utilizada não apresentada como suporte final. Não substituir honestidade por resposta plausível nem por erro genérico de rede.
+Cancelar uma geração **durante `streaming`**; em `finalizing`, o terminal já venceu e o controle de parada deve ficar indisponível. Tentar novamente; provocar insuficiência em fixture. Esperado: sem duplicar mensagens/turnos; partial/cancelled diferenciados; fonte não utilizada não apresentada como suporte final. Não substituir honestidade por resposta plausível nem por erro genérico de rede.
 
 ### R19 — Busca temática
 
@@ -252,16 +252,30 @@ Em320/360/768/1280/1920, claro/escuro e zoom200: navegar, filtrar, abrir painel,
 
 ## 6. Browser automatizado e inspeção visual
 
-T-029 implementa smoke com os nomes de ambiente:
+T-029 implementa smoke com os nomes de ambiente. Gere sempre um mapfile novo
+após atualizar `seed_normative_qa`: o comando recusa sobrescrever mapfiles
+existentes e o smoke precisa de todos os cenários, incluindo `missing_original`.
+Exemplo em PowerShell, usando o servidor QA fresco `8020` (loopback allowlisted):
 
 ```powershell
-$env:JURIX_BASE_URL = 'http://127.0.0.1:8007'
-$env:JURIX_FIXTURE_MAP = Join-Path $env:JURIX_QA_ROOT 'fixture-map.json'
+$env:JURIX_BASE_URL = 'http://127.0.0.1:8020'
+$env:JURIX_FIXTURE_MAP = Join-Path $env:JURIX_QA_ROOT ('fixture-map-' + [guid]::NewGuid().ToString('N') + '.json')
+$env:JURIX_QA_ONLY = '1'
+.\.venv\Scripts\python.exe scripts/normative_qa.py --run python manage.py seed_normative_qa --output $env:JURIX_FIXTURE_MAP
 $env:JURIX_EVIDENCE_DIR = Join-Path $env:JURIX_QA_ROOT 'browser-evidence'
-node tests/js/normative-product-smoke.mjs
+.\.venv\Scripts\python.exe scripts/normative_qa.py --run node tests/js/normative-product-smoke.mjs
 ```
 
-Usar browser já instalado; se necessário informar PUPPETEER_EXECUTABLE_PATH existente, sem instalar Chrome pesado implicitamente. Não usar scripts antigos com rota/PK3 hardcoded como evidência do novo corpus; o script novo usa mapfile.
+Para validar uma consulta real pelo composer com Ollama (opcional, pode carregar o modelo e levar até três minutos), use um novo diretório de evidências sob `JURIX_QA_ROOT` e o mesmo servidor QA. O script usa somente um navegador anônimo descartável, consulta a amostra histórica QA sem aprovação jurídica e grava métricas agregadas sem texto da resposta ou fontes:
+
+```powershell
+$env:JURIX_EVIDENCE_DIR = Join-Path $env:JURIX_QA_ROOT 'live-rag-browser-smoke'
+.\.venv\Scripts\python.exe scripts/normative_qa.py --run node tests/js/normative-rag-live-smoke.mjs
+```
+
+O teste exige HTTP 200 no SSE, geração Ollama real, fontes antes dos chunks, citações para os dois artigos pedidos, abertura/fechamento do drawer por Escape, restauração de resposta/fontes/URL após reload e ausência de erro JavaScript. Também pergunta genericamente sobre uma norma maior: deve mostrar a cobertura parcial, explicar que não representa análise integral, avisar sobre anexos fora da amostra quando detectados e converter pelo menos três marcadores estruturados em hyperlinks no texto final. O harness espera explicitamente a remoção do estado `data-streaming` antes de avaliar o DOM final; texto provisório durante a geração não é confundido com resposta concluída. Os tempos `sourcesAvailableAfterMs` e `firstAnswerTextAfterMs` são observações locais repetidas do mesmo cenário, não uma distribuição de latência; texto extraído/resposta continuam não adjudicados.
+
+Usar browser e Node.js já instalados; se necessário informar `PUPPETEER_EXECUTABLE_PATH` existente, sem instalar Chrome pesado implicitamente. O smoke de produto aceita `8007`, `8011`, `8013`, `8014`, `8019`, `8020`, `8021` e `8022`; o smoke RAG em tempo real tem allowlist própria: `8007`, `8009`, `8010`, `8011`, `8012`, `8013`, `8014`, `8015`, `8016`, `8017`, `8018`, `8019`, `8020`, `8021` e `8022`, sempre em loopback/QA isolado. Não usar scripts antigos com rota/PK hardcoded como evidência do novo corpus; o script novo usa mapfile.
 
 Capturas mínimas:
 

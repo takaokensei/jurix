@@ -456,11 +456,13 @@ celery -A config worker -l info
 
 <div align="center">
 
-**Atualizado em 03/10/2026 — pesquisa, corpus e grafo normativo em desenvolvimento.** A base Django/PostgreSQL/pgvector e os fluxos de pesquisa continuam sendo a fundação do produto. O ciclo atual acrescenta ingestão documental rastreável, revisão humana de metadados e eventos, identidade normativa, versões temporais, relações jurídicas explícitas e expansão experimental do RAG.
+**Atualizado em 07/10/2026 — protótipo de pesquisa; corpus e grafo normativo ainda em validação.** A base Django/PostgreSQL/pgvector e os fluxos de pesquisa continuam sendo a fundação do produto. O ciclo atual acrescenta ingestão documental rastreável, revisão humana de metadados e eventos, identidade normativa, versões temporais, relações jurídicas explícitas e expansão experimental do RAG.
 
-O código e os testes técnicos não equivalem a um corpus juridicamente validado. As verificações recentes usaram um banco PostgreSQL/Redis temporário e dados sintéticos; nenhuma importação ou ativação foi feita no banco local de produto. O uso de relações no RAG permanece opt-in e depende de relações revisadas e evidência textual suficiente. Resultados científicos ficam **não avaliados** até existir amostra municipal adjudicada por pessoas — o gate definido no protocolo é de pelo menos 20 normas-piloto humanas.
+O código e os testes técnicos não equivalem a um corpus juridicamente validado. O QA isolado contém fixtures sintéticas e 40 PDFs históricos autênticos do acervo recebido; identidade, extração e segmentação dos PDFs continuam pendentes de revisão, e esse lote não é uma amostra científica adjudicada. Nenhuma importação ou ativação foi feita no banco local de produto. O uso de relações no RAG permanece opt-in e depende de relações revisadas e evidência textual suficiente. Resultados científicos ficam **não avaliados** até existir amostra municipal adjudicada por pessoas — o gate definido no protocolo é de pelo menos 20 normas-piloto humanas.
 
 O volume de normas e dispositivos depende do corpus configurado localmente; consulte a tela **Normas** ou a API para os totais atuais. Veja [`docs/research/NORMATIVE_GRAPH_DELIVERY.md`](docs/research/NORMATIVE_GRAPH_DELIVERY.md) para escopo e [`docs/research/NORMATIVE_GRAPH_OPERATIONS.md`](docs/research/NORMATIVE_GRAPH_OPERATIONS.md) para validação e ativação controlada.
+
+Reteste técnico de 07/10: QA isolado em `http://127.0.0.1:8022` com Ollama real passou pelos fluxos de citação, streaming, histórico, cancelamento/retry, insuficiência, grafo e recuperação temporal. A tela Normas mostrou 0 normas consolidadas e 40 PDFs em revisão. O serviço Docker do produto em `:8000` ainda respondeu 500 em `/assistente/` e demorou mais de 15 s em `/normas/`; logs apontam falha ao resolver o hostname do banco (8 tracebacks e 4 respostas 500 inspecionadas), embora o healthcheck Docker marque o web como saudável. O worker está unhealthy; não use essa instância como demonstração funcional. Os 40 PDFs permanecem sem aprovação e os resultados científicos continuam não avaliados. Evidência e limitações estão no progresso da implementação.
 
 </div>
 
@@ -935,7 +937,7 @@ docker-compose logs --tail=100 -f web worker
 
 ## 🏁 Project Status
 
-**Status:** 🚧 **Protótipo de pesquisa em desenvolvimento ativo**<br/>
+**Status:** 🚧 **Protótipo de pesquisa em desenvolvimento ativo; sem declaração de prontidão de produção**<br/>
 **Release:** sem versão de produção declarada<br/>
 **Current Focus:** confiabilidade do RAG, rastreabilidade normativa, experiência de pesquisa e validação operacional
 
@@ -949,8 +951,7 @@ docker-compose logs --tail=100 -f web worker
 
 ### 🎯 Funcionalidades Principais Implementadas
 
-✅ **Ingestão Automatizada** via API SAPL da Câmara Municipal de Natal  
-✅ **OCR Pipeline** completo com Tesseract  
+✅ **Cliente de ingestão SAPL** e pipeline de extração/OCR seletivo; sincronização e texto extraído exigem validação operacional/humana<br/>
 ✅ **Segmentação Hierárquica** refinada (suporte multiline, captura completa de texto)  
 ✅ **Busca Semântica** com pgvector e embeddings  
 ✅ **Chatbot RAG** com resposta em linguagem natural, validação e fontes rastreáveis<br/>
@@ -975,13 +976,13 @@ O trabalho recente unificou fluxos de assistente, normas e pesquisa, priorizando
 
 ### 📈 Validação do Projeto
 
-Na suíte Python isolada de QA, a última execução registrada passou com **873 testes aprovados, 6 ignorados e 7 avisos**. A suíte JavaScript, incluindo testes em navegador real, também passou. Esses resultados não equivalem a certificação de produção.
+Na suíte Python isolada de QA em 06/10/2026, **1.317 testes passaram, 3 foram ignorados e houve 7 avisos**. A suíte JavaScript terminou com exit 0; o grupo Chromium integrado passou **37/37**. O smoke de produto no Django QA `8015` cobriu **42 combinações de rota/largura**, 15 interações e seis verificações de tema claro, sem falhas. Um smoke adicional com Ollama real confirmou fontes antes do texto, citações estruturadas, cópia Markdown, cancelamento/retry, restauração por F5 e abstenção segura; na consulta de overview foram cobertos 20/39 dispositivos e essa parcialidade foi informada. São testes técnicos locais, não métricas de campo nem validação jurídica.
 
-Permanecem como gates: exercício ponta a ponta com PostgreSQL/Redis/Celery em ambiente QA, zoom de 200%, validação com tecnologia assistiva e revisão humana dos achados jurídicos/temporais. Consulte [`docs/current-status.md`](docs/current-status.md) e [`docs/audit/QA_RELEASE_CHECKLIST.md`](docs/audit/QA_RELEASE_CHECKLIST.md) para o estado e os limites detalhados.
+Permanecem como gates: concluir os fluxos R01–R24 do runbook, zoom nativo de 200%, validação com tecnologia assistiva, adjudicação humana de ao menos 20 normas, reconciliação SAPL confiável e experimento RAG com warm elegível/gold humano. Os 40 PDFs arquivados continuam pendentes no QA, sem promoção para corpus de produto; o worker Celery de produto está unhealthy. Consulte [`docs/research/NORMATIVE_IMPLEMENTATION_PROGRESS.md`](docs/research/NORMATIVE_IMPLEMENTATION_PROGRESS.md), [`docs/research/NORMATIVE_GRAPH_DELIVERY.md`](docs/research/NORMATIVE_GRAPH_DELIVERY.md) e [`docs/research/NORMATIVE_GRAPH_OPERATIONS.md`](docs/research/NORMATIVE_GRAPH_OPERATIONS.md) para estado, evidências e limites.
 
 **PIBIC Report:** Available in `docs/PIBIC_RELATORIO_FINAL_ESBOCO.md`
 
-This project successfully demonstrates the application of NLP and AI techniques to Brazilian legal texts, maintaining full data sovereignty through local processing, with a modern, professional UI following Swiss Design principles.
+O projeto demonstra uma arquitetura de pesquisa para processamento jurídico local com Ollama quando configurado. Cobertura, qualidade jurídica, segurança operacional, acessibilidade e prontidão de produção ainda dependem dos gates documentados; a interface segue tokens e componentes próprios, sem declaração de conformidade formal.
 
 ---
 
