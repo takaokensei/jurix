@@ -275,10 +275,10 @@ def test_stream_contract_persists_sources_only_for_grounded_answers(client, user
     events = iter(
         [
             {"event": "sources", "sources": [source]},
-            {"event": "chunk", "chunk": "Resposta"},
+            {"event": "chunk", "chunk": "Resposta [[1]]"},
             {
                 "event": "done",
-                "answer": "Resposta",
+                "answer": "Resposta [[1]]",
                 "grounded": grounded,
                 "timings_ms": {"retrieval": 7, "generation": 30},
                 "generation_attempts": [{"attempt": 1, "duration_ms": 30}],

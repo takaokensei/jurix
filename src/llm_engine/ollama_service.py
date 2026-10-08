@@ -138,6 +138,10 @@ class OllamaService:
             "stream": False,
             "options": {"temperature": temperature, "num_predict": max_tokens},
         }
+        if model.lower().startswith("qwen3"):
+            # The assistant surfaces answer text, not hidden reasoning. Keep
+            # Qwen3's separate thinking phase from delaying visible legal text.
+            payload["think"] = False
 
         try:
             response = self.session.post(url, json=payload, timeout=self.timeout * 2)
@@ -177,6 +181,8 @@ class OllamaService:
             "stream": True,
             "options": {"temperature": temperature, "num_predict": max_tokens},
         }
+        if model.lower().startswith("qwen3"):
+            payload["think"] = False
 
         response = None
         completed = False

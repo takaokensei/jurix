@@ -43,19 +43,39 @@ def grounding_fallback() -> str:
 
 
 def no_retrieval_message(reason_code: str | None) -> str | None:
-    """Return concise, non-repetitive copy for known retrieval outcomes."""
+    """Return the established safe message for each known retrieval outcome."""
     messages = {
         "norm_not_in_corpus": (
-            "A norma indicada não foi localizada no acervo do Jurix. Confira se o tipo da norma "
-            "está correto ou pesquise diretamente na biblioteca de normas."
+            "Não localizei essa norma no acervo do Jurix. Confira se o tipo da norma está correto, "
+            "além do número e ano, ou pesquise diretamente na biblioteca de normas."
         ),
         "requested_device_not_in_corpus": (
-            "O dispositivo solicitado não foi localizado no acervo do Jurix. Confira a referência "
-            "ou consulte o texto oficial da norma."
+            "Não localizei esse dispositivo no acervo do Jurix. Confira a referência ou consulte "
+            "o texto oficial da norma."
         ),
         "norm_content_not_in_corpus": (
             "A norma foi identificada, mas o acervo do Jurix não contém seus dispositivos para "
             "fundamentar a resposta. Consulte o texto oficial."
+        ),
+        "historical_version_unavailable": (
+            "Não encontrei uma versão histórica verificável desta norma para a data informada. "
+            "Para evitar atribuir ao passado um texto atual, não vou presumir qual redação estava vigente."
+        ),
+        "historical_snapshot_unavailable": (
+            "A versão desta norma para a data informada não está materializada no acervo. "
+            "Sem uma reconstrução verificável, não vou usar o texto atual como substituto histórico."
+        ),
+        "historical_evidence_unavailable": (
+            "Não encontrei evidências históricas suficientes para responder sobre essa data. "
+            "A redação atual não será apresentada como se fosse a redação histórica."
+        ),
+        "historical_publication_outside_scope": (
+            "Não consegui confirmar que a norma já havia sido publicada na data selecionada. "
+            "Sem essa confirmação, não vou atribuir uma redação a esse período."
+        ),
+        "ambiguous_historical_norma_scope": (
+            "A pergunta inclui mais de uma norma e a data histórica pode corresponder a redações diferentes. "
+            "Indique qual norma deseja consultar."
         ),
     }
     return messages.get(reason_code)

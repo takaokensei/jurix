@@ -79,6 +79,75 @@ def test_bold_legal_fact_remains_a_claim_and_must_be_grounded():
     assert result["grounded"] is False
 
 
+def test_grounding_binds_citation_marker_to_the_exact_source():
+    sources = [
+        {
+            "dispositivo_id": 1,
+            "citation_id": "device-1",
+            "citation_index": 1,
+            "norma": "Lei 123/2020",
+            "identifier": "Art. 1º",
+            "text": "O programa municipal oferece gratificação anual aos profissionais da saúde.",
+        },
+        {
+            "dispositivo_id": 2,
+            "citation_id": "device-2",
+            "citation_index": 2,
+            "norma": "Lei 123/2020",
+            "identifier": "Art. 2º",
+            "text": "Esta Lei entra em vigor na data de sua publicação.",
+        },
+    ]
+
+    wrong_source = evaluate_grounding(
+        "O programa oferece gratificação anual aos profissionais da saúde. [[2]]",
+        sources,
+    )
+    correct_source = evaluate_grounding(
+        "O programa oferece gratificação anual aos profissionais da saúde. [[1]]",
+        sources,
+    )
+    unknown_source = evaluate_grounding(
+        "O programa oferece gratificação anual aos profissionais da saúde. [[3]]",
+        sources,
+    )
+
+    assert wrong_source["grounded"] is False, (
+        extract_claims("O programa oferece gratificação anual aos profissionais da saúde. [[2]]"),
+        [(item["identifier"], item["citation_indexes"]) for item in wrong_source["claims"][0]["evidence"]],
+    )
+    assert wrong_source["claims"][0]["evidence"] == []
+    assert correct_source["grounded"] is True
+    assert correct_source["claims"][0]["evidence"][0]["citation_indexes"] == (1,)
+    assert unknown_source["grounded"] is False
+
+
+def test_grounding_requires_each_marker_on_a_multi_source_claim_to_be_supported():
+    sources = [
+        {
+            "dispositivo_id": 1,
+            "citation_index": 1,
+            "norma": "Lei 123/2020",
+            "identifier": "Art. 1º",
+            "text": "O programa municipal oferece gratificação anual aos profissionais da saúde.",
+        },
+        {
+            "dispositivo_id": 2,
+            "citation_index": 2,
+            "norma": "Lei 123/2020",
+            "identifier": "Art. 2º",
+            "text": "Esta Lei entra em vigor na data de sua publicação.",
+        },
+    ]
+
+    result = evaluate_grounding(
+        "O programa oferece gratificação anual aos profissionais da saúde. [[1]][[2]]",
+        sources,
+    )
+
+    assert result["grounded"] is False
+
+
 def test_grounding_service_composes_only_verified_article_family_sources():
     norma = SimpleNamespace(id=1, numero="1234", ano=2025, tipo="Lei")
     article = SimpleNamespace(

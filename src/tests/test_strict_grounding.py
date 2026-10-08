@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 from django.test import override_settings
 
-from src.processing.strict_grounding import evaluate_strict_grounding
+from src.processing.strict_grounding import _number_facts, evaluate_strict_grounding
 
 
 def source(text: str, norma: str = "Lei 1234/2025", identifier: str = "Art. 1") -> dict:
@@ -38,6 +38,43 @@ def test_strict_grounding_rejects_new_number():
     assert report["failed_claims"]
 
 
+@override_settings(RAG_STRICT_MIN_LEXICAL_OVERLAP=0.45)
+def test_strict_grounding_rejects_written_deadline_comparison_without_one_supporting_source():
+    report = evaluate_strict_grounding(
+        "O prazo foi alterado de dez dias para vinte dias.",
+        [
+            source("O prazo é de vinte dias.", "Lei 9002/2021", "Art. 1º"),
+            source("O prazo é de dez dias.", "Lei 9001/2020", "Art. 5º"),
+        ],
+    )
+
+    assert report["grounded"] is False
+    assert report["claims"][0]["supported"] is False
+    assert report["claims"][0]["rejected_matches"]
+
+
+@override_settings(RAG_STRICT_MIN_LEXICAL_OVERLAP=0.45)
+def test_strict_grounding_normalizes_written_and_digit_deadlines_to_same_value():
+    assert _number_facts("O prazo é de dez dias.") == {("prazo", "dias", "10")}
+    report = evaluate_strict_grounding(
+        "O prazo é de 10 dias.", [source("O prazo é de dez dias.")]
+    )
+
+    assert report["grounded"] is True
+
+
+@override_settings(RAG_STRICT_MIN_LEXICAL_OVERLAP=0.45)
+def test_strict_grounding_normalizes_compound_written_deadlines():
+    assert _number_facts("O prazo é de vinte e cinco dias.") == {
+        ("prazo", "dias", "25")
+    }
+    report = evaluate_strict_grounding(
+        "O prazo é de 25 dias.", [source("O prazo é de vinte e cinco dias.")]
+    )
+
+    assert report["grounded"] is True
+
+
 def test_strict_grounding_rejects_negation_mismatch():
     report = evaluate_strict_grounding(
         "A lei não exige autorização.",
@@ -67,6 +104,38 @@ def test_strict_grounding_rejects_removed_conditions_and_strengthened_modality()
         "O município deve conceder apoio financeiro.",
         [source("O município pode conceder apoio financeiro.")],
     )["grounded"]
+
+
+@override_settings(RAG_STRICT_MIN_LEXICAL_OVERLAP=0.4)
+def test_strict_grounding_recognizes_so_as_equivalent_to_somente_condition():
+    evidence = source(
+        "A evolução na carreira somente se efetivará dentro dos limites orçamentários."
+    )
+    evidence["citation_index"] = 1
+
+    report = evaluate_strict_grounding(
+        "A evolução na carreira só ocorrerá dentro dos limites orçamentários. [[1]]",
+        [evidence],
+    )
+
+    assert report["grounded"] is True
+
+
+@override_settings(RAG_STRICT_MIN_LEXICAL_OVERLAP=0.4)
+def test_strict_grounding_rejects_removing_an_explicit_legal_obligation():
+    evidence = source(
+        "As verbas destinadas à progressão deverão ser objeto de previsão em Lei Orçamentária."
+    )
+    evidence["citation_index"] = 1
+
+    report = evaluate_strict_grounding(
+        "As verbas destinadas à progressão são previstas em Lei Orçamentária. [[1]]",
+        [evidence],
+    )
+
+    assert report["grounded"] is False
+    assert report["claims"][0]["rejected_matches"]
+    assert report["claims"][0]["rejected_matches"][0]["certainty_ok"] is False
 
 
 def test_strict_grounding_ignores_reference_line_but_rejects_unsupported_bold_fact():
@@ -103,6 +172,71 @@ def test_strict_grounding_rejects_unknown_citation():
         [source("A Lei 1234/2025 exige cadastro.")],
     )
     assert report["grounded"] is False
+
+
+def test_strict_grounding_binds_inline_marker_to_matching_evidence_index():
+    sources = [
+        {
+            **source(
+                "O programa municipal oferece gratificação anual aos profissionais da saúde.",
+                identifier="Art. 1º",
+            ),
+            "citation_index": 1,
+        },
+        {
+            **source(
+                "Esta Lei entra em vigor na data de sua publicação.",
+                identifier="Art. 2º",
+            ),
+            "citation_index": 2,
+        },
+    ]
+
+    wrong = evaluate_strict_grounding(
+        "O programa oferece gratificação anual aos profissionais da saúde. [[2]]",
+        sources,
+    )
+    correct = evaluate_strict_grounding(
+        "O programa oferece gratificação anual aos profissionais da saúde. [[1]]",
+        sources,
+    )
+    unknown = evaluate_strict_grounding(
+        "O programa oferece gratificação anual aos profissionais da saúde. [[3]]",
+        sources,
+    )
+
+    assert wrong["grounded"] is False
+    assert wrong["claims"][0]["supported"] is False
+    assert correct["grounded"] is True
+    assert correct["claims"][0]["matches"][0]["citation_indexes"] == [1]
+    assert unknown["grounded"] is False
+
+
+def test_strict_grounding_requires_support_for_every_marker_on_a_claim():
+    sources = [
+        {
+            **source(
+                "O programa municipal oferece gratificação anual aos profissionais da saúde.",
+                identifier="Art. 1º",
+            ),
+            "citation_index": 1,
+        },
+        {
+            **source(
+                "Esta Lei entra em vigor na data de sua publicação.",
+                identifier="Art. 2º",
+            ),
+            "citation_index": 2,
+        },
+    ]
+
+    report = evaluate_strict_grounding(
+        "O programa oferece gratificação anual aos profissionais da saúde. [[1]][[2]]",
+        sources,
+    )
+
+    assert report["grounded"] is False
+    assert report["claims"][0]["supported"] is False
 
 
 def test_strict_grounding_can_require_two_sources():

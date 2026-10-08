@@ -139,6 +139,7 @@ _NUMBER_WORDS = {
 class Claim:
     text: str
     citation_refs: tuple[str, ...] = ()
+    citation_indexes: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -151,6 +152,7 @@ class Evidence:
     end: int | None = None
     dispositivo_ids: tuple[Any, ...] = ()
     citation_ids: tuple[str, ...] = ()
+    citation_indexes: tuple[int, ...] = ()
     norma_id: Any = None
     tipo: str = ""
     parent_id: Any = None
@@ -399,7 +401,16 @@ def extract_claims(answer: str) -> tuple[Claim, ...]:
         r")",
         re.IGNORECASE,
     )
-    for raw in re.split(r"(?<=[.!?])\s+|\n{2,}", protected):
+    # Structured citation markers belong to the preceding sentence, not to a
+    # separate fragment that would be discarded as non-substantive text.
+    raw_chunks = re.split(r"(?<=[.!?])\s+|\n{2,}", protected)
+    attached_chunks: list[str] = []
+    for chunk in raw_chunks:
+        if re.fullmatch(r"(?:\s*\[\[\d{1,6}\]\])+\s*", chunk) and attached_chunks:
+            attached_chunks[-1] = f"{attached_chunks[-1]} {chunk.strip()}"
+        else:
+            attached_chunks.append(chunk)
+    for raw in attached_chunks:
         restored = raw.replace("@@DOT@@", ".").strip()
         text = " ".join(restored.split())
         if not text:
@@ -439,7 +450,13 @@ def extract_claims(answer: str) -> tuple[Claim, ...]:
             f"{m.group(1).lower()} {m.group(2)}/{m.group(3)[-2:]}"
             for m in _CITATION_RE.finditer(text)
         )
-        claims.append(Claim(text=text, citation_refs=refs))
+        citation_indexes = tuple(
+            int(match.group(1))
+            for match in re.finditer(r"\[\[(\d{1,6})\]\]", text)
+        )
+        claims.append(
+            Claim(text=text, citation_refs=refs, citation_indexes=citation_indexes)
+        )
     return tuple(claims)
 
 
@@ -482,8 +499,10 @@ def _identifier_from_source(source: dict[str, Any]) -> str:
 
 
 def build_evidence(sources: Iterable[dict[str, Any]]) -> tuple[Evidence, ...]:
+    sources = tuple(sources)
+    has_explicit_indexes = any(source.get("citation_index") is not None for source in sources)
     result: list[Evidence] = []
-    for source in sources:
+    for position, source in enumerate(sources, start=1):
         dispositivo = source.get("dispositivo")
         # ``evidence_text`` is an internal, enriched representation used by
         # grounding.  It lets retrieval add authoritative norma metadata (for
@@ -503,6 +522,14 @@ def build_evidence(sources: Iterable[dict[str, Any]]) -> tuple[Evidence, ...]:
             )
         if not text:
             continue
+        raw_citation_index = source.get("citation_index")
+        if raw_citation_index is None and not has_explicit_indexes:
+            raw_citation_index = position
+        try:
+            citation_index = int(raw_citation_index)
+        except (TypeError, ValueError):
+            citation_index = None
+        citation_indexes = (citation_index,) if citation_index is not None and 1 <= citation_index <= 999 else ()
         dispositivo_id = (
             source.get("dispositivo_id")
             or source.get("id")
@@ -520,6 +547,7 @@ def build_evidence(sources: Iterable[dict[str, Any]]) -> tuple[Evidence, ...]:
                 end=source.get("end"),
                 dispositivo_ids=(dispositivo_id,) if dispositivo_id is not None else (),
                 citation_ids=(source["citation_id"],) if source.get("citation_id") else (),
+                citation_indexes=citation_indexes,
                 norma_id=source.get("norma_id") or getattr(dispositivo, "norma_id", None) or getattr(norma, "id", None),
                 tipo=str(getattr(dispositivo, "tipo", "") or "").lower(),
                 parent_id=getattr(dispositivo, "dispositivo_pai_id", None) or getattr(parent, "id", None),
@@ -607,6 +635,9 @@ def build_article_family_evidence(sources: Iterable[dict[str, Any]]) -> tuple[Ev
             sections.append(f"{item.identifier}: {item.text}")
         ids = tuple(item.dispositivo_id for item in family if item.dispositivo_id is not None)
         citation_ids = tuple(dict.fromkeys(cid for item in family for cid in item.citation_ids))
+        citation_indexes = tuple(
+            dict.fromkeys(index for item in family for index in item.citation_indexes)
+        )
         composites.append(
             Evidence(
                 dispositivo_id=None,
@@ -615,6 +646,7 @@ def build_article_family_evidence(sources: Iterable[dict[str, Any]]) -> tuple[Ev
                 identifier=root.identifier,
                 dispositivo_ids=ids,
                 citation_ids=citation_ids,
+                citation_indexes=citation_indexes,
                 norma_id=root.norma_id,
                 tipo="article_family",
             )
@@ -629,6 +661,10 @@ def _normalise_citation_text(text: str) -> str:
 
 
 def _citation_matches(claim: Claim, evidence: Evidence) -> bool:
+    if claim.citation_indexes and not set(claim.citation_indexes).intersection(
+        evidence.citation_indexes
+    ):
+        return False
     if not claim.citation_refs:
         return True
     haystack = _normalise_citation_text(
@@ -668,12 +704,13 @@ def _supports_claim(claim: Claim, evidence: Evidence) -> bool:
         return False
 
     full_ev_text = f"{evidence.norma_ref} {evidence.identifier} {evidence.text}".strip()
-    claim_numbers = _numeric_tokens(claim.text)
+    claim_text = re.sub(r"\[\[\d{1,6}\]\]", "", claim.text)
+    claim_numbers = _numeric_tokens(claim_text)
     evidence_numbers = _numeric_tokens(full_ev_text)
     if claim_numbers - evidence_numbers:
         return False
 
-    claim_words = _tokens(claim.text)
+    claim_words = _tokens(claim_text)
     if not claim_words:
         return True
     evidence_words = _tokens(full_ev_text)
@@ -695,7 +732,11 @@ def evaluate_grounding(
 
     for claim in claims:
         claim_evidence = tuple(item for item in evidence if _supports_claim(claim, item))
-        supported = bool(claim_evidence)
+        supported_indexes = {
+            index for item in claim_evidence for index in item.citation_indexes
+        }
+        all_citations_supported = set(claim.citation_indexes).issubset(supported_indexes)
+        supported = bool(claim_evidence) and all_citations_supported
         if supported:
             supported_count += 1
         else:

@@ -32,7 +32,9 @@ def test_stream_reveals_only_grounded_answer_incrementally(mock_service):
     assert all(item.get("provisional") is False for item in chunk_events)
     assert all("replace" not in item for item in chunk_events)
     grounding_index = next(i for i, item in enumerate(events) if item.get("status") == "grounding")
-    assert first_chunk_index > grounding_index
+    # With no sentence boundary, the complete answer is released after final
+    # validation and before the service emits its terminal grounding status.
+    assert first_chunk_index < grounding_index
     assert events[-1]["event"] == "done"
     assert events[-1]["answer"] == "primeiro"
     assert events[-1]["timings_ms"]["retrieval"] >= 0
@@ -218,8 +220,118 @@ def test_stream_contract_labels_grounding_refusal_and_keeps_sources_nonfinal(mon
     assert sources_event["sources"], f"retrieval metadata may arrive before final grounding: {payloads}"
     assert done_event["reason_code"] == "evidence_insufficient"
     assert done_event["contract"]["reason_code"] == "evidence_insufficient"
+    assert done_event["contract"]["corpus_coverage"]["coverage_status"] == "unknown"
+    assert done_event["contract"]["corpus_coverage"]["checked_until"] is None
     assert done_event["grounded"] is False
     assert done_event["contract"]["sources"] == []
+
+
+def test_stream_completion_reconciles_drawer_to_grounded_citation_sources(monkeypatch):
+    import json
+
+    from django.test import Client
+
+    from src.apps.legislation import api_search, api_views
+
+    sources = [
+        {
+            "id": 18,
+            "norma_ref": "Lei Complementar nº 120/2010",
+            "dispositivo_ref": "Art. 18",
+            "texto": "O vencimento básico não poderá ser inferior ao salário mínimo.",
+        },
+        {
+            "id": 33,
+            "norma_ref": "Lei Complementar nº 120/2010",
+            "dispositivo_ref": "Art. 33",
+            "texto": "Revisão anual de valores remuneratórios.",
+        },
+        {
+            "id": 4,
+            "norma_ref": "Decreto nº 9.571/2011",
+            "dispositivo_ref": "Art. 4º",
+            "texto": "Dispositivo contextual recuperado, mas não citado.",
+        },
+    ]
+
+    class GroundedService:
+        def stream_answer_question(self, *_args, **_kwargs):
+            yield {"event": "sources", "sources": sources}
+            yield {"event": "chunk", "chunk": "O piso segue o mínimo [[1]]."}
+            yield {
+                "event": "done",
+                "answer": "O piso segue o mínimo [[1]].",
+                "grounded": True,
+                "grounding": {
+                    "grounded": True,
+                    "claims": [{
+                        "supported": True,
+                        "matches": [{"citation_indexes": [1]}],
+                    }],
+                },
+            }
+
+    monkeypatch.setattr(api_search, "RAGService", GroundedService)
+    monkeypatch.setattr(api_views, "RAGService", GroundedService)
+    response = Client(REMOTE_ADDR="192.0.2.83").post(
+        "/api/v1/search/answer/stream/",
+        data=json.dumps({"question": "Qual é o piso do vencimento?"}),
+        content_type="application/json",
+    )
+    payloads = [
+        json.loads(line.removeprefix("data: "))
+        for line in b"".join(response.streaming_content).decode().splitlines()
+        if line.startswith("data: ")
+    ]
+    sources_event = next(item for item in payloads if item["type"] == "sources")
+    done_event = next(item for item in payloads if item["type"] == "done")
+
+    assert len(sources_event["sources"]) == 3  # Full retrieval set stays visible during streaming.
+    assert [source["dispositivo_ref"] for source in done_event["sources"]] == ["Art. 18"]
+    assert done_event["sources"][0]["citation_index"] == 1
+    assert [source["article"] for source in done_event["contract"]["sources"]] == ["Art. 18"]
+
+
+def test_nonstream_answer_contract_uses_the_same_cited_source_subset(monkeypatch):
+    import json
+
+    from django.test import Client
+
+    from src.apps.legislation import api_search, api_views
+
+    class GroundedService:
+        def answer_question(self, **_kwargs):
+            return {
+                "answer": "O vencimento segue o mínimo [[2]].",
+                "grounded": True,
+                "grounding": {
+                    "grounded": True,
+                    "claims": [{
+                        "supported": True,
+                        "matches": [{"citation_indexes": [2]}],
+                    }],
+                },
+                "sources": [
+                    {"id": 18, "norma_ref": "LC 120", "dispositivo_ref": "Art. 18", "text": "piso"},
+                    {"id": 33, "norma_ref": "LC 120", "dispositivo_ref": "Art. 33", "text": "reajuste"},
+                ],
+                "confidence": None,
+                "model": "qa-model",
+            }
+
+    monkeypatch.setattr(api_search, "RAGService", GroundedService)
+    monkeypatch.setattr(api_views, "RAGService", GroundedService)
+    response = Client(REMOTE_ADDR="192.0.2.84").post(
+        "/api/v1/search/answer/",
+        data=json.dumps({"question": "Qual é o piso do vencimento?"}),
+        content_type="application/json",
+    )
+    payload = json.loads(response.content)
+
+    assert response.status_code == 200
+    assert payload["grounded"] is True
+    assert [source["dispositivo_ref"] for source in payload["sources"]] == ["Art. 33"]
+    assert [source["article"] for source in payload["metadata"]["contract"]["sources"]] == ["Art. 33"]
 
 
 def test_generation_exception_emits_safe_reason_code_without_unverified_answer(monkeypatch):

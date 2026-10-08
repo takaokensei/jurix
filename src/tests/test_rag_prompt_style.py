@@ -8,6 +8,10 @@ def test_prompt_requests_natural_prose_structured_citations_and_no_generated_lin
 
     assert "Comece diretamente pela conclusão" in prompt
     assert "Não crie uma seção para cada artigo" in prompt
+    assert "Em respostas curtas, com até três afirmações relacionadas, não use títulos" in prompt
+    assert "limitação da evidência junto da explicação relevante" in prompt
+    assert "os trechos consultados não permitem confirmá-lo" in prompt
+    assert "lacuna de recuperação em afirmação sobre a norma inteira" in prompt
     assert "marcador correspondente" in prompt
     assert "não crie URLs" in prompt
     assert "[[1]] Lei nº 8.206/2026" in prompt

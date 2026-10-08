@@ -138,10 +138,15 @@ class AdaptiveRAGService(RAGService):
 
         cited_normas = []
         seen_ids = set()
-        for reference in parse_normative_references(query_text):
+        parsed_references = parse_normative_references(query_text)
+        query_plan = classify_normative_query(query_text)
+        explicit_multi_article = bool(
+            query_plan.article_targets and query_plan.kind == "provision"
+        )
+        for reference in parsed_references:
             # A yearless or multi-reference string does not identify one safe
             # target. Never let the first regex match silently choose a norma.
-            if reference.ambiguous or reference.year is None:
+            if (reference.ambiguous and not explicit_multi_article) or reference.year is None:
                 continue
             for n in Norma.objects.filter(numero=reference.number, ano=reference.year)[:20]:
                 display = getattr(n, "get_tipo_display_name", None)
@@ -168,9 +173,13 @@ class AdaptiveRAGService(RAGService):
     @staticmethod
     def _has_unambiguous_versioned_reference(query_text: str) -> bool:
         references = parse_normative_references(query_text or "")
+        query_plan = classify_normative_query(query_text or "")
         return (
             len(references) == 1
-            and not references[0].ambiguous
+            and (
+                not references[0].ambiguous
+                or (query_plan.kind == "provision" and bool(query_plan.article_targets))
+            )
             and references[0].year is not None
         )
 
@@ -181,6 +190,7 @@ class AdaptiveRAGService(RAGService):
         options: RetrievalOptions,
         *,
         norma_overview: bool = False,
+        article_targets: tuple[str, ...] = (),
     ) -> list[dict[str, Any]]:
         from src.apps.legislation.models import Dispositivo
 
@@ -193,6 +203,13 @@ class AdaptiveRAGService(RAGService):
             if len(references) == 1 and not references[0].ambiguous and references[0].article
             else None
         )
+        explicit_article_keys = {
+            article_key(target) for target in article_targets if article_key(target) is not None
+        }
+        if not explicit_article_keys and explicit_reference is not None:
+            key = article_key(explicit_reference.article)
+            if key is not None:
+                explicit_article_keys.add(key)
         for norma in cited_normas:
             all_disps = list(
                 Dispositivo.objects.filter(norma_id=norma.id, is_active=True)
@@ -209,22 +226,21 @@ class AdaptiveRAGService(RAGService):
                     "norma_overview_complete" if coverage["complete"] else "norma_overview_sampled"
                 )
                 retrieval_rows = []
-            elif explicit_reference is not None:
-                target_article = article_key(explicit_reference.article)
+            elif explicit_article_keys:
                 article_matches = [
                     d
                     for d in all_disps
-                    if d.tipo == "artigo" and article_key(d.numero) == target_article
+                    if d.tipo == "artigo" and article_key(d.numero) in explicit_article_keys
                 ]
-                if len(article_matches) != 1:
+                if len(article_matches) != len(explicit_article_keys):
                     continue
-                target_id = article_matches[0].id
+                target_ids = {article.id for article in article_matches}
                 chosen_disps = []
                 for d in all_disps:
                     current = d
                     seen_ancestors = set()
                     while current is not None and current.id not in seen_ancestors:
-                        if current.id == target_id:
+                        if current.id in target_ids:
                             chosen_disps.append(d)
                             break
                         seen_ancestors.add(current.id)
@@ -460,7 +476,10 @@ class AdaptiveRAGService(RAGService):
         exact_reference = (
             parsed_references[0]
             if len(parsed_references) == 1
-            and not parsed_references[0].ambiguous
+            and (
+                not parsed_references[0].ambiguous
+                or (query_plan.kind == "provision" and bool(query_plan.article_targets))
+            )
             and parsed_references[0].year is not None
             else None
         )
@@ -557,7 +576,11 @@ class AdaptiveRAGService(RAGService):
         cited_ids = {n.id for n in cited_normas}
         cited_rows = (
             self._retrieve_cited_norma_devices(
-                cited_normas, query_text, options, norma_overview=norma_overview
+                cited_normas,
+                query_text,
+                options,
+                norma_overview=norma_overview,
+                article_targets=query_plan.article_targets,
             )
             if cited_normas
             else []

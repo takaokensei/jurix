@@ -82,6 +82,7 @@ def build_answer_contract(
     grounding: dict | None = None,
     grounded: bool = False,
     corpus_revision: dict | None = None,
+    corpus_coverage: dict | None = None,
     request_id: str | None = None,
     cached: bool = False,
     timings_ms: dict | None = None,
@@ -150,6 +151,8 @@ def build_answer_contract(
             }
         )
     revision = corpus_revision or {}
+    from src.processing.corpus_coverage import build_corpus_coverage
+
     grounding_report = grounding or {}
     result = {
         "schema_version": SCHEMA_VERSION,
@@ -159,6 +162,7 @@ def build_answer_contract(
             "digest": revision.get("digest"),
             "completeness": revision.get("completeness", "unknown"),
         },
+        "corpus_coverage": corpus_coverage or build_corpus_coverage(revision),
         "question": question,
         "retrieval_query": retrieval_query,
         "filters": safe_filters,

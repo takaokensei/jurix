@@ -57,6 +57,15 @@ def test_title_keeps_article_and_law_reference_without_inventing_a_topic():
     )
 
 
+def test_title_does_not_use_a_negative_answer_prefix_as_the_topic():
+    title = build_conversation_title(
+        "Não encontrei evidências suficientes. E o artigo 7 da Lei Complementar nº 120/2010?",
+        [],
+    )
+
+    assert title == "Art. 7º — Lei Complementar nº 120/2010"
+
+
 def test_title_ignores_instruction_words_that_also_appear_in_legal_evidence():
     sources = [
         {

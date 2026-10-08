@@ -18,6 +18,7 @@ from src.apps.legislation.models import EventoAlteracao, Norma
 from src.processing.document_metadata import (
     TYPE_SERIES,
     build_normative_identity,
+    is_natal_municipal_jurisdiction,
     normalize_document_number,
 )
 from src.processing.normative_reference import canonical_type, parse_normative_references
@@ -188,7 +189,7 @@ def _candidate_normas(reference: TargetReference, target_norma_ids: set[int] | N
         if (
             reference.jurisdiction == "municipal"
             and jurisdiction
-            and not jurisdiction.startswith("MUNICIPIO")
+            and not is_natal_municipal_jurisdiction(jurisdiction)
         ):
             continue
         if series and reference.series and series != reference.series:

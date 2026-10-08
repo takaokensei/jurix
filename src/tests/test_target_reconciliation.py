@@ -176,6 +176,32 @@ def test_explicit_municipal_reference_prefers_confirmed_identity_key():
 
 
 @pytest.mark.django_db
+def test_explicit_municipal_reference_accepts_canonical_natal_identity_but_not_other_scope():
+    source = Norma.objects.create(tipo="Lei", numero="1", ano=2026)
+    device = Dispositivo.objects.create(norma=source, tipo="artigo", numero="1", ordem=1)
+    identity = build_normative_identity(
+        jurisdiction="BR-RN-NATAL",
+        raw_type="Lei",
+        series="municipal_lo",
+        number="98206",
+        year=2020,
+    )
+    target = Norma.objects.create(
+        tipo="Lei", numero="98206", ano=2020,
+        identity_key=identity.identity_key, identity_json=identity.identity_json,
+    )
+    event = EventoAlteracao.objects.create(
+        dispositivo_fonte=device,
+        acao="ALTERA",
+        target_text="Lei Municipal nº 98.206/2020",
+    )
+
+    assert resolve_event_target(event) is True
+    event.refresh_from_db()
+    assert event.norma_alvo_id == target.pk
+
+
+@pytest.mark.django_db
 def test_ingestion_reference_resolver_requires_a_unique_canonical_match():
     ordinary = Norma.objects.create(tipo="Lei Ordinária", numero="008206", ano=2020)
     complementary = Norma.objects.create(tipo="Lei Complementar", numero="8206", ano=2020)

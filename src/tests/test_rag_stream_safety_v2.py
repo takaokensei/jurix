@@ -6,7 +6,7 @@ from src.processing.rag_service import RAGService
 
 
 class RAGStreamingSafetyTests(SimpleTestCase):
-    def test_streaming_only_emits_the_answer_after_grounding(self):
+    def test_streaming_releases_validated_text_before_final_grounding_status(self):
         service = RAGService(use_cache=False)
         source = {
             "text": "A Lei 1234/2025 exige 3 documentos.",
@@ -36,6 +36,8 @@ class RAGStreamingSafetyTests(SimpleTestCase):
         assert chunks
         assert all(event.get("provisional") is False for event in chunks)
         assert "".join(event["chunk"] for event in chunks) == "A Lei 1234/2025 exige 3 documentos."
-        assert next(i for i, event in enumerate(events) if event.get("status") == "grounding") < next(
-            i for i, event in enumerate(events) if event.get("event") == "chunk"
+        chunk_index = next(i for i, event in enumerate(events) if event.get("event") == "chunk")
+        final_grounding_index = next(
+            i for i, event in enumerate(events) if event.get("status") == "grounding"
         )
+        assert chunk_index < final_grounding_index

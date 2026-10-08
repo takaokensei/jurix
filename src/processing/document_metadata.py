@@ -60,6 +60,19 @@ def _fold(value: str) -> str:
     return "".join(char for char in decomposed if not unicodedata.combining(char)).casefold()
 
 
+def is_natal_municipal_jurisdiction(value: Any) -> bool:
+    """Recognize only explicit canonical/legacy identities for Natal municipal acts."""
+    normalized = re.sub(r"\s+", "-", _fold(str(value or ""))).upper()
+    return normalized in {
+        "BR-RN-NATAL",
+        "MUNICIPIO-DE-NATAL",
+        "MUNICIPIO-DO-NATAL",
+        "MUNICIPIO-NATAL",
+        "NATAL",
+        "NATAL-RN",
+    }
+
+
 def normalize_document_number(value: Any) -> str:
     """Normalize numeric formatting/leading zeroes without erasing suffixes."""
     raw = str(value or "").strip()

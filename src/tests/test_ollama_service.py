@@ -46,3 +46,26 @@ def test_stream_text_uses_configured_default_model():
 
     payload = service.stream_session.post.call_args.kwargs["json"]
     assert payload["model"] == "qwen2.5:7b"
+    assert "think" not in payload
+
+
+def test_qwen3_disables_hidden_reasoning_for_text_generation():
+    service = OllamaService()
+    service.session = Mock()
+    response = Mock()
+    response.json.return_value = {"response": "ok"}
+    service.session.post.return_value = response
+
+    assert service.generate_text("teste", model="qwen3:8b") == "ok"
+    assert service.session.post.call_args.kwargs["json"]["think"] is False
+
+
+def test_qwen3_disables_hidden_reasoning_for_streaming():
+    service = OllamaService()
+    service.stream_session = Mock()
+    response = Mock()
+    response.iter_lines.return_value = [b'{"response":"ok","done":true}']
+    service.stream_session.post.return_value = response
+
+    assert list(service.stream_text("teste", model="Qwen3:8b")) == ["ok"]
+    assert service.stream_session.post.call_args.kwargs["json"]["think"] is False

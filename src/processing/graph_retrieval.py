@@ -95,7 +95,7 @@ def expand_relation_evidence(
         "discarded": [],
         "additional_evidence_limit": cap,
     }
-    if relation_intent not in {"modification", "reference"} or not cap:
+    if relation_intent not in {"modification", "reference", "mixed"} or not cap:
         return list(baseline_rows), trace
 
     seeds = {}
@@ -120,8 +120,21 @@ def expand_relation_evidence(
         trace["discarded"].append({"reason": "no_retrieved_norma_seed"})
         return list(baseline_rows), trace
 
-    allowed_actions = REFERENCE_ACTIONS if relation_intent == "reference" else MODIFICATION_ACTIONS
+    if relation_intent == "reference":
+        allowed_actions = REFERENCE_ACTIONS
+    elif relation_intent == "mixed":
+        allowed_actions = MODIFICATION_ACTIONS | REFERENCE_ACTIONS
+    else:
+        allowed_actions = MODIFICATION_ACTIONS
     additions = []
+    baseline_rows = [dict(row) if isinstance(row, dict) else row for row in baseline_rows]
+    existing_rows = {}
+    for row in baseline_rows:
+        device = row.get("dispositivo") if isinstance(row, dict) else None
+        identity = (getattr(device, "norma_id", None), getattr(device, "structural_key", None))
+        if identity[0] and identity[1]:
+            existing_rows.setdefault(identity, []).append(row)
+    annotated_existing = set()
     event_paths = set()
     for norma_id in seed_ids[:MAX_GRAPH_SEEDS]:
         norma = seeds[norma_id]
@@ -192,6 +205,23 @@ def expand_relation_evidence(
             for device, role in role_devices:
                 identity = (device.norma_id, device.structural_key)
                 if identity in seen:
+                    # A semantic result can already contain the exact article
+                    # that the graph resolved. Keep its score/order, but enrich
+                    # it with the reviewed relation instead of silently losing
+                    # the graph edge during de-duplication.
+                    for existing in existing_rows.get(identity, []):
+                        if not existing.get("graph_relation"):
+                            relation_row = _evidence_row(
+                                device, edge, role=role, relation_intent=relation_intent
+                            )
+                            existing.update({
+                                "match_kind": relation_row["match_kind"],
+                                "retrieval_strategy": relation_row["retrieval_strategy"],
+                                "evidence_scope": relation_row["evidence_scope"],
+                                "graph_relation": relation_row["graph_relation"],
+                            })
+                            annotated_existing.add(identity)
+                            break
                     continue
                 if len(additions) >= cap:
                     trace["discarded"].append(
@@ -205,4 +235,5 @@ def expand_relation_evidence(
             trace["added"].append(event_path)
 
     trace["added_evidence_count"] = len(additions)
+    trace["annotated_existing_evidence_count"] = len(annotated_existing)
     return list(baseline_rows) + additions, trace

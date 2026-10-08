@@ -19,14 +19,15 @@ from src.observability.safe_logging import log_exception_safely
 from src.processing.cache_service import CacheService, get_cache_service
 from src.processing.rag_answer_pipeline import (
     build_done_event,
+    forward_grounded_generation,
     insufficient_evidence_events,
     iter_answer_chunks,
     raise_if_cancelled,
-    run_grounded_generation,
+    stream_grounded_generation,
     stream_model_attempt,
 )
 from src.processing.rag_cache_helpers import hydrate_cached_sources
-from src.processing.rag_contract_helpers import contract, grounding_fallback
+from src.processing.rag_contract_helpers import contract, grounding_fallback, no_retrieval_message
 from src.processing.rag_deterministic import deterministic_answer
 from src.processing.rag_generation import (
     answer_uses_only_sources,
@@ -40,25 +41,6 @@ from src.processing.rag_prompt import PROMPT_TEMPLATE as RAG_PROMPT_TEMPLATE
 from src.processing.rag_prompt import build_prompt
 
 logger = logging.getLogger(__name__)
-
-
-def _no_retrieval_message(reason_code: str | None) -> str:
-    if reason_code == "norm_not_in_corpus":
-        return (
-            "Não localizei essa norma no acervo do Jurix. Confira o tipo, número e ano ou "
-            "consulte a fonte oficial."
-        )
-    if reason_code == "requested_device_not_in_corpus":
-        return (
-            "Não localizei esse dispositivo no acervo do Jurix. Confira a identificação ou "
-            "consulte o texto oficial da norma."
-        )
-    if reason_code == "norm_content_not_in_corpus":
-        return (
-            "A norma foi identificada, mas seus dispositivos não estão disponíveis no acervo "
-            "do Jurix. Consulte a fonte oficial."
-        )
-    return "Não encontrei informações suficientes no acervo para responder com segurança."
 
 
 class RAGService:
@@ -441,7 +423,8 @@ class RAGService:
             RAG_REQUESTS.labels("no_retrieval").inc()
             reason_code = getattr(results, "reason_code", None)
             response = contract(
-                answer=_no_retrieval_message(reason_code),
+                answer=no_retrieval_message(reason_code)
+                or "Não encontrei informações suficientes no acervo para responder com segurança.",
                 sources=[],
                 source_relevance=0.0,
                 grounded=False,
@@ -669,7 +652,9 @@ class RAGService:
             RAG_REQUESTS.labels("no_retrieval").inc()
             reason_code = getattr(results, "reason_code", None)
             coverage = getattr(results, "coverage", {})
-            empty_msg = _no_retrieval_message(reason_code)
+            empty_msg = no_retrieval_message(reason_code) or (
+                "Não encontrei informações suficientes no acervo para responder com segurança."
+            )
             yield from insufficient_evidence_events(
                 answer=empty_msg,
                 reason_code=reason_code,
@@ -734,19 +719,28 @@ class RAGService:
 
         yield {"event": "status", "status": "generating"}
 
-        generation = run_grounded_generation(
-            prompt,
-            stream_attempt=lambda attempt_prompt: stream_model_attempt(
-                attempt_prompt,
-                ollama=self.ollama,
-                model=model,
-                temperature=temperature,
-                text_provider=text_provider,
+        generation_events = forward_grounded_generation(
+            stream_grounded_generation(
+                prompt,
+                stream_attempt=lambda attempt_prompt: stream_model_attempt(
+                    attempt_prompt,
+                    ollama=self.ollama,
+                    model=model,
+                    temperature=temperature,
+                    text_provider=text_provider,
+                    should_cancel=should_cancel,
+                ),
+                validate_attempt=lambda answer: self._validate_answer(answer, results),
                 should_cancel=should_cancel,
             ),
-            validate_attempt=lambda answer: self._validate_answer(answer, results),
-            should_cancel=should_cancel,
         )
+        while True:
+            try:
+                generation_event = next(generation_events)
+            except StopIteration as completed:
+                generation, streamed_answer = completed.value
+                break
+            yield generation_event
         full_answer = generation["answer"]
         grounding_report = generation["grounding"]
         source_only = generation["source_only"]
@@ -764,17 +758,17 @@ class RAGService:
             RAG_REQUESTS.labels("grounded").inc()
             final_answer = full_answer
 
-        # Stream only after grounding has accepted/rejected the complete model
-        # output. Users still get incremental rendering, but never see a draft
-        # that may later be replaced by the safe fallback.
-        for chunk in self._iter_answer_chunks(final_answer):
+        if not final_answer.startswith(streamed_answer):
+            # Never replace text that was already validated and sent.
+            final_answer = streamed_answer or grounding_fallback()
+        for chunk in self._iter_answer_chunks(final_answer[len(streamed_answer) :]):
             raise_if_cancelled(should_cancel)
             yield {"event": "chunk", "chunk": chunk, "provisional": False}
 
         raise_if_cancelled(should_cancel)
         yield {"event": "status", "status": "finalizing"}
 
-        if is_grounded and self.use_cache and self.cache:
+        if is_grounded and not generation.get("partial") and self.use_cache and self.cache:
             raise_if_cancelled(should_cancel)
             result_payload = contract(
                 answer=final_answer,
@@ -796,7 +790,7 @@ class RAGService:
                 generation_fingerprint=generation_fingerprint,
             )
         raise_if_cancelled(should_cancel)
-        yield build_done_event(
+        done_event = build_done_event(
             answer=final_answer,
             sources=results,
             source_relevance=source_relevance,
@@ -807,6 +801,9 @@ class RAGService:
             total_before_done_ms=round((time.perf_counter() - request_started) * 1000),
             generation_attempts=generation_attempts,
         )
+        if generation.get("partial"):
+            done_event["reason_code"] = "generation_partial_after_grounded_prefix"
+        yield done_event
 
     def _fix_markdown_formatting(self, text: str) -> str:
         return fix_markdown_formatting(text)

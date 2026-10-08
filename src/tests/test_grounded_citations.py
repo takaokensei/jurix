@@ -1,5 +1,6 @@
 from src.processing.citation_enrichment import attach_grounded_citations
 from src.processing.rag_generation import validate_generated_answer
+from src.processing.strict_grounding import evaluate_strict_grounding
 
 
 def test_adds_structured_citation_to_each_supported_markdown_claim():
@@ -135,3 +136,42 @@ def test_answer_validation_returns_citations_for_supported_uncited_claims():
 
     assert result["grounded"] is True
     assert result["answer"] == "A lei cria um programa municipal de apoio. [[1]]"
+
+
+def test_inferred_citation_prefers_the_device_that_states_the_normative_rule():
+    answer = (
+        "A Lei Complementar nº 120/2010 estabelece regras para o Plano de Cargos e "
+        "Vencimentos (PCCV-Saúde) dos servidores públicos efetivos do Poder Executivo."
+    )
+    sources = [
+        {
+            "citation_id": "art-1",
+            "citation_index": 1,
+            "norma_ref": "Lei Complementar nº 120/2010",
+            "identifier": "Art. 1º",
+            "text": (
+                "Fica criado o Plano de Cargos, Carreiras e Vencimentos dos profissionais "
+                "da Área de Saúde, servidores estatutários da Secretaria Municipal de Saúde, "
+                "cuja implantação se dará na forma estabelecida nesta Lei."
+            ),
+        },
+        {
+            "citation_id": "art-35",
+            "citation_index": 2,
+            "norma_ref": "Lei Complementar nº 120/2010",
+            "identifier": "Art. 35",
+            "text": (
+                "O enquadramento dos servidores públicos efetivos abrangidos por esta Lei "
+                "Complementar dar-se-á mediante opção expressa do servidor, a ser formalizada "
+                "por requerimento escrito."
+            ),
+        },
+    ]
+
+    grounding = evaluate_strict_grounding(answer, sources)
+    cited_answer = attach_grounded_citations(answer, grounding, sources)
+    wrong_reference = evaluate_strict_grounding(f"{answer} [[2]]", sources)
+
+    assert grounding["grounded"] is True
+    assert cited_answer.endswith("[[1]]")
+    assert wrong_reference["grounded"] is False

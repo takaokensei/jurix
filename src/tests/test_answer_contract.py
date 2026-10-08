@@ -41,6 +41,15 @@ def test_answer_dto_has_stable_provenance_and_excludes_unapproved_filter_fields(
         "digest": "abc123",
         "completeness": "unknown",
     }
+    assert dto["corpus_coverage"] == {
+        "coverage_status": "unknown",
+        "corpus_revision": {"revision": 5, "digest": "abc123"},
+        "checked_until": None,
+        "sources_checked": [],
+        "missing_intervals": None,
+        "pending_review": None,
+        "reason": "no_reviewed_coverage_scope",
+    }
     assert dto["question"] == "E o artigo 7?"
     assert dto["retrieval_query"].endswith("Lei 8206/2026")
     assert dto["filters"] == {"mode": "hybrid", "max_sources": 4}

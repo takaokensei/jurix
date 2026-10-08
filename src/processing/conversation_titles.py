@@ -31,6 +31,8 @@ _STOP = {
     "foi",
     "na",
     "nas",
+    "não",
+    "nao",
     "no",
     "nos",
     "o",

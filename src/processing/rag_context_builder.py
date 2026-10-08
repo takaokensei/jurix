@@ -152,6 +152,7 @@ def build_relevant_context(
             relation_header = (
                 f"\n[RELAÇÃO REVISADA: {graph_relation.get('label')}; "
                 f"status temporal: {graph_relation.get('effective_status') or 'não confirmado'}; "
+                f"data de publicação: {graph_relation.get('publication_on') or 'não informada'}; "
                 f"data de efeito: {graph_relation.get('effective_on') or 'não confirmada'}; "
                 f"papel desta evidência: {graph_relation.get('role')}"
             )

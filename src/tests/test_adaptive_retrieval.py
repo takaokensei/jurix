@@ -100,6 +100,43 @@ def test_explicit_article_query_returns_only_that_article_subtree_without_fake_s
     assert all(row["similarity_score"] == 0.0 for row in rows)
 
 
+def test_plural_explicit_articles_return_only_the_named_article_subtrees(db):
+    from src.apps.legislation.models import Dispositivo, Norma
+    from src.processing.adaptive_rag_service import AdaptiveRAGService
+
+    norma = Norma.objects.create(numero="120", ano=2010, tipo="Lei Complementar", status="consolidated")
+    article_17 = Dispositivo.objects.create(
+        norma=norma, tipo="artigo", numero="17", texto="Atribuições gerais.", ordem=17
+    )
+    child_17 = Dispositivo.objects.create(
+        norma=norma,
+        tipo="inciso",
+        numero="I",
+        texto="Regra do primeiro artigo.",
+        ordem=171,
+        dispositivo_pai=article_17,
+    )
+    article_18 = Dispositivo.objects.create(
+        norma=norma, tipo="artigo", numero="18º", texto="Vencimento básico.", ordem=18
+    )
+    Dispositivo.objects.create(
+        norma=norma, tipo="artigo", numero="19º", texto="Outro assunto.", ordem=19
+    )
+
+    rows = AdaptiveRAGService().semantic_search(
+        "Explique a diferença entre as regras dos arts. 17 e 18 da Lei Complementar nº 120/2010.",
+        k=5,
+    )
+
+    assert {row["dispositivo"].id for row in rows} == {
+        article_17.id,
+        child_17.id,
+        article_18.id,
+    }
+    assert all(row["match_kind"] == "explicit_reference" for row in rows)
+    assert all(row["similarity_score"] == 0.0 for row in rows)
+
+
 def test_whole_norma_overview_ignores_small_ui_top_k_and_returns_all_devices(db):
     from src.apps.legislation.models import Dispositivo, Norma
     from src.processing.adaptive_rag_service import AdaptiveRAGService

@@ -5,10 +5,27 @@ import pytest
 from src.apps.ingestion.task_support import _normalize_norma_tipo
 from src.processing.document_metadata import (
     build_normative_identity,
+    is_natal_municipal_jurisdiction,
     normalize_document_number,
     parse_filename_metadata,
     parse_initial_epigraphs,
 )
+
+
+@pytest.mark.parametrize(
+    "jurisdiction",
+    ["BR-RN-NATAL", "Município de Natal", "Município do Natal", "Natal-RN"],
+)
+def test_natal_municipal_jurisdiction_recognizes_only_explicit_supported_aliases(jurisdiction):
+    assert is_natal_municipal_jurisdiction(jurisdiction)
+
+
+@pytest.mark.parametrize(
+    "jurisdiction",
+    ["BR-RN-RIO-GRANDE-DO-NORTE", "BR-FEDERAL", "MUNICIPIO-DE-MOSSORO", ""],
+)
+def test_natal_municipal_jurisdiction_rejects_other_or_unknown_scopes(jurisdiction):
+    assert not is_natal_municipal_jurisdiction(jurisdiction)
 
 
 @pytest.mark.parametrize(
@@ -128,13 +145,13 @@ def test_unknown_or_incompatible_series_keeps_identity_unresolved():
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [
-        ("1", "Lei"),
+        ("1", "Tipo não identificado"),
         ("Lei ordinária", "Lei"),
         ("Lei Complementar", "Lei Complementar"),
         ("Decreto Executivo", "Decreto"),
         ("Decreto Legislativo", "Decreto Legislativo"),
         ("tipo SAPL futuro", "tipo SAPL futuro"),
-        ("99", "99"),
+        ("99", "Tipo não identificado"),
     ],
 )
 def test_sapl_type_normalization_preserves_unknown_codes(raw, expected):

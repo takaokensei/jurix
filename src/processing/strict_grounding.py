@@ -21,6 +21,7 @@ without changing the public contract of this module.
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
@@ -47,7 +48,8 @@ _PROHIBITION_CERTAINTY_RE = re.compile(
     re.IGNORECASE,
 )
 _OBLIGATION_CERTAINTY_RE = re.compile(
-    r"\b(?:deve|devem|obrigatoriamente|sempre|obrigat[óo]ri[oa]s?|necessariamente)\b",
+    r"\b(?:deve(?:m)?|dever(?:á|ão|ia|iam)|obrigatoriamente|sempre|"
+    r"obrigat[óo]ri[oa]s?|necessariamente)\b",
     re.IGNORECASE,
 )
 _PERMISSION_CERTAINTY_RE = re.compile(
@@ -56,13 +58,23 @@ _PERMISSION_CERTAINTY_RE = re.compile(
     re.IGNORECASE,
 )
 _CONDITION_RE = re.compile(
-    r"\b(?:somente|apenas|exceto|salvo|se\s+houver|se\s+for|desde\s+que|quando|"
+    r"\b(?:somente|apenas|s[oó]|exceto|salvo|se\s+houver|se\s+for|desde\s+que|quando|"
     r"específico|específica|específicos|específicas|ressalvado|ressalvada)\b",
     re.IGNORECASE,
 )
 _CLAUSE_RE = re.compile(r"(?<=[.!?;:])\s+|\n+")
 _FACT_UNIT_RE = re.compile(
-    r"(?P<value>\d+(?:[.,]\d+)?)\s*(?P<unit>dias?|meses?|anos?|reais?|r\$|%|por cento|"
+    r"(?P<value>\d+(?:[.,]\d+)?|(?:zero|um|uma|dois|duas|tr[eê]s|quatro|cinco|seis|sete|oito|nove|"
+    r"dez|onze|doze|treze|catorze|quatorze|quinze|dezesseis|dezassete|dezessete|dezoito|dezenove|"
+    r"vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|"
+    r"duzent[oa]s?|trezent[oa]s?|quatrocent[oa]s?|quinhent[oa]s?|seiscent[oa]s?|"
+    r"setecent[oa]s?|oitocent[oa]s?|novecent[oa]s?|mil|milh(?:ão|ões)|bilh(?:ão|ões))"
+    r"(?:[\s-]+(?:e[\s-]+)?(?:zero|um|uma|dois|duas|tr[eê]s|quatro|cinco|seis|sete|oito|nove|"
+    r"dez|onze|doze|treze|catorze|quatorze|quinze|dezesseis|dezassete|dezessete|dezoito|dezenove|"
+    r"vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|"
+    r"duzent[oa]s?|trezent[oa]s?|quatrocent[oa]s?|quinhent[oa]s?|seiscent[oa]s?|"
+    r"setecent[oa]s?|oitocent[oa]s?|novecent[oa]s?|mil|milh(?:ão|ões)|bilh(?:ão|ões))*)?)"
+    r"\s*(?P<unit>dias?|meses?|anos?|reais?|r\$|%|por cento|"
     r"salários?\s*mínimos?|horas?|semanas?)(?=\s|$|[.,;:])",
     re.IGNORECASE,
 )
@@ -83,6 +95,59 @@ _FACT_ANCHORS = (
     "salário",
     "período",
 )
+
+_WRITTEN_NUMBER_VALUES = {
+    "zero": 0,
+    "um": 1,
+    "uma": 1,
+    "dois": 2,
+    "duas": 2,
+    "tres": 3,
+    "quatro": 4,
+    "cinco": 5,
+    "seis": 6,
+    "sete": 7,
+    "oito": 8,
+    "nove": 9,
+    "dez": 10,
+    "onze": 11,
+    "doze": 12,
+    "treze": 13,
+    "catorze": 14,
+    "quatorze": 14,
+    "quinze": 15,
+    "dezesseis": 16,
+    "dezassete": 17,
+    "dezessete": 17,
+    "dezoito": 18,
+    "dezenove": 19,
+    "vinte": 20,
+    "trinta": 30,
+    "quarenta": 40,
+    "cinquenta": 50,
+    "sessenta": 60,
+    "setenta": 70,
+    "oitenta": 80,
+    "noventa": 90,
+    "cem": 100,
+    "cento": 100,
+    "duzentos": 200,
+    "duzentas": 200,
+    "trezentos": 300,
+    "trezentas": 300,
+    "quatrocentos": 400,
+    "quatrocentas": 400,
+    "quinhentos": 500,
+    "quinhentas": 500,
+    "seiscentos": 600,
+    "seiscentas": 600,
+    "setecentos": 700,
+    "setecentas": 700,
+    "oitocentos": 800,
+    "oitocentas": 800,
+    "novecentos": 900,
+    "novecentas": 900,
+}
 
 _STOPWORDS = {
     "para",
@@ -291,6 +356,9 @@ def _numbers(text: str) -> set[str]:
     normalized_text = re.sub(r"\[\[\d{1,3}\]\]", " ", normalized_text)
     values = {match.replace(",", ".") for match in _NUMBER_RE.findall(normalized_text)}
     values.update(_YEAR_RE.findall(text or ""))
+    # A digit in the answer and the same value written out in a legal excerpt
+    # are equivalent when attached to an explicit quantity/time unit.
+    values.update(value for _anchor, _unit, value in _number_facts(normalized_text))
     return values
 
 
@@ -336,9 +404,38 @@ def _number_facts(text: str) -> set[tuple[str, str, str]]:
         ]
         anchor = max(anchor_matches)[1] if anchor_matches else ""
         unit = re.sub(r"\s+", " ", match.group("unit").replace("r$", "reais"))
-        value = match.group("value").replace(",", ".")
+        value = _canonical_number(match.group("value"))
+        if value is None:
+            continue
         facts.add((anchor, unit, value))
     return facts
+
+
+def _canonical_number(value: str) -> str | None:
+    """Normalize digits and common Brazilian Portuguese cardinal numbers."""
+    raw = (value or "").strip().lower()
+    if re.fullmatch(r"\d+(?:[.,]\d+)?", raw):
+        return raw.replace(",", ".")
+
+    normalized = unicodedata.normalize("NFKD", raw)
+    normalized = "".join(char for char in normalized if not unicodedata.combining(char))
+    tokens = re.findall(r"[a-z]+", normalized)
+    if not tokens:
+        return None
+
+    total = current = 0
+    for token in tokens:
+        if token == "e":
+            continue
+        if token in _WRITTEN_NUMBER_VALUES:
+            current += _WRITTEN_NUMBER_VALUES[token]
+        elif token in {"mil", "milhao", "milhoes", "bilhao", "bilhoes"}:
+            scale = 1_000 if token == "mil" else 1_000_000 if token.startswith("mil") else 1_000_000_000
+            total += max(current, 1) * scale
+            current = 0
+        else:
+            return None
+    return str(total + current)
 
 
 def _normalise(text: str) -> str:
@@ -352,6 +449,10 @@ def _normalise_citation_text(text: str) -> str:
 
 
 def _citation_ok(claim, evidence) -> bool:
+    if claim.citation_indexes and not set(claim.citation_indexes).intersection(
+        evidence.citation_indexes
+    ):
+        return False
     if not claim.citation_refs:
         return True
     haystack = _normalise_citation_text(
@@ -392,7 +493,7 @@ def _match_claim(claim, evidence) -> EvidenceMatch:
     evidence_certainty = _certainty(predicate_evidence)
     has_claim_condition = bool(_CONDITION_RE.search(claim.text))
     has_evidence_condition = bool(_CONDITION_RE.search(predicate_evidence))
-    condition_mismatch = has_evidence_condition and not has_claim_condition
+    condition_mismatch = has_evidence_condition != has_claim_condition
     claim_facts = _number_facts(claim.text)
     evidence_facts = _number_facts(predicate_evidence)
     fact_mismatch = any(
@@ -403,8 +504,12 @@ def _match_claim(claim, evidence) -> EvidenceMatch:
         for anchor, unit, value in claim_facts
         if anchor
     )
+    # The claim may not introduce a stronger/different legal modality, and it
+    # may not flatten an explicit obligation, prohibition, or permission into
+    # an unqualified statement of fact.
     certainty_ok = (
-        (not claim_certainty or bool(claim_certainty & evidence_certainty))
+        claim_certainty.issubset(evidence_certainty)
+        and (not evidence_certainty or bool(claim_certainty))
         and not condition_mismatch
         and not fact_mismatch
     )
@@ -440,6 +545,7 @@ def evaluate_strict_grounding(
     for claim in claims:
         matches: list[dict[str, Any]] = []
         rejected_matches: list[dict[str, Any]] = []
+        supported_citation_indexes: set[int] = set()
         for index, item in enumerate(evidence):
             match = _match_claim(claim, item)
             match = EvidenceMatch(
@@ -451,6 +557,7 @@ def evaluate_strict_grounding(
                 certainty_ok=match.certainty_ok,
             )
             if match.accepted:
+                supported_citation_indexes.update(item.citation_indexes)
                 matched_source_ids.update(item.dispositivo_ids or ((item.dispositivo_id or index),))
                 matches.append(
                     {
@@ -458,6 +565,7 @@ def evaluate_strict_grounding(
                         "dispositivo_id": item.dispositivo_id,
                         "dispositivo_ids": list(item.dispositivo_ids),
                         "citation_ids": list(item.citation_ids),
+                        "citation_indexes": list(item.citation_indexes),
                         "lexical_overlap": match.lexical_overlap,
                         "numeric_ok": match.numeric_ok,
                         "negation_ok": match.negation_ok,
@@ -482,7 +590,10 @@ def evaluate_strict_grounding(
                     }
                 )
 
-        supported = bool(matches)
+        all_citations_supported = set(claim.citation_indexes).issubset(
+            supported_citation_indexes
+        )
+        supported = bool(matches) and all_citations_supported
         if not supported:
             failed_claims.append(claim.text)
         claim_reports.append(
