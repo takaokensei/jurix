@@ -37,10 +37,14 @@ from .task_support import get_cache_service
 logger = logging.getLogger(__name__)
 
 
-def _process_norma_data(norma_data, auto_download=False):
+def _process_norma_data(norma_data, auto_download=False, preserve_existing_pdf=False):
     """Compatibility wrapper that keeps ``tasks.Norma`` patchable."""
     core_tasks.Norma = Norma
-    return core_tasks._process_norma_data(norma_data, auto_download=auto_download)
+    return core_tasks._process_norma_data(
+        norma_data,
+        auto_download=auto_download,
+        preserve_existing_pdf=preserve_existing_pdf,
+    )
 
 
 def _invalidate_rag_cache():

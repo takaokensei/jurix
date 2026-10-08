@@ -78,6 +78,108 @@ def test_review_is_required_and_records_staff_decision():
     assert resolved.review_reason == "QA revisão"
 
 
+def test_normative_checkpoint_admin_requires_permission_and_records_decision(monkeypatch):
+    from django.contrib.auth.models import Permission
+    from django.test import Client
+    from django.urls import reverse
+
+    item = _queued()
+    item.stage = NormativeWorkItem.Stage.REVIEW
+    item.status = NormativeWorkItem.Status.AWAITING_REVIEW
+    item.save(update_fields=["stage", "status"])
+    reviewer = get_user_model().objects.create_user(
+        username="checkpoint-reviewer", is_staff=True, is_active=True
+    )
+    url = reverse("admin:operations_normativeworkitem_review", args=[item.pk])
+    guest_client = Client()
+    assert guest_client.get(url).status_code == 302
+    unprivileged = get_user_model().objects.create_user(
+        username="checkpoint-unprivileged", is_staff=True, is_active=True
+    )
+    unprivileged_client = Client()
+    unprivileged_client.force_login(unprivileged)
+    assert unprivileged_client.get(url).status_code == 403
+    permission = Permission.objects.get(
+        content_type__app_label="operations", codename="change_normativeworkitem"
+    )
+    reviewer.user_permissions.add(permission)
+    client = Client()
+    client.force_login(reviewer)
+
+    response = client.get(url)
+    assert response.status_code == 200
+    assert b"n\xc3\xa3o substitui a revis\xc3\xa3o jur\xc3\xaddica" in response.content
+    queue_response = client.get(reverse("admin:operations_normativeworkitem_changelist"))
+    assert queue_response.status_code == 200
+    assert url.encode() in queue_response.content
+    assert client.post(url, {"decision": "approve", "reason": "  "}).status_code == 200
+    item.refresh_from_db()
+    assert item.status == NormativeWorkItem.Status.AWAITING_REVIEW
+
+    scheduled = []
+    monkeypatch.setattr(
+        process_normative_work_item_task,
+        "apply_async",
+        lambda **kwargs: scheduled.append(kwargs),
+    )
+    response = client.post(
+        url,
+        {"decision": "approve", "reason": "Checkpoint QA conferido pelo operador."},
+    )
+    assert response.status_code == 302
+    item.refresh_from_db()
+    assert item.status == NormativeWorkItem.Status.PENDING
+    assert item.stage == NormativeWorkItem.Stage.SEGMENT
+    assert item.reviewed_by_id == reviewer.pk
+    assert item.review_reason == "Checkpoint QA conferido pelo operador."
+    assert scheduled == [{"args": [item.pk], "queue": "normative_qa"}]
+
+
+def test_normative_checkpoint_admin_rejects_without_scheduling():
+    from django.contrib.auth.models import Permission
+    from django.test import Client
+    from django.urls import reverse
+
+    item = _queued()
+    item.stage = NormativeWorkItem.Stage.REVIEW
+    item.status = NormativeWorkItem.Status.AWAITING_REVIEW
+    item.save(update_fields=["stage", "status"])
+    reviewer = get_user_model().objects.create_user(
+        username="checkpoint-rejecter", is_staff=True, is_active=True
+    )
+    reviewer.user_permissions.add(
+        Permission.objects.get(
+            content_type__app_label="operations", codename="change_normativeworkitem"
+        )
+    )
+    client = Client()
+    client.force_login(reviewer)
+    response = client.post(
+        reverse("admin:operations_normativeworkitem_review", args=[item.pk]),
+        {"decision": "reject", "reason": "Fonte insuficiente para prosseguir."},
+    )
+    assert response.status_code == 302
+    item.refresh_from_db()
+    assert item.status == NormativeWorkItem.Status.CANCELLED
+    assert item.result["human_review"] == "rejected"
+    assert item.review_reason == "Fonte insuficiente para prosseguir."
+
+
+def test_inline_stage_task_result_is_readable_inside_celery_task_context():
+    from celery.result import EagerResult, denied_join_result
+
+    from src.apps.ingestion.normative_tasks import _run_inline_task
+
+    class InlineTask:
+        def apply(self, *, args, throw):
+            assert args == [37]
+            assert throw is True
+            return EagerResult("qa-inline-result", {"success": True}, "SUCCESS")
+
+    with denied_join_result():
+        assert _run_inline_task(InlineTask(), 37) == {"success": True}
+
+
 def test_failed_stage_uses_bounded_retry_then_terminal_failure():
     item = _queued()
     item.max_attempts = 1

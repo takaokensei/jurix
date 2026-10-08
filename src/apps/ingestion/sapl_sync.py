@@ -57,6 +57,30 @@ def _scope_fingerprint(tipo: str | None, ano: int | None) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def _page_metadata(page: dict[str, Any]) -> dict[str, int] | None:
+    metadata = page.get("_jurix_pagination")
+    return metadata if isinstance(metadata, dict) else None
+
+
+def _page_start_url(
+    client: SaplAPIClient,
+    page: dict[str, Any],
+    *,
+    tipo: str | None = None,
+    ano: int | None = None,
+) -> str:
+    metadata = _page_metadata(page)
+    page_number = metadata.get("page") if metadata else None
+    if page_number is None:
+        return ""
+    return client.build_normas_page_url(page_number, tipo=tipo, ano=ano)
+
+
+def _validated_next_url(client: SaplAPIClient, page: dict[str, Any]) -> str:
+    next_url = page.get("next")
+    return client.validate_pagination_url(next_url) if next_url else ""
+
+
 def _remote_timestamp(payload: dict[str, Any]):
     from django.utils.dateparse import parse_datetime
 
@@ -292,20 +316,88 @@ def _mark_full_sweep_record(sapl_id: int, sweep_token: str, expected_count: int)
 
 
 def _process_payload(
-    payload: dict[str, Any], *, pdf_fingerprint: str | None = None
+    payload: dict[str, Any],
+    *,
+    pdf_fingerprint: str | None = None,
+    client: SaplAPIClient | None = None,
 ) -> tuple[str, int | None]:
-    """Persist one changed payload through the existing transactional pipeline."""
+    """Persist changed catalogue metadata without silently replacing accepted PDFs."""
     from src.apps.ingestion.tasks import _process_norma_data
 
     sapl_id = payload.get("id")
     if not sapl_id:
         raise ValueError("Norma sem id no payload SAPL")
     digest = payload_hash(payload)
+    existing = (
+        Norma.objects.filter(sapl_id=sapl_id)
+        .only("status", "pdf_url", "pdf_path", "texto_consolidado", "sapl_metadata")
+        .first()
+    )
+    accepted_source_exists = bool(
+        existing
+        and (
+            existing.pdf_path
+            or existing.texto_consolidado
+            or existing.status
+            in ("consolidated", "embedded", "segmented", "ocr_completed", "text_extracted")
+        )
+    )
+    prior_metadata = existing.sapl_metadata if existing and isinstance(existing.sapl_metadata, dict) else {}
+    prior_fingerprint = str(prior_metadata.get("_jurix_pdf_fingerprint") or "")
+    remote_pdf_url = str(payload.get("texto_integral") or "").strip()
+    pdf_url_changed = bool(existing and remote_pdf_url and remote_pdf_url != existing.pdf_url)
+    pending_reason = ""
+    if accepted_source_exists and pdf_fingerprint:
+        if prior_fingerprint and prior_fingerprint != pdf_fingerprint:
+            pending_reason = "remote_pdf_fingerprint_changed"
+        elif not prior_fingerprint and pdf_url_changed:
+            pending_reason = "remote_pdf_url_changed_without_baseline"
+
     stored = dict(payload)
     stored["_jurix_source_hash"] = digest
-    if pdf_fingerprint:
+    if pdf_fingerprint and not pending_reason:
         stored["_jurix_pdf_fingerprint"] = pdf_fingerprint
-    _process_norma_data(stored, auto_download=True)
+    # Sync updates catalog metadata only. Candidate PDFs use the explicit,
+    # review-pending staging path below; never fan out automatic downloads.
+    _process_norma_data(
+        stored,
+        auto_download=False,
+        preserve_existing_pdf=accepted_source_exists,
+    )
+
+    if accepted_source_exists and existing:
+        norma = Norma.objects.get(sapl_id=sapl_id)
+        metadata = dict(norma.sapl_metadata) if isinstance(norma.sapl_metadata, dict) else {}
+        if pending_reason and pdf_fingerprint:
+            if prior_fingerprint:
+                metadata["_jurix_pdf_fingerprint"] = prior_fingerprint
+            old_pending = prior_metadata.get("_jurix_pending_pdf_change")
+            pending = (
+                dict(old_pending)
+                if isinstance(old_pending, dict)
+                and old_pending.get("fingerprint") == pdf_fingerprint
+                else {
+                    "fingerprint": pdf_fingerprint,
+                    "reason": pending_reason,
+                    "detected_at": timezone.now().isoformat(),
+                }
+            )
+            metadata["_jurix_pending_pdf_change"] = pending
+            norma.needs_review = True
+            norma.processing_error = (
+                "PDF de origem alterado no SAPL; revisão necessária antes de substituir a fonte local."
+            )
+            norma.sapl_metadata = metadata
+            norma.save(
+                update_fields=["sapl_metadata", "needs_review", "processing_error", "updated_at"]
+            )
+            if client is not None:
+                _stage_pending_pdf_candidate(client, payload, pdf_fingerprint)
+        elif prior_fingerprint:
+            # Keep the fingerprint of the accepted source until a candidate is reviewed.
+            metadata["_jurix_pdf_fingerprint"] = prior_fingerprint
+            norma.sapl_metadata = metadata
+            norma.save(update_fields=["sapl_metadata", "updated_at"])
     return digest, int(sapl_id)
 
 
@@ -347,6 +439,7 @@ def run_incremental_sync(
 
     client = SaplAPIClient()
     offset = int(state.last_cursor)
+    resume_url = state.last_cursor_url
     stats = {
         "success": False,
         "busy": False,
@@ -362,33 +455,76 @@ def run_incremental_sync(
         "errors": [],
     }
     newest_remote = state.last_remote_timestamp
+    seen_page_urls: set[str] = set()
+    seen_page_fingerprints: set[str] = set()
 
     try:
         for _ in range(max_pages):
             if not _renew(state.id, token):
                 raise RuntimeError("Lease SAPL perdido durante a sincronização.")
-            page = client.fetch_normas_page(
-                limit=limit,
-                offset=offset,
-                tipo=tipo,
-                ano=ano,
+            requested_url = resume_url
+            page = (
+                client._make_request_url(requested_url)
+                if requested_url
+                else client.fetch_normas_page(
+                    limit=limit,
+                    offset=offset,
+                    tipo=tipo,
+                    ano=ano,
+                )
             )
+            resume_url = ""
             results = page.get("results") or []
             if not results:
                 stats["success"] = True
                 stats["safe_stop"] = True
+                offset = 0
+                state.last_cursor = 0
+                state.last_cursor_url = ""
+                state.save(update_fields=["last_cursor", "last_cursor_url", "updated_at"])
                 break
 
+            metadata = _page_metadata(page)
+            page_start = int(metadata["start_index"]) - 1 if metadata else offset
+            skip_count = offset - page_start if requested_url else 0
+            if skip_count < 0 or skip_count > len(results):
+                raise RuntimeError(
+                    "Cursor SAPL não corresponde à página retomada; sync não certificado."
+                )
+            current_page_url = requested_url or _page_start_url(
+                client, page, tipo=tipo, ano=ano
+            )
+            next_url = _validated_next_url(client, page)
+            if current_page_url:
+                if current_page_url in seen_page_urls:
+                    raise RuntimeError("SAPL repetiu URL de página durante sync incremental.")
+                seen_page_urls.add(current_page_url)
+                state.last_cursor_url = current_page_url
+                state.save(update_fields=["last_cursor_url", "updated_at"])
+            if next_url and next_url in seen_page_urls:
+                raise RuntimeError("SAPL repetiu URL next durante sync incremental.")
+            ids = [int(item["id"]) for item in results if item.get("id") is not None]
+            if len(ids) != len(results) or len(set(ids)) != len(ids):
+                raise RuntimeError("SAPL retornou ids ausentes ou repetidos na página incremental.")
+            page_fingerprint = hashlib.sha256(
+                ",".join(str(item) for item in ids).encode("ascii")
+            ).hexdigest()
+            if page_fingerprint in seen_page_fingerprints:
+                raise RuntimeError("SAPL repetiu página durante sync incremental.")
+            seen_page_fingerprints.add(page_fingerprint)
+
             stats["pages"] += 1
-            stats["fetched"] += len(results)
             page_unchanged = True
 
-            for payload in results:
+            for index, payload in enumerate(results):
+                if index < skip_count:
+                    continue
                 sapl_id = payload.get("id")
                 if not sapl_id:
                     stats["failed"] += 1
                     stats["errors"].append("Norma sem id no payload SAPL")
                     page_unchanged = False
+                    offset = page_start + index
                     break
                 remote_dt = _remote_timestamp(payload)
                 if remote_dt and (newest_remote is None or remote_dt > newest_remote):
@@ -413,46 +549,74 @@ def run_incremental_sync(
                     else:
                         stats["unchanged"] += 1
                         SAPL_SYNC_RECORDS.labels(state="unchanged").inc()
-                    continue
-                page_unchanged = False
-                try:
-                    digest, _ = _process_payload(payload, pdf_fingerprint=pdf_fingerprint)
-                    stats["changed"] += 1
-                    SAPL_SYNC_RECORDS.labels(state="changed").inc()
-                except Exception as exc:
-                    stats["failed"] += 1
-                    stats["errors"].append(f"Norma {sapl_id}: {exc}")
-                    SAPL_SYNC_RECORDS.labels(state="failed").inc()
-                    logger.error("Incremental SAPL sync failed for %s", sapl_id, exc_info=True)
-                    break
+                else:
+                    page_unchanged = False
+                    try:
+                        digest, _ = _process_payload(
+                            payload, pdf_fingerprint=pdf_fingerprint, client=client
+                        )
+                        stats["changed"] += 1
+                        SAPL_SYNC_RECORDS.labels(state="changed").inc()
+                    except Exception as exc:
+                        stats["failed"] += 1
+                        stats["errors"].append(f"Norma {sapl_id}: {exc}")
+                        SAPL_SYNC_RECORDS.labels(state="failed").inc()
+                        logger.error("Incremental SAPL sync failed for %s", sapl_id, exc_info=True)
+                        offset = page_start + index
+                        break
+                offset = page_start + index + 1
+                stats["fetched"] += 1
+                state.last_cursor = offset
+                state.last_sync_count = stats["fetched"]
+                state.last_remote_timestamp = newest_remote
+                state.save(
+                    update_fields=[
+                        "last_cursor",
+                        "last_sync_count",
+                        "last_remote_timestamp",
+                        "last_cursor_url",
+                        "updated_at",
+                    ]
+                )
 
             if stats["failed"]:
-                # Keep the page-start cursor so a later run retries every item
-                # on this page; none of its partial work changes freshness.
+                # Preserve the current page URL and the first unprocessed row.
                 stats["partial"] = True
                 stats["cursor_end"] = offset
                 break
 
-            offset += len(results)
-            state.last_cursor = offset
-            state.last_sync_count = stats["fetched"]
-            state.last_remote_timestamp = newest_remote
-            state.save(
-                update_fields=[
-                    "last_cursor",
-                    "last_sync_count",
-                    "last_remote_timestamp",
-                    "updated_at",
-                ]
-            )
             stats["cursor_end"] = offset
 
-            if page_unchanged or len(results) < limit:
+            if page_unchanged:
                 stats["success"] = stats["failed"] == 0
                 stats["safe_stop"] = True
                 offset = 0
                 state.last_cursor = 0
-                state.save(update_fields=["last_cursor", "updated_at"])
+                state.last_cursor_url = ""
+                state.save(update_fields=["last_cursor", "last_cursor_url", "updated_at"])
+                break
+            if next_url:
+                resume_url = next_url
+                state.last_cursor_url = next_url
+                state.save(update_fields=["last_cursor_url", "updated_at"])
+                continue
+
+            if "next" in page and next_url == "":
+                stats["success"] = True
+                stats["safe_stop"] = True
+                offset = 0
+                state.last_cursor = 0
+                state.last_cursor_url = ""
+                state.save(update_fields=["last_cursor", "last_cursor_url", "updated_at"])
+                break
+
+            if len(results) < limit:
+                stats["success"] = True
+                stats["safe_stop"] = True
+                offset = 0
+                state.last_cursor = 0
+                state.last_cursor_url = ""
+                state.save(update_fields=["last_cursor", "last_cursor_url", "updated_at"])
                 break
 
         else:
@@ -510,22 +674,26 @@ def run_full_sync(*, limit: int = 100) -> dict[str, Any]:
     if state.full_sweep_token:
         sweep_token = state.full_sweep_token
         offset = int(state.last_cursor)
+        resume_url = state.last_cursor_url
         fetched = int(state.last_sync_count)
         expected_count = state.full_sweep_expected_count
     else:
         sweep_token = uuid.uuid4().hex
         offset = 0
+        resume_url = ""
         fetched = 0
         expected_count = None
         state.full_sweep_token = sweep_token
         state.full_sweep_expected_count = None
         state.last_cursor = 0
+        state.last_cursor_url = ""
         state.last_sync_count = 0
         state.save(
             update_fields=[
                 "full_sweep_token",
                 "full_sweep_expected_count",
                 "last_cursor",
+                "last_cursor_url",
                 "last_sync_count",
                 "updated_at",
             ]
@@ -547,7 +715,13 @@ def run_full_sync(*, limit: int = 100) -> dict[str, Any]:
         for _ in range(max_pages):
             if not _renew(state.id, token):
                 raise RuntimeError("Lease SAPL perdido durante o full sync.")
-            page = client.fetch_normas_page(limit=limit, offset=offset)
+            requested_url = resume_url
+            page = (
+                client._make_request_url(requested_url)
+                if requested_url
+                else client.fetch_normas_page(limit=limit, offset=offset)
+            )
+            resume_url = ""
             results = page.get("results") or []
             if not results:
                 if expected_count is None:
@@ -571,18 +745,37 @@ def run_full_sync(*, limit: int = 100) -> dict[str, Any]:
                     state.save(update_fields=["full_sweep_expected_count", "updated_at"])
                 except (TypeError, ValueError) as exc:
                     raise RuntimeError("Contagem SAPL inválida; scan não certificado.") from exc
-                if fetched + len(results) > expected_count:
+                metadata = _page_metadata(page)
+                page_start = (
+                    int(metadata["start_index"]) - 1 if metadata else offset
+                )
+                skip_count = offset - page_start if requested_url else 0
+                if skip_count < 0 or skip_count > len(results):
+                    raise RuntimeError(
+                        "Cursor SAPL não corresponde à página retomada; scan não certificado."
+                    )
+                if fetched + len(results) - skip_count > expected_count:
                     raise RuntimeError("SAPL retornou mais registros que a contagem declarada.")
             elif expected_count is None:
                 raise RuntimeError(
                     "SAPL não declarou a contagem; full sync não pode certificar cobertura."
                 )
-            next_url = page.get("next")
+            if "count" not in page:
+                metadata = _page_metadata(page)
+                page_start = (
+                    int(metadata["start_index"]) - 1 if metadata else offset
+                )
+                skip_count = offset - page_start if requested_url else 0
+                if skip_count < 0 or skip_count > len(results):
+                    raise RuntimeError(
+                        "Cursor SAPL não corresponde à página retomada; scan não certificado."
+                    )
+            next_url = _validated_next_url(client, page)
             if next_url:
-                validated_next = client.validate_pagination_url(next_url)
-                if validated_next in pagination_urls:
+                if next_url in pagination_urls:
                     raise RuntimeError("SAPL repetiu URL de paginação; scan não certificado.")
-                pagination_urls.add(validated_next)
+                pagination_urls.add(next_url)
+            current_page_url = requested_url or _page_start_url(client, page)
             page_ids = [int(item["id"]) for item in results if item.get("id") is not None]
             if len(page_ids) != len(results):
                 raise RuntimeError("SAPL retornou registro sem id; sweep não certificado.")
@@ -594,14 +787,19 @@ def run_full_sync(*, limit: int = 100) -> dict[str, Any]:
             if page_fingerprint in seen_page_fingerprints:
                 raise RuntimeError("SAPL repetiu uma página; nenhuma ausência remota foi marcada.")
             seen_page_fingerprints.add(page_fingerprint)
-            overlap = seen_ids.intersection(page_ids)
+            resumed_ids = set(page_ids[:skip_count]) if requested_url else set()
+            overlap = seen_ids.intersection(page_ids) - resumed_ids
             if overlap:
                 raise RuntimeError(
                     "Páginas SAPL sobrepostas; cobertura não certificada e nenhuma ausência marcada."
                 )
             pages += 1
-            page_start = offset
+            if current_page_url:
+                state.last_cursor_url = current_page_url
+                state.save(update_fields=["last_cursor_url", "updated_at"])
             for index, payload in enumerate(results):
+                if index < skip_count:
+                    continue
                 current_offset = page_start + index
                 sapl_id = payload.get("id")
                 if not sapl_id:
@@ -631,7 +829,7 @@ def run_full_sync(*, limit: int = 100) -> dict[str, Any]:
                 else:
                     try:
                         digest, _ = _process_payload(
-                            payload, pdf_fingerprint=pdf_fingerprint
+                            payload, pdf_fingerprint=pdf_fingerprint, client=client
                         )
                         changed += 1
                         SAPL_SYNC_RECORDS.labels(state="changed").inc()
@@ -647,7 +845,14 @@ def run_full_sync(*, limit: int = 100) -> dict[str, Any]:
                 offset = current_offset + 1
                 state.last_cursor = offset
                 state.last_sync_count = fetched
-                state.save(update_fields=["last_cursor", "last_sync_count", "updated_at"])
+                state.save(
+                    update_fields=[
+                        "last_cursor",
+                        "last_sync_count",
+                        "last_cursor_url",
+                        "updated_at",
+                    ]
+                )
             if failed:
                 raise RuntimeError(
                     f"Full sync interrompido após falha em {failed} registro(s); "
@@ -659,6 +864,11 @@ def run_full_sync(*, limit: int = 100) -> dict[str, Any]:
                 if next_url:
                     raise RuntimeError("SAPL informou próxima página após a contagem declarada.")
                 break
+            if next_url:
+                resume_url = next_url
+                state.last_cursor_url = next_url
+                state.save(update_fields=["last_cursor_url", "updated_at"])
+                continue
             if not next_url and "next" in page:
                 if fetched != expected_count:
                     raise RuntimeError("SAPL encerrou a paginação antes da contagem declarada.")
@@ -698,12 +908,14 @@ def run_full_sync(*, limit: int = 100) -> dict[str, Any]:
             state.full_sweep_token = ""
             state.full_sweep_expected_count = None
             state.last_cursor = 0
+            state.last_cursor_url = ""
             state.last_sync_count = fetched
             state.save(
                 update_fields=[
                     "full_sweep_token",
                     "full_sweep_expected_count",
                     "last_cursor",
+                    "last_cursor_url",
                     "last_sync_count",
                     "updated_at",
                 ]

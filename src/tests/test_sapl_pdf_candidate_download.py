@@ -5,9 +5,11 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import fitz
 import pytest
 import requests
-from django.test import SimpleTestCase, override_settings
+from django.conf import settings
+from django.test import SimpleTestCase, TransactionTestCase, override_settings
 
 from src.apps.ingestion import sapl_sync
 from src.apps.ingestion.sapl_document_sync import (
@@ -15,12 +17,23 @@ from src.apps.ingestion.sapl_document_sync import (
     _storage_root,
     stage_sapl_pdf_candidate,
 )
+from src.apps.ingestion.tasks import _process_norma_data
 from src.apps.legislation.document_models import DocumentoNormativo
 from src.apps.legislation.models import Norma
+from src.apps.operations.models import SaplSyncState
 from src.clients.sapl.sapl_client import SaplAPIClient
 
 
-def _response(*, status=200, body=b"%PDF-1.7\nqa", headers=None):
+def _pdf_bytes(text="candidate"):
+    with fitz.open() as document:
+        page = document.new_page()
+        page.insert_text((72, 72), text)
+        return document.tobytes()
+
+
+def _response(*, status=200, body=None, headers=None):
+    if body is None:
+        body = _pdf_bytes("qa")
     response = Mock()
     response.status_code = status
     response.headers = headers or {"Content-Length": str(len(body)), "ETag": '"v2"'}
@@ -37,8 +50,53 @@ class SaplPdfCandidateDownloadTests(SimpleTestCase):
         self.addCleanup(self._temporary_directory.cleanup)
         self.tmp_path = Path(self._temporary_directory.name)
 
+    def test_upgrades_same_origin_http_pdf_url_before_fingerprinting(self):
+        response = _response(headers={"Content-Length": "123", "ETag": '"stable"'})
+        self.client.session.head = Mock(return_value=response)
+        self.client.session.get = Mock()
+
+        fingerprint = self.client.fingerprint_pdf("http://sapl.test/media/law.pdf")
+
+        assert fingerprint == 'etag:"stable"'
+        self.client.session.head.assert_called_once()
+        assert self.client.session.head.call_args.args[0] == "https://sapl.test/media/law.pdf"
+        assert self.client.session.head.call_args.kwargs["allow_redirects"] is False
+        self.client.session.get.assert_not_called()
+        response.close.assert_called_once()
+
+    def test_rejects_http_upgrade_from_nondefault_port(self):
+        self.client.session.get = Mock()
+
+        with pytest.raises(ValueError, match="origin"):
+            self.client.download_pdf_version(
+                "http://sapl.test:8080/media/law.pdf", self.tmp_path / "candidate.pdf"
+            )
+
+        self.client.session.get.assert_not_called()
+
+    @pytest.mark.skipif(
+        os.environ.get("JURIX_RUN_LIVE_SAPL_READONLY") != "1",
+        reason="requires explicit opt-in for a public SAPL metadata/PDF HEAD check",
+    )
+    def test_live_sapl_http_media_url_has_a_fingerprint_without_redirect(self):
+        client = SaplAPIClient(timeout=15, max_retries=0)
+        try:
+            payload = client.fetch_norma_by_id(4040)
+            assert str(payload.get("numero")) == "7795"
+            assert int(payload.get("ano")) == 2024
+            pdf_url = str(payload.get("texto_integral") or "")
+            assert pdf_url.startswith("http://sapl.natal.rn.leg.br/media/")
+
+            fingerprint = client.fingerprint_pdf(pdf_url)
+
+            assert fingerprint.startswith(("etag:", "last-modified:", "sha256:"))
+            assert len(fingerprint) > len("etag:")
+        finally:
+            client.close()
+
+
     def test_downloads_bounded_pdf_atomically_and_returns_content_identity(self):
-        body = b"%PDF-1.7\nqa candidate"
+        body = _pdf_bytes("qa candidate")
         response = _response(body=body)
         self.client.session.get = Mock(return_value=response)
         target = self.tmp_path / "candidate.part.pdf"
@@ -127,6 +185,37 @@ class SaplPdfCandidateDownloadTests(SimpleTestCase):
             "candidate.pdf",
         ]
 
+    def test_rejects_signature_only_payload_and_cleans_staging_file(self):
+        response = _response(body=b"%PDF-1.7\nnot a structurally valid PDF")
+        self.client.session.get = Mock(return_value=response)
+        target = self.tmp_path / "candidate.pdf"
+
+        with pytest.raises(ValueError, match="structurally invalid"):
+            self.client.download_pdf_version("https://sapl.test/media/law.pdf", target)
+
+        assert not target.exists()
+        assert list(self.tmp_path.iterdir()) == []
+        response.close.assert_called_once()
+
+    def test_rejects_password_protected_pdf(self):
+        with fitz.open() as document:
+            page = document.new_page()
+            page.insert_text((72, 72), "restricted source")
+            body = document.tobytes(
+                encryption=fitz.PDF_ENCRYPT_AES_256,
+                user_pw="qa-only",
+                owner_pw="qa-owner-only",
+            )
+        response = _response(body=body)
+        self.client.session.get = Mock(return_value=response)
+        target = self.tmp_path / "encrypted.pdf"
+
+        with pytest.raises(ValueError, match="password-protected"):
+            self.client.download_pdf_version("https://sapl.test/media/law.pdf", target)
+
+        assert not target.exists()
+        response.close.assert_called_once()
+
 
 class SaplPdfCandidateStagingTests(SimpleTestCase):
     def setUp(self):
@@ -152,7 +241,7 @@ class SaplPdfCandidateStagingTests(SimpleTestCase):
     def test_candidate_is_staged_by_hash_and_never_promoted(self):
         from unittest.mock import patch
 
-        body = b"%PDF-1.7\nimmutable revision"
+        body = _pdf_bytes("immutable revision")
         digest = hashlib.sha256(body).hexdigest()
         norma = Norma(
             tipo="Lei",
@@ -355,3 +444,81 @@ class SaplPdfCandidateStagingTests(SimpleTestCase):
 
         assert staged is False
         stage.assert_not_called()
+
+
+class SaplLiveCandidateStagingTests(TransactionTestCase):
+    """Opt-in public SAPL integration; all writes stay in QA test DB/temp storage."""
+
+    @pytest.mark.skipif(
+        os.environ.get("JURIX_RUN_LIVE_SAPL_READONLY") != "1",
+        reason="requires explicit opt-in for one public SAPL PDF staging check",
+    )
+    def test_stages_one_real_sapl_pdf_as_unreviewed_and_is_idempotent(self):
+        client = SaplAPIClient(timeout=20, max_retries=0)
+        qa_root = Path(settings.QA_ROOT).resolve()
+        temp_storage = tempfile.TemporaryDirectory(prefix="live-sapl-candidate-", dir=qa_root)
+        self.addCleanup(temp_storage.cleanup)
+        storage_root = Path(temp_storage.name).resolve()
+        assert storage_root.is_relative_to(qa_root)
+
+        try:
+            payload = client.fetch_norma_by_id(4040)
+            assert str(payload.get("numero")) == "7795"
+            assert int(payload.get("ano")) == 2024
+            pdf_url = str(payload.get("texto_integral") or "")
+            assert pdf_url.startswith("http://sapl.natal.rn.leg.br/media/")
+
+            fingerprint = client.fingerprint_pdf(pdf_url)
+            with override_settings(NORMATIVE_ARCHIVE_ROOT=storage_root):
+                result = _process_norma_data(payload, auto_download=False)
+                norma = Norma.objects.get(pk=result["norma_id"])
+                document, created = stage_sapl_pdf_candidate(
+                    client=client,
+                    norma=norma,
+                    pdf_url=pdf_url,
+                    remote_fingerprint=fingerprint,
+                )
+                repeated, repeated_created = stage_sapl_pdf_candidate(
+                    client=client,
+                    norma=norma,
+                    pdf_url=pdf_url,
+                    remote_fingerprint=fingerprint,
+                )
+
+            staged_path = storage_root / document.storage_key
+            assert created is True
+            assert repeated_created is False
+            assert repeated.pk == document.pk
+            assert document.source_kind == DocumentoNormativo.SourceKind.SAPL
+            assert document.review_status == DocumentoNormativo.ReviewStatus.PENDING
+            assert document.condition_of_use == DocumentoNormativo.ConditionOfUse.UNKNOWN
+            assert document.official_url.startswith("https://sapl.natal.rn.leg.br/media/")
+            assert document.content_sha256 == hashlib.sha256(staged_path.read_bytes()).hexdigest()
+            assert staged_path.read_bytes().startswith(b"%PDF-")
+            assert norma.pdf_path == ""
+            assert norma.texto_consolidado == ""
+        finally:
+            client.close()
+
+    @override_settings(SAPL_INCREMENTAL_MAX_PAGES=1)
+    @pytest.mark.skipif(
+        os.environ.get("JURIX_RUN_LIVE_SAPL_READONLY") != "1",
+        reason="requires explicit opt-in for one bounded public SAPL sync page",
+    )
+    def test_live_incremental_sync_checkpoints_one_page_as_partial(self):
+        from src.apps.ingestion.sapl_sync import _scope_fingerprint, run_incremental_sync
+
+        result = run_incremental_sync(limit=50)
+
+        assert result["pages"] == 1
+        assert 0 < result["fetched"] <= 50
+        assert result["partial"] is True
+        assert result["safe_stop"] is False
+        state = SaplSyncState.objects.get(
+            source="sapl",
+            filter_fingerprint=_scope_fingerprint(None, None),
+        )
+        assert state.last_cursor == result["cursor_end"] > 0
+        assert state.last_cursor_url.startswith("https://sapl.natal.rn.leg.br/api/")
+        assert state.last_success_at is None
+        assert state.last_full_sync_at is None

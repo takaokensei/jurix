@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
 
@@ -24,6 +26,7 @@ class SaplSyncState(models.Model):
     last_success_at = models.DateTimeField(null=True, blank=True)
     last_started_at = models.DateTimeField(null=True, blank=True)
     last_cursor = models.PositiveIntegerField(default=0)
+    last_cursor_url = models.CharField(max_length=2048, blank=True)
     last_remote_timestamp = models.DateTimeField(null=True, blank=True)
     last_sync_count = models.PositiveIntegerField(default=0)
     last_error = models.TextField(blank=True)
@@ -105,6 +108,122 @@ class CorpusRevision(models.Model):
 
     def __str__(self) -> str:
         return f"Corpus {self.key} r{self.revision}"
+
+
+class CorpusCoverageScopeQuerySet(models.QuerySet):
+    """Coverage evidence is append-only; new checks create new snapshots."""
+
+    def update(self, **kwargs):
+        raise ValidationError("Evidências de cobertura são imutáveis; registre novo snapshot.")
+
+    def delete(self):
+        raise ValidationError("Evidências de cobertura não podem ser removidas em lote.")
+
+    def bulk_create(self, *args, **kwargs):
+        raise ValidationError("Registre snapshots de cobertura individualmente.")
+
+    def bulk_update(self, *args, **kwargs):
+        raise ValidationError("Snapshots de cobertura não podem ser atualizados em lote.")
+
+
+class CorpusCoverageScope(models.Model):
+    """Immutable, source-scoped evidence of corpus coverage at one revision."""
+
+    class Status(models.TextChoices):
+        UNKNOWN = "unknown", "Desconhecida"
+        PARTIAL = "partial", "Parcial"
+        REVIEWED = "reviewed", "Revisada no escopo"
+
+    scope_key = models.CharField(max_length=64, db_index=True)
+    record_fingerprint = models.CharField(max_length=64, unique=True)
+    source = models.CharField(max_length=80)
+    jurisdiction = models.CharField(max_length=100)
+    series = models.CharField(max_length=80)
+    period_start = models.DateField(null=True, blank=True)
+    period_end = models.DateField(null=True, blank=True)
+    checked_until = models.DateField(null=True, blank=True)
+    source_checksum = models.CharField(max_length=64, blank=True, validators=[sha256_validator])
+    corpus_revision_number = models.PositiveBigIntegerField()
+    corpus_revision_digest = models.CharField(max_length=64, blank=True, validators=[sha256_validator])
+    last_success_at = models.DateTimeField(null=True, blank=True)
+    coverage_status = models.CharField(
+        max_length=16, choices=Status.choices, default=Status.UNKNOWN, db_index=True
+    )
+    missing_intervals = models.JSONField(null=True, blank=True)
+    pending_review_count = models.PositiveIntegerField(null=True, blank=True)
+    review_reason = models.TextField(blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="reviewed_corpus_coverage_scopes",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    objects = CorpusCoverageScopeQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["source", "jurisdiction", "series", "period_start", "created_at", "pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(period_start__isnull=True)
+                    | models.Q(period_end__isnull=True)
+                    | models.Q(period_start__lte=models.F("period_end"))
+                ),
+                name="coverage_scope_period_order_ck",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["corpus_revision_digest", "scope_key", "created_at"],
+                name="coverage_scope_revision_idx",
+            ),
+            models.Index(fields=["jurisdiction", "series", "coverage_status"], name="coverage_juris_series_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.source}:{self.jurisdiction}:{self.series}:{self.coverage_status}"
+
+    def save(self, *args, **kwargs):
+        if self.pk and type(self).objects.filter(pk=self.pk).exists():
+            raise ValidationError("Snapshots de cobertura são imutáveis; crie nova revisão.")
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Snapshots de cobertura não podem ser removidos.")
+
+    def clean(self):
+        super().clean()
+        for field in ("source", "jurisdiction", "series"):
+            if not getattr(self, field, "").strip():
+                raise ValidationError({field: "Informe o escopo da fonte."})
+        if not re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,79}", self.source):
+            raise ValidationError({"source": "Use um identificador de fonte, não uma URL ou caminho."})
+        if not re.fullmatch(r"[A-Z0-9][A-Z0-9_.-]{0,99}", self.jurisdiction):
+            raise ValidationError({"jurisdiction": "Jurisdição deve ser um código estável."})
+        if not re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,79}", self.series):
+            raise ValidationError({"series": "Série deve ser um identificador estável."})
+        if self.coverage_status == self.Status.REVIEWED:
+            reviewer = self.reviewed_by
+            if not (
+                reviewer
+                and reviewer.is_active
+                and reviewer.is_staff
+                and reviewer.has_perm("operations.add_corpuscoveragescope")
+                and self.reviewed_at
+                and self.checked_until
+                and self.period_start
+                and self.source_checksum
+                and self.missing_intervals is not None
+                and self.pending_review_count is not None
+                and self.review_reason.strip()
+            ):
+                raise ValidationError(
+                    "Escopo revisado exige revisor staff ativo, justificativa e data de corte."
+                )
 
 
 class ArchiveImportRun(models.Model):

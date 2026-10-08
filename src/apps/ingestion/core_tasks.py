@@ -143,13 +143,18 @@ def ingest_normas_task(
 
 
 @transaction.atomic
-def _process_norma_data(norma_data: dict[str, Any], auto_download: bool = False) -> dict[str, Any]:
+def _process_norma_data(
+    norma_data: dict[str, Any],
+    auto_download: bool = False,
+    preserve_existing_pdf: bool = False,
+) -> dict[str, Any]:
     """
     Processa dados brutos de uma norma e cria/atualiza o registro no banco.
 
     Args:
         norma_data: Dicionário com dados da API SAPL
         auto_download: Se True, dispara automaticamente a task de download do PDF
+        preserve_existing_pdf: Se True, mantém a URL associada ao conteúdo local já aceito.
 
     Returns:
         Dicionário com resultado do processamento:
@@ -195,12 +200,28 @@ def _process_norma_data(norma_data: dict[str, Any], auto_download: bool = False)
         sapl_base_host = sapl_base_host[:-4]
     from src.apps.legislation.source_urls import canonical_sapl_url
 
-    sapl_url = canonical_sapl_url(sapl_id=sapl_id) or f"{sapl_base_host}/norma/{sapl_id}/"
+    sapl_url = canonical_sapl_url(sapl_id=sapl_id) or f"{sapl_base_host}/norma/{sapl_id}"
 
     # Preservar status caso a norma já tenha sido processada/consolidada
     existing = (
-        Norma.objects.select_for_update().filter(sapl_id=sapl_id).only("status", "pdf_url").first()
+        Norma.objects.select_for_update()
+        .filter(sapl_id=sapl_id)
+        .only("status", "pdf_url", "pdf_path", "texto_consolidado")
+        .first()
     )
+    accepted_source_exists = bool(
+        existing
+        and (
+            existing.pdf_path
+            or existing.texto_consolidado
+            or existing.status
+            in ("consolidated", "embedded", "segmented", "ocr_completed", "text_extracted")
+        )
+    )
+    if preserve_existing_pdf and accepted_source_exists:
+        # A refreshed SAPL URL is metadata, not permission to replace the
+        # source behind an already accepted legal text.
+        pdf_url = existing.pdf_url
     preserved_status = "pending"
     if existing and existing.status in (
         "consolidated",

@@ -1,0 +1,31 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <div id="content-main">
+    <h1>{{ title }}</h1>
+    <p>Esta decisão libera ou encerra o próximo checkpoint do pipeline. Ela não substitui a revisão jurídica do documento nem valida automaticamente o conteúdo legal.</p>
+    <div class="module">
+      <h2>Resumo do item</h2>
+      <table>
+        <tr><th>Origem</th><td>{{ item.source_kind }} · {{ item.source_id }}</td></tr>
+        <tr><th>Etapa</th><td>{{ item.get_stage_display }}</td></tr>
+        <tr><th>Estado</th><td>{{ item.get_status_display }}</td></tr>
+        <tr><th>Revisões/tentativas</th><td>{{ item.attempts }} / {{ item.max_attempts }}</td></tr>
+        <tr><th>Erro recente</th><td>{{ item.last_error|default:"Nenhum" }}</td></tr>
+      </table>
+    </div>
+    <div class="module">
+      <h2>Dados do checkpoint</h2>
+      <h3>Entrada</h3><pre>{{ item.payload|pprint }}</pre>
+      <h3>Resultado</h3><pre>{{ item.result|pprint }}</pre>
+    </div>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="submit-row">
+        <input type="submit" value="Registrar decisão" class="default">
+        <a href="{% url 'admin:operations_normativeworkitem_changelist' %}">Cancelar</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

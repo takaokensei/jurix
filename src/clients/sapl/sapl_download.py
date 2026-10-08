@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+import fitz
 import requests
 from django.conf import settings
 from requests.adapters import HTTPAdapter
@@ -18,10 +19,41 @@ from requests.packages.urllib3.util.retry import Retry
 logger = logging.getLogger(__name__)
 
 
+def _validate_pdf_structure(path: Path) -> None:
+    """Reject signature-only payloads before publishing a downloaded candidate."""
+    try:
+        with fitz.open(stream=path.read_bytes(), filetype="pdf") as document:
+            if document.needs_pass:
+                raise ValueError("SAPL PDF candidate is password-protected")
+            if document.page_count < 1:
+                raise ValueError("SAPL PDF candidate contains no pages")
+    except (fitz.FileDataError, RuntimeError) as exc:
+        raise ValueError("SAPL PDF candidate is structurally invalid") from exc
+
+
 class SaplDownloadMixin:
     def _validated_sapl_pdf_url(self, pdf_url: str) -> str:
         base = urlparse(self.base_url)
         candidate = urlparse(str(pdf_url or ""))
+        try:
+            candidate_port = candidate.port
+            base_port = base.port
+        except ValueError as exc:
+            raise ValueError("SAPL PDF URL has an invalid port") from exc
+        same_host = candidate.hostname and candidate.hostname.lower() == (base.hostname or "").lower()
+        if (
+            base.scheme == "https"
+            and candidate.scheme == "http"
+            and same_host
+            and candidate_port in (None, 80)
+            and base_port in (None, 443)
+            and not candidate.username
+            and not candidate.password
+        ):
+            # SAPL's API still returns HTTP media URLs, while the official host
+            # redirects those URLs to HTTPS. Upgrade only this same-origin,
+            # default-port case; never follow an untrusted redirect.
+            candidate = candidate._replace(scheme="https", netloc=base.netloc)
         if (
             candidate.scheme not in {"http", "https"}
             or candidate.scheme != base.scheme
@@ -161,6 +193,7 @@ class SaplDownloadMixin:
 
             if total == 0 or not prefix.startswith(b"%PDF-"):
                 raise ValueError("SAPL response is empty or does not contain a PDF")
+            _validate_pdf_structure(Path(temporary_path))
             os.link(temporary_path, target)
             return {
                 "path": str(target),

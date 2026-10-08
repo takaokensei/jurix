@@ -7,6 +7,7 @@ import time
 from datetime import date
 
 from celery import shared_task
+from celery.result import allow_join_result
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Q
@@ -33,6 +34,18 @@ from .normative_impact import (
     resolve_normative_review,
     safe_norma_revision,
 )
+
+
+def _run_inline_task(task, *args):
+    """Run a bounded task locally and permit reading its already-eager result.
+
+    These stage helpers use ``Task.apply`` (not ``apply_async``), so execution is
+    synchronous in this worker process and cannot wait on another queue slot.
+    Celery normally blocks ``get()`` from task context to prevent deadlocks; the
+    narrow context below only lifts that guard for this completed eager result.
+    """
+    with allow_join_result():
+        return task.apply(args=list(args), throw=True).get()
 
 
 class StaleNormativeSource(RuntimeError):
@@ -111,7 +124,7 @@ def _execute_normative_stage(item: NormativeWorkItem, norma: Norma) -> dict:
             raise PermissionError(
                 "Legacy OCR differs from the accepted extraction; reconcile the text manually."
             )
-        legacy = segment_text_task.apply(args=[norma.pk], throw=True).get()
+        legacy = _run_inline_task(segment_text_task, norma.pk)
         if not legacy.get("success"):
             raise PermissionError("Legacy device segmentation requires manual review.")
         return {
@@ -125,7 +138,7 @@ def _execute_normative_stage(item: NormativeWorkItem, norma: Norma) -> dict:
     if stage == NormativeWorkItem.Stage.EVENT:
         if not approved:
             raise PermissionError("A source document must be approved before event extraction.")
-        result = extract_entities_task.apply(args=[norma.pk], throw=True).get()
+        result = _run_inline_task(extract_entities_task, norma.pk)
         return {"event_extraction": result}
 
     if stage == NormativeWorkItem.Stage.RECONCILE:
@@ -165,7 +178,7 @@ def _execute_normative_stage(item: NormativeWorkItem, norma: Norma) -> dict:
             return {"embedding_status": "deferred", "reason": "ollama_unavailable", "count": 0}
         results = []
         for dispositivo in devices:
-            result = generate_embedding_task.apply(args=[dispositivo.pk], throw=True).get()
+            result = _run_inline_task(generate_embedding_task, dispositivo.pk)
             results.append({
                 "dispositivo_id": dispositivo.pk,
                 "success": bool(result.get("success")),

@@ -18,6 +18,11 @@ class FakeClient:
     def fingerprint_pdf(self, _url):
         return "etag:stable-test-pdf"
 
+    def validate_pagination_url(self, url):
+        if not str(url).startswith("https://example.invalid/api/"):
+            raise ValueError("foreign pagination host")
+        return url
+
     def close(self):
         self.closed = True
 
@@ -61,7 +66,11 @@ def test_incremental_sync_stops_on_unchanged_page(monkeypatch, settings):
     )
     fake = FakeClient(
         {
-            0: {"count": 2, "next": "x", "results": [p]},
+            0: {
+                "count": 2,
+                "next": "https://example.invalid/api/norma/normajuridica/?offset=1",
+                "results": [p],
+            },
         }
     )
     monkeypatch.setattr(sapl_sync, "SaplAPIClient", lambda: fake)

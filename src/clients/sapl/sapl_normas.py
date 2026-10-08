@@ -5,6 +5,7 @@ import logging
 import os
 import time
 from typing import Any
+from urllib.parse import urlencode
 
 import requests
 from django.conf import settings
@@ -29,6 +30,20 @@ class SaplNormasMixin:
         if ano:
             params["ano"] = ano
         return self._make_request(self.NORMA_ENDPOINT, params)
+
+    def build_normas_page_url(
+        self, page: int, *, tipo: str | None = None, ano: int | None = None
+    ) -> str:
+        """Build a validated same-origin URL for resuming one SAPL page."""
+        if isinstance(page, bool) or int(page) < 1:
+            raise ValueError("SAPL page must be a positive integer")
+        params: dict[str, Any] = {"page": int(page)}
+        if tipo:
+            params["tipo"] = tipo
+        if ano:
+            params["ano"] = int(ano)
+        url = f"{self.base_url}{self.NORMA_ENDPOINT}?{urlencode(params)}"
+        return self.validate_pagination_url(url)
 
     def fetch_normas(
         self, limit: int = 50, offset: int = 0, tipo: str | None = None, ano: int | None = None

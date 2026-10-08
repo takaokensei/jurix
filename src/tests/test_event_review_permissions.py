@@ -5,12 +5,15 @@ from django.test import Client
 from django.urls import reverse
 
 from src.apps.legislation.event_review import (
+    EventReviewForm,
+    candidate_normas_for_review,
     event_review_fingerprint,
     event_review_status,
     review_event,
 )
 from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
 from src.apps.legislation.review_models import RevisaoJuridica
+from src.processing.document_metadata import build_normative_identity
 
 
 @pytest.fixture
@@ -89,6 +92,31 @@ def test_empty_reason_stale_fingerprint_and_wrong_target_are_rejected(review_cas
     with pytest.raises(ValidationError, match="diverge"):
         _review(event, actor, wrong_target)
     assert not RevisaoJuridica.objects.filter(evento=event).exists()
+
+
+@pytest.mark.django_db
+def test_natal_canonical_identity_is_available_and_valid_for_human_review(review_case):
+    event, _legacy_target = review_case
+    event.target_text = "Lei nº 98206/2020"
+    event.save(update_fields=["target_text", "updated_at"])
+    identity = build_normative_identity(
+        jurisdiction="BR-RN-NATAL",
+        raw_type="Lei",
+        series="municipal_lo",
+        number="98206",
+        year=2020,
+    )
+    target = Norma.objects.create(
+        tipo="Lei", numero="98206", ano=2020,
+        identity_key=identity.identity_key, identity_json=identity.identity_json,
+    )
+
+    assert candidate_normas_for_review(event) == [target]
+    form = EventReviewForm(event=event)
+    assert (str(target.pk), str(target)) in form.fields["target_norma_id"].choices
+    actor = _reviewer()
+    review = _review(event, actor, target)
+    assert review.decision == RevisaoJuridica.Decision.APPROVE
 
 
 @pytest.mark.django_db(transaction=True)
