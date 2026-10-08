@@ -35,6 +35,16 @@ manual. Os gates executados no CI estão listados em
 - `benchmark_normative_pipeline.py` — microbenchmark sintético, offline e
   limitado, de BFS/memória; não é medida de consultas SQL, API ou produção.
   Exemplo: `python scripts/benchmark_normative_pipeline.py`.
+- `benchmark_normative_api_qa.py` — mede o endpoint de relações em cinco
+  tamanhos de entrada (1/10/40/300/1000 eventos sintéticos), incluindo queries,
+  latência fria/aquecida, memória Python, linhas de resposta, truncamento e cache
+  Redis; usa somente o runner QA, cria dados em transação revertida e recusa
+  banco/cache fora das portas isoladas. O alvo p50 de 300 ms se aplica às
+  entradas que exercitam a resposta máxima de 40 nós/80 arestas. Exemplo:
+  configure `JURIX_QA_ONLY=1` e `JURIX_QA_ROOT` em diretório temporário e execute
+  `python scripts/normative_qa.py --run python scripts/benchmark_normative_api_qa.py`.
+  Latência e memória são do Django test client em processo, não de tráfego TCP
+  nem de carga de produção.
 - `inventory_normative_archive.py` — inventaria ZIP de forma somente leitura e
   escreve manifesto no destino explícito; não extrai documentos. Use apenas
   em cópia permitida e revise limites/saída antes de executar.

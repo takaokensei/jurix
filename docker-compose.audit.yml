@@ -29,6 +29,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
+    entrypoint: ["/usr/local/bin/jurix-runtime"]
     command: celery -A config worker -l warning --pool=solo --concurrency=1
     environment:
       DATABASE_URL: postgresql://jurix_audit:audit-only-local-fixture@db:5432/jurix_audit

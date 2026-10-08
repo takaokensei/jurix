@@ -4,7 +4,7 @@ Este conjunto de mudanças reduz três classes de falha que apareciam juntas no 
 
 ## Normalizar URLs já existentes
 
-Depois de aplicar o patch, registros antigos com `/norma/normajuridica/<id>/` deixam de ser enviados pela API porque o serializer corrige a URL em runtime. Para também corrigir o banco:
+Depois de aplicar o patch, registros antigos com `/norma/normajuridica/<id>/` ou com barra final em `/norma/<id>/` deixam de ser enviados pela API nessas formas: o serializer normaliza o registro para a rota pública SAPL `/norma/<id>` (sem barra final). Para também corrigir o banco:
 
 ```bash
 python manage.py normalize_sapl_urls --dry-run
