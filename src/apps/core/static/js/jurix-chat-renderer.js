@@ -117,6 +117,29 @@
         window.setTimeout(() => node.remove(), 140);
     }
 
+    function showPendingAnswer(messageBody) {
+        if (!(messageBody instanceof HTMLElement)) return null;
+        const status = document.createElement('div');
+        status.className = 'jurix-answer-pending';
+        status.setAttribute('role', 'status');
+        status.setAttribute('aria-live', 'polite');
+
+        const marker = document.createElement('span');
+        marker.className = 'jurix-answer-pending-marker';
+        marker.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.textContent = 'Organizando as evidências antes de apresentar a resposta…';
+        status.append(marker, label);
+        messageBody.replaceChildren(status);
+        return status;
+    }
+
+    function clearPendingAnswer(status) {
+        if (status instanceof HTMLElement && status.classList.contains('jurix-answer-pending')) {
+            status.remove();
+        }
+    }
+
     function copyWithDocumentCommand(markdownText) {
         if (typeof document.execCommand !== 'function') return false;
         const previousFocus = document.activeElement;
@@ -165,7 +188,18 @@
 
         const escapeLabel = (value) => String(value).replace(/\\/g, '\\\\').replace(/([\[\]])/g, '\\$1');
         const renderPlainText = (text) => {
-            let rendered = text.replace(/\[\[(\d{1,3})\]\]/g, (marker, rawIndex) => {
+            let rendered = text;
+            links.sort((left, right) => right.label.length - left.label.length).forEach(({ label, href }) => {
+                const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                rendered = rendered.replace(new RegExp(escaped, 'g'), (match, offset, fullText) => {
+                    // Do not wrap an existing Markdown link label a second time.
+                    if (fullText[offset - 1] === '[' && fullText.slice(offset + match.length).startsWith('](')) {
+                        return match;
+                    }
+                    return `[${escapeLabel(label)}](<${href}>)`;
+                });
+            });
+            return rendered.replace(/\[\[(\d{1,3})\]\]/g, (marker, rawIndex) => {
                 const index = Number(rawIndex);
                 const source = sourceForCitation(index);
                 const href = window.JurixRagUI?.buildSourceUrl?.(source);
@@ -173,18 +207,6 @@
                 const label = source.citation_label || `Fonte ${index}`;
                 return `[${escapeLabel(label)}](<${href}>)`;
             });
-            links.sort((left, right) => right.label.length - left.label.length).forEach(({ label, href }) => {
-                const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                rendered = rendered.replace(new RegExp(escaped, 'g'), (match, offset, fullText) => {
-                    // A citation marker may already have become a Markdown link.
-                    // Do not wrap its label a second time.
-                    if (fullText[offset - 1] === '[' && fullText.slice(offset + match.length).startsWith('](')) {
-                        return match;
-                    }
-                    return `[${escapeLabel(label)}](<${href}>)`;
-                });
-            });
-            return rendered;
         };
 
         const codeSegments = [];
@@ -252,5 +274,7 @@
     root.addUserMessage = addUserMessage;
     root.addLoadingMessage = addLoadingMessage;
     root.removeLoadingMessage = removeLoadingMessage;
+    root.showPendingAnswer = showPendingAnswer;
+    root.clearPendingAnswer = clearPendingAnswer;
     root.copyResponseToClipboard = copyResponseToClipboard;
 })();

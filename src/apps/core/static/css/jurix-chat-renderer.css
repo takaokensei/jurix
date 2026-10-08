@@ -74,7 +74,9 @@
     overflow: hidden;
 }
 
-.message-actions:not(:has(.show)) {
+/* Interrupted-turn retry is a valid message action even before any completed
+   answer action exists; keep its row visible so the user can recover. */
+.message-actions:not(:has(.show)):not(:has(.jurix-interrupted-retry)) {
     display: none;
 }
 
@@ -113,6 +115,25 @@
     color: var(--figma-text-muted);
     font-size: 0.82rem;
     line-height: 1.45;
+}
+
+.jurix-answer-pending {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-height: 1.5rem;
+    color: var(--figma-text-muted);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.jurix-answer-pending-marker {
+    width: 0.5rem;
+    height: 0.5rem;
+    flex: 0 0 0.5rem;
+    border-radius: 50%;
+    background: var(--figma-blue-light);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--figma-blue-light) 14%, transparent);
 }
 
 .message-assistant--interrupted .message-body {

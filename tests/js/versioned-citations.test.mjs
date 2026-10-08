@@ -48,6 +48,19 @@ test('legacy sources without citation indexes retain their array-order contract'
   window.close();
 });
 
+test('inline bullet normalization does not turn a legal hyphen into a new list item', () => {
+  const window = boot();
+  const clause = 'Parágrafo Único - As demais gratificações permanecem regidas por lei específica.';
+  const inlineBullets = '• primeira hipótese • segunda hipótese';
+
+  assert.equal(window.JurixMarkdown.normalize(clause), clause);
+  assert.equal(
+    window.JurixMarkdown.normalize(inlineBullets),
+    '• primeira hipótese\n• segunda hipótese',
+  );
+  window.close();
+});
+
 test('historical source navigation opens the official base without a text fragment', () => {
   const window = boot();
   const href = window.JurixRagUI.buildSourceUrl(historicalSource);

@@ -151,6 +151,58 @@
     cursor: not-allowed;
 }
 
+/* Session confirmation toast is injected by chat.js on the active workspace. */
+.session-created-toast {
+    position: fixed;
+    inset-inline-end: max(var(--jurix-space-4, 1rem), env(safe-area-inset-right, 0px));
+    bottom: max(var(--session-created-toast-bottom, 1rem), env(safe-area-inset-bottom, 0px));
+    z-index: 1100;
+    width: max-content;
+    max-width: min(calc(100vw - 2rem), 30rem);
+    transform: translateY(0.5rem);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform var(--jurix-motion-standard, 180ms) var(--jurix-ease-standard, ease),
+        opacity var(--jurix-motion-standard, 180ms) var(--jurix-ease-standard, ease),
+        visibility var(--jurix-motion-standard, 180ms) var(--jurix-ease-standard, ease);
+}
+
+.session-created-toast.show {
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+}
+
+.session-created-content {
+    display: flex;
+    align-items: center;
+    gap: var(--jurix-space-2, 0.5rem);
+    box-sizing: border-box;
+    padding: var(--jurix-space-3, 0.75rem) var(--jurix-space-4, 1rem);
+    border: 1px solid var(--jurix-border, #334155);
+    border-radius: var(--jurix-radius-md, 12px);
+    background: var(--jurix-surface-elevated, #111827);
+    box-shadow: var(--jurix-elevation-2, 0 8px 24px rgb(0 0 0 / 0.24));
+    color: var(--jurix-text, #f8fafc);
+    font-size: var(--jurix-type-label, 0.875rem);
+    line-height: 1.4;
+    font-weight: 500;
+}
+
+.session-created-content svg {
+    flex: 0 0 1rem;
+    color: var(--jurix-success, #6ee7b7);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .session-created-toast,
+    .session-created-toast.show {
+        transition: none;
+        transform: translateY(0);
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .chat-session-item {
         transition: none;

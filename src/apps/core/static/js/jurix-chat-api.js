@@ -128,6 +128,13 @@
         return `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`;
     }
 
+    function normalizeStreamSessionId(value) {
+        if (Number.isSafeInteger(value) && value > 0) return value;
+        if (typeof value !== 'string' || !/^\d+$/.test(value)) return null;
+        const numericValue = Number(value);
+        return Number.isSafeInteger(numericValue) && numericValue > 0 ? numericValue : null;
+    }
+
     function getClientSessionId() {
         const key = 'jurix:client-session-id:v1';
         try {
@@ -174,6 +181,7 @@
             (retryExistingQuestion ? previousTurnId : null);
         const clientTurnId = searchOptions.client_turn_id || createUuid();
         retryTurnIds.set(retryKey, clientTurnId);
+        const apiSessionId = normalizeStreamSessionId(sessionId);
 
         try {
             let response;
@@ -197,9 +205,12 @@
                     headers: buildHeaders({}, true),
                     body: JSON.stringify({
                         question,
-                        session_id: sessionId,
                         ...(searchOptions.previous_question ? { previous_question: searchOptions.previous_question } : {}),
                         ...searchOptions,
+                        // Search controls may restore arbitrary legacy keys from
+                        // localStorage. The canonical conversation argument must
+                        // win so an old string/slug cannot replace the API ID.
+                        session_id: apiSessionId,
                         client_session_id: clientSessionId,
                         client_turn_id: clientTurnId,
                         ...(retryOfTurnId ? { retry_of_client_turn_id: retryOfTurnId } : {}),

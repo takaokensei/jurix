@@ -11,19 +11,19 @@
     <!-- Content Security Policy -->
     
     <!-- Stylesheets -->
-    <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20260930-light-dim-contrast1-controls44">
+    <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20261006-composer-clearance1">
     <link rel="stylesheet" href="{% static 'css/jurix-tokens.css' %}?v=20261002-design-tokens1">
     <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20261002-design-tokens1">
     <link rel="stylesheet" href="{% static 'css/jurix-rag.css' %}?v=20260930-citation-actions2-inline3">
     <link rel="stylesheet" href="{% static 'css/jurix-markdown.css' %}">
-    <link rel="stylesheet" href="{% static 'css/jurix-chat.css' %}?v=20261002-mobile-composer-disclosure1">
-    <link rel="stylesheet" href="{% static 'css/jurix-chat-renderer.css' %}">
+    <link rel="stylesheet" href="{% static 'css/jurix-chat.css' %}?v=20261007-session-toast-layout2">
+    <link rel="stylesheet" href="{% static 'css/jurix-chat-renderer.css' %}?v=20261007-answer-pending1">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-controller.css' %}?v=20261002-grounded-stream1">
     <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}?v=20260930-focus-outline1">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-sessions.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-shell.css' %}?v=20260929-sidebar-utilities1">
 <meta name="jurix-authenticated" content="{{ request.user.is_authenticated|yesno:'true,false' }}">
-<link rel="stylesheet" href="{% static 'css/jurix-search-controls.css' %}">
+<link rel="stylesheet" href="{% static 'css/jurix-search-controls.css' %}?v=20261005-temporal-chat-scope1">
 <link rel="stylesheet" href="{% static 'css/jurix-sidebar.css' %}?v=20261002-session-actions1">
 </head>
 <body class="figma-theme workspace-page"
@@ -105,6 +105,7 @@
                                                 type="text" 
                                                 id="hero-search-input" 
                                                 class="figma-hero-search-input" 
+                                                value="{{ prefill_question }}"
                                                 placeholder="Pergunte sobre leis…"
                                                 aria-label="Pergunte sobre normas ou artigos da legislação municipal"
                                                 autocomplete="off"
@@ -118,22 +119,28 @@
                                         </button>
                                     </div>
                                     <div class="figma-filters-row">
-                                        <div class="figma-search-dropdown" tabindex="0">
+                                        <div class="figma-search-dropdown" data-control="norma_status" tabindex="0">
                                             <span data-control-label>Pesquisa normativa</span>
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                         </div>
-                                        <div class="figma-search-dropdown" tabindex="0">
+                                        <div class="figma-search-dropdown" data-control="source_scope" tabindex="0">
                                             <span data-control-label>Fontes</span>
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                         </div>
-                                        <div class="figma-search-dropdown" tabindex="0">
+                                        <div class="figma-search-dropdown" data-control="attachment" tabindex="0">
                                             <span data-control-label>Anexar documento</span>
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                         </div>
-                                        <div class="figma-search-dropdown" tabindex="0">
+                                        <div class="figma-search-dropdown" data-control="mode" tabindex="0">
                                             <span data-control-label>Modo de pesquisa</span>
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                         </div>
+                                    </div>
+                                    <div class="jurix-temporal-filter jurix-temporal-filter--hero">
+                                        <label for="jurix-as-of-hero">Redação normativa em</label>
+                                        <input id="jurix-as-of-hero" data-jurix-as-of name="as_of" type="date" aria-describedby="jurix-as-of-hero-help">
+                                        <button type="button" data-jurix-as-of-clear class="jurix-temporal-clear" aria-label="Remover data histórica" hidden>Limpar</button>
+                                        <p id="jurix-as-of-hero-help">Opcional. Use para consultar a versão reconstruída em uma data passada.</p>
                                     </div>
                                 </form>
                                 
@@ -220,6 +227,7 @@
                             <span>Opções de pesquisa</span>
                             <svg class="jurix-composer-options-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m7 10 5 5 5-5"/></svg>
                         </button>
+                        <span class="jurix-temporal-active" id="jurix-temporal-active" role="status" aria-live="polite" hidden></span>
                         <div class="jurix-composer-options" id="composer-search-options">
                             <div class="jurix-composer-filters">
                                 <div class="figma-search-dropdown figma-search-dropdown-compact" data-control="mode">
@@ -231,6 +239,12 @@
                                 <div class="figma-search-dropdown figma-search-dropdown-compact" data-control="attachment">
                                     <span data-control-label>Anexar documento</span>
                                     <span class="jurix-attachment-count" aria-live="polite"></span>
+                                </div>
+                                <div class="jurix-temporal-filter">
+                                    <label for="jurix-as-of-chat">Redação normativa em</label>
+                                    <input id="jurix-as-of-chat" data-jurix-as-of name="as_of" type="date" aria-describedby="jurix-as-of-chat-help">
+                                    <button type="button" data-jurix-as-of-clear class="jurix-temporal-clear" aria-label="Remover data histórica" hidden>Limpar</button>
+                                    <p id="jurix-as-of-chat-help">Sem data, a pesquisa usa a redação atual. Se a versão histórica não puder ser reconstruída, o assistente deve informar essa limitação.</p>
                                 </div>
                             </div>
                         </div>
@@ -297,23 +311,23 @@
 
     <!-- Jurix Configuration: read from data-* attributes on <body> by config.js (CSP: no inline script) -->
     <script src="{% static 'js/config.js' %}"></script>
-    <script src="{% static 'js/jurix-markdown.js' %}?v=20261001-structured-citations1"></script>
-    <script src="{% static 'js/jurix-rag.js' %}?v=20261004-archive-pdf-citations1"></script>
-    <script src="{% static 'js/jurix-anonymous-history.js' %}"></script>
-    <script src="{% static 'js/jurix-chat-api.js' %}?v=20261002-session-actions1"></script>
-    <script src="{% static 'js/jurix-api-reliability-overlay.js' %}?v=20261001-structured-citations1"></script>
+    <script src="{% static 'js/jurix-markdown.js' %}?v=20261007-compact-citations-no-hyphen-bullets1"></script>
+    <script src="{% static 'js/jurix-rag.js' %}?v=20261006-terminal-source-refresh2"></script>
+    <script src="{% static 'js/jurix-anonymous-history.js' %}?v=20261007-anonymous-session-ids2"></script>
+    <script src="{% static 'js/jurix-chat-api.js' %}?v=20261007-session-id-contract3"></script>
+    <script src="{% static 'js/jurix-api-reliability-overlay.js' %}?v=20261006-archive-corpus1"></script>
     <script src="{% static 'js/jurix-chat-sessions.js' %}"></script>
     <script src="{% static 'js/jurix-chat-state.js' %}"></script>
-    <script src="{% static 'js/jurix-chat-renderer.js' %}?v=20261001-structured-citations1"></script>
-    <script src="{% static 'js/jurix-dynamic-suggestions.js' %}"></script>
-    <script src="{% static 'js/chat.js' %}?v=20261004-source-label-singular1"></script>
-    <script src="{% static 'js/jurix-chat-controller.js' %}"></script>
+    <script src="{% static 'js/jurix-chat-renderer.js' %}?v=20261007-answer-pending1"></script>
+    <script src="{% static 'js/jurix-dynamic-suggestions.js' %}?v=20261005-archive-qa-suggestions1"></script>
+    <script src="{% static 'js/chat.js' %}?v=20261007-answer-pending1"></script>
+    <script src="{% static 'js/jurix-chat-controller.js' %}?v=20261005-finalizing-cancel1"></script>
     <script src="{% static 'js/command_palette.js' %}?v=20260930-query-race1-sidebar2"></script>
-    <script src="{% static 'js/jurix-sidebar.js' %}?v=20261002-session-actions1"></script>
+    <script src="{% static 'js/jurix-sidebar.js' %}?v=20261006-archive-corpus2"></script>
 
     <!-- Synchronizer for Floating Bar and Hero Search State (floating-bar-sync.js; CSP: no inline script) -->
     <script src="{% static 'js/floating-bar-sync.js' %}"></script>
     <script src="{% static 'js/jurix-chat-shell.js' %}?v=20260930-drawer-focus2"></script>
-        <script src="{% static 'js/jurix-search-controls.js' %}?v=20261002-composer-options1"></script>
+        <script src="{% static 'js/jurix-search-controls.js' %}?v=20261005-temporal-chat-scope1"></script>
 </body>
 </html>

@@ -128,8 +128,10 @@
         const composer = getElement('conversation-input-bar');
 
         const hasQuestion = Boolean(textarea && textarea.value.trim());
-        const canCancel = snapshot.status === state.STATES.STREAMING ||
-            snapshot.status === state.STATES.FINALIZING;
+        // A terminal SSE event has already won once the backend enters
+        // finalizing; keep the stop control available only while generation can
+        // still be cancelled, so the UI cannot label a completed answer as aborted.
+        const canCancel = snapshot.status === state.STATES.STREAMING;
         const disabled = canCancel ? false : (snapshot.busy || !hasQuestion);
 
         if (form) {

@@ -740,6 +740,17 @@
         lastSourceTrigger = null;
     }
 
+    function reconcileSourcesDrawer(sources = [], title = 'Fontes Consultadas', metadata = {}) {
+        const panel = document.getElementById('jurix-sources-drawer-panel');
+        if (!panel?.classList.contains('is-open')) return;
+        const returnFocusTo = lastSourceTrigger;
+        openSourcesDrawer(sources, title, metadata);
+        // openSourcesDrawer normally uses the currently focused control as its
+        // trigger; during a stream that may be the close button. Preserve the
+        // original source pill as the focus destination when the drawer closes.
+        if (returnFocusTo && document.contains(returnFocusTo)) lastSourceTrigger = returnFocusTo;
+    }
+
     function renderSourcesDrawerSubtitle(subtitleEl, context) {
         if (!subtitleEl || !context) return;
         const { count, groups, metadata } = context;
@@ -889,6 +900,7 @@
         linkLegalReferences,
         openSourcesDrawer,
         closeSourcesDrawer,
+        reconcileSourcesDrawer,
         updateSourcesDrawerMetadata,
         clearSourcesDrawer,
     };

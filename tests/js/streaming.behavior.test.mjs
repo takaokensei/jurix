@@ -17,10 +17,10 @@ test('anonymous stream persists the final answer after the API overlay is instal
   const { window } = dom;
   window.TextDecoder = TextDecoder;
   const events = [
-    { type: 'sources', sources: [{ id: 1 }], confidence: 0.9 },
+    { type: 'sources', sources: [{ id: 1 }, { id: 2 }], confidence: 0.9 },
     { type: 'chunk', chunk: 'Rascunho provisório.', provisional: true },
     { type: 'chunk', chunk: 'Resposta final.', provisional: false, replace: true },
-    { type: 'done', answer: 'Resposta final.', grounded: true, session_id: null },
+    { type: 'done', answer: 'Resposta final.', sources: [{ id: 2 }], grounded: true, session_id: null },
   ];
   const encoded = events.map((event) => new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`));
   let index = 0;
@@ -51,8 +51,57 @@ test('anonymous stream persists the final answer after the API overlay is instal
   assert.equal(messages[1].role, 'assistant');
   assert.equal(messages[1].content, 'Resposta final.');
   assert.equal(messages[1].grounded, true);
-  assert.deepEqual(messages[1].sources, [{ id: 1 }]);
+  assert.deepEqual(messages[1].sources, [{ id: 2 }]);
   assert.notEqual(messages[1].content, '[object Object]');
+  dom.window.close();
+});
+
+test('anonymous follow-up keeps an older explicit norm in bounded conversation context', async () => {
+  const dom = new JSDOM(
+    '<!doctype html><html><body><meta name="jurix-authenticated" content="false"></body></html>',
+    { url: 'http://localhost/assistente/', runScripts: 'dangerously' },
+  );
+  const { window } = dom;
+  window.TextDecoder = TextDecoder;
+  window.eval(read('jurix-anonymous-history.js'));
+  const sessionId = window.JurixAnonymousHistory.ensureSession('local-context-window', 'Conversa de teste');
+  window.JurixAnonymousHistory.addMessage(sessionId, 'user', 'O que prevê a LC nº 120/2010?', []);
+  for (let index = 0; index < 8; index += 1) {
+    window.JurixAnonymousHistory.addMessage(sessionId, 'user', `E qual detalhe ${index + 1}?`, []);
+    window.JurixAnonymousHistory.addMessage(sessionId, 'assistant', 'Resposta de QA.', []);
+  }
+  window.JurixAnonymousHistory.addMessage(sessionId, 'user', 'O que prevê o Art. 18 da LC nº 120/2010?', []);
+  window.JurixAnonymousHistory.addMessage(sessionId, 'assistant', 'Resposta fundamentada.', []);
+  window.JurixAnonymousHistory.updateLastAssistant(sessionId, 'Resposta fundamentada.', [{
+    norma_ref: 'Lei Complementar nº 120/2010',
+    dispositivo_ref: 'Art. 18',
+  }], true);
+
+  let sentPayload;
+  const encoded = new TextEncoder().encode(`data: ${JSON.stringify({
+    type: 'done', answer: 'Resposta curta.', grounded: false,
+  })}\n\n`);
+  let eventConsumed = false;
+  window.fetch = async (_url, options) => {
+    sentPayload = JSON.parse(options.body);
+    return {
+      ok: true,
+      status: 200,
+      body: { getReader: () => ({ async read() {
+        if (eventConsumed) return { done: true, value: undefined };
+        eventConsumed = true;
+        return { done: false, value: encoded };
+      } }) },
+    };
+  };
+  window.eval(read('jurix-chat-api.js'));
+  window.eval(read('jurix-api-reliability-overlay.js'));
+
+  await window.JurixChatAPI.streamAnswer('E qual artigo trata do vencimento básico?', sessionId, {});
+
+  assert.match(sentPayload.previous_question, /LC nº 120\/2010/);
+  assert.match(sentPayload.previous_question, /Lei Complementar nº 120\/2010, Art\. 18º/);
+  assert.ok(sentPayload.previous_question.length <= 10000);
   dom.window.close();
 });
 
@@ -110,6 +159,37 @@ test('legacy anonymous evidence without an explicit grounded marker is hidden on
   dom.window.close();
 });
 
+test('legacy numeric anonymous session ids migrate to isolated local ids without losing old URLs', () => {
+  const dom = new JSDOM('<!doctype html><html><body data-authenticated="false"></body></html>', {
+    url: 'http://localhost/assistente/2/', runScripts: 'dangerously',
+  });
+  const { window: w } = dom;
+  w.localStorage.setItem('jurix:anonymous-history:v2', JSON.stringify({
+    schema: 2,
+    sessions: [{
+      id: '2', title: 'Conversa antiga', created_at: '2026-10-06T10:00:00.000Z',
+      updated_at: '2026-10-06T10:00:00.000Z',
+      messages: [{ role: 'user', content: 'Pergunta preservada' }],
+    }],
+  }));
+  w.eval(read('jurix-anonymous-history.js'));
+
+  const [listed] = w.JurixAnonymousHistory.list();
+  assert.match(listed.id, /^local-/);
+  assert.equal(listed.title, 'Pergunta preservada');
+  assert.equal(w.JurixAnonymousHistory.get('2').messages[0].content, 'Pergunta preservada');
+  assert.equal(w.JurixAnonymousHistory.ensureSession('2', 'Follow-up'), listed.id);
+  assert.equal(w.JurixAnonymousHistory.list().length, 1);
+
+  const persisted = JSON.parse(w.localStorage.getItem('jurix:anonymous-history:v2'));
+  assert.equal(persisted.sessions[0].id, listed.id);
+  assert.equal(persisted.sessions[0].legacy_id, '2');
+  assert.equal(persisted.sessions[0].legacy_title, 'Conversa antiga');
+  assert.equal(w.JurixAnonymousHistory.exportData().sessions[0].id, listed.id);
+  assert.equal(Object.hasOwn(w.JurixAnonymousHistory.exportData().sessions[0], 'legacy_id'), false);
+  dom.window.close();
+});
+
 test('SSE sources render immediately as pending and completion updates the same affordance', () => {
   const chat = read('chat.js');
   const sourceCallback = chat.indexOf('(sources, _confidence, sourceMetadata = {}) => {');
@@ -118,18 +198,25 @@ test('SSE sources render immediately as pending and completion updates the same 
   assert.match(chat.slice(sourceCallback, doneCallback), /showSourcesGradually\(/);
   assert.match(chat.slice(sourceCallback, doneCallback), /pending: true/);
   assert.match(chat, /Never rank-sort the rendered evidence/);
-  const completion = chat.slice(doneCallback, doneCallback + 3400);
-  assert.match(completion, /doneData\.grounded === true \? finalSources : \[\]/);
-  assert.match(completion, /if \(!streamElements\.sourcesContainer\.querySelector\('\.jurix-sources-pill-btn'\)\)/);
+  const completion = chat.slice(doneCallback, doneCallback + 5000);
+  assert.match(completion, /Array\.isArray\(doneData\.sources\) \? doneData\.sources : finalSources/);
+  assert.match(completion, /finalSources\.length > 0[\s\S]*As fontes localizadas não foram suficientes para confirmar a resposta\.[\s\S]*Não localizei fontes correspondentes no acervo consultado\./);
+  assert.match(completion, /showSourcesGradually\([\s\S]*answerSources[\s\S]*finalSourceMeta/);
   assert.match(completion, /source\?\.synthetic_fixture === true/);
   assert.match(completion, /Fixture sintética de QA/);
-  assert.match(completion, /updateSourcesDrawerMetadata\?\.\(\{ pending: false \}\)/);
+  assert.match(chat, /updateSourcesDrawerMetadata\?\.\(\{ pending: false \}\)/);
+  assert.match(chat.slice(doneCallback), /reconcileSourcesDrawer\?\.\(/);
+  const doneSessionUrl = chat.slice(chat.indexOf('const sessionUrl = `${config.chatbotUrl}${doneData.session_slug}/`;'));
+  assert.match(doneSessionUrl, /document\.body\?\.dataset\.qaArchiveCorpus === 'true'[\s\S]*new URLSearchParams\(window\.location\.search\)\.get\('corpus'\) === 'archive-qa'/);
+  assert.match(doneSessionUrl, /archiveQa \? `\$\{sessionUrl\}\?corpus=archive-qa` : sessionUrl/);
   assert.match(completion, /linkLegalReferences\(streamElements\.messageBody, answerSources\)/);
-  assert.match(completion, /if \(accumulatedText !== finalAnswer\)/);
+  assert.match(completion, /renderedCitationCount < expectedCitationCount/);
+  assert.match(completion, /setCitationSources\(streamElements\.messageBody, answerSources\)/);
   assert.match(chat, /Never expose unverified model output/);
   const sourcePill = chat.slice(chat.indexOf('function showSourcesGradually'), chat.indexOf('function createSourceCard'));
   assert.match(sourcePill, /aria-label="Abrir painel com \$\{orderedSources\.length\} \$\{orderedSources\.length === 1 \? 'fonte consultada' : 'fontes consultadas'\}"/);
   assert.match(sourcePill, /Verificação em andamento/);
+  assert.match(sourcePill, /Keep the trigger node stable/);
   assert.doesNotMatch(sourcePill, /topRawScore|Alta correspondência|Boa correspondência|Correspondência parcial/);
 
   const regeneration = chat.slice(chat.indexOf('async function regenerateLastResponse'), chat.indexOf('function copyResponseToClipboard'));
@@ -146,11 +233,29 @@ test('cancelling a stream marks already retrieved sources as unvalidated, not an
     chat.indexOf("sendButton.addEventListener('click'"),
     chat.indexOf("chatForm.addEventListener('submit'"),
   );
-  assert.match(cancelHandler, /Não validadas — geração cancelada/);
-  assert.match(cancelHandler, /pending: false,\s+cancelled: true/);
-  assert.match(cancelHandler, /updateSourcesDrawerMetadata\?\.\(\{\s*pending: false,\s*cancelled: true/);
+  assert.match(cancelHandler, /markStreamEvidenceCancelled\(elements\)/);
+  assert.match(cancelHandler, /if \(state\?\.status !== 'streaming'\) return/);
+  assert.match(chat, /if \(status === 'finalizing'\)\s*\{\s*chatState\?\.transition\?\.\('finalizing', \{ question \}\)/);
+  const cancelledPresentation = chat.slice(
+    chat.indexOf('function markStreamEvidenceCancelled'),
+    chat.indexOf('function appendNormLookupActions'),
+  );
+  assert.match(cancelledPresentation, /Não validadas — geração cancelada/);
+  assert.match(cancelledPresentation, /pending: false,\s*cancelled: true/);
+  assert.match(cancelledPresentation, /updateSourcesDrawerMetadata\?\.\(\{\s*pending: false,\s*cancelled: true/);
+  assert.match(cancelledPresentation, /copyButton\?\.classList\.remove\('show'\)/);
+  assert.match(chat, /if \(streamElements\?\.cancelledByUser\) return;/);
+  assert.match(chat, /if \(streamElements\?\.cancelledByUser\) \{\s*markStreamEvidenceCancelled\(streamElements\);/);
   const rag = read('jurix-rag.js');
   assert.match(rag, /A geração foi interrompida; estas fontes não foram validadas como suporte da resposta/);
+});
+
+test('interrupted-turn retry remains visible without a completed-answer action', () => {
+  const styles = fs.readFileSync(
+    path.resolve(import.meta.dirname, '../../src/apps/core/static/css/jurix-chat-renderer.css'),
+    'utf8',
+  );
+  assert.match(styles, /\.message-actions:not\(:has\(\.show\)\):not\(:has\(\.jurix-interrupted-retry\)\)\s*\{\s*display:\s*none;/);
 });
 
 test('copy answer falls back when Clipboard API is unavailable and announces success', async () => {
@@ -213,6 +318,52 @@ test('copy preserves structured citation markers as Markdown links to official e
   w.close();
 });
 
+test('copy keeps multi-article citations as separate non-nested Markdown links', async () => {
+  const dom = new JSDOM(
+    '<!doctype html><html><body><article class="message"><div class="message-body">' +
+      '<a class="jurix-legal-reference-link" href="https://local.test/norma/120/">Lei Complementar nº 120/2010</a>' +
+      '<a class="jurix-legal-reference-link" href="https://local.test/norma/120/#:~:text=Art.17">Art. 17</a>' +
+      '<a class="jurix-legal-reference-link" href="https://local.test/norma/120/#:~:text=Art.18">Art. 18</a>' +
+      '</div><button class="copy-response-button"></button></article></body></html>',
+    { url: 'http://localhost/assistente/', runScripts: 'dangerously', pretendToBeVisual: true },
+  );
+  const { window: w } = dom;
+  let copiedText = '';
+  w.document.execCommand = () => {
+    copiedText = w.document.querySelector('.jurix-clipboard-fallback')?.value || '';
+    return true;
+  };
+  w.JurixRagUI = { buildSourceUrl: (source) => source.official_url };
+  w.eval(read('jurix-chat-renderer.js'));
+  const button = w.document.querySelector('.copy-response-button');
+  button._citationSources = [
+    {
+      citation_index: 1,
+      citation_label: 'Lei Complementar nº 120/2010, Art. 17',
+      official_url: 'https://local.test/norma/120/#:~:text=Art.17',
+    },
+    {
+      citation_index: 2,
+      citation_label: 'Lei Complementar nº 120/2010, Art. 18',
+      official_url: 'https://local.test/norma/120/#:~:text=Art.18',
+    },
+  ];
+  const copied = await w.JurixChatRenderer.copyResponseToClipboard(
+    'Nos trechos de Lei Complementar nº 120/2010, os dispositivos dizem:\n\n' +
+      '- Art. 17: atribuições no Anexo III [[1]]\n' +
+      '- Art. 18: vencimento mínimo [[2]]',
+    button,
+  );
+
+  assert.equal(copied, true);
+  assert.match(copiedText, /\[Lei Complementar nº 120\/2010\]\(<https:\/\/local\.test\/norma\/120\/>\)/);
+  assert.match(copiedText, /\[Lei Complementar nº 120\/2010, Art\. 17\]\(<https:\/\/local\.test\/norma\/120\/#:~:text=Art\.17>\)/);
+  assert.match(copiedText, /\[Lei Complementar nº 120\/2010, Art\. 18\]\(<https:\/\/local\.test\/norma\/120\/#:~:text=Art\.18>\)/);
+  assert.doesNotMatch(copiedText, /\]\(<[^>]+>\)\s*,\s*\[/);
+  assert.equal((copiedText.match(/\]\(<https:\/\/local\.test\/norma\/120\//g) || []).length, 5);
+  w.close();
+});
+
 test('Markdown citation markers render using readable labels from structured sources', () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     url: 'http://localhost/assistente/', runScripts: 'dangerously',
@@ -224,8 +375,8 @@ test('Markdown citation markers render using readable labels from structured sou
   }]);
   assert.match(html, /href="#jurix-evidence-1"/);
   assert.match(html, /data-citation-id="jurix:norma:3:dispositivo:12"/);
-  assert.match(html, />Lei nº 8\.206\/2026, Art\. 1º<\/a>/);
-  assert.doesNotMatch(html, />\[1\]</);
+  assert.match(html, />\[1\]<\/a>/);
+  assert.match(html, /aria-label="Ver Lei nº 8\.206\/2026, Art\. 1º"/);
   w.close();
 });
 
@@ -336,6 +487,33 @@ test('source drawer groups repeated norms without merging article evidence or ci
   assert.equal(zeroScore.querySelector('.jurix-rag-score-meter')?.value, 0);
 
   w.JurixRagUI.closeSourcesDrawer();
+  dom.window.close();
+});
+
+test('an open source drawer reconciles to terminal citations and restores focus to its original trigger', () => {
+  const dom = new JSDOM('<!doctype html><html><body><button id="open-sources">Ver fontes</button></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+    pretendToBeVisual: true,
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-rag.js'));
+  const trigger = w.document.getElementById('open-sources');
+  trigger.focus();
+  w.JurixRagUI.openSourcesDrawer([
+    { norma: 'Lei nº 1/2020', dispositivo_ref: 'Art. 1º', text: 'Recuperado, não citado.' },
+    { norma: 'Lei nº 2/2020', dispositivo_ref: 'Art. 2º', text: 'Citado e fundamentado.' },
+  ]);
+
+  w.JurixRagUI.reconcileSourcesDrawer([
+    { norma: 'Lei nº 2/2020', dispositivo_ref: 'Art. 2º', text: 'Citado e fundamentado.' },
+  ], 'Fontes Consultadas', { pending: false });
+  const panel = w.document.getElementById('jurix-sources-drawer-panel');
+  assert.equal(panel.querySelectorAll('.source-card').length, 1);
+  assert.match(panel.textContent, /Citado e fundamentado/);
+  assert.doesNotMatch(panel.textContent, /Recuperado, não citado/);
+  w.JurixRagUI.closeSourcesDrawer();
+  assert.equal(w.document.activeElement, trigger);
   dom.window.close();
 });
 
@@ -584,6 +762,54 @@ test('guest identity and message contract survive a fresh page', async () => {
   } finally { w.close(); }
 });
 
+test('archive QA corpus scope survives anonymous history and conversation reload links', async () => {
+  const w = guestWindow(null, [{ type: 'done', answer: 'Resposta do arquivo.', grounded: false }]);
+  try {
+    let id;
+    await w.JurixChatAPI.streamAnswer('Pergunta sobre PDF local', null, {
+      searchOptions: { qa_archive_corpus: true },
+      onDone: data => { id = data.session_id; },
+    });
+    const session = w.JurixAnonymousHistory.get(id);
+    assert.equal(session.corpus, 'archive-qa');
+    assert.equal(w.JurixAnonymousHistory.list()[0].corpus, 'archive-qa');
+    assert.equal(w.JurixAnonymousHistory.exportData().sessions[0].corpus, 'archive-qa');
+
+    const reload = guestWindow(w.localStorage.getItem('jurix:anonymous-history:v2'));
+    try {
+      const restored = await reload.JurixChatAPI.getSessionBySlug(id);
+      assert.equal(restored.session.corpus, 'archive-qa');
+      reload.document.body.innerHTML = '<form data-history-search><input name="q"></form><section data-anonymous-history></section>';
+      reload.eval(read('jurix-anonymous-history-page.js'));
+      assert.equal(
+        reload.document.querySelector('.workspace-history-card__link')?.getAttribute('href'),
+        `/assistente/${encodeURIComponent(id)}/?corpus=archive-qa`,
+      );
+    } finally { reload.close(); }
+  } finally { w.close(); }
+});
+
+test('legacy anonymous sessions with a grounded local PDF source restore the archive corpus link', () => {
+  const w = guestWindow();
+  try {
+    const id = w.JurixAnonymousHistory.ensureSession('local-legacy-pdf', 'Lei Complementar 120');
+    w.JurixAnonymousHistory.addMessage(id, 'user', 'Art. 18 da LC 120/2010', []);
+    w.JurixAnonymousHistory.updateLastAssistant(id, 'Resposta fundamentada [[1]]', [{
+      id: 'evidence-1',
+      local_pdf_url: '/normas/documentos/f4a5c8f6-7ca2-4b5c-935e-033572a33510/pdf/',
+    }], true);
+    assert.equal(w.JurixAnonymousHistory.list()[0].corpus, 'archive-qa');
+    assert.equal(w.JurixAnonymousHistory.get(id).corpus, 'archive-qa');
+    assert.equal(w.JurixAnonymousHistory.exportData().sessions[0].corpus, 'archive-qa');
+    w.document.body.innerHTML = '<form data-history-search><input name="q"></form><section data-anonymous-history></section>';
+    w.eval(read('jurix-anonymous-history-page.js'));
+    assert.equal(
+      w.document.querySelector('.workspace-history-card__link')?.getAttribute('href'),
+      `/assistente/${encodeURIComponent(id)}/?corpus=archive-qa`,
+    );
+  } finally { w.close(); }
+});
+
 test('EOF without done preserves verified guest partial text', async () => {
   const w = guestWindow(null, [{ type: 'chunk', chunk: 'Parcial' }]);
   try {
@@ -662,7 +888,7 @@ test('anonymous history renders a clean distinct preview and supports confirmed 
   });
   const { window } = dom;
   const sessions = [
-    { id: 'local-a', title: 'Educação popular', updated_at: '2026-10-01T12:00:00Z', messages_count: 2 },
+    { id: 'local-a', title: 'Educação popular', corpus: 'archive-qa', updated_at: '2026-10-01T12:00:00Z', messages_count: 2 },
     { id: 'local-b', title: 'Normas municipais', updated_at: '2026-10-01T11:00:00Z', messages_count: 1 },
   ];
   const details = {
@@ -684,6 +910,7 @@ test('anonymous history renders a clean distinct preview and supports confirmed 
   assert.ok(card);
   assert.equal(card.querySelector('h2').textContent, 'Educação popular');
   assert.equal(card.querySelector('p').textContent, 'A Lei nº 8205/2026 institui a data.');
+  assert.equal(card.querySelector('.workspace-history-card__link').getAttribute('href'), '/assistente/local-a/?corpus=archive-qa');
   assert.equal(card.querySelector('a').contains(card.querySelector('[data-history-delete]')), false);
 
   window.requestAnimationFrame = callback => callback();
@@ -838,6 +1065,34 @@ test('stream retries get a new turn UUID linked to the previous failed attempt',
   dom.window.close();
 });
 
+test('stream serializes numeric session ids from restored conversation URLs as numbers', async () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously',
+  });
+  const { window } = dom;
+  window.TextDecoder = TextDecoder;
+  let sentPayload;
+  const bytes = new TextEncoder().encode('data: {"type":"done","answer":"Resposta"}\n\n');
+  let consumed = false;
+  window.fetch = async (_url, options) => {
+    sentPayload = JSON.parse(options.body);
+    return {
+      ok: true,
+      status: 200,
+      body: { getReader: () => ({ read: async () => consumed ? { done: true } : (consumed = true, { done: false, value: bytes }) }) },
+    };
+  };
+  window.eval(read('jurix-chat-api.js'));
+
+  await window.JurixChatAPI.streamAnswer('Pergunta', '2', {
+    searchOptions: { session_id: 'local-stale-session-id' },
+  });
+
+  assert.equal(sentPayload.session_id, 2);
+  assert.equal(typeof sentPayload.session_id, 'number');
+  dom.window.close();
+});
+
 test('chat controller exposes an enabled and accessible Stop action only while generating', () => {
   const dom = new JSDOM('<!doctype html><html><body><form id="chat-form"><textarea id="question-textarea"></textarea><button id="send-button" type="submit">send</button></form><div id="chat-state-indicator" hidden></div><div id="conversation-input-bar"></div></body></html>', {
     url: 'http://localhost/assistente/', runScripts: 'dangerously', pretendToBeVisual: true,
@@ -881,6 +1136,11 @@ test('chat controller exposes an enabled and accessible Stop action only while g
   window.JurixChatController.setPipelineStatus('grounding');
   assert.equal(window.document.querySelector('.jurix-chat-state-label').textContent, 'Conferindo as referências…');
 
+  window.JurixChatState.transition('finalizing');
+  assert.equal(button.disabled, true, 'the stop action is unavailable after the stream enters finalization');
+  assert.equal(button.getAttribute('aria-label'), 'Pesquisa em andamento');
+  assert.equal(button.dataset.action, 'send');
+
   window.JurixChatState.transition('cancelled');
   assert.equal(button.getAttribute('aria-label'), 'Enviar pergunta');
   assert.equal(button.dataset.action, 'send');
@@ -904,6 +1164,25 @@ test('restored interrupted authenticated question exposes one explicit retry act
   retry.click();
   assert.deepEqual(retried, ['Pergunta ainda não respondida', '81a3119b-0fb4-42f8-b1ef-d1890563cb38']);
   assert.equal(window.document.querySelectorAll('.jurix-interrupted-retry').length, 1);
+  dom.window.close();
+});
+
+test('pending assistant answer gives accessible progress feedback and clears without retaining draft text', () => {
+  const dom = new JSDOM('<!doctype html><html><body><div id="messages-wrapper"><div id="answer" class="message-body"></div></div></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously',
+  });
+  const { window } = dom;
+  window.eval(read('jurix-chat-renderer.js'));
+  const body = window.document.getElementById('answer');
+  const pending = window.JurixChatRenderer.showPendingAnswer(body);
+  assert.equal(pending.getAttribute('role'), 'status');
+  assert.equal(pending.getAttribute('aria-live'), 'polite');
+  assert.match(pending.textContent, /Organizando as evidências/);
+  assert.equal(body.querySelectorAll('.jurix-answer-pending').length, 1);
+
+  window.JurixChatRenderer.clearPendingAnswer(pending);
+  assert.equal(body.textContent, '');
+  assert.equal(body.querySelector('.jurix-answer-pending'), null);
   dom.window.close();
 });
 

@@ -53,10 +53,10 @@
 
     function normalizeLists(markdown) {
         return String(markdown || '')
-            .replace(/([•\-])\s+([^•\n]+?);\s+([•\-])/g, '$1 $2\n$3')
-            .replace(/([•\-])\s+([^•\n]+?)\s+([•\-])\s+/g, '$1 $2\n$3 ')
-            .replace(/;\s+([•\-])/g, '\n$1')
-            .replace(/([^\n])([•\-])\s+/g, '$1\n$2 ')
+            .replace(/(•)\s+([^•\n]+?);\s+(•)/g, '$1 $2\n$3')
+            .replace(/(•)\s+([^•\n]+?)\s+(•)\s+/g, '$1 $2\n$3 ')
+            .replace(/;\s+(•)/g, '\n$1')
+            .replace(/([^\n])•\s+/g, '$1\n• ')
             .replace(/\n{3,}/g, '\n\n');
     }
 
@@ -86,7 +86,7 @@
                 if (!source) return full;
                 const label = source?.citation_label || `Fonte ${index}`;
                 const citationId = source?.citation_id ? ` data-citation-id="${escapeHtml(source.citation_id)}"` : '';
-                return `<a class="jurix-citation" href="#jurix-evidence-${index}" data-source-index="${index}"${citationId} aria-label="Ver ${escapeHtml(label)}">${escapeHtml(label)}</a>`;
+                return `<a class="jurix-citation" href="#jurix-evidence-${index}" data-source-index="${index}"${citationId} aria-label="Ver ${escapeHtml(label)}">[${index}]</a>`;
             });
         }).join('\n');
     }

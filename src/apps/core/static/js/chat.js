@@ -185,9 +185,17 @@
 
     function scrollToBottom() {
         const container = document.getElementById('messages-container');
-        if (container) {
-            container.scrollTop = container.scrollHeight;
+        if (!container) return;
+        const messageList = document.getElementById('messages-wrapper');
+        const hasConversationMessages = Boolean(messageList?.querySelector('.message'));
+        if (!hasConversationMessages) {
+            // The empty assistant welcome screen is taller than the available
+            // scroller on common viewports. Treating it as a conversation and
+            // scrolling to its bottom hides the hero heading behind the banner.
+            container.scrollTop = 0;
+            return;
         }
+        container.scrollTop = container.scrollHeight;
     }
 
     function scrollToBottomIfAtBottom() {
@@ -197,6 +205,65 @@
         const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
         if (isAtBottom) {
             container.scrollTop = container.scrollHeight;
+        }
+    }
+
+    function revealMessageControl(control) {
+        const container = document.getElementById('messages-container');
+        const composer = document.getElementById('conversation-input-bar');
+        if (!control || !container) return;
+        const viewport = container.getBoundingClientRect();
+        const composerTop = composer?.getBoundingClientRect().top ?? viewport.bottom;
+        const visibleTop = viewport.top + 8;
+        const visibleBottom = Math.min(viewport.bottom, composerTop) - 16;
+        const rect = control.getBoundingClientRect();
+        let nextTop = container.scrollTop;
+        if (rect.top < visibleTop) nextTop += rect.top - visibleTop;
+        else if (rect.bottom > visibleBottom) nextTop += rect.bottom - visibleBottom;
+        if (nextTop !== container.scrollTop) {
+            container.scrollTo({ top: Math.max(0, nextTop), behavior: 'instant' });
+        }
+    }
+
+    function syncComposerScrollClearance() {
+        const container = document.getElementById('messages-container');
+        const composer = document.getElementById('conversation-input-bar');
+        if (!container || !composer) return;
+
+        const updateClearance = () => {
+            const composerHeight = Math.ceil(composer.getBoundingClientRect().height);
+            const wrapper = document.getElementById('messages-wrapper');
+            const wrapperBottomPadding = wrapper
+                ? Number.parseFloat(getComputedStyle(wrapper).paddingBottom) || 0
+                : 0;
+            const nextClearance = `${Math.max(80, composerHeight + 24 - wrapperBottomPadding)}px`;
+            const messageList = document.getElementById('messages-wrapper');
+            const hasConversationMessages = Boolean(messageList?.querySelector('.message'));
+            const wasAtBottom = hasConversationMessages
+                && container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+            if (container.style.getPropertyValue('--jurix-composer-clearance') === nextClearance) return;
+            // The composer is fixed and overlays the scroll region. Reserve its
+            // measured height plus a small reading gap, subtracting the wrapper's
+            // existing bottom padding to avoid double-counting the same clearance.
+            container.style.setProperty('--jurix-composer-clearance', nextClearance);
+            if (wasAtBottom) {
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                    if (
+                        container.isConnected
+                        && document.getElementById('messages-wrapper')?.querySelector('.message')
+                    ) container.scrollTop = container.scrollHeight;
+                }));
+            }
+        };
+
+        updateClearance();
+        if (typeof ResizeObserver === 'function' && !composer.__jurixClearanceObserver) {
+            composer.__jurixClearanceObserver = new ResizeObserver(updateClearance);
+            composer.__jurixClearanceObserver.observe(composer);
+        }
+        if (!window.__jurixComposerClearanceResizeBound) {
+            window.addEventListener('resize', updateClearance, { passive: true });
+            window.__jurixComposerClearanceResizeBound = true;
         }
     }
 
@@ -345,9 +412,20 @@
             if (thisToken !== navSeq) return;
             if (!sessionData || !sessionData.success || !sessionData.session) return;
 
-            const sessionSlug = sessionData.session.slug || sessionData.session.id;
-            const sessionUrl = `${config.chatbotUrl}${sessionSlug}/`;
-            if (pushHistory && window.location.pathname !== sessionUrl) {
+            const sessionSlug = encodeURIComponent(sessionData.session.slug || sessionData.session.id);
+            const archiveQaMode = new URLSearchParams(window.location.search).get('corpus') === 'archive-qa';
+            if (archiveQaMode) {
+                sessionData.session.corpus = 'archive-qa';
+                window.JurixAnonymousHistory?.ensureSession?.(
+                    sessionData.session.id,
+                    sessionData.session.title,
+                    { corpus: 'archive-qa' },
+                );
+            }
+            const corpusQuery = sessionData.session.corpus === 'archive-qa' ? '?corpus=archive-qa' : '';
+            const sessionUrl = `${config.chatbotUrl}${sessionSlug}/${corpusQuery}`;
+            const currentUrl = `${window.location.pathname}${window.location.search}`;
+            if (pushHistory && currentUrl !== sessionUrl) {
                 window.history.pushState({}, '', sessionUrl);
             }
 
@@ -554,6 +632,14 @@
     function animateSessionCreated() {
         const toast = document.createElement('div');
         toast.className = 'session-created-toast';
+        const composer = document.getElementById('conversation-input-bar');
+        const positionAboveComposer = () => {
+            const composerTop = composer?.getBoundingClientRect().top;
+            const bottomOffset = Number.isFinite(composerTop) && composerTop < window.innerHeight
+                ? window.innerHeight - composerTop + 24
+                : 16;
+            toast.style.setProperty('--session-created-toast-bottom', `${Math.ceil(bottomOffset)}px`);
+        };
         toast.innerHTML = `
             <div class="session-created-content">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -563,6 +649,12 @@
             </div>
         `;
         document.body.appendChild(toast);
+        positionAboveComposer();
+        window.addEventListener('resize', positionAboveComposer);
+        const composerResizeObserver = typeof ResizeObserver === 'function' && composer
+            ? new ResizeObserver(positionAboveComposer)
+            : null;
+        composerResizeObserver?.observe(composer);
 
         requestAnimationFrame(() => {
             toast.classList.add('show');
@@ -570,6 +662,8 @@
 
         setTimeout(() => {
             toast.classList.remove('show');
+            window.removeEventListener('resize', positionAboveComposer);
+            composerResizeObserver?.disconnect();
             setTimeout(() => toast.remove(), 300);
         }, 2500);
     }
@@ -970,9 +1064,22 @@
             </div>
         `;
 
-        container.innerHTML = headerHtml;
-
-        const pillBtn = container.querySelector('.jurix-sources-pill-btn');
+        const existingPill = container.querySelector('.jurix-sources-pill-btn');
+        const nextShell = document.createElement('div');
+        nextShell.innerHTML = headerHtml;
+        const nextPill = nextShell.querySelector('.jurix-sources-pill-btn');
+        let pillBtn = existingPill;
+        if (existingPill && nextPill) {
+            // Keep the trigger node stable so an open drawer can restore focus
+            // to it after the terminal, citation-filtered source set arrives.
+            existingPill.setAttribute('aria-label', nextPill.getAttribute('aria-label') || 'Abrir fontes consultadas');
+            existingPill.innerHTML = nextPill.innerHTML;
+            existingPill.closest('.sources-section')?.classList.remove('source-section-visible');
+            requestAnimationFrame(() => existingPill.closest('.sources-section')?.classList.add('source-section-visible'));
+        } else {
+            container.innerHTML = headerHtml;
+            pillBtn = container.querySelector('.jurix-sources-pill-btn');
+        }
         if (pillBtn) {
             pillBtn._sourcesData = orderedSources;
             pillBtn._sourcesMeta = metadata;
@@ -995,6 +1102,34 @@
         } else {
             reveal();
         }
+    }
+
+    function markStreamEvidenceCancelled(elements) {
+        if (!elements) return;
+        elements.cancelledByUser = true;
+        window.JurixChatRenderer?.clearPendingAnswer?.(elements.pendingAnswer);
+        elements.pendingAnswer = null;
+        const container = elements.sourcesContainer;
+        if (container) {
+            const pill = container.querySelector('.jurix-sources-pill-btn');
+            const badge = pill?.querySelector('.jurix-sources-pill-badge');
+            if (badge) badge.textContent = 'Não validadas — geração cancelada';
+            const cancelledMetadata = {
+                ...(container._sourcesMeta || {}),
+                pending: false,
+                cancelled: true,
+            };
+            container._sourcesMeta = cancelledMetadata;
+            if (pill) pill._sourcesMeta = cancelledMetadata;
+            window.JurixRagUI?.updateSourcesDrawerMetadata?.({
+                pending: false,
+                cancelled: true,
+            });
+        }
+        elements.copyButton?.classList.remove('show');
+        elements.copyButton?.classList.add('is-hidden');
+        elements.regenerateBtn?.classList.add('is-hidden');
+        elements.regenerateBtn?.classList.remove('show');
     }
 
     function appendNormLookupActions(messageDiv, question) {
@@ -1205,6 +1340,7 @@
     // ===== INITIALIZATION =====
     async function initializeChatbot() {
         if (navSeq > 0) return;
+        syncComposerScrollClearance();
         const thisToken = ++navSeq;
         const sessionSlug = getSessionSlugFromPath();
 
@@ -1401,12 +1537,13 @@
             if (sendButton) {
                 sendButton.addEventListener('click', (event) => {
                     const state = chatState?.snapshot?.();
-                    if (!['streaming', 'finalizing'].includes(state?.status)) return;
+                    if (state?.status !== 'streaming') return;
                     event.preventDefault();
                     event.stopPropagation();
                     if (!chatAPI?.cancelStream?.()) return;
                     chatState.transition('cancelled', { question: activeStreamQuestion });
                     const elements = activeStreamElements;
+                    markStreamEvidenceCancelled(elements);
                     if (elements?.messageDiv) {
                         const retryQuestion = activeStreamQuestion;
                         const notice = document.createElement('p');
@@ -1432,22 +1569,6 @@
                             else chatForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
                         }, { once: true });
                         elements.messageDiv.querySelector('.message-actions')?.append(retry);
-                    }
-                    if (elements?.sourcesContainer) {
-                        const pill = elements.sourcesContainer.querySelector('.jurix-sources-pill-btn');
-                        const badge = pill?.querySelector('.jurix-sources-pill-badge');
-                        if (badge) badge.textContent = 'Não validadas — geração cancelada';
-                        const cancelledMetadata = {
-                            ...(elements.sourcesContainer._sourcesMeta || {}),
-                            pending: false,
-                            cancelled: true,
-                        };
-                        elements.sourcesContainer._sourcesMeta = cancelledMetadata;
-                        if (pill) pill._sourcesMeta = cancelledMetadata;
-                        window.JurixRagUI?.updateSourcesDrawerMetadata?.({
-                            pending: false,
-                            cancelled: true,
-                        });
                     }
                 });
             }
@@ -1553,12 +1674,16 @@
             copyResponseToClipboard(copyButton.getAttribute('data-markdown') || '', copyButton);
         });
 
+        const messageBody = document.getElementById(messageId);
+        const pendingAnswer = window.JurixChatRenderer?.showPendingAnswer?.(messageBody) || null;
+
         return {
             messageDiv,
-            messageBody: document.getElementById(messageId),
+            messageBody,
             sourcesContainer: document.getElementById(sourcesId),
             copyButton,
             regenerateBtn: messageDiv.querySelector('.regenerate-button'),
+            pendingAnswer,
         };
     }
 
@@ -1566,10 +1691,18 @@
         const controls = window.JurixSearchControls?.getPayload?.() || {};
         // The corpus mode belongs to the page/request context, not to the
         // composer element (which can be replaced while a new chat is created).
-        const archiveQaMode = document.body?.dataset.qaArchiveCorpus === 'true';
+        const archiveQaMode = document.body?.dataset.qaArchiveCorpus === 'true'
+            || new URLSearchParams(window.location.search).get('corpus') === 'archive-qa';
         return chatAPI.streamAnswer(question, sessionId, {
             onSession(data) {
                 currentSessionId = data.session_id;
+                if (archiveQaMode) {
+                    window.JurixAnonymousHistory?.ensureSession?.(
+                        currentSessionId,
+                        question,
+                        { corpus: 'archive-qa' },
+                    );
+                }
                 chatState?.setSessionId?.(currentSessionId);
                 if (pendingSessionClientId) {
                     window.JurixSidebar?.reconcilePending?.(pendingSessionClientId, data);
@@ -1626,9 +1759,12 @@
                         question,
                         currentSessionId,
                         async (chunk, chunkMetadata = {}) => {
+                            if (streamElements?.cancelledByUser) return;
                             // Never expose unverified model output. The backend streams
                             // only the canonical answer after grounding has accepted it.
                             if (chunkMetadata.provisional) return;
+                            window.JurixChatRenderer?.clearPendingAnswer?.(streamElements?.pendingAnswer);
+                            if (streamElements) streamElements.pendingAnswer = null;
                             accumulatedText = chunkMetadata.replace ? chunk : accumulatedText + chunk;
                             if (streamElements && streamElements.messageBody) {
                                 if (window.JurixRagUI) {
@@ -1652,6 +1788,7 @@
                             }
                         },
                         (sources, _confidence, sourceMetadata = {}) => {
+                            if (streamElements?.cancelledByUser) return;
                             finalSources = sources || [];
                             if (streamElements?.messageBody) {
                                 streamElements.messageBody._citationSources = finalSources;
@@ -1672,32 +1809,56 @@
                             }
                         },
                         async (doneData) => {
+                            if (streamElements?.cancelledByUser) return;
+                            window.JurixChatRenderer?.clearPendingAnswer?.(streamElements?.pendingAnswer);
+                            if (streamElements) streamElements.pendingAnswer = null;
                             doneData = doneData && typeof doneData === 'object' ? doneData : {};
+                            const messageScroller = document.getElementById('messages-container');
+                            const wasFollowingLatest = Boolean(messageScroller)
+                                && messageScroller.scrollHeight - messageScroller.scrollTop - messageScroller.clientHeight < 160;
                             chatState?.transition?.('finalizing', { question });
                             const finalAnswer = doneData.answer || accumulatedText;
-                            const answerSources = doneData.grounded === true ? finalSources : [];
+                            const answerSources = doneData.grounded === true
+                                ? (Array.isArray(doneData.sources) ? doneData.sources : finalSources)
+                                : [];
                             const reasonCode = doneData.reason_code || doneData.contract?.reason_code || '';
                             if (streamElements?.messageBody) streamElements.messageBody._citationSources = answerSources;
                             if (streamElements && window.JurixRagUI) {
-                                if (accumulatedText !== finalAnswer) {
+                                const expectedCitationCount = (String(finalAnswer).match(/\[\[\d{1,3}\]\]/g) || []).length;
+                                const renderedCitationCount = streamElements.messageBody
+                                    ?.querySelectorAll('.jurix-citation[data-source-index]').length || 0;
+                                // A scheduled stream render can commit its final text before the
+                                // citation source map is attached. Reconcile when the terminal
+                                // answer differs, a citation is unresolved, or grounding rejects
+                                // previously rendered source links.
+                                if (
+                                    accumulatedText !== finalAnswer
+                                    || renderedCitationCount < expectedCitationCount
+                                    || (doneData.grounded !== true && renderedCitationCount > 0)
+                                ) {
+                                    window.JurixRagUI.setCitationSources(streamElements.messageBody, answerSources);
                                     window.JurixRagUI.flushRender(streamElements.messageBody, finalAnswer);
                                 }
                                 window.JurixRagUI.linkLegalReferences(streamElements.messageBody, answerSources);
                                 window.JurixRagUI.setStreamingState(streamElements.messageBody, false);
                                 window.JurixRagUI.announce(doneData.grounded === true
                                     ? 'Resposta concluída.'
-                                    : 'Evidências recuperadas, mas insuficientes para fundamentar a resposta.');
+                                    : finalSources.length > 0
+                                        ? 'As fontes localizadas não foram suficientes para confirmar a resposta.'
+                                        : 'Não localizei fontes correspondentes no acervo consultado.');
                             }
                             if (streamElements?.sourcesContainer && answerSources.length > 0) {
-                                if (!streamElements.sourcesContainer.querySelector('.jurix-sources-pill-btn')) {
-                                    showSourcesGradually(
-                                        streamElements.sourcesContainer,
-                                        answerSources,
-                                        true,
-                                        finalAnswer,
-                                        streamElements.sourcesContainer._pendingSourcesMeta || {}
-                                    );
-                                }
+                                const finalSourceMeta = {
+                                    ...(streamElements.sourcesContainer._pendingSourcesMeta || {}),
+                                    pending: false,
+                                };
+                                showSourcesGradually(
+                                    streamElements.sourcesContainer,
+                                    answerSources,
+                                    true,
+                                    finalAnswer,
+                                    finalSourceMeta
+                                );
                                 const pill = streamElements.sourcesContainer.querySelector('.jurix-sources-pill-btn');
                                 const badge = pill?.querySelector('.jurix-sources-pill-badge');
                                 const hasSyntheticFixture = answerSources.some(
@@ -1710,6 +1871,11 @@
                                 }
                                 if (pill) pill._sourcesMeta = { ...(pill._sourcesMeta || {}), pending: false };
                                 streamElements.sourcesContainer._sourcesMeta = { ...(streamElements.sourcesContainer._sourcesMeta || {}), pending: false };
+                                window.JurixRagUI?.reconcileSourcesDrawer?.(
+                                    answerSources,
+                                    'Fontes Consultadas',
+                                    streamElements.sourcesContainer._sourcesMeta
+                                );
                                 window.JurixRagUI?.updateSourcesDrawerMetadata?.({ pending: false });
                             } else if (streamElements?.sourcesContainer) {
                                 window.JurixRagUI?.clearSourcesDrawer?.();
@@ -1747,7 +1913,8 @@
                                 }
                                 if (doneData.session_slug) {
                                     const sessionUrl = `${config.chatbotUrl}${doneData.session_slug}/`;
-                                    const archiveQa = document.body?.dataset.qaArchiveCorpus === 'true';
+                                    const archiveQa = document.body?.dataset.qaArchiveCorpus === 'true'
+                                        || new URLSearchParams(window.location.search).get('corpus') === 'archive-qa';
                                     window.history.replaceState({}, '', archiveQa ? `${sessionUrl}?corpus=archive-qa` : sessionUrl);
                                 }
                                 if (wasNewSession) animateSessionCreated();
@@ -1756,11 +1923,33 @@
                                 updateNewChatButtonState();
                             }
                             chatState?.transition?.('completed', { question });
+                            // Final citation linking, source-state updates and the
+                            // completed composer can change message geometry after
+                            // the last streamed chunk. Keep the newest evidence
+                            // affordance visible when the reader was following the
+                            // response, but do not pull someone back from older text.
+                            window.requestAnimationFrame(() => {
+                                window.requestAnimationFrame(() => {
+                                    if (wasFollowingLatest) {
+                                        const sourcePill = streamElements?.sourcesContainer
+                                            ?.querySelector('.jurix-sources-pill-btn');
+                                        const copyButton = streamElements?.copyButton;
+                                        revealMessageControl(sourcePill || copyButton);
+                                    } else {
+                                        scrollToBottomIfAtBottom();
+                                    }
+                                });
+                            });
                         },
                         (errorMsg) => {
+                            window.JurixChatRenderer?.clearPendingAnswer?.(streamElements?.pendingAnswer);
+                            if (streamElements) streamElements.pendingAnswer = null;
                             chatState.transition('failed', { error: errorMsg });
                         },
                         (status) => {
+                            if (status === 'finalizing') {
+                                chatState?.transition?.('finalizing', { question });
+                            }
                             window.JurixChatController?.setPipelineStatus?.(status);
                         },
                         isRetry,
@@ -1775,6 +1964,8 @@
                         // Keep the user question and partial draft visible. A local
                         // AbortController request is not proof of remote cancellation.
                     } else {
+                        window.JurixChatRenderer?.clearPendingAnswer?.(streamElements?.pendingAnswer);
+                        if (streamElements) streamElements.pendingAnswer = null;
                         if (streamElements?.messageBody && window.JurixRagUI) {
                             const errorBox = document.createElement('div');
                             streamElements.messageDiv.appendChild(errorBox);
@@ -1796,12 +1987,21 @@
                                 if (typeof chatForm.requestSubmit === 'function') chatForm.requestSubmit();
                                 else chatForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
                             });
-                            window.requestAnimationFrame(scrollToBottom);
+                            window.requestAnimationFrame(() => {
+                                scrollToBottom();
+                                window.requestAnimationFrame(() => revealMessageControl(errorBox.querySelector('.jurix-rag-retry')));
+                            });
                         } else {
                             addErrorMessage('Não foi possível concluir a pesquisa.');
                         }
                     }
                 } finally {
+                    // SSE callbacks may already be unwinding when a stop click races
+                    // the terminal event. Reapply the cancelled presentation last so
+                    // stale completion UI cannot relabel or expose unvalidated sources.
+                    if (streamElements?.cancelledByUser) {
+                        markStreamEvidenceCancelled(streamElements);
+                    }
                     chatState.transition('idle');
                     if (streamElements?.retryButton) streamElements.retryButton.disabled = false;
                     activeStreamElements = null;

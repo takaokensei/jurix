@@ -108,6 +108,19 @@ def test_chatbot_search_inputs_have_explicit_accessible_names():
     assert 'id="command-palette-input"' in html and 'aria-label="Buscar comandos' in html
 
 
+def test_temporal_date_control_label_targets_the_composer_input():
+    html = (
+        Path(__file__).resolve().parents[1]
+        / "apps"
+        / "legislation"
+        / "templates"
+        / "legislation"
+        / "chatbot.html"
+    ).read_text(encoding="utf-8")
+    assert '<label for="jurix-as-of-chat">Redação normativa em</label>' in html
+    assert '<input id="jurix-as-of-chat" data-jurix-as-of' in html
+
+
 def test_chatbot_loads_renderer_visibility_contract():
     html = (
         Path(__file__).resolve().parents[1]
@@ -147,6 +160,16 @@ def test_mobile_touch_targets_have_accessible_minimums():
     assert "#toggle-sidebar" in figma and "#new-chat-button" in figma
     assert "min-height: 44px" in figma
     assert ".workspace-mobile-toggle" in workspace and "min-height: 44px" in workspace
+    legal_detail = (
+        Path(__file__).resolve().parents[1]
+        / "apps"
+        / "core"
+        / "static"
+        / "css"
+        / "jurix-legal-detail.css"
+    ).read_text(encoding="utf-8")
+    assert ".device-history-link" in legal_detail
+    assert "min-height:44px" in legal_detail
 
 
 def test_norma_document_headings_follow_a_valid_accessible_hierarchy():
