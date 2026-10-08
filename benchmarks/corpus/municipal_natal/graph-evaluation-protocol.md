@@ -13,6 +13,14 @@ Cada anotação v2 fixa `document_key`, SHA-256 do texto, `text_version`, extrac
 
 `SUBSTITUI` é uma ação distinta; não reinterpretar retroativamente rótulos de schemas v1. Similaridade temática não é relação normativa. Referência sem alvo confirmado permanece `unresolved`/`pending_review`.
 
+## Manifesto de seleção de revisão
+
+- O comando `build_pilot_manifest --schema-version 1` mantém o JSONL legado de candidatas a normas.
+- `--schema-version 2` é opt-in e acrescenta registros `document_review_candidate` identificados por `document_key`, hash do documento, índice/entrada do arquivo, tipo do ato, faixa temporal, papel e status de extração/revisão. O primeiro registro informa contagens e estratos; candidatos nunca são aprovados pelo manifesto.
+- A seleção documental é determinística: round-robin entre estratos disponíveis e ordenação estável por hash, entrada e `document_key`. `--document-sample-size` aceita 1–50; para o piloto planejado usar 40 e registrar o número efetivamente disponível. O recorte QA não é gold e não substitui 20 normas distintas adjudicadas por humanos.
+- Arquivos sintéticos são excluídos da amostra documental e todas as linhas carregam `gold_eligible: false` até uma revisão humana posterior e o gate científico. Não incluir texto extraído, citações ou dados de revisão humana no manifesto de seleção.
+- O caminho de saída deve ser novo; o comando recusa sobrescrever. No ambiente QA, saída só pode ficar sob `JURIX_QA_ROOT`.
+
 ## Separação de gates
 
 1. **Estrutural:** JSON/schema, chaves, hashes, containment, offsets e vínculos coerentes. Saída inválida: exit 2.

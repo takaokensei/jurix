@@ -26,6 +26,19 @@ def test_paired_experiment_separates_cold_warm_and_marks_fixture_as_smoke():
     assert result["status"] == "technical_smoke_only"
     assert result["scientific_claim_allowed"] is False
     assert result["paired_groups"] == 2
+    assert result["cache_policy"]["cold"]["graph"]["quality"]["version_exact_accuracy"] is None
+    assert result["cache_policy"]["cold"]["graph"]["quality"]["reviewed_cases"] == 0
+
+
+def test_only_human_reviewed_cases_contribute_quality_metrics():
+    rows = _rows()
+    for row in rows:
+        row["human_evidence_review"] = True
+
+    result = analyze(rows)
+
+    assert result["status"] == "human_reviewed_experiment"
+    assert result["cache_policy"]["cold"]["graph"]["quality"]["reviewed_cases"] == 1
     assert result["cache_policy"]["cold"]["graph"]["quality"]["version_exact_accuracy"] == 1.0
 
 

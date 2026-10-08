@@ -34,6 +34,7 @@ def load_cases(path: Path) -> list[dict]:
 
 
 def _rank_metrics(rows: list[dict]) -> dict:
+    rows = [row for row in rows if row.get("human_evidence_review") is True]
     total_relevant = 0
     recall_hits = {1: 0, 3: 0, 5: 0}
     reciprocal_ranks = []
@@ -63,6 +64,7 @@ def _rank_metrics(rows: list[dict]) -> dict:
             abstain_correct += bool(row.get("abstained")) == bool(row["expected_abstain"])
     return {
         "cases": len(rows),
+        "reviewed_cases": len(rows),
         "retrieval_recall": {
             f"at_{cutoff}": count / total_relevant if total_relevant else None
             for cutoff, count in recall_hits.items()

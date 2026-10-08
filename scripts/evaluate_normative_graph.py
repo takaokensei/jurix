@@ -168,7 +168,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--min-human-normas", type=int, default=20)
     args = parser.parse_args(argv)
     try:
-        report = evaluate(_read_jsonl(args.gold), _read_jsonl(args.predictions), min_human_normas=args.min_human_normas)
+        report = evaluate(
+            _read_jsonl(args.gold),
+            _read_jsonl(args.predictions),
+            min_human_norms=args.min_human_normas,
+        )
         report["input_sha256"] = {"gold": _file_hash(args.gold), "predictions": _file_hash(args.predictions)}
         serialized = json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
         if args.output:

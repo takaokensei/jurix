@@ -12,7 +12,10 @@
     "expected_versions": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^[a-f0-9]{64}$"}},
     "expected_abstain": {"type": "boolean"},
     "relation_chain_keys": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
-    "human_evidence_review": {"type": "boolean", "default": false}
+    "human_evidence_review": {"type": "boolean", "default": false},
+    "as_of": {"type": "string", "format": "date"},
+    "stratum": {"enum": ["article", "whole_norm", "relation", "theme", "history", "no_evidence"]},
+    "synthetic_qa_fixture": {"type": "boolean", "const": true}
   },
   "additionalProperties": false
 }
