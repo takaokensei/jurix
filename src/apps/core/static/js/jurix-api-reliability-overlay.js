@@ -143,10 +143,36 @@
         if (!anonymous()) {
           return originalStream(question, sessionId, callbacks);
         }
-        const localId = window.JurixAnonymousHistory.ensureSession(sessionId, question);
+        const corpus = callbacks?.searchOptions?.qa_archive_corpus === true ? 'archive-qa' : null;
+        const localId = window.JurixAnonymousHistory.ensureSession(sessionId, question, { corpus });
         const history = window.JurixAnonymousHistory.get(localId);
-        const previousQuestion = [...(history?.messages || [])].reverse()
-          .filter(message => message.role === 'user').slice(0, 5).map(message => message.content).join('\n').slice(0, 10000);
+        const previousContext = [];
+        let previousUserTurns = 0;
+        [...(history?.messages || [])].reverse().some(message => {
+          if (message?.role === 'user') {
+            if (previousUserTurns >= 50) return true;
+            previousContext.push(String(message.content || ''));
+            previousUserTurns += 1;
+          } else if (message?.role === 'assistant' && message.grounded === true) {
+            const sources = Array.isArray(message.sources) ? message.sources : [];
+            const refs = sources.map(source => ({
+              norma: String(source?.norma_ref || '').trim(),
+              article: String(source?.dispositivo_ref || '').match(/\bart(?:igo)?\.?\s*(\d{1,4})\s*[º°o]?\b/i)?.[1] || '',
+            })).filter(reference => reference.norma);
+            const norms = [...new Set(refs.map(reference => reference.norma))];
+            if (norms.length === 1) {
+              const articles = [...new Set(refs.filter(reference => reference.article).map(reference => reference.article))];
+              const uniqueArticle = articles.length === 1 ? `, Art. ${articles[0]}º` : '';
+              // Only normalized citation metadata is used as a retrieval hint;
+              // generated assistant prose is never fed back as legal evidence.
+              previousContext.push(`${norms[0]}${uniqueArticle}`);
+            }
+          }
+          return false;
+        });
+        // Keep enough user turns to retain an explicit normative scope. The
+        // API applies its own 10k character cap to the complete context.
+        const previousQuestion = previousContext.join('\n').slice(0, 10000);
         const retryPrepared = retryExistingQuestion === true &&
           window.JurixAnonymousHistory.prepareRetry(localId, question);
         if (!retryPrepared) window.JurixAnonymousHistory.addMessage(localId, 'user', question, []);
@@ -175,7 +201,9 @@
             : doneEvent;
           if (answerFromEvent != null) answer = String(answerFromEvent);
           const grounded = doneEvent?.grounded === true;
-          const verifiedSources = grounded ? sources : [];
+          const verifiedSources = grounded
+            ? (Array.isArray(doneEvent?.sources) ? doneEvent.sources : sources)
+            : [];
           window.JurixAnonymousHistory.updateLastAssistant(localId, answer, verifiedSources, grounded);
           return onDone?.({ ...doneEvent, answer, session_id: localId, session_slug: localId }, ...rest);
         };

@@ -64,6 +64,7 @@
 
 .jurix-norma-shell {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 24px;
     padding-top: 24px;
 }
@@ -73,6 +74,7 @@
     border: 1px solid var(--norma-border-strong);
     border-radius: var(--norma-radius);
     background: var(--norma-panel-soft);
+    scroll-margin-top: 80px;
 }
 
 .jurix-archive-candidates-heading {
@@ -173,7 +175,9 @@
 
 .jurix-archive-candidate-filters input,
 .jurix-archive-candidate-filters select {
+    box-sizing: border-box;
     width: 100%;
+    min-width: 0;
     min-height: 44px;
     padding: 0 12px;
     border: 1px solid var(--norma-border);
@@ -386,6 +390,7 @@
 
 .jurix-norma-primary-button,
 .jurix-norma-secondary-button {
+    box-sizing: border-box;
     min-height: 54px;
     padding: 0 18px;
     border-radius: 12px;
@@ -445,7 +450,7 @@
 
 .jurix-norma-select {
     width: 100%;
-    min-height: 42px;
+    min-height: 44px;
     padding: 0 36px 0 12px;
     border: 1px solid var(--norma-border);
     border-radius: 10px;
@@ -826,7 +831,8 @@
     .jurix-norma-clear,
     .jurix-norma-view-button,
     .jurix-norma-page-link,
-    .jurix-norma-page-current { min-height: 42px; }
+    .jurix-norma-page-current { min-height: 44px; }
+    .jurix-norma-view-button { min-width: 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -843,6 +849,26 @@
     .jurix-norma-pagination { display: none !important; }
     .jurix-norma-grid { grid-template-columns: 1fr 1fr; }
     .jurix-norma-card { break-inside: avoid; box-shadow: none; }
+}
+
+/* Keep the single-column shell and its dense filters inside narrow content panes. */
+.jurix-norma-shell > *,
+.jurix-norma-filter-grid,
+.jurix-norma-field,
+.jurix-archive-candidate-filters,
+.jurix-archive-candidate-search-field,
+.jurix-archive-candidate-select-field { min-width: 0; }
+
+@media (max-width: 860px) {
+    .jurix-archive-candidate-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 1180px) {
+    .jurix-archive-candidate-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 620px) {
+    .jurix-archive-candidate-filters { grid-template-columns: minmax(0, 1fr); }
 }
 
 /*
@@ -1044,7 +1070,8 @@
     .jurix-norma-clear,
     .jurix-norma-view-button,
     .jurix-norma-page-link,
-    .jurix-norma-page-current { min-height: 42px; }
+    .jurix-norma-page-current { min-height: 44px; }
+    .jurix-norma-view-button { min-width: 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

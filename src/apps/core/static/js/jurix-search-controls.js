@@ -9,6 +9,7 @@
     source_scope: 'municipal',
     mode: 'hybrid',
     attachment_ids: [],
+    as_of: null,
   };
   const MAX_ATTACHMENTS = 5;
   let state = { ...defaults };
@@ -27,11 +28,58 @@
     try { state = { ...state, ...JSON.parse(value) }; } catch (_) {}
   };
   config();
+  state.as_of = normalizeAsOf(state.as_of);
 
   function save() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (_) {}
+  }
+
+  function normalizeAsOf(value) {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+    const [year, month, day] = value.split('-').map(Number);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    return parsed.getUTCFullYear() === year
+      && parsed.getUTCMonth() === month - 1
+      && parsed.getUTCDate() === day
+      ? value
+      : null;
+  }
+
+  function syncTemporalControl() {
+    const inputs = document.querySelectorAll('[data-jurix-as-of]');
+    const clearButtons = document.querySelectorAll('[data-jurix-as-of-clear]');
+    const active = document.querySelectorAll('[data-jurix-temporal-active]');
+    if (!inputs.length) return;
+    inputs.forEach(input => { input.value = state.as_of || ''; });
+    clearButtons.forEach(button => { button.hidden = !state.as_of; });
+    active.forEach(node => {
+      node.hidden = !state.as_of;
+      node.textContent = state.as_of
+        ? `Data histórica ativa: ${new Date(`${state.as_of}T00:00:00Z`).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}`
+        : '';
+    });
+  }
+
+  function wireTemporalControl() {
+    const inputs = document.querySelectorAll('[data-jurix-as-of]');
+    const clearButtons = document.querySelectorAll('[data-jurix-as-of-clear]');
+    if (!inputs.length) return;
+    syncTemporalControl();
+    inputs.forEach(input => input.addEventListener('change', () => {
+      state.as_of = normalizeAsOf(input.value);
+      save();
+      syncTemporalControl();
+      window.dispatchEvent(new CustomEvent('jurix:search-options-changed', { detail: getPayload() }));
+    }));
+    clearButtons.forEach(clear => clear.addEventListener('click', () => {
+      state.as_of = null;
+      save();
+      syncTemporalControl();
+      clear.closest('.jurix-temporal-filter')?.querySelector('[data-jurix-as-of]')?.focus();
+      window.dispatchEvent(new CustomEvent('jurix:search-options-changed', { detail: getPayload() }));
+    }));
   }
 
   function controls() {
@@ -348,6 +396,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     wire();
     wireComposerDisclosure();
+    wireTemporalControl();
     renderAttachments();
   }, { once: true });
 })();

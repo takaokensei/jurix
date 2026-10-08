@@ -62,3 +62,33 @@ test('dynamic module renders API-provided questions', async () => {
   assert.doesNotMatch(read(JS), /jurix-streaming-text|jurixCursorBlink|setTimeout\(tick/);
   dom.window.close();
 });
+
+test('archive QA mode explains its review corpus without querying production suggestions', async () => {
+  const dom = new JSDOM(renderTemplate(read(HTML)), {
+    url: 'http://localhost/assistente/?corpus=archive-qa',
+    runScripts: 'dangerously',
+    pretendToBeVisual: true,
+  });
+  const { window } = dom;
+  window.document.body.dataset.qaArchiveCorpus = 'true';
+  let fetchCount = 0;
+  window.fetch = async () => {
+    fetchCount += 1;
+    throw new Error('production suggestions must not be requested in archive QA');
+  };
+  window.sessionStorage.setItem('jurix:ui:suggestions:v6', JSON.stringify({
+    time: Date.now(),
+    items: [{ question: 'Pergunta em cache do corpus de produção' }],
+  }));
+
+  window.eval(read(JS));
+  const suggestions = await window.JurixDynamicSuggestions.refresh({ force: false });
+  const notice = window.document.querySelector('#figma-suggestions-cards').textContent;
+
+  assert.equal(suggestions.length, 0);
+  assert.equal(fetchCount, 0);
+  assert.match(notice, /PDFs de um acervo em revisão/);
+  assert.doesNotMatch(notice, /não possui conteúdo suficiente/);
+  assert.doesNotMatch(notice, /Pergunta em cache do corpus de produção/);
+  dom.window.close();
+});

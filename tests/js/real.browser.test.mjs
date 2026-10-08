@@ -1743,6 +1743,10 @@ test('real browser: ungrounded stream sources stay hidden after anonymous histor
     // chat's post-done UI callback removes the pending evidence affordance.
     await page.waitForFunction(() => document.querySelectorAll('.jurix-sources-pill-btn').length === 0);
     assert.equal(await page.$$('.jurix-sources-pill-btn').then((items) => items.length), 0);
+    assert.match(
+      await page.$eval('#rag-stream-status', (el) => el.textContent),
+      /As fontes localizadas não foram suficientes para confirmar a resposta\./,
+    );
 
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => document.querySelector('.message-assistant')?.textContent.includes('Resposta sem fundamentação suficiente.'));
@@ -1750,6 +1754,46 @@ test('real browser: ungrounded stream sources stay hidden after anonymous histor
     const history = await page.evaluate(() => JSON.parse(localStorage.getItem('jurix:anonymous-history:v2')));
     assert.deepEqual(history.sessions[0].messages[1].sources, []);
     assert.equal(history.sessions[0].messages[1].grounded, false);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: no-match stream announces that no corresponding sources were found', async () => {
+  const server = createTestServer({
+    isAuthenticated: () => false,
+    '/api/v1/search/answer/stream/': (req, res) => {
+      req.resume();
+      req.on('end', () => {
+        res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
+        res.end(`data: ${JSON.stringify({
+          type: 'done', answer: 'Não encontrei evidências suficientes.', grounded: false,
+        })}\n\n`);
+      });
+    },
+    '/api/v1/chat/sessions/': (_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, sessions: [] }));
+    },
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.goto(`http://127.0.0.1:${server.address().port}/assistente/`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#hero-search-input');
+    await page.type('#hero-search-input', 'Pergunta sem correspondência no acervo');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('#rag-stream-status')?.textContent.includes(
+      'Não localizei fontes correspondentes no acervo consultado.',
+    ));
+    assert.equal(await page.$$('.jurix-sources-pill-btn').then((items) => items.length), 0);
   } finally {
     await browser.close();
     server.close();
@@ -2276,6 +2320,13 @@ test('real browser: stream interruption preserves partial text and user question
 
     const retryButton = await page.waitForSelector('.jurix-rag-retry', { timeout: 5000 });
     assert.ok(retryButton, 'O erro deve oferecer uma ação de retry funcional');
+    await page.waitForFunction(() => {
+      const button = document.querySelector('.jurix-rag-retry');
+      if (!button) return false;
+      const rect = button.getBoundingClientRect();
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return rect.top >= 0 && rect.bottom <= innerHeight && (hit === button || button.contains(hit));
+    }, { timeout: 3000 });
     const retryHitTarget = await page.$eval('.jurix-rag-retry', (button) => {
       const rect = button.getBoundingClientRect();
       const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
@@ -2284,6 +2335,24 @@ test('real browser: stream interruption preserves partial text and user question
         receivesPointer: hit === button || button.contains(hit),
         rect: { top: rect.top, bottom: rect.bottom },
         viewportHeight: innerHeight,
+        obstruction: hit ? `${hit.tagName.toLowerCase()}${hit.id ? `#${hit.id}` : ''}.${String(hit.className || '').toString().trim().replace(/\s+/g, '.')}` : null,
+        obstructionText: hit?.textContent?.slice(0, 100) || '',
+        obstructionHtml: hit?.outerHTML?.slice(0, 260) || '',
+        buttonHtml: button.outerHTML.slice(0, 260),
+        buttonStyle: { position: getComputedStyle(button).position, zIndex: getComputedStyle(button).zIndex, margin: getComputedStyle(button).margin },
+        messageScroll: (() => {
+          const container = document.getElementById('messages-container');
+          const composer = document.getElementById('conversation-input-bar');
+          return container && {
+            top: container.scrollTop,
+            max: container.scrollHeight - container.clientHeight,
+            height: container.clientHeight,
+            rectTop: container.getBoundingClientRect().top,
+            rectBottom: container.getBoundingClientRect().bottom,
+            clearance: container.style.getPropertyValue('--jurix-composer-clearance'),
+            composerTop: composer?.getBoundingClientRect().top,
+          };
+        })(),
       };
     });
     assert.ok(retryHitTarget.visible && retryHitTarget.receivesPointer, `A ação de retry deve estar visível e não obstruída: ${JSON.stringify(retryHitTarget)}`);
@@ -3417,6 +3486,10 @@ test('real browser: closed norm actions disclosure is visible and keyboard opera
     });
 
     const summary = await page.$('.legal-detail-more-actions > summary');
+    await page.waitForFunction(() => {
+      const element = document.querySelector('.legal-detail-more-actions > summary');
+      return Boolean(element && getComputedStyle(element).display === 'flex');
+    });
     const desktop = await summary.evaluate((element) => ({
       display: getComputedStyle(element).display,
       rect: element.getBoundingClientRect().toJSON(),
@@ -3725,6 +3798,130 @@ test('real browser: collection removal requires confirmation, traps focus, and r
     assert.match(submittedForm, /norma_id=204/);
     assert.match(submittedForm, /action=remove/);
     assert.deepEqual(errors, []);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: completed source action remains above the fixed composer on desktop', async (t) => {
+  if (!executablePath) {
+    t.skip('Chromium/Chrome executable is unavailable');
+    return;
+  }
+
+  const answer = 'O Art. 1º estabelece a regra consultada. [[1]]';
+  const server = createTestServer({
+    isAuthenticated: () => false,
+    '/api/v1/search/answer/stream/': (_req, res) => {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      });
+      const events = [
+        { type: 'status', status: 'retrieving' },
+        { type: 'sources', sources: [{
+          citation_id: 'qa:desktop-art-1',
+          norma_ref: 'Lei nº 6.021/2009',
+          dispositivo_ref: 'Art. 1º',
+          full_text: 'Texto do dispositivo citado.',
+          texto: 'Texto do dispositivo citado.',
+          similarity_score: 1,
+        }] },
+        { type: 'chunk', chunk: answer, provisional: false },
+        { type: 'done', answer, grounded: true, session_id: null },
+      ];
+      for (const event of events) res.write(`data: ${JSON.stringify(event)}\n\n`);
+      res.end();
+    },
+  });
+
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 720 });
+    await page.goto(`http://127.0.0.1:${server.address().port}/assistente/`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#hero-search-input');
+    await page.type('#hero-search-input', 'O que prevê o Art. 1º da Lei nº 6.021/2009?');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('.message-assistant')?.textContent.includes('estabelece a regra consultada'));
+    await page.waitForSelector('.jurix-sources-pill-btn');
+
+    const layout = await page.evaluate(() => {
+      const pill = document.querySelector('.jurix-sources-pill-btn')?.getBoundingClientRect();
+      const composer = document.querySelector('#conversation-input-bar')?.getBoundingClientRect();
+      const container = document.querySelector('#messages-container');
+      return {
+        pillBottom: pill?.bottom,
+        composerTop: composer?.top,
+        gap: pill && composer ? composer.top - pill.bottom : null,
+        remainingScroll: container ? container.scrollHeight - container.scrollTop - container.clientHeight : null,
+      };
+    });
+    assert.ok(layout.gap >= 8, `Source action must remain visibly above the composer with a reading gap: ${JSON.stringify(layout)}`);
+    await page.click('.jurix-sources-pill-btn');
+    await page.waitForSelector('#jurix-sources-drawer-panel.is-open');
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: filtering the command palette does not let a stationary pointer steal keyboard selection', async () => {
+  const server = createTestServer({
+    isAuthenticated: () => false,
+    '/api/v1/chat/sessions/': (_req, res) => {
+      setTimeout(() => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, sessions: Array.from({ length: 6 }, (_, index) => ({
+          id: 901 + index,
+          slug: `local-${901 + index}`,
+          title: `Normas municipais — conversa de teste ${index + 1}`,
+          preview: 'Pesquisa sobre normas municipais',
+        })) }));
+      }, 350);
+    },
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 1000 });
+    await page.goto(`http://127.0.0.1:${server.address().port}/assistente/`, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => { window.JurixAnonymousHistory.isAnonymous = () => false; });
+    await page.keyboard.down('Control');
+    await page.keyboard.press('k');
+    await page.keyboard.up('Control');
+    await page.waitForFunction(() => document.querySelectorAll('.command-palette-item').length >= 8);
+
+    // Leave the pointer on the fourth row while keyboard focus remains in the input.
+    // Filtering replaces the row under a stationary pointer; it must not change the
+    // keyboard's active option to the history result now occupying that position.
+    const fourthOption = await page.$$('.command-palette-item').then((items) => items[3].boundingBox());
+    await page.mouse.move(fourthOption.x + fourthOption.width / 2, fourthOption.y + fourthOption.height / 2);
+    await page.locator('#command-palette-input').fill('normas');
+    await page.waitForFunction(() => document.querySelectorAll('.command-palette-item').length >= 7);
+
+    const selection = await page.evaluate(() => ({
+      first: document.querySelector('.command-palette-item')?.dataset.commandId,
+      selected: document.querySelector('.command-palette-item[aria-selected="true"]')?.dataset.commandId,
+      active: document.getElementById('command-palette-input').getAttribute('aria-activedescendant'),
+    }));
+    assert.equal(selection.first, 'norms');
+    assert.equal(selection.selected, 'norms', `Keyboard selection must stay on the top-ranked navigation item: ${JSON.stringify(selection)}`);
+    assert.equal(selection.active, 'command-palette-option-0');
   } finally {
     await browser.close();
     server.close();

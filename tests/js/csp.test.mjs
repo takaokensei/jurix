@@ -108,6 +108,19 @@ async function bootUnderCsp() {
   // injected manually below via window.eval, in the exact order the template lists them.
   const dom = new JSDOM(html, { url: 'http://localhost/normas/chatbot/', runScripts: 'dangerously', pretendToBeVisual: true });
   const { window } = dom;
+  window.HTMLElement.prototype.scrollTo = function scrollTo(leftOrOptions, top) {
+    if (typeof leftOrOptions === 'number') {
+      this.scrollLeft = leftOrOptions;
+      this.scrollTop = Number(top) || 0;
+      return;
+    }
+    if (leftOrOptions && Number.isFinite(leftOrOptions.left)) {
+      this.scrollLeft = leftOrOptions.left;
+    }
+    if (leftOrOptions && Number.isFinite(leftOrOptions.top)) {
+      this.scrollTop = leftOrOptions.top;
+    }
+  };
   window.fetch = async (url) => {
     const urlStr = String(url);
     if (urlStr.includes('/api/v1/suggestions/')) {

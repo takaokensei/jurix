@@ -6,7 +6,7 @@
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Norma' %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261004-precedent-check-v1">
+<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261006-temporal-facts-r1">
 <link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}">
 <link rel="stylesheet" href="{% static 'css/jurix-normative-graph.css' %}?v=20261003-2">
 {% endblock %}
@@ -137,18 +137,18 @@
 {% if norma.data_publicacao or norma.data_vigencia %}
 <div class="card legal-detail-card">
     <h2>Informações Temporais</h2>
-    <table>
-        <tr>
-            <th>Data de Publicação:</th>
-            <td>{{ norma.data_publicacao|date:"d/m/Y"|default:"-" }}</td>
-        </tr>
-        <tr>
-            <th>Data de Vigência:</th>
-                        <td>{{ norma.data_vigencia|date:"d/m/Y"|default:"Não informada" }}</td>
-        </tr>
-        <tr>
-            <th>Status Vigência:</th>
-            <td>
+    <dl class="legal-temporal-facts">
+        <div>
+            <dt>Data de publicação</dt>
+            <dd>{{ norma.data_publicacao|date:"d/m/Y"|default:"-" }}</dd>
+        </div>
+        <div>
+            <dt>Data de vigência</dt>
+            <dd>{{ norma.data_vigencia|date:"d/m/Y"|default:"Não informada" }}</dd>
+        </div>
+        <div>
+            <dt>Status da vigência</dt>
+            <dd>
                 {% if temporal_status == "revogada" %}
                 <span class="badge badge-warning">Revogada</span>
                 {% elif temporal_status == "parcialmente_revogada" %}
@@ -166,21 +166,23 @@
                 {% else %}
                 <span class="badge badge-success">Vigente</span>
                 {% endif %}
-            </td>
-        </tr>
-    </table>
+            </dd>
+        </div>
+    </dl>
 </div>
 {% endif %}
 
 {% if timeline %}
-<div class="card norma-timeline legal-detail-card" aria-labelledby="timeline-title">
-    <div class="timeline-header">
+<details class="card norma-timeline legal-detail-card" aria-labelledby="timeline-title" data-responsive-disclosure data-responsive-timeline open>
+    <summary class="timeline-disclosure-summary">
+      <div class="timeline-header">
         <div>
             <h2 id="timeline-title">Linha do tempo normativa</h2>
-            <p class="timeline-intro">Datas e eventos visíveis no corpus. Inferências são sinalizadas para revisão.</p>
+            <p class="timeline-intro">{{ timeline|length }} registros cronológicos. Datas e eventos visíveis no corpus; inferências são sinalizadas para revisão.</p>
         </div>
                 <span class="badge timeline-status {% if temporal_status == 'revogada' or temporal_status == 'parcialmente_revogada' %}timeline-status--warning{% elif not temporal_status_verified %}timeline-status--neutral{% else %}timeline-status--success{% endif %}">{% if temporal_status == 'revogada' %}Revogada{% elif temporal_status == 'parcialmente_revogada' %}Parcialmente revogada{% elif not temporal_status_verified %}Situação atual não verificada no corpus{% elif norma.data_vigencia %}Vigência registrada{% else %}Vigência não registrada{% endif %}</span>
-    </div>
+      </div>
+    </summary>
     <ol class="timeline-list">
         {% for item in timeline %}
         <li class="norma-timeline-item">
@@ -193,6 +195,7 @@
                 <p class="timeline-description">{{ item.description }}</p>
                 {% if item.kind == 'event' %}
                     {% if item.target_label %}<small class="timeline-target"><strong>Dispositivo indicado:</strong> {{ item.target_label }}</small>{% endif %}
+                    {% if item.target_relation_count and item.target_relation_ordinal == 1 %}<small class="temporal-disclaimer">Há {{ item.target_relation_count }} registros distintos para este dispositivo. Confira a ação e a situação de revisão em cada registro.</small>{% endif %}
                     {% if item.effective_date_status == 'confirmed' and item.date_display %}<small class="timeline-effect-date"><strong>Efeito jurídico revisado:</strong> {{ item.date_display }}{% if item.effect_scope == 'parcial' %} — restrito ao dispositivo indicado; não significa revogação total da norma.{% endif %}</small>
                     {% elif item.candidate_effective_date_display %}<small class="temporal-disclaimer"><strong>Data de efeito candidata:</strong> {{ item.candidate_effective_date_display }} — ainda não confirmada por revisão jurídica.</small>
                     {% elif item.relation_status == 'confirmed' and item.effective_date_status != 'not_applicable' %}<small class="temporal-disclaimer">A relação foi revisada, mas a data de efeito jurídico ainda não foi confirmada.</small>
@@ -205,7 +208,7 @@
         </li>
         {% endfor %}
     </ol>
-</div>
+</details>
 {% endif %}
 
 {% if normative_graph_enabled %}
@@ -213,9 +216,13 @@
 {% endif %}
 
 {% if eventos_recebidos %}
-<div class="card legal-detail-card">
-    <h2>Relações extraídas ({{ eventos_recebidos|length }})</h2>
-    <p class="timeline-intro">Os registros abaixo vêm da extração automática. Um vínculo e sua data de efeito só são tratados como confirmados após revisão jurídica.</p>
+<details class="card legal-detail-card relation-extraction-disclosure" data-responsive-disclosure open>
+    <summary class="relation-extraction-summary">
+      <div>
+        <h2>Registros de relações extraídos ({{ eventos_recebidos|length }})</h2>
+        <p class="timeline-intro">Candidatos automáticos; vínculo e efeito exigem revisão jurídica.</p>
+      </div>
+    </summary>
     <div class="relation-extraction-list">
         {% for evento in eventos_recebidos %}
         <article class="relation-extraction-card">
@@ -231,7 +238,7 @@
         </article>
         {% endfor %}
     </div>
-</div>
+</details>
 {% endif %}
 
 <div class="card legal-detail-card">
@@ -250,11 +257,11 @@
 </div>
 
 <div class="legal-detail-back">
-    <a href="{% url 'legislation:norma_list' %}" class="btn btn-secondary">« Voltar para a lista</a>
+    <a href="{% url 'legislation:norma_list' %}" class="btn btn-secondary legal-detail-back-link">« Voltar para a lista</a>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/jurix-legal-detail.js' %}?v=20261002-device-index-groups1" defer></script>
+<script src="{% static 'js/jurix-legal-detail.js' %}?v=20261006-mobile-details2" defer></script>
 <script src="{% static 'js/jurix-normative-graph.js' %}?v=20261003-2" defer></script>
 {% endblock %}

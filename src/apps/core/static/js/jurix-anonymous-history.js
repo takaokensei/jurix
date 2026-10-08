@@ -49,6 +49,19 @@
       .map(key => [key, value[key]]));
   }
 
+  function isArchiveQaSession(session) {
+    if (session?.corpus === 'archive-qa') return true;
+    return (session?.messages || []).some(message => {
+      if (message?.role !== 'assistant') return false;
+      const content = String(message?.content || '');
+      if (/\/normas\/documentos\/[a-f0-9-]+\/pdf\//i.test(content)) return true;
+      return (message?.sources || []).some(source => {
+        const localPdfUrl = String(source?.local_pdf_url || source?.pdf_url || '');
+        return /\/normas\/documentos\/[a-f0-9-]+\/pdf\//i.test(localPdfUrl);
+      });
+    });
+  }
+
   function exportSource(source, allowedFields) {
     const result = Object.fromEntries(allowedFields
       .filter(key => Object.prototype.hasOwnProperty.call(source || {}, key)
@@ -78,6 +91,48 @@
     return { schema: SCHEMA_VERSION, sessions: [] };
   }
 
+  function findSession(state, id) {
+    if (id === null || id === undefined) return null;
+    const requestedId = String(id);
+    return state.sessions.find(session => String(session.id) === requestedId
+      || String(session.legacy_id || '') === requestedId) || null;
+  }
+
+  function migrateNumericSessionIds(state) {
+    const occupiedIds = new Set(state.sessions.map(session => String(session?.id || '')));
+    let changed = false;
+    state.sessions.forEach(session => {
+      const legacyId = String(session?.id || '');
+      const isNumericLegacyId = /^\d{1,19}$/.test(legacyId);
+      if (isNumericLegacyId) {
+        let canonicalId = newId();
+        while (occupiedIds.has(canonicalId)) canonicalId = newId();
+        occupiedIds.delete(legacyId);
+        occupiedIds.add(canonicalId);
+        session.legacy_id = legacyId;
+        session.id = canonicalId;
+        changed = true;
+      }
+
+      // Older server-backed numeric sessions could retain a title after their
+      // anonymous messages were written locally. Keep that title for recovery,
+      // but derive the displayed title from the first user turn exactly once.
+      if (session?.legacy_id && session.legacy_title_normalized !== true) {
+        const firstQuestion = session.messages?.find(message => message?.role === 'user')?.content;
+        const cleanQuestion = String(firstQuestion || '').replace(/\s+/g, ' ').trim();
+        if (cleanQuestion) {
+          session.legacy_title = String(session.title || '').slice(0, 120);
+          session.title = cleanQuestion.length > 70
+            ? `${cleanQuestion.slice(0, 69).trimEnd()}…`
+            : cleanQuestion;
+        }
+        session.legacy_title_normalized = true;
+        changed = true;
+      }
+    });
+    return changed ? write(state) : state;
+  }
+
   function read() {
     if (storageUnavailable && memoryState) return JSON.parse(JSON.stringify(memoryState));
     try {
@@ -87,7 +142,7 @@
       if (!value || value.schema !== SCHEMA_VERSION || !Array.isArray(value.sessions)) {
         return emptyState();
       }
-      return value;
+      return migrateNumericSessionIds(value);
     } catch (error) {
       storageFailed(error);
       return memoryState || emptyState();
@@ -138,14 +193,17 @@
     return state;
   }
 
-  function ensureSession(id, title) {
+  function ensureSession(id, title, metadata = {}) {
     const state = read();
-    const sessionId = id || newId();
-    let session = state.sessions.find(item => String(item.id) === String(sessionId));
+    const requestedId = id === null || id === undefined ? '' : String(id);
+    const sessionId = requestedId && !/^\d{1,19}$/.test(requestedId) ? requestedId : newId();
+    const corpus = metadata?.corpus === 'archive-qa' ? 'archive-qa' : null;
+    let session = findSession(state, id) || findSession(state, sessionId);
     if (!session) {
       session = {
         id: sessionId,
         title: String(title || 'Nova pesquisa').slice(0, 120),
+        ...(corpus ? { corpus } : {}),
         created_at: now(),
         updated_at: now(),
         messages: [],
@@ -154,6 +212,7 @@
     } else if (title && session.title === 'Nova pesquisa') {
       session.title = String(title).slice(0, 120);
     }
+    if (corpus) session.corpus = corpus;
     session.updated_at = now();
     write(state);
     return session.id;
@@ -161,10 +220,10 @@
 
   function addMessage(sessionId, role, content, sources) {
     const state = read();
-    let session = state.sessions.find(item => String(item.id) === String(sessionId));
+    let session = findSession(state, sessionId);
     if (!session) {
-      ensureSession(sessionId);
-      return addMessage(sessionId, role, content, sources);
+      const canonicalId = ensureSession(sessionId);
+      return addMessage(canonicalId, role, content, sources);
     }
     session.messages.push({
       role: role === 'assistant' ? 'assistant' : 'user',
@@ -182,7 +241,7 @@
 
   function updateLastAssistant(sessionId, content, sources, grounded = false) {
     const state = read();
-    const session = state.sessions.find(item => String(item.id) === String(sessionId));
+    const session = findSession(state, sessionId);
     if (!session) return;
     const messages = session.messages;
     const last = messages[messages.length - 1];
@@ -205,7 +264,7 @@
 
   function prepareRetry(sessionId, question) {
     const state = read();
-    const session = state.sessions.find(item => String(item.id) === String(sessionId));
+    const session = findSession(state, sessionId);
     if (!session) return false;
     const messages = session.messages;
     if (messages[messages.length - 1]?.role === 'assistant') messages.pop();
@@ -221,6 +280,7 @@
       id: session.id,
       slug: session.id,
       title: session.title,
+      corpus: isArchiveQaSession(session) ? 'archive-qa' : null,
       is_pinned: session.is_pinned === true,
       created_at: session.created_at,
       updated_at: session.updated_at,
@@ -229,15 +289,18 @@
   }
 
   function get(id) {
-    const session = prune(read()).sessions.find(item => String(item.id) === String(id));
-    return session ? JSON.parse(JSON.stringify(session)) : null;
+    const session = findSession(prune(read()), id);
+    if (!session) return null;
+    const copy = JSON.parse(JSON.stringify(session));
+    if (isArchiveQaSession(copy)) copy.corpus = 'archive-qa';
+    return copy;
   }
 
   function setTitle(id, title) {
     const clean = String(title || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 70);
     if (!clean) return false;
     const state = read();
-    const session = state.sessions.find(item => String(item.id) === String(id));
+    const session = findSession(state, id);
     if (!session) return false;
     session.title = clean;
     session.updated_at = now();
@@ -248,7 +311,7 @@
   function setPinned(id, isPinned) {
     if (typeof isPinned !== 'boolean') return false;
     const state = read();
-    const session = state.sessions.find(item => String(item.id) === String(id));
+    const session = findSession(state, id);
     if (!session) return false;
     session.is_pinned = isPinned;
     session.updated_at = now();
@@ -258,9 +321,9 @@
 
   function remove(id) {
     const state = read();
-    const session = state.sessions.find(item => String(item.id) === String(id));
+    const session = findSession(state, id);
     if (!session) return false;
-    state.sessions = state.sessions.filter(item => String(item.id) !== String(id));
+    state.sessions = state.sessions.filter(item => String(item.id) !== String(session.id));
     write(state);
     return true;
   }
@@ -293,6 +356,7 @@
       sessions: state.sessions.map(session => ({
         id: String(session.id),
         title: String(session.title || 'Nova pesquisa').slice(0, 120),
+        ...(isArchiveQaSession(session) ? { corpus: 'archive-qa' } : {}),
         created_at: session.created_at,
         updated_at: session.updated_at,
         messages: session.messages.map(message => ({

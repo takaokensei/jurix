@@ -12,6 +12,13 @@ test('search controls preserve keyboard semantics and handle attachment lifecycl
     <div class="figma-search-dropdown" data-control="norma_status" tabindex="0">
       <span data-control-label>Pesquisa normativa</span>
     </div>
+    <div class="jurix-temporal-filter">
+      <label for="jurix-as-of">Redação normativa em</label>
+      <input id="jurix-as-of" data-jurix-as-of type="date">
+      <button type="button" data-jurix-as-of-clear hidden>Limpar</button>
+    </div>
+    <input id="jurix-as-of-secondary" data-jurix-as-of type="date">
+    <span data-jurix-temporal-active hidden></span>
     <div id="jurix-attachment-previews" hidden></div>
     <span class="jurix-attachment-count"></span>
     <div class="figma-search-dropdown" data-control="attachment" tabindex="0">
@@ -26,8 +33,28 @@ test('search controls preserve keyboard semantics and handle attachment lifecycl
     pretendToBeVisual: true,
   });
   const { window } = dom;
+  window.localStorage.setItem('jurix:search-options:v1', JSON.stringify({ as_of: '2021-02-29' }));
   window.eval(fs.readFileSync(SCRIPT, 'utf8'));
   window.document.dispatchEvent(new window.Event('DOMContentLoaded', { bubbles: true }));
+
+  const asOf = window.document.getElementById('jurix-as-of');
+  let changedPayload = null;
+  window.addEventListener('jurix:search-options-changed', (event) => { changedPayload = event.detail; });
+  assert.equal(window.JurixSearchControls.getPayload().as_of, null);
+  assert.equal(asOf.value, '', 'An invalid persisted date must not silently become a historical scope');
+  asOf.value = '2021-02-28';
+  asOf.dispatchEvent(new window.Event('change', { bubbles: true }));
+  assert.equal(window.JurixSearchControls.getPayload().as_of, '2021-02-28');
+  assert.equal(window.document.getElementById('jurix-as-of-secondary').value, '2021-02-28');
+  assert.equal(changedPayload.as_of, '2021-02-28');
+  assert.equal(window.document.querySelector('[data-jurix-temporal-active]').textContent, 'Data histórica ativa: 28/02/2021');
+  assert.equal(window.document.querySelector('[data-jurix-as-of-clear]').hidden, false);
+  assert.equal(JSON.parse(window.localStorage.getItem('jurix:search-options:v1')).as_of, '2021-02-28');
+  window.document.querySelector('[data-jurix-as-of-clear]').click();
+  assert.equal(window.JurixSearchControls.getPayload().as_of, null);
+  assert.equal(window.document.getElementById('jurix-as-of-secondary').value, '');
+  assert.equal(window.document.querySelector('[data-jurix-temporal-active]').hidden, true);
+  assert.equal(window.document.activeElement, asOf);
 
   const control = window.document.querySelector('.figma-search-dropdown');
   control.focus();
@@ -48,8 +75,6 @@ test('search controls preserve keyboard semantics and handle attachment lifecycl
   assert.equal(control.getAttribute('aria-expanded'), 'false');
   assert.equal(window.document.querySelector('[data-jurix-control-menu]'), null);
 
-  let changedPayload = null;
-  window.addEventListener('jurix:search-options-changed', (event) => { changedPayload = event.detail; });
   control.click();
   const allNorms = [...window.document.querySelectorAll('.jurix-control-option')].find((item) => item.textContent === 'Todas as normas indexadas');
   allNorms.click();

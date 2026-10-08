@@ -31,9 +31,20 @@ html[data-sidebar-collapsed="true"] .workspace-nav-item > span:not(:first-child)
 html[data-sidebar-collapsed="true"] .workspace-nav-item kbd { display: none; }
 html[data-sidebar-collapsed="true"] .workspace-new-action,
 html[data-sidebar-collapsed="true"] .workspace-nav-item { justify-content: center; width: 44px; min-width: 44px; margin-inline: auto; padding-inline: 0; }
+html[data-sidebar-collapsed="true"] .workspace-account-name { display: none; }
 .workspace-nav-item kbd { margin-left: auto; font-size: 10px; opacity: 1; }
 .figma-sidebar-item kbd { margin-left: auto; color: inherit; font-size: 10px; opacity: 1; white-space: nowrap; }
 .workspace-sidebar-bottom { display: grid; flex: 0 0 auto; gap: 3px; margin-top: auto; }
+.workspace-account-form { display: grid; gap: 3px; min-width: 0; }
+.workspace-account-name { overflow: hidden; padding-inline: 10px; color: var(--figma-text-muted); font-size: var(--jurix-type-caption, .8125rem); text-overflow: ellipsis; white-space: nowrap; }
+.workspace-auth-card { width: min(480px, 100%); margin: 0 auto; }
+.workspace-auth-card h2 { margin-top: 0; color: var(--figma-text-white); }
+.workspace-login-form { display: grid; gap: 18px; }
+.workspace-login-form input { box-sizing: border-box; width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid var(--figma-border); border-radius: 9px; color: var(--figma-text-white); background: var(--figma-bg-input, rgba(7,13,24,.72)); font: inherit; }
+.workspace-login-form input:focus-visible { outline: 2px solid var(--figma-blue-light); outline-offset: 2px; }
+.workspace-login-form .workspace-button { min-height: 46px; }
+.workspace-auth-error { margin: 0; padding: 10px 12px; border-radius: 9px; color: var(--figma-red-soft); background: color-mix(in srgb, var(--figma-red) 10%, transparent); }
+.workspace-auth-footnote { margin: 18px 0 0; color: var(--figma-text-muted); font-size: var(--jurix-type-caption, .8125rem); }
 .workspace-main { min-width: 0; min-height: 100vh; background: radial-gradient(circle at top right, rgba(59,130,246,.06), transparent 28%), var(--figma-bg-root); }
 .workspace-topbar { height: 64px; display: flex; align-items: center; gap: 18px; padding: 0 28px; border-bottom: 1px solid var(--figma-border); background: rgba(8,18,32,.74); backdrop-filter: blur(15px); position: sticky; top: 0; z-index: 15; }
 .workspace-mobile-toggle { display: inline-flex; width: 44px; min-width: 44px; height: 44px; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: var(--jurix-radius-sm, 10px); background: transparent; color: var(--figma-text-muted); cursor: pointer; font-size: 18px; transition: background-color var(--jurix-motion-fast, 120ms) var(--jurix-ease-standard, cubic-bezier(.2,.8,.2,1)), border-color var(--jurix-motion-fast, 120ms) var(--jurix-ease-standard, cubic-bezier(.2,.8,.2,1)), color var(--jurix-motion-fast, 120ms) var(--jurix-ease-standard, cubic-bezier(.2,.8,.2,1)); }
@@ -60,7 +71,7 @@ html[data-sidebar-collapsed="true"] .workspace-nav-item { justify-content: cente
 .workspace-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; }
 .workspace-field { display: grid; gap: 8px; color: var(--figma-text-muted); font-size: .875rem; line-height: 1.4; font-weight: 600; }
 .workspace-field-wide { grid-column: 1 / -1; }
-.workspace-field input, .workspace-field select, .workspace-search-panel input, .workspace-search-panel select { box-sizing: border-box; width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--figma-border); border-radius: 9px; background: rgba(7,13,24,.72); color: var(--figma-text-white); font: inherit; }
+.workspace-field input, .workspace-field select, .workspace-search-panel input, .workspace-search-panel select { box-sizing: border-box; width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--figma-border); border-radius: 9px; background: rgba(7,13,24,.72); color: var(--figma-text-white); font: inherit; }
 .workspace-field select { appearance: none; padding-right: 40px; background-image: linear-gradient(45deg, transparent 50%, var(--figma-blue-light) 50%), linear-gradient(135deg, var(--figma-blue-light) 50%, transparent 50%); background-position: calc(100% - 19px) 18px, calc(100% - 12px) 18px; background-size: 7px 7px, 7px 7px; background-repeat: no-repeat; cursor: pointer; }
 .workspace-field select:focus-visible { outline: 2px solid var(--figma-blue-light); outline-offset: 2px; }
 .workspace-empty-state-auth { min-height: 248px; gap: 10px; }
@@ -72,7 +83,7 @@ html[data-sidebar-collapsed="true"] .workspace-nav-item { justify-content: cente
 .workspace-option-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
 .workspace-fieldset { min-width: 0; display: grid; gap: 10px; border: 0; padding: 0; color: var(--figma-text-muted); }
 .workspace-fieldset legend { margin-bottom: 4px; color: var(--figma-text-white); font-size: var(--jurix-type-label, .875rem); font-weight: 600; }
-.workspace-fieldset label { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.workspace-fieldset label { display: flex; min-height: 44px; align-items: center; gap: 8px; font-size: 13px; }
 .workspace-form-actions { display: flex; align-items: center; gap: 10px; }
 .workspace-button { min-height: 44px; padding: 0 15px; border-radius: var(--jurix-radius-sm, 10px); border: 1px solid var(--figma-border); font: inherit; font-size: var(--jurix-type-label, .875rem); font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 .workspace-button-primary { background: var(--figma-blue-primary); color: var(--figma-text-on-accent); border-color: var(--figma-blue-primary); }
@@ -281,7 +292,7 @@ html[data-sidebar-collapsed="true"] .workspace-nav-item { justify-content: cente
 :root[data-theme="light"] .workspace-card-muted {
   background: color-mix(in srgb, var(--figma-bg-root) 70%, var(--figma-bg-surface));
 }
-:root[data-theme="light"] :is(.workspace-field input, .workspace-field select, .workspace-search-panel input, .workspace-search-panel select, .workspace-dialog input, .workspace-dialog textarea) {
+:root[data-theme="light"] :is(.workspace-field input, .workspace-field select, .workspace-search-panel input, .workspace-search-panel select, .workspace-dialog input, .workspace-dialog textarea, .workspace-login-form input) {
   border-color: var(--figma-border-strong);
   background-color: var(--figma-bg-surface);
   color: var(--figma-text-white);

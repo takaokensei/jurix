@@ -7,7 +7,7 @@
 {% block extra_css %}
 {% load static %}
 <link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}?v=20260930-axe-heading1">
-<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261004-precedent-check-v1">
+<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261006-target44-v1">
 {% endblock %}
 
 {% block content %}
@@ -79,7 +79,7 @@
     <p class="compare-intro">
         Compare dispositivos alinhados pela hierarquia normativa entre o OCR original e o texto consolidado.
     </p>
-    {% if history_enabled %}<p><a class="btn btn-secondary" href="{% url 'legislation:norma_compare' norma.pk %}?history=1">Comparar redações em datas históricas</a></p>{% endif %}
+    {% if history_enabled %}<p><a class="btn btn-secondary legal-detail-back-link" href="{% url 'legislation:norma_compare' norma.pk %}?history=1">Comparar redações em datas históricas</a></p>{% endif %}
     <p class="compare-method-note" role="note">
         Estas são diferenças textuais automáticas, não alterações jurídicas validadas. OCR, quebras de linha, cabeçalhos e consolidação podem gerar diferenças sem representar uma alteração jurídica. Confira o texto integral e os eventos normativos revisados antes de tirar conclusões.
     </p>
@@ -167,7 +167,7 @@
     {% endif %}
 
 <div class="compare-back">
-    <a href="{% url 'legislation:norma_detail' norma.pk %}" class="btn btn-secondary">« Voltar</a>
+    <a href="{% url 'legislation:norma_detail' norma.pk %}" class="btn btn-secondary legal-detail-back-link">« Voltar</a>
 </div>
 {% endblock %}
 

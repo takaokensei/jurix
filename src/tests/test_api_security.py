@@ -245,6 +245,15 @@ class TestLlmInputValidation:
         r, _ = self._stream(csrf_client, {"question": "oi", "session_id": "abc"})
         assert r.status_code == 400
 
+    def test_numeric_string_session_id_is_normalized_for_restored_chat(self, csrf_client, user):
+        session = ChatSession.objects.create(user=user, title="Conversa restaurada")
+        r, rag = self._stream(
+            csrf_client,
+            {"question": "oi", "session_id": str(session.id)},
+        )
+        assert r.status_code == 200
+        assert rag.stream_answer_question.called
+
     def test_stream_rejects_get(self, csrf_client):
         assert csrf_client.get(STREAM).status_code == 405
 

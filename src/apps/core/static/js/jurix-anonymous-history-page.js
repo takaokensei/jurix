@@ -69,7 +69,8 @@
       <span class="workspace-badge">${sessions.length} ${sessions.length === 1 ? 'conversa' : 'conversas'}</span>
     </div>
     ${sessions.map(({ session, title, preview, count }) => {
-      const href = `/assistente/${encodeURIComponent(session.slug || session.id)}/`;
+      const baseHref = `/assistente/${encodeURIComponent(session.slug || session.id)}/`;
+      const href = session.corpus === 'archive-qa' ? `${baseHref}?corpus=archive-qa` : baseHref;
       return `<article class="workspace-history-card" data-history-card data-session-id="${escapeHtml(session.id)}">
         <div class="workspace-history-card__surface"><a class="workspace-history-card__link" href="${href}">
           <div class="workspace-history-main"><span class="workspace-eyebrow">Conversa local</span><h2>${escapeHtml(title)}</h2><p>${escapeHtml(preview.slice(0, 220))}</p></div>

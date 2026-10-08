@@ -6,7 +6,7 @@
 {% block extra_css %}<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261004-candidate-evidence-v1">{% endblock %}
 {% block content %}
 <main class="card legal-detail-card document-evidence-page" aria-labelledby="evidence-title">
-  <p class="legal-detail-eyebrow">Documento normativo versionado</p>
+  <p class="legal-detail-eyebrow">{% if document.norma_id %}Documento normativo versionado{% elif document.source_kind == 'archive' %}Candidato do acervo histórico{% else %}Documento em revisão{% endif %}</p>
   <h1 id="evidence-title">{% if document.norma_id %}{{ document.norma }}{% elif candidate_identity_label %}{{ candidate_identity_label }}{% else %}{{ document.original_filename|default:'Documento em revisão' }}{% endif %}</h1>
   {% if candidate_identity_label and not document.norma_id %}<p class="document-evidence-filename"><strong>Arquivo recebido:</strong> {{ document.original_filename }}</p>{% endif %}
   {% if document.source_kind == 'archive' %}<p class="historical-message historical-message--warning" role="note"><strong>Documento do acervo histórico local.</strong> O PDF arquivado permanece preservado; a identificação normativa, a extração do texto e a segmentação precisam de revisão antes de integrar o corpus consolidado.</p>{% endif %}
@@ -30,7 +30,7 @@
     </section>{% else %}<section class="document-evidence-device" aria-label="Texto extraído sem segmentação">
       <h2>Texto extraído sem segmentação</h2>
       <p class="temporal-disclaimer">Não há índice confiável de artigos nesta extração. Confira a numeração e os limites de cada dispositivo diretamente no PDF.</p>
-      <details open><summary>Texto integral extraído (rascunho)</summary><pre class="document-evidence-raw-text">{{ extraction.legal_text|default:extraction.raw_text }}</pre></details>
+      <details><summary>Texto integral extraído (rascunho)</summary><pre class="document-evidence-raw-text">{{ extraction.legal_text|default:extraction.raw_text }}</pre></details>
     </section>{% endif %}
   {% else %}<p>Não há extração disponível para esta revisão.</p>{% endif %}
   {% if document.norma_id %}<p><a href="{% url 'legislation:norma_detail' document.norma_id %}">Voltar à norma</a></p>{% endif %}

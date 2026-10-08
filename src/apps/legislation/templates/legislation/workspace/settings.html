@@ -17,8 +17,16 @@
     <section class="workspace-card">
         <div class="workspace-card-heading">
             <div><span class="workspace-eyebrow">Assistente</span><h2>Preferências de IA</h2></div>
-            <span class="workspace-badge" aria-label="{{ norma_count }} normas disponíveis no acervo">{{ norma_count }} normas</span>
+            <span class="workspace-badge" aria-label="{{ norma_count }} normas consolidadas">{{ norma_count }} consolidadas</span>
         </div>
+        {% if archive_review_count %}
+        <div class="workspace-search-caveat" role="note">
+            <strong>{{ archive_review_count }} PDF{{ archive_review_count|pluralize }} local{{ archive_review_count|pluralize }} em revisão</strong>
+            <p>Não contam como normas consolidadas e não entram na pesquisa jurídica padrão. Confira o PDF original antes de usar uma resposta do acervo.</p>
+            <a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_list' %}#archive-candidates">Ver PDFs disponíveis</a>
+            {% if archive_assistant_enabled %}<a class="workspace-button workspace-button-primary" href="{% url 'workspace:assistant' %}?new=1&amp;corpus=archive-qa">Perguntar ao assistente sobre o acervo</a>{% endif %}
+        </div>
+        {% endif %}
         <div class="workspace-form-grid">
             <label class="workspace-field workspace-field-wide">
                 <span>Provedor de geração</span>

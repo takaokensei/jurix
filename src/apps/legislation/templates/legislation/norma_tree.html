@@ -7,6 +7,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/jurix-legacy-shell.css' %}?v=20260930-axe-heading1">
+<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261006-target44-v1">
 {% endblock %}
 
 {% block extra_js %}
@@ -40,6 +41,6 @@
 </div>
 
 <div class="tree-back">
-    <a href="{% url 'legislation:norma_detail' norma.pk %}" class="btn btn-secondary">« Voltar</a>
+    <a href="{% url 'legislation:norma_detail' norma.pk %}" class="btn btn-secondary legal-detail-back-link">« Voltar</a>
 </div>
 {% endblock %}

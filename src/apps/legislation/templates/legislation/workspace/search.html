@@ -23,11 +23,12 @@
 {% if search_error %}<div class="workspace-alert" role="alert" aria-live="assertive">{{ search_error }}</div>{% endif %}
 
 <section class="workspace-results-section" aria-live="polite">
-    <div class="workspace-section-heading"><div><span class="workspace-eyebrow">Resultados</span><h2>{% if query %}{{ result_count }} {% if result_count == 1 %}resultado{% else %}resultados{% endif %}{% else %}Comece uma pesquisa{% endif %}</h2></div>{% if query %}<span class="workspace-badge">{% if search_mode == 'semantic' %}Busca semântica{% elif search_mode == 'lexical' %}Busca textual{% else %}Busca não executada{% endif %}</span>{% endif %}</div>
+    <div class="workspace-section-heading"><div><span class="workspace-eyebrow">Resultados</span><h2>{% if has_search %}{{ result_count }} {% if result_count == 1 %}resultado{% else %}resultados{% endif %}{% else %}Comece uma pesquisa{% endif %}</h2></div>{% if has_search %}<span class="workspace-badge">{% if search_mode == 'semantic' %}Busca semântica{% elif search_mode == 'lexical' %}Busca textual{% elif search_mode == 'topic' %}Tema confirmado{% else %}Busca não executada{% endif %}</span>{% endif %}</div>
 
     {% if query %}<p class="workspace-search-caveat" role="note">A relevância é uma estimativa automática de recuperação, não uma conclusão jurídica. Confira o dispositivo e a fonte normativa antes de usar ou citar um resultado.</p>{% endif %}
+    {% if topic_code %}<p class="workspace-search-caveat" role="note">O filtro usa associações temáticas confirmadas. Afinidade temática não indica alteração, revogação ou vigência da norma.</p>{% endif %}
 
-    {% if query and results %}
+    {% if has_search and results %}
     <div class="workspace-result-list">
         {% for result in results %}
         {% if result.dispositivo %}
@@ -46,11 +47,20 @@
         {% endif %}
         {% endfor %}
     </div>
-    {% elif query %}
+    {% elif has_search %}
     <div class="workspace-empty-state workspace-search-empty">
         <strong>{{ empty_state_title }}</strong>
         <p>{{ empty_state_description }}</p>
         <a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_list' %}?q={{ query|urlencode }}&amp;tipo={{ norma_type|urlencode }}&amp;ano={{ year|default_if_none:''|urlencode }}">Buscar no acervo normativo</a>
+        {% if archive_search_available and query %}
+        <div class="workspace-search-caveat" role="note">
+            <p>Os PDFs locais ainda estão em revisão e não entram nos resultados consolidados. Se consultar esse acervo, confira o PDF original: a extração ainda não é texto jurídico validado.</p>
+            {% if archive_assistant_available %}
+            <a class="workspace-button workspace-button-primary" href="{% url 'workspace:assistant' %}?new=1&amp;corpus=archive-qa&amp;question={{ query|urlencode }}">Perguntar ao assistente sobre os PDFs em revisão</a>
+            {% endif %}
+            <a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_list' %}#archive-candidates">Ver PDFs locais disponíveis</a>
+        </div>
+        {% endif %}
     </div>
     {% else %}
     <div class="workspace-empty-state workspace-search-empty"><strong>Pesquise por conceito ou dispositivo.</strong><p>Exemplos: “parcelamento do solo”, “licenciamento ambiental” ou “IPTU progressivo”.</p></div>

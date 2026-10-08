@@ -1,5 +1,13 @@
 (() => {
     'use strict';
+    const collapseSecondaryDetailsOnSmallScreens = () => {
+        if (!window.matchMedia?.('(max-width: 640px)').matches) return;
+        document.querySelectorAll('[data-responsive-disclosure]').forEach((disclosure) => {
+            disclosure.removeAttribute('open');
+        });
+    };
+    collapseSecondaryDetailsOnSmallScreens();
+
     const enhanceDeviceIndex = () => {
         const index = document.querySelector('[data-device-index]');
         if (!index) return;

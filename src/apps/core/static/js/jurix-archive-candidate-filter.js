@@ -15,6 +15,9 @@
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .toLocaleLowerCase('pt-BR')
+        // Legal identifiers are commonly entered with thousands separators
+        // (e.g. 7.795/2005), while archive filenames and labels may use 7795.
+        .replace(/(?<=\d)\.(?=\d)/g, '')
         .trim();
 
     function applyFilters() {

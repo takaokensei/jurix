@@ -12,8 +12,8 @@ const html = `<!doctype html><section>
   <p id="archive-candidate-filter-summary" role="status" aria-live="polite"></p>
   <div id="archive-candidates-list">
     <article class="jurix-archive-candidate" data-search="Lei Complementar nº 120/2010 LeiComplementar20101203_120.pdf 0" data-identity="resolved" data-review-status="pending" data-extraction-status="complete"></article>
-    <article class="jurix-archive-candidate" data-search="Decreto nº 12887/2022 Decreto_20230831_12887_.pdf 4" data-identity="unresolved" data-review-status="pending" data-extraction-status="partial"></article>
-    <article class="jurix-archive-candidate" data-search="Lei Ordinária nº 55/2024 Lei_55.pdf 7" data-identity="resolved" data-review-status="in_review" data-extraction-status="none"></article>
+    <article class="jurix-archive-candidate" data-search="Decreto nº 7795/2005 decreto_7795.pdf 2" data-identity="unresolved" data-review-status="pending" data-extraction-status="partial"></article>
+    <article class="jurix-archive-candidate" data-search="Lei Ordinária nº 6021/2009 LeiOrdinaria_6021.pdf 7" data-identity="resolved" data-review-status="in_review" data-extraction-status="none"></article>
   </div>
   <p id="archive-candidates-no-results" hidden></p>
 </section>`;
@@ -46,6 +46,14 @@ test('busca candidatos por número/ano sem diferenciar acentos ou caixa', () => 
   ui.search.dispatchEvent(new ui.dom.window.Event('input', { bubbles: true }));
   assert.deepEqual(ui.cards.map((card) => card.hidden), [false, true, true]);
   assert.equal(ui.document.getElementById('archive-candidate-filter-summary').textContent, 'Exibindo 1 de 3 documentos.');
+});
+
+test('busca número legal com separador de milhar mesmo quando o acervo não o usa', () => {
+  const ui = boot('Decreto nº 7.795/2005');
+  assert.deepEqual(ui.cards.map((card) => card.hidden), [true, false, true]);
+  ui.search.value = 'Lei 6.021/2009';
+  ui.search.dispatchEvent(new ui.dom.window.Event('input', { bubbles: true }));
+  assert.deepEqual(ui.cards.map((card) => card.hidden), [true, true, false]);
 });
 
 test('combina filtro de identidade e status sem alterar os cartões de origem', () => {

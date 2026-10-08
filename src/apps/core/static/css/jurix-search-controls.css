@@ -91,3 +91,104 @@
   background: rgba(248, 250, 252, .14);
   color: var(--figma-text-white);
 }
+
+.jurix-temporal-filter {
+  display: grid;
+  grid-template-columns: auto minmax(150px, 190px) auto;
+  align-items: center;
+  gap: 8px 10px;
+  min-width: min(100%, 390px);
+  padding: 6px 10px;
+  border: 1px solid var(--figma-border, rgba(126, 168, 210, .24));
+  border-radius: 10px;
+  color: var(--figma-text-secondary, #a9b8cc);
+  font-size: 12px;
+}
+
+.jurix-temporal-filter--hero {
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 8px;
+}
+
+.jurix-temporal-filter label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.jurix-temporal-filter input[type="date"] {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 44px;
+  padding: 7px 9px;
+  border: 1px solid var(--figma-border, rgba(126, 168, 210, .24));
+  border-radius: 8px;
+  background: var(--figma-bg-button, #111827);
+  color: var(--figma-text-primary, #f8fafc);
+  font: inherit;
+}
+
+:root[data-theme="dark"] .jurix-temporal-filter input[type="date"] { color-scheme: dark; }
+:root[data-theme="light"] .jurix-temporal-filter input[type="date"] { color-scheme: light; }
+
+.jurix-temporal-filter input[type="date"]:focus-visible,
+.jurix-temporal-clear:focus-visible {
+  outline: 2px solid var(--figma-blue-light, #62d8ff);
+  outline-offset: 2px;
+}
+
+.jurix-temporal-filter p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--figma-text-muted, #94a3b8);
+  line-height: 1.45;
+}
+
+.jurix-temporal-clear {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--figma-border, rgba(126, 168, 210, .24));
+  border-radius: 8px;
+  background: transparent;
+  color: var(--figma-text-secondary, #cbd5e1);
+  font: inherit;
+  cursor: pointer;
+}
+
+.jurix-temporal-clear:hover {
+  background: rgba(98, 216, 255, .1);
+  color: var(--figma-text-primary, #f8fafc);
+}
+
+.jurix-temporal-active:not([hidden]) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(98, 216, 255, .28);
+  border-radius: 999px;
+  background: rgba(98, 216, 255, .08);
+  color: var(--figma-blue-pale, #b7efff);
+  font-size: 12px;
+}
+
+@media (max-width: 480px) {
+  .jurix-temporal-filter {
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .jurix-temporal-filter--hero {
+    width: 100%;
+  }
+
+  .jurix-temporal-filter label {
+    grid-column: 1 / -1;
+  }
+
+  .jurix-temporal-filter input[type="date"] {
+    width: 100%;
+  }
+}

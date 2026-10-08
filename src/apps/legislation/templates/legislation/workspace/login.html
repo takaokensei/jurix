@@ -1,0 +1,28 @@
+{% extends "legislation/workspace/base.html" %}
+
+{% block title %}Entrar — Jurix{% endblock %}
+{% block section_name %}Entrar{% endblock %}
+{% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Entrar' %}{% endblock %}
+
+{% block content %}
+<section class="workspace-page-header">
+    <div><span class="workspace-eyebrow">Acesso à conta</span><h1>Entre no Jurix</h1><p>Use uma conta fornecida pelo administrador desta instalação para acessar suas coleções privadas.</p></div>
+</section>
+<section class="workspace-card workspace-auth-card" aria-labelledby="login-heading">
+    <h2 id="login-heading">Entrar na sua conta</h2>
+    {% if form.non_field_errors %}<div class="workspace-auth-error" role="alert">Não foi possível entrar. Confira seu usuário e senha.</div>{% endif %}
+    <form method="post" class="workspace-login-form">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+        <label class="workspace-field" for="id_username">Usuário
+            <input id="id_username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required value="{{ form.username.value|default:'' }}"{% if form.errors %} aria-invalid="true" aria-describedby="login-error"{% endif %}>
+        </label>
+        <label class="workspace-field" for="id_password">Senha
+            <input id="id_password" name="password" type="password" autocomplete="current-password" required{% if form.errors %} aria-invalid="true" aria-describedby="login-error"{% endif %}>
+        </label>
+        {% if form.errors %}<p id="login-error" class="workspace-auth-error" role="alert">Usuário ou senha incorretos.</p>{% endif %}
+        <button class="workspace-button workspace-button-primary" type="submit">Entrar</button>
+    </form>
+    <p class="workspace-auth-footnote">Ainda não tem acesso? Peça uma conta ao administrador. O Jurix não permite cadastro público.</p>
+</section>
+{% endblock %}

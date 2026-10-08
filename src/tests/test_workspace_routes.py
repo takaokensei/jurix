@@ -307,6 +307,45 @@ def test_norma_list_corpus_total_matches_current_database(norma):
     assert 'class="jurix-norma-stat-label">resultados<' in body
 
 
+def test_norma_list_hides_explicit_qa_only_consolidated_fixtures(norma):
+    norma.numero = "9917"
+    norma.ano = 2090
+    norma.identity_json = {"synthetic_fixture": True}
+    norma.ementa = "[QA SINTÉTICO — NÃO É LEGISLAÇÃO REAL] Fixture de coleção."
+    norma.save(update_fields=["numero", "ano", "identity_json", "ementa", "updated_at"])
+
+    body = Client().get("/normas/").content.decode()
+
+    assert "Lei 9917/2090" not in body
+    assert "[QA SINTÉTICO" not in body
+    assert 'class="jurix-norma-stat-value">0<' in body
+
+
+def test_workspace_norma_count_excludes_synthetic_collection_fixture(norma):
+    norma.identity_json = {"synthetic_fixture": True}
+    norma.save(update_fields=["identity_json", "updated_at"])
+
+    collections_body = Client().get("/colecoes/").content.decode()
+    settings_body = Client().get("/configuracoes/").content.decode()
+
+    assert "1 normas no acervo" not in collections_body
+    assert "0 consolidadas" in settings_body
+    assert "PDF local" not in settings_body
+
+
+def test_exact_search_does_not_surface_synthetic_consolidated_fixture(norma):
+    norma.numero = "9917"
+    norma.ano = 2090
+    norma.identity_json = {"synthetic_fixture": True}
+    norma.ementa = "[QA SINTÉTICO — NÃO É LEGISLAÇÃO REAL] Fixture de coleção."
+    norma.save(update_fields=["numero", "ano", "identity_json", "ementa", "updated_at"])
+
+    body = Client().get("/pesquisa/?q=Lei+9917%2F2090").content.decode()
+
+    assert "Norma não encontrada no acervo" in body
+    assert "[QA SINTÉTICO" not in body
+
+
 def test_norma_list_surfaces_archive_candidates_only_in_qa():
     document = DocumentoNormativo.objects.create(
         document_key="a" * 64,
@@ -356,13 +395,40 @@ def test_norma_list_surfaces_archive_candidates_only_in_qa():
     assert "Extração completa · 1 página · segmentação de dispositivos pendente" in body
     assert 'Exibindo 1 de 1 documentos.' in body
 
+    no_match = Client().get("/normas/?q=parcelamento+do+solo").content.decode()
+    assert 'value="parcelamento do solo"' in no_match
+    assert (
+        'href="?q=parcelamento%20do%20solo&amp;tipo=&amp;ano=&amp;ordenar=recentes'
+        '&amp;arquivo_q=#archive-candidates"'
+    ) in no_match
+
+    show_all_candidates = Client().get(
+        "/normas/?q=parcelamento+do+solo&arquivo_q="
+    ).content.decode()
+    assert 'id="archive-candidate-search"' in show_all_candidates
+    assert 'id="archive-candidate-search" type="search" autocomplete="off" spellcheck="false"\n                    value=""' in show_all_candidates
+    assert 'Exibindo 1 de 1 documentos.' in show_all_candidates
+
+    with override_settings(
+        NORMATIVE_ARCHIVE_ENABLED=True,
+        NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True,
+    ):
+        collections_body = Client().get("/colecoes/").content.decode()
+        settings_body = Client().get("/configuracoes/").content.decode()
+
+    assert "1 PDF local em revisão" in collections_body
+    assert "1 PDF local em revisão" in settings_body
+    assert "normas consolidadas" in collections_body
+    assert 'href="/normas/#archive-candidates"' in settings_body
+    assert "Perguntar ao assistente sobre o acervo" in collections_body
+
 
 def test_norma_list_rewrites_legacy_sapl_detail_url(norma):
     norma.sapl_id = 9387
     norma.sapl_url = "https://sapl.natal.rn.leg.br/norma/normajuridica/9387/"
     norma.save(update_fields=["sapl_id", "sapl_url"])
     body = Client().get("/normas/").content.decode()
-    assert 'href="https://sapl.natal.rn.leg.br/norma/9387/"' in body
+    assert 'href="https://sapl.natal.rn.leg.br/norma/9387"' in body
     assert "/norma/normajuridica/9387/" not in body
 
 
@@ -374,7 +440,7 @@ def test_norma_detail_rewrites_legacy_sapl_url_without_mutating_the_record(norma
     response = Client().get(f"/normas/{norma.pk}/")
     body = response.content.decode()
     assert response.status_code == 200
-    assert 'href="https://sapl.natal.rn.leg.br/norma/9387/"' in body
+    assert 'href="https://sapl.natal.rn.leg.br/norma/9387"' in body
     assert legacy not in body
     norma.refresh_from_db()
     assert norma.sapl_url == legacy
@@ -503,6 +569,20 @@ def test_norma_pdf_export_returns_a_real_pdf(norma):
 def test_assistant_can_prefill_a_consolidated_norm_context(norma):
     body = Client().get(f"/assistente/?norma_id={norma.pk}").content.decode()
     assert f"Sobre Lei nº {norma.numero}/{norma.ano}:" in body
+
+
+def test_assistant_prefills_a_bounded_question_without_creating_a_session():
+    question = "O que prevê o art. 18 da Lei Complementar nº 120/2010?"
+    response = Client().get(
+        "/assistente/",
+        {"new": "1", "corpus": "archive-qa", "question": question},
+    )
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert question in body
+    assert f'value="{question}"' in body
+    assert ChatSession.objects.count() == 0
 
 
 def test_assistant_ignores_unknown_or_non_numeric_norm_context(norma):
@@ -661,6 +741,70 @@ def test_legal_search_labels_successful_vector_retrieval_as_semantic(monkeypatch
 
     assert response.status_code == 200
     assert b"Busca sem\xc3\xa2ntica" in response.content
+
+
+def test_empty_search_offers_separate_review_archive_search(monkeypatch):
+    DocumentoNormativo.objects.create(
+        document_key="e" * 64,
+        source_kind=DocumentoNormativo.SourceKind.ARCHIVE,
+        source_ref="archive:qa-fixture:entry:4321",
+        archive_sha256="f" * 64,
+        entry_index=4321,
+        entry_name="fixture/Lei_4321.pdf",
+        original_filename="Lei_4321.pdf",
+        role=DocumentoNormativo.Role.ORIGINAL,
+        storage_key="sha256/ee/ff/fixture.pdf",
+        size_bytes=321,
+        content_sha256="a" * 64,
+        review_status=DocumentoNormativo.ReviewStatus.PENDING,
+    )
+
+    class FakeRAG:
+        def semantic_search(self, **kwargs):
+            return {"results": [], "mode": "semantic"}
+
+    monkeypatch.setattr("src.apps.legislation.workspace_views.RAGService", FakeRAG)
+    with override_settings(
+        NORMATIVE_ARCHIVE_ENABLED=True,
+        NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True,
+    ):
+        response = Client().get("/pesquisa/", {"q": "vencimento básico"})
+
+    body = response.content.decode()
+    assert response.status_code == 200
+    assert "PDFs locais ainda estão em revisão" in body
+    assert (
+        'href="/assistente/?new=1&amp;corpus=archive-qa&amp;question=vencimento%20b%C3%A1sico"'
+        in body
+    )
+    assert 'href="/normas/#archive-candidates"' in body
+
+
+def test_legal_search_never_presents_synthetic_qa_norms_as_product_results(norma, monkeypatch):
+    norma.identity_json = {"synthetic_fixture": True}
+    norma.save(update_fields=["identity_json", "updated_at"])
+    device = Dispositivo.objects.create(
+        norma=norma,
+        tipo="artigo",
+        numero="1º",
+        ordem=1,
+        texto="plano de cargos sintético para QA",
+    )
+
+    class FakeRAG:
+        def semantic_search(self, **kwargs):
+            return {
+                "results": [{"dispositivo": device, "similarity_score": 0.99, "context": {}}],
+                "mode": "semantic",
+            }
+
+    monkeypatch.setattr("src.apps.legislation.workspace_views.RAGService", FakeRAG)
+    response = Client().get("/pesquisa/", {"q": "plano de cargos"})
+
+    assert response.status_code == 200
+    assert b"0 resultados" in response.content
+    assert f"/normas/{norma.pk}/".encode() not in response.content
+    assert b"Fixture sint\xc3\xa9tica de QA" not in response.content
 
 
 def test_legal_search_result_links_to_the_matching_device(norma, monkeypatch):

@@ -12,7 +12,8 @@
         return Array.isArray(data.sessions) ? data.sessions : [];
     }
     function sessionUrl(session) {
-        return `${document.body.dataset.chatbotUrl || '/assistente/'}${encodeURIComponent(session.slug || session.id)}/`;
+        const base = `${document.body.dataset.chatbotUrl || '/assistente/'}${encodeURIComponent(session.slug || session.id)}/`;
+        return session.corpus === 'archive-qa' ? `${base}?corpus=archive-qa` : base;
     }
 
     function announce(message, isError = false) {
@@ -220,7 +221,7 @@
             link.className = 'jurix-recent-chat chat-session-main';
         }
         link.href = isPending && session.pending_local === true
-            ? (document.body.dataset.chatbotUrl || '/assistente/')
+            ? `${document.body.dataset.chatbotUrl || '/assistente/'}${new URLSearchParams(window.location.search).get('corpus') === 'archive-qa' ? '?corpus=archive-qa' : ''}`
             : sessionUrl(session);
         link.textContent = session.title || 'Conversa sem título';
         link.title = link.textContent;
@@ -295,9 +296,18 @@
             .find((item) => item.dataset.clientSessionId === String(clientSessionId));
         const sessionId = session.id || session.session_id;
         if (!row || !sessionId) return false;
+        const archiveQaMode = new URLSearchParams(window.location.search).get('corpus') === 'archive-qa';
+        if (archiveQaMode && String(sessionId).startsWith('local-')) {
+            window.JurixAnonymousHistory?.ensureSession?.(
+                sessionId,
+                session.title || row.querySelector('.chat-session-main')?.textContent,
+                { corpus: 'archive-qa' },
+            );
+        }
         const title = session.title || row.querySelector('.chat-session-main')?.textContent || 'Conversa sem título';
         updateSessionRow(row, {
             ...session,
+            ...(archiveQaMode ? { corpus: 'archive-qa' } : {}),
             id: sessionId,
             slug: session.slug || session.session_slug,
             title,

@@ -7,7 +7,7 @@
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Normas' %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jurix-norma-list.css' %}?v=20261004-archive-review-filters2">
+<link rel="stylesheet" href="{% static 'css/jurix-norma-list.css' %}?v=20261008-archive-anchor1">
 {% endblock %}
 
 {% block content %}
@@ -174,13 +174,13 @@
         <a class="jurix-norma-primary-button" href="{% url 'legislation:norma_list' %}">Limpar filtros</a>
         {% endif %}
         {% if archive_candidate_count %}
-        <a class="jurix-norma-secondary-button" href="#archive-candidates-title">Ver os {{ archive_candidate_count }} PDFs em revisão</a>
+        <a class="jurix-norma-secondary-button" href="?q={{ search_query|urlencode }}&amp;tipo={{ selected_type|urlencode }}&amp;ano={{ selected_year|urlencode }}&amp;ordenar={{ ordering|urlencode }}&amp;arquivo_q=#archive-candidates">Ver os {{ archive_candidate_count }} PDFs em revisão</a>
         {% endif %}
     </section>
     {% endif %}
 
     {% if archive_candidates %}
-    <section class="jurix-archive-candidates" aria-labelledby="archive-candidates-title">
+    <section class="jurix-archive-candidates" id="archive-candidates" aria-labelledby="archive-candidates-title">
         <div class="jurix-archive-candidates-heading">
             <div>
                 <span class="jurix-norma-eyebrow">Acervo histórico local</span>
@@ -196,7 +196,7 @@
             <div class="jurix-archive-candidate-search-field">
                 <label for="archive-candidate-search">Localizar documento</label>
                 <input id="archive-candidate-search" type="search" autocomplete="off" spellcheck="false"
-                    value="{{ request.GET.q|default:'' }}"
+                    value="{{ archive_candidate_query|default:'' }}"
                     placeholder="Número, ano, tipo ou nome do arquivo" aria-controls="archive-candidates-list">
             </div>
             <div class="jurix-archive-candidate-select-field">
@@ -260,5 +260,5 @@
 
 {% block extra_js %}
 <script src="{% static 'js/jurix-norma-list.js' %}?v=20261002-exact-reference2"></script>
-{% if archive_candidates %}<script src="{% static 'js/jurix-archive-candidate-filter.js' %}?v=20261004-candidate-filters3"></script>{% endif %}
+{% if archive_candidates %}<script src="{% static 'js/jurix-archive-candidate-filter.js' %}?v=20261006-candidate-number-normalization1"></script>{% endif %}
 {% endblock %}

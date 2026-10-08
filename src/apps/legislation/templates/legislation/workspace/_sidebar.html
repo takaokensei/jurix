@@ -40,6 +40,15 @@
             </section>
 
             <div class="workspace-sidebar-bottom">
+                {% if user.is_authenticated %}
+                <form method="post" action="{% url 'workspace:logout' %}" class="workspace-account-form">
+                    {% csrf_token %}
+                    <span class="workspace-account-name" title="{{ user.get_username }}">{{ user.get_username }}</span>
+                    <button type="submit" class="workspace-nav-item" aria-label="Sair da conta"><svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"></path></svg><span>Sair</span></button>
+                </form>
+                {% else %}
+                <a href="{% url 'workspace:login' %}?next={{ request.path|urlencode }}" class="workspace-nav-item" aria-label="Entrar na conta"><svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 8l4 4-4 4"></path><path d="M18 12H6"></path><path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"></path><path d="M4 12h8"></path></svg><span>Entrar</span></a>
+                {% endif %}
                 {% if user.is_authenticated and user.is_staff %}
                 <a href="/admin/" class="workspace-nav-item"><svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3 4 6v5c0 5 3.4 8 8 10 4.6-2 8-5 8-10V6z"></path><path d="m9 12 2 2 4-4"></path></svg><span>Admin</span></a>
                 {% endif %}

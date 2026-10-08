@@ -288,7 +288,11 @@
             item.addEventListener('click', () => {
                 executeCommand(item.dataset.commandId);
             });
-            item.addEventListener('mouseenter', () => {
+            // Only update the active option when the pointer actually moves. A
+            // delayed history response replaces the list beneath a stationary
+            // cursor; `mouseenter` can fire for that new node and steal the
+            // keyboard selection just as the user is typing.
+            item.addEventListener('pointermove', () => {
                 selectItem(index);
             });
         });

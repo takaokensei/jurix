@@ -30,12 +30,21 @@
     <p>{% if user.is_authenticated %}Adicione normas municipais à coleção para acompanhar um assunto jurídico.{% else %}Coleções organizam normas municipais por assunto jurídico.{% endif %}</p>
     {% if not user.is_authenticated %}
     <div class="workspace-auth-notice" role="note">
-        <strong>Criação de coleções indisponível</strong>
-        <span>Esta instalação ainda não oferece acesso por conta. Você pode consultar o acervo público enquanto isso.</span>
+        <strong>Entre para salvar suas coleções</strong>
+        <span>Contas são provisionadas pelo administrador desta instalação; não há cadastro público.</span>
+        <a class="workspace-button workspace-button-primary" href="{% url 'workspace:login' %}?next=%2Fcolecoes%2F">Entrar na conta</a>
         <a class="workspace-button workspace-button-ghost" href="{% url 'legislation:norma_list' %}">Explorar normas</a>
     </div>
     {% endif %}
-    <div class="workspace-empty-stats" aria-label="Recursos disponíveis"><span><strong>{{ norma_count }}</strong> normas no acervo</span><span>Pesquisa semântica</span><span>Histórico de conversas</span></div>
+    <div class="workspace-empty-stats" aria-label="Recursos disponíveis"><span><strong>{{ norma_count }}</strong> normas consolidadas</span><span>Pesquisa semântica</span><span>Histórico de conversas</span></div>
+    {% if archive_review_count %}
+    <div class="workspace-search-caveat" role="note">
+        <strong>{{ archive_review_count }} PDF{{ archive_review_count|pluralize }} local{{ archive_review_count|pluralize }} em revisão</strong>
+        <p>Esses documentos ainda não são normas consolidadas nem podem ser salvos como tal em coleções.</p>
+        <a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_list' %}#archive-candidates">Ver PDFs disponíveis</a>
+        {% if archive_assistant_enabled %}<a class="workspace-button workspace-button-primary" href="{% url 'workspace:assistant' %}?new=1&amp;corpus=archive-qa">Perguntar ao assistente sobre o acervo</a>{% endif %}
+    </div>
+    {% endif %}
 </section>
 {% endif %}
 

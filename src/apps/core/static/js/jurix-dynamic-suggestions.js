@@ -66,6 +66,22 @@
         if (chips) chips.replaceChildren();
     }
 
+    function renderArchiveQaNotice() {
+        const root = getRoot();
+        if (!root) return;
+        setBusy(false);
+        root.innerHTML = `
+            <div class="jurix-suggestions-empty" role="status">
+                <span class="jurix-suggestions-empty-mark" aria-hidden="true">—</span>
+                <div>
+                    <strong>Sugestões automáticas indisponíveis neste modo</strong>
+                    <p>Esta sessão consulta PDFs de um acervo em revisão. Faça sua pergunta no campo acima e confira as fontes antes de usar a resposta.</p>
+                </div>
+            </div>`;
+        const chips = document.getElementById('suggestion-chips');
+        if (chips) chips.replaceChildren();
+    }
+
     function render(items) {
         const root = getRoot();
         const chips = document.getElementById('suggestion-chips');
@@ -150,6 +166,13 @@
     }
 
     async function refresh({ force = true } = {}) {
+        // Archive QA is intentionally a separate evidence corpus. Do not show
+        // cached production suggestions or query the municipal-corpus endpoint.
+        if (document.body?.dataset.qaArchiveCorpus === 'true') {
+            lastItems = [];
+            renderArchiveQaNotice();
+            return [];
+        }
         const cached = force ? null : readCache();
         if (cached) {
             render(cached);
