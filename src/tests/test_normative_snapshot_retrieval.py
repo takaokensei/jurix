@@ -10,6 +10,7 @@ from src.processing.adaptive_retrieval import RetrievalOptions
 from src.processing.device_revision import structural_key
 from src.processing.normative_projection import NormativeProjection
 from src.processing.normative_query import classify_normative_query
+from src.processing.rag_generation import validate_generated_answer
 from src.processing.temporal_retrieval import retrieve_historical_norma
 from src.processing.temporal_scope import TemporalScope
 
@@ -98,6 +99,16 @@ def test_explicit_historical_article_uses_projected_text_not_current_device(
     assert rows[0]["dispositivo"].texto != current.texto
     assert rows[0]["temporal_version"]["as_of"] == AS_OF.isoformat()
     assert rows[0]["coverage"]["version_hash"] == "b" * 64
+    expected_citation_id = (
+        f"jurix:norma:{norma.pk}:version:{'b' * 64}:device:"
+        f"{structural_key('root', 'artigo', '5º')}"
+    )
+    assert rows[0]["citation_id"] == expected_citation_id
+    validated = validate_generated_answer(
+        "O prazo histórico era de dez dias.", list(rows)
+    )
+    assert validated["grounded"] is True
+    assert "[[1]]" in validated["answer"]
     project.assert_called_once()
 
 

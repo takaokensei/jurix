@@ -11,6 +11,7 @@ import pytest
 from src.processing.legal_parser import (
     LegalTextParser,
     classify_closing_segments,
+    extract_normative_appendices,
     extract_publication_metadata,
     strip_closing_editorial_metadata,
 )
@@ -570,6 +571,22 @@ Art. 1º A execução observará o limite anual previsto no quadro abaixo.
     assert [item["numero"] for item in articles] == ["4º", "1º"]
     assert "Presidente" not in articles[0]["texto"]
     assert "limite anual" in articles[1]["texto"]
+
+
+def test_extract_normative_appendices_handles_parenthetical_heading_and_keeps_sections_separate():
+    text = (
+        "Art. 1º Abre crédito.\n"
+        "Publicada no Diário Oficial em 21/9/2005 Autoria: Câmara.\n"
+        "Adendo I (Incorporação) \nManutenção do FUNAM.\n"
+        "Adendo II \n(Redução)\nReabilitação da Ribeira.\n"
+    )
+
+    appendices = extract_normative_appendices(text)
+
+    assert [item["label"] for item in appendices] == ["Adendo I", "Adendo II"]
+    assert "Manutenção do FUNAM" in appendices[0]["text"]
+    assert "Reabilitação da Ribeira" not in appendices[0]["text"]
+    assert "Reabilitação da Ribeira" in appendices[1]["text"]
 
 
 def test_publication_metadata_uses_diario_date_only_for_explicit_publication_effective_clause():

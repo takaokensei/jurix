@@ -13,13 +13,20 @@ from src.apps.legislation.source_urls import (
 @override_settings(SAPL_BASE_URL="https://sapl.natal.rn.leg.br/api")
 def test_legacy_sapl_ui_route_is_rewritten():
     assert canonical_sapl_url("https://sapl.natal.rn.leg.br/norma/normajuridica/9386/") == (
-        "https://sapl.natal.rn.leg.br/norma/9386/"
+        "https://sapl.natal.rn.leg.br/norma/9386"
+    )
+
+
+@override_settings(SAPL_BASE_URL="https://sapl.natal.rn.leg.br/api")
+def test_current_sapl_route_trailing_slash_is_removed():
+    assert canonical_sapl_url("https://sapl.natal.rn.leg.br/norma/9387/") == (
+        "https://sapl.natal.rn.leg.br/norma/9387"
     )
 
 
 @override_settings(SAPL_BASE_URL="https://sapl.natal.rn.leg.br/api")
 def test_id_only_url_is_built():
-    assert canonical_sapl_url(sapl_id=9386) == "https://sapl.natal.rn.leg.br/norma/9386/"
+    assert canonical_sapl_url(sapl_id=9386) == "https://sapl.natal.rn.leg.br/norma/9386"
 
 
 @override_settings(SAPL_BASE_URL="https://sapl.natal.rn.leg.br/api")
@@ -33,8 +40,8 @@ def test_norma_object_uses_canonical_source():
     norma = SimpleNamespace(
         sapl_id=9386, sapl_url="https://sapl.natal.rn.leg.br/norma/normajuridica/9386/", pdf_url=""
     )
-    assert canonical_norma_url(norma).endswith("/norma/9386/")
-    assert public_source_url(norma).endswith("/norma/9386/")
+    assert canonical_norma_url(norma).endswith("/norma/9386")
+    assert public_source_url(norma).endswith("/norma/9386")
 
 
 @override_settings(SAPL_BASE_URL="https://sapl.natal.rn.leg.br/api")
@@ -46,4 +53,4 @@ def test_cached_source_legacy_sapl_route_is_canonicalized():
             "similarity_score": 0.9,
         }
     )
-    assert serialized["sapl_url"] == "https://sapl.natal.rn.leg.br/norma/9387/"
+    assert serialized["sapl_url"] == "https://sapl.natal.rn.leg.br/norma/9387"

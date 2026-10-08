@@ -7,6 +7,8 @@ from . import workspace_views
 app_name = "workspace"
 
 urlpatterns = [
+    path("conta/entrar/", workspace_views.workspace_login_view, name="login"),
+    path("conta/sair/", workspace_views.workspace_logout_view, name="logout"),
     path("assistente/", workspace_views.assistente_view, name="assistant"),
     path(
         "assistente/<str:session_slug>/", workspace_views.assistente_view, name="assistant_session"

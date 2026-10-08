@@ -190,8 +190,44 @@ def matches_temporal_scope(
     return True
 
 
+def deduplicate_event_revisions(events):
+    """Collapse duplicate rows for the same evidence/target, preserving the strongest current review."""
+    from src.apps.legislation.event_review import event_review_status
+
+    def identity(event):
+        fingerprint = str(event.revision_fingerprint or "").strip()
+        if not fingerprint:
+            return ("unfingerprinted", event.pk)
+        return (
+            event.dispositivo_fonte_id,
+            event.acao,
+            fingerprint,
+            event.norma_alvo_id,
+            event.dispositivo_alvo_id,
+            event.effective_on,
+            event.effective_date_status,
+        )
+
+    def priority(event):
+        status_rank = {"pending": 0, "rejected": 1, "confirmed": 2}
+        return (
+            status_rank.get(event_review_status(event), 0),
+            bool(event.review_revision_id),
+            event.pk,
+        )
+
+    selected = {}
+    for event in events:
+        key = identity(event)
+        current = selected.get(key)
+        if current is None or priority(event) > priority(current):
+            selected[key] = event
+    return list(selected.values())
+
+
 def build_norma_timeline(norma, *, as_of: date | None = None) -> list[dict[str, Any]]:
     """Build an auditable timeline, optionally cut at a historical date."""
+    from src.apps.legislation.event_review import event_review_status
     from src.apps.legislation.models import EventoAlteracao
 
     def date_display(value: date | str | None) -> str | None:
@@ -243,6 +279,10 @@ def build_norma_timeline(norma, *, as_of: date | None = None) -> list[dict[str, 
         .distinct()
         .order_by("dispositivo_fonte__norma__data_publicacao", "created_at", "id")
     )
+    # Multiple rows can represent one extracted event after an earlier import
+    # or QA seeding pass. Keep the strongest current review for identical
+    # evidence/target, but never collapse distinct targets or temporal states.
+    events = deduplicate_event_revisions(events)
     for event in events:
         source = event.dispositivo_fonte.norma
         is_outgoing_event = source.id == norma.id
@@ -261,8 +301,6 @@ def build_norma_timeline(norma, *, as_of: date | None = None) -> list[dict[str, 
             continue
         source_date = source.data_publicacao
         temporal = event_temporal_decision(event)
-        from src.apps.legislation.event_review import event_review_status
-
         relation_status = event_review_status(event)
         effective_date = temporal.effective_on if temporal.status == "confirmed" else None
         candidate_effective_date = (
@@ -379,4 +417,19 @@ def build_norma_timeline(norma, *, as_of: date | None = None) -> list[dict[str, 
             item["title"],
         )
     )
+    target_record_counts: dict[int, int] = {}
+    for item in items:
+        target_id = item.get("target_dispositivo_id")
+        if item.get("kind") == "event" and target_id is not None:
+            target_record_counts[target_id] = target_record_counts.get(target_id, 0) + 1
+    target_record_seen: dict[int, int] = {}
+    for item in items:
+        target_id = item.get("target_dispositivo_id")
+        count = target_record_counts.get(target_id, 0)
+        if item.get("kind") != "event" or target_id is None or count < 2:
+            continue
+        ordinal = target_record_seen.get(target_id, 0) + 1
+        target_record_seen[target_id] = ordinal
+        item["target_relation_count"] = count
+        item["target_relation_ordinal"] = ordinal
     return items

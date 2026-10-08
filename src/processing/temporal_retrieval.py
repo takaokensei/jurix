@@ -153,6 +153,19 @@ def _scope_allows(norma: Norma, scope: TemporalScope) -> bool:
     return scope.contains_publication(norma.data_publicacao)
 
 
+def _temporal_citation_id(
+    norma_id: object, structural_key: object, version_hash: object
+) -> str | None:
+    """Return a citation identity tied to the exact projected device version."""
+    structural = str(structural_key or "").lower()
+    version = str(version_hash or "").lower()
+    if not norma_id or not re.fullmatch(r"[a-f0-9]{64}", structural):
+        return None
+    if not re.fullmatch(r"[a-f0-9]{64}", version):
+        return None
+    return f"jurix:norma:{norma_id}:version:{version}:device:{structural}"
+
+
 def _projection_rows(
     norma: Norma,
     query: str,
@@ -284,6 +297,11 @@ def _projection_rows(
         rows.append(
             {
                 "dispositivo": device,
+                "citation_id": _temporal_citation_id(
+                    norma.pk,
+                    device.structural_key,
+                    projection.content_sha256,
+                ),
                 "similarity_score": score,
                 "semantic_score": 0.0,
                 "lexical_score": score,

@@ -157,21 +157,10 @@ class Norma(TimeStampedModel):
         ]
 
     def get_tipo_display_name(self) -> str:
-        """Retorna a descrição textual do tipo da norma (ex: Lei, Decreto)."""
-        t = str(self.tipo or "").strip()
-        mapping = {
-            "1": "Lei",
-            "2": "Lei Complementar",
-            "3": "Decreto",
-            "4": "Resolução",
-            "5": "Emenda à Lei Orgânica",
-            "6": "Portaria",
-        }
-        if t in mapping:
-            return mapping[t]
-        if t.isdigit():
-            return "Lei"
-        return t or "Lei"
+        """Return a type label from text or catalog provenance, never an ID guess."""
+        from src.clients.sapl.sapl_types import resolve_norma_type_display
+
+        return resolve_norma_type_display(self.tipo, self.sapl_metadata)
 
     def __str__(self) -> str:
         tipo_str = self.get_tipo_display_name()

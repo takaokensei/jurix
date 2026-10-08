@@ -13,7 +13,10 @@ from django.db import transaction
 from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
 from src.apps.legislation.review_models import RevisaoJuridica
 from src.processing.corpus_write_boundary import corpus_write_boundary
-from src.processing.document_metadata import normalize_document_number
+from src.processing.document_metadata import (
+    is_natal_municipal_jurisdiction,
+    normalize_document_number,
+)
 from src.processing.normative_reference import canonical_type
 from src.processing.target_reconciliation import parse_target_reference
 
@@ -36,7 +39,7 @@ def candidate_normas_for_review(event: EventoAlteracao) -> list[Norma]:
             continue
         identity = norma.identity_json if isinstance(norma.identity_json, dict) else {}
         jurisdiction = str(identity.get("jurisdiction") or "").casefold()
-        if jurisdiction and not jurisdiction.startswith("MUNICIPIO"):
+        if jurisdiction and not is_natal_municipal_jurisdiction(jurisdiction):
             continue
         result.append(norma)
     return result
@@ -197,7 +200,7 @@ def _validate_target(event: EventoAlteracao, norma: Norma, dispositivo: Disposit
         )
     identity = norma.identity_json if isinstance(norma.identity_json, dict) else {}
     jurisdiction = str(identity.get("jurisdiction") or "").casefold()
-    if jurisdiction and not jurisdiction.startswith("MUNICIPIO"):
+    if jurisdiction and not is_natal_municipal_jurisdiction(jurisdiction):
         raise ValidationError("A identidade escolhida não pertence ao escopo municipal do Jurix.")
     if dispositivo is not None:
         if dispositivo.norma_id != norma.pk:

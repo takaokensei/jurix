@@ -61,6 +61,123 @@ def test_timeline_deduplicates_event_matching_norma_and_device_target():
 
 
 @pytest.mark.django_db
+def test_timeline_collapses_duplicate_rows_only_for_same_fingerprinted_relation(monkeypatch):
+    from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
+
+    target = Norma.objects.create(tipo="Lei", numero="30", ano=2025, status="consolidated")
+    source = Norma.objects.create(tipo="Lei", numero="31", ano=2026, status="consolidated")
+    source_device = Dispositivo.objects.create(
+        norma=source, tipo="artigo", numero="1º", texto="Menciona dois dispositivos.", ordem=0
+    )
+    first_target = Dispositivo.objects.create(
+        norma=target, tipo="artigo", numero="21", texto="Texto 21", ordem=0
+    )
+    second_target = Dispositivo.objects.create(
+        norma=target, tipo="artigo", numero="44", texto="Texto 44", ordem=1
+    )
+    shared = {
+        "dispositivo_fonte": source_device,
+        "norma_alvo": target,
+        "acao": "REFERENCIA",
+        "revision_fingerprint": "a" * 64,
+        "evidence_json": {"quote": "Menciona os Arts. 21 e 44."},
+    }
+    EventoAlteracao.objects.create(
+        **shared,
+        dispositivo_alvo=first_target,
+        target_text="Art. 21 da Lei 30/2025",
+    )
+    EventoAlteracao.objects.create(
+        **shared,
+        dispositivo_alvo=first_target,
+        target_text="[QA] Art. 21 da Lei 30/2025",
+    )
+    EventoAlteracao.objects.create(
+        **shared,
+        dispositivo_alvo=second_target,
+        target_text="Art. 44 da Lei 30/2025",
+    )
+    monkeypatch.setattr(
+        "src.apps.legislation.event_review.event_review_status",
+        lambda event: "confirmed" if event.target_text.startswith("[QA]") else "pending",
+    )
+
+    events = [item for item in build_norma_timeline(target) if item["kind"] == "event"]
+
+    assert len(events) == 2
+    assert {item["target_dispositivo_id"] for item in events} == {
+        first_target.pk,
+        second_target.pk,
+    }
+    first = next(item for item in events if item["target_dispositivo_id"] == first_target.pk)
+    second = next(item for item in events if item["target_dispositivo_id"] == second_target.pk)
+    assert first["relation_status"] == "confirmed"
+    assert second["relation_status"] == "pending"
+    assert second["pending"] is True
+
+
+@pytest.mark.django_db
+def test_timeline_explains_distinct_actions_for_the_same_target_device():
+    from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
+
+    target = Norma.objects.create(tipo="Lei", numero="55", ano=2004, status="consolidated")
+    source = Norma.objects.create(tipo="Lei Complementar", numero="198", ano=2021, status="consolidated")
+    target_device = Dispositivo.objects.create(
+        norma=target, tipo="artigo", numero="21", texto="Texto-alvo", ordem=0
+    )
+    source_device = Dispositivo.objects.create(
+        norma=source, tipo="artigo", numero="1º", texto="Referência ao Art. 21", ordem=0
+    )
+    for action, fingerprint in (("REFERENCIA", "a" * 64), ("REVOGA", "b" * 64)):
+        EventoAlteracao.objects.create(
+            dispositivo_fonte=source_device,
+            norma_alvo=target,
+            dispositivo_alvo=target_device,
+            acao=action,
+            target_text="Art. 21 da Lei Complementar nº 55/2004",
+            revision_fingerprint=fingerprint,
+        )
+
+    events = [item for item in build_norma_timeline(target) if item["kind"] == "event"]
+
+    assert len(events) == 2
+    assert {item["action"] for item in events} == {"Referência", "Revogação"}
+    assert {item["target_relation_count"] for item in events} == {2}
+    assert {item["target_relation_ordinal"] for item in events} == {1, 2}
+
+
+@pytest.mark.django_db
+def test_norma_detail_explains_multiple_relation_records_for_one_device(client):
+    from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
+
+    target = Norma.objects.create(tipo="Lei", numero="55", ano=2004, status="consolidated")
+    source = Norma.objects.create(tipo="Lei Complementar", numero="198", ano=2021, status="consolidated")
+    target_device = Dispositivo.objects.create(
+        norma=target, tipo="artigo", numero="21", texto="Texto-alvo", ordem=0
+    )
+    source_device = Dispositivo.objects.create(
+        norma=source, tipo="artigo", numero="1º", texto="Referência ao Art. 21", ordem=0
+    )
+    for action, fingerprint in (("REFERENCIA", "c" * 64), ("REVOGA", "d" * 64)):
+        EventoAlteracao.objects.create(
+            dispositivo_fonte=source_device,
+            norma_alvo=target,
+            dispositivo_alvo=target_device,
+            acao=action,
+            target_text="Art. 21 da Lei Complementar nº 55/2004",
+            revision_fingerprint=fingerprint,
+        )
+
+    response = client.get(f"/normas/{target.pk}/")
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Há 2 registros distintos para este dispositivo." in body
+    assert body.count("Há 2 registros distintos para este dispositivo.") == 1
+    assert "Candidato extraído · não confirmado" in body
+
+
+@pytest.mark.django_db
 def test_norma_detail_does_not_present_extraction_signal_as_legal_confidence(client):
     from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
 
@@ -84,7 +201,7 @@ def test_norma_detail_does_not_present_extraction_signal_as_legal_confidence(cli
     response = client.get(f"/normas/{target.pk}/")
 
     assert response.status_code == 200
-    assert "Relações extraídas" in response.content.decode()
+    assert "Registros de relações extraídos" in response.content.decode()
     assert "Extração pendente de revisão" in response.content.decode()
     assert "Não calibrado" in response.content.decode()
     assert "0.00" not in response.content.decode()

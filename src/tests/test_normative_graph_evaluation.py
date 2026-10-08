@@ -1,6 +1,8 @@
+import json
+
 import pytest
 
-from scripts.evaluate_normative_graph import evaluate
+from scripts.evaluate_normative_graph import evaluate, main
 
 
 def _row(*, review_kind="synthetic", split="test", target="norma-b"):
@@ -48,6 +50,26 @@ def test_synthetic_fixture_cannot_pass_human_gate():
 
     assert result["status"] == "not_evaluated"
     assert result["human_adjudicated_normas"] == 0
+
+
+def test_cli_exits_three_and_reports_not_evaluated_without_adjudicated_gold(tmp_path, capsys):
+    gold_path = tmp_path / "gold.jsonl"
+    prediction_path = tmp_path / "predictions.jsonl"
+    row = _row()
+    gold_path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    prediction_path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+
+    exit_code = main([
+        "--gold", str(gold_path),
+        "--predictions", str(prediction_path),
+        "--min-human-normas", "1",
+    ])
+
+    output = json.loads(capsys.readouterr().out)
+    assert exit_code == 3
+    assert output["status"] == "not_evaluated"
+    assert output["human_adjudicated_normas"] == 0
+    assert output["synthetic_or_unreviewed_rows_counted_as_gold"] == 0
 
 
 def test_relation_chain_may_not_leak_between_splits():

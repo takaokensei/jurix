@@ -16,6 +16,13 @@ from src.apps.legislation.review_models import RevisaoJuridica
 from src.processing.official_urls import safe_official_url
 
 
+def _format_candidate_number(value: object) -> str:
+    number = str(value or "").strip()
+    if "." in number or not number.isdigit() or len(number) <= 3:
+        return number
+    return f"{int(number):,}".replace(",", ".")
+
+
 def _approved_public_document(document: DocumentoNormativo) -> bool:
     return bool(
         document.norma_id
@@ -123,7 +130,7 @@ def document_evidence_view(request: HttpRequest, document_id) -> HttpResponse:
         "decreto": "Decreto",
         "lei_promulgada": "Lei Promulgada",
     }
-    candidate_number = candidate_identity.get("number")
+    candidate_number = _format_candidate_number(candidate_identity.get("number"))
     candidate_year = candidate_identity.get("year")
     candidate_identity_label = (
         f"{candidate_type_labels.get(candidate_identity.get('type'), 'Norma')} nº "

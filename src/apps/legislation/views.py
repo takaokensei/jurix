@@ -21,6 +21,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import DetailView, ListView
 
+from src.clients.sapl.sapl_types import resolve_norma_type_display
 from src.observability.safe_logging import log_exception_safely
 from src.processing.corpus_identity import get_corpus_revision
 from src.processing.legal_diff import build_legal_diff, build_version_diff
@@ -31,13 +32,19 @@ from src.processing.normative_reference import (
     parse_normative_reference_query,
 )
 from src.processing.rag_service import RAGService
-from src.processing.temporal_scope import build_norma_timeline, parse_iso_date, temporal_status
+from src.processing.temporal_scope import (
+    build_norma_timeline,
+    deduplicate_event_revisions,
+    parse_iso_date,
+    temporal_status,
+)
 
 from .api_limits import InvalidLLMParams, parse_llm_request, rate_limit_response
 from .document_models import DocumentoDispositivo, DocumentoNormativo, ExtracaoDocumento
 from .models import ChatMessage, ChatSession, Dispositivo, EventoAlteracao, Norma
 from .norma_ordering import order_normas_by_publication
 from .norma_pdf import build_consolidated_norma_pdf
+from .norma_queries import consolidated_normas_for_product
 from .serializers import (
     serialize_dispositivo_source,
 )
@@ -70,16 +77,7 @@ def _presentation_consolidated_text(norma: Norma) -> str:
 
 
 def _norma_tipo_label(value: object) -> str:
-    mapping = {
-        "1": "Lei",
-        "2": "Lei Complementar",
-        "3": "Decreto",
-        "4": "Resolução",
-        "5": "Emenda à Lei Orgânica",
-        "6": "Portaria",
-    }
-    text = str(value or "").strip()
-    return mapping.get(text, "Lei" if text.isdigit() else (text or "Lei"))
+    return resolve_norma_type_display(value)
 
 
 def _normalize_norma_query(value: object) -> str:
@@ -87,7 +85,7 @@ def _normalize_norma_query(value: object) -> str:
 
 
 def _norma_list_facets() -> tuple[list[str], list[int]]:
-    queryset = Norma.objects.filter(status="consolidated")
+    queryset = consolidated_normas_for_product()
     types = list(queryset.values_list("tipo", flat=True).distinct().order_by("tipo"))
     years = list(queryset.values_list("ano", flat=True).distinct().order_by("-ano"))
     return types, years
@@ -144,7 +142,7 @@ class NormaListView(ListView):
     paginate_by = 18
 
     def get_queryset(self):
-        queryset = Norma.objects.filter(status="consolidated")
+        queryset = consolidated_normas_for_product()
         search_query = _normalize_norma_query(self.request.GET.get("q"))
         if search_query:
             selected_type = _normalize_norma_query(self.request.GET.get("tipo"))
@@ -194,6 +192,9 @@ class NormaListView(ListView):
         for norma in context.get("normas", []):
             norma.sapl_url = canonical_norma_url(norma)
         context["search_query"] = _normalize_norma_query(self.request.GET.get("q"))
+        context["archive_candidate_query"] = _normalize_norma_query(
+            self.request.GET.get("arquivo_q", context["search_query"])
+        )
         context["selected_type"] = _normalize_norma_query(self.request.GET.get("tipo"))
         selected_year = self.request.GET.get("ano", "").strip()
         context["selected_year"] = selected_year if selected_year.isdigit() else ""
@@ -216,7 +217,7 @@ class NormaListView(ListView):
         # value after ingestion (for example, "1" beside 356 results). The
         # count is a cheap indexed query and must reflect the same database
         # state as the list itself.
-        context["total_consolidated"] = Norma.objects.filter(status="consolidated").count()
+        context["total_consolidated"] = consolidated_normas_for_product().count()
 
         # Keep unreviewed archive imports out of the consolidated corpus/RAG.
         # The isolated QA app gets a separate, clearly labelled view so real
@@ -257,6 +258,7 @@ class NormaListView(ListView):
                 identity = metadata.get("identity_candidate") or {}
                 extraction = (document.qa_candidate_extractions or [None])[0]
                 number, year = identity.get("number"), identity.get("year")
+                display_number = _group_normative_number(str(number)) if number else ""
                 draft_device_count = len(extraction.qa_candidate_devices) if extraction else 0
                 if extraction and draft_device_count:
                     page_label = "página" if extraction.page_count == 1 else "páginas"
@@ -275,7 +277,7 @@ class NormaListView(ListView):
                 else:
                     extraction_summary = "Nenhuma extração de texto disponível"
                 label = (
-                    f"{type_labels.get(identity.get('type'), 'Norma')} nº {number}/{year}"
+                    f"{type_labels.get(identity.get('type'), 'Norma')} nº {display_number}/{year}"
                     if number and year
                     else document.original_filename
                 )
@@ -326,12 +328,17 @@ class NormaDetailView(DetailView):
         # Get all alteration events affecting this norma
         eventos_recebidos = (
             EventoAlteracao.objects.filter(norma_alvo=norma, is_active=True)
-            .select_related("dispositivo_fonte", "dispositivo_fonte__norma", "dispositivo_alvo")
+            .select_related(
+                "dispositivo_fonte",
+                "dispositivo_fonte__norma",
+                "dispositivo_alvo",
+                "review_revision",
+            )
             .order_by("created_at")
         )
         from src.apps.legislation.event_review import event_review_status
 
-        eventos_recebidos = list(eventos_recebidos)
+        eventos_recebidos = deduplicate_event_revisions(eventos_recebidos)
         for evento in eventos_recebidos:
             evento.review_status = event_review_status(evento)
             evento.review_status_label = {
@@ -699,25 +706,29 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
         # chat records are initialized only when the user sends the first POST.
 
         prefill_question = ""
-        norma_id_raw = request.GET.get("norma_id", "").strip()
-        if norma_id_raw.isdigit():
-            norma_context = (
-                Norma.objects.filter(pk=int(norma_id_raw), status="consolidated")
-                .only("tipo", "numero", "ano")
-                .first()
-            )
-            if norma_context:
-                tipo_getter = getattr(norma_context, "get_tipo_display_name", None)
-                tipo_label = tipo_getter() if callable(tipo_getter) else norma_context.tipo
-                prefill_question = (
-                    f"Sobre {tipo_label} nº {norma_context.numero}/{norma_context.ano}: "
+        requested_question = request.GET.get("question", "").strip()
+        if requested_question and len(requested_question) <= settings.LLM_MAX_QUESTION_LENGTH:
+            prefill_question = requested_question
+        else:
+            norma_id_raw = request.GET.get("norma_id", "").strip()
+            if norma_id_raw.isdigit():
+                norma_context = (
+                    Norma.objects.filter(pk=int(norma_id_raw), status="consolidated")
+                    .only("tipo", "numero", "ano")
+                    .first()
                 )
+                if norma_context:
+                    tipo_getter = getattr(norma_context, "get_tipo_display_name", None)
+                    tipo_label = tipo_getter() if callable(tipo_getter) else norma_context.tipo
+                    prefill_question = (
+                        f"Sobre {tipo_label} nº {norma_context.numero}/{norma_context.ano}: "
+                    )
 
         # Render chat interface
         context = {
             "page_title": "Assistente Jurídico - Jurix",
             "total_dispositivos": Dispositivo.objects.filter(embedding__isnull=False).count(),
-            "total_normas": Norma.objects.filter(status="consolidated").count(),
+            "total_normas": consolidated_normas_for_product().count(),
             "chat_sessions": chat_sessions,
             "active_session": active_session,
             "current_session_id": current_session_id,

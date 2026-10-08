@@ -21,6 +21,7 @@ from src.apps.legislation.source_urls import (
     canonical_sapl_url,
     public_source_url,
 )
+from src.clients.sapl.sapl_types import resolve_norma_type_display
 from src.processing.temporal_scope import temporal_state_from_dates
 
 logger = logging.getLogger(__name__)
@@ -260,9 +261,14 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
         try:
             norma = disp.norma
             tipo_getter = getattr(norma, "get_tipo_display_name", None)
-            norma_tipo = tipo_getter() if callable(tipo_getter) else getattr(norma, "tipo", "Lei")
-            if str(norma_tipo).isdigit():
-                norma_tipo = "Lei"
+            norma_tipo = (
+                tipo_getter()
+                if callable(tipo_getter)
+                else resolve_norma_type_display(
+                    getattr(norma, "tipo", ""),
+                    getattr(norma, "sapl_metadata", {}),
+                )
+            )
             norma_numero = _format_legal_number(getattr(norma, "numero", ""))
             norma_ano = getattr(norma, "ano", "")
             norma_id = getattr(norma, "id", None)
@@ -277,7 +283,7 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
             effective_date = getattr(norma, "data_vigencia", None)
         except Exception as e:
             logger.warning(f"Error accessing norma attributes: {e}")
-            norma_tipo, norma_numero, norma_ano = "Lei", "", ""
+            norma_tipo, norma_numero, norma_ano = "Tipo não identificado", "", ""
             norma_id, pdf_url, sapl_url = None, None, None
             publication_date, effective_date = None, None
             synthetic_fixture = False
@@ -445,6 +451,49 @@ def serialize_citation_sources(sources: list[dict[str, Any]]) -> list[dict[str, 
         row["citation_index"] = index
         serialized.append(row)
     return serialized
+
+
+def select_answer_citation_sources(
+    sources: list[dict[str, Any]], answer: str, grounding: dict[str, Any] | None = None
+) -> list[dict[str, Any]]:
+    """Keep only retrieved sources actually cited or matched to supported claims.
+
+    The full retrieval set is still streamed while generation is in progress. At
+    completion, this function reconciles the drawer with the answer's structured
+    citation markers; legacy grounding reports are supported as a fallback.
+    Existing citation indexes are deliberately preserved for renderer stability.
+    """
+    cited_indexes = {
+        int(match.group(1))
+        for match in re.finditer(r"\[\[(\d{1,3})\]\]", str(answer or ""))
+        if int(match.group(1)) > 0
+    }
+    if not cited_indexes:
+        for claim in (grounding or {}).get("claims", []):
+            if not isinstance(claim, dict) or claim.get("supported") is not True:
+                continue
+            for match in claim.get("matches", []):
+                if not isinstance(match, dict):
+                    continue
+                cited_indexes.update(
+                    int(index)
+                    for index in match.get("citation_indexes", [])
+                    if str(index).isdigit() and int(index) > 0
+                )
+            for evidence in claim.get("evidence", []):
+                if not isinstance(evidence, dict):
+                    continue
+                cited_indexes.update(
+                    int(index)
+                    for index in evidence.get("citation_indexes", [])
+                    if str(index).isdigit() and int(index) > 0
+                )
+
+    return [
+        source
+        for position, source in enumerate(sources or [], start=1)
+        if int(source.get("citation_index") or position) in cited_indexes
+    ]
 
 
 def serialize_chat_session(session: Any) -> dict[str, Any]:

@@ -10,6 +10,7 @@ _REFERENCE_RE = re.compile(
     r"\b(?P<type>lei(?:\s+(?:complementar|ordin[áa]ria|org[âa]nica|promulgada))?|"
     r"decreto(?:-lei|\s+(?:legislativo|executivo))?|resolu[çc][ãa]o|portaria|"
     r"emenda(?:\s+constitucional)?|lc)\s*"
+    r"(?:\s+(?:municipal(?:\s+de\s+Natal)?|do\s+munic[ií]pio(?:\s+de\s+Natal)?))?\s*"
     r"(?:n[º°o.]?\s*)?(?P<number>\d[\d.]*)"
     r"(?:\s*(?:/|de)\s*(?P<year>(?:19|20)\d{2}))?",
     re.IGNORECASE,
@@ -21,7 +22,9 @@ _ALINEA_RE = re.compile(r"\balínea\s+([a-z])\b", re.IGNORECASE)
 _REFERENCE_QUERY_RE = re.compile(
     r"^\s*(?:(?P<type>lei(?:\s+(?:complementar|ordin[áa]ria|org[âa]nica|promulgada))?|"
     r"decreto(?:-lei|\s+(?:legislativo|executivo))?|resolu[çc][ãa]o|portaria|"
-    r"emenda(?:\s+constitucional)?|lc)\s*(?:n[º°o.]?\s*)?)?"
+    r"emenda(?:\s+constitucional)?|lc)"
+    r"(?:\s+(?:municipal(?:\s+de\s+Natal)?|do\s+munic[ií]pio(?:\s+de\s+Natal)?))?"
+    r"\s*(?:n[º°o.]?\s*)?)?"
     r"(?P<number>(?:\d{1,6}|\d{1,3}(?:\.\d{3})+))\s*(?:/|de)\s*"
     r"(?P<year>(?:19|20)\d{2})\s*$",
     re.IGNORECASE,

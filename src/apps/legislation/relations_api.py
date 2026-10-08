@@ -13,6 +13,8 @@ from django.views.decorators.http import require_GET
 
 from src.apps.legislation.models import Norma
 from src.processing.cache_service import CacheService
+from src.processing.corpus_coverage import current_corpus_coverage
+from src.processing.corpus_identity import get_corpus_revision
 from src.processing.normative_graph import VALID_ACTIONS, build_normative_graph
 from src.processing.temporal_scope import parse_iso_date
 
@@ -91,7 +93,12 @@ def norma_relations_api(request: HttpRequest, pk: int) -> JsonResponse:
         )
     except ValueError as exc:
         return JsonResponse({"success": False, "error": str(exc)}, status=400)
-    body = {"success": True, "norma": {"id": norma.pk, "ref": str(norma)}, **graph}
+    body = {
+        "success": True,
+        "norma": {"id": norma.pk, "ref": str(norma)},
+        "corpus_coverage": current_corpus_coverage(get_corpus_revision()),
+        **graph,
+    }
     if corpus_digest != "unavailable":
         try:
             cache.set(cache_key, body, timeout=45)

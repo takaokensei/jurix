@@ -6,6 +6,7 @@ from django.test import override_settings
 
 from src.apps.legislation.serializers import (
     _legacy_archive_document_id,
+    select_answer_citation_sources,
     serialize_chat_message,
     serialize_citation_sources,
     serialize_dispositivo_source,
@@ -55,6 +56,44 @@ def test_cached_source_builds_readable_stable_citation_identity():
     assert result["citation_id"] == "jurix:norma:22:dispositivo:81"
     assert result["citation_index"] == 1
     assert result["citation_label"] == "Lei nº 8.206/2026, Art. 2º, inciso I"
+
+
+def test_final_answer_source_set_contains_only_structurally_cited_evidence():
+    sources = [
+        {"citation_index": 1, "citation_id": "law-a-art-18", "norma_ref": "LC 120"},
+        {"citation_index": 2, "citation_id": "law-b-art-3", "norma_ref": "Lei 6673"},
+        {"citation_index": 12, "citation_id": "law-a-art-33", "norma_ref": "LC 120"},
+    ]
+
+    selected = select_answer_citation_sources(
+        sources,
+        "O piso segue o mínimo [[1]] e a regra complementar [[12]].",
+        {"claims": []},
+    )
+
+    assert [source["citation_id"] for source in selected] == ["law-a-art-18", "law-a-art-33"]
+    assert [source["citation_index"] for source in selected] == [1, 12]
+
+
+def test_final_answer_sources_fall_back_to_supported_grounding_matches():
+    sources = [
+        {"citation_index": 1, "citation_id": "used"},
+        {"citation_index": 2, "citation_id": "unused"},
+    ]
+
+    selected = select_answer_citation_sources(
+        sources,
+        "Conclusão sem marcador legado.",
+        {"claims": [{"supported": True, "matches": [{"citation_indexes": [1]}]}]},
+    )
+
+    assert [source["citation_id"] for source in selected] == ["used"]
+
+
+def test_final_answer_sources_do_not_fall_back_to_every_retrieved_source():
+    sources = [{"citation_index": 1, "citation_id": "not-established"}]
+
+    assert select_answer_citation_sources(sources, "Conclusão.", {"claims": []}) == []
 
 
 def test_explicit_reference_match_kind_survives_cached_source_serialization():

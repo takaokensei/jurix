@@ -41,12 +41,14 @@ from src.apps.legislation.models import (
 )
 from src.apps.legislation.retrieval_api import build_retrieval_options
 from src.apps.legislation.serializers import (
+    select_answer_citation_sources,
     serialize_chat_session,
     serialize_citation_sources,
 )
 from src.apps.legislation.suggestion_service import build_dynamic_suggestions
 from src.processing.adaptive_rag_service import AdaptiveRAGService
 from src.processing.answer_contract import build_answer_contract
+from src.processing.corpus_coverage import current_corpus_coverage
 from src.processing.chat_turns import (
     TurnPayloadConflict,
     normalize_turn_id,
@@ -54,6 +56,7 @@ from src.processing.chat_turns import (
     transition_turn,
 )
 from src.processing.conversation_titles import build_conversation_title
+from src.processing.normative_query import classify_normative_query
 from src.processing.generation_control import (
     attach_ephemeral_session_cookie,
     claim_generation_finalization,
@@ -76,22 +79,66 @@ logger = logging.getLogger(__name__)
 _ARTICLE_FOLLOWUP_RE = re.compile(
     r"\b(?:e\s+)?(?:o\s+)?art(?:igo)?\.?\s*(\d{1,4})\s*[º°o]?\b", re.IGNORECASE
 )
+_CONTEXTUAL_NORM_FOLLOWUP_RE = re.compile(
+    r"^\s*(?:(?:(?:e|mas|ent[aã]o|nesse\s+caso)\s+)?"
+    r"(?:qual|quais|quem|como|quando|onde|por\s+que|o\s+que)\b"
+    r"|com\s+base\s+(?:no|neste|nesse)\s+(?:trecho|dispositivo|artigo|resposta)\b"
+    r"|(?:explique|esclare[cç]a|detalhe)\s+(?:isso|esse\s+trecho|o\s+trecho|o\s+dispositivo)\b"
+    r"|o\s+que\s+(?:isso|esse\s+trecho|o\s+dispositivo)\s+(?:significa|quer\s+dizer)\b)",
+    re.IGNORECASE,
+)
+_CONTEXTUAL_DEVICE_FOLLOWUP_RE = re.compile(
+    r"^\s*(?:com\s+base\s+(?:no|neste|nesse)\s+(?:trecho|dispositivo|artigo|resposta)\b"
+    r"|(?:explique|esclare[cç]a|detalhe)\s+(?:isso|esse\s+trecho|o\s+trecho|o\s+dispositivo)\b"
+    r"|o\s+que\s+(?:isso|esse\s+trecho|o\s+dispositivo)\s+(?:significa|quer\s+dizer)\b"
+    r"|(?:e|mas|ent[aã]o)\s+qual\s+(?:[\wÀ-ÿ]+\s+){0,5}"
+    r"(?:mencionad[oa]s?|citad[oa]s?|indicad[oa]s?|previst[oa]s?)\b)",
+    re.IGNORECASE,
+)
+_CONTEXTUAL_MULTI_DEVICE_FOLLOWUP_RE = re.compile(
+    r"^\s*(?:(?:e|mas|ent[aã]o)\s+)?(?:qual|quais)\s+"
+    r"(?:dos|das)\s+(?:dois|duas|tr[eê]s|quatro)\s+"
+    r"(?:artigos?|dispositivos?)\b",
+    re.IGNORECASE,
+)
 
 
 def _resolve_article_followup(question: str, previous_question: str) -> str:
-    """Preserve the follow-up and add only an unambiguous prior normative scope."""
+    """Preserve a short follow-up and inherit only an unambiguous prior norm."""
     if not previous_question or len(previous_question) > 10000:
         return question
     match = _ARTICLE_FOLLOWUP_RE.search(question)
-    if not match or parse_normative_references(question):
+    contextual_followup = bool(_CONTEXTUAL_NORM_FOLLOWUP_RE.match(question))
+    if (not match and not contextual_followup) or parse_normative_references(question):
         return question
     reference = None
+    reference_article = None
+    reference_articles = []
     typed_reference_seen = False
     # Conversations arrive newest-first from persistence. Resolve the law from
     # one message at a time so two norms mentioned in separate turns do not get
     # collapsed into an ambiguous composite citation.
     for prior_message in previous_question.splitlines():
         references = parse_normative_references(prior_message)
+        if contextual_followup and references:
+            # For generic elliptical follow-ups, use only the nearest prior
+            # user message that names a norm. Never skip an ambiguous recent
+            # reference and silently inherit an older, potentially unrelated
+            # one.
+            if (
+                all(not item.ambiguous for item in references)
+                and len({item.identity for item in references}) == 1
+            ):
+                reference = references[0]
+                if _CONTEXTUAL_MULTI_DEVICE_FOLLOWUP_RE.match(question):
+                    reference_articles = list(
+                        classify_normative_query(prior_message).article_targets
+                    )
+                elif len(references) == 1:
+                    reference_article = references[0].article
+            else:
+                return question
+            break
         typed_reference_seen = typed_reference_seen or bool(references)
         if len(references) == 1 and not references[0].ambiguous:
             reference = references[0]
@@ -127,7 +174,55 @@ def _resolve_article_followup(question: str, previous_question: str) -> str:
             return question
         number, year = reference.number, str(reference.year)
     # Keep the user's words/intention intact; context is a retrieval hint only.
-    return f"{question.rstrip()} (contexto normativo: {kind} nº {number}/{year})"
+    context = f"{question.rstrip()} (contexto normativo: {kind} nº {number}/{year}"
+    if reference_article and _CONTEXTUAL_DEVICE_FOLLOWUP_RE.match(question):
+        context += f"; dispositivo de referência: Art. {reference_article}º"
+    elif len(reference_articles) > 1:
+        article_labels = [article.removesuffix("º") for article in reference_articles]
+        context += f"; dispositivos de referência: Arts. {' e '.join(article_labels)}"
+    return context + ")"
+
+
+def _grounded_source_context(sources: list[dict]) -> list[str]:
+    """Build retrieval-only hints from one grounded answer's structured citations."""
+    references = []
+    for source in sources if isinstance(sources, list) else []:
+        if not isinstance(source, dict):
+            continue
+        norma_ref = str(source.get("norma_ref") or "").strip()
+        parsed = parse_normative_references(norma_ref)
+        if len(parsed) != 1 or parsed[0].ambiguous or parsed[0].year is None:
+            continue
+        article_match = _ARTICLE_FOLLOWUP_RE.search(
+            str(source.get("dispositivo_ref") or "")
+        )
+        references.append(
+            (parsed[0], article_match.group(1) if article_match else None)
+        )
+
+    identities = {item.identity for item, _article in references}
+    if len(identities) != 1:
+        return []
+    reference = references[0][0]
+    kind = {
+        "lei": "Lei",
+        "lei_complementar": "Lei Complementar",
+        "lei_organica": "Lei Orgânica",
+        "decreto": "Decreto",
+        "decreto_lei": "Decreto-Lei",
+        "decreto_legislativo": "Decreto Legislativo",
+        "resolucao": "Resolução",
+        "portaria": "Portaria",
+        "emenda": "Emenda",
+        "emenda_constitucional": "Emenda Constitucional",
+    }.get(reference.type_key)
+    if not kind:
+        return []
+    norm_label = f"{kind} nº {reference.number}/{reference.year}"
+    articles = {article for _item, article in references if article}
+    if len(articles) == 1:
+        return [f"{norm_label}, Art. {next(iter(articles))}º"]
+    return [norm_label]
 
 
 @require_http_methods(["GET"])
@@ -318,25 +413,6 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
                 status=400,
             )
 
-        if retrieval_options.temporal_scope.as_of:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "code": "historical_version_unavailable",
-                    "error": (
-                        "O corpus não mantém versões históricas verificadas desta redação. "
-                        "Não é seguro apresentar o texto atual como se fosse o texto vigente "
-                        "na data solicitada."
-                    ),
-                    "sources": [],
-                    "metadata": {
-                        "as_of": retrieval_options.temporal_scope.as_of.isoformat(),
-                        "historical_version_available": False,
-                    },
-                },
-                status=409,
-            )
-
         logger.info(
             "RAG answer request (question_length=%s, k=%s, model=%s)",
             len(question),
@@ -358,6 +434,14 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
         formatted_sources = serialize_citation_sources(response.get("sources", []))
         reason_code = response.get("reason_code")
         answer_text = no_retrieval_message(reason_code) or response["answer"]
+        grounded = response.get("grounded") is True
+        formatted_sources = (
+            select_answer_citation_sources(
+                formatted_sources, answer_text, response.get("grounding")
+            )
+            if grounded
+            else []
+        )
         answer_contract = build_answer_contract(
             question=question,
             retrieval_query=question,
@@ -377,7 +461,8 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
             model=response.get("model", model),
             sources=formatted_sources,
             grounding=response.get("grounding", {}),
-            grounded=response.get("grounded") is True,
+            grounded=grounded,
+            corpus_coverage=current_corpus_coverage(),
             cached=response.get("cached", False),
             reason_code=reason_code,
         )
@@ -388,6 +473,7 @@ def rag_answer_api(request: HttpRequest) -> JsonResponse:
                 "question": question,
                 "answer": answer_text,
                 "sources": formatted_sources,
+                "grounded": grounded,
                 "confidence": response["confidence"],
                 "metadata": {
                     "k": k,
@@ -443,6 +529,13 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
         return JsonResponse({"success": False, "error": "Corpus de teste indisponível."}, status=404)
 
     session_id = data.get("session_id")
+    # Older restored-chat clients may serialize a numeric ID from the URL as
+    # a JSON string. Accept only bounded ASCII decimal IDs; slugs and arbitrary
+    # strings remain invalid, and the canonical value is always an integer.
+    if isinstance(session_id, str) and re.fullmatch(r"[0-9]{1,19}", session_id):
+        numeric_session_id = int(session_id)
+        if numeric_session_id <= 2**63 - 1:
+            session_id = numeric_session_id
     if session_id is not None and (isinstance(session_id, bool) or not isinstance(session_id, int)):
         return JsonResponse({"success": False, "error": "Invalid session_id"}, status=400)
 
@@ -605,12 +698,28 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                 prior_user_messages = list(
                     ChatMessage.objects.filter(session=chat_session, role="user")
                     .order_by("-created_at", "-id")
-                    .values_list("content", flat=True)[:5]
+                    .values_list("content", flat=True)[:50]
                 )
                 if prior_user_messages:
                     context_question = "\n".join(prior_user_messages)
                 else:
                     first_turn = True
+                latest_assistant = (
+                    ChatMessage.objects.filter(session=chat_session, role="assistant")
+                    .order_by("-created_at", "-id")
+                    .first()
+                )
+                if (
+                    latest_assistant
+                    and (latest_assistant.metadata_json or {}).get("grounded") is True
+                ):
+                    evidence_context = _grounded_source_context(
+                        latest_assistant.sources_json or []
+                    )
+                    if evidence_context:
+                        context_question = "\n".join(
+                            [*evidence_context, context_question]
+                        )
                 if not (chat_turn and chat_turn.retry_of_id):
                     ChatMessage.objects.create(
                         session=chat_session,
@@ -650,50 +759,6 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                 return
             if chat_session:
                 yield f"data: {json.dumps({'type': 'session', 'session_id': chat_session.id, 'session_slug': chat_session.slug})}\n\n"
-            if retrieval_options.temporal_scope.as_of:
-                final_answer = (
-                    "Não posso confirmar qual redação estava vigente nessa data: "
-                    "o Jurix ainda não possui versões históricas verificadas para esta norma. "
-                    "A redação atual não será apresentada como histórica."
-                )
-                metadata = {
-                    "grounded": False,
-                    "reason_code": "historical_version_unavailable",
-                    "as_of": retrieval_options.temporal_scope.as_of.isoformat(),
-                    "historical_version_available": False,
-                }
-                provenance = build_answer_contract(
-                    question=question,
-                    retrieval_query=question,
-                    filters=contract_filters,
-                    provider="unavailable",
-                    model=model,
-                    grounded=False,
-                    request_id=request_id,
-                )
-                terminal_state = claim_generation_finalization(generation_id)
-                if terminal_state == "cancelled":
-                    mark_stream_cancelled()
-                    yield f"data: {json.dumps({'type': 'status', 'status': 'cancelled'})}\n\n"
-                    return
-                yield f"data: {json.dumps({'type': 'status', 'status': 'insufficient_evidence'})}\n\n"
-                if request.user.is_authenticated and chat_session:
-                    with transaction.atomic():
-                        ChatMessage.objects.create(
-                            session=chat_session,
-                            role="assistant",
-                            content=final_answer,
-                            sources_json=[],
-                            metadata_json=provenance,
-                            turn=chat_turn,
-                        )
-                        if chat_turn:
-                            transition_turn(chat_turn, "completed")
-                    assistant_persisted = True
-                finish_generation(generation_id, "completed")
-                yield f"data: {json.dumps({'type': 'status', 'status': 'completed'})}\n\n"
-                yield f"data: {json.dumps({'type': 'done', 'answer': final_answer, **metadata, 'sources': [], 'contract': provenance})}\n\n"
-                return
             retrieval_question = _resolve_article_followup(question, context_question)
             rag_service = RAGService()
             if archive_qa:
@@ -706,6 +771,13 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     temperature=temperature,
                     text_provider=text_provider,
                     ollama=rag_service.ollama,
+                    temporal_scope_requested=any(
+                        (
+                            retrieval_options.as_of,
+                            retrieval_options.published_from,
+                            retrieval_options.published_to,
+                        )
+                    ),
                     should_cancel=lambda: is_generation_cancelled(generation_id),
                 )
             else:
@@ -799,7 +871,13 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     if not grounded and not reason_code:
                         reason_code = retrieval_reason_code or "evidence_insufficient"
                     final_answer = no_retrieval_message(reason_code) or item.get("answer", "")
-                    answer_sources = sources_list if grounded else []
+                    answer_sources = (
+                        select_answer_citation_sources(
+                            sources_list, final_answer, item.get("grounding")
+                        )
+                        if grounded
+                        else []
+                    )
                     provenance = build_answer_contract(
                         question=question,
                         retrieval_query=retrieval_question,
@@ -810,6 +888,7 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                         discarded_sources=item.get("discarded_sources", []),
                         grounding=item.get("grounding", {}),
                         grounded=grounded,
+                        corpus_coverage=current_corpus_coverage(),
                         cached=item.get("cached", False),
                         request_id=request_id,
                         timings_ms=item.get("timings_ms"),
@@ -840,6 +919,7 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     payload = {
                         "type": "done",
                         "answer": final_answer,
+                        "sources": answer_sources,
                         "grounded": grounded,
                         "contract": provenance,
                         "reason_code": reason_code,

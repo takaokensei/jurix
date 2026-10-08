@@ -244,9 +244,6 @@ def build_normative_graph(
                 "official_url": safe_official_url(source_norma.documento_base.official_url) if source_norma.pk in public_norma_ids else None,
             }
             edges.setdefault(edge_id, edge)
-            if len(edges) >= MAX_EDGES:
-                truncated = True
-                break
         if truncated and len(edges) >= MAX_EDGES:
             break
     return {

@@ -77,16 +77,30 @@ def test_archive_candidates_are_inspectable_only_behind_explicit_qa_flag():
     ):
         listing = client.get(reverse("legislation:norma_list"))
         evidence = client.get(evidence_url)
+        document.metadata_json = {
+            "identity_candidate": {"type": "decreto", "number": "7795", "year": 2005}
+        }
+        document.save(update_fields=["metadata_json", "updated_at"])
+        decree_listing = client.get(reverse("legislation:norma_list"))
+        decree_evidence = client.get(evidence_url)
 
     assert listing.status_code == 200
     assert evidence_url.encode() in listing.content
     assert evidence.status_code == 200
     assert "<h1 id=\"evidence-title\">Lei Ordinária nº 123/2024</h1>" in evidence.content.decode()
+    assert decree_evidence.status_code == 200
+    assert "Decreto nº 7.795/2005" in decree_listing.content.decode()
+    assert "Decreto nº 7795/2005" not in decree_listing.content.decode()
+    assert '<h1 id="evidence-title">Decreto nº 7.795/2005</h1>' in decree_evidence.content.decode()
+    assert "Candidato do acervo histórico" in evidence.content.decode()
+    assert "Documento normativo versionado" not in evidence.content.decode()
     assert "Documento do acervo histórico local." in evidence.content.decode()
     assert "a identificação normativa, a extração do texto e a segmentação precisam de revisão" in evidence.content.decode()
     assert "Texto extraído automaticamente — rascunho não revisado" in evidence.content.decode()
     assert "Texto extraído sem segmentação" in evidence.content.decode()
     assert "Índice do documento" not in evidence.content.decode()
+    assert "<details><summary>Texto integral extraído (rascunho)</summary>" in evidence.content.decode()
+    assert "<details open>" not in evidence.content.decode()
     assert text in evidence.content.decode()
     document.refresh_from_db()
     assert document.accepted_extraction_id is None

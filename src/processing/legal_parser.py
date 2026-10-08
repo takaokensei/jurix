@@ -54,9 +54,9 @@ _PUBLICATION_EFFECT_RE = re.compile(
     re.IGNORECASE,
 )
 _NORMATIVE_APPENDIX_RE = re.compile(
-    r"^[ \t]*(?:ANEXO(?:[ \t]+[IVXLCDM0-9]+)?|ADENDO(?:[ \t]+[IVXLCDM0-9]+)?|"
-    r"AP[EÊ]NDICE(?:[ \t]+[IVXLCDM0-9]+)?|QUADRO(?:[ \t]+[IVXLCDM0-9]+)?|"
-    r"TABELA(?:[ \t]+[IVXLCDM0-9]+)?)(?:[ \t]*[-–—:].*)?$",
+    r"^[ \t]*(?P<label>ANEXO|ADENDO|AP[EÊ]NDICE|QUADRO|TABELA)"
+    r"(?:[ \t]+(?P<number>[IVXLCDM]+|[0-9]+))?"
+    r"(?:[ \t]*[-–—:].*|[ \t]*\([^\r\n]*\))?[ \t]*$",
     re.MULTILINE | re.IGNORECASE,
 )
 
@@ -65,6 +65,25 @@ def find_normative_appendix_start(text: str, *, after: int = 0) -> int | None:
     """Return the offset of the first standalone normative appendix heading."""
     match = _NORMATIVE_APPENDIX_RE.search(text or "", max(0, after))
     return match.start() if match else None
+
+
+def extract_normative_appendices(text: str) -> list[dict[str, Any]]:
+    """Split annex/addendum sections into independently citable evidence."""
+    source = text or ""
+    matches = list(_NORMATIVE_APPENDIX_RE.finditer(source))
+    sections = []
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(source)
+        label = match.group("label").capitalize()
+        number = (match.group("number") or "").upper()
+        title = f"{label} {number}".strip()
+        sections.append({
+            "label": title,
+            "start": match.start(),
+            "end": end,
+            "text": source[match.start():end].strip(),
+        })
+    return sections
 
 
 def extract_publication_metadata(text: str) -> dict[str, Any]:

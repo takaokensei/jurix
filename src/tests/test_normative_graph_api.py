@@ -104,6 +104,28 @@ def test_graph_edge_limit_reports_truncation(graph_map):
 
 
 @pytest.mark.django_db(transaction=True)
+def test_graph_at_exact_edge_limit_is_not_marked_truncated(graph_map):
+    norma = Norma.objects.get(pk=graph_map["norma_a"]["norma_id"])
+    existing = EventoAlteracao.objects.get(pk=graph_map["norma_b"]["event_id"])
+    EventoAlteracao.objects.bulk_create([
+        EventoAlteracao(
+            dispositivo_fonte=existing.dispositivo_fonte,
+            acao="REFERENCIA",
+            target_text=f"Referência sintética no limite exato {index}",
+            norma_alvo=norma,
+            target_reference_json={"synthetic_pending": True},
+            revision_fingerprint=f"exact-limit-{index}",
+        )
+        for index in range(79)
+    ])
+
+    graph = build_normative_graph(norma, depth=1, include_pending=True)
+
+    assert len(graph["edges"]) == 80
+    assert graph["truncated"] is False
+
+
+@pytest.mark.django_db(transaction=True)
 def test_relations_api_validates_filters_permissions_and_methods(graph_map):
     pk = graph_map["norma_a"]["norma_id"]
     client = Client()
@@ -124,6 +146,8 @@ def test_relations_api_validates_filters_permissions_and_methods(graph_map):
     response = client.get(base + "?depth=2&as_of=2021-03-01&include_pending=false")
     assert response.status_code == 200
     assert response.json()["edges"][0]["action"] == "ALTERA"
+    assert response.json()["corpus_coverage"]["coverage_status"] == "unknown"
+    assert response.json()["corpus_coverage"]["checked_until"] is None
 
 
 @pytest.mark.django_db(transaction=True)
@@ -156,6 +180,8 @@ def test_version_api_reads_projection_without_persisting_a_get(graph_map):
     assert payload["status"] == "complete"
     assert payload["devices"][0]["text"] == "Art. 5º O prazo é de dez dias."
     assert payload["snapshot_id"] is None
+    assert payload["corpus_coverage"]["coverage_status"] == "unknown"
+    assert payload["corpus_coverage"]["checked_until"] is None
     assert payload["document"]["local_evidence_url"].startswith("/normas/documentos/")
     assert payload["document"]["local_pdf_url"] is None
     assert Norma.objects.get(pk=pk).normative_snapshots.count() == before

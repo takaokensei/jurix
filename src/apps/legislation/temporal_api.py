@@ -10,6 +10,8 @@ from src.apps.legislation.document_models import NormativeSnapshot
 from src.apps.legislation.document_views import local_pdf_available
 from src.apps.legislation.models import Norma
 from src.processing.conflict_detection import detect_for_norma
+from src.processing.corpus_coverage import current_corpus_coverage
+from src.processing.corpus_identity import get_corpus_revision
 from src.processing.normative_projection import project_norma_as_of
 from src.processing.official_urls import safe_official_url
 from src.processing.temporal_scope import build_norma_timeline, parse_iso_date, temporal_status
@@ -89,6 +91,7 @@ def norma_version_api(request: HttpRequest, pk: int) -> JsonResponse:
             "version_hash": projection.content_sha256,
             "input_hash": projection.input_sha256,
             "coverage": projection.coverage,
+            "corpus_coverage": current_corpus_coverage(get_corpus_revision()),
             "document": (
                 {
                     "id": str(document.public_id),

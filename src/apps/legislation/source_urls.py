@@ -1,10 +1,11 @@
 """Canonical public URLs for legislation sources.
 
 SAPL exposes an API endpoint under ``/api/norma/normajuridica/...`` and a
-public web route under ``/norma/<id>/``. Older Jurix records were persisted
-with the former application's legacy UI route (``/norma/normajuridica``),
-which now returns HTTP 404. Keeping URL normalization here prevents that
-legacy value from leaking into the API, templates and cached responses.
+public web route under ``/norma/<id>`` (without a trailing slash). Older Jurix
+records were persisted with the former application's legacy UI route
+(``/norma/normajuridica``), which now returns HTTP 404. Keeping URL
+normalization here prevents invalid links from leaking into the API, templates
+and cached responses.
 """
 
 from __future__ import annotations
@@ -35,7 +36,8 @@ def canonical_sapl_url(url: str | None = None, sapl_id: int | str | None = None)
     Existing non-SAPL URLs are preserved intentionally: they may represent a
     future external source and changing them without explicit knowledge would
     be destructive. SAPL's old ``/norma/normajuridica/<id>/`` route is always
-    rewritten to ``/norma/<id>/``.
+    rewritten to ``/norma/<id>``. SAPL returns 404 for the trailing-slash
+    variants of this route, so the canonical URL must not include one.
     """
     raw = (url or "").strip()
     parsed = urlparse(raw) if raw else None
@@ -64,7 +66,7 @@ def canonical_sapl_url(url: str | None = None, sapl_id: int | str | None = None)
     if candidate_id is not None:
         base = sapl_public_base_url()
         if base:
-            return f"{base}/norma/{candidate_id}/"
+            return f"{base}/norma/{candidate_id}"
 
     if raw and parsed and parsed.scheme in {"http", "https"}:
         return raw
