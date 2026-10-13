@@ -51,7 +51,7 @@ services:
       - DEBUG=${DEBUG:-False}
       - CACHE_REDIS_URL=redis://redis:6379/1
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/live/')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/ready/', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 3

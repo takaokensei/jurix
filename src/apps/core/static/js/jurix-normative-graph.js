@@ -109,7 +109,12 @@ function createEventDetails(edge, nodes) {
 
   if (edge.source_device?.label) item.append(element('p', `Dispositivo de origem: ${edge.source_device.label}`));
   if (edge.target_device?.label) item.append(element('p', `Dispositivo de destino: ${edge.target_device.label}`));
-  item.append(element('p', `Revisão do vínculo: ${edge.review_status === 'confirmed' ? 'confirmado' : 'pendente de revisão'}`));
+  const reviewLabel = edge.review_status === 'confirmed'
+    ? 'Confirmado após revisão humana'
+    : edge.review_status === 'rejected'
+      ? 'Rejeitado; preservado para auditoria'
+      : 'Candidato pendente de revisão';
+  item.append(element('p', `Revisão do vínculo: ${reviewLabel}. ${edge.review_status === 'confirmed' ? '' : 'Este candidato não comprova efeito jurídico.'}`));
   if (edge.action === 'REFERENCIA' || edge.action === 'REGULAMENTA') {
     item.append(element('p', `Data considerada: publicação da norma de origem${edge.publication_on ? ` (${edge.publication_on})` : ' (não informada)'}. Esta relação não afirma alteração ou revogação.`));
   } else {

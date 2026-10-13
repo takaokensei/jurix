@@ -28,7 +28,11 @@ from typing import Any
 
 from django.conf import settings
 
-from src.processing.grounding_service import build_article_family_evidence, extract_claims
+from src.processing.grounding_service import (
+    _article_citation_matches,
+    build_article_family_evidence,
+    extract_claims,
+)
 
 _WORD_RE = re.compile(r"[A-Za-zÀ-ÿ]{3,}", re.UNICODE)
 _NUMBER_RE = re.compile(r"\b\d+(?:[.,]\d+)?\b")
@@ -444,7 +448,7 @@ def _normalise(text: str) -> str:
 
 def _normalise_citation_text(text: str) -> str:
     norm = _normalise(text)
-    norm = re.sub(r"\bn[º°o.]*\s*", "", norm)
+    norm = re.sub(r"\bn(?=\s*[º°o.])\s*[º°o.]*\s*", "", norm)
     return re.sub(r"/(?:19|20)(\d{2})\b", r"/\1", norm)
 
 
@@ -454,7 +458,7 @@ def _citation_ok(claim, evidence) -> bool:
     ):
         return False
     if not claim.citation_refs:
-        return True
+        return _article_citation_matches(claim.text, evidence.identifier, evidence.text)
     haystack = _normalise_citation_text(
         f"{evidence.norma_ref} {evidence.identifier} {evidence.text}"
     )
@@ -474,7 +478,7 @@ def _citation_ok(claim, evidence) -> bool:
             ):
                 continue
         return False
-    return True
+    return _article_citation_matches(claim.text, evidence.identifier, evidence.text)
 
 
 def _match_claim(claim, evidence) -> EvidenceMatch:

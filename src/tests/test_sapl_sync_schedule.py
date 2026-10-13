@@ -117,3 +117,49 @@ def test_qa_settings_never_enable_beat_even_with_product_opt_in():
         )
 
     assert json.loads(completed.stdout) == {}
+
+
+def test_dom_qa_schedule_requires_its_separate_explicit_opt_in():
+    with tempfile.TemporaryDirectory(prefix="jurix-dom-schedule-qa-") as qa_root:
+        environment = {
+            key: os.environ[key]
+            for key in ("PATH", "SYSTEMROOT", "WINDIR", "TEMP", "TMP")
+            if key in os.environ
+        }
+        environment.update(
+            {
+                "DJANGO_SKIP_DOTENV": "1",
+                "DJANGO_SETTINGS_MODULE": "config.settings_normative_qa",
+                "DEBUG": "1",
+                "DJANGO_SECRET_KEY": "schedule-test-only",
+                "JURIX_QA_ONLY": "1",
+                "JURIX_QA_ROOT": qa_root,
+                "DATABASE_URL": (
+                    "postgresql://jurix_audit:audit-only-local-fixture"
+                    "@127.0.0.1:55432/jurix_audit"
+                ),
+                "REDIS_URL": "redis://127.0.0.1:16380/0",
+                "CACHE_REDIS_URL": "redis://127.0.0.1:16380/1",
+                "JURIX_QA_DOM_NATAL_SYNC_SCHEDULE_ENABLED": "1",
+            }
+        )
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "from config.settings_normative_qa import CELERY_BEAT_SCHEDULE; "
+                "import json; print(json.dumps(CELERY_BEAT_SCHEDULE, default=str))",
+            ],
+            cwd=PROJECT_ROOT,
+            env=environment,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+    schedule = json.loads(completed.stdout)
+    entry = schedule["dom-natal-editions-daily-qa"]
+    assert entry["task"] == "ingestion.sync_dom_natal_editions"
+    assert entry["kwargs"] == {"lookback_months": 3, "max_new_total": 5}
+    assert entry["options"] == {"queue": "normative_qa"}

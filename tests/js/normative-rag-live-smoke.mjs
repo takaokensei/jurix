@@ -10,7 +10,7 @@ const evidenceDir = process.env.JURIX_EVIDENCE_DIR || '';
 const parsedBase = new URL(baseUrl);
 assert.equal(parsedBase.protocol, 'http:');
 assert.ok(['127.0.0.1', 'localhost'].includes(parsedBase.hostname));
-assert.ok(['8007', '8009', '8010', '8011', '8012', '8013', '8014', '8015', '8016', '8017', '8018', '8019', '8020', '8021', '8022', '8023', '8024', '8025', '8026'].includes(parsedBase.port));
+assert.ok(['8007', '8009', '8010', '8011', '8012', '8013', '8014', '8015', '8016', '8017', '8018', '8019', '8020', '8021', '8022', '8023', '8024', '8025', '8026', '8028', '8030', '8040', '8280', '8281', '8282', '8283', '8284', '8285', '8287', '8288', '8289'].includes(parsedBase.port));
 assert.ok(qaRoot && evidenceDir, 'QA root and evidence directory are required');
 const resolvedTemp = await fs.realpath(os.tmpdir());
 const resolvedRoot = await fs.realpath(qaRoot);
@@ -211,8 +211,21 @@ try {
     const article18Link = legalLinks.find((anchor) => /\bart(?:igo)?\.?\s*18\b/i.test(anchor.textContent || ''));
     const normLink = legalLinks.find((anchor) => /\b120\s*\/\s*2010\b/i.test(anchor.textContent || '')
       && !/\bart(?:igo)?\.?\s*(?:17|18)\b/i.test(anchor.textContent || ''));
-    const hasTextFragment = (anchor) => {
-      try { return new URL(anchor.href).hash.startsWith('#:~:text='); } catch { return false; }
+    const sourcesForArticle = (article) => (Array.isArray(sourceContainer?._sourcesData)
+      ? sourceContainer._sourcesData
+      : []).filter((source) => new RegExp(`art\\.?\\s*${article}\\b`, 'i').test(String(source?.dispositivo_ref || '')));
+    const targetsCitedPassage = (anchor, sources) => {
+      try {
+        const target = new URL(anchor.href);
+        if (target.hash.startsWith('#:~:text=')) return true;
+        const pageMatch = target.hash.match(/^#page=(\d+)$/);
+        if (!pageMatch) return false;
+        return sources.some((source) => {
+          if (Number(source?.page) !== Number(pageMatch[1])) return false;
+          const sourcePdf = source?.local_pdf_url || source?.pdf_url || source?.source_url || '';
+          return Boolean(sourcePdf) && new URL(sourcePdf, location.href).pathname === target.pathname;
+        });
+      } catch { return false; }
     };
     const text = answer?.textContent || '';
     return {
@@ -239,10 +252,25 @@ try {
       citationLinkCount: anchors.length,
       citationLinksIncludeArticle17: anchors.some((anchor) => /art(?:igo)?\.?\s*17\b/i.test(anchor.innerText)),
       citationLinksIncludeArticle18: anchors.some((anchor) => /art(?:igo)?\.?\s*18\b/i.test(anchor.innerText)),
-      article17LegalLinkHasTextFragment: Boolean(article17Link && hasTextFragment(article17Link)),
-      article18LegalLinkHasTextFragment: Boolean(article18Link && hasTextFragment(article18Link)),
+      article17LegalLinkTargetsCitedPassage: Boolean(article17Link && targetsCitedPassage(article17Link, sourcesForArticle(17))),
+      article18LegalLinkTargetsCitedPassage: Boolean(article18Link && targetsCitedPassage(article18Link, sourcesForArticle(18))),
+      citationTargetDiagnostics: legalLinks.map((anchor) => ({
+        label: anchor.textContent || '',
+        path: new URL(anchor.href).pathname,
+        hash: new URL(anchor.href).hash,
+      })),
+      articleSourcePageDiagnostics: (Array.isArray(sourceContainer?._sourcesData) ? sourceContainer._sourcesData : [])
+        .filter((source) => /art\.?\s*(?:17|18)\b/i.test(String(source?.dispositivo_ref || '')))
+        .map((source) => ({
+          device: source.dispositivo_ref,
+          page: source.page,
+          localPdfPath: source.local_pdf_url ? new URL(source.local_pdf_url, location.href).pathname : '',
+          pdfPath: source.pdf_url ? new URL(source.pdf_url, location.href).pathname : '',
+        })),
       normLegalLinkPresent: Boolean(normLink),
-      normLegalLinkHasNoTextFragment: Boolean(normLink && !hasTextFragment(normLink)),
+      normLegalLinkHasNoTextFragment: Boolean(
+        normLink && !new URL(normLink.href).hash.startsWith('#:~:text='),
+      ),
       sourceDeviceRefs: (Array.isArray(sourceContainer?._sourcesData) ? sourceContainer._sourcesData : [])
         .map((source) => String(source?.dispositivo_ref || ''))
         .filter(Boolean),
@@ -267,6 +295,7 @@ try {
   const streamDiagnostics = {
     reasonCode: doneEvent?.reason_code || null,
     grounded: doneEvent?.grounded === true,
+    chunkEventCount: eventTypes.filter((type) => type === 'chunk').length,
     answerCharCount: String(doneEvent?.answer || '').length,
     answerCitationMarkerCount: (String(doneEvent?.answer || '').match(/\[\[\d+\]\]/g) || []).length,
     claimCount: Array.isArray(doneEvent?.contract?.claim_report)
@@ -302,8 +331,8 @@ try {
   assert.ok(result.sourceDeviceRefs.some((ref) => /art\.?\s*18\b/i.test(ref)));
   assert.equal(result.citationLinksIncludeArticle17, true, 'the article 17 reference must be linked');
   assert.equal(result.citationLinksIncludeArticle18, true, 'the article 18 reference must be linked');
-  assert.equal(result.article17LegalLinkHasTextFragment, true, 'the article 17 inline link must target its cited PDF passage');
-  assert.equal(result.article18LegalLinkHasTextFragment, true, 'the article 18 inline link must target its cited PDF passage');
+  assert.equal(result.article17LegalLinkTargetsCitedPassage, true, `the article 17 inline link must target its cited PDF passage: ${JSON.stringify({targets: result.citationTargetDiagnostics, sources: result.articleSourcePageDiagnostics})}`);
+  assert.equal(result.article18LegalLinkTargetsCitedPassage, true, 'the article 18 inline link must target its cited PDF passage');
   if (result.normLegalLinkPresent) {
     assert.equal(result.normLegalLinkHasNoTextFragment, true, 'a whole-norm inline link must open the document without an article highlight');
   }
@@ -678,9 +707,10 @@ try {
         citationBindings,
         sourceCount: sourceData.length,
         sourceControlVisible: Boolean(sourceButton && sourceButton.getClientRects().length),
-        statesCoverage: /amostra consultada (?:cobre|re[uú]ne trechos de)\s+\d+\s+(?:de|dos?)\s+\d+\s+artigos/i.test(answerText),
-        statesNotIntegral: /n[aã]o (?:uma s[ií]ntese integral|permite resumir os demais assuntos|representa a totalidade|representa uma an[aá]lise integral)/i.test(answerText),
-        statesAnnexOmission: /anexos?.{0,100}(?:n[aã]o entraram|fora da sele[cç][aã]o|consultados [aà] parte)/i.test(answerText),
+        statesCoverage: /recupera[cç][aã]o (?:encontrou evid[eê]ncias em\s+\d+\s+de|reuniu evid[eê]ncias em\s+(?:um|\d+)\s+dos)\s+\d+\s+artigos/i.test(answerText),
+        statesGenerationSample: /gera[cç][aã]o usou\s+\d+\s+excertos? de\s+\d+\s+dispositivos? recuperados|abaixo aparecem\s+\d+\s+excertos? selecionados/i.test(answerText),
+        statesNotIntegral: /n[aã]o (?:e? uma s[ií]ntese integral|permite resumir os demais assuntos|representa a totalidade|representa uma an[aá]lise integral)|mapa [eé] parcial/i.test(answerText),
+        statesAnnexOmission: /anexos?.{0,100}(?:n[aã]o entraram|n[aã]o foram inclu[ií]dos? (?:nesta|nessa) sele[cç][aã]o|fora da sele[cç][aã]o|consultados [aà] parte)/i.test(answerText),
       };
     });
     assert.equal(answerStreamResponse?.status(), 200);
@@ -716,11 +746,20 @@ try {
     assert.ok(Number.isInteger(selectedArticles) && Number.isInteger(totalArticles));
     assert.ok(selectedArticles < totalArticles, 'whole-norm retrieval must disclose its actual article coverage');
     assert.equal(overviewUi.statesCoverage, true, 'the answer must explain the sample coverage');
+    assert.equal(overviewUi.statesGenerationSample, true, 'the answer must distinguish recovered articles from excerpts used for generation');
+    if (coverage.annexes_present === true) {
+      assert.equal(
+        overviewUi.statesAnnexOmission,
+        true,
+        'when the archived PDF has annexes, the answer must explicitly disclose that they were not included in the selected overview',
+      );
+    }
     assert.equal(
       overviewUi.statesNotIntegral,
       true,
       `the answer must explicitly describe partial scope: ${JSON.stringify({
         statesCoverage: overviewUi.statesCoverage,
+        statesGenerationSample: overviewUi.statesGenerationSample,
         statesNotIntegral: overviewUi.statesNotIntegral,
         statesAnnexOmission: overviewUi.statesAnnexOmission,
         headingCount: overviewUi.headingCount,
@@ -894,6 +933,16 @@ try {
     const cancelPage = await cancelContext.newPage();
     const cancelErrors = [];
     cancelPage.on('pageerror', (error) => cancelErrors.push(error.name));
+    const cancellationConsoleErrors = [];
+    cancelPage.on('console', (message) => {
+      if (message.type() === 'error') cancellationConsoleErrors.push('console_error');
+    });
+    const cancellationRequestFailures = [];
+    cancelPage.on('requestfailed', (request) => {
+      if (new URL(request.url()).pathname === '/api/v1/search/answer/stream/') {
+        cancellationRequestFailures.push(request.failure()?.errorText || 'request_failed');
+      }
+    });
     const cancellationStreams = [];
     cancelPage.on('response', (response) => {
       if (new URL(response.url()).pathname === '/api/v1/search/answer/stream/') {
@@ -908,20 +957,42 @@ try {
     await cancelPage.$eval('#question-textarea', (input, value) => {
       input.value = value;
       input.dispatchEvent(new Event('input', { bubbles: true }));
-    }, 'Explique a diferença entre os arts. 17 e 18 da Lei Complementar nº 120/2010 e cite os dois dispositivos.');
+    }, question);
+    await cancelPage.evaluate(() => {
+      window.__cancelSmoke = { phase: 'initial', initialVisible: false, retryVisible: false };
+      const observe = () => {
+        const state = window.__cancelSmoke;
+        const button = document.getElementById('send-button');
+        const answer = document.querySelector('.message-assistant .message-body');
+        const visibleStream = button?.dataset.action === 'stop'
+          && answer?.textContent?.trim().length > 0
+          && !answer.querySelector('.jurix-answer-pending')
+          && answer.hasAttribute('data-streaming');
+        if (!visibleStream) return;
+        if (state.phase === 'initial' && !state.initialVisible) {
+          state.initialVisible = true;
+          // Cancel in the same browser task that observes the first rendered
+          // answer chunk; polling can miss this intentionally brief window.
+          button.click();
+        } else if (state.phase === 'retry') {
+          state.retryVisible = true;
+        }
+      };
+      window.__cancelSmokeObserver = new MutationObserver(observe);
+      window.__cancelSmokeObserver.observe(document.body, {
+        subtree: true,
+        childList: true,
+        characterData: true,
+        attributes: true,
+      });
+    });
     await cancelPage.evaluate(() => document.getElementById('chat-form').requestSubmit());
-    await cancelPage.waitForFunction(() => {
-      const button = document.getElementById('send-button');
-      const answer = document.querySelector('.message-assistant .message-body');
-      return button?.dataset.action === 'stop' && answer?.textContent?.trim().length > 0
-        && !answer.querySelector('.jurix-answer-pending') && answer.hasAttribute('data-streaming');
-    }, { timeout: 180000 });
+    await cancelPage.waitForFunction(() => window.__cancelSmoke?.initialVisible === true, { timeout: 180000 });
     const partialTextLength = await cancelPage.$eval(
       '.message-assistant .message-body',
       (answer) => answer.textContent.trim().length,
     );
     assert.ok(partialTextLength > 0, 'the real model must produce visible text before cancellation');
-    await cancelPage.click('#send-button');
     await cancelPage.waitForFunction(() => Boolean(
       document.querySelector('.message-assistant .jurix-stream-interrupted-note')
       && document.querySelector('.message-assistant .jurix-interrupted-retry:not(:disabled)')
@@ -952,15 +1023,51 @@ try {
     assert.equal(cancelledUi.sourcesPending, false);
     assert.match(cancelledUi.badgeText, /n[aã]o validadas/i);
     assert.equal(cancelledUi.copyActionVisible, false, 'cancelled partial text must not expose the completed-answer copy action');
+    assert.equal(await cancelPage.evaluate(() => window.__cancelSmoke.initialVisible), true);
     assert.equal(cancelErrors.length, 0);
 
+    await cancelPage.evaluate(() => { window.__cancelSmoke.phase = 'retry'; });
     await cancelPage.click('.message-assistant .jurix-interrupted-retry');
-    await cancelPage.waitForFunction(() => {
-      const button = document.getElementById('send-button');
-      const answer = document.querySelector('.message-assistant .message-body');
-      return button?.dataset.action === 'stop' && answer?.textContent?.trim().length > 0
-        && !answer.querySelector('.jurix-answer-pending') && answer.hasAttribute('data-streaming');
-    }, { timeout: 180000 });
+    try {
+      await cancelPage.waitForFunction(() => {
+        const button = document.getElementById('send-button');
+        const answer = document.querySelector('.message-assistant .message-body');
+        const retryWasVisible = window.__cancelSmoke?.retryVisible === true;
+        const alreadyCompleted = button?.dataset.action === 'send'
+          && answer?.textContent?.trim().length > 0
+          && !answer.querySelector('.jurix-answer-pending') && !answer.hasAttribute('data-streaming');
+        return retryWasVisible || alreadyCompleted;
+      }, { timeout: 180000 });
+    } catch (error) {
+      const retryDiagnostic = await cancelPage.evaluate(() => {
+        const button = document.getElementById('send-button');
+        const answer = document.querySelector('.message-assistant .message-body');
+        const message = answer?.closest('.message-assistant');
+        const textarea = document.getElementById('question-textarea');
+        return {
+          sendAction: button?.dataset.action || null,
+          sendDisabled: Boolean(button?.disabled),
+          answerLength: answer?.textContent?.trim().length || 0,
+          pendingPlaceholder: Boolean(answer?.querySelector('.jurix-answer-pending')),
+          streamingAttribute: Boolean(answer?.hasAttribute('data-streaming')),
+          answerClass: answer?.className || '',
+          messageClass: message?.className || '',
+          errorStateVisible: Boolean(message?.querySelector('.jurix-rag-error, [role="alert"]')),
+          retryVisible: Boolean(message?.querySelector('.jurix-interrupted-retry')),
+          inputLength: textarea?.value?.length || 0,
+          assistantCount: document.querySelectorAll('.message-assistant .message-body').length,
+          userCount: document.querySelectorAll('.message-user').length,
+        };
+      });
+      error.message += `; retry UI diagnostic=${JSON.stringify({
+        ...retryDiagnostic,
+        streamResponses: cancellationStreams.length,
+        pageErrors: cancelErrors,
+        consoleErrors: cancellationConsoleErrors,
+        requestFailures: cancellationRequestFailures,
+      })}`;
+      throw error;
+    }
     await cancelPage.waitForFunction(() => {
       const button = document.getElementById('send-button');
       const answer = document.querySelector('.message-assistant .message-body');
@@ -974,6 +1081,17 @@ try {
     const retryDone = retryEvents.find((event) => event.type === 'done');
     assert.ok(retryDone, 'the retry must complete normally');
     assert.ok((retryDone.contract?.generation_attempts || []).length > 0, 'the retry must reach the local model');
+    const retryChunks = retryEvents.filter((event) => event.type === 'chunk' && event.provisional !== true);
+    assert.ok(retryChunks.length > 0,
+      `the grounded retry must stream canonical chunks before done; `
+      + `events=${JSON.stringify(retryEvents.map((event) => ({
+        type: event.type,
+        status: event.status,
+        reason: event.reason_code || event.contract?.reason_code || null,
+        answerLength: event.type === 'done' ? String(event.answer || '').length : undefined,
+      })))}`);
+    assert.equal(retryChunks.map((event) => event.chunk || '').join(''), retryDone.answer,
+      'the canonical chunks must reconstruct the exact grounded retry answer');
     const retriedUi = await cancelPage.evaluate(() => {
       const answer = document.querySelector('.message-assistant .message-body');
       const message = answer?.closest('.message-assistant');
@@ -1057,6 +1175,8 @@ try {
       retry: {
         streamHttpStatus: cancellationStreams[1].status(),
         generationAttempts: retryDone.contract.generation_attempts.length,
+        canonicalChunkCount: retryChunks.length,
+        visibleStreamingObserved: await cancelPage.evaluate(() => window.__cancelSmoke.retryVisible),
         ...retriedUi,
       },
       insufficientEvidenceAfterRetry: {
@@ -1066,6 +1186,8 @@ try {
         ...insufficientUi,
       },
       uncaughtBrowserErrors: cancelErrors.length,
+      consoleErrorCount: cancellationConsoleErrors.length,
+      streamRequestFailures: cancellationRequestFailures.length,
       answerAndSourceTextStoredInEvidence: false,
     };
   } finally {
@@ -1313,6 +1435,166 @@ try {
     await historyContext.close();
   }
 
+  // Realistic, unscoped PGM search: the user knows the subject (accessibility
+  // in Natal's building code) but not the act number. A topical answer must
+  // cite only excerpts that directly support accessibility, or abstain.
+  const accessibilityContext = await browser.createBrowserContext();
+  let accessibilitySmoke;
+  try {
+    const accessibilityPage = await accessibilityContext.newPage();
+    const accessibilityErrors = [];
+    accessibilityPage.on('pageerror', (error) => accessibilityErrors.push(error.name));
+    const accessibilityResponse = await accessibilityPage.goto(
+      new URL('/assistente/?corpus=archive-qa', baseUrl).href,
+      { waitUntil: 'domcontentloaded', timeout: 20000 },
+    );
+    assert.equal(accessibilityResponse?.status(), 200);
+    const accessibilityQuestion = (
+      'Quais exigências de acessibilidade para edificações aparecem no Código de Obras de Natal? '
+      + 'Resuma apenas o que os dispositivos recuperados dizem, cite cada artigo e explique '
+      + 'o que ainda não se pode concluir sobre uma obra específica.'
+    );
+    await accessibilityPage.$eval('#question-textarea', (input, value) => {
+      input.value = value;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }, accessibilityQuestion);
+    let accessibilityStreamResponse = null;
+    accessibilityPage.on('response', (response) => {
+      if (new URL(response.url()).pathname === '/api/v1/search/answer/stream/') {
+        accessibilityStreamResponse = response;
+      }
+    });
+    await accessibilityPage.evaluate(() => document.getElementById('chat-form').requestSubmit());
+    await accessibilityPage.waitForFunction(() => {
+      const button = document.getElementById('send-button');
+      const answer = document.querySelector('.message-assistant .message-body');
+      return button && !button.disabled && answer?.textContent?.trim().length > 0
+        && !answer.querySelector('.jurix-answer-pending') && !answer.hasAttribute('data-streaming');
+    }, { timeout: 180000 });
+    assert.equal(accessibilityStreamResponse?.status(), 200);
+    const ui = await accessibilityPage.evaluate(() => {
+      const answer = document.querySelector('.message-assistant .message-body');
+      const sourceContainer = answer?.closest('.message-content')?.querySelector('[id^="sources-"]');
+      const sources = Array.isArray(sourceContainer?._sourcesData) ? sourceContainer._sourcesData : [];
+      const evidencePattern = /acessibilidade|acess[ií]vel|pessoas?\s+com\s+defici[eê]ncia|mobilidade\s+reduzida|rampas?/i;
+      return {
+        answerHasAbstention: /n[aã]o encontrei|evid[eê]ncia.{0,30}insuficiente/i.test(answer?.textContent || ''),
+        sourceCount: sources.length,
+        sourceDevices: sources.map((source) => String(source?.dispositivo_ref || '')),
+        sourceNorms: [...new Set(sources.map((source) => String(source?.norma_ref || '')))],
+        allSourcesFromNamedCode: sources.length > 0 && sources.every((source) =>
+          /(?:258\s*\/\s*2024|55\s*\/\s*2004)/i.test(String(source?.norma_ref || ''))),
+        currentCodeSourcePresent: sources.some((source) => /258\s*\/\s*2024/i.test(String(source?.norma_ref || ''))),
+        allSourcesDirectlySupportTopic: sources.length > 0
+          && sources.every((source) => evidencePattern.test(String(source?.full_text || ''))),
+        sourceControlVisible: Boolean(sourceContainer?.querySelector('.jurix-sources-pill-btn')
+          ?.getClientRects().length),
+        citationLinkCount: answer?.querySelectorAll('a.jurix-legal-reference-link').length || 0,
+        rawCitationMarkerVisible: /\[\[\d+\]\]/.test(answer?.textContent || ''),
+      };
+    });
+    assert.ok(
+      (ui.sourceCount === 0 && ui.answerHasAbstention)
+        || (ui.allSourcesFromNamedCode && ui.currentCodeSourcePresent
+          && ui.allSourcesDirectlySupportTopic && ui.sourceControlVisible
+          && ui.citationLinkCount > 0 && !ui.rawCitationMarkerVisible),
+      `the unscoped accessibility question must cite direct evidence or safely abstain: ${JSON.stringify(ui)}`,
+    );
+    let drawerMatchesAnswerSources = false;
+    let drawerClosedWithEscape = false;
+    let drawerLayout = null;
+    let drawerNormRefs = [];
+    if (ui.sourceCount > 0) {
+      await accessibilityPage.click('.message-assistant .jurix-sources-pill-btn');
+      await accessibilityPage.waitForFunction(() =>
+        document.querySelector('#jurix-sources-drawer-panel')?.getAttribute('aria-hidden') === 'false');
+      const drawerGroupTitles = await accessibilityPage.$$eval(
+        '#jurix-sources-drawer-body .jurix-source-group__title',
+        (titles) => titles.map((title) => title.textContent || ''),
+      );
+      drawerNormRefs = [...new Set(
+        drawerGroupTitles.flatMap((title) => [...title.matchAll(/Lei\s+Complementar\s+n[ºo]?\s*[\d.]+\s*\/\s*\d{4}/gi)])
+          .map(([reference]) => reference.replace(/\s+/g, ' ').trim()),
+      )];
+      const normalizeNormRef = (value) => {
+        const match = String(value || '').match(/(?:lei\s+complementar|lc)\s*n[ºo.]?\s*([\d.]+)\s*\/\s*(\d{4})/i);
+        return match ? `${match[1].replace(/\D/g, '')}/${match[2]}` : null;
+      };
+      const answerNormRefs = new Set(ui.sourceNorms.map(normalizeNormRef).filter(Boolean));
+      const drawerReferences = new Set(drawerNormRefs.map(normalizeNormRef).filter(Boolean));
+      drawerMatchesAnswerSources = answerNormRefs.size > 0
+        && answerNormRefs.size === drawerReferences.size
+        && [...answerNormRefs].every((reference) => drawerReferences.has(reference));
+      assert.equal(drawerMatchesAnswerSources, true,
+        `the source drawer must show exactly the norms associated with the answer, without inventing historical scope; answer=${JSON.stringify([...answerNormRefs])}; drawer=${JSON.stringify([...drawerReferences])}`);
+      await accessibilityPage.waitForFunction(() => {
+        const panel = document.querySelector('#jurix-sources-drawer-panel');
+        const bounds = panel?.getBoundingClientRect();
+        return Boolean(panel?.classList.contains('is-open') && bounds
+          && bounds.left >= -1 && bounds.right <= window.innerWidth + 1);
+      }, { timeout: 2000 });
+      drawerLayout = await accessibilityPage.evaluate(() => {
+        const panel = document.querySelector('#jurix-sources-drawer-panel');
+        const controls = panel?.querySelector('.jurix-source-group-controls');
+        const toggle = controls?.querySelector('.jurix-source-group-toggle-all');
+        const firstGroup = panel?.querySelector('.jurix-source-group');
+        const groupHeader = firstGroup?.querySelector('.jurix-source-group__header');
+        const rect = (node) => {
+          const box = node?.getBoundingClientRect();
+          return box ? { left: Math.round(box.left), right: Math.round(box.right), width: Math.round(box.width) } : null;
+        };
+        const panelRect = rect(panel);
+        const toggleRect = rect(toggle);
+        const groupRect = rect(firstGroup);
+        const headerRect = rect(groupHeader);
+        return {
+          viewportWidth: window.innerWidth,
+          documentWidth: document.documentElement.scrollWidth,
+          panel: panelRect,
+          expandAll: toggleRect,
+          firstGroup: groupRect,
+          firstGroupHeader: headerRect,
+          fits: Boolean(panelRect && toggleRect && groupRect && headerRect
+            && toggleRect.left >= panelRect.left
+            && toggleRect.right <= panelRect.right
+            && toggleRect.left >= 0
+            && toggleRect.right <= window.innerWidth
+            && groupRect.left >= panelRect.left
+            && groupRect.right <= panelRect.right
+            && groupRect.left >= 0
+            && groupRect.right <= window.innerWidth
+            && headerRect.left >= groupRect.left
+            && headerRect.right <= groupRect.right),
+        };
+      });
+      assert.equal(drawerLayout.fits, true,
+        `source controls and grouped cards must fit inside the drawer: ${JSON.stringify(drawerLayout)}`);
+      await accessibilityPage.screenshot({
+        path: path.join(resolvedEvidenceDir, 'accessibility-source-drawer.png'),
+        fullPage: true,
+      });
+      await accessibilityPage.keyboard.press('Escape');
+      await accessibilityPage.waitForFunction(() =>
+        document.querySelector('#jurix-sources-drawer-panel')?.getAttribute('aria-hidden') === 'true');
+      drawerClosedWithEscape = true;
+    }
+    assert.equal(accessibilityErrors.length, 0);
+    accessibilitySmoke = {
+      pageStatus: accessibilityResponse.status(),
+      streamHttpStatus: accessibilityStreamResponse.status(),
+      ...ui,
+      drawerNormRefs: drawerNormRefs || [],
+      drawerMatchesAnswerSources,
+      drawerLayout,
+      drawerClosedWithEscape,
+      uncaughtBrowserErrors: accessibilityErrors.length,
+      responseTextStoredInEvidence: false,
+    };
+    await accessibilityPage.close();
+  } finally {
+    await accessibilityContext.close();
+  }
+
   const trace = result.trace;
   const report = {
     dataset: 'authentic_historical_archive_qa_unreviewed',
@@ -1321,8 +1603,15 @@ try {
     pageStatus: pageResponse.status(),
     streamHttpStatus: streamResponse.status(),
     eventOrder: eventTypes.filter((type, index) => ['sources', 'chunk', 'done'].includes(type) && (type !== 'chunk' || index === firstChunkIndex)),
+    chunkEventCount: streamDiagnostics.chunkEventCount,
     sourcesBeforeFirstChunk: sourcesIndex < firstChunkIndex,
     ollamaGenerationAttempts: generationAttempts.length,
+    generationAttemptTimings: generationAttempts.map((attempt) => ({
+      attempt: attempt.attempt,
+      durationMs: attempt.duration_ms,
+      timeToFirstChunkMs: attempt.time_to_first_chunk_ms,
+      outputCharacters: attempt.output_characters,
+    })),
     backendGenerationMs: generationMs,
     elapsedMs: Date.now() - startedAt,
     sourcesAvailableAfterMs: trace.sourcesAtMs,
@@ -1342,8 +1631,8 @@ try {
     sourceDeviceRefs: result.sourceDeviceRefs,
     citationLinksIncludeArticle17: result.citationLinksIncludeArticle17,
     citationLinksIncludeArticle18: result.citationLinksIncludeArticle18,
-    article17LegalLinkHasTextFragment: result.article17LegalLinkHasTextFragment,
-    article18LegalLinkHasTextFragment: result.article18LegalLinkHasTextFragment,
+    article17LegalLinkTargetsCitedPassage: result.article17LegalLinkTargetsCitedPassage,
+    article18LegalLinkTargetsCitedPassage: result.article18LegalLinkTargetsCitedPassage,
     normLegalLinkPresent: result.normLegalLinkPresent,
     normLegalLinkCheckApplicable: result.normLegalLinkPresent,
     normLegalLinkHasNoTextFragment: result.normLegalLinkHasNoTextFragment,
@@ -1386,6 +1675,7 @@ try {
     cancellation,
     relationSmoke,
     temporalRag,
+    accessibilitySmoke,
   };
   const outputPath = path.join(resolvedEvidenceDir, 'live-rag-browser-smoke.json');
   try {

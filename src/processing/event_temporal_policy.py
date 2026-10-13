@@ -6,13 +6,19 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 from uuid import UUID
 
 _PUBLICATION_CLAUSE = re.compile(
     r"\b(?:esta\s+lei|este\s+decreto|a\s+presente\s+norma|a\s+presente\s+lei)"
     r"[^.;\n]{0,180}?\bentra(?:r[aá])?\s+em\s+vigor\s+na\s+data\s+de\s+sua\s+publica[çc][ãa]o\b[^.;\n]*[.]?",
+    re.IGNORECASE,
+)
+_VACATIO_PERIOD = re.compile(
+    r"\bentra(?:r[aá])?\s+em\s+vigor\s+"
+    r"(?P<days>\d{1,4})\s*(?:\([^)]{1,48}\)\s*)?dias?\s+ap[oó]s\s+"
+    r"(?:a\s+)?data\s+de\s+sua\s+publica[çc][ãa]o\b",
     re.IGNORECASE,
 )
 _UNSUPPORTED_EFFECT = re.compile(
@@ -156,6 +162,25 @@ def event_temporal_decision(event) -> EventTemporalDecision:
             "A cláusula aponta para a publicação, mas a data de efeito ainda não foi revisada.",
             publication_on=publication_on,
         )
+    vacatio_clause = _VACATIO_PERIOD.search(source_text or "")
+    if vacatio_clause and publication_on:
+        period_days = int(vacatio_clause.group("days"))
+        if 0 < period_days <= 3650:
+            candidate_on = publication_on + timedelta(days=period_days)
+            return EventTemporalDecision(
+                candidate_on,
+                "candidate",
+                {
+                    "kind": "vacatio_period",
+                    "period_days": period_days,
+                    "evidence_quote": vacatio_clause.group(0).strip(),
+                    "publication_on": publication_on.isoformat(),
+                    "counting_rule": "LC 95/1998, art. 8º, § 1º",
+                },
+                "Data candidata calculada a partir da cláusula de vacância e da publicação; requer confirmação humana antes de qualquer projeção.",
+                publication_on=publication_on,
+                operative=False,
+            )
     return EventTemporalDecision(
         None,
         "unknown",

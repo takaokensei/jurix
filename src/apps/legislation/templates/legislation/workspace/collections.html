@@ -39,7 +39,7 @@
     <div class="workspace-empty-stats" aria-label="Recursos disponíveis"><span><strong>{{ norma_count }}</strong> normas consolidadas</span><span>Pesquisa semântica</span><span>Histórico de conversas</span></div>
     {% if archive_review_count %}
     <div class="workspace-search-caveat" role="note">
-        <strong>{{ archive_review_count }} PDF{{ archive_review_count|pluralize }} local{{ archive_review_count|pluralize }} em revisão</strong>
+        <strong>{{ archive_review_count }} {% if archive_review_count == 1 %}PDF local{% else %}PDFs locais{% endif %} em revisão</strong>
         <p>Esses documentos ainda não são normas consolidadas nem podem ser salvos como tal em coleções.</p>
         <a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_list' %}#archive-candidates">Ver PDFs disponíveis</a>
         {% if archive_assistant_enabled %}<a class="workspace-button workspace-button-primary" href="{% url 'workspace:assistant' %}?new=1&amp;corpus=archive-qa">Perguntar ao assistente sobre o acervo</a>{% endif %}

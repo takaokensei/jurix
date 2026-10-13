@@ -25,14 +25,18 @@ def affected_norma_ids(source_norma_id: int, *, max_nodes: int = 50) -> list[int
     queue = [int(source_norma_id)]
     while queue and len(visited) < max_nodes:
         current = queue.pop(0)
-        events = EventoAlteracao.objects.filter(
-            dispositivo_fonte__norma_id=current,
-            validado=True,
-            is_active=True,
-            acao__in=MODIFYING_ACTIONS,
-            review_revision__isnull=False,
-        ).filter(Q(dispositivo_alvo__isnull=False) | Q(norma_alvo__isnull=False)).select_related(
-            "dispositivo_fonte", "dispositivo_alvo", "norma_alvo", "review_revision"
+        events = (
+            EventoAlteracao.objects.filter(
+                dispositivo_fonte__norma_id=current,
+                validado=True,
+                is_active=True,
+                acao__in=MODIFYING_ACTIONS,
+                review_revision__isnull=False,
+            )
+            .filter(Q(dispositivo_alvo__isnull=False) | Q(norma_alvo__isnull=False))
+            .select_related(
+                "dispositivo_fonte", "dispositivo_alvo", "norma_alvo", "review_revision"
+            )
         )
         from src.apps.legislation.event_review import event_review_status
 
@@ -51,7 +55,11 @@ def affected_norma_ids(source_norma_id: int, *, max_nodes: int = 50) -> list[int
 
 
 def enqueue_normative_work(
-    *, source_kind: str, source_id: str | int, source_revision: str, stage: str,
+    *,
+    source_kind: str,
+    source_id: str | int,
+    source_revision: str,
+    stage: str,
     payload: dict | None = None,
 ) -> tuple[NormativeWorkItem, bool]:
     """Create an idempotent work item only while the explicit bounded queue has room."""
@@ -66,7 +74,9 @@ def enqueue_normative_work(
     dedupe_key = hashlib.sha256(identity.encode("utf-8")).hexdigest()
     limit = max(1, int(getattr(settings, "NORMATIVE_WORK_QUEUE_MAX_PENDING", 200)))
     with transaction.atomic():
-        existing = NormativeWorkItem.objects.select_for_update().filter(dedupe_key=dedupe_key).first()
+        existing = (
+            NormativeWorkItem.objects.select_for_update().filter(dedupe_key=dedupe_key).first()
+        )
         if existing:
             return existing, False
         active_count = NormativeWorkItem.objects.filter(
@@ -85,13 +95,19 @@ def enqueue_normative_work(
         return item, True
 
 
-def claim_normative_work_item(item_id: int, *, lease_seconds: int = 300) -> tuple[NormativeWorkItem, str]:
+def claim_normative_work_item(
+    item_id: int, *, lease_seconds: int = 300
+) -> tuple[NormativeWorkItem, str]:
     # Commit terminal retry exhaustion before raising; raising inside atomic would roll it back.
     retry_exhausted = False
     with transaction.atomic():
         item = NormativeWorkItem.objects.select_for_update().get(pk=item_id)
         now = timezone.now()
-        if item.status == NormativeWorkItem.Status.LEASED and item.lease_until and item.lease_until > now:
+        if (
+            item.status == NormativeWorkItem.Status.LEASED
+            and item.lease_until
+            and item.lease_until > now
+        ):
             raise RuntimeError("Normative work item already has an active lease")
         if item.status not in {NormativeWorkItem.Status.PENDING, NormativeWorkItem.Status.LEASED}:
             raise RuntimeError("Normative work item is not claimable")
@@ -100,7 +116,9 @@ def claim_normative_work_item(item_id: int, *, lease_seconds: int = 300) -> tupl
             item.last_error = "Tentativas máximas atingidas."
             item.lease_token = None
             item.lease_until = None
-            item.save(update_fields=["status", "last_error", "lease_token", "lease_until", "updated_at"])
+            item.save(
+                update_fields=["status", "last_error", "lease_token", "lease_until", "updated_at"]
+            )
             retry_exhausted = True
         else:
             token = uuid.uuid4()
@@ -108,7 +126,9 @@ def claim_normative_work_item(item_id: int, *, lease_seconds: int = 300) -> tupl
             item.lease_token = token
             item.lease_until = now + timedelta(seconds=max(30, min(int(lease_seconds), 1800)))
             item.attempts += 1
-            item.save(update_fields=["status", "lease_token", "lease_until", "attempts", "updated_at"])
+            item.save(
+                update_fields=["status", "lease_token", "lease_until", "attempts", "updated_at"]
+            )
             return item, str(token)
     if retry_exhausted:
         raise RuntimeError("Normative work item reached its retry limit")
@@ -127,10 +147,63 @@ def finish_normative_stage(item_id: int, token: str, *, result: dict | None = No
     stage_results = previous_result.get("stage_results")
     if not isinstance(stage_results, dict):
         stage_results = {}
-    stage_results = {**stage_results, stage: result or {}}
-    item.result = {**previous_result, **(result or {}), "stage_results": stage_results}
+    result = result or {}
+    stage_results = {**stage_results, stage: result.get("stage_result", result)}
+    progress_by_stage = previous_result.get("stage_progress")
+    if not isinstance(progress_by_stage, dict):
+        progress_by_stage = {}
+    item.result = {
+        **previous_result,
+        **{
+            key: value
+            for key, value in result.items()
+            if key not in {"continue_stage", "stage_progress", "stage_result"}
+        },
+        "stage_results": stage_results,
+        "stage_progress": {
+            **progress_by_stage,
+            **(
+                {stage: result["stage_progress"]}
+                if isinstance(result.get("stage_progress"), dict)
+                else {}
+            ),
+        },
+    }
     item.lease_token = None
     item.lease_until = None
+    if result.get("continue_stage"):
+        item.status = NormativeWorkItem.Status.PENDING
+        item.attempts = 0
+        item.save(
+            update_fields=[
+                "status",
+                "result",
+                "attempts",
+                "lease_token",
+                "lease_until",
+                "updated_at",
+            ]
+        )
+        return item
+    item.result["stage_progress"].pop(stage, None)
+    if (
+        stage == NormativeWorkItem.Stage.RECONCILE
+        and isinstance(item.payload, dict)
+        and item.payload.get("reconciliation_only") is True
+    ):
+        item.status = NormativeWorkItem.Status.COMPLETED
+        item.attempts = 0
+        item.save(
+            update_fields=[
+                "status",
+                "result",
+                "attempts",
+                "lease_token",
+                "lease_until",
+                "updated_at",
+            ]
+        )
+        return item
     position = STAGE_ORDER.index(item.stage)
     if position + 1 >= len(STAGE_ORDER):
         item.status = NormativeWorkItem.Status.COMPLETED
@@ -143,9 +216,17 @@ def finish_normative_stage(item_id: int, token: str, *, result: dict | None = No
             if item.stage == NormativeWorkItem.Stage.REVIEW
             else NormativeWorkItem.Status.PENDING
         )
-    item.save(update_fields=[
-        "stage", "status", "result", "attempts", "lease_token", "lease_until", "updated_at"
-    ])
+    item.save(
+        update_fields=[
+            "stage",
+            "status",
+            "result",
+            "attempts",
+            "lease_token",
+            "lease_until",
+            "updated_at",
+        ]
+    )
     return item
 
 
@@ -215,9 +296,18 @@ def resolve_normative_review(item_id: int, *, actor, approved: bool, reason: str
             item.status = NormativeWorkItem.Status.PENDING
     else:
         item.status = NormativeWorkItem.Status.CANCELLED
-    item.save(update_fields=[
-        "stage", "status", "result", "attempts", "reviewed_by", "review_reason", "reviewed_at", "updated_at"
-    ])
+    item.save(
+        update_fields=[
+            "stage",
+            "status",
+            "result",
+            "attempts",
+            "reviewed_by",
+            "review_reason",
+            "reviewed_at",
+            "updated_at",
+        ]
+    )
     return item
 
 

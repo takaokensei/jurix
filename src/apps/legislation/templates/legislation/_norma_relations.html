@@ -1,5 +1,5 @@
 <section class="card legal-detail-card normative-relations" data-normative-relations
-         data-api-url="{% url 'legislation_api:norma_relations' norma.pk %}">
+         data-api-url="{% url 'legislation_api:norma_relations' norma.pk %}{% if include_pending_relations %}?include_pending=true{% endif %}">
   <details data-relations-disclosure>
     <summary class="normative-relations__summary" data-relations-toggle>
       <span>
@@ -9,7 +9,7 @@
       <span class="normative-relations__summary-hint">Carregar relações</span>
     </summary>
     <div class="normative-relations__body">
-      <p class="normative-relations__intro">São exibidos apenas vínculos disponíveis para consulta pública. Uma referência indica relação entre normas e não significa, por si só, alteração ou revogação.</p>
+      <p class="normative-relations__intro">{% if include_pending_relations %}Modo restrito a revisores: vínculos extraídos podem estar pendentes ou rejeitados e não comprovam, por si só, alteração, revogação ou vigência. Confira os trechos no documento original.{% else %}São exibidos apenas vínculos confirmados e disponíveis para consulta pública. Uma referência indica relação entre normas e não significa, por si só, alteração ou revogação.{% endif %}</p>
       <div class="normative-relations__controls">
         <label for="relations-action-{{ norma.pk }}">Filtrar por tipo de relação</label>
         <select id="relations-action-{{ norma.pk }}" data-relations-action>

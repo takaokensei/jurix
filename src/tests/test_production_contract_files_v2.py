@@ -62,6 +62,14 @@ def test_production_compose_has_process_appropriate_celery_healthchecks():
     assert 'test: ["NONE"]' in compose
 
 
+def test_web_compose_healthchecks_require_dependency_readiness():
+    for compose_path in ("docker-compose.yml", "docker-compose.prod.yml"):
+        compose = Path(compose_path).read_text(encoding="utf-8")
+        assert "http://localhost:8000/api/v1/health/ready/" in compose
+        assert "http://localhost:8000/api/v1/health/live/" not in compose
+        assert "timeout=3" in compose
+
+
 def test_production_compose_forwards_https_and_csrf_settings():
     compose = Path("docker-compose.prod.yml").read_text(encoding="utf-8")
 

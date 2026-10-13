@@ -123,7 +123,11 @@ def _answer_shape_metrics(answer: str) -> dict[str, object]:
         "bullet_count": len(re.findall(r"(?m)^\s*[-*]\s+", text)),
         "paragraph_count": len([part for part in re.split(r"\n\s*\n", text) if part.strip()]),
         "has_partial_coverage_note": bool(
-            re.search(r"A amostra consultada cobre \d+ de \d+ artigos", text, re.IGNORECASE)
+            re.search(
+                r"(?:A amostra consultada cobre\s+\d+\s+de|A recuperação (?:encontrou|reuniu) evidências em\s+(?:um|\d+)\s+(?:de|dos))\s+\d+\s+artigos",
+                text,
+                re.IGNORECASE,
+            )
         ),
         "has_generic_partial_notice": "A resposta foi limitada ao que as fontes consultadas permitem confirmar." in text,
     }

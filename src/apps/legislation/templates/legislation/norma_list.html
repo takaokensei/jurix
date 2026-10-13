@@ -1,13 +1,13 @@
 {% extends 'legislation/workspace/base.html' %}
 {% load static %}
 
-{% block title %}Normas Consolidadas — Jurix{% endblock %}
+{% block title %}Normas e acervo — Jurix{% endblock %}
 {% block body_class %} jurix-normas-page{% endblock %}
 {% block section_name %}Normas{% endblock %}
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Normas' %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/jurix-norma-list.css' %}?v=20261008-archive-anchor1">
+<link rel="stylesheet" href="{% static 'css/jurix-norma-list.css' %}?v=20261013-global-archive-search2">
 {% endblock %}
 
 {% block content %}
@@ -15,7 +15,7 @@
     <section class="jurix-norma-hero" aria-labelledby="normas-title">
         <div>
             <span class="jurix-norma-eyebrow">Biblioteca normativa</span>
-            <h1 id="normas-title" class="jurix-norma-title">Normas consolidadas</h1>
+            <h1 id="normas-title" class="jurix-norma-title">Normas e acervo</h1>
             <p class="jurix-norma-subtitle">Buscar por número, ano ou assunto.</p>
         </div>
     </section>
@@ -34,7 +34,7 @@
                         type="search"
                         name="q"
                         value="{{ search_query }}"
-                        placeholder="Número, tipo ou ementa…"
+                        placeholder="Número ou tema"
                         autocomplete="off"
                         spellcheck="false"
                         aria-label="Pesquisar normas"
@@ -82,11 +82,26 @@
             </div>
         </form>
 
+        {% if archive_candidate_total and search_query %}
+        <aside class="jurix-norma-archive-bridge" aria-labelledby="norma-archive-bridge-title">
+            <div>
+                <span class="jurix-norma-eyebrow">Acervo histórico · revisão pendente</span>
+                <h2 id="norma-archive-bridge-title">Não encontrou “{{ search_query }}” nas normas consolidadas?</h2>
+                <p>A busca acima não pesquisa o texto integral destes PDFs. Consulte o acervo completo; os documentos encontrados continuam identificados como candidatos e não comprovam vigência.</p>
+            </div>
+            <a class="jurix-norma-primary-button" id="archive-global-search-top"
+                href="{% url 'workspace:legal_search' %}?q={{ search_query|urlencode }}{% if selected_type %}&amp;arquivo_tipo={{ selected_type|urlencode }}{% endif %}{% if selected_year %}&amp;arquivo_ano={{ selected_year|urlencode }}{% endif %}">
+                Buscar nos {{ archive_candidate_total }} PDFs pendentes
+                <span aria-hidden="true">→</span>
+            </a>
+        </aside>
+        {% endif %}
+
         <div class="jurix-norma-results-bar">
             <div class="jurix-norma-summary" id="resultados" aria-label="Resumo do acervo e da pesquisa">
                 <div class="jurix-norma-stat">
                     <span class="jurix-norma-stat-value">{{ total_consolidated }}</span>
-                    <span class="jurix-norma-stat-label">no acervo</span>
+                    <span class="jurix-norma-stat-label">normas consolidadas</span>
                 </div>
                 <div class="jurix-norma-stat">
                     <span class="jurix-norma-stat-value">{{ filtered_count }}</span>
@@ -94,7 +109,7 @@
                 </div>
                 {% if archive_candidate_count %}
                 <div class="jurix-norma-stat jurix-norma-stat-pending">
-                    <span class="jurix-norma-stat-value">{{ archive_candidate_count }}</span>
+                    <span class="jurix-norma-stat-value">{{ archive_candidate_total }}</span>
                     <span class="jurix-norma-stat-label">PDFs em revisão</span>
                 </div>
                 {% endif %}
@@ -158,14 +173,22 @@
         {% endif %}
     </section>
     {% else %}
-    <section class="jurix-norma-empty" aria-labelledby="norma-empty-title">
+    <section class="jurix-norma-empty{% if sapl_catalog_total %} jurix-norma-empty--catalog{% endif %}" aria-labelledby="norma-empty-title">
         <div class="jurix-norma-empty-icon" aria-hidden="true">⌕</div>
-        <h2 id="norma-empty-title">Nenhuma norma encontrada</h2>
+        <h2 id="norma-empty-title">
+            {% if search_query or selected_type or selected_year %}
+                Nenhuma norma consolidada corresponde aos filtros
+            {% elif archive_candidate_count %}
+                Nenhuma norma consolidada disponível
+            {% else %}
+                Nenhuma norma encontrada
+            {% endif %}
+        </h2>
         <p>
             {% if search_query or selected_type or selected_year %}
-                Não encontramos normas para os filtros atuais. Tente ampliar a pesquisa ou remover um dos filtros.
+                {% if sapl_catalog_total %}Há registros do catálogo oficial abaixo, mas eles contêm somente metadados e não equivalem a texto consolidado ou evidência jurídica.{% else %}Não encontramos normas consolidadas para os filtros atuais. PDFs candidatos em revisão são exibidos em uma seção separada e não equivalem a normas consolidadas. Tente ampliar a pesquisa ou remover um dos filtros.{% endif %}
             {% elif archive_candidate_count %}
-                Ainda não há normas consolidadas. Os documentos do acervo histórico local aparecem abaixo; o PDF original pode ser consultado, enquanto metadados e segmentação passam por revisão antes da consolidação.
+                Ainda não há normas consolidadas. Os PDFs candidatos do acervo histórico aparecem abaixo, em seção separada, e permanecem pendentes de revisão; eles não equivalem a redações consolidadas ou vigentes.
             {% else %}
                 O acervo consolidado ainda não possui normas disponíveis para consulta.
             {% endif %}
@@ -174,7 +197,88 @@
         <a class="jurix-norma-primary-button" href="{% url 'legislation:norma_list' %}">Limpar filtros</a>
         {% endif %}
         {% if archive_candidate_count %}
-        <a class="jurix-norma-secondary-button" href="?q={{ search_query|urlencode }}&amp;tipo={{ selected_type|urlencode }}&amp;ano={{ selected_year|urlencode }}&amp;ordenar={{ ordering|urlencode }}&amp;arquivo_q=#archive-candidates">Ver os {{ archive_candidate_count }} PDFs em revisão</a>
+        <a class="jurix-norma-secondary-button" href="{% url 'workspace:legal_search' %}?q={{ archive_candidate_query|urlencode }}">Pesquisar nos {{ archive_candidate_total }} PDFs em revisão</a>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {% if sapl_catalog_page and sapl_catalog_page.object_list %}
+    <section class="jurix-sapl-catalog" aria-labelledby="sapl-catalog-title">
+        <div class="jurix-sapl-catalog-heading">
+            <div>
+                <span class="jurix-norma-eyebrow">Catálogo oficial</span>
+                <h2 id="sapl-catalog-title">Referências encontradas no SAPL</h2>
+                <p>Estes registros contêm metadados oficiais, mas ainda não têm PDF ou texto integrado ao Jurix. Não comprovam o conteúdo integral, a redação vigente ou a aplicação ao caso.</p>
+            </div>
+            <span class="jurix-archive-candidates-count">{{ sapl_catalog_total }} {% if sapl_catalog_total == 1 %}registro{% else %}registros{% endif %}</span>
+        </div>
+        <div class="jurix-sapl-catalog-grid">
+            {% for norma in sapl_catalog_page %}
+            <article class="jurix-sapl-catalog-card">
+                <div class="jurix-archive-candidate-meta">
+                    <span>{{ norma.sapl_catalog_type_label }}</span>
+                    <span>Metadados · texto não integrado</span>
+                </div>
+                <h3>{{ norma.sapl_catalog_type_label }} nº {{ norma.numero }}/{{ norma.ano }}</h3>
+                <span class="jurix-sapl-catalog-ementa-label">Ementa registrada no SAPL</span>
+                <p class="jurix-sapl-catalog-ementa">{{ norma.ementa|default:'Ementa não informada no catálogo SAPL.' }}</p>
+                <p class="jurix-sapl-catalog-warning">Confira a fonte oficial antes de citar. Esta entrada não é uma norma consolidada no Jurix.</p>
+                {% if norma.sapl_url %}
+                <a class="jurix-norma-card-link" href="{{ norma.sapl_url }}" target="_blank" rel="noopener noreferrer" aria-label="Consultar {{ norma.sapl_catalog_type_label }} nº {{ norma.numero }}/{{ norma.ano }} no SAPL, nova aba">
+                    Consultar no SAPL <span aria-hidden="true">↗</span>
+                </a>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+        {% if sapl_catalog_page.has_other_pages %}
+        <nav class="jurix-norma-pagination" aria-label="Paginação do catálogo SAPL">
+            {% if sapl_catalog_page.has_previous %}
+            <a class="jurix-norma-page-link" href="?q={{ search_query|urlencode }}&tipo={{ selected_type|urlencode }}&ano={{ selected_year|urlencode }}&ordenar={{ ordering|urlencode }}&sapl_catalog_page={{ sapl_catalog_page.previous_page_number }}">← Anterior</a>
+            {% endif %}
+            <span class="jurix-norma-page-current" aria-current="page">{{ sapl_catalog_page.number }} / {{ sapl_catalog_page.paginator.num_pages }}</span>
+            {% if sapl_catalog_page.has_next %}
+            <a class="jurix-norma-page-link" href="?q={{ search_query|urlencode }}&tipo={{ selected_type|urlencode }}&ano={{ selected_year|urlencode }}&ordenar={{ ordering|urlencode }}&sapl_catalog_page={{ sapl_catalog_page.next_page_number }}">Próxima →</a>
+            {% endif %}
+        </nav>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {% if dom_edition_candidates %}
+    <section class="jurix-dom-editions" aria-labelledby="dom-editions-title">
+        <div class="jurix-sapl-catalog-heading">
+            <div>
+                <span class="jurix-norma-eyebrow">Diário Oficial do Município</span>
+                <h2 id="dom-editions-title">Edições para revisão</h2>
+                <p>PDFs oficiais capturados para análise. Ainda não foram extraídos nem revisados; não são normas consolidadas e não fundamentam respostas do assistente.</p>
+            </div>
+            <span class="jurix-archive-candidates-count">{{ dom_edition_candidate_total }} {% if dom_edition_candidate_total == 1 %}edição pendente{% else %}edições pendentes{% endif %}</span>
+        </div>
+        <div class="jurix-sapl-catalog-grid">
+            {% for candidate in dom_edition_candidates %}
+            <article class="jurix-sapl-catalog-card">
+                <div class="jurix-archive-candidate-meta">
+                    <span>{% if candidate.special_edition %}Edição especial{% else %}Edição ordinária{% endif %}</span>
+                    <span>Revisão {{ candidate.review_status|lower }}</span>
+                </div>
+                <h3>{{ candidate.label }}</h3>
+                <p class="jurix-dom-edition-date">Publicação: {{ candidate.publication_date }}</p>
+                <p class="jurix-sapl-catalog-warning">Extração e identificação dos atos ainda não realizadas. Confira o documento oficial; a presença aqui não atesta completude nem vigência.</p>
+                {% if candidate.official_pdf_url %}
+                <a class="jurix-norma-card-link" href="{{ candidate.official_pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir PDF oficial <span aria-hidden="true">↗</span></a>
+                {% else %}
+                <span class="jurix-dom-edition-link-unavailable">Link oficial indisponível para validação.</span>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+        {% if dom_edition_page.has_other_pages %}
+        <nav class="jurix-norma-pagination" aria-label="Paginação das edições do Diário Oficial">
+            {% if dom_edition_page.has_previous %}<a class="jurix-norma-page-link" href="?dom_pagina={{ dom_edition_page.previous_page_number }}#dom-editions-title">← Anterior</a>{% endif %}
+            <span class="jurix-norma-page-current" aria-current="page">Página {{ dom_edition_page.number }} de {{ dom_edition_page.paginator.num_pages }}</span>
+            {% if dom_edition_page.has_next %}<a class="jurix-norma-page-link" href="?dom_pagina={{ dom_edition_page.next_page_number }}#dom-editions-title">Próxima →</a>{% endif %}
+        </nav>
         {% endif %}
     </section>
     {% endif %}
@@ -185,19 +289,19 @@
             <div>
                 <span class="jurix-norma-eyebrow">Acervo histórico local</span>
                 <h2 id="archive-candidates-title">Documentos para consolidação</h2>
-                <p>Estes documentos compõem o acervo histórico local e estão disponíveis para consulta. Ainda não foram consolidados no corpus principal; metadados e segmentação permanecem sob revisão. O assistente pode citar o PDF arquivado e, quando houver correspondência inequívoca, abrir o registro correspondente no SAPL.</p>
+                <p>Estes documentos compõem o acervo histórico local e estão disponíveis para consulta. Ainda não foram consolidados no corpus principal; metadados e segmentação permanecem sob revisão. Navegue pelas páginas para percorrer todos os candidatos; os filtros abaixo consideram somente a página aberta. Use a Pesquisa Jurídica para pesquisar o acervo inteiro. O assistente pode citar o PDF arquivado e, quando houver correspondência inequívoca, abrir o registro correspondente no SAPL.</p>
                 {% if archive_assistant_enabled %}
                 <a class="jurix-norma-primary-button" href="{% url 'workspace:assistant' %}?new=1&amp;corpus=archive-qa">Perguntar ao assistente sobre o acervo</a>
                 {% endif %}
             </div>
-            <span class="jurix-archive-candidates-count">{{ archive_candidate_count }} candidatos</span>
+            <span class="jurix-archive-candidates-count">{{ archive_candidate_count }} exibidos · {{ archive_candidate_total }} no acervo</span>
         </div>
         <div class="jurix-archive-candidate-filters" aria-label="Filtros dos PDFs em revisão">
             <div class="jurix-archive-candidate-search-field">
-                <label for="archive-candidate-search">Localizar documento</label>
+                <label for="archive-candidate-search">Filtrar os documentos desta página</label>
                 <input id="archive-candidate-search" type="search" autocomplete="off" spellcheck="false"
                     value="{{ archive_candidate_query|default:'' }}"
-                    placeholder="Número, ano, tipo ou nome do arquivo" aria-controls="archive-candidates-list">
+                    placeholder="Número, ano, tipo ou nome do arquivo (nesta lista)" aria-controls="archive-candidates-list">
             </div>
             <div class="jurix-archive-candidate-select-field">
                 <label for="archive-candidate-identity">Identificação</label>
@@ -227,17 +331,33 @@
             </div>
         </div>
         <p class="jurix-archive-candidate-filter-summary" id="archive-candidate-filter-summary" role="status" aria-live="polite">
-            Exibindo {{ archive_candidate_count }} de {{ archive_candidate_count }} documentos.
+            Exibindo {{ archive_candidate_page.start_index }}–{{ archive_candidate_page.end_index }} de {{ archive_candidate_total }} documentos pendentes. O filtro acima considera somente os itens desta página.
         </p>
-        <div class="jurix-archive-candidates-grid" id="archive-candidates-list">
+        <a class="jurix-norma-primary-button jurix-archive-global-search" id="archive-global-search"
+            data-search-base="{% url 'workspace:legal_search' %}"
+            href="{% url 'workspace:legal_search' %}?q={{ archive_candidate_query|urlencode }}">
+            Pesquisar em todo o acervo histórico · {{ archive_candidate_total }} PDFs
+        </a>
+        {% if archive_candidate_page.paginator.num_pages > 1 %}
+        <nav class="jurix-norma-pagination" aria-label="Paginação dos documentos candidatos">
+            {% if archive_candidate_page.has_previous %}
+            <a class="jurix-norma-page-link" href="?q={{ search_query|urlencode }}&arquivo_q={{ archive_candidate_query|urlencode }}&tipo={{ selected_type|urlencode }}&ano={{ selected_year|urlencode }}&ordenar={{ ordering|urlencode }}&arquivo_pagina={{ archive_candidate_page.previous_page_number }}#archive-candidates">← Anterior</a>
+            {% endif %}
+            <span class="jurix-norma-page-current" aria-current="page">Página {{ archive_candidate_page.number }} de {{ archive_candidate_page.paginator.num_pages }}</span>
+            {% if archive_candidate_page.has_next %}
+            <a class="jurix-norma-page-link" href="?q={{ search_query|urlencode }}&arquivo_q={{ archive_candidate_query|urlencode }}&tipo={{ selected_type|urlencode }}&ano={{ selected_year|urlencode }}&ordenar={{ ordering|urlencode }}&arquivo_pagina={{ archive_candidate_page.next_page_number }}#archive-candidates">Próxima →</a>
+            {% endif %}
+        </nav>
+        {% endif %}
+        <div class="jurix-archive-candidates-grid" id="archive-candidates-list" data-total-candidates="{{ archive_candidate_total }}">
             {% for candidate in archive_candidates %}
             <article class="jurix-archive-candidate"
-                data-search="{{ candidate.label }} {{ candidate.filename }} {{ candidate.entry_index }}"
+                data-search="{{ candidate.label }} {{ candidate.filename }}"
                 data-identity="{% if candidate.identity_resolved %}resolved{% else %}unresolved{% endif %}"
                 data-review-status="{{ candidate.review_status_key }}"
                 data-extraction-status="{{ candidate.extraction_status }}">
                 <div class="jurix-archive-candidate-meta">
-                    <span>PDF · entrada {{ candidate.entry_index }}</span>
+                    <span>PDF candidato</span>
                     <span class="jurix-archive-candidate-status">{{ candidate.review_status }}</span>
                 </div>
                 <h3>{{ candidate.label }}</h3>
@@ -260,5 +380,5 @@
 
 {% block extra_js %}
 <script src="{% static 'js/jurix-norma-list.js' %}?v=20261002-exact-reference2"></script>
-{% if archive_candidates %}<script src="{% static 'js/jurix-archive-candidate-filter.js' %}?v=20261006-candidate-number-normalization1"></script>{% endif %}
+{% if archive_candidates %}<script src="{% static 'js/jurix-archive-candidate-filter.js' %}?v=20261013-global-search1"></script>{% endif %}
 {% endblock %}

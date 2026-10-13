@@ -663,6 +663,99 @@ class Collection(TimeStampedModel):
         return self.name
 
 
+class CollectionEvidenceVersionQuerySet(models.QuerySet):
+    """Prevent historical collection evidence from being edited or bulk-deleted."""
+
+    def update(self, **kwargs):
+        from django.core.exceptions import ValidationError
+
+        raise ValidationError("Evidências salvas são imutáveis; crie uma nova versão.")
+
+    def delete(self):
+        from django.core.exceptions import ValidationError
+
+        raise ValidationError("Evidências salvas são preservadas para auditoria.")
+
+    def bulk_create(self, *args, **kwargs):
+        from django.core.exceptions import ValidationError
+
+        raise ValidationError("Crie cada versão de evidência pelo serviço de persistência.")
+
+    def bulk_update(self, *args, **kwargs):
+        from django.core.exceptions import ValidationError
+
+        raise ValidationError("Versões de evidência não podem ser atualizadas em lote.")
+
+
+class CollectionEvidenceVersion(models.Model):
+    """An owner's immutable link to a dated, content-addressed legal projection."""
+
+    class Result(models.TextChoices):
+        COMPLETE = "complete", "Projeção completa"
+        PARTIAL = "partial", "Projeção parcial"
+        INCONCLUSIVE = "inconclusive", "Não reconstruível"
+
+    collection = models.ForeignKey(
+        Collection, on_delete=models.CASCADE, related_name="evidence_versions"
+    )
+    owner = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="collection_evidence_versions"
+    )
+    norma = models.ForeignKey(
+        Norma, on_delete=models.PROTECT, related_name="collection_evidence_versions"
+    )
+    snapshot = models.ForeignKey(
+        "legislation.NormativeSnapshot",
+        on_delete=models.PROTECT,
+        related_name="collection_evidence_versions",
+    )
+    device_key = models.CharField(max_length=160, blank=True, default="")
+    version = models.PositiveIntegerField()
+    evidence_hash = models.CharField(max_length=64)
+    result = models.CharField(max_length=16, choices=Result.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+    objects = CollectionEvidenceVersionQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["norma_id", "device_key", "version"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["collection", "norma", "device_key", "version"],
+                name="unique_collection_evidence_version",
+            )
+        ]
+        indexes = [models.Index(fields=["owner", "collection", "created_at"])]
+
+    def __str__(self) -> str:
+        return f"{self.norma} · versão {self.version} ({self.snapshot.as_of})"
+
+    def save(self, *args, **kwargs):
+        from django.core.exceptions import ValidationError
+
+        if self.pk and type(self).objects.filter(pk=self.pk).exists():
+            raise ValidationError("Versões de evidência são imutáveis; crie uma nova versão.")
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        from django.core.exceptions import ValidationError
+
+        raise ValidationError("Versões de evidência são preservadas para auditoria.")
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        super().clean()
+        if self.collection_id and self.owner_id and self.collection.user_id != self.owner_id:
+            raise ValidationError({"owner": "A evidência deve pertencer ao proprietário da coleção."})
+        if self.snapshot_id and self.norma_id and self.snapshot.norma_id != self.norma_id:
+            raise ValidationError({"snapshot": "O snapshot deve pertencer à norma referenciada."})
+        if self.evidence_hash and (
+            len(self.evidence_hash) != 64
+            or any(char not in "0123456789abcdef" for char in self.evidence_hash)
+        ):
+            raise ValidationError({"evidence_hash": "Informe um SHA-256 hexadecimal válido."})
+
 class ChatSession(TimeStampedModel):
     """
     Model for storing chat conversation sessions.

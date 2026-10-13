@@ -17,6 +17,42 @@ def test_followup_with_explicit_new_norm_does_not_inherit_prior_norm():
     assert result == "E o art. 7º da Lei 9000/2025?"
 
 
+def test_proposed_wording_followup_inherits_one_explicit_matter_reference():
+    result = _resolve_article_followup(
+        "Qual é a redação nova proposta para o art. 59?",
+        "O Art. 59 da Lei Complementar nº 258/2024 é afetado pelo Projeto de Lei "
+        "Complementar nº 12/2025?",
+    )
+    assert result.endswith(
+        "(contexto da matéria legislativa: Projeto de Lei Complementar nº 12/2025)"
+    )
+
+
+def test_proposed_wording_followup_does_not_choose_between_multiple_matters():
+    question = "Qual é o texto proposto?"
+    history = "Compare o PLC 12/2025 com o PLC 13/2025."
+    assert _resolve_article_followup(question, history) == question
+
+
+def test_followup_about_a_later_proposal_inherits_one_norm_and_device():
+    result = _resolve_article_followup(
+        "E existe alguma proposta posterior para alterar esse dispositivo?",
+        "O que prevê o art. 59 da Lei Complementar nº 258/2024?",
+    )
+
+    assert result.endswith(
+        "(contexto normativo: Lei Complementar nº 258/2024; "
+        "dispositivo de referência: Art. 59º)"
+    )
+
+
+def test_followup_about_a_later_proposal_does_not_inherit_ambiguous_norms():
+    question = "E existe alguma proposta posterior para alterar esse dispositivo?"
+    history = "Compare o Art. 59 da LC 258/2024 com o Art. 4º da Lei 9000/2025."
+
+    assert _resolve_article_followup(question, history) == question
+
+
 def test_yearless_or_multi_norm_prior_reference_is_not_used_as_context():
     assert _resolve_article_followup("E o art. 7º?", "A Lei 8206 talvez seja aplicável.") == (
         "E o art. 7º?"
@@ -48,6 +84,36 @@ def test_bare_wh_followup_inherits_nearest_unambiguous_norm():
         "Qual é o piso do vencimento básico? "
         "(contexto normativo: Lei Complementar nº 120/2010)"
     )
+
+
+def test_effective_date_followup_inherits_nearest_unambiguous_norm():
+    result = _resolve_article_followup(
+        "E quando a lei passou a vigorar?",
+        "O que dispõe o Art. 262 da Lei Complementar nº 258/2024?",
+    )
+    assert result == (
+        "E quando a lei passou a vigorar? "
+        "(contexto normativo: Lei Complementar nº 258/2024)"
+    )
+
+    result = _resolve_article_followup(
+        "Em que data entrou em vigor?",
+        "O que dispõe a Lei Complementar nº 258/2024?",
+    )
+    assert result == (
+        "Em que data entrou em vigor? "
+        "(contexto normativo: Lei Complementar nº 258/2024)"
+    )
+
+
+def test_demonstrative_law_followup_inherits_the_law_from_the_previous_turn():
+    result = _resolve_article_followup(
+        "E essa lei teve alterações posteriores? Diga o que os PDFs e o SAPL consultados comprovam.",
+        "Lei nº 6859/2018, Art. 2º\n"
+        "O que dispõe o Art. 2º da Lei nº 6.859/2018?",
+    )
+
+    assert result.endswith("(contexto normativo: Lei nº 6859/2018)")
 
 
 def test_bare_wh_followup_does_not_inherit_ambiguous_norms():

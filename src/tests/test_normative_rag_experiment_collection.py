@@ -33,12 +33,31 @@ def test_collector_enforces_case_limit_and_preserves_technical_only_status():
     cases = validate_cases([_case()])
 
     assert cases[0]["human_evidence_review"] is False
+    assert cases[0]["human_review"]["review_kind"] == "synthetic"
     with pytest.raises(ValueError, match="case count"):
         validate_cases([_case(case_id=f"case-{index}") for index in range(13)])
     with pytest.raises(ValueError, match="human-reviewed"):
         validate_cases([_case(human_evidence_review=True)])
     with pytest.raises(ValueError, match="synthetic QA fixtures"):
         validate_cases([_case(synthetic_qa_fixture=False)])
+    with pytest.raises(ValueError, match="pre-adjudicated human gold"):
+        validate_cases([_case(human_review={"review_kind": "human", "status": "approved"})])
+
+
+def test_collector_preserves_stable_norm_and_chain_keys_for_later_clustered_analysis():
+    case = _case(
+        norma_key="norma:lc120-2010",
+        document_key="document:sha256-abc",
+        relation_chain_keys=["chain:lc120-lc55"],
+        condition_of_use="public_record_reviewed",
+    )
+
+    validated = validate_cases([case])[0]
+
+    assert validated["norma_key"] == case["norma_key"]
+    assert validated["document_key"] == case["document_key"]
+    assert validated["relation_chain_keys"] == case["relation_chain_keys"]
+    assert validated["human_evidence_review"] is False
 
 
 def test_versioned_live_smoke_set_contains_twelve_explicitly_synthetic_cases():

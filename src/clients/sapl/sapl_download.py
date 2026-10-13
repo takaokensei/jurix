@@ -136,6 +136,55 @@ class SaplDownloadMixin:
         finally:
             response.close()
 
+    def read_pdf_text(
+        self,
+        pdf_url: str,
+        *,
+        max_bytes: int = 8 * 1024 * 1024,
+        include_pages: bool = False,
+    ) -> str | tuple[str, tuple[str, ...]]:
+        """Read bounded same-origin SAPL PDF text, optionally preserving page boundaries."""
+        safe_url = self._validated_sapl_pdf_url(pdf_url)
+        if isinstance(max_bytes, bool) or not 1 <= int(max_bytes) <= 8 * 1024 * 1024:
+            raise ValueError("SAPL PDF text byte limit is outside the safe range")
+        response = self.session.get(
+            safe_url,
+            headers={**self._get_headers(), "Accept": "application/pdf"},
+            timeout=min(self.timeout, 8),
+            stream=True,
+            allow_redirects=False,
+        )
+        try:
+            if response.status_code != 200:
+                response.raise_for_status()
+                raise requests.RequestException("Unexpected SAPL PDF text status")
+            content_length = str(response.headers.get("Content-Length", "")).strip()
+            if content_length and (not content_length.isdigit() or int(content_length) > max_bytes):
+                raise ValueError("SAPL PDF exceeds the text extraction byte limit")
+            content = bytearray()
+            for chunk in response.iter_content(chunk_size=64 * 1024):
+                if not chunk:
+                    continue
+                content.extend(chunk)
+                if len(content) > max_bytes:
+                    raise ValueError("SAPL PDF exceeded the text extraction byte limit")
+                if len(content) >= 5 and not content.startswith(b"%PDF-"):
+                    raise ValueError("SAPL response is not a PDF")
+            if not content.startswith(b"%PDF-"):
+                raise ValueError("SAPL PDF response is empty or invalid")
+            with fitz.open(stream=bytes(content), filetype="pdf") as document:
+                if document.needs_pass or not 1 <= document.page_count <= 30:
+                    raise ValueError("SAPL PDF is encrypted or exceeds the page limit")
+                page_texts = tuple(page.get_text("text", sort=True) for page in document)
+                text = "\n".join(page_texts)
+            if not text.strip():
+                raise ValueError("SAPL PDF has no extractable text")
+            if include_pages:
+                return text[:80000], page_texts
+            return text[:80000]
+        finally:
+            response.close()
+
     def download_pdf_version(self, pdf_url: str, output_path: str | Path) -> dict[str, Any]:
         """Download one immutable candidate without following redirects or overwriting.
 

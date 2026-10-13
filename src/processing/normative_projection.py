@@ -9,6 +9,7 @@ from datetime import date
 from uuid import UUID
 
 from src.apps.ingestion.document_promotion import promotion_fingerprint
+from src.apps.ingestion.document_review import has_reviewed_document_segmentation
 from src.apps.legislation.document_models import (
     DocumentoDispositivo,
     DocumentoNormativo,
@@ -130,7 +131,39 @@ def _reviewed_base(norma: Norma):
     devices = list(
         DocumentoDispositivo.objects.filter(extracao=extraction).order_by("ordem", "pk")
     )
-    return (document, extraction, published, devices) if devices else None
+    if not devices or not has_reviewed_document_segmentation(document, extraction):
+        return None
+    return document, extraction, published, devices
+
+
+def _segmentation_review_pending(norma: Norma) -> bool:
+    """Distinguish a missing segmentation decision from a generally invalid base."""
+    document = norma.documento_base
+    if (
+        not document
+        or document.norma_id != norma.pk
+        or document.role != DocumentoNormativo.Role.ORIGINAL
+        or document.review_status != DocumentoNormativo.ReviewStatus.APPROVED
+        or document.condition_of_use not in {
+            DocumentoNormativo.ConditionOfUse.PUBLIC_RECORD_REVIEWED,
+            DocumentoNormativo.ConditionOfUse.LICENSED,
+        }
+        or not document.accepted_extraction_id
+    ):
+        return False
+    extraction = document.accepted_extraction
+    if (
+        extraction.status != ExtracaoDocumento.Status.COMPLETE
+        or not LegalReview.objects.filter(
+            documento=document,
+            decision=LegalReview.Decision.APPROVE,
+            target_fingerprint=promotion_fingerprint(document),
+        ).exists()
+        or not (norma.data_publicacao or norma.data_norma)
+    ):
+        return False
+    has_devices = DocumentoDispositivo.objects.filter(extracao=extraction).exists()
+    return has_devices and not has_reviewed_document_segmentation(document, extraction)
 
 
 def _not_reconstructable(norma: Norma, as_of: date, reason: str) -> NormativeProjection:
@@ -152,7 +185,12 @@ def project_norma_as_of(norma: Norma | int, as_of: date) -> NormativeProjection:
         norma = Norma.objects.select_related("documento_base__accepted_extraction").get(pk=norma.pk)
     base = _reviewed_base(norma)
     if not base:
-        return _not_reconstructable(norma, as_of, "base_document_not_reviewed_or_temporally_unknown")
+        reason = (
+            "document_segmentation_not_human_reviewed"
+            if _segmentation_review_pending(norma)
+            else "base_document_not_reviewed_or_temporally_unknown"
+        )
+        return _not_reconstructable(norma, as_of, reason)
     document, extraction, published, source_devices = base
     if published > as_of:
         return _not_reconstructable(norma, as_of, "base_document_not_yet_published")
@@ -284,6 +322,22 @@ def project_norma_as_of(norma: Norma | int, as_of: date) -> NormativeProjection:
             continue
         applied_ids.append(event.pk)
 
+    pending_ids = sorted(set(pending_ids))
+    # A pending or conflicting temporal event can change the legal state of
+    # any device in this projection. Keep the best-known state in provenance
+    # for audit, but do not expose it as a definitive in-force/revoked/vetoed
+    # label while the projection is incomplete.
+    if pending_ids:
+        for state in states.values():
+            known_status = state["status"]
+            if known_status == "unknown":
+                continue
+            state["status"] = "unknown"
+            state["provenance"] = {
+                **state["provenance"],
+                "known_legal_status_before_pending_events": known_status,
+                "pending_event_ids": pending_ids,
+            }
     projected = tuple(
         ProjectionDevice(
             source=states[device.structural_key]["source"],
@@ -293,7 +347,6 @@ def project_norma_as_of(norma: Norma | int, as_of: date) -> NormativeProjection:
         )
         for device in source_devices
     )
-    pending_ids = sorted(set(pending_ids))
     status = (
         NormativeSnapshot.Status.PARTIAL
         if pending_ids or pending_reasons

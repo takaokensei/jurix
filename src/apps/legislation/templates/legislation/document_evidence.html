@@ -3,21 +3,252 @@
 {% block title %}Evidência documental — Jurix{% endblock %}
 {% block section_name %}Evidência documental{% endblock %}
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Evidência documental' %}{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261004-candidate-evidence-v1">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261012-hash-disclosure1">{% endblock %}
 {% block content %}
 <main class="card legal-detail-card document-evidence-page" aria-labelledby="evidence-title">
   <p class="legal-detail-eyebrow">{% if document.norma_id %}Documento normativo versionado{% elif document.source_kind == 'archive' %}Candidato do acervo histórico{% else %}Documento em revisão{% endif %}</p>
   <h1 id="evidence-title">{% if document.norma_id %}{{ document.norma }}{% elif candidate_identity_label %}{{ candidate_identity_label }}{% else %}{{ document.original_filename|default:'Documento em revisão' }}{% endif %}</h1>
+  {% if identity_review_registered %}<p class="historical-message" role="status" tabindex="-1">Identidade registrada com trilha de revisão. A Norma permanece pendente; texto e segmentação não foram aprovados.</p>{% endif %}
+  {% if extraction_review_registered %}<p class="historical-message" role="status" tabindex="-1">Extração registrada como revisada para esta versão. O documento ainda não foi promovido nem segmentado para uso consolidado.</p>{% endif %}
+  {% if segmentation_generated %}<p class="historical-message" role="status" tabindex="-1">Prévia de segmentação gerada. Os dispositivos ainda precisam de cotejo humano e não podem alimentar a projeção temporal.</p>{% endif %}
+  {% if request.GET.segmentation == 'reviewed' %}<p class="historical-message" role="status" tabindex="-1">Revisão da segmentação registrada para esta versão exata. Isso não aprova eventos de alteração nem certifica a vigência histórica.</p>{% endif %}
   {% if candidate_identity_label and not document.norma_id %}<p class="document-evidence-filename"><strong>Arquivo recebido:</strong> {{ document.original_filename }}</p>{% endif %}
   {% if document.source_kind == 'archive' %}<p class="historical-message historical-message--warning" role="note"><strong>Documento do acervo histórico local.</strong> O PDF arquivado permanece preservado; a identificação normativa, a extração do texto e a segmentação precisam de revisão antes de integrar o corpus consolidado.</p>{% endif %}
   {% if candidate_extraction %}<p class="historical-message historical-message--warning" role="note"><strong>Texto extraído automaticamente — rascunho não revisado.</strong> A extração abaixo não está aceita nem promove o documento. Compare cada trecho com o PDF antes de usar em uma análise jurídica.</p>{% endif %}
+  {% if extraction_quality_summary %}
+    <section class="document-review-panel document-extraction-quality" aria-labelledby="document-extraction-quality-title">
+      <div class="document-review-panel__header">
+        <div><p class="legal-detail-eyebrow">Rastreabilidade da extração</p><h2 id="document-extraction-quality-title">Qualidade por página</h2></div>
+        <span class="document-review-status">{% if extraction_quality_summary.needs_review %}Revisão necessária{% else %}Verifique o PDF{% endif %}</span>
+      </div>
+      <p class="document-review-help">Contagens técnicas da extração; não medem cobertura jurídica nem certificam fidelidade literal.</p>
+      <ul class="document-extraction-quality__counts">
+        <li>Texto nativo: <strong>{{ extraction_quality_summary.native_pages }}</strong> páginas</li>
+        <li>OCR automático: <strong>{{ extraction_quality_summary.ocr_pages }}</strong> páginas</li>
+        <li>Sem texto utilizável: <strong>{{ extraction_quality_summary.unreadable_count }}</strong> páginas</li>
+      </ul>
+      {% if extraction_quality_summary.staging_only and extraction_quality_summary.ocr_pending_pages %}
+        <p class="document-review-panel__notice" role="note">O staging inicial não executou OCR. Confira estas páginas diretamente no PDF; tabelas, desenhos ou texto ausente na extração não significam conteúdo inexistente:</p>
+        <ul class="document-extraction-quality__pages" aria-label="Páginas que exigem conferência no PDF">
+          {% for page in extraction_quality_summary.ocr_pending_pages %}<li><a href="{% url 'legislation:document_pdf' document.public_id %}#page={{ page }}" target="_blank" rel="noopener noreferrer">Página {{ page }} do PDF</a></li>{% endfor %}
+        </ul>
+      {% elif extraction_quality_summary.ocr_pages_list %}
+        <p class="document-review-panel__notice" role="note">OCR é rascunho e deve ser cotejado com a imagem original. Páginas processadas:</p>
+        <ul class="document-extraction-quality__pages" aria-label="Páginas processadas por OCR">
+          {% for page in extraction_quality_summary.ocr_pages_list %}<li><a href="{% url 'legislation:document_pdf' document.public_id %}#page={{ page }}" target="_blank" rel="noopener noreferrer">Página {{ page }} do PDF</a></li>{% endfor %}
+        </ul>
+      {% endif %}
+      {% if extraction_quality_summary.ocr_unverified %}<p class="document-review-errors" role="note">O texto OCR não foi certificado como transcrição literal.</p>{% endif %}
+    </section>
+  {% endif %}
   <dl class="relation-extraction-details document-evidence-metadata">
     <div><dt>Tipo de fonte</dt><dd>{{ document.get_source_kind_display }}</dd></div>
     <div><dt>Situação da revisão</dt><dd>{{ document.get_review_status_display }}</dd></div>
     <div><dt>Condição de uso</dt><dd>{{ document.get_condition_of_use_display }}</dd></div>
-    <div><dt>Integridade do arquivo</dt><dd><code>{{ document.content_sha256 }}</code></dd></div>
+    <div><dt>Integridade do arquivo</dt><dd><code class="document-evidence-hash__preview">{{ document.content_sha256|slice:":12" }}…</code><details class="document-evidence-hash"><summary>Ver SHA-256 completo</summary><code>{{ document.content_sha256 }}</code></details></dd></div>
     {% if extraction %}<div><dt>{% if candidate_extraction %}Rascunho de extração{% else %}Versão da extração{% endif %}</dt><dd>{{ extraction.text_version }} · {{ extraction.page_count }} páginas · {{ extraction.get_status_display }}</dd></div>{% endif %}
   </dl>
+  {% if staff_can_view_candidate %}
+    <section class="document-review-panel document-review-observations" aria-labelledby="document-observations-title">
+      <div class="document-review-panel__header">
+        <div><p class="legal-detail-eyebrow">Metadados observados</p><h2 id="document-observations-title">Candidatos e conflitos</h2></div>
+        <span class="document-review-status">Não verificados</span>
+      </div>
+      {% if document.conflicts_json %}
+        <div class="document-review-panel__notice" role="alert"><strong>Conflitos que bloqueiam a curadoria</strong><ul>{% for conflict in document.conflicts_json %}<li>{{ conflict.field|default:'Metadado' }}: {{ conflict.candidate_values|default:conflict }}</li>{% endfor %}</ul></div>
+      {% endif %}
+      {% if identity_epigraph_check.status == 'conflict' %}
+        <div class="document-review-panel__notice" role="alert"><strong>Divergência entre nome do arquivo e epígrafe.</strong> A identidade normativa não está confirmada; os campos divergentes são {{ identity_epigraph_check.fields|join:', ' }}. O sistema não escolherá um ano automaticamente. Confira a primeira página do PDF antes de registrar ou usar esta norma.</div>
+      {% endif %}
+      {% if epigraph_candidates %}
+        <h3>Epígrafe detectada</h3>
+        <p class="document-review-help">A data abaixo identifica a epígrafe do ato; não deve ser tratada automaticamente como publicação ou início da vigência.</p>
+        <ul class="document-review-observations__list">
+          {% for candidate in epigraph_candidates %}
+            <li><strong>{{ candidate.type_label }} nº {{ candidate.number }}{% if candidate.year %}/{{ candidate.year }}{% endif %}</strong>{% if candidate.act_date %} · data do ato {{ candidate.act_date }}{% endif %} · página {{ candidate.page_index|add:1 }}{% if candidate.quote %}<blockquote>{{ candidate.quote }}</blockquote>{% endif %}</li>
+          {% endfor %}
+        </ul>
+        {% if epigraph_issues %}<p class="document-review-errors" role="note">Pendências automáticas: {{ epigraph_issues|join:', ' }}</p>{% endif %}
+      {% else %}<p class="document-review-help">Nenhuma epígrafe estruturada foi identificada na extração disponível.</p>{% endif %}
+      {% if act_boundary_candidates %}
+        <h3>Atos candidatos nesta edição</h3>
+        <p class="document-review-help">Os limites abaixo são sugestões tipográficas entre cabeçalhos. Não confirmam identidade, natureza jurídica nem que todo o conteúdo pertença a um único ato; confira cada início e fim no PDF antes de revisar.</p>
+        <ol class="document-review-observations__list">
+          {% for candidate in act_boundary_candidates %}
+            <li>
+              <strong>{{ candidate.type_label }}{% if candidate.number_candidate %} nº {{ candidate.number_candidate }}{% if candidate.year_candidate %}/{{ candidate.year_candidate }}{% endif %}{% else %} · número não identificado{% endif %}</strong>
+              · página candidata {{ candidate.heading_page }}
+              {% if local_pdf_available %}· <a href="{% url 'legislation:document_pdf' document.public_id %}#page={{ candidate.heading_page }}" target="_blank" rel="noopener noreferrer">Conferir no PDF</a>{% endif %}
+            </li>
+          {% endfor %}
+        </ol>
+        {% if not act_boundary_source_text_complete %}<p class="document-review-errors" role="note">A extração contém página(s) ilegível(is); esta lista pode estar incompleta.</p>{% endif %}
+      {% elif act_boundary_status == 'no_candidates' %}
+        <p class="document-review-help">Nenhum cabeçalho numerado foi sugerido. Isso não prova que a edição não contenha atos.</p>
+      {% endif %}
+      {% if publication_candidate_date %}
+        <p><strong>Possível publicação encontrada no texto:</strong> {{ publication_candidate_date }}. Este candidato vem da extração automática e não altera a data registrada na Norma nem confirma vigência.</p>
+        {% if publication_effects_on_date %}<p class="document-review-help">O texto contém uma cláusula candidata de vigência na publicação; a frase precisa ser conferida no PDF.</p>{% endif %}
+      {% endif %}
+    </section>
+  {% endif %}
+  {% if review_history %}
+    <section class="document-review-panel" aria-labelledby="document-review-history-title">
+      <div class="document-review-panel__header"><div><p class="legal-detail-eyebrow">Trilha de auditoria</p><h2 id="document-review-history-title">Revisões registradas</h2></div><span class="document-review-status">Últimas {{ review_history|length }}</span></div>
+      <p class="document-review-help">Cada decisão aponta para uma fingerprint imutável. O schema atual não guarda snapshots completos de antes/depois; esta lista não deve ser interpretada como histórico integral de valores.</p>
+      <ol class="document-review-history">
+        {% for review in review_history %}
+          <li>
+            <div><strong>{{ review.action_label }}</strong> · {{ review.decision_label }} · {{ review.created_at|date:'d/m/Y H:i' }}</div>
+            <p>{{ review.reason }}</p>
+            <small>Responsável: {{ review.actor }} · fingerprint {{ review.fingerprint_prefix }}…</small>
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+  {% endif %}
+  {% if can_review_identity %}
+    <section class="document-review-panel" aria-labelledby="document-review-title">
+      <div class="document-review-panel__header">
+        <div>
+          <p class="legal-detail-eyebrow">Curadoria documental</p>
+          <h2 id="document-review-title">Conferir identidade normativa</h2>
+        </div>
+        <span class="document-review-status">Texto ainda não consolidado</span>
+      </div>
+      <p class="document-review-panel__notice" role="note">Esta ação registra apenas a identidade e a base de uso. Ela não aprova a extração, não segmenta artigos e não torna o PDF uma fonte consolidada. Confira a epígrafe no PDF antes de enviar.</p>
+      <form method="post" class="document-review-form" data-document-review-form>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="review_identity">
+        {{ identity_review_form.confirmed_identity_key }}
+        {{ identity_review_form.expected_fingerprint }}
+        {% if identity_review_form.non_field_errors %}<div class="document-review-errors" role="alert" tabindex="-1">{{ identity_review_form.non_field_errors }}</div>{% endif %}
+        <fieldset class="document-review-identity">
+          <legend>Identidade candidata</legend>
+          <p><strong>{{ candidate_identity_label }}</strong></p>
+          <p class="document-review-help">O registro será criado como pendente e vinculado a este arquivo pelo identificador revisado.</p>
+          <div class="document-review-field document-review-confirm">
+            {{ identity_review_form.confirm_identity }}
+            <label for="{{ identity_review_form.confirm_identity.id_for_label }}">{{ identity_review_form.confirm_identity.label }}</label>
+          {% if identity_review_form.confirm_identity.errors %}<div class="document-review-errors" id="id_confirm_identity-error">{{ identity_review_form.confirm_identity.errors }}</div>{% endif %}
+          </div>
+        </fieldset>
+        <div class="document-review-field">
+          <label for="{{ identity_review_form.confirmed_condition_of_use.id_for_label }}">{{ identity_review_form.confirmed_condition_of_use.label }}</label>
+          {{ identity_review_form.confirmed_condition_of_use }}
+          {% if identity_review_form.confirmed_condition_of_use.errors %}<div class="document-review-errors" id="id_confirmed_condition_of_use-error">{{ identity_review_form.confirmed_condition_of_use.errors }}</div>{% endif %}
+        </div>
+        <div class="document-review-field">
+          <label for="{{ identity_review_form.reason.id_for_label }}">{{ identity_review_form.reason.label }}</label>
+          {{ identity_review_form.reason }}
+          <p class="document-review-help" id="id_reason-help">Registre a fonte consultada e o que foi cotejado; não inclua dados pessoais ou conteúdo sigiloso.</p>
+          {% if identity_review_form.reason.errors %}<div class="document-review-errors" id="id_reason-error">{{ identity_review_form.reason.errors }}</div>{% endif %}
+        </div>
+        <button class="btn btn-primary document-review-submit" type="submit" data-document-review-submit>Registrar identidade pendente</button>
+      </form>
+    </section>
+  {% elif reviewer_can_register and not document.norma_id and document.source_kind == 'archive' %}
+    <section class="document-review-panel" aria-labelledby="document-review-unavailable-title">
+      <p class="legal-detail-eyebrow">Curadoria documental</p>
+      <h2 id="document-review-unavailable-title">Identidade ainda não pode ser registrada</h2>
+      <p class="document-review-panel__notice" role="status">Há conflito, identidade incompleta ou falta de proveniência. Revise os metadados e a epígrafe antes de qualquer cadastro; este painel não resolve divergências automaticamente.</p>
+    </section>
+  {% endif %}
+  {% if can_review_extraction %}
+    <section class="document-review-panel" aria-labelledby="extraction-review-title">
+      <div class="document-review-panel__header">
+        <div>
+          <p class="legal-detail-eyebrow">Etapa 2 · Curadoria documental</p>
+          <h2 id="extraction-review-title">Conferir extração do texto</h2>
+        </div>
+        <span class="document-review-status">Extração completa · ainda não aceita</span>
+      </div>
+      <p class="document-review-panel__notice" role="note">Aceitar esta versão apenas registra o cotejo humano do texto. Não promove o documento, não substitui a Norma-base e não cria dispositivos segmentados. A extração é imutável; uma nova execução será outra versão.</p>
+      <dl class="relation-extraction-details document-evidence-metadata document-review-extraction-meta">
+        <div><dt>Versão</dt><dd>{{ extraction.text_version }}</dd></div>
+        <div><dt>Páginas</dt><dd>{{ extraction.page_count }}</dd></div>
+        <div><dt>Integridade da extração</dt><dd><code class="document-evidence-hash__preview">{{ extraction.extraction_sha256|slice:":12" }}…</code><details class="document-evidence-hash"><summary>Ver SHA-256 completo</summary><code>{{ extraction.extraction_sha256 }}</code></details></dd></div>
+      </dl>
+      <form method="post" class="document-review-form" data-document-review-form>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="accept_extraction">
+        {{ extraction_review_form.extraction_id }}
+        {{ extraction_review_form.expected_fingerprint }}
+        {% if extraction_review_form.non_field_errors %}<div class="document-review-errors" role="alert" tabindex="-1">{{ extraction_review_form.non_field_errors }}</div>{% endif %}
+        <div class="document-review-field document-review-confirm">
+          {{ extraction_review_form.confirm_extraction }}
+          <label for="{{ extraction_review_form.confirm_extraction.id_for_label }}">{{ extraction_review_form.confirm_extraction.label }}</label>
+          {% if extraction_review_form.confirm_extraction.errors %}<div class="document-review-errors" id="id_confirm_extraction-error">{{ extraction_review_form.confirm_extraction.errors }}</div>{% endif %}
+        </div>
+        <div class="document-review-field">
+          <label for="{{ extraction_review_form.reason.id_for_label }}">{{ extraction_review_form.reason.label }}</label>
+          {{ extraction_review_form.reason }}
+          <p class="document-review-help" id="id_extraction_reason-help">Anote o cotejo efetivamente realizado no PDF; divergência, trecho ilegível ou dúvida deve impedir a aceitação.</p>
+          {% if extraction_review_form.reason.errors %}<div class="document-review-errors" id="id_extraction_reason-error">{{ extraction_review_form.reason.errors }}</div>{% endif %}
+        </div>
+        <button class="btn btn-primary document-review-submit" type="submit" data-document-review-submit data-submitting-label="Registrando extração revisada…">Registrar extração revisada</button>
+      </form>
+    </section>
+  {% endif %}
+  {% if can_review_segmentation or segmentation_generation_form %}
+    <section class="document-review-panel" aria-labelledby="segmentation-review-title">
+      <div class="document-review-panel__header">
+        <div>
+          <p class="legal-detail-eyebrow">Etapa 4 · Curadoria documental</p>
+          <h2 id="segmentation-review-title">Segmentação dos dispositivos</h2>
+        </div>
+        <span class="document-review-status">{% if segmentation_reviewed %}Segmentação revisada{% elif devices %}{{ devices|length }} dispositivos · revisão pendente{% else %}Prévia ainda não gerada{% endif %}</span>
+      </div>
+      <p class="document-review-panel__notice" role="note">A segmentação automática é apenas uma proposta de limites e hierarquia. Compare cada dispositivo e seu trecho com o PDF. A revisão registra a conferência desta versão; ela não promove o documento, não revisa eventos normativos e não torna a reconstrução temporal juridicamente completa.</p>
+      {% if can_generate_segmentation or segmentation_generation_form %}
+        <form method="post" class="document-review-form" data-document-review-form>
+          {% csrf_token %}
+          <input type="hidden" name="action" value="generate_segmentation">
+          {{ segmentation_generation_form.extraction_id }}
+          {{ segmentation_generation_form.expected_fingerprint }}
+          {% if segmentation_generation_form.non_field_errors %}<div class="document-review-errors" role="alert" tabindex="-1">{{ segmentation_generation_form.non_field_errors }}</div>{% endif %}
+          <div class="document-review-field document-review-confirm">
+            {{ segmentation_generation_form.confirm_generation }}
+            <label for="{{ segmentation_generation_form.confirm_generation.id_for_label }}">{{ segmentation_generation_form.confirm_generation.label }}</label>
+            {% if segmentation_generation_form.confirm_generation.errors %}<div class="document-review-errors">{{ segmentation_generation_form.confirm_generation.errors }}</div>{% endif %}
+          </div>
+          <button class="btn btn-primary document-review-submit" type="submit" data-document-review-submit data-submitting-label="Gerando prévia…">Gerar prévia de segmentação</button>
+        </form>
+      {% elif devices and not segmentation_reviewed and segmentation_review_form %}
+        <div class="document-segmentation-preview" aria-label="Prévia dos dispositivos a revisar">
+          {% for device in devices %}
+            <article class="document-segmentation-preview__item">
+              <h3>{{ device.tipo }} {{ device.numero }}{% if device.page_index %}<span> · página {{ device.page_index }}</span>{% endif %}</h3>
+              {% if device.parent_key %}<p class="document-review-help">Dispositivo subordinado · chave estrutural {{ device.parent_key }}</p>{% endif %}
+              {% if device.marker != 'none' %}<p class="document-review-errors" role="note">Marcador automático: {{ device.get_marker_display }}. Confira manualmente.</p>{% endif %}
+              <pre>{{ device.texto }}</pre>
+            </article>
+          {% endfor %}
+        </div>
+        <form method="post" class="document-review-form" data-document-review-form>
+          {% csrf_token %}
+          <input type="hidden" name="action" value="review_segmentation">
+          {{ segmentation_review_form.extraction_id }}
+          {{ segmentation_review_form.expected_fingerprint }}
+          {% if segmentation_review_form.non_field_errors %}<div class="document-review-errors" role="alert" tabindex="-1">{{ segmentation_review_form.non_field_errors }}</div>{% endif %}
+          <div class="document-review-field document-review-confirm">
+            {{ segmentation_review_form.confirm_segmentation }}
+            <label for="{{ segmentation_review_form.confirm_segmentation.id_for_label }}">{{ segmentation_review_form.confirm_segmentation.label }}</label>
+            {% if segmentation_review_form.confirm_segmentation.errors %}<div class="document-review-errors" id="id_confirm_segmentation-error">{{ segmentation_review_form.confirm_segmentation.errors }}</div>{% endif %}
+          </div>
+          <div class="document-review-field">
+            <label for="{{ segmentation_review_form.reason.id_for_label }}">{{ segmentation_review_form.reason.label }}</label>
+            {{ segmentation_review_form.reason }}
+            <p class="document-review-help">Registre somente o que foi cotejado; se houver limites ambíguos, cabeçalho/colofão incorporado ou dispositivo ausente, não confirme.</p>
+            {% if segmentation_review_form.reason.errors %}<div class="document-review-errors">{{ segmentation_review_form.reason.errors }}</div>{% endif %}
+          </div>
+          <button class="btn btn-primary document-review-submit" type="submit" data-document-review-submit data-submitting-label="Registrando revisão…">Confirmar segmentação revisada</button>
+        </form>
+      {% elif segmentation_reviewed %}
+        <p class="document-review-panel__notice" role="status">A fingerprint da segmentação corresponde à revisão registrada. Se a extração ou qualquer dispositivo mudar, esta revisão deixa de valer.</p>
+      {% endif %}
+    </section>
+  {% endif %}
   <div class="legal-detail-actions document-evidence-actions">
     {% if official_url %}<a class="btn btn-secondary" href="{{ official_url }}" target="_blank" rel="noopener noreferrer">Abrir fonte oficial (nova aba)</a>{% endif %}
     {% if local_pdf_available %}<a class="btn btn-primary" href="{% url 'legislation:document_pdf' document.public_id %}" target="_blank" rel="noopener noreferrer">Abrir PDF arquivado (nova aba)</a>{% endif %}
@@ -36,3 +267,4 @@
   {% if document.norma_id %}<p><a href="{% url 'legislation:norma_detail' document.norma_id %}">Voltar à norma</a></p>{% endif %}
 </main>
 {% endblock %}
+{% block extra_js %}<script src="{% static 'js/jurix-document-review.js' %}?v=20261008-review-workflow2" defer></script>{% endblock %}

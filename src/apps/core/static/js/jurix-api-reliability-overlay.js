@@ -180,6 +180,7 @@
         let answer = '';
         let verifiedAnswer = '';
         let sources = [];
+        let sourceCoverage = null;
         const wrappedChunk = (chunk, chunkMetadata) => {
           const text = String(chunk || '');
           answer = chunkMetadata?.replace ? text : answer + text;
@@ -191,9 +192,15 @@
           }
           return onChunk?.(chunk, chunkMetadata);
         };
-        const wrappedSources = (items, ...rest) => {
-          sources = Array.isArray(items) ? items : [];
-          return onSources?.(items, ...rest);
+        const withSourceCoverage = (items) => {
+          if (!Array.isArray(items)) return [];
+          if (!sourceCoverage) return items;
+          return items.map(source => source?.coverage ? source : { ...source, coverage: sourceCoverage });
+        };
+        const wrappedSources = (items, confidence, sourceMetadata, ...rest) => {
+          sourceCoverage = sourceMetadata?.coverage || null;
+          sources = withSourceCoverage(items);
+          return onSources?.(sources, confidence, sourceMetadata, ...rest);
         };
         const wrappedDone = (doneEvent, ...rest) => {
           const answerFromEvent = doneEvent && typeof doneEvent === 'object'
@@ -201,11 +208,23 @@
             : doneEvent;
           if (answerFromEvent != null) answer = String(answerFromEvent);
           const grounded = doneEvent?.grounded === true;
-          const verifiedSources = grounded
-            ? (Array.isArray(doneEvent?.sources) ? doneEvent.sources : sources)
-            : [];
-          window.JurixAnonymousHistory.updateLastAssistant(localId, answer, verifiedSources, grounded);
-          return onDone?.({ ...doneEvent, answer, session_id: localId, session_slug: localId }, ...rest);
+          const terminalSources = withSourceCoverage(
+            Array.isArray(doneEvent?.sources) ? doneEvent.sources : sources
+          );
+          // Keep only evidence explicitly cited by a partial answer. It remains
+          // marked ungrounded; retaining its source mapping is not a claim that
+          // the complete answer passed grounding.
+          const retainedSources = window.JurixAnonymousHistory.sourcesForAnswer?.(
+            answer, terminalSources, grounded
+          ) || (grounded ? terminalSources : []);
+          window.JurixAnonymousHistory.updateLastAssistant(localId, answer, retainedSources, grounded);
+          return onDone?.({
+            ...doneEvent,
+            answer,
+            sources: terminalSources,
+            session_id: localId,
+            session_slug: localId,
+          }, ...rest);
         };
         const wrappedError = (error) => {
           if (verifiedAnswer.trim()) window.JurixAnonymousHistory.updateLastAssistant(localId, verifiedAnswer, [], false);

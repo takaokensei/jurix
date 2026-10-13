@@ -8,9 +8,11 @@
     const extraction = document.getElementById('archive-candidate-extraction');
     const summary = document.getElementById('archive-candidate-filter-summary');
     const empty = document.getElementById('archive-candidates-no-results');
+    const globalSearchLink = document.getElementById('archive-global-search');
     if (!list || !search || !identity || !status || !extraction || !summary || !empty) return;
 
     const cards = Array.from(list.querySelectorAll('.jurix-archive-candidate'));
+    const totalCandidates = Number.parseInt(list.dataset.totalCandidates, 10) || cards.length;
     const fold = (value) => String(value || '')
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
@@ -37,13 +39,31 @@
             if (matches) visible += 1;
         });
 
-        summary.textContent = `Exibindo ${visible} de ${cards.length} documentos.`;
+        if (totalCandidates > cards.length) {
+            const totalLabel = new Intl.NumberFormat('pt-BR').format(totalCandidates);
+            summary.textContent = `Exibindo ${visible} de ${cards.length} documentos nesta página · ${totalLabel} no acervo.`;
+        } else {
+            summary.textContent = `Exibindo ${visible} de ${cards.length} documentos.`;
+        }
         empty.hidden = visible !== 0;
     }
 
-    search.addEventListener('input', applyFilters);
+    function updateGlobalSearchLink() {
+        if (!globalSearchLink?.dataset.searchBase) return;
+        const target = new URL(globalSearchLink.dataset.searchBase, window.location.origin);
+        const query = search.value.trim();
+        if (query) target.searchParams.set('q', query);
+        else target.searchParams.delete('q');
+        globalSearchLink.href = `${target.pathname}${target.search}`;
+    }
+
+    search.addEventListener('input', () => {
+        applyFilters();
+        updateGlobalSearchLink();
+    });
     identity.addEventListener('change', applyFilters);
     status.addEventListener('change', applyFilters);
     extraction.addEventListener('change', applyFilters);
+    updateGlobalSearchLink();
     applyFilters();
 })();

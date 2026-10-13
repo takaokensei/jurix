@@ -186,6 +186,42 @@ def _old_hash(sapl_id: int) -> str | None:
     return metadata.get("_jurix_source_hash")
 
 
+def _type_catalog_refresh_required(sapl_id: int, payload: dict[str, Any]) -> bool:
+    """Revisit unchanged numeric SAPL types until their official label is stored."""
+    raw_type = payload.get("tipo")
+    if not (isinstance(raw_type, int) or str(raw_type or "").strip().isdecimal()):
+        return False
+    norma = Norma.objects.filter(sapl_id=sapl_id).only("sapl_metadata").first()
+    if not norma:
+        return False
+    metadata = norma.sapl_metadata if isinstance(norma.sapl_metadata, dict) else {}
+    catalog = metadata.get("_jurix_type_catalog")
+    label = str(catalog.get("raw_label") or "").strip() if isinstance(catalog, dict) else ""
+    return not label or label.isdecimal()
+
+
+def _with_official_type_label(payload: dict[str, Any], client: SaplAPIClient) -> dict[str, Any]:
+    """Enrich opaque installation-local type IDs using the same SAPL instance."""
+    raw_type = payload.get("tipo")
+    if not (isinstance(raw_type, int) or str(raw_type or "").strip().isdecimal()):
+        return dict(payload)
+    type_id = int(raw_type)
+    cache = getattr(client, "_jurix_type_catalog_cache", None)
+    if cache is None:
+        cache = {}
+        client._jurix_type_catalog_cache = cache
+    if type_id not in cache:
+        detail = client.fetch_norma_type_by_id(type_id)
+        label = str(detail.get("descricao") or detail.get("sigla") or "").strip()
+        if not label:
+            raise RuntimeError(f"SAPL type catalogue has no label for type ID {type_id}.")
+        cache[type_id] = {"id": type_id, "descricao": label, "sigla": detail.get("sigla") or ""}
+    enriched = dict(payload)
+    enriched["_jurix_raw_tipo"] = raw_type
+    enriched["tipo"] = cache[type_id]
+    return enriched
+
+
 def _remote_pdf_fingerprint(client: SaplAPIClient, payload: dict[str, Any]) -> str | None:
     pdf_url = str(payload.get("texto_integral") or "").strip()
     if not pdf_url:
@@ -353,7 +389,7 @@ def _process_payload(
         elif not prior_fingerprint and pdf_url_changed:
             pending_reason = "remote_pdf_url_changed_without_baseline"
 
-    stored = dict(payload)
+    stored = _with_official_type_label(payload, client) if client is not None else dict(payload)
     stored["_jurix_source_hash"] = digest
     if pdf_fingerprint and not pending_reason:
         stored["_jurix_pdf_fingerprint"] = pdf_fingerprint
@@ -424,9 +460,12 @@ def run_incremental_sync(
     tipo: str | None = None,
     ano: int | None = None,
 ) -> dict[str, Any]:
-    """Resume from the persisted cursor and stop at the first safe boundary."""
+    """Resume from the persisted cursor and overlap unchanged pages before stopping."""
     limit = max(1, min(int(limit), 50))
     max_pages = max(1, int(getattr(settings, "SAPL_INCREMENTAL_MAX_PAGES", 20)))
+    overlap_pages = max(
+        1, min(10, int(getattr(settings, "SAPL_INCREMENTAL_OVERLAP_PAGES", 3)))
+    )
     scope = _scope_fingerprint(tipo, ano)
     state, token = _acquire_state(scope)
     if token is None:
@@ -452,11 +491,14 @@ def run_incremental_sync(
         "cursor_start": offset,
         "cursor_end": offset,
         "safe_stop": False,
+        "unchanged_pages": 0,
+        "overlap_pages_required": overlap_pages,
         "errors": [],
     }
     newest_remote = state.last_remote_timestamp
     seen_page_urls: set[str] = set()
     seen_page_fingerprints: set[str] = set()
+    consecutive_unchanged_pages = 0
 
     try:
         for _ in range(max_pages):
@@ -531,7 +573,10 @@ def run_incremental_sync(
                     newest_remote = remote_dt
                 digest = payload_hash(payload)
                 pdf_fingerprint = _remote_pdf_fingerprint(client, payload)
-                if _old_hash(int(sapl_id)) == digest:
+                if (
+                    _old_hash(int(sapl_id)) == digest
+                    and not _type_catalog_refresh_required(int(sapl_id), payload)
+                ):
                     pdf_changed = False
                     if pdf_fingerprint:
                         pdf_changed, needs_staging = _observe_pdf_fingerprint(
@@ -588,6 +633,12 @@ def run_incremental_sync(
             stats["cursor_end"] = offset
 
             if page_unchanged:
+                consecutive_unchanged_pages += 1
+            else:
+                consecutive_unchanged_pages = 0
+            stats["unchanged_pages"] = consecutive_unchanged_pages
+
+            if page_unchanged and consecutive_unchanged_pages >= overlap_pages:
                 stats["success"] = stats["failed"] == 0
                 stats["safe_stop"] = True
                 offset = 0

@@ -12,6 +12,7 @@ from copy import deepcopy
 from pathlib import Path
 from urllib.parse import urlparse
 
+from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 
 _EXPECTED_DATABASE = {
@@ -88,6 +89,7 @@ globals().update({key: value for key, value in vars(_base).items() if key.isuppe
 DEBUG = True
 SECRET_KEY = "jurix-normative-qa-only-not-for-deployment"
 ALLOWED_HOSTS = ["127.0.0.1", "localhost", "testserver"]
+JURIX_BUILD_PROFILE = "qa"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -115,7 +117,16 @@ CELERY_TASK_ROUTES = {
     "ingestion.finish_normative_stage": {"queue": "normative_qa"},
     "ingestion.fail_normative_stage": {"queue": "normative_qa"},
     "ingestion.review_normative_work_item": {"queue": "normative_qa"},
+    "ingestion.reconcile_new_normative_targets": {"queue": "normative_qa"},
+    "ingestion.sync_dom_natal_editions": {"queue": "normative_qa"},
 }
+if os.environ.get("JURIX_QA_DOM_NATAL_SYNC_SCHEDULE_ENABLED") == "1":
+    CELERY_BEAT_SCHEDULE["dom-natal-editions-daily-qa"] = {
+        "task": "ingestion.sync_dom_natal_editions",
+        "schedule": crontab(hour=2, minute=30),
+        "kwargs": {"lookback_months": 3, "max_new_total": 5},
+        "options": {"queue": "normative_qa"},
+    }
 CELERYD_CONCURRENCY = 1
 CELERYD_PREFETCH_MULTIPLIER = 1
 USE_LOCMEM_CACHE = False
@@ -123,7 +134,7 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": CACHE_REDIS_URL,
-        "KEY_PREFIX": "jurix-normative-qa",
+        "KEY_PREFIX": os.environ.get("JURIX_QA_CACHE_PREFIX", "jurix-normative-qa"),
     }
 }
 MEDIA_ROOT = QA_ROOT / "media"
@@ -137,9 +148,11 @@ LOGGING = deepcopy(_base.LOGGING)
 LOGGING["handlers"]["file"]["filename"] = str(LOG_ROOT / "jurix.log")
 NORMATIVE_ARCHIVE_ENABLED = True
 NORMATIVE_ARCHIVE_ASSISTANT_ENABLED = True
+SAPL_MATTER_LOOKUP_ENABLED = True
 NORMATIVE_ARCHIVE_SAPL_LINKS_ENABLED = True
 NORMATIVE_ARCHIVE_REVIEW_UI_ENABLED = True
 NORMATIVE_GRAPH_ENABLED = True
+PGM_CONSOLIDATION_DEMO_ENABLED = True
 NORMATIVE_HISTORY_ENABLED = True
 RAG_GRAPH_CONTEXT_ENABLED = True
 READINESS_REQUIRE_OLLAMA = False

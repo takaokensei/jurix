@@ -1,6 +1,9 @@
+from urllib.parse import parse_qs, urlparse
+
 import pytest
 
 from src.apps.ingestion import sapl_sync
+from src.apps.ingestion.core_tasks import _process_norma_data
 from src.apps.legislation.models import Norma
 from src.apps.operations.models import SaplSyncState
 
@@ -14,6 +17,11 @@ class FakeClient:
 
     def fetch_normas_page(self, *, limit, offset, tipo=None, ano=None):
         return self.pages.get(offset, {"count": 0, "next": None, "previous": None, "results": []})
+
+    def _make_request_url(self, url):
+        query = parse_qs(urlparse(url).query)
+        offset = int(query.get("offset", ["0"])[0])
+        return self.fetch_normas_page(limit=10, offset=offset)
 
     def fingerprint_pdf(self, _url):
         return "etag:stable-test-pdf"
@@ -52,8 +60,28 @@ def test_payload_hash_changes_when_source_changes():
     assert sapl_sync.payload_hash(a) != sapl_sync.payload_hash(b)
 
 
-def test_incremental_sync_stops_on_unchanged_page(monkeypatch, settings):
+def test_sapl_metadata_without_pdf_normalizes_null_url_to_empty_string():
+    result = _process_norma_data(
+        {
+            "id": 99901,
+            "tipo": {"descricao": "Lei"},
+            "numero": "99901",
+            "ano": 2026,
+            "texto_integral": None,
+        },
+        auto_download=False,
+    )
+
+    norma = Norma.objects.get(sapl_id=99901)
+    assert result["created"] is True
+    assert norma.pdf_url == ""
+    assert norma.pdf_path == ""
+    assert norma.texto_consolidado == ""
+
+
+def test_incremental_sync_requires_unchanged_page_overlap_before_stopping(monkeypatch, settings):
     settings.SAPL_INCREMENTAL_MAX_PAGES = 5
+    settings.SAPL_INCREMENTAL_OVERLAP_PAGES = 2
     p = payload(10, title="A")
     digest = sapl_sync.payload_hash(p)
     Norma.objects.create(
@@ -64,30 +92,89 @@ def test_incremental_sync_stops_on_unchanged_page(monkeypatch, settings):
         sapl_id=10,
         sapl_metadata={"_jurix_source_hash": digest},
     )
+    p2 = payload(11, title="B")
+    Norma.objects.create(
+        tipo="Lei",
+        numero="11",
+        ano=2026,
+        ementa="B",
+        sapl_id=11,
+        sapl_metadata={"_jurix_source_hash": sapl_sync.payload_hash(p2)},
+    )
     fake = FakeClient(
         {
             0: {
-                "count": 2,
+                "count": 3,
                 "next": "https://example.invalid/api/norma/normajuridica/?offset=1",
                 "results": [p],
+            },
+            1: {
+                "count": 3,
+                "next": "https://example.invalid/api/norma/normajuridica/?offset=2",
+                "results": [p2],
             },
         }
     )
     monkeypatch.setattr(sapl_sync, "SaplAPIClient", lambda: fake)
 
-    result = sapl_sync.run_incremental_sync(limit=10)
+    result = sapl_sync.run_incremental_sync(limit=1)
 
     assert result["success"] is True
     assert result["safe_stop"] is True
-    assert result["unchanged"] == 1
-    assert result["pages"] == 1
+    assert result["unchanged"] == 2
+    assert result["pages"] == 2
+    assert result["unchanged_pages"] == 2
+    assert result["overlap_pages_required"] == 2
     state = SaplSyncState.objects.get(source="sapl")
     assert state.last_cursor == 0
     assert state.last_success_at is not None
     assert fake.closed is True
 
 
-def test_pdf_only_change_creates_review_candidate_without_replacing_local_source(monkeypatch):
+def test_incremental_sync_finds_delayed_publication_after_unchanged_page(monkeypatch, settings):
+    settings.SAPL_INCREMENTAL_MAX_PAGES = 5
+    settings.SAPL_INCREMENTAL_OVERLAP_PAGES = 2
+    existing = payload(10, title="A")
+    digest = sapl_sync.payload_hash(existing)
+    Norma.objects.create(
+        tipo="Lei",
+        numero="10",
+        ano=2026,
+        ementa="A",
+        sapl_id=10,
+        sapl_metadata={"_jurix_source_hash": digest},
+    )
+    delayed = payload(11, title="Publicação que chegou com atraso")
+    fake = FakeClient(
+        {
+            0: {
+                "count": 2,
+                "next": "https://example.invalid/api/norma/normajuridica/?offset=1",
+                "results": [existing],
+            },
+            1: {"count": 2, "next": None, "results": [delayed]},
+        }
+    )
+    monkeypatch.setattr(sapl_sync, "SaplAPIClient", lambda: fake)
+    processed = []
+    monkeypatch.setattr(
+        sapl_sync,
+        "_process_payload",
+        lambda value, **_kwargs: processed.append(value["id"])
+        or (sapl_sync.payload_hash(value), value["id"]),
+    )
+
+    result = sapl_sync.run_incremental_sync(limit=1)
+
+    assert result["success"] is True
+    assert result["pages"] == 2
+    assert result["changed"] == 1
+    assert processed == [11]
+    assert fake.closed is True
+
+
+def test_pdf_only_change_creates_review_candidate_without_replacing_local_source(monkeypatch, settings):
+    settings.NORMATIVE_ARCHIVE_ENABLED = True
     p = payload(55, title="Original")
     norma = Norma.objects.create(
         tipo="Lei",
@@ -133,6 +220,28 @@ def test_pdf_only_change_creates_review_candidate_without_replacing_local_source
     # The fake staging service leaves the pending item unattached, so a later
     # sync retries candidate creation rather than marking it complete.
     assert staging_calls == ["etag:new-version", "etag:new-version"]
+
+
+def test_unchanged_numeric_sapl_type_is_reprocessed_until_official_label_is_stored():
+    p = {**payload(57), "tipo": 1}
+    norma = Norma.objects.create(
+        tipo="Tipo não identificado",
+        numero="57",
+        ano=2026,
+        sapl_id=57,
+        sapl_metadata={
+            "_jurix_source_hash": sapl_sync.payload_hash(p),
+            "_jurix_type_catalog": {"raw_code": "1", "raw_label": "1", "known": False},
+        },
+    )
+
+    assert sapl_sync._type_catalog_refresh_required(norma.sapl_id, p) is True
+
+    norma.sapl_metadata["_jurix_type_catalog"] = {
+        "raw_code": "1", "raw_label": "LEI ORDINÁRIA", "known": True,
+    }
+    norma.save(update_fields=["sapl_metadata"])
+    assert sapl_sync._type_catalog_refresh_required(norma.sapl_id, p) is False
 
 
 def test_metadata_update_still_processes_record_and_passes_pdf_fingerprint(monkeypatch):

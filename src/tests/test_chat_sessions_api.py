@@ -266,7 +266,7 @@ class TestFixedBehaviour:
 
 
 @pytest.mark.parametrize("grounded", [False, True])
-def test_stream_contract_persists_sources_only_for_grounded_answers(client, user, grounded):
+def test_stream_contract_persists_explicitly_cited_sources_without_upgrading_grounding(client, user, grounded):
     import json
 
     session = ChatSession.objects.create(user=user, title="Consulta")
@@ -308,9 +308,10 @@ def test_stream_contract_persists_sources_only_for_grounded_answers(client, user
     assert done["grounded"] is grounded
     assert done["contract"]["schema_version"] == 1
     assert done["contract"] == saved.metadata_json
-    assert bool(saved.sources_json) is grounded
+    assert bool(saved.sources_json) is True
     assert saved.metadata_json["grounded"] is grounded
-    assert saved.metadata_json["sources_count"] == (1 if grounded else 0)
+    assert saved.metadata_json["sources_count"] == 1
+    assert len(done["sources"]) == 1
     assert done["contract"]["timings_ms"] == {"retrieval": 7, "generation": 30}
     assert done["contract"]["generation_attempts"] == [{"attempt": 1, "duration_ms": 30}]
 

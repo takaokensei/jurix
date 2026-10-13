@@ -57,6 +57,24 @@ def test_title_keeps_article_and_law_reference_without_inventing_a_topic():
     )
 
 
+def test_title_distinguishes_a_legislative_proposal_from_a_promulgated_norm():
+    title = build_conversation_title(
+        "Qual é a redação proposta no art. 59 do PLC 12/2025?",
+        [],
+    )
+
+    assert title == "Art. 59º — PLC nº 12/2025"
+
+
+def test_title_recognizes_full_complementary_bill_name_without_calling_it_a_law():
+    title = build_conversation_title(
+        "O que diz o Art. 59 do Projeto de Lei Complementar nº 12/2025?",
+        [],
+    )
+
+    assert title == "Art. 59º — PLC nº 12/2025"
+
+
 def test_title_does_not_use_a_negative_answer_prefix_as_the_topic():
     title = build_conversation_title(
         "Não encontrei evidências suficientes. E o artigo 7 da Lei Complementar nº 120/2010?",
@@ -80,3 +98,21 @@ def test_title_ignores_instruction_words_that_also_appear_in_legal_evidence():
     )
 
     assert title == "Lei Complementar nº 120/2010"
+
+
+def test_title_ignores_procedural_question_words_and_keeps_the_retrieved_topic():
+    title = build_conversation_title(
+        "Em linhas gerais, como a LC nº 258/2024 organiza o licenciamento de obras e "
+        "quais três cautelas um procurador deve observar antes de aplicar esses excertos a um processo?",
+        [
+            {
+                "norma_ref": "Lei Complementar nº 258/2024",
+                "full_text": (
+                    "O licenciamento de obras e esses procedimentos dependem da "
+                    "documentação técnica pertinente."
+                ),
+            }
+        ],
+    )
+
+    assert title == "Licenciamento obras — Lei Complementar nº 258/2024"

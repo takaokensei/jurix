@@ -25,13 +25,24 @@ manual. Os gates executados no CI estão listados em
   para `benchmarks/rag/production/contract-cases.v2.jsonl`. Para casos jurídicos
   com `question`/`expected_citations`, use `run_legal_benchmark_v1.py`.
 - `evaluate_normative_graph.py` — compara predições JSONL com anotações humanas
-  ligadas a hashes; retorna `not_evaluated` enquanto não atingir o mínimo de
-  normas adjudicadas. Exemplo: `python scripts/evaluate_normative_graph.py
+  ligadas a hashes; pontua somente casos com revisão humana completa (revisor,
+  timestamp com fuso e estado adjudicado/aprovado) e retorna `not_evaluated`
+  enquanto não atingir 20 normas e 3 cadeias adjudicadas. Casos sintéticos ou
+  incompletos são excluídos das métricas. `evaluated` não equivale a autorização
+  de publicação. Exemplo: `python scripts/evaluate_normative_graph.py
   --gold <gold.jsonl> --predictions <predictions.jsonl>`.
 - `run_normative_rag_experiment.py` — analisa resultados exportados em pares
-  dos braços `baseline`, `graph` e `graph_temporal`; não chama modelo nem mede
-  geração sozinho. Exemplo: `python scripts/run_normative_rag_experiment.py
-  --input <predictions.jsonl> --output <report.json>`.
+  dos braços `baseline`, `graph` e `graph_temporal`; pontua somente revisões
+  humanas completas e calcula intervalos pareados por bootstrap agrupado por
+  norma quando há pelo menos 20 normas independentes. Para permitir alegação
+  científica, exige também `--sampling-report <report.json>` cujo SHA-256,
+  unidades (norma/documento/condição de uso) e cadeias coincidam com os casos
+  adjudicados; hash solto não libera o gate. A validação não autentica o revisor
+  nem a aprovação institucional. Não chama modelo nem mede geração sozinho.
+  Exemplo técnico (sem alegação científica): `python
+  scripts/run_normative_rag_experiment.py --input <predictions.jsonl>
+  --output <report.json>`. Exemplo após revisão e relatório de seleção:
+  acrescente `--sampling-report <sampling-report.json>`.
 - `benchmark_normative_pipeline.py` — microbenchmark sintético, offline e
   limitado, de BFS/memória; não é medida de consultas SQL, API ou produção.
   Exemplo: `python scripts/benchmark_normative_pipeline.py`.

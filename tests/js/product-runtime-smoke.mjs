@@ -18,6 +18,8 @@ const routes = [
   '/normas/',
   '/normas/3/',
   '/pesquisa/',
+  '/explorar/',
+  '/conferir/',
   '/colecoes/',
   '/historico/',
   '/configuracoes/',

@@ -16,6 +16,15 @@ logger = logging.getLogger(__name__)
 
 
 class SaplNormasMixin:
+    def fetch_norma_type_by_id(self, type_id: int) -> dict[str, Any]:
+        """Resolve a SAPL installation-local type code to its official label."""
+        if isinstance(type_id, bool) or int(type_id) < 1:
+            raise ValueError("SAPL type ID must be a positive integer")
+        payload = self._make_request(f"/norma/tiponormajuridica/{int(type_id)}/")
+        if not isinstance(payload, dict) or int(payload.get("id") or 0) != int(type_id):
+            raise ValueError("SAPL type catalogue returned an unexpected record")
+        return payload
+
     def fetch_normas_page(
         self,
         limit: int = 50,
@@ -128,10 +137,11 @@ class SaplNormasMixin:
         max_normas_por_ano: int | None = None,
     ) -> list[dict[str, Any]]:
         """
-        Busca normas por intervalo de anos (workaround para limitação de paginação da API).
+        Busca normas por intervalo de anos e segue a paginação oficial ``next``.
 
-        Esta estratégia contorna a limitação da API SAPL que retorna sempre as mesmas
-        10 normas independente do offset, iterando ano por ano.
+        A consulta por ano mantém a população temporal explícita e evita tratar o
+        tamanho de uma página como limite do corpus. Cada ano ainda depende da
+        contagem e dos links de paginação informados pela instalação SAPL.
 
         Args:
             ano_inicio: Ano inicial do intervalo (inclusive)

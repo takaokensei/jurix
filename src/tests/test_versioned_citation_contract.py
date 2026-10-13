@@ -31,6 +31,7 @@ def _temporal_source():
             "as_of": "2026-05-01",
             "legal_status": "in_force",
             "snapshot_id": 9,
+            "status_note": "  Texto   projetado para a data consultada. ",
             "version_hash": "b" * 64,
             "input_hash": "c" * 64,
             "policy": "normative-projection-v1",
@@ -57,6 +58,8 @@ def test_historical_citation_is_versioned_and_links_unmarked_official_base():
         "version_hash": "b" * 64,
         "input_hash": "c" * 64,
         "policy": "normative-projection-v1",
+        "snapshot_id": 9,
+        "status_note": "Texto projetado para a data consultada.",
         "source_document_id": "12345678-1234-5678-1234-567812345678",
         "effective_on": "2026-04-15",
     }

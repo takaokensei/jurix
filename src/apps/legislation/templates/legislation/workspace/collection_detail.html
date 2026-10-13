@@ -24,6 +24,24 @@
             {% csrf_token %}<input type="hidden" name="norma_id" value="{{ norma.pk }}"><input type="hidden" name="action" value="remove">
             <button class="workspace-button workspace-button-ghost" type="submit" data-collection-norm="{{ norma }}" aria-label="Remover {{ norma }} da coleção">Remover</button>
         </form>
+        <form method="post" class="collection-evidence-save-form">
+            {% csrf_token %}
+            <input type="hidden" name="norma_id" value="{{ norma.pk }}">
+            <input type="hidden" name="action" value="save_evidence">
+            <label for="evidence-device-{{ norma.pk }}">Referência a preservar</label>
+            <select id="evidence-device-{{ norma.pk }}" name="device_key">
+                <option value="">Norma inteira</option>
+                {% for device in norma.evidence_device_options %}
+                <option value="{{ device.key }}"{% if norma.evidence_form_device_key == device.key %} selected{% endif %}>{{ device.label }}</option>
+                {% endfor %}
+            </select>
+            <label for="evidence-as-of-{{ norma.pk }}">Salvar redação reconstruída em</label>
+            <div class="workspace-form-actions">
+                <input id="evidence-as-of-{{ norma.pk }}" type="date" name="as_of" value="{{ norma.evidence_form_as_of|default:today|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" required>
+                <button class="workspace-button workspace-button-secondary" type="submit">Salvar versão histórica</button>
+            </div>
+            <small class="workspace-muted">A versão fica preservada. Isso não determina qual redação se aplica a um processo.</small>
+        </form>
     </article>
 {% empty %}
     <p class="workspace-muted">Nenhuma norma nesta coleção.</p>
@@ -31,6 +49,46 @@
 </section>
 {% else %}
 <section class="workspace-empty-state workspace-empty-state-large"><span class="workspace-eyebrow">Dossiê vazio</span><h2>Adicione normas a esta coleção</h2><p>Abra uma norma consolidada e use a ação de adicionar à coleção para começar.</p><a class="workspace-button workspace-button-primary" href="{% url 'workspace:legal_search' %}">Pesquisar normas</a></section>
+{% endif %}
+
+{% if evidence_impacts %}
+<section class="workspace-section" aria-labelledby="collection-evidence-heading">
+    <div class="workspace-page-header">
+        <div><span class="workspace-eyebrow">Histórico imutável</span><h2 id="collection-evidence-heading">Referências salvas</h2><p>Uma nova projeção não altera versões anteriores; revise a comparação antes de atualizar qualquer referência.</p></div>
+    </div>
+    <div class="workspace-card-grid">
+    {% for impact in evidence_impacts %}
+        {% if impact.truncated %}
+        <p class="workspace-muted" role="status">A comparação automática está limitada às primeiras 50 referências salvas; {{ impact.remaining }} referência{{ impact.remaining|pluralize }} requer abertura individual para revisão.</p>
+        {% else %}
+        <article class="workspace-card">
+            <span class="workspace-eyebrow">{{ impact.saved.get_result_display }} · Versão {{ impact.saved.version }}</span>
+            <h3><a href="{% url 'legislation:norma_detail' impact.saved.norma_id %}">{{ impact.saved.norma }}</a></h3>
+            <p>{{ impact.device_label }} · redação reconstruída em {{ impact.saved.snapshot.as_of|date:"d/m/Y" }} · SHA-256 <code>{{ impact.saved.evidence_hash|slice:":12" }}</code></p>
+            {% if impact.comparison == "changed" %}
+                <p class="workspace-confirm-error" role="status">O conteúdo reconstruído difere da versão salva. Compare as redações e a origem; nenhuma versão foi substituída.</p>
+                {% if impact.device_id %}<a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_compare' impact.saved.norma_id %}?mode=precedent&amp;device_id={{ impact.device_id }}&amp;from_as_of={{ impact.saved.snapshot.as_of|date:'Y-m-d' }}&amp;to_as_of={{ today|date:'Y-m-d' }}">Comparar dispositivo</a>{% else %}<a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_compare' impact.saved.norma_id %}?history=1&amp;from_as_of={{ impact.saved.snapshot.as_of|date:'Y-m-d' }}&amp;to_as_of={{ today|date:'Y-m-d' }}">Comparar versões</a>{% endif %}
+            {% elif impact.comparison == "provenance_changed" %}
+                <p class="workspace-confirm-error" role="status">As fontes ou revisões da projeção mudaram, embora o hash do texto reconstruído permaneça igual. Revise a proveniência antes de reutilizar esta referência.</p>
+                {% if impact.device_id %}<a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_compare' impact.saved.norma_id %}?mode=precedent&amp;device_id={{ impact.device_id }}&amp;from_as_of={{ impact.saved.snapshot.as_of|date:'Y-m-d' }}&amp;to_as_of={{ today|date:'Y-m-d' }}">Comparar dispositivo</a>{% else %}<a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_compare' impact.saved.norma_id %}?history=1&amp;from_as_of={{ impact.saved.snapshot.as_of|date:'Y-m-d' }}&amp;to_as_of={{ today|date:'Y-m-d' }}">Comparar versões</a>{% endif %}
+            {% elif impact.comparison == "unchanged" %}
+                <p class="workspace-muted" role="status">Não foi detectada diferença no conteúdo da projeção comparável.</p>
+            {% else %}
+                <p class="workspace-muted" role="status">Não foi possível comparar com segurança; a reconstrução atual está inconclusiva.</p>
+            {% endif %}
+        </article>
+        {% endif %}
+    {% endfor %}
+    </div>
+    <details class="workspace-card">
+        <summary>Ver todas as versões salvas ({{ evidence_versions|length }})</summary>
+        <ol class="collection-evidence-version-list">
+        {% for version in evidence_versions %}
+            <li>{% if version.device_id %}<a href="{% url 'legislation:norma_compare' version.norma_id %}?mode=precedent&amp;device_id={{ version.device_id }}&amp;from_as_of={{ version.snapshot.as_of|date:'Y-m-d' }}&amp;to_as_of={{ today|date:'Y-m-d' }}">{{ version.norma }} — {{ version.device_label }}, versão {{ version.version }}, {{ version.snapshot.as_of|date:"d/m/Y" }}</a>{% else %}<a href="{% url 'legislation:norma_compare' version.norma_id %}?history=1&amp;from_as_of={{ version.snapshot.as_of|date:'Y-m-d' }}&amp;to_as_of={{ today|date:'Y-m-d' }}">{{ version.norma }} — {{ version.device_label }}, versão {{ version.version }}, {{ version.snapshot.as_of|date:"d/m/Y" }}</a>{% endif %} · {{ version.get_result_display }} · evidência <code>{{ version.evidence_hash|slice:":12" }}</code></li>
+        {% endfor %}
+        </ol>
+    </details>
+</section>
 {% endif %}
 <script src="{% static 'js/jurix-collections.js' %}?v=20260930-remove-confirm1"></script>
 {% endblock %}

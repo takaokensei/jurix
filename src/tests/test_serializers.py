@@ -40,6 +40,46 @@ def test_cached_source_coerces_legacy_non_string_text():
     assert result["text"] == "12345"
 
 
+def test_cached_source_keeps_full_text_when_text_is_a_truncated_preview():
+    full_text = "Art. 167. Regra sobre acessibilidade. " + ("Disposição complementar. " * 16)
+    preview = full_text[:200] + "..."
+
+    result = serialize_dispositivo_source({"id": 167, "text": preview, "full_text": full_text})
+
+    assert result["full_text"] == full_text
+    assert result["text"] == full_text[:200] + "..."
+
+
+def test_legislative_matter_source_keeps_distinct_provenance_without_normative_status():
+    result = serialize_citation_sources(
+        [
+            {
+                "citation_id": "sapl:materia:54742",
+                "citation_label": "Projeto de Lei Complementar nº 9/2026",
+                "norma_ref": "Projeto de Lei Complementar nº 9/2026",
+                "dispositivo_ref": "Matéria legislativa",
+                "source_kind": "sapl_legislative_matter",
+                "source_type": "Matéria legislativa — registro oficial SAPL",
+                "evidence_scope": "official_legislative_matter",
+                "matter_status": False,
+                "matter_result": None,
+                "status_label": "Fora de tramitação no SAPL",
+                "consulted_at": "2026-10-09T18:00:00-03:00",
+                "sapl_url": "https://sapl.natal.rn.leg.br/materia/54742",
+                "full_text": "Ementa oficial.",
+                "similarity_score": None,
+            }
+        ]
+    )[0]
+
+    assert result["source_kind"] == "sapl_legislative_matter"
+    assert result["matter_status"] is False
+    assert result["matter_result"] is None
+    assert result["status_label"] == "Fora de tramitação no SAPL"
+    assert result["consulted_at"] == "2026-10-09T18:00:00-03:00"
+    assert result["sapl_url"] == "https://sapl.natal.rn.leg.br/materia/54742"
+
+
 def test_cached_source_builds_readable_stable_citation_identity():
     result = serialize_citation_sources(
         [
@@ -73,6 +113,84 @@ def test_final_answer_source_set_contains_only_structurally_cited_evidence():
 
     assert [source["citation_id"] for source in selected] == ["law-a-art-18", "law-a-art-33"]
     assert [source["citation_index"] for source in selected] == [1, 12]
+
+
+def test_final_answer_sources_use_verbatim_claim_excerpt_as_preview_and_keep_full_device():
+    full_text = (
+        "Art. 26. Regra geral e outros itens. II – Gratificação de Vigilância Sanitária "
+        "atribuída a servidores com dedicação exclusiva. § 1º É vedada a percepção "
+        "em conjunto com outra gratificação específica da Saúde."
+    )
+    eligibility = "II – Gratificação de Vigilância Sanitária atribuída a servidores com dedicação exclusiva."
+    accumulation = "§ 1º É vedada a percepção em conjunto com outra gratificação específica da Saúde."
+    sources = [
+        {
+            "citation_index": 1,
+            "citation_id": "lc120-art26",
+            "full_text": full_text,
+        }
+    ]
+
+    selected = select_answer_citation_sources(
+        sources,
+        "Elegibilidade [[1]]. Acumulação [[1]].",
+        {
+            "claims": [
+                {"text": eligibility, "citation_ids": ["lc120-art26"]},
+                {"text": accumulation, "citation_ids": ["lc120-art26"]},
+            ]
+        },
+    )
+
+    assert selected[0]["evidence_text"] == f"{eligibility} … {accumulation}"
+    assert selected[0]["evidence_excerpts"] == [eligibility, accumulation]
+    assert selected[0]["full_text"] == full_text
+
+
+def test_final_answer_source_preview_ignores_nonverbatim_claims():
+    full_text = "Art. 26. A gratificação não pode ser acumulada."
+    selected = select_answer_citation_sources(
+        [{"citation_index": 1, "citation_id": "lc120-art26", "full_text": full_text}],
+        "A gratificação tem limite. [[1]]",
+        {"claims": [{"text": "A gratificação tem limite.", "citation_ids": ["lc120-art26"]}]},
+    )
+
+    assert selected[0].get("evidence_text") is None
+    assert selected[0]["full_text"] == full_text
+
+
+def test_archive_citation_opens_page_containing_the_claim_not_only_article_start():
+    full_text = (
+        "Art. 26. Regra geral e outras gratificações. "
+        "II – Gratificação de Vigilância Sanitária atribuída a servidores."
+    )
+    excerpt = "II – Gratificação de Vigilância Sanitária atribuída a servidores."
+    body_start = 100
+    claim_start = body_start + full_text.index(excerpt)
+    selected = select_answer_citation_sources(
+        [
+            {
+                "citation_index": 1,
+                "citation_id": "lc120-art26",
+                "full_text": full_text,
+                "page": 6,
+                "page_index": 5,
+                "span": {"start": 80, "end": body_start + len(full_text), "text_start": body_start},
+                "_page_map": [
+                    {"start": 80, "end": claim_start + 20, "page": 6},
+                    {"start": claim_start + 20, "end": body_start + len(full_text), "page": 7},
+                ],
+            }
+        ],
+        "A regra específica consta do dispositivo. [[1]]",
+        {"claims": [{"text": excerpt, "citation_ids": ["lc120-art26"]}]},
+    )
+
+    assert selected[0]["page"] == 7
+    assert selected[0]["page_index"] == 6
+    serialized = serialize_citation_sources(selected)[0]
+    assert serialized["page"] == 7
+    assert "_page_map" not in serialized
 
 
 def test_final_answer_sources_fall_back_to_supported_grounding_matches():
@@ -119,26 +237,40 @@ def test_missing_match_kind_remains_compatible_with_legacy_sources():
 
 
 def test_local_archive_source_gets_an_internal_document_pdf_link():
-    result = serialize_dispositivo_source({
-        "id": "qa:article-1",
-        "source_id": "00000000-0000-0000-0000-000000000001",
-        "evidence_scope": "isolated_qa_archive",
-        "pdf_url": None,
-        "sapl_url": None,
-        "text": "Trecho extraído.",
-    })
+    result = serialize_dispositivo_source(
+        {
+            "id": "qa:article-1",
+            "source_id": "00000000-0000-0000-0000-000000000001",
+            "evidence_scope": "isolated_qa_archive",
+            "pdf_url": None,
+            "sapl_url": None,
+            "text": "Trecho extraído.",
+            "document_sha256": "a" * 64,
+            "page_index": 1,
+            "start_pos": 120,
+            "end_pos": 148,
+            "span_basis": "page-artifact-stripped-extraction",
+        }
+    )
 
     assert result["local_pdf_url"] == (
         "/normas/documentos/00000000-0000-0000-0000-000000000001/pdf/"
     )
+    assert result["source_kind"] == "archive"
     assert result["source_id"] == "00000000-0000-0000-0000-000000000001"
+    assert result["document_sha256"] == "a" * 64
+    assert result["page"] == 2
+    assert result["span"] == {"start": 120, "end": 148}
+    assert result["span_basis"] == "page-artifact-stripped-extraction"
 
 
 def test_non_archive_source_cannot_get_local_archive_pdf_link():
-    result = serialize_dispositivo_source({
-        "source_id": "00000000-0000-0000-0000-000000000001",
-        "evidence_scope": "production_corpus",
-    })
+    result = serialize_dispositivo_source(
+        {
+            "source_id": "00000000-0000-0000-0000-000000000001",
+            "evidence_scope": "production_corpus",
+        }
+    )
 
     assert result["local_pdf_url"] is None
     assert result["source_id"] is None
@@ -174,7 +306,9 @@ def test_legacy_archive_source_citation_rewrites_outdated_test_label():
 def test_legacy_archive_pdf_recovery_requires_one_identity_and_text_match():
     from src.apps.legislation.document_models import ExtracaoDocumento
 
-    extracted_text = "Art. 3º O PCCV-SAÚDE tem como princípios a valorização profissional e a qualidade pública."
+    extracted_text = (
+        "Art. 3º O PCCV-SAÚDE tem como princípios a valorização profissional e a qualidade pública."
+    )
     extraction = SimpleNamespace(
         status=ExtracaoDocumento.Status.COMPLETE,
         legal_text=extracted_text,
@@ -185,7 +319,9 @@ def test_legacy_archive_pdf_recovery_requires_one_identity_and_text_match():
             order_by=lambda *_args: SimpleNamespace(first=lambda: extraction)
         ),
     )
-    source = {"full_text": "O PCCV-SAÚDE tem como princípios a valorização profissional e a qualidade pública."}
+    source = {
+        "full_text": "O PCCV-SAÚDE tem como princípios a valorização profissional e a qualidade pública."
+    }
 
     with patch("src.apps.legislation.document_models.DocumentoNormativo.objects.filter") as query:
         query.return_value.order_by.return_value.__getitem__.return_value = [document]
@@ -202,16 +338,18 @@ def test_restored_chat_sources_use_the_current_archive_citation_contract():
         id=9,
         role="assistant",
         content="Trecho citado [[1]].",
-        sources_json=[{
-            "id": "stable-device-id",
-            "norma_ref": "Lei Complementar nº 120/2010",
-            "dispositivo_ref": "Art. 3º",
-            "citation_label": "Lei Complementar nº 120/2010, Art. 3º (PDF de teste)",
-            "source_type": "PDF importado — corpus de teste, não validado",
-            "contribution": "Trecho extraído do PDF; não validado juridicamente",
-            "evidence_scope": "isolated_qa_archive",
-            "full_text": "O PCCV-SAÚDE tem como princípios a valorização profissional e a qualidade pública.",
-        }],
+        sources_json=[
+            {
+                "id": "stable-device-id",
+                "norma_ref": "Lei Complementar nº 120/2010",
+                "dispositivo_ref": "Art. 3º",
+                "citation_label": "Lei Complementar nº 120/2010, Art. 3º (PDF de teste)",
+                "source_type": "PDF importado — corpus de teste, não validado",
+                "contribution": "Trecho extraído do PDF; não validado juridicamente",
+                "evidence_scope": "isolated_qa_archive",
+                "full_text": "O PCCV-SAÚDE tem como princípios a valorização profissional e a qualidade pública.",
+            }
+        ],
         metadata_json={},
         created_at=None,
     )

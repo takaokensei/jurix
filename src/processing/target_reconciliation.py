@@ -21,6 +21,7 @@ from src.processing.document_metadata import (
     is_natal_municipal_jurisdiction,
     normalize_document_number,
 )
+from src.processing.event_revision import event_revision_for_target
 from src.processing.normative_reference import canonical_type, parse_normative_references
 
 _REFERENCE_SCOPE_RE = re.compile(
@@ -236,10 +237,13 @@ def resolve_event_target(
         identity_key=target.identity_key or None,
         match_method="identity_key" if target.identity_key else "unique_legacy_type_number_year",
     )
+    revision_fingerprint, provenance = event_revision_for_target(event, target.pk)
     with transaction.atomic():
         changed = EventoAlteracao.objects.filter(pk=event.pk, norma_alvo__isnull=True).update(
             norma_alvo_id=target.pk,
             target_reference_json=result_json,
+            revision_fingerprint=revision_fingerprint,
+            provenance_json=provenance,
         )
         if changed:
             return True
@@ -250,11 +254,19 @@ def reconcile_unresolved_event_targets(
     limit: int = 5000,
     *,
     target_norma_ids: Iterable[int] | None = None,
-) -> dict[str, int]:
+    after_event_id: int = 0,
+    max_event_id: int | None = None,
+    return_cursor: bool = False,
+) -> dict[str, int | bool | None]:
     """Resolve a bounded set of unresolved events, optionally scoped to new targets."""
     limit = max(1, min(int(limit), 50_000))
     ids = set(int(value) for value in target_norma_ids) if target_norma_ids is not None else None
-    events = EventoAlteracao.objects.filter(norma_alvo__isnull=True, is_active=True)
+    events = EventoAlteracao.objects.filter(
+        norma_alvo__isnull=True, is_active=True, pk__gt=max(0, int(after_event_id))
+    )
+    if max_event_id is not None:
+        events = events.filter(pk__lte=max(0, int(max_event_id)))
+    next_cursor = None
     if ids is not None:
         if not ids:
             return {"inspected": 0, "resolved": 0, "remaining_unresolved": 0}
@@ -273,7 +285,12 @@ def reconcile_unresolved_event_targets(
         events = events.select_related("dispositivo_fonte__norma")
         selected = []
         scan_limit = min(50_000, max(limit, limit * 20))
-        for event in events.order_by("id")[:scan_limit].iterator(chunk_size=500):
+        scanned = 0
+        for event in events.order_by("id").iterator(chunk_size=500):
+            if scanned >= scan_limit:
+                break
+            scanned += 1
+            next_cursor = event.pk
             ref = parse_target_reference(event)
             if ref and (ref.type_key, ref.number_key, ref.ano) in reference_keys:
                 selected.append(event)
@@ -282,15 +299,26 @@ def reconcile_unresolved_event_targets(
         event_list = selected
     else:
         event_list = list(events.select_related("dispositivo_fonte__norma").order_by("id")[:limit])
+        next_cursor = event_list[-1].pk if event_list else None
 
     inspected = resolved = unresolved = 0
     for event in event_list:
         inspected += 1
-        try:
-            if resolve_event_target(event, target_norma_ids=ids):
-                resolved += 1
-            else:
-                unresolved += 1
-        except Exception:
+        if resolve_event_target(event, target_norma_ids=ids):
+            resolved += 1
+        else:
             unresolved += 1
-    return {"inspected": inspected, "resolved": resolved, "remaining_unresolved": unresolved}
+    remaining = EventoAlteracao.objects.filter(
+        norma_alvo__isnull=True, is_active=True, pk__gt=next_cursor or max(0, int(after_event_id))
+    )
+    if max_event_id is not None:
+        remaining = remaining.filter(pk__lte=max(0, int(max_event_id)))
+    has_more = remaining.exists()
+    result = {
+        "inspected": inspected,
+        "resolved": resolved,
+        "remaining_unresolved": unresolved,
+    }
+    if return_cursor:
+        result.update({"next_cursor": next_cursor, "has_more": has_more})
+    return result

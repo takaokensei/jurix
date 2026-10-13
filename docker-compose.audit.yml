@@ -25,6 +25,42 @@ services:
       timeout: 3s
       retries: 20
 
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    entrypoint: ["/usr/local/bin/jurix-runtime"]
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000", "--noreload"]
+    ports:
+      - "127.0.0.1:8287:8000"
+    environment:
+      JURIX_QA_ONLY: "1"
+      JURIX_QA_ROOT: /app/data/normative-qa
+      DJANGO_SKIP_DOTENV: "1"
+      DATABASE_URL: postgresql://jurix_audit:audit-only-local-fixture@db:5432/jurix_audit
+      REDIS_URL: redis://redis:6379/0
+      CACHE_REDIS_URL: redis://redis:6379/1
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      DJANGO_SETTINGS_MODULE: config.settings_normative_container_qa
+      DJANGO_SECRET_KEY: audit-only-local-secret-not-for-production
+      DEBUG: "True"
+      USE_LOCMEM_CACHE: "False"
+      CELERY_TASK_ALWAYS_EAGER: "False"
+      TEMP: /app/data
+    volumes:
+      - audit_qa_root:/app/data/normative-qa
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/ready/', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
   worker:
     build:
       context: .
@@ -32,14 +68,21 @@ services:
     entrypoint: ["/usr/local/bin/jurix-runtime"]
     command: celery -A config worker -l warning --pool=solo --concurrency=1
     environment:
+      JURIX_QA_ONLY: "1"
+      JURIX_QA_ROOT: /app/data/normative-qa
+      DJANGO_SKIP_DOTENV: "1"
       DATABASE_URL: postgresql://jurix_audit:audit-only-local-fixture@db:5432/jurix_audit
       REDIS_URL: redis://redis:6379/0
       CACHE_REDIS_URL: redis://redis:6379/1
-      DJANGO_SETTINGS_MODULE: config.settings
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      DJANGO_SETTINGS_MODULE: config.settings_normative_container_qa
       DJANGO_SECRET_KEY: audit-only-local-secret-not-for-production
       DEBUG: "True"
       USE_LOCMEM_CACHE: "False"
       CELERY_TASK_ALWAYS_EAGER: "False"
+      TEMP: /app/data
+    volumes:
+      - audit_qa_root:/app/data/normative-qa
     depends_on:
       db:
         condition: service_healthy
@@ -54,3 +97,4 @@ services:
 
 volumes:
   audit_pgdata:
+  audit_qa_root:

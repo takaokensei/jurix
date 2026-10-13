@@ -131,6 +131,26 @@ function createTestServer(handlers = {}) {
       </div></main></body></html>`);
     }
 
+    if (url.pathname === '/sources-state-fallback-test/') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(`<!doctype html><html lang="pt-BR" data-theme="dark"><head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="/static/css/jurix-rag.css">
+      </head><body><main>
+        <div id="sources-streaming-test"><div class="sources-section">
+          <button type="button" class="jurix-sources-pill-btn" aria-label="Abrir fontes consultadas">
+            <span>1 fonte consultada</span><span class="jurix-sources-pill-badge">Fontes associadas à resposta</span>
+            <span class="jurix-sources-pill-action">Ver fontes →</span>
+          </button>
+        </div></div>
+      </main><script src="/static/js/jurix-rag.js"></script><script>
+        document.getElementById('sources-streaming-test')._sourcesData = [{
+          norma: 'Lei Complementar nº 258/2024', dispositivo_ref: 'Art. 262',
+          evidence_scope: 'isolated_qa_archive', full_text: 'Processo protocolado antes da vigência e ainda sem decisão.',
+        }];
+      </script></body></html>`);
+    }
+
     if (url.pathname === '/settings-test/') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(`<!doctype html><html lang="pt-BR"><head>
@@ -968,10 +988,21 @@ test('real browser: theme preference stays synchronized with the legacy toggle',
 });
 
 test('real browser: anonymous history survives reload (F5) and direct URL navigation', async () => {
+  const persistedSource = {
+    id: 99,
+    citation_index: 1,
+    tipo: 'Lei',
+    norma: 'Lei nº 8.206/2026',
+    dispositivo_ref: 'Art. 1º',
+    text: 'Dispositivo normativo de teste para validar a restauração das fontes.',
+    source_type: 'Fonte normativa primária',
+    contribution: 'Trecho de dispositivo',
+  };
   const sseEvents = [
+    { type: 'sources', sources: [persistedSource] },
     { type: 'chunk', chunk: 'Resposta anônima persistida ' },
-    { type: 'chunk', chunk: 'com sucesso.' },
-    { type: 'done', answer: 'Resposta anônima persistida com sucesso.', session_id: null },
+    { type: 'chunk', chunk: 'com sucesso. [[1]]' },
+    { type: 'done', answer: 'Resposta anônima persistida com sucesso. [[1]]', grounded: true, sources: [persistedSource], session_id: null },
   ];
 
   const server = createTestServer({
@@ -1005,6 +1036,7 @@ test('real browser: anonymous history survives reload (F5) and direct URL naviga
 
   try {
     const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 720 });
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
 
     // Type and send question via hero search input
@@ -1024,9 +1056,14 @@ test('real browser: anonymous history survives reload (F5) and direct URL naviga
     // Verify session stored in localStorage
     const storedHistory = await page.evaluate(() => localStorage.getItem('jurix:anonymous-history:v2'));
     assert.ok(storedHistory, 'O histórico anônimo deve estar salvo no localStorage');
-    const parsed = JSON.parse(storedHistory);
+    await page.waitForFunction(() => {
+      const history = JSON.parse(localStorage.getItem('jurix:anonymous-history:v2') || '{}');
+      return history.sessions?.[0]?.messages?.[1]?.sources?.length === 1;
+    }, { timeout: 3000 });
+    const parsed = await page.evaluate(() => JSON.parse(localStorage.getItem('jurix:anonymous-history:v2')));
     assert.equal(parsed.sessions.length, 1);
     assert.equal(parsed.sessions[0].messages.length, 2);
+    assert.equal(parsed.sessions[0].messages[1].sources.length, 1, 'the anonymous history must persist the structured evidence with the answer');
 
     const fixedMessageTimes = ['2020-01-02T03:04:00.000Z', '2020-01-02T03:05:00.000Z'];
     const expectedMessageTimes = await page.evaluate((times) => {
@@ -1049,6 +1086,23 @@ test('real browser: anonymous history survives reload (F5) and direct URL naviga
 
     const restoredText = await page.$eval('.message-assistant', (el) => el.textContent);
     assert.ok(restoredText.includes('Resposta anônima persistida com sucesso.'));
+    await page.waitForSelector('.message-assistant .jurix-sources-pill-btn', { timeout: 3000 });
+    await page.waitForFunction(() => {
+      const button = [...document.querySelectorAll('.message-assistant .jurix-sources-pill-btn')].at(-1);
+      const composer = document.querySelector('#conversation-input-bar')?.getBoundingClientRect();
+      const scroller = document.querySelector('#messages-container')?.getBoundingClientRect();
+      if (!button || !composer || !scroller) return false;
+      const rect = button.getBoundingClientRect();
+      return rect.bottom <= Math.min(composer.top, scroller.bottom)
+        && document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+          ?.closest('.jurix-sources-pill-btn') === button;
+    }, { timeout: 3000 });
+    await page.click('.message-assistant .jurix-sources-pill-btn');
+    await page.waitForSelector('#jurix-sources-drawer-panel[aria-hidden="false"] .jurix-rag-source', { timeout: 3000 });
+    await page.waitForSelector('#jurix-sources-drawer-panel .jurix-source-group__header', { timeout: 3000 });
+    await page.$eval('#jurix-sources-drawer-panel .jurix-source-group__header', (summary) => summary.click());
+    await page.waitForFunction(() => document.querySelector('#jurix-sources-drawer-panel .jurix-source-group')?.open === true);
+    assert.match(await page.$eval('#jurix-sources-drawer-panel', (panel) => panel.innerText), /Dispositivo normativo de teste/);
     const restoredMessageTimes = await page.$$eval('.message-time', (nodes) => nodes.map((node) => node.textContent));
     assert.deepEqual(restoredMessageTimes, expectedMessageTimes, 'F5 must preserve original user and assistant message times');
 
@@ -1217,11 +1271,22 @@ test('real browser: authenticated history multi-page pagination and scroll reten
     let count = await page.$$eval('#messages-wrapper .message', (els) => els.length);
     assert.equal(count, 20, 'Primeira página deve conter 20 mensagens');
 
-    // Scroll container to top where pager button resides
+    // Let the two-frame conversation restore/re-anchor finish before moving to
+    // the older-message pager. Otherwise its pending scrollToBottom can race
+    // this synthetic scroll and make the button jump thousands of pixels away.
+    await page.evaluate(() => new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 100)));
+    }));
+
+    // Scroll container to top where pager button resides. This is test setup,
+    // not the behavior under test, so disable smooth scrolling for an exact
+    // starting position before exercising the actual pagination click.
     await page.evaluate(() => {
       const c = document.getElementById('messages-container');
+      c.style.scrollBehavior = 'auto';
       c.scrollTop = 0;
     });
+    await page.waitForFunction(() => document.getElementById('messages-container')?.scrollTop === 0);
 
     // Measure scroll position before loading page 2
     const beforeScroll1 = await page.evaluate(() => {
@@ -1236,7 +1301,35 @@ test('real browser: authenticated history multi-page pagination and scroll reten
     });
 
     // Click load more for page 2
-    await page.click('.messages-load-more-indicator');
+    try {
+      await page.click('.messages-load-more-indicator');
+    } catch (error) {
+      const pagerDiagnostic = await page.evaluate(() => {
+        const button = document.querySelector('.messages-load-more-indicator');
+        const rect = button?.getBoundingClientRect();
+        const center = rect && document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        const container = document.getElementById('messages-container');
+        const containerRect = container?.getBoundingClientRect();
+        return {
+          exists: Boolean(button),
+          connected: Boolean(button?.isConnected),
+          disabled: button?.disabled ?? null,
+          rect: rect ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : null,
+          windowScrollY: window.scrollY,
+          container: container && containerRect ? {
+            scrollTop: container.scrollTop,
+            scrollHeight: container.scrollHeight,
+            clientHeight: container.clientHeight,
+            rect: { x: containerRect.x, y: containerRect.y, width: containerRect.width, height: containerRect.height },
+            overflowY: getComputedStyle(container).overflowY,
+          } : null,
+          display: button ? getComputedStyle(button).display : null,
+          visibility: button ? getComputedStyle(button).visibility : null,
+          centerTarget: center?.outerHTML?.slice(0, 180) || null,
+        };
+      });
+      throw new Error(`${error.message}; history pager diagnostic: ${JSON.stringify(pagerDiagnostic)}`);
+    }
     await page.waitForFunction(() => document.querySelectorAll('#messages-wrapper .message').length === 40);
     // The chat renderer commits markdown in animation frames after the DOM
     // count changes. Measure only after that layout transaction settles.
@@ -1760,6 +1853,141 @@ test('real browser: ungrounded stream sources stay hidden after anonymous histor
   }
 });
 
+test('real browser: cited partial evidence stays linked, visible, copyable and restorable', async () => {
+  const evidence = {
+    id: 9387,
+    citation_id: 'lc258-2024-art260-iv',
+    citation_index: 2,
+    citation_label: 'Lei Complementar nº 258/2024, Art. 260, inciso IV',
+    norma_ref: 'Lei Complementar nº 258/2024',
+    dispositivo_ref: 'Art. 260, inciso IV',
+    source_type: 'primary_normative_source',
+    text: 'Ficam revogadas a Lei Complementar nº 055, de 27 de janeiro de 2004.',
+    contribution: 'Trecho expresso de revogação',
+    local_pdf_url: '/normas/documentos/f4a5c8f6-7ca2-4b5c-935e-033572a33510/pdf/',
+  };
+  const answer = 'O Art. 260, inciso IV, da LC 258/2024 revoga expressamente a LC 55/2004 [[2]]. Não foi localizado o texto do Art. 21 da lei anterior; por isso, não é possível concluir o conteúdo nem a incidência temporal desse dispositivo.';
+  const server = createTestServer({
+    isAuthenticated: () => false,
+    '/api/v1/search/answer/stream/': (req, res) => {
+      req.resume();
+      req.on('end', () => {
+        res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
+        res.write(`data: ${JSON.stringify({ type: 'sources', sources: [evidence] })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'chunk', chunk: answer })}\n\n`);
+        res.end(`data: ${JSON.stringify({ type: 'done', answer, grounded: false, sources: [evidence] })}\n\n`);
+      });
+    },
+    '/api/v1/chat/sessions/': (_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, sessions: [] }));
+    },
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.goto(`http://127.0.0.1:${server.address().port}/assistente/`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#hero-search-input');
+    await page.type('#hero-search-input', 'A LC 258 revoga a LC 55?');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('.message-assistant .jurix-citation[data-source-index="2"]'));
+    await page.waitForFunction(() => document.querySelector('.message-assistant .copy-response-button')?.classList.contains('show'));
+
+    assert.equal(await page.$eval('.message-assistant', el => el.textContent.includes('[[2]]')), false);
+    assert.equal(await page.$eval('.message-assistant .jurix-citation', el => el.getAttribute('href')), '#jurix-evidence-2');
+    assert.equal(await page.$eval('.message-assistant .jurix-sources-pill-badge', el => el.textContent), 'Evidência citada · resposta parcial');
+    const persisted = await page.evaluate(() => {
+      const history = JSON.parse(localStorage.getItem('jurix:anonymous-history:v2') || '{}');
+      return history.sessions?.[0]?.messages?.at(-1);
+    });
+    assert.equal(persisted.grounded, false, 'partial evidence must not be upgraded to a grounded answer');
+    assert.equal(persisted.sources.length, 1);
+    assert.equal(persisted.sources[0].citation_index, 2);
+    assert.equal(await page.$eval('.message-assistant .copy-response-button', button => button.getAttribute('data-markdown')), answer);
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => document.querySelector('.message-assistant .jurix-citation[data-source-index="2"]'));
+    assert.equal(await page.$eval('.message-assistant .jurix-citation', el => el.getAttribute('href')), '#jurix-evidence-2');
+    assert.equal(await page.$eval('.message-assistant .jurix-sources-pill-badge', el => el.textContent), 'Evidência citada · resposta parcial');
+    await page.click('.message-assistant .jurix-citation');
+    await page.waitForSelector('#jurix-sources-drawer-panel.is-open');
+    await page.waitForSelector('#jurix-sources-drawer-panel.is-open #jurix-evidence-2');
+    assert.match(await page.$eval('#jurix-sources-drawer-panel', el => el.textContent), /Art\. 260, inciso IV/);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('real browser: authenticated history keeps the partial evidence label from message metadata', async () => {
+  const source = {
+    citation_id: 'auth-lc258-art260',
+    citation_index: 1,
+    citation_label: 'Lei Complementar nº 258/2024, Art. 260, inciso IV',
+    norma_ref: 'Lei Complementar nº 258/2024',
+    dispositivo_ref: 'Art. 260, inciso IV',
+    source_type: 'primary_normative_source',
+    text: 'IV - Lei Complementar nº 055, de 27 de janeiro de 2004.',
+  };
+  const server = createTestServer({
+    isAuthenticated: () => true,
+    '/api/v1/chat/sessions/': (_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, sessions: [{ id: 44, slug: 'partial-auth', title: 'Resposta parcial' }] }));
+    },
+    '/api/v1/chat/sessions/44/': (_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: true,
+        session: { id: 44, slug: 'partial-auth', title: 'Resposta parcial' },
+        messages: [
+          { id: 1, role: 'user', content: 'A LC 258 revoga a LC 55?', sources: [], metadata: {} },
+          {
+            id: 2,
+            role: 'assistant',
+            content: 'O Art. 260, IV, da LC 258/2024 revoga a LC 55/2004 [[1]]. A resposta não confirma a vigência do Art. 21.',
+            sources: [source],
+            metadata: { grounded: false },
+          },
+        ],
+        has_more: false,
+        next_cursor: null,
+      }));
+    },
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.goto(`http://127.0.0.1:${server.address().port}/assistente/`, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => window.jurixChat.loadSession(44));
+    await page.waitForSelector('.message-assistant .jurix-citation[data-source-index="1"]');
+    assert.equal(await page.$eval('.message-assistant', el => el.textContent.includes('[[1]]')), false);
+    assert.equal(
+      await page.$eval('.message-assistant .jurix-sources-pill-badge', el => el.textContent),
+      'Evidência citada · resposta parcial',
+    );
+    assert.equal(
+      await page.$eval('.message-assistant .copy-response-button', el => el.classList.contains('show')),
+      true,
+    );
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
 test('real browser: no-match stream announces that no corresponding sources were found', async () => {
   const server = createTestServer({
     isAuthenticated: () => false,
@@ -1970,6 +2198,11 @@ test('real browser: sources appear as pending during streaming, while unverified
       'Verificação em andamento',
       'sources should be visible but clearly marked as not yet validated'
     );
+    assert.equal(
+      await page.$eval('.jurix-sources-pill-btn > span:first-of-type', (label) => label.textContent),
+      '1 fonte em análise',
+      'retrieved candidates must not be presented as already consulted/cited sources'
+    );
     assert.equal(await page.$eval('.message-assistant', (message) => message.textContent.includes('Rascunho em geração')), false);
     assert.equal(await page.$eval('.message-assistant .copy-response-button', (button) => button.classList.contains('show')), false);
     await payloadPromise;
@@ -1983,6 +2216,15 @@ test('real browser: sources appear as pending during streaming, while unverified
     await page.waitForSelector('#jurix-sources-drawer-panel.is-open .source-card, #jurix-sources-drawer-panel.is-open .jurix-rag-source', { timeout: 6000 });
     assert.equal(
       await page.$eval('#sources-drawer-subtitle', (subtitle) => subtitle.textContent.includes('ainda está sendo validada')),
+      false,
+      'pending drawer copy must distinguish retrieval from answer validation'
+    );
+    assert.equal(
+      await page.$eval('#sources-drawer-title', (title) => title.textContent),
+      'Fontes em análise (1)',
+    );
+    assert.equal(
+      await page.$eval('#sources-drawer-subtitle', (subtitle) => subtitle.textContent.includes('aguardando validação e associação à resposta')),
       true,
       'the drawer should explain that retrieved evidence is still being validated'
     );
@@ -1997,6 +2239,8 @@ test('real browser: sources appear as pending during streaming, while unverified
     await page.waitForSelector('.message-assistant ul li', { timeout: 6000 });
     await page.waitForFunction(() => document.getElementById('chat-state-indicator')?.hidden === true, { timeout: 6000 });
     assert.equal(await page.$eval('.jurix-sources-pill-badge', (badge) => badge.textContent), 'Fontes associadas à resposta');
+    assert.equal(await page.$eval('.jurix-sources-pill-btn > span:first-of-type', (label) => label.textContent), '1 fonte consultada');
+    assert.equal(await page.$eval('#sources-drawer-title', (title) => title.textContent), 'Fontes Consultadas (1)');
     assert.equal(
       await page.$eval('#sources-drawer-subtitle', (subtitle) => subtitle.textContent.includes('ainda está sendo validada')),
       false,
@@ -2024,6 +2268,17 @@ test('real browser: sources appear as pending during streaming, while unverified
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('.jurix-sources-drawer-panel.is-open'));
     assert.equal(await page.evaluate(() => document.activeElement.matches('.jurix-sources-pill-btn')), true);
+    await page.waitForFunction(() => {
+      const button = [...document.querySelectorAll('.message-assistant .jurix-sources-pill-btn')].at(-1);
+      const composer = document.querySelector('#conversation-input-bar')?.getBoundingClientRect();
+      const scroller = document.querySelector('#messages-container')?.getBoundingClientRect();
+      if (!button || !composer || !scroller) return false;
+      const rect = button.getBoundingClientRect();
+      const unobscuredBottom = Math.min(composer.top, scroller.bottom);
+      return rect.bottom <= unobscuredBottom
+        && document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+          ?.closest('.jurix-sources-pill-btn') === button;
+    }, { timeout: 3000 });
     assert.equal(await page.$eval('#chat-state-indicator', (el) => el.dataset.pipelineStatus || null), null);
     const observedStatuses = await page.evaluate(() => [...new Set(window.__pipelineStatuses)]);
     assert.deepEqual(observedStatuses, ['retrieving', 'reranking', 'grounding', 'generating']);
@@ -2821,6 +3076,29 @@ test('real browser: source pill actions remain visible and contained at narrow w
   }
 });
 
+test('real browser: source drawer can resolve stream data from its message container', async (t) => {
+  if (!executablePath) return t.skip('No Chromium-based browser executable is available.');
+  const server = createTestServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.goto(`http://127.0.0.1:${server.address().port}/sources-state-fallback-test/`, { waitUntil: 'networkidle0' });
+    await page.click('.jurix-sources-pill-btn');
+    await page.waitForSelector('#jurix-sources-drawer-panel.is-open [data-evidence-rank="1"]');
+    assert.equal(await page.$eval('#jurix-sources-drawer-panel', (panel) => panel.textContent.includes('Art. 262')), true);
+    assert.equal(await page.$eval('#jurix-sources-drawer-panel', (panel) => panel.textContent.includes('Processo protocolado antes da vigência')), true);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
 test('real browser: assistant utility navigation stays visible in a short desktop viewport', async () => {
   const server = createTestServer();
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -3421,6 +3699,8 @@ test('real browser: evidence drawer groups same-norm citations without hiding ar
 
     await page.click('.jurix-source-group-toggle-all');
     assert.deepEqual(await page.$$eval('.jurix-source-group', (groups) => groups.map((group) => group.open)), [false, false]);
+    await page.setViewport({ width: 1024, height: 900 });
+    await page.waitForFunction(() => document.getElementById('jurix-sources-drawer-panel')?.getAttribute('aria-modal') === 'true');
     await page.focus('#jurix-sources-drawer-close');
     await page.keyboard.down('Shift');
     await page.keyboard.press('Tab');

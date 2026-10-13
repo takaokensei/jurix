@@ -114,7 +114,7 @@
 .jurix-rag-evidence-caption {
     margin: 0.35rem 0 0.75rem 1.75rem;
     color: var(--figma-text-muted);
-    font-size: 0.72rem;
+    font-size: 0.8125rem;
     letter-spacing: 0.01em;
 }
 
@@ -129,8 +129,8 @@
 }
 
 .jurix-rag-source .source-meta {
-    font-size: 0.74rem;
-    opacity: 0.88;
+    font-size: 0.8125rem;
+    opacity: 1;
 }
 
 .jurix-rag-source .source-snippet {
@@ -155,7 +155,7 @@
 
 .jurix-rag-score-label {
     color: var(--figma-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     white-space: nowrap;
 }
 
@@ -360,6 +360,8 @@
     display: block;
     margin: 0;
     color: var(--jurix-evidence-text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.55;
 }
 .jurix-rag-source__meta-row,
 .jurix-rag-source__actions {
@@ -369,7 +371,7 @@
     flex-wrap: wrap;
 }
 .jurix-rag-source__meta-row {
-    font-size: 0.68rem;
+    font-size: 0.75rem;
 }
 .jurix-rag-source__meta-item {
     display: inline-flex;
@@ -385,15 +387,26 @@
     color: var(--jurix-evidence-positive);
     border-color: color-mix(in srgb, var(--jurix-evidence-positive) 32%, transparent);
 }
+.figma-theme .jurix-rag-source__contribution {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+}
+.figma-theme .jurix-rag-source__contribution-label {
+    font-size: 0.6875rem;
+}
 .jurix-rag-source__details {
     border-top: 1px solid var(--jurix-evidence-border);
     padding-top: 0.65rem;
 }
 .jurix-rag-source__details summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
     width: fit-content;
+    padding-inline: 0.25rem;
     cursor: pointer;
     color: var(--jurix-evidence-accent);
-    font-size: 0.72rem;
+    font-size: 0.8125rem;
     font-weight: 600;
 }
 .jurix-rag-source__details summary::marker {
@@ -401,10 +414,8 @@
 }
 .jurix-rag-source__details p {
     margin: 0.55rem 0 0;
-    max-height: 12rem;
-    overflow: auto;
     color: var(--jurix-evidence-text-secondary);
-    font-size: 0.76rem;
+    font-size: 0.875rem;
     line-height: 1.65;
     white-space: pre-wrap;
 }
@@ -416,14 +427,14 @@
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    min-height: 2rem;
+    min-height: 2.75rem;
     padding: 0.35rem 0.65rem;
     border: 1px solid var(--jurix-evidence-border);
     border-radius: 0.5rem;
     color: var(--jurix-evidence-text);
     background: transparent;
     text-decoration: none;
-    font-size: 0.72rem;
+    font-size: 0.8125rem;
     font-weight: 600;
     cursor: pointer;
     font-family: inherit;
@@ -797,6 +808,42 @@ button.jurix-sources-pill-btn:focus-visible,
 .jurix-sources-drawer-panel .source-card {
     opacity: 1 !important;
     transform: none !important;
+}
+
+/* Keep the consultation composer available beside the evidence sheet on wide
+   screens; the side sheet is non-modal there. At narrow widths it stays a
+   full-interaction modal so the reading panel remains usable. */
+@media (min-width: 1200px) {
+    .jurix-sources-drawer-backdrop.is-open {
+        background-color: transparent !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+
+    body.jurix-sources-drawer-open .figma-main {
+        margin-right: 480px !important;
+    }
+
+    body.jurix-sources-drawer-open .figma-floating-input-bar {
+        right: 480px !important;
+        z-index: 100000 !important;
+        padding-right: 24px !important;
+        padding-left: 24px !important;
+    }
+
+    body.jurix-sources-drawer-open #conversation-input-bar .jurix-composer-options-toggle {
+        display: none !important;
+    }
+
+    body.jurix-sources-drawer-open #conversation-input-bar .jurix-composer-options {
+        display: none !important;
+    }
+
+    body.jurix-sources-drawer-open #conversation-input-bar .jurix-temporal-active:not([hidden]) {
+        display: inline-flex !important;
+    }
 }
 
 /* The streaming controller toggles this class instead of writing inline

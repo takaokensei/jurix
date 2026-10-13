@@ -24,6 +24,12 @@
                 <a href="{% url 'workspace:legal_search' %}" class="workspace-nav-item{% if active_nav == 'search' %} is-active{% endif %}" aria-label="Pesquisa jurídica" title="Pesquisa jurídica">
                     <svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg><span>Pesquisa jurídica</span>
                 </a>
+                <a href="{% url 'workspace:explore' %}" class="workspace-nav-item{% if active_nav == 'explore' %} is-active{% endif %}" aria-label="Explorar relações" title="Explorar relações">
+                    <svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="5" cy="5" r="2"></circle><circle cx="19" cy="7" r="2"></circle><circle cx="12" cy="19" r="2"></circle><path d="m7 6 10 1M6 7l5 10m7-8-5 8"></path></svg><span>Explorar relações</span>
+                </a>
+                <a href="{% url 'workspace:foundation_check' %}" class="workspace-nav-item{% if active_nav == 'foundation_check' %} is-active{% endif %}" aria-label="Conferir fundamentação" title="Conferir fundamentação">
+                    <svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 4h8l3 3v13H5V4z"></path><path d="M8 4v5h8V4M8 14h8M8 17h5"></path></svg><span>Conferir fundamentação</span>
+                </a>
                 <a href="{% url 'legislation:norma_list' %}" class="workspace-nav-item{% if active_nav == 'normas' %} is-active{% endif %}" aria-label="Normas" title="Normas">
                     <svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"></path></svg><span>Normas</span>
                 </a>

@@ -43,9 +43,11 @@ _PUBLICATION_DATE_RE = re.compile(
     re.IGNORECASE,
 )
 _EDITORIAL_MARKERS_RE = re.compile(
-    r"\b(?:Sala\s+das\s+Sess(?:ões|oes)|Publicad[oa]\s+no\s+Di[aá]rio\s+Oficial|Autoria\s*:|"
+    r"\b(?:Sala\s+das\s+Sess(?:ões|oes)|"
+    r"Publicad[oa]\s+no\s+Di[aá]rio\s+Oficial(?:\s+do\s+Munic[ií]pio)?"
+    r"\s*(?:em|de)?\s*:?\s*\d{1,2}[/.]\d{1,2}[/.]\d{4}|Autoria\s*:|"
     r"ESTADO\s+DO\s+RIO\s+GRANDE\s+DO\s+NORTE|"
-    r"Pal[aá]cio\s+Felipe\s+Camar[aã]o\s*,?\s+em\s+Natal\s*,?\s+"
+    r"Pal[aá]cio\s+Felipe\s+Camar[aã]o\s*,?\s+em\s+Natal(?:\s*/\s*RN)?\s*,?\s+"
     r"\d{1,2}\s+de\s+[A-Za-zÀ-ÿ]+\s+de\s+\d{4})\b",
     re.IGNORECASE,
 )
@@ -133,7 +135,8 @@ def classify_closing_segments(text: str) -> list[dict[str, Any]]:
         if not corroborated:
             continue
         appendix = _NORMATIVE_APPENDIX_RE.search(suffix)
-        if not appendix and any(article.start() > marker.start() for article in articles):
+        legal_tail_end = marker.start() + appendix.start() if appendix else len(source)
+        if any(marker.start() < article.start() < legal_tail_end for article in articles):
             continue
         appendix_start = marker.start() + appendix.start() if appendix else None
         if appendix_start is None:
@@ -661,7 +664,7 @@ class LegalTextParser:
         return text
 
     @staticmethod
-    def parse_legal_text(text: str) -> list[dict[str, Any]]:
+    def parse_legal_text(text: str, *, preserve_offsets: bool = False) -> list[dict[str, Any]]:
         """
         Parse full legal text and extract all structured elements (multiline support).
 
@@ -675,9 +678,11 @@ class LegalTextParser:
             List of all extracted elements, sorted by position, with full text content
         """
         # Strip OCR page artifacts FIRST, before any marker detection.
-        # This prevents page separators and institutional headers from bleeding
-        # into the text content of incisos, artigos, etc.
-        text = LegalTextParser.strip_page_artifacts(text)
+        # Callers resolving spans against an immutable source map can mask
+        # those artifacts in place and opt out of transformations that shift
+        # offsets. The default preserves the historical parser behavior.
+        if not preserve_offsets:
+            text = LegalTextParser.strip_page_artifacts(text)
         text = strip_closing_editorial_metadata(text)
 
         # Find all markers once for efficiency

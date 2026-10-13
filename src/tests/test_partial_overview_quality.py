@@ -1,5 +1,8 @@
 from django.test import SimpleTestCase
 
+from src.apps.ingestion.management.commands.diagnose_qa_archive_overview import (
+    _answer_shape_metrics,
+)
 from src.processing.partial_overview_quality import (
     has_redundant_content_phrase,
     has_repeated_citation_marker,
@@ -7,6 +10,27 @@ from src.processing.partial_overview_quality import (
 
 
 class PartialOverviewQualityTests(SimpleTestCase):
+    def test_coverage_metric_recognizes_current_deterministic_disclosure(self):
+        metrics = _answer_shape_metrics(
+            "A recuperação reuniu evidências em 30 dos 39 artigos identificados. "
+            "A síntese abaixo usa apenas os excertos explicitados a seguir; "
+            "não representa uma análise integral da norma."
+        )
+
+        self.assertTrue(metrics["has_partial_coverage_note"])
+
+    def test_coverage_metric_recognizes_single_article_fallback(self):
+        metrics = _answer_shape_metrics(
+            "A recuperação reuniu evidências em um dos 39 artigos identificados."
+        )
+
+        self.assertTrue(metrics["has_partial_coverage_note"])
+
+    def test_coverage_metric_keeps_legacy_wording_compatible(self):
+        metrics = _answer_shape_metrics("A amostra consultada cobre 30 de 39 artigos.")
+
+        self.assertTrue(metrics["has_partial_coverage_note"])
+
     def test_rejects_a_device_cited_by_multiple_claims_in_partial_overview(self):
         self.assertTrue(has_repeated_citation_marker(
             "A norma cria o plano. [[1]] A implantação do plano segue a lei. [[1]] [[2]] [[3]]"

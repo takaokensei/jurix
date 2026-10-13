@@ -11,8 +11,8 @@ const localBase = new URL(baseUrl);
 assert.equal(localBase.protocol, 'http:');
 assert.ok(['127.0.0.1', 'localhost'].includes(localBase.hostname));
 assert.ok(
-  ['8007', '8011', '8013', '8014', '8015', '8019', '8020', '8021', '8022', '8023', '8024'].includes(localBase.port),
-  'smoke is restricted to isolated QA servers on ports 8007, 8011, 8013, 8014, 8015, 8019, 8020, 8021, 8022, 8023, and 8024',
+  ['8007', '8011', '8013', '8014', '8015', '8019', '8020', '8021', '8022', '8023', '8024', '8025'].includes(localBase.port),
+  'smoke is restricted to isolated QA servers on the explicitly allowlisted loopback ports',
 );
 assert.ok(mapPath, 'JURIX_FIXTURE_MAP is required');
 assert.ok(evidenceDir, 'JURIX_EVIDENCE_DIR is required');
@@ -321,7 +321,7 @@ try {
   assert.match(relationPanelText, /Altera/);
   assert.match(relationPanelText, /Dispositivo de origem: Artigo 1º/);
   assert.match(relationPanelText, /Dispositivo de destino: Art(?:igo|\.) 5º/);
-  assert.match(relationPanelText, /Revisão do vínculo: confirmado/);
+  assert.match(relationPanelText, /Revisão do vínculo: Confirmado após revisão humana/);
   assert.match(relationPanelText, /Efeito registrado em 2021-03-01/);
   assert.match(relationPanelText, /Art\. 5º da Lei 9001\/2020/);
   assert.match(relationPanelText, /Abrir evidência documental/);

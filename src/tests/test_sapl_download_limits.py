@@ -2,12 +2,65 @@ import hashlib
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import fitz
 from django.test import SimpleTestCase, override_settings
 
 from src.clients.sapl.sapl_client import SaplAPIClient
 
 
 class SaplDownloadLimitTests(SimpleTestCase):
+    def test_read_pdf_text_extracts_bounded_text_from_same_origin_pdf(self):
+        document = fitz.open()
+        page = document.new_page()
+        page.insert_text((72, 72), "Art. 59. Redação proposta de teste.")
+        pdf_bytes = document.tobytes()
+        document.close()
+
+        client = SaplAPIClient(base_url="https://sapl.test/api", timeout=1)
+        response = Mock()
+        response.status_code = 200
+        response.headers = {"Content-Length": str(len(pdf_bytes))}
+        response.iter_content.return_value = [pdf_bytes[:17], pdf_bytes[17:]]
+        client.session.get = Mock(return_value=response)
+        try:
+            text = client.read_pdf_text("https://sapl.test/media/original.pdf")
+            assert "Art. 59. Redação proposta de teste." in text
+            paged_text, pages = client.read_pdf_text(
+                "https://sapl.test/media/original.pdf", include_pages=True
+            )
+            assert paged_text == text
+            assert len(pages) == 1
+            assert "Art. 59. Redação proposta de teste." in pages[0]
+            assert client.session.get.call_args.kwargs["allow_redirects"] is False
+            assert client.session.get.call_args.kwargs["stream"] is True
+            assert response.close.call_count == 2
+        finally:
+            client.close()
+
+    def test_read_pdf_text_rejects_cross_origin_before_request(self):
+        client = SaplAPIClient(base_url="https://sapl.test/api", timeout=1)
+        client.session.get = Mock()
+        try:
+            with self.assertRaisesRegex(ValueError, "origin"):
+                client.read_pdf_text("https://elsewhere.test/original.pdf")
+            client.session.get.assert_not_called()
+        finally:
+            client.close()
+
+    def test_read_pdf_text_rejects_stream_over_byte_cap(self):
+        client = SaplAPIClient(base_url="https://sapl.test/api", timeout=1)
+        response = Mock()
+        response.status_code = 200
+        response.headers = {}
+        response.iter_content.return_value = [b"%PDF-", b"123456"]
+        client.session.get = Mock(return_value=response)
+        try:
+            with self.assertRaisesRegex(ValueError, "byte limit"):
+                client.read_pdf_text("https://sapl.test/media/original.pdf", max_bytes=8)
+            response.close.assert_called_once()
+        finally:
+            client.close()
+
     def test_fingerprint_prefers_strong_etag_without_downloading_pdf(self):
         client = SaplAPIClient(base_url="https://sapl.test/api", timeout=1)
         head = Mock()

@@ -20,7 +20,19 @@
     let evidenceId = 0;
     let lastSourceTrigger = null;
     let drawerListenersBound = false;
+    let drawerModalityListenerBound = false;
     let currentSourcesDrawerContext = null;
+
+    function syncSourcesDrawerModality(panel) {
+        if (!panel) return;
+        // On wide screens the evidence panel is a non-modal side sheet so the
+        // user can continue typing a follow-up while keeping citations visible.
+        // Narrow layouts remain modal because the sheet occupies nearly the
+        // entire viewport.
+        const isNarrow = typeof window.matchMedia !== 'function'
+            || !window.matchMedia('(min-width: 1200px)').matches;
+        panel.setAttribute('aria-modal', isNarrow ? 'true' : 'false');
+    }
 
     function commitMarkdown(element, markdown, sources = []) {
         const container = document.getElementById('messages-container');
@@ -57,19 +69,28 @@
 
         if (current.pending) return;
         current.pending = true;
-        requestAnimationFrame(() => {
+        let frameId = null;
+        frameId = requestAnimationFrame(() => {
+            if (current.frameId !== frameId) return;
             current.pending = false;
+            current.frameId = null;
             commitMarkdown(element, current.markdown, current.sources || []);
             if (current.streaming) element.classList.add('is-streaming');
             if (typeof window.scrollToBottomIfAtBottom === 'function') {
                 window.scrollToBottomIfAtBottom();
             }
         });
+        current.frameId = frameId;
+        state.set(element, current);
     }
 
     function flushRender(element, markdown) {
         if (!element) return;
         const current = state.get(element) || {};
+        if (current.frameId != null && typeof window.cancelAnimationFrame === 'function') {
+            window.cancelAnimationFrame(current.frameId);
+        }
+        current.frameId = null;
         current.markdown = markdown;
         current.pending = false;
         state.set(element, current);
@@ -211,9 +232,22 @@
             versionUrl.hash = '';
             return versionUrl.href;
         }
-        // `text` is only a 200-character display preview from the API and ends in
-        // "...". Use the exact full device text whenever it is available.
-        const excerpt = String(source.full_text || source.text || '')
+        const pageNumber = Number(source.page ?? source.pdf_page);
+        if (isPdf && Number.isInteger(pageNumber) && pageNumber > 0) {
+            // Chromium's PDF viewer may ignore text-fragment directives. A
+            // verified source page still takes the user directly to the cited
+            // passage's page without claiming an unsupported text highlight.
+            const pageUrl = new URL(url);
+            pageUrl.hash = `page=${pageNumber}`;
+            return pageUrl.href;
+        }
+        // A final answer may carry verbatim, claim-linked excerpts. Prefer the
+        // first one for PDF navigation; otherwise use the complete device, not
+        // the API's truncated 200-character display preview.
+        const answerExcerpt = Array.isArray(source.evidence_excerpts)
+            ? source.evidence_excerpts.find((value) => typeof value === 'string' && value.trim())
+            : '';
+        const excerpt = String(answerExcerpt || source.evidence_text || source.full_text || source.text || '')
             .replace(/\s+/g, ' ')
             .trim()
             .replace(/(?:…|\.{3,})\s*$/, '')
@@ -275,14 +309,19 @@
     function renderEvidenceCard(source, index = 0, options = {}) {
         const safeSource = source || {};
         const citationIndex = Number(safeSource.citation_index) || index + 1;
+        const evidenceTargetId = options.citationTarget
+            ? `jurix-evidence-${citationIndex}`
+            : `jurix-evidence-card-${++evidenceId}`;
         const scopeBased = safeSource.retrieval_strategy === 'whole_norma';
         const explicitReference = safeSource.match_kind === 'explicit_reference';
+        const isLegislativeMatter = safeSource.source_kind === 'sapl_legislative_matter';
+        const isProposalDocument = safeSource.source_kind === 'sapl_matter_original_pdf';
         // Restored conversations keep graph_relation but may not keep match_kind.
         const graphRelation = safeSource.match_kind === 'normative_graph_relation'
             || Boolean(safeSource.graph_relation && typeof safeSource.graph_relation === 'object');
         const isLocalArchive = safeSource.evidence_scope === 'isolated_qa_archive';
         const { normalized, percent } = getSourceScore(safeSource);
-        const band = scopeBased ? 'coverage' : explicitReference ? 'explicit' : graphRelation ? 'relation' : isLocalArchive ? 'archive' : normalized >= 0.8 ? 'high' : normalized >= 0.6 ? 'medium' : 'low';
+        const band = isLegislativeMatter || isProposalDocument ? 'matter' : scopeBased ? 'coverage' : explicitReference ? 'explicit' : graphRelation ? 'relation' : isLocalArchive ? 'archive' : normalized >= 0.8 ? 'high' : normalized >= 0.6 ? 'medium' : 'low';
         const relevanceLabel = getRelevanceLabel(normalized);
         const contributionLabel = getContributionLabel(safeSource, normalized);
 
@@ -290,8 +329,24 @@
         const dispositivoRef = safeSource.dispositivo_ref || '';
         const sourceType = safeSource.source_type || safeSource.tipo || safeSource.type || '';
         const status = safeSource.status_label || safeSource.vigencia || safeSource.situacao || '';
+        const consultedAt = safeSource.source_kind === 'sapl_legislative_matter'
+            && typeof safeSource.consulted_at === 'string'
+            ? new Date(safeSource.consulted_at) : null;
+        const consultedAtLabel = consultedAt && Number.isFinite(consultedAt.getTime())
+            ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(consultedAt)
+            : '';
         const temporalVersion = safeSource.temporal_version;
-        const snippet = String(safeSource.text || safeSource.full_text || '').trim();
+        // Prefer the exact excerpt tied to a supported answer claim for the
+        // preview/citation; retain the complete retrieved device for expansion.
+        const fullText = String(safeSource.full_text || safeSource.text || '').trim();
+        const evidenceExcerpts = Array.isArray(safeSource.evidence_excerpts)
+            ? safeSource.evidence_excerpts.map((excerpt) => String(excerpt || '').trim()).filter(Boolean).slice(0, 4)
+            : [];
+        const snippet = String(safeSource.evidence_text || fullText).trim();
+        const snippetMarkup = evidenceExcerpts.length
+            ? evidenceExcerpts.map((excerpt) => `<span>${escapeHtml(excerpt.substring(0, 240))}${excerpt.length > 240 ? '…' : ''}</span>`)
+                .join('<span aria-hidden="true"> … </span>')
+            : `${escapeHtml(snippet.substring(0, 280))}${snippet.length > 280 ? '…' : ''}`;
         const linkUrl = buildSourceUrl(safeSource);
         const cardLabel = `Fonte jurídica ${index + 1}: ${normaRef}`;
 
@@ -299,10 +354,15 @@
             dispositivoRef ? `<span class="jurix-rag-source__meta-item">${escapeHtml(dispositivoRef)}</span>` : '',
             sourceType ? `<span class="jurix-rag-source__meta-item">${escapeHtml(sourceType)}</span>` : '',
             status ? `<span class="jurix-rag-source__meta-item jurix-rag-source__meta-item--status">${escapeHtml(status)}</span>` : '',
+            consultedAtLabel ? `<span class="jurix-rag-source__meta-item">Consulta SAPL: ${escapeHtml(consultedAtLabel)} (hora local)</span>` : '',
             temporalVersion?.as_of ? `<span class="jurix-rag-source__meta-item">Redação histórica projetada em ${escapeHtml(temporalVersion.as_of)}</span>` : '',
         ].join('');
 
-        const openLabel = isLocalArchive
+        const openLabel = isProposalDocument
+            ? 'Abrir PDF oficial da proposta'
+            : isLegislativeMatter
+            ? 'Abrir matéria no SAPL'
+            : isLocalArchive
             ? 'Abrir PDF do acervo'
             : linkUrl?.includes('sapl') ? 'Abrir no SAPL' : 'Abrir fonte oficial';
         const additionalSaplAction = isLocalArchive && safeHttpUrl(safeSource.sapl_url)
@@ -334,7 +394,7 @@
         return `
             <article
                 class="source-card jurix-rag-source jurix-rag-source--${band}${linkUrl ? ' source-card-clickable' : ''}"
-                id="jurix-evidence-card-${++evidenceId}"
+                id="${evidenceTargetId}"
                 aria-label="${escapeHtml(cardLabel)}"
                 data-evidence-rank="${citationIndex}"
                 data-evidence-band="${band}"
@@ -342,7 +402,11 @@
             >
                 <div class="source-card-header">
                     ${options.showNormTitle === false ? '' : `<div class="source-title">${escapeHtml(normaRef)}</div>`}
-                    ${scopeBased
+                    ${isProposalDocument
+                        ? `<div class="source-score" aria-label="Documento oficial de uma proposta legislativa; não representa norma vigente"><span class="jurix-rag-score-text">Texto oficial da proposta — não é norma vigente</span></div>`
+                        : isLegislativeMatter
+                        ? `<div class="source-score" aria-label="Registro oficial de matéria legislativa; não representa norma vigente"><span class="jurix-rag-score-text">Registro de matéria legislativa</span></div>`
+                        : scopeBased
                         ? `<div class="source-score" aria-label="Dispositivo incluído no escopo da consulta"><span class="jurix-rag-score-text">${safeSource.evidence_scope === 'complete' ? 'Todos os dispositivos indexados' : 'Amostra da norma'}</span></div>`
                         : explicitReference
                         ? `<div class="source-score" aria-label="Dispositivo identificado pela referência normativa">
@@ -371,13 +435,13 @@
                     <span>${escapeHtml(contributionLabel)}</span>
                 </div>
 
-                <div class="source-snippet">${escapeHtml(snippet.substring(0, 280))}${snippet.length > 280 ? '…' : ''}</div>
+                <div class="source-snippet">${snippetMarkup}</div>
 
                 ${snippet
                     ? `
                         <details class="jurix-rag-source__details">
                             <summary>Ver trecho completo</summary>
-                            <p>${escapeHtml(snippet)}</p>
+                            <p>${escapeHtml(fullText || snippet)}</p>
                         </details>
                     `
                     : ''
@@ -388,7 +452,7 @@
                     ${openAction}
                 </div>
 
-                ${scopeBased || explicitReference || graphRelation || isLocalArchive ? '' : `<span class="jurix-rag-sr-only">${escapeHtml(relevanceLabel)}. Pontuação técnica de recuperação: ${percent}%.</span>`}
+                ${isLegislativeMatter || isProposalDocument || scopeBased || explicitReference || graphRelation || isLocalArchive ? '' : `<span class="jurix-rag-sr-only">${escapeHtml(relevanceLabel)}. Pontuação técnica de recuperação: ${percent}%.</span>`}
             </article>
         `;
     }
@@ -413,9 +477,9 @@
         if (!container || !Array.isArray(sources) || !sources.length) return;
         const normalize = value => String(value || '').normalize('NFKD')
             .replace(/[\u0300-\u036f]/g, '').toLowerCase();
-        const normPattern = /\b(Lei(?:\s+Complementar)?|Decreto|Resolução|Portaria)\s+(?:n[º°o.]?\s*)?([\d.]+)\s*\/\s*(\d{4})\b/i;
-        const normKey = match => match
-            ? normalize(match[1]) + ':' + match[2].replace(/\./g, '').replace(/^0+(?=\d)/, '') + '/' + match[3]
+        const normPattern = /\b(?:(Projeto\s+de)\s+)?(Lei(?:\s+Complementar)?|Decreto|Resolução|Portaria)\s+(?:n[º°o.]?\s*)?([\d.]+)\s*\/\s*(\d{4})\b/i;
+        const normKey = (match, proposalSource = false) => match
+            ? `${match[1] || proposalSource ? 'proposal' : 'normative'}:${normalize(match[2])}:${match[3].replace(/\./g, '').replace(/^0+(?=\d)/, '')}/${match[4]}`
             : null;
         const references = sources.map(source => {
             const norm = String(source?.norma || source?.norma_ref || '');
@@ -423,7 +487,8 @@
             const article = device.match(/\bart\.?\s*(\d+)/i)?.[1];
             const inciso = device.match(/\binciso\s+([IVXLCDM]+)\b/i)?.[1]?.toUpperCase();
             const href = buildSourceUrl(source);
-            const identity = normKey(norm.match(normPattern));
+            const proposalSource = ['sapl_legislative_matter', 'sapl_matter_original_pdf'].includes(source?.source_kind);
+            const identity = normKey(norm.match(normPattern), proposalSource);
             return identity && href ? {
                 identity, article, inciso, href, label: norm + ', ' + device, device,
                 localArchive: source?.evidence_scope === 'isolated_qa_archive',
@@ -595,6 +660,13 @@
             backdrop?.addEventListener('click', closeHandler);
             drawerListenersBound = true;
         }
+        if (!drawerModalityListenerBound) {
+            window.addEventListener('resize', () => {
+                const currentPanel = document.getElementById('jurix-sources-drawer-panel');
+                if (currentPanel?.classList.contains('is-open')) syncSourcesDrawerModality(currentPanel);
+            });
+            drawerModalityListenerBound = true;
+        }
         return {
             backdrop,
             panel,
@@ -635,12 +707,18 @@
         const { backdrop, panel, body, titleEl, subtitleEl } = dom;
         if (!panel || !body) return;
         lastSourceTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        const messageScroller = document.getElementById('messages-container');
+        const shouldFollowBottom = Boolean(
+            messageScroller
+            && messageScroller.scrollHeight - messageScroller.scrollTop - messageScroller.clientHeight < 100
+        );
 
         const safeSources = Array.isArray(sources) ? sources : [];
         const count = safeSources.length;
         const groups = groupEvidenceByNorm(safeSources);
         currentSourcesDrawerContext = { count, groups, metadata: { ...metadata } };
-        if (titleEl) titleEl.textContent = `${title} (${count})`;
+        const displayTitle = metadata.pending && title === 'Fontes Consultadas' ? 'Fontes em análise' : title;
+        if (titleEl) titleEl.textContent = `${displayTitle} (${count})`;
         renderSourcesDrawerSubtitle(subtitleEl, currentSourcesDrawerContext);
 
         body.innerHTML = '';
@@ -689,7 +767,10 @@
             const cards = groupSection.querySelector('.jurix-source-group__cards-inner');
             groupSection.addEventListener('toggle', syncToggleAll);
             group.sources.forEach(({ source, index }) => {
-                cards.insertAdjacentHTML('beforeend', renderEvidenceCard(source, index, { showNormTitle: false }));
+                cards.insertAdjacentHTML('beforeend', renderEvidenceCard(source, index, {
+                    showNormTitle: false,
+                    citationTarget: true,
+                }));
             });
             (body.querySelector('.jurix-source-groups') || body).appendChild(groupSection);
         });
@@ -709,14 +790,17 @@
         panel.classList.add('is-open');
         panel.inert = false;
         panel.setAttribute('aria-hidden', 'false');
-        panel.setAttribute('aria-modal', 'true');
+        syncSourcesDrawerModality(panel);
         if (backdrop) {
             backdrop.classList.add('is-open');
             backdrop.setAttribute('aria-hidden', 'false');
         }
         document.body.classList.add('jurix-sources-drawer-open');
         window.requestAnimationFrame(() => {
-            document.getElementById('jurix-sources-drawer-close')?.focus();
+            document.getElementById('jurix-sources-drawer-close')?.focus({ preventScroll: true });
+            if (shouldFollowBottom && messageScroller?.isConnected) {
+                messageScroller.scrollTop = messageScroller.scrollHeight;
+            }
         });
     }
 
@@ -758,7 +842,7 @@
         const normLabel = groups.length === 1 ? 'norma' : 'normas';
         const validation = metadata.cancelled
             ? ' A geração foi interrompida; estas fontes não foram validadas como suporte da resposta.'
-            : metadata.pending ? ' A resposta ainda está sendo validada.' : '';
+            : metadata.pending ? ' Fontes recuperadas; aguardando validação e associação à resposta.' : '';
         const coverage = metadata.coverage;
         const selectedArticles = Number(coverage?.selected_articles);
         const totalArticles = Number(coverage?.total_articles);
@@ -768,19 +852,39 @@
             && selectedArticles >= 0
             && selectedArticles <= totalArticles;
         const scope = coverage?.complete === false && hasArticleCoverage
-            ? ` Amostra distribuída: ${selectedArticles} de ${totalArticles} artigos.`
+            ? selectedArticles < totalArticles
+                ? coverage?.selection_strategy === 'topic_ranked'
+                    ? ` Amostra priorizada por correspondência textual ao tema: ${selectedArticles} de ${totalArticles} artigos.`
+                    : ` Amostra distribuída: ${selectedArticles} de ${totalArticles} artigos.`
+                : coverage?.annexes_present
+                    ? ' Anexos normativos foram detectados e não estão incluídos nesta cobertura de artigos.'
+                    : ''
             : '';
         const sourceRows = groups.flatMap((group) => group.sources.map(({ source }) => source));
+        const isMatterSource = (source) => source?.source_kind === 'sapl_legislative_matter'
+            || source?.evidence_scope === 'official_legislative_matter'
+            || /matéria legislativa.*(?:registro oficial )?sapl/i.test(source?.source_type || '');
+        const isArchiveSource = (source) => source?.evidence_scope === 'isolated_qa_archive'
+            || /acervo histórico local/i.test(source?.source_type || '');
         const hasSyntheticSource = sourceRows.some((source) => source?.synthetic_fixture === true);
-        const hasQaSource = sourceRows.some((source) => source?.evidence_scope === 'isolated_qa_archive');
+        const hasQaSource = sourceRows.some(isArchiveSource);
+        const matterSources = sourceRows.filter(isMatterSource);
+        const archiveNormCount = groups.filter((group) => group.sources.some(
+            ({ source }) => isArchiveSource(source)
+        )).length;
         const isArchiveCorpus = (typeof coverage?.corpus === 'string' && /acervo histórico local/i.test(coverage.corpus))
             || hasQaSource;
         const corpusLabel = hasSyntheticSource
             ? ' de fixtures sintéticas de QA; não representam normas reais nem evidência jurídica'
+            : matterSources.length
+            ? `: ${archiveNormCount} ${archiveNormCount === 1 ? 'norma do acervo local' : 'normas do acervo local'} e ${matterSources.length} ${matterSources.length === 1 ? 'matéria legislativa consultada' : 'matérias legislativas consultadas'} no SAPL oficial${hasQaSource ? '; a extração local ainda está sob revisão' : ''}`
             : isArchiveCorpus
             ? ' do acervo histórico local; a extração e os metadados ainda estão sob revisão'
             : ' do corpus municipal de Natal';
-        subtitleEl.textContent = `${count} ${evidenceLabel} em ${groups.length} ${normLabel}${corpusLabel}.${scope}${validation}`;
+        const summary = matterSources.length
+            ? `${count} ${evidenceLabel}${corpusLabel}.`
+            : `${count} ${evidenceLabel} em ${groups.length} ${normLabel}${corpusLabel}.`;
+        subtitleEl.textContent = `${summary}${scope}${validation}`;
     }
 
     function updateSourcesDrawerMetadata(metadata = {}) {
@@ -800,6 +904,21 @@
         currentSourcesDrawerContext = null;
     }
 
+    document.addEventListener('jurix:new-conversation', () => {
+        clearSourcesDrawer();
+        document.getElementById('question-textarea')?.focus({ preventScroll: true });
+    });
+
+    // The summary is the disclosure control and its label must describe the
+    // next action, not the current state. Capture because `toggle` does not
+    // bubble consistently across browsers.
+    document.addEventListener('toggle', (event) => {
+        const details = event.target;
+        if (!(details instanceof HTMLElement) || !details.matches('details.jurix-rag-source__details')) return;
+        const summary = details.querySelector(':scope > summary');
+        if (summary) summary.textContent = details.open ? 'Recolher trecho' : 'Ver trecho completo';
+    }, true);
+
     document.addEventListener('click', (event) => {
         if (!event.target || !event.target.closest) return;
         const copyButton = event.target.closest('[data-copy-legal-citation]');
@@ -817,8 +936,17 @@
         const pill = event.target.closest('.jurix-sources-pill-btn');
         if (pill) {
             event.preventDefault();
-            const sources = pill._sourcesData || [];
-            openSourcesDrawer(sources, 'Fontes Consultadas', pill._sourcesMeta || {});
+            // The trigger can survive a stream finalization while its expando
+            // is lost by a DOM reconciliation. Keep the message container as
+            // the canonical fallback so sources work before any page reload.
+            const sourcesContainer = pill.closest('[id^="sources-"]');
+            const sources = Array.isArray(pill._sourcesData)
+                ? pill._sourcesData
+                : Array.isArray(sourcesContainer?._sourcesData)
+                    ? sourcesContainer._sourcesData
+                    : [];
+            const metadata = pill._sourcesMeta || sourcesContainer?._sourcesMeta || {};
+            openSourcesDrawer(sources, 'Fontes Consultadas', metadata);
             return;
         }
         if (event.target.closest('#jurix-sources-drawer-close') || event.target.closest('#jurix-sources-drawer-backdrop')) {
@@ -856,6 +984,7 @@
 
         const panel = document.getElementById('jurix-sources-drawer-panel');
         if (!panel || panel.getAttribute('aria-hidden') === 'true') return;
+        if (panel.getAttribute('aria-modal') !== 'true') return;
 
         const focusable = [...panel.querySelectorAll(
             'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])'

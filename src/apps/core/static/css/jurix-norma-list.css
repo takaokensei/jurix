@@ -69,12 +69,142 @@
     padding-top: 24px;
 }
 
+.jurix-norma-archive-bridge {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-top: 14px;
+    padding: 16px 18px;
+    border: 1px solid var(--norma-border-strong);
+    border-inline-start: 4px solid var(--norma-accent);
+    border-radius: 14px;
+    background: var(--norma-panel-soft);
+}
+
+.jurix-norma-archive-bridge h2 {
+    margin: 0 0 5px;
+    color: var(--norma-text);
+    font-size: clamp(15px, 1.5vw, 18px);
+    line-height: 1.35;
+}
+
+.jurix-norma-archive-bridge p {
+    max-width: 780px;
+    margin: 0;
+    color: var(--norma-text-muted);
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.jurix-norma-archive-bridge .jurix-norma-primary-button {
+    flex: 0 0 auto;
+    min-height: 44px;
+    white-space: normal;
+    text-align: center;
+}
+
 .jurix-archive-candidates {
     padding: 22px;
     border: 1px solid var(--norma-border-strong);
     border-radius: var(--norma-radius);
     background: var(--norma-panel-soft);
     scroll-margin-top: 80px;
+}
+
+.jurix-sapl-catalog,
+.jurix-dom-editions {
+    padding: 20px;
+    border: 1px solid var(--norma-border-strong);
+    border-radius: var(--norma-radius);
+    background: var(--norma-panel-soft);
+}
+
+.jurix-sapl-catalog-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 16px;
+}
+
+.jurix-sapl-catalog-heading h2 {
+    margin: 0 0 8px;
+    color: var(--norma-text);
+    font-size: clamp(19px, 2vw, 24px);
+}
+
+.jurix-sapl-catalog-heading p,
+.jurix-sapl-catalog-warning {
+    max-width: 780px;
+    margin: 0;
+    color: var(--norma-text-muted);
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.jurix-sapl-catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 12px;
+}
+
+.jurix-sapl-catalog-card {
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid var(--norma-border);
+    border-radius: 13px;
+    background: var(--norma-panel);
+}
+
+.jurix-sapl-catalog-card h3 {
+    margin: 12px 0 7px;
+    color: var(--norma-text);
+    font-size: 16px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.jurix-sapl-catalog-ementa {
+    margin: 0 0 10px;
+    color: var(--norma-text-soft);
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.jurix-sapl-catalog-ementa-label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--norma-text-muted);
+    font-size: 10px;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.jurix-sapl-catalog-warning {
+    margin-bottom: 12px;
+    color: var(--norma-text-muted);
+}
+
+.jurix-sapl-catalog-card .jurix-norma-card-link {
+    width: 100%;
+    min-height: 44px;
+}
+
+.jurix-dom-edition-date {
+    margin: 0 0 10px;
+    color: var(--norma-text-soft);
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.jurix-dom-edition-link-unavailable {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    color: var(--norma-text-muted);
+    font-size: 13px;
 }
 
 .jurix-archive-candidates-heading {
@@ -202,6 +332,8 @@
     font-size: 12px;
 }
 
+.jurix-archive-global-search { display: inline-flex; margin: 0 0 1rem; }
+
 .jurix-archive-candidates-no-results {
     margin: 12px 0 0;
     padding: 16px;
@@ -214,9 +346,17 @@
 .jurix-archive-candidate[hidden] { display: none !important; }
 
 @media (max-width: 560px) {
+    .jurix-norma-archive-bridge { align-items: stretch; flex-direction: column; padding: 15px; }
+    .jurix-norma-archive-bridge .jurix-norma-primary-button { width: 100%; }
     .jurix-archive-candidates { padding: 16px; }
     .jurix-archive-candidates-heading { flex-direction: column; }
+    .jurix-archive-candidates-heading > div,
+    .jurix-sapl-catalog-heading > div { width: 100%; min-width: 0; }
     .jurix-archive-candidate-filters { grid-template-columns: 1fr; }
+    .jurix-sapl-catalog { padding: 16px; }
+    .jurix-sapl-catalog-heading { flex-direction: column; }
+    .jurix-dom-editions { padding: 16px; }
+    .jurix-dom-editions .jurix-sapl-catalog-heading { flex-direction: column; }
 }
 
 .jurix-norma-hero {
@@ -752,6 +892,20 @@
     border: 1px dashed var(--norma-border-strong);
     border-radius: 22px;
     background: var(--norma-panel-soft);
+}
+
+.jurix-norma-empty--catalog {
+    padding: clamp(22px, 3vw, 36px) 20px;
+}
+
+.jurix-norma-empty--catalog .jurix-norma-empty-icon {
+    width: 42px;
+    height: 42px;
+}
+
+.jurix-norma-empty--catalog h2 {
+    margin-top: 12px;
+    font-size: 19px;
 }
 
 .jurix-norma-empty-icon {

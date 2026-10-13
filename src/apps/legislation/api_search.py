@@ -66,6 +66,7 @@ from src.processing.generation_control import (
 )
 from src.processing.llm_provider import validate_provider_config
 from src.processing.normative_reference import parse_normative_references
+from src.processing.sapl_matter_lookup import parse_explicit_matter_references
 from src.processing.rag_answer_pipeline import GenerationCancelled
 from src.processing.rag_contract_helpers import no_retrieval_message
 from src.observability.safe_logging import log_exception_safely
@@ -79,9 +80,19 @@ logger = logging.getLogger(__name__)
 _ARTICLE_FOLLOWUP_RE = re.compile(
     r"\b(?:e\s+)?(?:o\s+)?art(?:igo)?\.?\s*(\d{1,4})\s*[º°o]?\b", re.IGNORECASE
 )
+_PROPOSAL_TEXT_FOLLOWUP_RE = re.compile(
+    r"\b(?:red[aã]ç[aã]o|texto|conte[uú]do)\b.{0,60}\b(?:propost[oa]|projeto)\b|"
+    r"\bproposta\s+de\s+(?:nova\s+)?(?:red[aã]ç[aã]o|texto)\b",
+    re.IGNORECASE,
+)
 _CONTEXTUAL_NORM_FOLLOWUP_RE = re.compile(
     r"^\s*(?:(?:(?:e|mas|ent[aã]o|nesse\s+caso)\s+)?"
     r"(?:qual|quais|quem|como|quando|onde|por\s+que|o\s+que)\b"
+    r"|(?:(?:e|mas|ent[aã]o)\s+)?(?:existe|existem|h[aá])\s+"
+    r"(?:alguma\s+)?(?:proposi[cç][aã]o|proposta|projeto)\b"
+    r"|em\s+que\s+data\b"
+    r"|(?:(?:e|mas|ent[aã]o)\s+)?(?:essa|esta|a\s+mesma)\s+"
+    r"(?:lei|norma)\b"
     r"|com\s+base\s+(?:no|neste|nesse)\s+(?:trecho|dispositivo|artigo|resposta)\b"
     r"|(?:explique|esclare[cç]a|detalhe)\s+(?:isso|esse\s+trecho|o\s+trecho|o\s+dispositivo)\b"
     r"|o\s+que\s+(?:isso|esse\s+trecho|o\s+dispositivo)\s+(?:significa|quer\s+dizer)\b)",
@@ -89,6 +100,9 @@ _CONTEXTUAL_NORM_FOLLOWUP_RE = re.compile(
 )
 _CONTEXTUAL_DEVICE_FOLLOWUP_RE = re.compile(
     r"^\s*(?:com\s+base\s+(?:no|neste|nesse)\s+(?:trecho|dispositivo|artigo|resposta)\b"
+    r"|(?:(?:e|mas|ent[aã]o)\s+)?(?:existe|existem|h[aá])\s+"
+    r"(?:alguma\s+)?(?:proposi[cç][aã]o|proposta|projeto)\b.{0,100}"
+    r"\b(?:alterar|modificar|revogar)\b.{0,40}\b(?:esse|este|tal)\s+(?:dispositivo|artigo)\b"
     r"|(?:explique|esclare[cç]a|detalhe)\s+(?:isso|esse\s+trecho|o\s+trecho|o\s+dispositivo)\b"
     r"|o\s+que\s+(?:isso|esse\s+trecho|o\s+dispositivo)\s+(?:significa|quer\s+dizer)\b"
     r"|(?:e|mas|ent[aã]o)\s+qual\s+(?:[\wÀ-ÿ]+\s+){0,5}"
@@ -107,6 +121,26 @@ def _resolve_article_followup(question: str, previous_question: str) -> str:
     """Preserve a short follow-up and inherit only an unambiguous prior norm."""
     if not previous_question or len(previous_question) > 10000:
         return question
+    if _PROPOSAL_TEXT_FOLLOWUP_RE.search(question) and not parse_explicit_matter_references(
+        question
+    ):
+        # A question about the proposed wording is scoped to an explicitly named
+        # legislative matter in the conversation, not to whichever law PDF ranks
+        # highest. Keep this as a matter reference (not a normative citation).
+        for prior_message in previous_question.splitlines():
+            matter_references = parse_explicit_matter_references(prior_message)
+            if not matter_references:
+                continue
+            identities = {
+                (item["tipo"], item["numero"], item["ano"]) for item in matter_references
+            }
+            if len(identities) != 1:
+                return question
+            kind, number, year = next(iter(identities))
+            return (
+                f"{question.rstrip()} "
+                f"(contexto da matéria legislativa: {kind} nº {number}/{year})"
+            )
     match = _ARTICLE_FOLLOWUP_RE.search(question)
     contextual_followup = bool(_CONTEXTUAL_NORM_FOLLOWUP_RE.match(question))
     if (not match and not contextual_followup) or parse_normative_references(question):
@@ -664,7 +698,9 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                                 replay_sources = (
                                     replay_message.sources_json
                                     if contract.get("grounded") is True
-                                    else []
+                                    else select_answer_citation_sources(
+                                        replay_message.sources_json or [], replay_message.content, {}
+                                    )
                                 )
                                 yield f"data: {json.dumps({'type': 'sources', 'sources': replay_sources, 'cached': True})}\n\n"
                                 yield f"data: {json.dumps({'type': 'chunk', 'chunk': replay_message.content, 'provisional': False})}\n\n"
@@ -871,12 +907,10 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     if not grounded and not reason_code:
                         reason_code = retrieval_reason_code or "evidence_insufficient"
                     final_answer = no_retrieval_message(reason_code) or item.get("answer", "")
-                    answer_sources = (
-                        select_answer_citation_sources(
-                            sources_list, final_answer, item.get("grounding")
-                        )
-                        if grounded
-                        else []
+                    answer_sources = select_answer_citation_sources(
+                        sources_list,
+                        final_answer,
+                        item.get("grounding") if grounded else {},
                     )
                     provenance = build_answer_contract(
                         question=question,

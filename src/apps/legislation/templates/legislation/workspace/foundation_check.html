@@ -1,0 +1,73 @@
+{% extends 'legislation/workspace/base.html' %}
+{% load static %}
+
+{% block title %}Conferir fundamentação · Jurix{% endblock %}
+{% block content %}
+<section class="foundation-page" id="foundation-workspace" aria-labelledby="foundation-title">
+  <header class="workspace-page-header foundation-intro">
+    <div><p class="workspace-eyebrow">Ferramenta de conferência</p><h1 id="foundation-title">Conferir fundamentação</h1>
+      <p>Cole um trecho de peça ou parecer. O Jurix identifica referências normativas e compara os dispositivos localizados em dois cortes temporais.</p>
+    </div>
+  </header>
+  <p class="foundation-caveat" role="note">A escolha das datas aplicáveis aos fatos é do usuário. Esta ferramenta auxilia a pesquisa e não decide o mérito nem substitui conferência jurídica. O texto colado é processado na requisição e não é salvo em conversa, banco ou cache.</p>
+  {% if error %}<div class="foundation-error" role="alert" tabindex="-1">{{ error }}</div>{% endif %}
+  {% if cancelled %}<div class="foundation-alert" role="status" tabindex="-1">Conferência interrompida. O texto continua no campo e nada foi salvo.</div>{% endif %}
+  <form class="foundation-form" method="post" action="{% url 'workspace:foundation_check' %}" data-foundation-form data-status-url="{% url 'workspace:foundation_check_status' job_id=job_id %}" data-cancel-url="{% url 'workspace:foundation_check_cancel' job_id=job_id %}">
+    {% csrf_token %}<input type="hidden" name="job_id" value="{{ job_id }}">
+    <div class="foundation-field"><label for="foundation-text">Fundamentação ou trecho com citações</label>
+      <textarea id="foundation-text" name="text" maxlength="50000" required aria-describedby="foundation-text-help">{{ text }}</textarea>
+      <small id="foundation-text-help">Até 50.000 caracteres. A conferência só associa artigo abreviado quando a norma está explícita e sem ambiguidade.</small>
+    </div>
+    <div class="foundation-date-grid" aria-describedby="foundation-date-help">
+      <div class="foundation-field"><label for="foundation-from">Comparar redação de</label><input id="foundation-from" type="date" name="from_date" value="{{ from_date }}"></div>
+      <div class="foundation-field"><label for="foundation-to">Com redação em</label><input id="foundation-to" type="date" name="to_date" value="{{ to_date|default:today }}"></div>
+    </div>
+    <small id="foundation-date-help">As datas são necessárias apenas para “Conferir dispositivos”; primeiro você pode identificar as referências sem escolhê-las.</small>
+    <div class="foundation-actions">
+      <button class="workspace-button" type="submit" name="action" value="review">Identificar referências</button>
+      {% if references %}<button class="workspace-button workspace-button-primary" type="submit" name="action" value="compare" data-foundation-compare>Conferir dispositivos</button>{% endif %}
+      <button class="workspace-button" type="button" data-foundation-cancel hidden>Cancelar conferência</button>
+    </div>
+    <div class="foundation-progress" data-foundation-progress role="status" aria-live="polite" aria-atomic="true"></div>
+  </form>
+
+  {% if references %}
+  <section class="foundation-result" aria-labelledby="detected-references-title">
+    <h2 id="detected-references-title">Referências identificadas ({{ references|length }})</h2>
+    <p class="foundation-caveat">Revise o texto e a associação antes de conferir. Itens ambíguos ou sem ano serão mantidos como inconclusivos; edite o trecho acima para completar a referência.</p>
+    <div class="foundation-ref-list">
+    {% for ref in references %}<article class="foundation-reference">
+      <div class="foundation-reference__heading"><strong>{% if ref.type_key == 'lei_complementar' %}Lei Complementar{% elif ref.type_key == 'lei_organica' %}Lei Orgânica{% elif ref.type_key == 'lei_promulgada' %}Lei Promulgada{% elif ref.type_key == 'lei' %}Lei{% elif ref.type_key == 'decreto_legislativo' %}Decreto Legislativo{% elif ref.type_key == 'decreto_lei' %}Decreto-Lei{% elif ref.type_key == 'decreto' %}Decreto{% elif ref.type_key == 'resolucao' %}Resolução{% elif ref.type_key == 'portaria' %}Portaria{% elif ref.type_key == 'emenda_constitucional' %}Emenda Constitucional{% elif ref.type_key == 'emenda' %}Emenda{% else %}Espécie não identificada{% endif %}{% if ref.number %} nº {{ ref.number }}{% endif %}{% if ref.year %}/{{ ref.year }}{% endif %}{% if ref.article %}, Art. {{ ref.article }}{% endif %}{% if ref.paragraph %}, § {{ ref.paragraph }}{% endif %}{% if ref.item %}, inciso {{ ref.item }}{% endif %}{% if ref.alinea %}, alínea {{ ref.alinea }}{% endif %}</strong>
+      <span class="foundation-pill" data-status="{% if ref.requires_confirmation %}confirmation_required{% else %}inconclusive{% endif %}">{% if ref.requires_confirmation %}Confirmação necessária{% else %}Pronta para conferência{% endif %}</span></div>
+      <blockquote>{{ ref.text }}</blockquote>{% if ref.ambiguity_reason %}<p class="foundation-caveat">{{ ref.ambiguity_reason }}</p>{% endif %}
+    </article>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if result %}
+  <section class="foundation-result" aria-labelledby="foundation-summary-title" tabindex="-1" data-foundation-summary>
+    <h2 id="foundation-summary-title">Resumo da conferência</h2>
+    <p><strong>Comparação:</strong> {{ result.comparison.from }} → {{ result.comparison.to }}.</p>
+    {% if result.corpus_revision %}<p><strong>Corte do corpus:</strong> revisão {{ result.corpus_revision.revision }} · atualização registrada em {{ result.corpus_revision.generated_at|default:'data não registrada' }} · completude declarada: {% if result.corpus_revision.completeness == 'complete' %}processamento concluído (isso não certifica cobertura jurídica integral){% elif result.corpus_revision.completeness == 'partial' %}parcial{% elif result.corpus_revision.completeness == 'incomplete' %}incompleta{% else %}desconhecida{% endif %}.</p>{% else %}<p><strong>Corte do corpus:</strong> identidade de revisão indisponível; não é possível certificar a atualidade do acervo.</p>{% endif %}
+    {% if result.corpus_coverage %}<div class="foundation-caveat"><strong>Cobertura registrada:</strong> {% if result.corpus_coverage.coverage_status == 'reviewed' %}revisada somente nos escopos listados{% elif result.corpus_coverage.coverage_status == 'partial' %}parcial{% else %}desconhecida{% endif %}{% if result.corpus_coverage.checked_until %}, verificada até {{ result.corpus_coverage.checked_until }}{% endif %}. A ausência de escopo revisado mantém “sem mudança” inconclusivo.{% if result.corpus_coverage.sources_checked %}<details><summary>Ver fontes e séries cobertas</summary><ul>{% for scope in result.corpus_coverage.sources_checked %}<li>{{ scope.source }} · {{ scope.jurisdiction }} · {{ scope.series }} · {% if scope.coverage_status == 'reviewed' %}revisada neste escopo{% elif scope.coverage_status == 'partial' %}parcial{% else %}desconhecida{% endif %} · corte {{ scope.checked_until|default:'não informado' }} · pendências {{ scope.pending_review|default:'não informado' }}</li>{% endfor %}</ul></details>{% endif %}</div>{% endif %}
+    <p class="foundation-alert">Resultado auxiliar: estados inconclusivos indicam falta de cobertura, ambiguidade ou evento pendente; não significam que a norma permaneceu igual. A conferência não determina qual redação rege os fatos.</p>
+    <ul>{% for status, count in result.summary.items %}<li>{% if status == 'changed' %}Redação diferente{% elif status == 'revoked' %}Revogada{% elif status == 'vetoed' %}Veto identificado{% elif status == 'unchanged_in_checked_scope' %}Sem mudança no escopo revisado{% elif status == 'confirmation_required' %}Confirmação necessária{% else %}Inconclusiva{% endif %}: {{ count }}</li>{% endfor %}</ul>
+    <div class="foundation-ref-list">
+    {% for ref in result.references %}<article class="foundation-reference">
+      <div class="foundation-reference__heading"><strong>{{ ref.text }}</strong><span class="foundation-pill" data-status="{{ ref.status }}">{% if ref.status == 'changed' %}Redação diferente{% elif ref.status == 'revoked' %}Revogada no corte final{% elif ref.status == 'vetoed' %}Veto identificado{% elif ref.status == 'unchanged_in_checked_scope' %}Sem mudança no escopo revisado{% elif ref.status == 'confirmation_required' %}Confirmação necessária{% else %}Inconclusiva{% endif %}</span></div>
+      {% if ref.reason %}<p>{{ ref.reason }}</p>{% endif %}
+      {% if ref.norma %}<p>{{ ref.norma }}{% if ref.identity.article %}, Art. {{ ref.identity.article }}{% endif %}</p>{% endif %}
+      {% for moment, evidences in ref.evidence.items %}<h3>{% if moment == 'before' %}Redação no primeiro corte{% else %}Redação no segundo corte{% endif %}</h3>
+        {% for evidence in evidences %}<div class="foundation-evidence"><p>{{ evidence.text }}</p><small>Estado técnico da projeção: {% if evidence.legal_status == 'in_force' %}indicado como vigente neste corte{% elif evidence.legal_status == 'revoked' %}indicado como revogado neste corte{% else %}indeterminado neste corte{% endif %} · página {{ evidence.page|default:'não informada' }} · evidência {{ evidence.evidence_id }}</small><p><a href="{{ evidence.pdf_url }}" target="_blank" rel="noopener">Abrir PDF de origem{% if evidence.page %}, página {{ evidence.page }}{% endif %}</a></p></div>{% empty %}<p class="foundation-caveat">Não há evidência suficiente neste corte.</p>{% endfor %}
+      {% endfor %}
+      {% if ref.source_events %}<div class="foundation-evidence"><h3>Evento revisado que explica a redação</h3><ul>{% for event in ref.source_events %}<li><strong>{{ event.action }}</strong>{% if event.effective_on %} em {{ event.effective_on }}{% endif %}, com origem em {{ event.source_norma }}, {{ event.source_device }}. <a href="{{ event.norma_url }}">Abrir norma de origem</a>{% if event.official_url %} · <a href="{{ event.official_url }}" target="_blank" rel="noopener">Fonte oficial</a>{% endif %}<p>{{ event.target_text }}</p></li>{% endfor %}</ul></div>{% endif %}
+      {% if ref.coverage %}<details><summary>Ver cobertura e limitações</summary><pre>{{ ref.coverage }}</pre></details>{% endif %}
+    </article>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_js %}<script src="{% static 'js/jurix-foundation-check.js' %}?v=20261012-conditional-dates1"></script>{% endblock %}

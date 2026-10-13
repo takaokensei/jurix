@@ -11,13 +11,21 @@ test('assistant and documents include one canonical sidebar', () => {
     const html = read(`src/apps/legislation/templates/legislation/${path}`);
     assert.match(html, /include 'legislation\/workspace\/_sidebar.html'/);
     assert.doesNotMatch(html, /<aside[^>]*id="sidebar"/);
-    assert.match(html, /jurix-sidebar.css/);
+    assert.match(html, /jurix-sidebar\.css'\s*%\}\?v=20261009-short-viewport-history2/);
     assert.match(html, /jurix-sidebar.js/);
   }
   const sidebar = read('src/apps/legislation/templates/legislation/workspace/_sidebar.html');
   assert.match(sidebar, /data-search-conversations/);
   assert.match(sidebar, /chat-sessions-list/);
   assert.doesNotMatch(sidebar, /M12 2v2m0 16v2/);
+});
+
+test('conversation options meet the 44px touch-target size', () => {
+  const css = read('src/apps/core/static/css/jurix-sidebar.css');
+  assert.match(css, /\.jurix-session-menu-trigger\s*\{[^}]*flex:\s*0\s+0\s+44px[^}]*width:\s*44px[^}]*height:\s*44px/s);
+  assert.match(css, /@media\s*\(min-width:\s*901px\)\s*and\s*\(max-height:\s*800px\)/);
+  assert.match(css, /\.figma-theme\s+\.workspace-nav\s*\{[^}]*overflow-y:\s*auto/s);
+  assert.match(css, /\.figma-theme\s+\.jurix-sidebar-recents\s*\{\s*flex:\s*1\s+1\s+140px/s);
 });
 
 test('sidebar and conversation search include anonymous history without leaking HTML', async () => {

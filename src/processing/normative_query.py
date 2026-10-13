@@ -17,10 +17,27 @@ _WHOLE_NORMA_INTENT = re.compile(
     r"[^?\n]{0,100}\b(?:lei|norma|decreto|resolu[cç][aã]o|portaria|lc)\b",
     re.IGNORECASE,
 )
+_WHOLE_NORMA_ORGANIZATION_INTENT = re.compile(
+    r"\b(?:como|de\s+que\s+forma)\b[^?\n]{0,100}"
+    r"\b(?:lei|norma|decreto|resolu[cç][aã]o|portaria|lc)\b[^?\n]{0,100}"
+    r"\b(?:organiza|organizam|regula|regulam|disciplina|disciplinam|estrutura|estruturam)\b",
+    re.IGNORECASE,
+)
+_WHOLE_NORMA_TOPICAL_INVENTORY_INTENT = re.compile(
+    r"\b(?:quais?|que)\b[^?\n]{0,120}\b"
+    r"(?:etapas?|fases?|procedimentos?|medidas?|requisitos?|cr[it][eé]rios?|"
+    r"obriga[cç][oõ]es?|direitos?|compet[eê]ncias?|instrumentos?)\b"
+    r"[^?\n]{0,180}\b(?:lei(?:\s+complementar)?|norma|decreto|resolu[cç][aã]o|"
+    r"portaria|lc)\b",
+    re.IGNORECASE,
+)
 _ARTICLE_TARGET = re.compile(r"\bart(?:igo)?\.?\s*\d+\s*[ºª°o]?", re.IGNORECASE)
 _ARTICLE_NUMBER = r"\d{1,4}(?:\s*[ºª°o])?(?:\s*-\s*[A-Za-z])?"
 _PLURAL_ARTICLE_LIST = re.compile(
-    rf"\barts\.?\s*(?P<targets>{_ARTICLE_NUMBER}(?:\s*(?:,|e|a|até)\s*{_ARTICLE_NUMBER})*)",
+    rf"\barts\.?\s*(?P<targets>{_ARTICLE_NUMBER}"
+    rf"(?:\s*,\s*inciso\s+[ivxlcdm]+)?"
+    rf"(?:\s*(?:,\s*(?:e\s+|ou\s+)?|\be\s+|\bou\s+|\ba\s+|\baté\s+)"
+    rf"\s*(?:inciso\s+[ivxlcdm]+\s*,\s*)?{_ARTICLE_NUMBER})*)",
     re.IGNORECASE,
 )
 _ARTICLE_NUMBER_CAPTURE = re.compile(_ARTICLE_NUMBER, re.IGNORECASE)
@@ -32,6 +49,9 @@ _RELATION_INTENT = (
         re.IGNORECASE,
     )),
     ("modification", re.compile(
+        r"\b(?:plc|projeto\s+de\s+lei(?:\s+complementar)?|"
+        r"emenda\s+(?:supressiva|modificativa|aditiva))\b.{0,160}\b"
+        r"(?:alteraram|revogaram|modificaram|suprimiram|acrescentaram|adicionaram)\b|"
         r"\b(?:quem|qual\s+norma|quais\s+normas|o\s+que)\b.{0,80}\b"
         r"(?:alterou|altera|modificou|modifica|revogou|revoga|acrescentou|adicionou)\b|"
         r"\b(?:altera[cç][aã]o|revoga[cç][aã]o)\b.{0,80}\b(?:art|lei|norma)|"
@@ -42,8 +62,13 @@ _RELATION_INTENT = (
         r"altera[cç][õo]es?|revoga[cç][õo]es?|modifica[cç][õo]es?)\b|"
         r"\b(?:altera[cç][õo]es?|revoga[cç][õo]es?|modifica[cç][õo]es?)\b"
         r".{0,80}\b(?:posterior(?:es)?|depois|ap[oó]s|dispositivo|artigo|lei|norma)\b|"
+        r"\b(?:proposi[cç][aã]o|proposta|projeto)\b.{0,100}"
+        r"\b(?:posterior(?:es)?|sobre\s+(?:o\s+)?(?:artigo|dispositivo)|"
+        r"(?:altera|modifica|revoga))\b|"
         r"\b(?:ainda\s+vigora|red[aã]c[aã]o\s+(?:atual|vigente|em\s+\d{4})|"
-        r"vig[eê]ncia\s+(?:atual|em\s+\d{4}))\b",
+        r"vig[eê]ncia\s+(?:atual|em\s+\d{4}))\b|"
+        r"\b(?:vigente|vig[eê]ncia)\b.{0,60}\b(?:hoje|atual|atualmente)\b|"
+        r"\b(?:posso|pode|podemos)\s+(?:considerar|tratar|aplicar)\b.{0,100}\bvigente\b",
         re.IGNORECASE,
     )),
     ("reference", re.compile(
@@ -59,6 +84,7 @@ class NormativeQueryPlan:
     reference: NormativeReference | None = None
     relation_intent: str | None = None
     article_targets: tuple[str, ...] = ()
+    broad_topical_scope: bool = False
 
     @property
     def is_norma_overview(self) -> bool:
@@ -77,21 +103,27 @@ def classify_normative_query(question: str) -> NormativeQueryPlan:
         (name for name, pattern in _RELATION_INTENT if pattern.search(question)),
         None,
     )
-    plural_list = _PLURAL_ARTICLE_LIST.search(question)
-    if plural_list:
-        targets = tuple(
+    targets = []
+    for plural_list in _PLURAL_ARTICLE_LIST.finditer(question):
+        targets.extend(
             _canonical_article_target(value)
             for value in _ARTICLE_NUMBER_CAPTURE.findall(plural_list.group("targets"))
         )
-    else:
-        targets = tuple(
-            _canonical_article_target(match.group(1))
-            for match in _SINGLE_ARTICLE_TARGETS.finditer(question)
-        )
+    targets.extend(
+        _canonical_article_target(match.group(1))
+        for match in _SINGLE_ARTICLE_TARGETS.finditer(question)
+    )
     targets = tuple(dict.fromkeys(target for target in targets if target))
 
     if len(references) != 1 or references[0].year is None:
-        return NormativeQueryPlan("general", relation_intent=relation_intent)
+        # Keep provision targets even when the user has not named the act.
+        # They are still useful retrieval constraints for discovery queries
+        # such as "which norm institutes X, and what does Art. 18 say?".
+        return NormativeQueryPlan(
+            "general",
+            relation_intent=relation_intent,
+            article_targets=targets,
+        )
 
     reference = references[0]
     # A single, explicit law reference plus one or more explicitly named
@@ -105,6 +137,16 @@ def classify_normative_query(question: str) -> NormativeQueryPlan:
     if reference.article or _ARTICLE_TARGET.search(question):
         return NormativeQueryPlan("provision", reference, relation_intent)
 
+    if (
+        _WHOLE_NORMA_ORGANIZATION_INTENT.search(question)
+        or _WHOLE_NORMA_TOPICAL_INVENTORY_INTENT.search(question)
+    ):
+        return NormativeQueryPlan(
+            "norma_overview",
+            reference,
+            relation_intent,
+            broad_topical_scope=True,
+        )
     if _WHOLE_NORMA_INTENT.search(question or ""):
         return NormativeQueryPlan("norma_overview", reference, relation_intent)
     return NormativeQueryPlan("general", reference, relation_intent)

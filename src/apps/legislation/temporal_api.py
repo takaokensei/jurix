@@ -78,7 +78,11 @@ def norma_version_api(request: HttpRequest, pk: int) -> JsonResponse:
         return JsonResponse({"success": False, "error": "Informe as_of no formato AAAA-MM-DD."}, status=400)
     projection = project_norma_as_of(norma, as_of)
     snapshot = NormativeSnapshot.objects.filter(
-        norma=norma, as_of=as_of, input_sha256=projection.input_sha256
+        norma=norma,
+        as_of=as_of,
+        input_sha256=projection.input_sha256,
+        content_sha256=projection.content_sha256,
+        status=projection.status,
     ).first()
     document = norma.documento_base if projection.status != NormativeSnapshot.Status.NOT_RECONSTRUCTABLE else None
     return JsonResponse(

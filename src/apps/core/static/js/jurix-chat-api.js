@@ -175,7 +175,7 @@
         let reader;
         let completed = false;
         const clientSessionId = searchOptions.client_session_id || getClientSessionId();
-        const retryKey = `${sessionId || clientSessionId}\\u0000${String(question).trim()}`;
+        const retryKey = `${sessionId || clientSessionId}\u0000${String(question).trim()}`;
         const previousTurnId = retryTurnIds.get(retryKey) || null;
         const retryOfTurnId = searchOptions.retry_of_client_turn_id ||
             (retryExistingQuestion ? previousTurnId : null);
@@ -259,6 +259,14 @@
                     if (eventData.status === 'cancelled') streamState.cancelConfirmed = true;
                     if (onStatus) await onStatus(eventData.status, eventData);
                 } else if (eventData.type === 'session' && onSession) {
+                    // A first turn starts without a server session id, so its
+                    // retry key initially uses the browser client-session id.
+                    // Once the server assigns the durable session id, move the
+                    // pending retry mapping to that id; subsequent retries are
+                    // submitted with it by chat.js.
+                    const sessionRetryKey = `${eventData.session_id || sessionId || clientSessionId}\u0000${String(question).trim()}`;
+                    if (sessionRetryKey !== retryKey) retryTurnIds.delete(retryKey);
+                    retryTurnIds.set(sessionRetryKey, clientTurnId);
                     await onSession(eventData);
                 } else if (eventData.type === 'sources' && onSources) {
                     await onSources(eventData.sources, eventData.confidence, eventData);

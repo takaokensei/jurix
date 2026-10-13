@@ -1,0 +1,182 @@
+{% extends "legislation/workspace/base.html" %}
+{% load static %}
+
+{% block title %}Grafo de relações da LC 258/2024 · Jurix{% endblock %}
+{% block section_name %}Grafo da LC 258/2024{% endblock %}
+{% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Grafo demonstrativo · QA' %}{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/jurix-pgm-demo.css' %}?v=20261013-18">{% endblock %}
+{% block extra_js %}<script src="{% static 'js/jurix-pgm-demo.js' %}?v=20261013-6" defer></script>{% endblock %}
+
+{% block content %}
+<main class="pgm-demo" aria-labelledby="pgm-demo-title">
+  <header class="workspace-page-header">
+    <div>
+      <span class="workspace-eyebrow">Demonstração PGM · ambiente QA</span>
+      <h1 id="pgm-demo-title">LC 258/2024 menciona sete atos na cláusula de revogação</h1>
+      <p><strong>A LC 55/2004 é apenas um deles:</strong> o Art. 260 também enumera outras cinco leis e o Art. 21 da Lei Promulgada nº 275/2009. O mapa separa essas sete menções da alteração do Art. 261 e da cláusula geral do Art. 266.</p>
+    </div>
+    <span class="pgm-demo__status">Grafo de evidências · revisão jurídica pendente</span>
+  </header>
+
+  <section class="pgm-demo__notice" role="note" aria-label="Limites jurídicos desta demonstração">
+    <strong>As arestas representam menções textuais, não conclusões jurídicas validadas.</strong>
+    <p>A LC nº 258/2024, Art. 260, diz “Ficam revogados” e lista seis leis e o Art. 21 da Lei Promulgada nº 275/2009. A tela demonstra as menções do texto; não certifica identidade, publicação, vigência, alcance ou efeitos no tempo. Nenhuma relação foi promovida ao grafo do produto.</p>
+  </section>
+
+  <section class="pgm-demo__pipeline" aria-labelledby="pgm-pipeline-title">
+    <h2 id="pgm-pipeline-title">Cobertura documental deste caso</h2>
+    <ol>
+      <li><strong>6 leis + 1 artigo citados</strong><span>Sete referências expressas do Art. 260, segmentadas antes do Art. 261.</span></li>
+      <li><strong>{{ target_count }} identidade(s) candidata(s)</strong><span>Correspondência de tipo, número e ano no acervo local.</span></li>
+      <li><strong>{{ conflict_count }} conflito(s) de identidade</strong><span>Mesmo número/ano, mas espécie normativa diferente.</span></li>
+      <li><strong>{{ missing_count }} sem PDF correspondente</strong><span>Não encontrados neste lote QA; isso não prova inexistência do ato.</span></li>
+      <li><strong>Revisão e consolidação</strong><span>Pendentes. LC 258 tem {{ source_segmentation_count }} dispositivos estruturados nesta extração.</span></li>
+    </ol>
+  </section>
+
+  <section class="pgm-demo__network" aria-labelledby="pgm-network-title">
+    <header class="pgm-demo__graph-heading">
+      <div>
+        <span class="workspace-eyebrow">Mapa de relações normativas · evidência textual</span>
+        <h2 id="pgm-network-title">Rede de relações normativas</h2>
+      <p>Da LC 258/2024, o mapa separa sete referências de revogação, uma alteração e uma cláusula geral sem alvo nomeado.</p>
+      </div>
+      <span class="pgm-demo__graph-count" aria-label="Seis leis e um artigo citados para revogação">07 <small>referências expressas</small><small>6 leis + 1 artigo</small></span>
+    </header>
+    <ul class="pgm-demo__legend" aria-label="Legenda dos nós do grafo">
+      <li><span class="pgm-demo__legend-dot pgm-demo__legend-dot--candidate" aria-hidden="true"></span>PDF candidato localizado</li>
+      <li><span class="pgm-demo__legend-dot pgm-demo__legend-dot--conflict" aria-hidden="true"></span>Conflito de identidade</li>
+      <li><span class="pgm-demo__legend-dot pgm-demo__legend-dot--missing" aria-hidden="true"></span>PDF não localizado no lote</li>
+      <li><span class="pgm-demo__legend-line" aria-hidden="true"></span>Relação textual · efeito pendente de revisão</li>
+    </ul>
+    <div class="pgm-demo__graph-controls" role="group" aria-label="Destacar relações no grafo">
+      <span>Destacar:</span>
+      <button type="button" data-graph-filter="all" aria-pressed="true">Todas</button>
+      <button type="button" data-graph-filter="express" aria-pressed="false">Revogações expressas · 7</button>
+      <button type="button" data-graph-filter="amendment" aria-pressed="false">Alteração · 1</button>
+      <button type="button" data-graph-filter="generic" aria-pressed="false">Cláusula geral · sem alvo nomeado</button>
+    </div>
+    <p class="pgm-demo__graph-live" data-graph-live role="status" aria-live="polite">Visão completa: sete referências expressas, uma alteração e uma cláusula geral.</p>
+    <svg class="pgm-demo__edges" aria-hidden="true" focusable="false" preserveAspectRatio="none">
+      <defs>
+        <marker id="pgm-demo-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 8 4 L 0 8 z"></path>
+        </marker>
+      </defs>
+    </svg>
+    <div class="pgm-demo__diagram" role="group" aria-label="Fluxo da LC 258/2024, dos dispositivos que registram as relações e dos atos citados como destino">
+    <article class="pgm-demo__source-node">
+      <div class="pgm-demo__source-heading">
+        <span class="workspace-eyebrow">Ato que contém a lista · fonte primária arquivada em QA</span>
+        <span class="pgm-demo__badge">Extração {{ source_extraction.id }} · {{ source_document.get_review_status_display|lower }}</span>
+      </div>
+      <h2>Lei Complementar nº 258/2024</h2>
+      <p><strong>Art. 260 — “Ficam revogados”</strong> · seis leis e um dispositivo citados</p>
+      <a href="{{ source_pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir LC 258/2024 no PDF{% if source_page %}, p. {{ source_page }}{% endif %}</a>
+    </article>
+
+    <div class="pgm-demo__event-hubs" aria-label="Eventos identificados na LC 258/2024">
+      <div class="pgm-demo__relation-node" data-graph-relation="express">
+        <span class="pgm-demo__relation-kicker">Art. 260 · REVOGAÇÃO EXPRESSA</span>
+        <strong>“Ficam revogados”</strong>
+        <small>6 leis + Art. 21 da Lei Promulgada nº 275/2009</small>
+      </div>
+      <div class="pgm-demo__relation-node pgm-demo__relation-node--amendment" data-graph-relation="amendment">
+        <span class="pgm-demo__relation-kicker">Art. 261 · ALTERAÇÃO</span>
+        <strong>Dá nova redação a</strong>
+        <small>Dispositivo identificado no texto</small>
+      </div>
+      <div class="pgm-demo__relation-node pgm-demo__relation-node--generic" data-graph-relation="generic">
+        <span class="pgm-demo__relation-kicker">Art. 266 · REVOGAÇÃO GENÉRICA</span>
+        <strong>“Revogadas as disposições em contrário”</strong>
+        <small>Sem leis-alvo individualizadas</small>
+      </div>
+    </div>
+
+    <div class="pgm-demo__targets-heading">
+      <span>Destinos e estado da identificação</span>
+      <small>6 leis + 1 artigo citados · 1 dispositivo alterado · cláusula geral sem alvo nomeado</small>
+    </div>
+    <ol class="pgm-demo__target-grid" aria-label="Nove destinos das relações descritas na LC 258/2024">
+      {% for item in references %}
+      <li class="pgm-demo__target-node pgm-demo__target-node--{{ item.state }}" data-graph-target="express-{{ item.roman|lower }}" data-graph-relation-target="express" data-sapl-status="{{ item.sapl_registry.status }}">
+        <span class="pgm-demo__target-index">Art. 260 · Inciso {{ item.roman }}</span>
+        <span class="pgm-demo__edge-label">Revogação expressa</span>
+        <h3>{{ item.citation }}</h3>
+        {% if item.state == "candidate" %}
+          <span class="pgm-demo__target-state">PDF candidato correspondente</span>
+          <p>Identidade textual coincide por espécie, número e ano; o documento e sua edição seguem pendentes de revisão.</p>
+          <a href="{{ item.pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir PDF no acervo{% if item.page %}, p. {{ item.page }}{% endif %}</a>
+          <small>{{ item.document.original_filename }}</small>
+        {% elif item.state == "identity_conflict" %}
+          <span class="pgm-demo__target-state">Conflito de espécie normativa</span>
+          <p>A lista cita <strong>{{ item.expected_type_display }}</strong>, mas o arquivo encontrado tem outra identidade candidata. Não associamos os atos automaticamente.</p>
+          {% for conflict in item.conflicts %}<a href="{{ conflict.pdf_url }}" target="_blank" rel="noopener noreferrer">Inspecionar candidato identificado como {{ conflict.candidate_type }}</a><small>{{ conflict.document.original_filename }}</small>{% endfor %}
+        {% else %}
+          <span class="pgm-demo__target-state">PDF não localizado neste lote QA</span>
+          <p>O Art. 260 cita este ato, mas não há documento local com identidade correspondente disponível para cotejo.</p>
+        {% endif %}
+        {% if item.sapl_registry.records %}
+        <details class="pgm-demo__sapl-evidence">
+          <summary aria-label="Abrir detalhes da consulta cadastral ao SAPL">
+            <span class="pgm-demo__sapl-date">Catálogo SAPL · {{ item.sapl_registry.checked_on }}</span>
+            {% if item.sapl_registry.status == "exact_identity_candidate" %}
+              <span class="pgm-demo__sapl-status">1 ficha candidata</span>
+            {% elif item.sapl_registry.status == "species_conflict" %}
+              <span class="pgm-demo__sapl-status">Conflito de espécie</span>
+            {% elif item.sapl_registry.status == "ambiguous" %}
+              <span class="pgm-demo__sapl-status">{{ item.sapl_registry.records|length }} fichas · ambíguo</span>
+            {% endif %}
+          </summary>
+          <div class="pgm-demo__sapl-details">
+          {% if item.sapl_registry.status == "exact_identity_candidate" %}
+            <strong>Espécie, número e ano coincidem no cadastro SAPL</strong>
+            <p>É uma correspondência cadastral candidata; não confirma que esta seja a edição citada nem que a revogação produziu efeitos.</p>
+          {% elif item.sapl_registry.status == "species_conflict" %}
+            <strong>Conflito de espécie no cadastro SAPL</strong>
+            <p>A consulta encontrou {{ item.sapl_registry.records.0.type_display }} nº {{ item.sapl_registry.records.0.number }}/{{ item.sapl_registry.records.0.year }}, mas a referência do Art. 260 indica outra espécie. Não associamos os registros.</p>
+          {% elif item.sapl_registry.status == "ambiguous" %}
+            <strong>Mais de uma ficha coincide no cadastro SAPL</strong>
+            <p>{{ item.sapl_registry.records|length }} fichas têm a mesma espécie, número e ano. Nenhuma foi escolhida automaticamente.</p>
+          {% endif %}
+          {% for record in item.sapl_registry.records %}
+            {% if record.url %}<a href="{{ record.url }}" target="_blank" rel="noopener noreferrer">Inspecionar ficha SAPL #{{ record.sapl_id }} · {{ record.type_display }} nº {{ record.number }}/{{ record.year }}</a>{% endif %}
+          {% endfor %}
+          </div>
+        </details>
+        {% endif %}
+      </li>
+      {% endfor %}
+      <li class="pgm-demo__target-node pgm-demo__target-node--amendment pgm-demo__other-event" data-graph-target="amendment-art14" data-graph-relation-target="amendment">
+        <span class="pgm-demo__target-index">Art. 261 · DISPOSITIVO ALTERADO</span>
+        <span class="pgm-demo__edge-label pgm-demo__edge-label--amendment">Alteração de redação</span>
+        <h3>LC nº 208/2022, Art. 14</h3>
+        <p>Alvo indicado expressamente pelo Art. 261; relação distinta das revogações do Art. 260.</p>
+      </li>
+      <li class="pgm-demo__target-node pgm-demo__target-node--generic pgm-demo__other-event" data-graph-target="generic-unidentified" data-graph-relation-target="generic">
+        <span class="pgm-demo__target-index">Art. 266 · DESTINO NÃO INDIVIDUALIZADO</span>
+        <span class="pgm-demo__edge-label pgm-demo__edge-label--generic">Cláusula geral</span>
+        <h3>“Disposições em contrário”</h3>
+        <p>A cláusula não nomeia leis específicas. O grafo não infere outros alvos nem desenha relações individualizadas.</p>
+      </li>
+    </ol>
+    </div>
+  </section>
+
+  <section class="pgm-demo__evidence" aria-labelledby="pgm-evidence-title">
+    <div><span class="workspace-eyebrow">Trecho que fundamenta as sete referências</span><h2 id="pgm-evidence-title">Evidência do Art. 260</h2></div>
+    <article class="pgm-demo__quote">
+      <div><strong>LC nº 258/2024 · Art. 260</strong><span>Extração {{ source_extraction.id }} · revisão {{ source_document.get_review_status_display|lower }}</span></div>
+      <blockquote>{{ source_quote }}</blockquote>
+      <a href="{{ source_pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir trecho no documento original{% if source_page %} (p. {{ source_page }}){% endif %}</a>
+    </article>
+  </section>
+
+  <section class="pgm-demo__transition" aria-labelledby="pgm-transition-title">
+    <h2 id="pgm-transition-title">O que o grafo ainda não responde</h2>
+    <p>Antes de tratar qualquer aresta como efeito jurídico, é preciso conferir cada ato citado em fonte oficial, sua publicação e vigência, eventuais republicações e alterações posteriores. Também é necessário modelar dispositivos — não apenas documentos — e revisar as relações por pessoa autorizada.</p>
+    <p>Um caso concreto ainda exigiria a data relevante e a redação aplicável nessa data. A LC nº 258/2024, Art. 262, traz uma regra de transição para certos processos de licenciamento; ela deve ser lida junto do histórico oficial, não inferida deste desenho.</p>
+    <a class="workspace-button workspace-button-secondary" href="{% url 'workspace:explore' %}">Voltar à exploração normativa</a>
+  </section>
+</main>
+{% endblock %}

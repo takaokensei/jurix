@@ -9,12 +9,13 @@ Provides centralized and consistent serialization for:
 
 import logging
 import re
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 from urllib.parse import urlparse, urlsplit, urlunsplit
 
 from django.conf import settings
 from django.urls import NoReverseMatch, reverse
+from django.utils.dateparse import parse_datetime
 
 from src.apps.legislation.source_urls import (
     canonical_norma_url,
@@ -32,6 +33,18 @@ _ARCHIVE_NORMA_LABEL = re.compile(
     r"(?:n[º°o.]?\s*)?(?P<number>[\d.]+)/(?P<year>\d{4})$",
     re.IGNORECASE,
 )
+
+
+def _safe_consulted_at(value: object) -> str | None:
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, str):
+        parsed = parse_datetime(value)
+    else:
+        return None
+    if parsed is None or parsed.utcoffset() is None:
+        return None
+    return parsed.isoformat(timespec="seconds")
 
 
 def _legacy_archive_document_id(source: dict[str, Any], norma_ref: str) -> str | None:
@@ -160,6 +173,12 @@ def _safe_temporal_version(value: object) -> dict[str, Any] | None:
         "version_hash": version_hash.lower(),
         "policy": str(value.get("policy") or "")[:80],
     }
+    snapshot_id = value.get("snapshot_id")
+    if isinstance(snapshot_id, int) and not isinstance(snapshot_id, bool) and snapshot_id > 0:
+        result["snapshot_id"] = snapshot_id
+    status_note = value.get("status_note")
+    if isinstance(status_note, str) and status_note.strip():
+        result["status_note"] = " ".join(status_note.split())[:240]
     if re.fullmatch(r"[a-fA-F0-9]{64}", input_hash):
         result["input_hash"] = input_hash.lower()
     provenance = value.get("provenance")
@@ -182,8 +201,15 @@ def _safe_graph_relation(value: object) -> dict[str, Any] | None:
     result = {
         key: str(value[key])[:160]
         for key in (
-            "event_id", "intent", "role", "label", "review_status",
-            "effective_status", "effective_on", "publication_on", "resolution",
+            "event_id",
+            "intent",
+            "role",
+            "label",
+            "review_status",
+            "effective_status",
+            "effective_on",
+            "publication_on",
+            "resolution",
         )
         if value.get(key) is not None
     }
@@ -343,9 +369,7 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
             "norma_ref": norma_ref_str,
             "norma_id": norma_id,
             "dispositivo_ref": disp_identifier,
-            "citation_id": _citation_identity(
-                norma_id, disp_id, structural_key, temporal_version
-            ),
+            "citation_id": _citation_identity(norma_id, disp_id, structural_key, temporal_version),
             "citation_label": citation_label,
             "retrieval_strategy": source.get("retrieval_strategy"),
             "evidence_scope": source.get("evidence_scope"),
@@ -368,7 +392,12 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
 
     # Fallback for cached or dict-only source
     disp_id = source.get("dispositivo_id") or source.get("id")
-    disp_texto = str(source.get("texto") or source.get("text") or source.get("full_text", "") or "")
+    # ``text`` may already be a presentation preview (e.g. 200 chars) while
+    # ``full_text`` retains the retrieved device. Keep evidence expansion and
+    # citation-copy payloads complete when cached/streamed sources are reserialized.
+    disp_texto = str(
+        source.get("full_text") or source.get("texto") or source.get("text", "") or ""
+    )
     norma_ref = _normalize_norma_ref(
         source.get("norma") or source.get("norma_ref", "Fonte anexada")
     )
@@ -378,10 +407,15 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
 
     dispositivo_ref = source.get("dispositivo_ref", norma_ref)
     norma_id = source.get("norma_id")
-    structural_key = str(source.get("dispositivo_structural_key") or source.get("structural_key") or "")
+    structural_key = str(
+        source.get("dispositivo_structural_key") or source.get("structural_key") or ""
+    )
     temporal_version = _safe_temporal_version(source.get("temporal_version"))
-    citation_label = source.get("citation_label") or _legal_citation_label(norma_ref, dispositivo_ref)
+    citation_label = source.get("citation_label") or _legal_citation_label(
+        norma_ref, dispositivo_ref
+    )
     is_local_archive = source.get("evidence_scope") == "isolated_qa_archive"
+    source_kind = source.get("source_kind") or ("archive" if is_local_archive else None)
     source_id = source.get("source_id") if is_local_archive else None
     if is_local_archive and not source_id:
         source_id = _legacy_archive_document_id(source, norma_ref)
@@ -409,14 +443,50 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
             )
         except (NoReverseMatch, TypeError, ValueError):
             local_pdf_url = None
+    document_sha256 = source.get("document_sha256") or source.get("content_sha256")
+    if not isinstance(document_sha256, str) or not re.fullmatch(
+        r"[a-fA-F0-9]{64}", document_sha256
+    ):
+        document_sha256 = None
+    page = source.get("page")
+    if not isinstance(page, int) and isinstance(source.get("page_index"), int):
+        page = source["page_index"] + 1
+    if not isinstance(page, int) or page < 1:
+        page = None
+    span = source.get("span")
+    if not isinstance(span, dict):
+        start, end = source.get("start_pos"), source.get("end_pos")
+        span = (
+            {"start": start, "end": end}
+            if isinstance(start, int) and isinstance(end, int)
+            else None
+        )
+    if isinstance(span, dict):
+        start, end = span.get("start"), span.get("end")
+        span = (
+            {"start": start, "end": end}
+            if isinstance(start, int) and isinstance(end, int) and 0 <= start <= end
+            else None
+        )
     return {
         "id": disp_id,
         "text": disp_texto[:200] + ("..." if len(disp_texto) > 200 else ""),
         "full_text": disp_texto,
+        "evidence_text": str(source.get("evidence_text") or disp_texto),
+        "evidence_excerpts": [
+            str(excerpt)[:1600]
+            for excerpt in source.get("evidence_excerpts", [])[:4]
+            if isinstance(excerpt, str) and excerpt.strip()
+        ]
+        if isinstance(source.get("evidence_excerpts"), list)
+        else [],
         "similarity_score": similarity,
         "relevance_band": _relevance_band(similarity),
         "contribution": contribution,
         "source_type": source_type,
+        "source_kind": source_kind,
+        "matter_status": source.get("matter_status"),
+        "matter_result": source.get("matter_result"),
         "distance": distance,
         "match_kind": source.get("match_kind"),
         "norma_ref": norma_ref,
@@ -425,6 +495,11 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
         "citation_id": citation_id,
         "citation_label": citation_label,
         "source_id": str(source_id) if source_id else None,
+        "document_id": str(source_id) if source_id else None,
+        "document_sha256": document_sha256.lower() if document_sha256 else None,
+        "page": page,
+        "span": span,
+        "span_basis": str(source.get("span_basis") or "")[:80] or None,
         "retrieval_strategy": source.get("retrieval_strategy"),
         "evidence_scope": source.get("evidence_scope"),
         "synthetic_fixture": source.get("synthetic_fixture") is True,
@@ -434,6 +509,8 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
         "local_pdf_url": local_pdf_url,
         "sapl_url": canonical_sapl_url(source.get("sapl_url"), source.get("sapl_id")),
         "data_publicacao": source.get("data_publicacao"),
+        "consulted_at": _safe_consulted_at(source.get("consulted_at")),
+        "status_label": source.get("status_label"),
         "data_vigencia": source.get("data_vigencia"),
         "temporal_status": source.get("temporal_status", "data_indeterminada"),
         "dispositivo_id": disp_id,
@@ -489,11 +566,84 @@ def select_answer_citation_sources(
                     if str(index).isdigit() and int(index) > 0
                 )
 
-    return [
-        source
-        for position, source in enumerate(sources or [], start=1)
-        if int(source.get("citation_index") or position) in cited_indexes
-    ]
+    claim_excerpts: dict[str, list[str]] = {}
+    for claim in (grounding or {}).get("claims", []):
+        if not isinstance(claim, dict):
+            continue
+        claim_text = re.sub(r"\s+", " ", str(claim.get("text") or "")).strip()
+        citation_ids = claim.get("citation_ids", [])
+        if not claim_text or not isinstance(citation_ids, list):
+            continue
+        for citation_id in citation_ids:
+            if isinstance(citation_id, str) and citation_id:
+                claim_excerpts.setdefault(citation_id, []).append(claim_text)
+
+    selected = []
+    for position, source in enumerate(sources or [], start=1):
+        if int(source.get("citation_index") or position) not in cited_indexes:
+            continue
+        source_copy = dict(source)
+        citation_id = source_copy.get("citation_id")
+        full_text = re.sub(
+            r"\s+",
+            " ",
+            str(source_copy.get("full_text") or source_copy.get("texto") or source_copy.get("text") or ""),
+        ).strip()
+        # A claim excerpt becomes the card preview only when it is verbatim in
+        # the cited source. Keep the full device available for expansion/export.
+        exact_excerpts = [
+            excerpt
+            for excerpt in claim_excerpts.get(citation_id, [])
+            if excerpt.casefold() in full_text.casefold()
+        ]
+        if exact_excerpts:
+            source_copy["evidence_excerpts"] = list(dict.fromkeys(exact_excerpts))[:4]
+            source_copy["evidence_text"] = " … ".join(source_copy["evidence_excerpts"])[:1600]
+            # Archive article spans can cross physical PDF pages. When a
+            # verbatim answer claim is available, resolve its own start
+            # offset against the immutable extraction page map instead of
+            # sending the reader only to the article heading's first page.
+            page_map = source_copy.get("_page_map")
+            span = source_copy.get("span")
+            body_start = span.get("text_start") if isinstance(span, dict) else None
+            raw_text = str(
+                source_copy.get("full_text")
+                or source_copy.get("texto")
+                or source_copy.get("text")
+                or ""
+            )
+            if isinstance(page_map, list) and isinstance(body_start, int):
+                for excerpt in source_copy["evidence_excerpts"]:
+                    pattern = r"\s+".join(re.escape(part) for part in excerpt.split())
+                    match = re.search(pattern, raw_text, flags=re.IGNORECASE)
+                    if not match:
+                        continue
+                    excerpt_start = body_start + match.start()
+                    excerpt_end = body_start + match.end()
+                    page_overlaps = [
+                        (
+                            max(
+                                0,
+                                min(excerpt_end, item.get("end", 0))
+                                - max(excerpt_start, item.get("start", 0)),
+                            ),
+                            item,
+                        )
+                        for item in page_map
+                        if isinstance(item, dict)
+                        and isinstance(item.get("start"), int)
+                        and isinstance(item.get("end"), int)
+                        and isinstance(item.get("page"), int)
+                        and item["page"] > 0
+                    ]
+                    best_page = max(page_overlaps, key=lambda pair: pair[0], default=(0, None))
+                    page_span = best_page[1] if best_page[0] > 0 else None
+                    if page_span:
+                        source_copy["page"] = page_span["page"]
+                        source_copy["page_index"] = page_span["page"] - 1
+                        break
+        selected.append(source_copy)
+    return selected
 
 
 def serialize_chat_session(session: Any) -> dict[str, Any]:

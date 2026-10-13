@@ -73,6 +73,25 @@ test('carrega sob demanda, agrupa vínculos e fornece uma lista HTML com painel 
   dom.window.close();
 });
 
+test('distingue vínculos pendentes e rejeitados dos confirmados', async () => {
+  const reviewFixture = {
+    ...fixture,
+    edges: [
+      { ...fixture.edges[0], review_status: 'pending' },
+      { ...fixture.edges[1], review_status: 'rejected' },
+    ],
+  };
+  const dom = await boot(async () => ({ ok: true, json: async () => reviewFixture }));
+  open(dom);
+  await settle();
+  dom.window.document.querySelector('.normative-relations__group-button').click();
+  const panelText = dom.window.document.querySelector('[data-relations-panel-content]').textContent;
+  assert.match(panelText, /Candidato pendente de revisão/);
+  assert.match(panelText, /Rejeitado; preservado para auditoria/);
+  assert.match(panelText, /não comprova efeito jurídico/);
+  dom.window.close();
+});
+
 test('Escape fecha painel e devolve foco ao controle de origem', async () => {
   const dom = await boot();
   open(dom);

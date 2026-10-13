@@ -7,6 +7,7 @@ the answer. It does not expose similarity as calibrated answer confidence.
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from typing import Any
@@ -488,7 +489,12 @@ def _norma_ref_from_source(source: dict[str, Any]) -> str:
 
 
 def _identifier_from_source(source: dict[str, Any]) -> str:
-    value = source.get("identifier") or source.get("referencia") or source.get("label")
+    value = (
+        source.get("identifier")
+        or source.get("dispositivo_ref")
+        or source.get("referencia")
+        or source.get("label")
+    )
     if value:
         return str(value)
     dispositivo = source.get("dispositivo")
@@ -656,7 +662,7 @@ def build_article_family_evidence(sources: Iterable[dict[str, Any]]) -> tuple[Ev
 
 def _normalise_citation_text(text: str) -> str:
     norm = _normalise(text)
-    norm = re.sub(r"\bn[º°o.]*\s*", "", norm)
+    norm = re.sub(r"\bn(?=\s*[º°o.])\s*[º°o.]*\s*", "", norm)
     return re.sub(r"/(?:19|20)(\d{2})\b", r"/\1", norm)
 
 
@@ -666,7 +672,7 @@ def _citation_matches(claim: Claim, evidence: Evidence) -> bool:
     ):
         return False
     if not claim.citation_refs:
-        return True
+        return _article_citation_matches(claim.text, evidence.identifier, evidence.text)
     haystack = _normalise_citation_text(
         f"{evidence.norma_ref} {evidence.identifier} {evidence.text}"
     )
@@ -686,7 +692,59 @@ def _citation_matches(claim: Claim, evidence: Evidence) -> bool:
             ):
                 continue
         return False
-    return True
+    return _article_citation_matches(claim.text, evidence.identifier, evidence.text)
+
+
+_ARTICLE_REFERENCE_RE = re.compile(
+    r"\b(?:art(?:igo)?s?\.?\s*)(\d{1,4})(?:\s*[º°o])?",
+    re.IGNORECASE,
+)
+
+
+def _article_citation_matches(
+    claim_text: str, evidence_identifier: str, evidence_text: str = ""
+) -> bool:
+    """Do not let a source for one provision validate a different cited article.
+
+    Article references inside the provision's body may point to other laws; the
+    citation must resolve against the source's own device identifier instead.
+    """
+    requested_articles = {
+        str(int(match.group(1))) for match in _ARTICLE_REFERENCE_RE.finditer(claim_text)
+    }
+    if not requested_articles:
+        return True
+    source_articles = {
+        str(int(match.group(1)))
+        for match in _ARTICLE_REFERENCE_RE.finditer(evidence_identifier or "")
+    }
+    if source_articles.intersection(requested_articles):
+        return True
+    # A reviewed amendment device can cite the target article without being
+    # that article itself. Allow this only when the excerpt explicitly performs
+    # a normative action on the exact cited article (not a casual cross-reference).
+    evidence_norm = unicodedata.normalize("NFKD", evidence_text or "")
+    evidence_norm = "".join(char for char in evidence_norm if not unicodedata.combining(char)).lower()
+    for article in requested_articles:
+        target = re.escape(article)
+        action_matches = list(
+            re.finditer(
+                r"\b(?:de-se\s+nova\s+redacao\s+ao|altera(?:r|ndo|cao)?|"
+                r"revoga(?:r|ndo|cao)?|acrescenta(?:r|ndo|cao)?|"
+                r"suprime(?:r|ndo|ssao)?|renumera(?:r|ndo|cao)?)\b",
+                evidence_norm,
+            )
+        )
+        target_pattern = re.compile(
+            rf"\bart(?:igo)?\.?\s*{target}(?:\s*[º°o])?\b", re.IGNORECASE
+        )
+        if any(
+            (match := target_pattern.search(evidence_norm, action.end()))
+            and match.start() - action.end() <= 160
+            for action in action_matches
+        ):
+            return True
+    return False
 
 
 def _numeric_tokens(text: str) -> set[str]:

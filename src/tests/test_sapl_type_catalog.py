@@ -123,3 +123,43 @@ def test_pagination_url_must_remain_inside_configured_sapl_api():
     with pytest.raises(ValueError, match="escaped"):
         client.validate_pagination_url("https://attacker.test/api/norma/")
     client.close()
+
+
+def test_sapl_type_detail_uses_instance_local_catalog_endpoint(monkeypatch):
+    client = SaplAPIClient(base_url="https://sapl.test/api")
+    requests = []
+    monkeypatch.setattr(
+        client,
+        "_make_request",
+        lambda endpoint, params=None: requests.append((endpoint, params))
+        or {"id": 1, "descricao": "LEI ORDINÁRIA", "sigla": "LEI"},
+    )
+
+    assert client.fetch_norma_type_by_id(1)["descricao"] == "LEI ORDINÁRIA"
+    assert requests == [("/norma/tiponormajuridica/1/", None)]
+    with pytest.raises(ValueError, match="positive integer"):
+        client.fetch_norma_type_by_id(0)
+    client.close()
+
+
+def test_numeric_payload_type_is_enriched_from_sapl_without_mutating_source():
+    from src.apps.ingestion.sapl_sync import _with_official_type_label
+
+    class Client:
+        calls = []
+
+        def fetch_norma_type_by_id(self, type_id):
+            self.calls.append(type_id)
+            return {"id": type_id, "descricao": "LEI ORDINÁRIA", "sigla": "LEI"}
+
+    client = Client()
+    payload = {"id": 10, "tipo": 1, "ano": 2026}
+    enriched = _with_official_type_label(payload, client)
+
+    assert payload["tipo"] == 1
+    assert enriched["_jurix_raw_tipo"] == 1
+    assert enriched["tipo"] == {"id": 1, "descricao": "LEI ORDINÁRIA", "sigla": "LEI"}
+    assert classify_sapl_type(enriched["tipo"])["public_label"] == "Lei"
+    assert client.calls == [1]
+    _with_official_type_label({"id": 11, "tipo": 1}, client)
+    assert client.calls == [1]

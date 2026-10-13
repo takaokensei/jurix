@@ -11,13 +11,20 @@ from django.conf import settings
 
 from .sapl_corpus import SaplCorpusMixin
 from .sapl_download import SaplDownloadMixin
+from .sapl_materias import SaplMateriasMixin
 from .sapl_normas import SaplNormasMixin
 from .sapl_transport import SaplTransportMixin
 
 logger = logging.getLogger(__name__)
 
 
-class SaplAPIClient(SaplTransportMixin, SaplNormasMixin, SaplCorpusMixin, SaplDownloadMixin):
+class SaplAPIClient(
+    SaplTransportMixin,
+    SaplNormasMixin,
+    SaplMateriasMixin,
+    SaplCorpusMixin,
+    SaplDownloadMixin,
+):
     DEFAULT_BASE_URL = getattr(
         settings, "SAPL_BASE_URL", os.getenv("SAPL_BASE_URL", "https://sapl.natal.rn.leg.br/api")
     )

@@ -17,7 +17,7 @@
 .jurix-sidebar .chat-session-main { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; line-height: 1.5; }
 .jurix-session-pinned-mark { display: inline-grid; flex: 0 0 auto; place-items: center; color: var(--figma-blue-light); }
 .jurix-session-pinned-mark svg { display: block; width: 13px; height: 13px; }
-.jurix-session-menu-trigger { display: inline-grid; flex: 0 0 34px; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 7px; color: var(--figma-text-muted); background: transparent; font: 600 22px/1 var(--figma-font-ui, Inter, system-ui, sans-serif); cursor: pointer; opacity: .76; }
+.jurix-session-menu-trigger { display: inline-grid; flex: 0 0 44px; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 9px; color: var(--figma-text-muted); background: transparent; font: 600 22px/1 var(--figma-font-ui, Inter, system-ui, sans-serif); cursor: pointer; opacity: .76; }
 .jurix-session-menu-trigger:hover, .jurix-session-menu-trigger:focus-visible { color: var(--figma-text-white); background: var(--figma-bg-card); opacity: 1; }
 .jurix-session-menu { position: fixed; z-index: 1200; min-width: 188px; padding: 5px; border: 1px solid var(--figma-border); border-radius: 12px; background: var(--figma-bg-surface); box-shadow: 0 16px 40px rgb(0 0 0 / 35%); animation: jurix-menu-enter 120ms ease-out both; }
 .jurix-session-menu-item { display: flex; align-items: center; width: 100%; min-height: 40px; padding: 8px 10px; border: 0; border-radius: 7px; color: var(--figma-text-body); background: transparent; font: inherit; text-align: left; cursor: pointer; }
@@ -43,6 +43,7 @@
 @keyframes jurix-menu-enter { from { opacity: 0; transform: translateY(4px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .jurix-sidebar .chat-session-item:hover .jurix-session-menu-trigger, .jurix-session-menu-trigger:focus-visible { opacity: 1; }
 .jurix-recent-chat:hover, .jurix-sidebar .chat-session-item:hover { background: var(--figma-bg-card); color: var(--figma-text-white); }
+.jurix-sidebar .chat-session-item.session-created-highlight { background: color-mix(in srgb, var(--figma-blue-primary, #2563eb) 16%, var(--figma-bg-card, #111827)); box-shadow: inset 0 0 0 1px var(--figma-blue-primary, #2563eb); transition: background-color 180ms ease, box-shadow 180ms ease; }
 .jurix-sidebar :focus-visible { outline: 2px solid var(--figma-blue-light); outline-offset: 2px; }
 .jurix-palette-close { width: 44px; height: 44px; flex: 0 0 44px; border: 0; border-radius: 9px; background: transparent; color: var(--figma-text-muted); font-size: 24px; cursor: pointer; }
 .jurix-palette-close:hover { background: var(--figma-bg-card); color: var(--figma-text-white); }
@@ -54,4 +55,8 @@
   html[data-sidebar-collapsed="true"] .jurix-sidebar .workspace-brand > span:not(.workspace-logo), html[data-sidebar-collapsed="true"] .jurix-sidebar .workspace-new-action > span, html[data-sidebar-collapsed="true"] .jurix-sidebar .workspace-nav-item > span { display: none; }
 }
 @media (max-width: 900px) { .figma-theme .jurix-sidebar { width: 240px; padding: 18px 14px; } }
-@media (prefers-reduced-motion: reduce) { .jurix-session-menu, .jurix-sidebar-status { animation: none; } }
+@media (min-width: 901px) and (max-height: 800px) {
+  .figma-theme .workspace-nav { flex: 1 1 220px; overflow-y: auto; overscroll-behavior: contain; }
+  .figma-theme .jurix-sidebar-recents { flex: 1 1 140px; }
+}
+@media (prefers-reduced-motion: reduce) { .jurix-session-menu, .jurix-sidebar-status { animation: none; } .jurix-sidebar .chat-session-item.session-created-highlight { transition: none; } }

@@ -40,8 +40,22 @@ def validate_cases(rows: list[dict], *, max_cases: int = MAX_CASES) -> list[dict
             raise ValueError(f"case {row['case_id']}: query is required")
         if row.get("human_evidence_review") is True:
             raise ValueError("technical collector refuses to mark cases as human-reviewed")
+        review = row.get("human_review")
+        if isinstance(review, dict) and review.get("review_kind") == "human":
+            raise ValueError("technical collector refuses pre-adjudicated human gold")
         if row.get("synthetic_qa_fixture") is not True:
             raise ValueError("technical collector requires explicitly synthetic QA fixtures")
+        relation_chain_keys = row.get("relation_chain_keys", [])
+        if (
+            not isinstance(relation_chain_keys, list)
+            or any(not isinstance(key, str) or not key.strip() for key in relation_chain_keys)
+            or len(set(relation_chain_keys)) != len(relation_chain_keys)
+        ):
+            raise ValueError(f"case {row['case_id']}: relation_chain_keys must be unique nonempty strings")
+        for identity_field in ("norma_key", "document_key"):
+            value = row.get(identity_field)
+            if value is not None and (not isinstance(value, str) or not value.strip()):
+                raise ValueError(f"case {row['case_id']}: {identity_field} must be a nonempty stable key")
         as_of = row.get("as_of")
         if as_of is not None:
             try:
@@ -54,7 +68,16 @@ def validate_cases(rows: list[dict], *, max_cases: int = MAX_CASES) -> list[dict
             "expected_citation_ids": row.get("expected_citation_ids", []),
             "expected_versions": row.get("expected_versions", {}),
             "expected_abstain": row.get("expected_abstain", False),
-            "relation_chain_keys": row.get("relation_chain_keys", []),
+            "relation_chain_keys": relation_chain_keys,
+            "norma_key": row.get("norma_key"),
+            "document_key": row.get("document_key"),
+            "condition_of_use": row.get("condition_of_use", "unknown"),
+            "human_review": {
+                "review_kind": "synthetic",
+                "status": "pending",
+                "reviewer_id": None,
+                "reviewed_at": None,
+            },
             "human_evidence_review": False,
         })
     return validated
@@ -328,6 +351,11 @@ def _prediction_for_run(
         "abstained": (done.get("grounded") is False)
         or done.get("reason_code") == "insufficient_evidence",
         "human_evidence_review": False,
+        "human_review": case["human_review"],
+        "norma_key": case.get("norma_key"),
+        "document_key": case.get("document_key"),
+        "relation_chain_keys": case["relation_chain_keys"],
+        "condition_of_use": case["condition_of_use"],
         "ttft_ms": first_chunk_ms if first_chunk_ms is not None else round((time.perf_counter() - started) * 1000),
         "final_ms": int(timings.get("total_before_done") or round((time.perf_counter() - started) * 1000)),
         "retrieval_ms": timings.get("retrieval"),

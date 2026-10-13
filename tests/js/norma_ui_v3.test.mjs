@@ -54,6 +54,16 @@ test('light theme gives the assistant source-summary control semantic foreground
   assert.match(source, /:root\[data-theme="light"\] \.jurix-sources-pill-action\s*\{[^}]*color:\s*var\(--figma-blue-primary\)/);
 });
 
+test('source drawer uses readable legal excerpts and minimum 44px action targets', async () => {
+  const source = await read('src/apps/core/static/css/jurix-rag.css');
+  assert.match(source, /\.jurix-rag-source \.source-snippet\s*\{[^}]*font-size:\s*0\.875rem/);
+  assert.match(source, /\.jurix-rag-source__details p\s*\{[^}]*font-size:\s*0\.875rem/);
+  assert.match(source, /\.jurix-rag-source__details summary\s*\{[^}]*min-height:\s*2\.75rem/);
+  assert.match(source, /\.jurix-rag-source__open,\s*\.jurix-rag-source__copy\s*\{[^}]*min-height:\s*2\.75rem/);
+  assert.match(source, /\.jurix-rag-source__meta-row\s*\{[^}]*font-size:\s*0\.75rem/);
+  assert.match(source, /\.figma-theme \.jurix-rag-source__contribution\s*\{[^}]*font-size:\s*0\.8125rem/);
+});
+
 test('norm device expansion preserves full text and exposes a reversible accessible state', async () => {
   const template = await read('src/apps/legislation/templates/legislation/norma_detail.html');
   const controller = await read('src/apps/core/static/js/jurix-legal-detail.js');
@@ -75,6 +85,11 @@ test('workspace pages opt into document scrolling and icon-only navigation keeps
   assert.match(workspace, /\.workspace-shell\.is-sidebar-collapsed\s*\{\s*grid-template-columns:\s*72px/);
   assert.match(await read('src/apps/legislation/templates/legislation/workspace/_sidebar.html'), /aria-label="Normas" title="Normas"/);
   assert.doesNotMatch(detail, /class="dispositivo-tipo badge"/);
+});
+
+test('assistant cache-busts the workspace CSS build that contains its shared shell', async () => {
+  const template = await read('src/apps/legislation/templates/legislation/chatbot.html');
+  assert.match(template, /css\/workspace\.css['"] %\}\?v=20261009-auth-card-box-sizing1/);
 });
 
 test('secondary norm actions remain discoverable when the details disclosure is closed on desktop', async () => {
@@ -120,6 +135,7 @@ test('norma list stylesheet contains mobile, reduced motion and print rules', as
   const source = await read('src/apps/core/static/css/jurix-norma-list.css');
   assert.match(source, /\[data-theme="light"\] \.jurix-norma-status \{\s*color: var\(--figma-green\);/);
   assert.match(source, /@media \(max-width: 720px\)/);
+  assert.match(source, /\.jurix-archive-candidates-heading > div,[\s\S]*?\.jurix-sapl-catalog-heading > div \{ width: 100%; min-width: 0; \}/);
   assert.match(source, /prefers-reduced-motion/);
   assert.match(source, /@media print/);
   assert.match(source, /\.jurix-norma-clear\[hidden\] \{ display: none !important; \}/);
@@ -131,9 +147,9 @@ test('norma template exposes semantic filters and no hardcoded suggestion cards'
   assert.match(source, /name="ano"/);
   assert.match(source, /name="ordenar"/);
   assert.match(source, /jurix-norma-grid/);
-  assert.match(source, /placeholder="Número, tipo ou ementa…"/);
+  assert.match(source, /placeholder="Número ou tema"/);
   assert.match(source, /jurix-norma-list\.js['"] %\}\?v=20261002-exact-reference2/);
-  assert.match(source, /jurix-norma-list\.css['"] %\}\?v=20261008-archive-anchor1/);
+  assert.match(source, /jurix-norma-list\.css['"] %\}\?v=20261013-global-archive-search2/);
 });
 
 test('legal search placeholder stays concise while examples remain available in the empty state', async () => {
@@ -156,6 +172,14 @@ test('legal search follows query-filter-submit reading order and localizes resul
   assert.match(template, /search_mode == 'lexical' %}Busca textual/);
   assert.match(styles, /\.workspace-search-panel > \.workspace-button \{ grid-column:2; grid-row:1;/);
   assert.match(styles, /@media \(max-width:900px\)[\s\S]*?\.workspace-search-panel > \.workspace-button \{ grid-column:1; grid-row:3;/);
+});
+
+test('foundation checker styles only a no-change result scoped to reviewed corpus coverage', async () => {
+  const styles = await read('src/apps/core/static/css/workspace.css');
+  const template = await read('src/apps/legislation/templates/legislation/workspace/foundation_check.html');
+  assert.match(styles, /\.foundation-pill\[data-status="unchanged_in_checked_scope"\]/);
+  assert.doesNotMatch(styles, /\.foundation-pill\[data-status="unchanged"\]/);
+  assert.match(template, /ref\.status == 'unchanged_in_checked_scope'/);
 });
 
 test('chat sidebar exposes the same quick-search action as the workspace shell', async () => {
@@ -202,7 +226,7 @@ test('workspace sidebar keeps utility actions visible while navigation can scrol
   assert.match(source, /\.workspace-sidebar\s*\{[^}]*box-sizing:\s*border-box;[^}]*overflow:\s*hidden;/);
   assert.match(source, /\.workspace-nav\s*\{[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/);
   assert.match(source, /\.workspace-sidebar-bottom\s*\{[^}]*flex:\s*0\s+0\s+auto;/);
-  assert.match(template, /css\/workspace\.css['"] %\}\?v=20261007-touch-targets1/);
+  assert.match(template, /css\/workspace\.css['"] %\}\?v=20261009-auth-card-box-sizing1/);
 });
 
 test('assistant and workspace navigation share accessible outline SVG icons', async () => {
@@ -255,8 +279,9 @@ test('changed assistant and workspace visual assets use cache-busted URLs', asyn
   assert.match(chat, /css\/jurix-rag\.css['"] %\}\?v=/);
   assert.match(chat, /js\/jurix-rag\.js['"] %\}\?v=/);
   assert.match(chat, /js\/jurix-chat-renderer\.js['"] %\}\?v=/);
+  assert.match(chat, /js\/jurix-rag\.js['"] %\}\?v=20261012-sources-drawer-cache1/);
   assert.match(chat, /js\/chat\.js['"] %\}\?v=/);
-  assert.match(chat, /js\/chat\.js['"] %\}\?v=20261007-answer-pending1/);
+  assert.match(chat, /js\/chat\.js['"] %\}\?v=20261013-no-source-answer-scroll1/);
   assert.match(workspace, /css\/jurix-figma\.css['"] %\}\?v=/);
 });
 
@@ -472,7 +497,7 @@ test('norm list mobile title keeps comfortable line spacing when it wraps', asyn
   const styles = await read('src/apps/core/static/css/jurix-norma-list.css');
   const template = await read('src/apps/legislation/templates/legislation/norma_list.html');
   assert.equal((styles.match(/\.jurix-norma-title \{ font-size: clamp\(1\.875rem, 8vw, 2rem\); line-height: 1\.15; \}/g) || []).length, 2);
-  assert.match(template, /jurix-norma-list\.css['"] %\}\?v=20261008-archive-anchor1/);
+  assert.match(template, /jurix-norma-list\.css['"] %\}\?v=20261013-global-archive-search2/);
 });
 
 test('norm library uses a compact non-repetitive hero and one post-search summary block', async () => {
@@ -520,7 +545,7 @@ test('destructive workspace states use theme-aware semantic danger tokens', asyn
   assert.match(workspaceStyles, /\.workspace-button-danger[^}]*background:\s*var\(--figma-red-action\)/);
   assert.match(workspaceStyles, /\.workspace-confirm-icon[^}]*color:\s*var\(--figma-red-soft\)/);
   assert.match(workspaceStyles, /\.workspace-confirm-error[^}]*color:\s*var\(--figma-red\)/);
-  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20261007-touch-targets1/);
+  assert.match(workspace, /css\/workspace\.css['"] %\}\?v=20261009-auth-card-box-sizing1/);
   for (const value of ['#fff', '#b42332', '#a92332', '#fecaca', '#fca5a5']) {
     assert.doesNotMatch(workspaceStyles.toLowerCase(), new RegExp(value.replace('#', '\\#')));
   }

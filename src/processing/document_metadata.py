@@ -304,6 +304,56 @@ class EpigraphMetadata:
     issues: tuple[str, ...]
 
 
+def compare_identity_to_epigraph(identity: Any, epigraph: Any) -> dict[str, Any]:
+    """Report a filename/record identity conflict without silently resolving it.
+
+    Only a single, fully identified epigraph is comparable. Missing or
+    ambiguous observations remain unresolved rather than being treated as a
+    match. The function never changes either candidate.
+    """
+    if not isinstance(identity, dict) or not isinstance(epigraph, dict):
+        return {"status": "unresolved", "fields": []}
+    candidates = epigraph.get("candidates")
+    if not isinstance(candidates, list) or len(candidates) != 1:
+        return {"status": "unresolved", "fields": []}
+    candidate = candidates[0]
+    if not isinstance(candidate, dict):
+        return {"status": "unresolved", "fields": []}
+
+    expected_type = canonical_type(str(identity.get("type") or ""))
+    observed_type = canonical_type(str(candidate.get("type_key") or ""))
+    expected_number = normalize_document_number(identity.get("number"))
+    observed_number = normalize_document_number(candidate.get("number"))
+    expected_year = str(identity.get("year") or "")
+    observed_year = str(candidate.get("year") or "")
+    fields = []
+    compared = 0
+    if expected_type and observed_type:
+        compared += 1
+    if expected_type and observed_type and expected_type != observed_type:
+        fields.append("type")
+    if expected_number and observed_number:
+        compared += 1
+    if expected_number and observed_number and expected_number != observed_number:
+        fields.append("number")
+    if expected_year and observed_year:
+        compared += 1
+    if expected_year and observed_year and expected_year != observed_year:
+        fields.append("year")
+    if fields:
+        status = "conflict"
+    elif compared == 3:
+        status = "match"
+    else:
+        status = "unresolved"
+    return {
+        "status": status,
+        "fields": fields,
+        "filename_identity": {"type": expected_type, "number": expected_number, "year": expected_year},
+        "epigraph_identity": {"type": observed_type, "number": observed_number, "year": observed_year},
+    }
+
+
 def parse_initial_epigraphs(pages: Iterable[str], *, max_pages: int = 3) -> EpigraphMetadata:
     """Read only heading-shaped epigraphs from bounded initial PDF pages."""
     found: list[EpigraphCandidate] = []

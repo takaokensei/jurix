@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import time
 from datetime import date
+from pathlib import Path
 
 from celery import shared_task
 from celery.result import allow_join_result
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db.models import Q
+from django.db.models import F, Q
 from django.utils import timezone
 
 from src.apps.ingestion.ner_tasks import extract_entities_task, generate_embedding_task
@@ -19,6 +21,7 @@ from src.apps.legislation.document_models import DocumentoNormativo, ExtracaoDoc
 from src.apps.legislation.models import Dispositivo, Norma
 from src.apps.operations.models import NormativeWorkItem
 from src.processing.cache_service import get_cache_service
+from src.processing.document_extraction import extract_pdf_document, normalize_extracted_text
 from src.processing.document_segmentation import segment_document_extraction
 from src.processing.normative_projection import persist_projection, project_norma_as_of
 from src.processing.target_reconciliation import reconcile_unresolved_event_targets
@@ -34,6 +37,7 @@ from .normative_impact import (
     resolve_normative_review,
     safe_norma_revision,
 )
+from .task_support import _configure_tesseract
 
 
 def _run_inline_task(task, *args):
@@ -50,6 +54,126 @@ def _run_inline_task(task, *args):
 
 class StaleNormativeSource(RuntimeError):
     """The norm changed after this queue item was created."""
+
+
+def _stage_progress(item: NormativeWorkItem, stage: str) -> dict:
+    result = item.result if isinstance(item.result, dict) else {}
+    stages = result.get("stage_progress")
+    progress = stages.get(stage) if isinstance(stages, dict) else None
+    if not isinstance(progress, dict) or progress.get("source_revision") != item.source_revision:
+        return {"source_revision": item.source_revision}
+    return dict(progress)
+
+
+def _reusable_ocr_pages(extraction: ExtracaoDocumento) -> dict[int, tuple[str, str]]:
+    """Return hash-verified OCR spans and preserve their original extraction hash."""
+    legal_text = extraction.legal_text or ""
+    reusable: dict[int, tuple[str, str]] = {}
+    for span in extraction.page_map_json or []:
+        if not isinstance(span, dict) or span.get("method") != "ocr":
+            continue
+        page = span.get("page")
+        start, end = span.get("start"), span.get("end")
+        if (
+            not isinstance(page, int)
+            or page < 1
+            or not isinstance(start, int)
+            or not isinstance(end, int)
+            or not 0 <= start < end <= len(legal_text)
+        ):
+            continue
+        text = normalize_extracted_text(legal_text[start:end])
+        quote_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        if not text or quote_hash != span.get("quote_hash"):
+            continue
+        source_hash = span.get("reused_from_extraction_sha256") or extraction.extraction_sha256
+        if isinstance(source_hash, str) and source_hash:
+            reusable[page] = (text, source_hash)
+    return reusable
+
+
+def _extract_archive_candidate(
+    document: DocumentoNormativo,
+    *,
+    max_pages: int = 200,
+    max_ocr_pages: int | None = None,
+    ocr_timeout_seconds: int = 90,
+    ocr_pages_to_process: set[int] | None = None,
+    reuse_from: ExtracaoDocumento | None = None,
+) -> ExtracaoDocumento:
+    """Extract verified bytes inside QA storage without accepting/promoting the text."""
+    if document.source_kind != DocumentoNormativo.SourceKind.ARCHIVE or not document.storage_key:
+        raise PermissionError("A extração exige PDF do acervo staging no storage QA.")
+    root = Path(getattr(settings, "QA_ROOT", os.environ.get("JURIX_QA_ROOT", ""))).resolve()
+    archive_root = (root / "normative-archive").resolve()
+    pdf_path = (archive_root / document.storage_key).resolve()
+    if not root.is_dir() or not pdf_path.is_relative_to(archive_root) or not pdf_path.is_file():
+        raise PermissionError("PDF não está disponível dentro do storage QA isolado.")
+    digest = hashlib.sha256()
+    with pdf_path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    if digest.hexdigest() != document.content_sha256:
+        raise StaleNormativeSource("Hash do PDF staging diverge do registro da fonte.")
+
+    reusable_pages = {}
+    if reuse_from is not None:
+        if reuse_from.documento_id != document.pk:
+            raise ValueError("A extração de origem precisa pertencer ao mesmo documento.")
+        reusable_pages = _reusable_ocr_pages(reuse_from)
+
+    _configure_tesseract()
+    extracted = extract_pdf_document(
+        str(pdf_path),
+        max_pages=max_pages,
+        ocr_timeout_seconds=ocr_timeout_seconds,
+        max_ocr_pages=max_ocr_pages,
+        ocr_pages_to_process=ocr_pages_to_process,
+        reusable_ocr_pages=reusable_pages,
+    )
+    policy_fingerprint = str(extracted["policy_fingerprint"])
+    candidate = ExtracaoDocumento.objects.filter(
+        documento=document,
+        extractor_version=extracted["extractor_version"],
+        policy_fingerprint=policy_fingerprint,
+    ).first()
+    if candidate:
+        return candidate
+    candidate = ExtracaoDocumento(
+        documento=document,
+        extractor_version=extracted["extractor_version"],
+        policy_fingerprint=policy_fingerprint,
+        text_version=extracted["text_version"],
+        raw_text=extracted["raw_text"],
+        legal_text=extracted["legal_text"],
+        page_count=extracted["page_count"],
+        page_map_json=extracted["source_map"],
+        metadata_candidates_json=extracted["metadata_candidates"],
+        quality_json={
+            **extracted["quality"],
+            "needs_review": extracted["needs_review"],
+            "pipeline_candidate_only": True,
+            "duration_seconds": extracted["duration_seconds"],
+        },
+        status=(
+            ExtracaoDocumento.Status.COMPLETE
+            if extracted["complete"]
+            else (
+                ExtracaoDocumento.Status.PARTIAL
+                if extracted["legal_text"].strip()
+                else ExtracaoDocumento.Status.UNREADABLE
+            )
+        ),
+        extraction_sha256=extracted["extraction_sha256"],
+    )
+    candidate.save()
+    document.extraction_status = (
+        DocumentoNormativo.ExtractionStatus.EXTRACTED
+        if extracted["complete"]
+        else DocumentoNormativo.ExtractionStatus.NEEDS_REVIEW
+    )
+    document.save(update_fields=["extraction_status", "updated_at"])
+    return candidate
 
 
 def _require_normative_qa() -> None:
@@ -83,12 +207,23 @@ def _execute_normative_stage(item: NormativeWorkItem, norma: Norma) -> dict:
         extraction = document.accepted_extraction if document else None
         if not extraction and document:
             extraction = document.extracoes.order_by("-created_at", "-pk").first()
+        created = False
+        if (
+            not extraction
+            and document
+            and document.source_kind == DocumentoNormativo.SourceKind.ARCHIVE
+        ):
+            before = document.extracoes.count()
+            extraction = _extract_archive_candidate(document)
+            created = document.extracoes.count() > before
         return {
             "document_available": bool(document),
             "document_review_status": document.review_status if document else "missing",
             "extraction_id": extraction.pk if extraction else None,
             "extraction_status": extraction.status if extraction else "missing",
             "extraction_sha256": extraction.extraction_sha256 if extraction else None,
+            "extraction_candidate_created": created,
+            "legal_text_accepted": bool(document and document.accepted_extraction_id),
             "text_mutated": False,
         }
 
@@ -142,7 +277,61 @@ def _execute_normative_stage(item: NormativeWorkItem, norma: Norma) -> dict:
         return {"event_extraction": result}
 
     if stage == NormativeWorkItem.Stage.RECONCILE:
-        return reconcile_unresolved_event_targets(limit=10, target_norma_ids=[norma.pk])
+        from src.apps.legislation.models import EventoAlteracao
+
+        progress = _stage_progress(item, stage)
+        maximum = progress.get("max_event_id")
+        if maximum is None:
+            maximum = (
+                EventoAlteracao.objects.filter(norma_alvo__isnull=True, is_active=True)
+                .order_by("-pk")
+                .values_list("pk", flat=True)
+                .first()
+                or 0
+            )
+        expected_count = progress.get("expected_count")
+        if expected_count is None:
+            expected_count = EventoAlteracao.objects.filter(
+                norma_alvo__isnull=True, is_active=True, pk__lte=int(maximum)
+            ).count()
+        result = reconcile_unresolved_event_targets(
+            limit=10,
+            target_norma_ids=[norma.pk],
+            after_event_id=int(progress.get("cursor", 0)),
+            max_event_id=int(maximum),
+            return_cursor=True,
+        )
+        processed = int(progress.get("processed_count", 0)) + int(result["inspected"])
+        resolved_total = int(progress.get("resolved_count", 0)) + int(result["resolved"])
+        unresolved_total = int(progress.get("unresolved_count", 0)) + int(
+            result["remaining_unresolved"]
+        )
+        next_cursor = result.get("next_cursor") or progress.get("cursor", 0)
+        checkpoint = {
+            "source_revision": item.source_revision,
+            "max_event_id": int(maximum),
+            "cursor": int(next_cursor),
+            "expected_universe_sha256": hashlib.sha256(
+                f"{norma.pk}:{item.source_revision}:{maximum}".encode()
+            ).hexdigest(),
+            "expected_count": int(expected_count),
+            "processed_count": processed,
+            "resolved_count": resolved_total,
+            "unresolved_count": unresolved_total,
+            "errors": int(progress.get("errors", 0)) + int(result["remaining_unresolved"]),
+        }
+        return {
+            **result,
+            "continue_stage": bool(result["has_more"]),
+            "stage_progress": checkpoint,
+            "stage_result": {
+                "inspected": processed,
+                "resolved": resolved_total,
+                "remaining_unresolved": unresolved_total,
+                "cursor": next_cursor,
+                "max_event_id": maximum,
+            },
+        }
 
     if stage == NormativeWorkItem.Stage.SNAPSHOT:
         projection = project_norma_as_of(norma, date.today())
@@ -151,6 +340,8 @@ def _execute_normative_stage(item: NormativeWorkItem, norma: Norma) -> dict:
                 "snapshot_persisted": False,
                 "projection_status": projection.status,
                 "coverage": projection.coverage,
+                "awaiting_review": True,
+                "review_reason": "A projeção temporal não está completa e exige revisão antes de continuar.",
             }
         snapshot = persist_projection(projection)
         return {
@@ -167,24 +358,94 @@ def _execute_normative_stage(item: NormativeWorkItem, norma: Norma) -> dict:
     if stage == NormativeWorkItem.Stage.EMBEDDING:
         if not approved:
             raise PermissionError("A source document must be approved before embeddings.")
-        devices = list(
-            Dispositivo.objects.filter(norma=norma, is_active=True)
-            .order_by("pk")[:10]
+        model_name = "nomic-embed-text"
+        devices_query = Dispositivo.objects.filter(norma=norma, is_active=True).order_by("pk")
+        device_rows = list(devices_query.values_list("pk", "revision_fingerprint"))
+        if any(not revision for _pk, revision in device_rows):
+            return {
+                "awaiting_review": True,
+                "review_reason": "Há dispositivos sem fingerprint de revisão; embeddings não serão certificados.",
+                "embedding_status": "blocked_missing_revision",
+            }
+        universe_hash = hashlib.sha256(
+            "\n".join(f"{pk}:{revision}" for pk, revision in device_rows).encode()
+        ).hexdigest()
+        progress = _stage_progress(item, stage)
+        if progress.get("expected_universe_sha256") != universe_hash:
+            progress = {
+                "source_revision": item.source_revision,
+                "expected_universe_sha256": universe_hash,
+                "expected_count": len(device_rows),
+                "processed_count": 0,
+                "cursor": 0,
+                "errors": [],
+            }
+        cursor = int(progress.get("cursor", 0))
+        # Recheck the processed prefix so deletion or invalidation of an earlier
+        # vector restarts safely instead of leaving a false-complete cursor.
+        stale_prefix = (
+            devices_query.filter(pk__lte=cursor)
+            .exclude(
+                embedding__isnull=False,
+                embedding_model=model_name,
+                embedding_revision_fingerprint=F("revision_fingerprint"),
+            )
+            .exists()
         )
+        if stale_prefix:
+            cursor = 0
+            progress["processed_count"] = 0
+        batch = list(devices_query.filter(pk__gt=cursor)[:10])
         from src.llm_engine.ollama_service import OllamaService
 
-        service = OllamaService(model="nomic-embed-text")
+        service = OllamaService(model=model_name)
         if not service.check_health():
-            return {"embedding_status": "deferred", "reason": "ollama_unavailable", "count": 0}
+            raise RuntimeError("Ollama indisponível; lote de embeddings permanece pendente.")
         results = []
-        for dispositivo in devices:
+        for dispositivo in batch:
+            if (
+                dispositivo.embedding is not None
+                and dispositivo.embedding_model == model_name
+                and dispositivo.embedding_revision_fingerprint == dispositivo.revision_fingerprint
+            ):
+                results.append(
+                    {"dispositivo_id": dispositivo.pk, "success": True, "reused_current": True}
+                )
+                continue
             result = _run_inline_task(generate_embedding_task, dispositivo.pk)
-            results.append({
-                "dispositivo_id": dispositivo.pk,
-                "success": bool(result.get("success")),
-                "stale_input": bool(result.get("stale_input")),
-            })
-        return {"embedding_status": "processed", "results": results}
+            if not result.get("success") or result.get("stale_input"):
+                raise RuntimeError("Embedding falhou ou a revisão mudou durante o lote.")
+            results.append(
+                {
+                    "dispositivo_id": dispositivo.pk,
+                    "success": True,
+                    "stale_input": False,
+                }
+            )
+        next_cursor = batch[-1].pk if batch else cursor
+        has_more = devices_query.filter(pk__gt=next_cursor).exists()
+        processed = int(progress.get("processed_count", 0)) + len(batch)
+        checkpoint = {
+            "source_revision": item.source_revision,
+            "expected_universe_sha256": universe_hash,
+            "expected_count": len(device_rows),
+            "processed_count": processed,
+            "cursor": next_cursor,
+            "errors": [],
+        }
+        return {
+            "embedding_status": "processing" if has_more else "complete",
+            "count": processed,
+            "results": results,
+            "continue_stage": has_more,
+            "stage_progress": checkpoint,
+            "stage_result": {
+                "embedding_status": "complete" if not has_more else "processing",
+                "count": processed,
+                "expected_count": len(device_rows),
+                "batch_count": len(batch),
+            },
+        }
 
     raise ValueError(f"Unsupported normative work stage: {stage}")
 
@@ -201,7 +462,9 @@ def enqueue_normative_impact_task(norma_id: int, revision_hash: str, *, max_node
     item_ids = []
     for affected_id in affected_ids:
         affected = Norma.objects.get(pk=affected_id)
-        source_revision = revision_hash if affected_id == norma_id else safe_norma_revision(affected)
+        source_revision = (
+            revision_hash if affected_id == norma_id else safe_norma_revision(affected)
+        )
         if not source_revision:
             continue
         item, was_created = enqueue_normative_work(
@@ -239,9 +502,7 @@ def fail_normative_stage_task(item_id: int, lease_token: str, error: str):
 @shared_task(name="ingestion.review_normative_work_item", ignore_result=False)
 def review_normative_work_item_task(item_id: int, reviewer_id: int, approved: bool, reason: str):
     reviewer = get_user_model().objects.get(pk=reviewer_id)
-    item = resolve_normative_review(
-        item_id, actor=reviewer, approved=bool(approved), reason=reason
-    )
+    item = resolve_normative_review(item_id, actor=reviewer, approved=bool(approved), reason=reason)
     if approved and item.status == NormativeWorkItem.Status.PENDING:
         process_normative_work_item_task.apply_async(args=[item.pk], queue="normative_qa")
     return {"item_id": item.pk, "stage": item.stage, "status": item.status}
@@ -272,7 +533,12 @@ def process_normative_work_item_task(self, item_id: int):
             NormativeWorkItem.Status.CANCELLED,
             NormativeWorkItem.Status.FAILED,
         }:
-            return {"item_id": current.pk, "stage": current.stage, "status": current.status, "skipped": "not_claimable"}
+            return {
+                "item_id": current.pk,
+                "stage": current.stage,
+                "status": current.status,
+                "skipped": "not_claimable",
+            }
         raise
     pause_ms = min(
         max(int(os.environ.get("JURIX_QA_TEST_WORKER_PAUSE_AFTER_CLAIM_MS", "0") or 0), 0),
@@ -300,6 +566,18 @@ def process_normative_work_item_task(self, item_id: int):
             process_normative_work_item_task.apply_async(
                 args=[item.pk], queue="normative_qa", countdown=min(2**item.attempts, 30)
             )
+        return {"item_id": item.pk, "status": item.status, "stage": item.stage}
+
+    if result.get("awaiting_review"):
+        item = defer_normative_stage_for_review(
+            item.pk,
+            token,
+            reason=result.get("review_reason", "Revisão humana necessária."),
+            result={
+                "required_action": "human_review",
+                "stage_result": result,
+            },
+        )
         return {"item_id": item.pk, "status": item.status, "stage": item.stage}
 
     item = finish_normative_stage(item.pk, token, result=result)

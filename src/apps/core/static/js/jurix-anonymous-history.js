@@ -42,6 +42,23 @@
     return new Date().toISOString();
   }
 
+  function sourcesForAnswer(content, sources, grounded = false) {
+    const rows = Array.isArray(sources) ? sources : [];
+    if (grounded) return rows.slice(0, 20);
+    const indexes = new Set([...String(content || '').matchAll(/\[\[(\d{1,3})\]\]/g)]
+      .map(match => Number(match[1])).filter(index => index > 0));
+    if (!indexes.size) return [];
+    const hasExplicitIndexes = rows.some(source => Number.isInteger(Number(source?.citation_index)));
+    return rows.flatMap((source, arrayIndex) => {
+      const citationIndex = Number.isInteger(Number(source?.citation_index))
+        ? Number(source.citation_index)
+        : hasExplicitIndexes ? null : arrayIndex + 1;
+      return citationIndex && indexes.has(citationIndex)
+        ? [{ ...source, citation_index: citationIndex }]
+        : [];
+    }).slice(0, 20);
+  }
+
   function pickFields(value, fields) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     return Object.fromEntries(fields
@@ -161,9 +178,7 @@
         content: String(message.content || '').slice(0, 30_000),
         created_at: message.created_at || now(),
         grounded: message.grounded === true,
-        sources: message.grounded === true && Array.isArray(message.sources)
-          ? message.sources.slice(0, 20)
-          : [],
+        sources: sourcesForAnswer(message.content, message.sources, message.grounded === true),
       }));
     });
     return state;
@@ -248,14 +263,14 @@
     if (last && last.role === 'assistant') {
       last.content = String(content || '');
       last.grounded = grounded === true;
-      last.sources = last.grounded && Array.isArray(sources) ? sources.slice(0, 20) : [];
+      last.sources = sourcesForAnswer(last.content, sources, last.grounded);
     } else {
       messages.push({
         role: 'assistant',
         content: String(content || ''),
         created_at: now(),
         grounded: grounded === true,
-        sources: grounded === true && Array.isArray(sources) ? sources.slice(0, 20) : [],
+        sources: sourcesForAnswer(content, sources, grounded === true),
       });
     }
     session.updated_at = now();
@@ -344,6 +359,7 @@
     const allowedSourceFields = [
       'id', 'source_id', 'norma_ref', 'dispositivo_ref', 'text', 'full_text', 'sapl_url', 'pdf_url', 'local_pdf_url',
       'source_url', 'similarity_score', 'contribution', 'source_type', 'data_publicacao',
+      'source_kind', 'status_label', 'matter_status', 'matter_result', 'consulted_at',
       'data_vigencia', 'citation_id', 'citation_index', 'citation_label',
       'retrieval_strategy', 'evidence_scope', 'coverage', 'dispositivo_structural_key',
       'synthetic_fixture',
@@ -364,8 +380,8 @@
           content: String(message.content || ''),
           created_at: message.created_at,
           grounded: message.role === 'assistant' && message.grounded === true,
-          sources: message.role === 'assistant' && message.grounded === true
-            ? (Array.isArray(message.sources) ? message.sources : []).slice(0, 20).map(source =>
+          sources: message.role === 'assistant'
+            ? sourcesForAnswer(message.content, message.sources, message.grounded === true).map(source =>
               exportSource(source, allowedSourceFields))
             : [],
         })),
@@ -379,6 +395,7 @@
     ensureSession,
     addMessage,
     updateLastAssistant,
+    sourcesForAnswer,
     prepareRetry,
     list,
     get,

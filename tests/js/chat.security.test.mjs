@@ -73,8 +73,8 @@ afterEach(() => {
   activeWindows.clear();
 });
 
-async function boot(routes) {
-  const dom = new JSDOM(SKELETON, { url: 'http://localhost/normas/chatbot/', runScripts: 'dangerously', pretendToBeVisual: true });
+async function boot(routes, url = 'http://localhost/normas/chatbot/') {
+  const dom = new JSDOM(SKELETON, { url, runScripts: 'dangerously', pretendToBeVisual: true });
   const { window } = dom;
   window.JURIX_CONFIG = { chatbotUrl: '/normas/chatbot/', logoIconUrl: '/static/x.svg', userName: 'Ana' };
   window.fetch = async (url) => {
@@ -112,6 +112,18 @@ test('control: the detector flags an unsanitised payload (so the other tests are
   assert.ok(hits.some((h) => h.includes('onerror')), hits.join());
   assert.ok(hits.some((h) => h.includes('<script>')), hits.join());
   assert.ok(hits.some((h) => h.includes('javascript:')), hits.join());
+});
+
+test('starting a new conversation preserves the isolated archive QA scope', async () => {
+  const window = await boot(
+    {},
+    'http://localhost/normas/chatbot/local-qa-session/?corpus=archive-qa',
+  );
+
+  await window.jurixChat.createNewSession();
+
+  assert.equal(window.location.pathname, '/normas/chatbot/');
+  assert.equal(window.location.search, '?corpus=archive-qa');
 });
 
 test('assistant answers are sanitised, while ordinary markdown still renders', async () => {
@@ -255,6 +267,25 @@ test('source card: a legitimate https URL (with & and query) still opens in a ne
   assert.match(String(opened[0][2] || ''), /noopener/, 'the new tab must not get window.opener');
 });
 
+test('starting a new conversation closes and clears the global sources drawer', async () => {
+  const window = await boot({
+    '/api/v1/chat/sessions/': () => ({ success: true, sessions: [], count: 0 }),
+  });
+  const composer = window.document.getElementById('question-textarea');
+  window.JurixRagUI.openSourcesDrawer([source()]);
+  assert.equal(window.document.getElementById('jurix-sources-drawer-panel').getAttribute('aria-hidden'), 'false');
+  assert.ok(window.document.querySelector('#jurix-sources-drawer-body .source-card'));
+
+  window.document.dispatchEvent(new window.CustomEvent('jurix:new-conversation'));
+
+  const panel = window.document.getElementById('jurix-sources-drawer-panel');
+  assert.equal(panel.getAttribute('aria-hidden'), 'true');
+  assert.equal(panel.classList.contains('is-open'), false);
+  assert.equal(window.document.body.classList.contains('jurix-sources-drawer-open'), false);
+  assert.equal(window.document.querySelector('#jurix-sources-drawer-body .source-card'), null);
+  assert.equal(window.document.activeElement, composer, 'focus should move to the new conversation composer');
+});
+
 test('local archive evidence opens its archived PDF and separately exposes an exact SAPL match', async () => {
   const localPdf = '/normas/documentos/00000000-0000-0000-0000-000000000001/pdf/';
   const { opened, card } = await renderWithSource(source({
@@ -295,6 +326,24 @@ test('source card: PDF link opens at the cited excerpt using a safe UTF-8 text f
   const link = card.querySelector('.jurix-rag-source__open');
   assert.equal(link.href, `${url}#:~:text=${encodeURIComponent(excerpt)}`);
   assert.equal(link.target, '_blank');
+});
+
+test('final archive evidence links to the first verbatim claim excerpt, not generic article boilerplate', async () => {
+  const excerpt = 'II – Gratificação de Vigilância Sanitária (GVISA), atribuída aos servidores com dedicação exclusiva.';
+  const fullText = `Art. 26. Aos servidores da Saúde podem ser concedidas gratificações. I – Gratificação de Plantão. ${excerpt}`;
+  const localPdf = '/normas/documentos/00000000-0000-0000-0000-000000000001/pdf/';
+  const { card } = await renderWithSource(source({
+    evidence_scope: 'isolated_qa_archive',
+    local_pdf_url: localPdf,
+    full_text: fullText,
+    evidence_text: excerpt,
+    evidence_excerpts: [excerpt],
+  }));
+
+  assert.equal(
+    card.querySelector('.jurix-rag-source__open').href,
+    `http://localhost${localPdf}#:~:text=${encodeURIComponent(excerpt)}`,
+  );
 });
 
 test('source card: full device text anchors the start and end instead of a truncated preview', async () => {

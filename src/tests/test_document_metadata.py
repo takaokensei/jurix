@@ -5,6 +5,7 @@ import pytest
 from src.apps.ingestion.task_support import _normalize_norma_tipo
 from src.processing.document_metadata import (
     build_normative_identity,
+    compare_identity_to_epigraph,
     is_natal_municipal_jurisdiction,
     normalize_document_number,
     parse_filename_metadata,
@@ -120,6 +121,43 @@ def test_identity_normalizes_numeric_zeroes_but_preserves_suffix_and_type_series
     assert suffixed.identity_json["number"] == "5-A"
     assert suffixed.identity_key != same.identity_key
     assert ordinary.identity_key != same.identity_key
+
+
+def test_filename_identity_conflict_with_single_epigraph_is_reported_without_rewriting():
+    check = compare_identity_to_epigraph(
+        {"type": "lei_complementar", "number": "219", "year": 2023},
+        {
+            "status": "candidate",
+            "candidates": [{
+                "type_key": "lei_complementar",
+                "number": "219",
+                "year": 2022,
+            }],
+        },
+    )
+
+    assert check["status"] == "conflict"
+    assert check["fields"] == ["year"]
+    assert check["filename_identity"]["year"] == "2023"
+    assert check["epigraph_identity"]["year"] == "2022"
+
+
+def test_identity_epigraph_comparison_treats_ambiguous_or_incomplete_data_as_unresolved():
+    identity = {"type": "lei_complementar", "number": "219", "year": 2023}
+
+    assert compare_identity_to_epigraph(identity, {"candidates": []})["status"] == "unresolved"
+    assert compare_identity_to_epigraph(
+        identity,
+        {"candidates": [{"type_key": "lei_complementar", "number": "219"}]},
+    )["status"] == "unresolved"
+    # A partial extraction can still prove that one identity component
+    # contradicts the filename, even when it cannot confirm the full key.
+    partial_mismatch = compare_identity_to_epigraph(
+        identity,
+        {"candidates": [{"type_key": "lei_complementar", "number": "21", "year": None}]},
+    )
+    assert partial_mismatch["status"] == "conflict"
+    assert partial_mismatch["fields"] == ["number"]
 
 
 def test_unknown_or_incompatible_series_keeps_identity_unresolved():

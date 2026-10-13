@@ -8,6 +8,7 @@ import hashlib
 import json
 import sys
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 
@@ -71,7 +72,37 @@ def _event_identity(event: dict) -> tuple:
     )
 
 
-def evaluate(gold_rows: list[dict], predicted_rows: list[dict], *, min_human_norms: int = 20) -> dict:
+def _is_human_adjudicated(review: dict) -> bool:
+    """Require the complete reviewer provenance defined by graph protocol v2."""
+    if not isinstance(review, dict):
+        return False
+    reviewer_id = review.get("reviewer_id")
+    reviewed_at = review.get("reviewed_at")
+    if (
+        review.get("review_kind") != "human"
+        or review.get("status") not in {"adjudicated", "approved"}
+        or not isinstance(reviewer_id, str)
+        or not reviewer_id.strip()
+        or not isinstance(reviewed_at, str)
+        or not reviewed_at.strip()
+    ):
+        return False
+    try:
+        timestamp = datetime.fromisoformat(reviewed_at.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return timestamp.tzinfo is not None and timestamp.utcoffset() is not None
+
+
+def evaluate(
+    gold_rows: list[dict],
+    predicted_rows: list[dict],
+    *,
+    min_human_norms: int = 20,
+    min_human_chains: int = 3,
+) -> dict:
+    if min_human_norms < 1 or min_human_chains < 1:
+        raise ValueError("human norm and chain thresholds must be positive")
     gold = _index(gold_rows, "gold")
     predicted = _index(predicted_rows, "predictions")
     if gold.keys() != predicted.keys():
@@ -83,6 +114,9 @@ def evaluate(gold_rows: list[dict], predicted_rows: list[dict], *, min_human_nor
     resolved_expected, resolved_predicted = set(), set()
     date_errors = date_cases = 0
     human_normas = set()
+    human_chains = set()
+    included_cases = 0
+    excluded_cases = 0
     train_chains, test_chains = set(), set()
 
     for case_id, expected in gold.items():
@@ -92,13 +126,17 @@ def evaluate(gold_rows: list[dict], predicted_rows: list[dict], *, min_human_nor
         if expected["revision"].get("source_text_sha256") != (actual.get("revision") or {}).get("source_text_sha256"):
             raise ValueError(f"{case_id}: source hash mismatch")
         review = expected.get("review") or {}
-        if review.get("review_kind") == "human" and review.get("status") == "adjudicated":
-            human_normas.add(expected["norma_key"])
         chains = set(expected.get("relation_chain_keys", []))
         if expected.get("split") == "train":
             train_chains |= chains
         elif expected.get("split") == "test":
             test_chains |= chains
+        if not _is_human_adjudicated(review):
+            excluded_cases += 1
+            continue
+        included_cases += 1
+        human_normas.add(expected["norma_key"])
+        human_chains.update(chain for chain in chains if isinstance(chain, str) and chain.strip())
         gold_spans |= {_span_key(expected, span) for span in expected.get("spans", [])}
         predicted_spans |= {_span_key(actual, span) for span in actual.get("spans", [])}
 
@@ -134,12 +172,25 @@ def evaluate(gold_rows: list[dict], predicted_rows: list[dict], *, min_human_nor
     leakage = sorted(train_chains & test_chains)
     if leakage:
         raise ValueError("relation chain leakage across train/test split")
-    evaluated = len(human_normas) >= max(1, int(min_human_norms))
+    evaluated = (
+        len(human_normas) >= min_human_norms
+        and len(human_chains) >= min_human_chains
+    )
     result = {
         "status": "evaluated" if evaluated else "not_evaluated",
-        "metrics_scope": "human_adjudicated_only" if evaluated else "synthetic_fixture_smoke_not_scientific",
+        "metrics_scope": (
+            "human_adjudicated_only"
+            if evaluated
+            else "human_adjudicated_subset_not_scientifically_evaluated"
+            if included_cases
+            else "no_eligible_human_gold"
+        ),
         "human_adjudicated_normas": len(human_normas),
-        "required_human_normas": max(1, int(min_human_norms)),
+        "human_adjudicated_relation_chains": len(human_chains),
+        "required_human_normas": min_human_norms,
+        "required_human_relation_chains": min_human_chains,
+        "included_human_adjudicated_cases": included_cases,
+        "excluded_synthetic_or_incomplete_review_cases": excluded_cases,
         "synthetic_or_unreviewed_rows_counted_as_gold": 0,
         "span_exact": _prf(gold_spans, predicted_spans),
         "events_by_action": {
@@ -166,12 +217,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--predictions", required=True, type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--min-human-normas", type=int, default=20)
+    parser.add_argument("--min-human-chains", type=int, default=3)
     args = parser.parse_args(argv)
     try:
         report = evaluate(
             _read_jsonl(args.gold),
             _read_jsonl(args.predictions),
             min_human_norms=args.min_human_normas,
+            min_human_chains=args.min_human_chains,
         )
         report["input_sha256"] = {"gold": _file_hash(args.gold), "predictions": _file_hash(args.predictions)}
         serialized = json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n"

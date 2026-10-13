@@ -114,6 +114,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "config.context_processors.google_fonts",
+                "src.apps.core.build_identity.workspace_build_context",
             ],
         },
     },
@@ -358,7 +359,15 @@ NUM_PROXIES = int(os.getenv("NUM_PROXIES", "0"))
 
 # SAPL Configuration
 SAPL_BASE_URL = os.getenv("SAPL_BASE_URL", "https://sapl.natal.rn.leg.br/api")
+# Explicit legislative-matter lookups are supplemental external reads and stay
+# disabled unless an isolated QA configuration opts in.
+SAPL_MATTER_LOOKUP_ENABLED = False
+PGM_CONSOLIDATION_DEMO_ENABLED = False
 SAPL_INCREMENTAL_MAX_PAGES = int(os.getenv("SAPL_INCREMENTAL_MAX_PAGES", "20"))
+SAPL_INCREMENTAL_OVERLAP_PAGES = int(os.getenv("SAPL_INCREMENTAL_OVERLAP_PAGES", "3"))
+JURIX_BUILD_VERSION = os.getenv("JURIX_BUILD_VERSION", "")
+JURIX_BUILD_REVISION = os.getenv("JURIX_BUILD_REVISION", "")
+JURIX_BUILD_PROFILE = os.getenv("JURIX_BUILD_PROFILE", "")
 SAPL_SYNC_LEASE_SECONDS = int(os.getenv("SAPL_SYNC_LEASE_SECONDS", "900"))
 RAG_TEMPORAL_FILTERS_ENABLED = os.getenv("RAG_TEMPORAL_FILTERS_ENABLED", "True").lower() == "true"
 RAG_TEMPORAL_REQUIRE_SOURCE_DATES = (

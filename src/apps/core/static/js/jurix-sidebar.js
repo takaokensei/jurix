@@ -357,6 +357,18 @@
         return true;
     }
 
+    function highlightSessionCreated(sessionId) {
+        const row = [...(document.querySelectorAll('#chat-sessions-list .chat-session-item[data-session-id]') || [])]
+            .find((item) => item.dataset.sessionId === String(sessionId));
+        if (!row) return false;
+        clearTimeout(row._sessionCreatedHighlightTimer);
+        row.classList.add('session-created-highlight');
+        row._sessionCreatedHighlightTimer = setTimeout(() => {
+            row.classList.remove('session-created-highlight');
+        }, 1800);
+        return true;
+    }
+
     function render(entries, { activeSessionId = null, preserveTemporary = false } = {}) {
         const list = document.getElementById('chat-sessions-list');
         if (!list) return false;
@@ -449,6 +461,7 @@
         updatePendingTitle,
         markPendingFailed,
         markPendingRunning,
+        highlightSessionCreated,
         refresh,
     });
     document.querySelectorAll('[data-search-conversations]').forEach(button => {

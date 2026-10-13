@@ -42,3 +42,33 @@ def event_revision_identity(
     }
     payload = json.dumps(provenance, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest(), provenance
+
+
+def event_revision_for_target(event, target_norma_id: int) -> tuple[str, dict[str, object]]:
+    """Bind a late-resolved target to an evidence-backed v2 event identity.
+
+    Legacy rows without the v2 occurrence provenance keep their existing stable
+    fingerprint; a synthetic occurrence cannot safely be inferred after the fact.
+    """
+    previous = event.provenance_json if isinstance(event.provenance_json, dict) else {}
+    if not {
+        "source_identity",
+        "source_revision",
+        "occurrence",
+    }.issubset(previous):
+        return str(event.revision_fingerprint or ""), {
+            **previous,
+            "resolved_target_norma_id": int(target_norma_id),
+        }
+    return event_revision_identity(
+        source_identity=str(previous["source_identity"]),
+        source_revision=str(previous["source_revision"]),
+        action=event.acao,
+        target_text=event.target_text,
+        reference_type=event.referencia_tipo,
+        reference_number=event.referencia_numero,
+        target_norma_id=int(target_norma_id),
+        occurrence=int(previous["occurrence"]),
+        extractor_version=str(previous.get("extractor_version") or EXTRACTOR_VERSION),
+        evidence=event.evidence_json if isinstance(event.evidence_json, dict) else {},
+    )

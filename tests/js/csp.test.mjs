@@ -194,6 +194,26 @@ test('restored conversation reveals the floating composer after the welcome stat
   assert.equal(composer.classList.contains('is-hidden'), false);
 });
 
+test('the CSP-loaded assistant bundle opens the global sources drawer from a rendered source pill', async () => {
+  const window = await bootUnderCsp();
+  assert.equal(typeof window.JurixRagUI?.openSourcesDrawer, 'function');
+
+  const container = window.document.createElement('div');
+  container.id = 'sources-runtime-regression';
+  container.innerHTML = '<button type="button" class="jurix-sources-pill-btn">Ver fontes</button>';
+  container._sourcesData = [{ norma: 'Lei nº 1/2026', artigo: 'Art. 1º', full_text: 'Evidência de teste.' }];
+  window.document.body.appendChild(container);
+
+  container.querySelector('.jurix-sources-pill-btn').dispatchEvent(
+    new window.MouseEvent('click', { bubbles: true, cancelable: true })
+  );
+
+  const drawer = window.document.getElementById('jurix-sources-drawer-panel');
+  assert.ok(drawer?.classList.contains('is-open'));
+  assert.equal(drawer.getAttribute('aria-hidden'), 'false');
+  assert.match(drawer.textContent, /Lei nº 1\/2026/);
+});
+
 test('the hero search form submits once and leaves the composer empty (no inline onsubmit)', async () => {
   const window = await bootUnderCsp();
   const heroInput = window.document.getElementById('hero-search-input');

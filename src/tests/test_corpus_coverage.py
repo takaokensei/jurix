@@ -4,6 +4,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Max
 
 from src.apps.operations.models import CorpusCoverageScope, CorpusRevision
 from src.processing.corpus_coverage import (
@@ -11,6 +12,13 @@ from src.processing.corpus_coverage import (
     current_corpus_coverage,
     record_corpus_coverage_scope,
 )
+
+
+def _next_municipal_revision_number():
+    current = CorpusRevision.objects.filter(key="municipal").aggregate(
+        value=Max("revision")
+    )["value"]
+    return (current or 0) + 1
 
 
 def test_coverage_without_a_reviewed_scope_is_explicitly_unknown():
@@ -47,8 +55,14 @@ def test_global_revision_counts_never_certify_temporal_coverage():
 
 @pytest.mark.django_db
 def test_partial_scope_is_versioned_and_does_not_leak_arbitrary_interval_fields():
-    revision = CorpusRevision.objects.create(
-        key="municipal", revision=4, digest="a" * 64, completeness="complete"
+    revision_number = _next_municipal_revision_number()
+    revision, _created = CorpusRevision.objects.update_or_create(
+        key="municipal",
+        defaults={
+            "revision": revision_number,
+            "digest": f"{revision_number:064x}",
+            "completeness": "complete",
+        },
     )
     row, created = record_corpus_coverage_scope(
         source="archive",
@@ -91,8 +105,14 @@ def test_partial_scope_is_versioned_and_does_not_leak_arbitrary_interval_fields(
 
 @pytest.mark.django_db
 def test_reviewed_scope_requires_permission_and_identical_submission_is_idempotent():
-    CorpusRevision.objects.create(
-        key="municipal", revision=7, digest="c" * 64, completeness="partial"
+    revision_number = _next_municipal_revision_number()
+    revision, _created = CorpusRevision.objects.update_or_create(
+        key="municipal",
+        defaults={
+            "revision": revision_number,
+            "digest": f"{revision_number:064x}",
+            "completeness": "partial",
+        },
     )
     reviewer = get_user_model().objects.create_user(
         username="coverage-reviewer-qa", password="test-only", is_staff=True
@@ -129,7 +149,9 @@ def test_reviewed_scope_requires_permission_and_identical_submission_is_idempote
     assert created is True
     assert duplicate_created is False
     assert duplicate.pk == row.pk
-    dto = build_corpus_coverage({"revision": 7, "digest": "c" * 64}, scopes=[row])
+    dto = build_corpus_coverage(
+        {"revision": revision.revision, "digest": revision.digest}, scopes=[row]
+    )
     assert dto["coverage_status"] == "reviewed"
     assert dto["scope_limited"] is True
     assert dto["missing_intervals"] == []

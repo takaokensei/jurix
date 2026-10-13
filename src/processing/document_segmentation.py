@@ -21,6 +21,7 @@ from src.processing.legal_parser import (
     _PAGE_SEPARATOR_RE,
     LegalTextParser,
     classify_closing_segments,
+    find_normative_appendix_start,
 )
 
 
@@ -60,6 +61,18 @@ def _offset_preserving_text(source: str) -> str:
     return "".join(chars)
 
 
+def _mask_normative_appendices(source: str) -> tuple[str, int | None]:
+    """Keep annex text and offsets intact while excluding it from main-law parsing."""
+    appendix_start = find_normative_appendix_start(source)
+    if appendix_start is None:
+        return source, None
+    chars = list(source)
+    for position in range(appendix_start, len(chars)):
+        if chars[position] not in "\r\n":
+            chars[position] = " "
+    return "".join(chars), appendix_start
+
+
 def _source_page(extraction: ExtracaoDocumento, offset: int) -> int | None:
     for span in extraction.page_map_json or []:
         if span.get("start", 0) <= offset < span.get("end", 0):
@@ -83,6 +96,8 @@ def _review_reasons(row: dict, source: str, extraction: ExtracaoDocumento) -> li
 def segment_document_extraction(extraction_id: int) -> DocumentSegmentation:
     extraction = ExtracaoDocumento.objects.select_related("documento", "documento__norma").get(pk=extraction_id)
     document = extraction.documento
+    if document.role != document.Role.ORIGINAL:
+        raise SegmentationConflict("Somente o documento original pode alimentar a segmentação da Norma.")
     if document.accepted_extraction_id != extraction.pk:
         raise SegmentationConflict("Somente a extração explicitamente aceita pode ser segmentada.")
     if not document.norma_id or document.norma.documento_base_id != document.pk:
@@ -91,7 +106,8 @@ def segment_document_extraction(extraction_id: int) -> DocumentSegmentation:
         raise SegmentationConflict("Extração incompleta não pode alimentar segmentação operativa.")
     source = extraction.legal_text or ""
     parser = LegalTextParser()
-    parse_text = _offset_preserving_text(source)
+    article_text, appendix_start = _mask_normative_appendices(source)
+    parse_text = _offset_preserving_text(article_text)
     elements = parser.parse_legal_text(parse_text)
     hierarchy = parser.build_hierarchy(elements)
     validate_hierarchy(hierarchy)
@@ -105,6 +121,8 @@ def segment_document_extraction(extraction_id: int) -> DocumentSegmentation:
     for position, row in enumerate(ordered):
         start = row["start_pos"]
         end = ordered[position + 1]["start_pos"] if position + 1 < len(ordered) else len(source)
+        if appendix_start is not None and start < appendix_start < end:
+            end = appendix_start
         next_colophon = next((item["start"] for item in editorial if start < item["start"] < end), None)
         if next_colophon is not None:
             end = next_colophon

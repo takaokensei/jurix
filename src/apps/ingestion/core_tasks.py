@@ -190,7 +190,10 @@ def _process_norma_data(
         data_vigencia = parse_date(norma_data["data_vigencia"])
 
     # URL do PDF (se disponível)
-    pdf_url = norma_data.get("texto_integral", "")
+    # SAPL may return explicit null when a catalogue record has no PDF. The
+    # URLField is non-null in PostgreSQL, so normalize both missing and null
+    # values to the model's empty-string representation.
+    pdf_url = norma_data.get("texto_integral") or ""
 
     # Montar URL da página no SAPL dinamicamente
     sapl_base_host = getattr(settings, "SAPL_BASE_URL", "https://sapl.natal.rn.leg.br/api").rstrip(

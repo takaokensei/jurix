@@ -8,6 +8,7 @@ from django.test import Client
 from django.urls import reverse
 
 from src.apps.legislation.event_review import (
+    EventTemporalReviewForm,
     event_review_fingerprint,
     review_event,
     review_event_effective_date,
@@ -55,6 +56,50 @@ def test_publication_clause_creates_candidate_not_confirmed_effect():
     assert decision.status == "candidate"
     assert decision.operative is False
     assert decision.basis["kind"] == "publication_clause"
+
+
+def test_lc258_ninety_day_vacatio_is_a_reviewable_candidate_not_an_operative_date():
+    event = _event(
+        text=(
+            "Art. 266. Esta Lei Complementar entra em vigor 90 (noventa) dias "
+            "após a data de sua publicação."
+        ),
+        publication=date(2024, 12, 27),
+    )
+
+    decision = event_temporal_decision(event)
+
+    assert decision.effective_on == date(2025, 3, 27)
+    assert decision.status == "candidate"
+    assert decision.operative is False
+    assert decision.basis == {
+        "kind": "vacatio_period",
+        "period_days": 90,
+        "evidence_quote": (
+            "entra em vigor 90 (noventa) dias após a data de sua publicação"
+        ),
+        "publication_on": "2024-12-27",
+        "counting_rule": "LC 95/1998, art. 8º, § 1º",
+    }
+    assert "confirmação humana" in decision.reason
+    review_form = EventTemporalReviewForm(event=event)
+    assert review_form["effective_on"].value() == date(2025, 3, 27)
+    assert review_form["evidence_quote"].value() == decision.basis["evidence_quote"]
+
+
+def test_vacatio_without_verified_publication_date_remains_unknown():
+    event = _event(
+        text=(
+            "Esta Lei Complementar entra em vigor 90 (noventa) dias "
+            "após a data de sua publicação."
+        ),
+    )
+
+    decision = event_temporal_decision(event)
+
+    assert decision.effective_on is None
+    assert decision.status == "unknown"
+    assert decision.operative is False
 
 
 def test_reference_action_uses_publication_only_for_availability():

@@ -26,8 +26,23 @@ class Command(BaseCommand):
 
         from django.conf import settings
 
-        if os.environ.get("JURIX_QA_ONLY") != "1" or not str(settings.SETTINGS_MODULE).endswith("settings_normative_qa"):
-            raise CommandError("Snapshots desta tarefa exigem settings QA e JURIX_QA_ONLY=1.")
+        database = settings.DATABASES.get("default", {})
+        qa_database = (
+            database.get("ENGINE") == "django.db.backends.postgresql"
+            and database.get("HOST") == "127.0.0.1"
+            and str(database.get("PORT")) == "55432"
+            and database.get("USER") == "jurix_audit"
+            and database.get("NAME") in {"jurix_audit", "test_jurix_audit"}
+        )
+        if os.environ.get("JURIX_QA_ONLY") != "1" or not qa_database:
+            target = ", ".join(
+                f"{key}={database.get(key)}"
+                for key in ("ENGINE", "HOST", "PORT", "USER", "NAME")
+            )
+            raise CommandError(
+                "Snapshots desta tarefa exigem settings QA e JURIX_QA_ONLY=1 "
+                f"(qa_flag={os.environ.get('JURIX_QA_ONLY')!r}; {target})."
+            )
         try:
             as_of = date.fromisoformat(options["as_of"])
         except ValueError as exc:

@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 from django.test import override_settings
 
+from src.processing.grounding_service import _article_citation_matches
 from src.processing.strict_grounding import _number_facts, evaluate_strict_grounding
 
 
@@ -36,6 +37,61 @@ def test_strict_grounding_rejects_new_number():
     )
     assert report["grounded"] is False
     assert report["failed_claims"]
+
+
+@override_settings(RAG_STRICT_MIN_LEXICAL_OVERLAP=0.35)
+def test_strict_grounding_rejects_article_number_mapped_to_different_source_device():
+    evidence = {
+        "norma_ref": "Lei Complementar nº 120/2010",
+        "dispositivo_ref": "Art. 26",
+        "evidence_text": (
+            "A Gratificação de Vigilância Sanitária (GVISA) exige experiência mínima "
+            "de dois anos ou especialização e quarenta horas semanais."
+        ),
+        "citation_index": 1,
+        "citation_id": "archive:lc120-art26",
+    }
+
+    report = evaluate_strict_grounding(
+        "Segundo o Art. 11 da Lei Complementar nº 120/2010, a GVISA exige "
+        "experiência mínima de dois anos. [[1]]",
+        [evidence],
+    )
+
+    assert report["grounded"] is False
+    assert report["claims"][0]["supported"] is False
+    assert report["claims"][0]["rejected_matches"][0]["citation_ok"] is False
+
+
+@override_settings(RAG_STRICT_MIN_LEXICAL_OVERLAP=0.35)
+def test_strict_grounding_accepts_article_when_citation_matches_device_ref():
+    evidence = {
+        "norma_ref": "Lei Complementar nº 120/2010",
+        "dispositivo_ref": "Art. 26",
+        "evidence_text": (
+            "A Gratificação de Vigilância Sanitária (GVISA) exige experiência mínima "
+            "de dois anos ou especialização e quarenta horas semanais."
+        ),
+        "citation_index": 1,
+        "citation_id": "archive:lc120-art26",
+    }
+
+    report = evaluate_strict_grounding(
+        "Segundo o Art. 26 da Lei Complementar nº 120/2010, a GVISA exige "
+        "experiência mínima de dois anos. [[1]]",
+        [evidence],
+    )
+
+    assert report["grounded"] is True
+    assert report["claims"][0]["matches"][0]["citation_ok"] is True
+
+
+def test_amendment_source_can_support_its_explicitly_modified_target_article():
+    assert _article_citation_matches(
+        "O alvo é Art. 5º da Lei nº 9001/2020 [[1]][[2]].",
+        "Art. 3º",
+        "Dê-se nova redação ao Art. 5º da Lei 9001/2020: ‘Art. 5º O prazo é de vinte dias.’",
+    )
 
 
 @override_settings(RAG_STRICT_MIN_LEXICAL_OVERLAP=0.45)

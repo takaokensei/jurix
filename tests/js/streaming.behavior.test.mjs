@@ -17,7 +17,12 @@ test('anonymous stream persists the final answer after the API overlay is instal
   const { window } = dom;
   window.TextDecoder = TextDecoder;
   const events = [
-    { type: 'sources', sources: [{ id: 1 }, { id: 2 }], confidence: 0.9 },
+    {
+      type: 'sources',
+      sources: [{ id: 1 }, { id: 2 }],
+      confidence: 0.9,
+      coverage: { complete: false, selected_articles: 25, total_articles: 264, selection_strategy: 'topic_ranked' },
+    },
     { type: 'chunk', chunk: 'Rascunho provisório.', provisional: true },
     { type: 'chunk', chunk: 'Resposta final.', provisional: false, replace: true },
     { type: 'done', answer: 'Resposta final.', sources: [{ id: 2 }], grounded: true, session_id: null },
@@ -51,7 +56,10 @@ test('anonymous stream persists the final answer after the API overlay is instal
   assert.equal(messages[1].role, 'assistant');
   assert.equal(messages[1].content, 'Resposta final.');
   assert.equal(messages[1].grounded, true);
-  assert.deepEqual(messages[1].sources, [{ id: 2 }]);
+  assert.deepEqual(messages[1].sources, [{
+    id: 2,
+    coverage: { complete: false, selected_articles: 25, total_articles: 264, selection_strategy: 'topic_ranked' },
+  }]);
   assert.notEqual(messages[1].content, '[object Object]');
   dom.window.close();
 });
@@ -198,13 +206,22 @@ test('SSE sources render immediately as pending and completion updates the same 
   assert.match(chat.slice(sourceCallback, doneCallback), /showSourcesGradually\(/);
   assert.match(chat.slice(sourceCallback, doneCallback), /pending: true/);
   assert.match(chat, /Never rank-sort the rendered evidence/);
-  const completion = chat.slice(doneCallback, doneCallback + 5000);
+  const completion = chat.slice(doneCallback, doneCallback + 6500);
   assert.match(completion, /Array\.isArray\(doneData\.sources\) \? doneData\.sources : finalSources/);
   assert.match(completion, /finalSources\.length > 0[\s\S]*As fontes localizadas não foram suficientes para confirmar a resposta\.[\s\S]*Não localizei fontes correspondentes no acervo consultado\./);
   assert.match(completion, /showSourcesGradually\([\s\S]*answerSources[\s\S]*finalSourceMeta/);
+  assert.match(completion, /_corpusCoverage = doneData\.contract\?\.corpus_coverage \|\| null/);
   assert.match(completion, /source\?\.synthetic_fixture === true/);
   assert.match(completion, /Fixture sintética de QA/);
   assert.match(chat, /updateSourcesDrawerMetadata\?\.\(\{ pending: false \}\)/);
+  assert.match(chat, /_corpusCoverage = metadata\?\.corpus_coverage \|\| metadata\?\.contract\?\.corpus_coverage \|\| null/);
+  assert.match(chat, /download: 'downloadEvidencePackage'/);
+  assert.match(chat, /window\.JurixChatRenderer\?\.\[configuration\.download\]\?\.\(/);
+  assert.match(chat, /messageBody\._corpusCoverage \|\| null/);
+  assert.match(chat, /downloadEvidenceMarkdown/);
+  assert.match(chat, /bindEvidenceExportAction\(exportMarkdownButton, messageBody, 'markdown'\)/);
+  assert.match(chat.slice(doneCallback), /streamElements\.exportMarkdownButton[\s\S]*classList\.add\('show'\)/);
+  assert.match(chat, /if \(skipStreaming\) \{[\s\S]*?exportMarkdownButton\.classList\.add\('show'\)/);
   assert.match(chat.slice(doneCallback), /reconcileSourcesDrawer\?\.\(/);
   const doneSessionUrl = chat.slice(chat.indexOf('const sessionUrl = `${config.chatbotUrl}${doneData.session_slug}/`;'));
   assert.match(doneSessionUrl, /document\.body\?\.dataset\.qaArchiveCorpus === 'true'[\s\S]*new URLSearchParams\(window\.location\.search\)\.get\('corpus'\) === 'archive-qa'/);
@@ -214,7 +231,8 @@ test('SSE sources render immediately as pending and completion updates the same 
   assert.match(completion, /setCitationSources\(streamElements\.messageBody, answerSources\)/);
   assert.match(chat, /Never expose unverified model output/);
   const sourcePill = chat.slice(chat.indexOf('function showSourcesGradually'), chat.indexOf('function createSourceCard'));
-  assert.match(sourcePill, /aria-label="Abrir painel com \$\{orderedSources\.length\} \$\{orderedSources\.length === 1 \? 'fonte consultada' : 'fontes consultadas'\}"/);
+  assert.match(sourcePill, /metadata\.pending[\s\S]*fonte em análise[\s\S]*fontes em análise/);
+  assert.match(sourcePill, /aria-label="Abrir painel com \$\{orderedSources\.length\} \$\{sourceCountLabel\}"/);
   assert.match(sourcePill, /Verificação em andamento/);
   assert.match(sourcePill, /Keep the trigger node stable/);
   assert.doesNotMatch(sourcePill, /topRawScore|Alta correspondência|Boa correspondência|Correspondência parcial/);
@@ -431,8 +449,46 @@ test('interrupted assistant messages are visibly labelled when history is restor
 test('source drawer keeps keyboard focus inside the modal', () => {
   const rag = read('jurix-rag.js');
   assert.match(rag, /event\.key !== 'Tab'/);
+  assert.match(rag, /panel\.getAttribute\('aria-modal'\) !== 'true'/);
   assert.match(rag, /event\.shiftKey && document\.activeElement === first/);
   assert.match(rag, /!event\.shiftKey && document\.activeElement === last/);
+});
+
+test('wide source drawer stays non-modal and preserves the reading position after reserving its width', async () => {
+  const dom = new JSDOM('<!doctype html><html><body><button id="open-sources">Ver fontes</button><div id="messages-container" style="height:400px; overflow:auto"><div style="height:1000px"></div></div></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+    pretendToBeVisual: true,
+  });
+  const { window: w } = dom;
+  w.matchMedia = query => ({ media: query, matches: query === '(min-width: 1200px)' });
+  const scroller = w.document.getElementById('messages-container');
+  scroller.scrollTop = 600;
+  Object.defineProperty(scroller, 'clientHeight', { configurable: true, value: 400 });
+  Object.defineProperty(scroller, 'scrollHeight', { configurable: true, get: () => w.document.body.classList.contains('jurix-sources-drawer-open') ? 1400 : 1000 });
+  w.eval(read('jurix-rag.js'));
+  w.JurixRagUI.openSourcesDrawer([
+    { norma: 'Lei Complementar nº 258/2024', dispositivo_ref: 'Art. 23', text: 'Trecho QA.' },
+  ]);
+  await new Promise(resolve => w.requestAnimationFrame(resolve));
+  assert.equal(scroller.scrollTop, 1400, 'keep the latest content in view when opening the drawer reflows the chat');
+  const panel = w.document.getElementById('jurix-sources-drawer-panel');
+  assert.equal(panel?.getAttribute('aria-modal'), 'false');
+  const close = panel.querySelector('#jurix-sources-drawer-close');
+  close.focus();
+  const tab = new w.KeyboardEvent('keydown', { key: 'Tab', cancelable: true });
+  w.document.dispatchEvent(tab);
+  assert.equal(tab.defaultPrevented, false, 'wide side sheet must not trap focus away from the composer');
+
+  const css = fs.readFileSync(path.resolve(JS_DIR, '../css/jurix-rag.css'), 'utf8');
+  assert.match(css, /@media\s*\(min-width:\s*1200px\)[\s\S]*?\.jurix-sources-drawer-backdrop\.is-open\s*\{[^}]*pointer-events:\s*none/);
+  assert.match(css, /@media\s*\(min-width:\s*1200px\)[\s\S]*?\.jurix-sources-drawer-backdrop\.is-open\s*\{[^}]*backdrop-filter:\s*none/);
+  assert.match(css, /body\.jurix-sources-drawer-open \.figma-main\s*\{[^}]*margin-right:\s*480px/);
+  assert.match(css, /body\.jurix-sources-drawer-open \.figma-floating-input-bar\s*\{[^}]*right:\s*480px[^}]*z-index:\s*100000/);
+  assert.match(css, /body\.jurix-sources-drawer-open #conversation-input-bar \.jurix-composer-options\s*\{\s*display:\s*none/);
+  assert.match(css, /jurix-temporal-active:not\(\[hidden\]\)\s*\{\s*display:\s*inline-flex/);
+  w.JurixRagUI.closeSourcesDrawer();
+  dom.window.close();
 });
 
 test('empty source drawer has a focusable dialog fallback', () => {
@@ -490,6 +546,32 @@ test('source drawer groups repeated norms without merging article evidence or ci
   dom.window.close();
 });
 
+test('a filtered citation keeps a real fragment target for its stable citation index', () => {
+  const dom = new JSDOM('<!doctype html><html><body><a class="jurix-citation" href="#jurix-evidence-2" data-source-index="2">[2]</a></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+    pretendToBeVisual: true,
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-rag.js'));
+  w.JurixRagUI.openSourcesDrawer([{
+    citation_id: 'jurix:law:198:article:1',
+    citation_index: 2,
+    norma: 'Lei Complementar nº 198/2021',
+    dispositivo_ref: 'Art. 1º',
+    text: 'Trecho de evidência.',
+  }]);
+
+  const panel = w.document.getElementById('jurix-sources-drawer-panel');
+  const citation = w.document.querySelector('.jurix-citation');
+  const target = panel.querySelector('[data-evidence-rank="2"]');
+  assert.equal(target?.id, 'jurix-evidence-2');
+  assert.equal(w.document.getElementById(citation.hash.slice(1)), target);
+
+  w.JurixRagUI.closeSourcesDrawer();
+  dom.window.close();
+});
+
 test('an open source drawer reconciles to terminal citations and restores focus to its original trigger', () => {
   const dom = new JSDOM('<!doctype html><html><body><button id="open-sources">Ver fontes</button></body></html>', {
     url: 'http://localhost/assistente/',
@@ -540,6 +622,30 @@ test('source drawer labels QA evidence and omits article coverage when counts ar
   dom.window.close();
 });
 
+test('restored source metadata recovers article coverage from persisted citations', () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+  });
+  const { window: w } = dom;
+  w.eval(read('chat.js'));
+
+  const coverage = {
+    complete: false,
+    selected_articles: 25,
+    total_articles: 264,
+    selection_strategy: 'topic_ranked',
+  };
+  const metadata = w.jurixChat.resolveSourceDisplayMetadata(
+    { grounded: false },
+    [{ citation_id: 'qa:1', coverage }],
+  );
+
+  assert.equal(metadata.partial, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(metadata.coverage)), coverage);
+  dom.window.close();
+});
+
 test('source drawer keeps QA warning when restored sources lack stream metadata', () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     url: 'http://localhost/assistente/',
@@ -567,6 +673,39 @@ test('source drawer keeps QA warning when restored sources lack stream metadata'
   dom.window.close();
 });
 
+test('source drawer distinguishes archived norms from official legislative matters', () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+    pretendToBeVisual: true,
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-rag.js'));
+  w.JurixRagUI.openSourcesDrawer([
+    {
+      norma_ref: 'Lei Complementar nº 258/2024',
+      dispositivo_ref: 'Art. 59',
+      full_text: 'Trecho arquivado.',
+      evidence_scope: 'isolated_qa_archive',
+      source_kind: 'archived_norm',
+    },
+    {
+      norma_ref: 'Projeto de Lei Complementar nº 12/2025',
+      dispositivo_ref: 'Matéria legislativa',
+      full_text: 'Altera o Art. 59 da LC 258/2024.',
+      source_type: 'Matéria legislativa — registro oficial SAPL',
+    },
+  ]);
+
+  const subtitle = w.document.querySelector('#sources-drawer-subtitle')?.textContent || '';
+  assert.match(subtitle, /1 norma do acervo local/);
+  assert.match(subtitle, /1 matéria legislativa consultada no SAPL oficial/);
+  assert.doesNotMatch(subtitle, /2 normas do acervo histórico local/);
+
+  w.JurixRagUI.closeSourcesDrawer();
+  dom.window.close();
+});
+
 test('unreviewed archive evidence does not present retrieval score as legal confidence', () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     url: 'http://localhost/assistente/',
@@ -588,6 +727,113 @@ test('unreviewed archive evidence does not present retrieval score as legal conf
   assert.match(holder.textContent, /extração pendente de revisão/);
   assert.doesNotMatch(holder.innerHTML, /100%|Alta correspondência|Pontuação técnica/);
   assert.equal(holder.querySelector('.jurix-rag-score-meter'), null);
+  dom.window.close();
+});
+
+test('expanded archive evidence uses full_text instead of the truncated API preview', () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-rag.js'));
+  const fullText = `${'O gabarito máximo permitido para edificação residencial sem elevador. '.repeat(5)}\n` +
+    'Devem ser atendidas também as exigências de acessibilidade às dependências de uso coletivo.';
+  const holder = w.document.createElement('div');
+  holder.innerHTML = w.JurixRagUI.renderEvidenceCard({
+    norma_ref: 'Lei Complementar nº 55/2004',
+    dispositivo_ref: 'Art. 167',
+    text: `${fullText.slice(0, 200)}...`,
+    full_text: fullText,
+    evidence_scope: 'isolated_qa_archive',
+  });
+
+  assert.match(holder.querySelector('.source-snippet').textContent, /…$/);
+  assert.equal(holder.querySelector('.jurix-rag-source__details p').textContent, fullText);
+  assert.match(
+    holder.querySelector('[data-copy-legal-citation]').dataset.copyLegalCitation,
+    /exigências de acessibilidade às dependências de uso coletivo/,
+  );
+  dom.window.close();
+});
+
+test('source card previews the answer-linked excerpt but expands the full device', () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-rag.js'));
+  const fullText = 'Art. 26. Regra geral sobre gratificações. § 1º É vedada a acumulação da GVISA com outra gratificação específica da Saúde.';
+  const evidenceText = '§ 1º É vedada a acumulação da GVISA com outra gratificação específica da Saúde.';
+  const holder = w.document.createElement('div');
+  holder.innerHTML = w.JurixRagUI.renderEvidenceCard({
+    norma_ref: 'Lei Complementar nº 120/2010',
+    dispositivo_ref: 'Art. 26',
+    text: fullText.slice(0, 200),
+    full_text: fullText,
+    evidence_text: evidenceText,
+    evidence_scope: 'isolated_qa_archive',
+  });
+
+  assert.equal(holder.querySelector('.source-snippet').textContent, evidenceText);
+  assert.equal(holder.querySelector('.jurix-rag-source__details p').textContent, fullText);
+  assert.match(holder.querySelector('[data-copy-legal-citation]').dataset.copyLegalCitation, new RegExp(evidenceText));
+  dom.window.close();
+});
+
+test('source card shows multiple answer-linked excerpts separately', () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-rag.js'));
+  const first = 'II – GVISA exige atividade técnica na Vigilância Sanitária.';
+  const second = '§ 1º É vedada a acumulação com outra gratificação específica da Saúde.';
+  const holder = w.document.createElement('div');
+  holder.innerHTML = w.JurixRagUI.renderEvidenceCard({
+    norma_ref: 'Lei Complementar nº 120/2010',
+    dispositivo_ref: 'Art. 26',
+    full_text: `Art. 26. ${first} ${second}`,
+    evidence_text: `${first} … ${second}`,
+    evidence_excerpts: [first, second],
+    evidence_scope: 'isolated_qa_archive',
+  });
+
+  const preview = holder.querySelector('.source-snippet');
+  assert.deepEqual([...preview.querySelectorAll('span')].map((span) => span.textContent), [first, ' … ', second]);
+  assert.match(holder.querySelector('.jurix-rag-source__details p').textContent, /Art\. 26\./);
+  dom.window.close();
+});
+
+test('source excerpt disclosure label describes its next action in both states', () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+  });
+  const { window: w } = dom;
+  w.eval(read('jurix-rag.js'));
+  const holder = w.document.createElement('div');
+  holder.innerHTML = w.JurixRagUI.renderEvidenceCard({
+    norma_ref: 'Lei Complementar nº 258/2024',
+    dispositivo_ref: 'Art. 262',
+    text: 'Trecho legal para teste.',
+    evidence_scope: 'isolated_qa_archive',
+  });
+  w.document.body.append(holder);
+
+  const details = holder.querySelector('details.jurix-rag-source__details');
+  const summary = details.querySelector(':scope > summary');
+  assert.equal(summary.textContent, 'Ver trecho completo');
+
+  details.open = true;
+  details.dispatchEvent(new w.Event('toggle'));
+  assert.equal(summary.textContent, 'Recolher trecho');
+
+  details.open = false;
+  details.dispatchEvent(new w.Event('toggle'));
+  assert.equal(summary.textContent, 'Ver trecho completo');
   dom.window.close();
 });
 
@@ -626,7 +872,7 @@ test('source drawer clearly identifies synthetic legal fixtures and never calls 
   dom.window.close();
 });
 
-test('source drawer reports a sampled whole-norm count only when both counts are available', () => {
+test('source drawer names the whole-norm coverage strategy and handles annex-only gaps', () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     url: 'http://localhost/assistente/',
     runScripts: 'dangerously',
@@ -637,11 +883,53 @@ test('source drawer reports a sampled whole-norm count only when both counts are
   w.JurixRagUI.openSourcesDrawer(
     [{ norma: 'Lei nº 9.001/2020', dispositivo_ref: 'Art. 1º', text: 'Trecho de teste.' }],
     'Fontes Consultadas',
-    { coverage: { complete: false, selected_articles: 3, total_articles: 8 } },
+    {
+      coverage: {
+        complete: false,
+        selected_articles: 3,
+        total_articles: 8,
+        selection_strategy: 'distributed',
+      },
+    },
   );
 
   const subtitle = w.document.querySelector('#sources-drawer-subtitle')?.textContent || '';
   assert.match(subtitle, /Amostra distribuída: 3 de 8 artigos/);
+
+  w.JurixRagUI.closeSourcesDrawer();
+  w.JurixRagUI.openSourcesDrawer(
+    [{ norma: 'Lei nº 9.001/2020', dispositivo_ref: 'Art. 1º', text: 'Trecho de teste.' }],
+    'Fontes Consultadas',
+    {
+      coverage: {
+        complete: false,
+        selected_articles: 3,
+        total_articles: 8,
+        selection_strategy: 'topic_ranked',
+      },
+    },
+  );
+  const topicalSubtitle = w.document.querySelector('#sources-drawer-subtitle')?.textContent || '';
+  assert.match(topicalSubtitle, /Amostra priorizada por correspondência textual ao tema: 3 de 8 artigos/);
+  assert.doesNotMatch(topicalSubtitle, /Amostra distribuída/);
+
+  w.JurixRagUI.closeSourcesDrawer();
+  w.JurixRagUI.openSourcesDrawer(
+    [{ norma: 'Lei nº 9.001/2020', dispositivo_ref: 'Art. 1º', text: 'Trecho de teste.' }],
+    'Fontes Consultadas',
+    {
+      coverage: {
+        complete: false,
+        selected_articles: 8,
+        total_articles: 8,
+        annexes_present: true,
+        selection_strategy: 'topic_ranked',
+      },
+    },
+  );
+  const annexSubtitle = w.document.querySelector('#sources-drawer-subtitle')?.textContent || '';
+  assert.match(annexSubtitle, /Anexos normativos foram detectados e não estão incluídos/);
+  assert.doesNotMatch(annexSubtitle, /Amostra (distribuída|priorizada)/);
 
   w.JurixRagUI.closeSourcesDrawer();
   dom.window.close();
@@ -937,11 +1225,15 @@ test('anonymous history export uses an allowlist and clear reports persistence s
   window.JurixAnonymousHistory.addMessage(sessionId, 'assistant', 'Resposta', [{
     norma_ref: 'Lei nº 1/2026', text: 'Trecho', citation_id: 'jurix:norma:1:dispositivo:2',
     citation_index: 1, citation_label: 'Lei nº 1/2026, Art. 1º', api_key: 'must-not-export', provider_secret: 'must-not-export',
+    source_kind: 'sapl_legislative_matter', status_label: 'Em tramitação no SAPL', matter_status: true,
+    consulted_at: '2026-10-09T21:00:00Z',
   }]);
   // Only explicitly grounded assistant sources belong in a user export.
   window.JurixAnonymousHistory.updateLastAssistant(sessionId, 'Resposta fundamentada', [{
     norma_ref: 'Lei nº 1/2026', text: 'Trecho', citation_id: 'jurix:norma:1:dispositivo:2',
     citation_index: 1, citation_label: 'Lei nº 1/2026, Art. 1º', api_key: 'must-not-export', provider_secret: 'must-not-export',
+    source_kind: 'sapl_legislative_matter', status_label: 'Em tramitação no SAPL', matter_status: true,
+    consulted_at: '2026-10-09T21:00:00Z',
   }], true);
   const exported = window.JurixAnonymousHistory.exportData();
   const serialized = JSON.stringify(exported);
@@ -950,6 +1242,9 @@ test('anonymous history export uses an allowlist and clear reports persistence s
   assert.match(serialized, /Lei nº 1\/2026/);
   assert.match(serialized, /jurix:norma:1:dispositivo:2/);
   assert.match(serialized, /citation_index/);
+  assert.match(serialized, /consulted_at/);
+  assert.match(serialized, /2026-10-09T21:00:00Z/);
+  assert.match(serialized, /Em tramitação no SAPL/);
   assert.doesNotMatch(serialized, /must-not-export|api_key|provider_secret/);
   assert.equal(window.JurixAnonymousHistory.clear(), true);
   assert.equal(window.JurixAnonymousHistory.list().length, 0);
@@ -1062,6 +1357,49 @@ test('stream retries get a new turn UUID linked to the previous failed attempt',
   assert.notEqual(retry.client_turn_id, initial.client_turn_id);
   assert.equal(retry.retry_of_client_turn_id, initial.client_turn_id);
   assert.equal(retry.client_session_id, initial.client_session_id);
+  dom.window.close();
+});
+
+test('stream retry remains linked after the first response assigns a server session id', async () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/', runScripts: 'dangerously',
+  });
+  const { window } = dom;
+  window.TextDecoder = TextDecoder;
+  const requests = [];
+  const responses = [
+    'data: {"type":"session","session_id":12}\n\n',
+    'data: {"type":"done","answer":"Resposta"}\n\n',
+  ];
+  window.fetch = async (_url, options) => {
+    requests.push(JSON.parse(options.body));
+    const bytes = new TextEncoder().encode(responses.shift());
+    let consumed = false;
+    return {
+      ok: true,
+      status: 200,
+      body: { getReader: () => ({
+        read: async () => consumed
+          ? { done: true }
+          : (consumed = true, { done: false, value: bytes }),
+      }) },
+    };
+  };
+  window.eval(read('jurix-chat-api.js'));
+
+  await assert.rejects(
+    window.JurixChatAPI.streamAnswer('Pergunta cancelada', null, {
+      onSession: async () => {},
+    }),
+    (error) => error.code === 'INCOMPLETE_STREAM',
+  );
+  await window.JurixChatAPI.streamAnswer('Pergunta cancelada', 12, {
+    retryExistingQuestion: true,
+  });
+
+  assert.equal(requests.length, 2);
+  assert.equal(requests[1].retry_of_client_turn_id, requests[0].client_turn_id);
+  assert.notEqual(requests[1].client_turn_id, requests[0].client_turn_id);
   dom.window.close();
 });
 
@@ -1368,4 +1706,140 @@ test('citation click opens the global evidence drawer and focuses the matching s
     assert.equal(panel.classList.contains('is-open'), true);
     assert.equal(panel.querySelector('[data-evidence-rank="1"]')?.classList.contains('is-citation-target'), true);
   } finally { w.close(); }
+});
+
+test('SAPL legislative-matter source stays distinct, linked, and exportable', () => {
+  const w = guestWindow();
+  try {
+    w.eval(read('jurix-rag.js'));
+    const source = {
+      citation_index: 1,
+      citation_id: 'sapl:materia:54742',
+      citation_label: 'Projeto de Lei Complementar nº 9/2026',
+      norma_ref: 'Projeto de Lei Complementar nº 9/2026',
+      dispositivo_ref: 'Matéria legislativa',
+      source_kind: 'sapl_legislative_matter',
+      source_type: 'Matéria legislativa — registro oficial SAPL',
+      evidence_scope: 'official_legislative_matter',
+      status_label: 'Fora de tramitação no SAPL',
+      consulted_at: '2026-10-09T21:00:00Z',
+      matter_status: false,
+      matter_result: null,
+      contribution: 'Ementa e metadados; não comprova vigência.',
+      full_text: 'Ementa pública.',
+      sapl_url: 'https://sapl.natal.rn.leg.br/materia/54742',
+      similarity_score: 0,
+    };
+    const markup = w.JurixRagUI.renderEvidenceCard(source);
+
+    assert.match(markup, /Registro de matéria legislativa/);
+    assert.match(markup, /Consulta SAPL:/);
+    assert.match(markup, /Abrir matéria no SAPL/);
+    assert.match(markup, /https:\/\/sapl\.natal\.rn\.leg\.br\/materia\/54742/);
+    assert.doesNotMatch(markup, /Pontuação técnica|Relevância/);
+    assert.equal(w.JurixRagUI.buildSourceUrl(source), source.sapl_url);
+
+    w.eval(read('jurix-markdown.js'));
+    w.eval(read('jurix-chat-renderer.js'));
+    const evidencePackage = w.JurixChatRenderer.buildEvidencePackage([source]);
+    assert.equal(evidencePackage.sources[0].source_kind, 'sapl_legislative_matter');
+    assert.equal(evidencePackage.sources[0].official_url, source.sapl_url);
+    assert.equal(evidencePackage.sources[0].matter_status, false);
+    assert.equal(evidencePackage.sources[0].consulted_at, source.consulted_at);
+  } finally {
+    w.close();
+  }
+});
+
+test('restored SAPL proposal citation keeps its project identity and cannot link as an enacted law', () => {
+  const w = guestWindow();
+  try {
+    w.eval(read('jurix-rag.js'));
+    const body = w.document.createElement('div');
+    body.innerHTML = '<strong>O SAPL registra Projeto de Lei Complementar nº 12/2025</strong>; Lei Complementar nº 12/2025 é uma referência distinta.';
+    w.JurixRagUI.linkLegalReferences(body, [{
+      norma_ref: 'Projeto de Lei Complementar nº 12/2025',
+      dispositivo_ref: 'Matéria legislativa',
+      source_kind: 'sapl_legislative_matter',
+      evidence_scope: 'official_legislative_matter',
+      sapl_url: 'https://sapl.natal.rn.leg.br/materia/48759',
+    }]);
+
+    const links = [...body.querySelectorAll('a.jurix-legal-reference-link')];
+    assert.equal(links.length, 1);
+    assert.equal(links[0].textContent, 'Projeto de Lei Complementar nº 12/2025');
+    assert.equal(links[0].getAttribute('aria-label'), 'Abrir Projeto de Lei Complementar nº 12/2025 no SAPL (nova aba)');
+    assert.match(body.textContent, /Lei Complementar nº 12\/2025 é uma referência distinta/);
+  } finally {
+    w.close();
+  }
+});
+
+test('final citation links survive a previously scheduled animation-frame render', () => {
+  const w = guestWindow();
+  try {
+    let nextFrameId = 0;
+    const pendingFrames = new Map();
+    w.requestAnimationFrame = (callback) => {
+      const frameId = ++nextFrameId;
+      pendingFrames.set(frameId, callback);
+      return frameId;
+    };
+    w.cancelAnimationFrame = (frameId) => pendingFrames.delete(frameId);
+    w.eval(read('jurix-rag.js'));
+
+    const body = w.document.createElement('div');
+    w.document.body.append(body);
+    const answer = 'O SAPL registra Projeto de Lei Complementar nº 12/2025.';
+    const sources = [{
+      norma_ref: 'Projeto de Lei Complementar nº 12/2025',
+      dispositivo_ref: 'Matéria legislativa',
+      source_kind: 'sapl_legislative_matter',
+      evidence_scope: 'official_legislative_matter',
+      sapl_url: 'https://sapl.natal.rn.leg.br/materia/48759',
+    }];
+
+    w.JurixRagUI.scheduleRender(body, answer);
+    w.JurixRagUI.flushRender(body, answer);
+    w.JurixRagUI.linkLegalReferences(body, sources);
+    for (const callback of pendingFrames.values()) callback();
+
+    const proposalLink = body.querySelector('a.jurix-legal-reference-link');
+    assert.equal(proposalLink?.textContent, 'Projeto de Lei Complementar nº 12/2025');
+    assert.equal(proposalLink?.href, 'https://sapl.natal.rn.leg.br/materia/48759');
+  } finally {
+    w.close();
+  }
+});
+
+test('official proposal attachment is not presented as a zero-relevance legal authority', () => {
+  const w = guestWindow();
+  try {
+    w.eval(read('jurix-rag.js'));
+    const source = {
+      citation_index: 2,
+      citation_id: 'sapl:materia:48759:texto-original',
+      citation_label: 'Projeto de Lei Complementar nº 12/2025, Texto Original',
+      norma_ref: 'Projeto de Lei Complementar nº 12/2025',
+      dispositivo_ref: 'Texto Original — redação proposta',
+      source_kind: 'sapl_matter_original_pdf',
+      source_type: 'Texto original da proposição — PDF oficial SAPL',
+      evidence_scope: 'official_legislative_matter_document',
+      contribution: 'Trecho da proposta; não é norma promulgada nem comprova vigência.',
+      full_text: 'Art. 59. Redação proposta.',
+      pdf_url: 'https://sapl.natal.rn.leg.br/media/original.pdf',
+      similarity_score: null,
+    };
+    const markup = w.JurixRagUI.renderEvidenceCard(source);
+
+    assert.match(markup, /Texto oficial da proposta — não é norma vigente/);
+    assert.match(markup, /Abrir PDF oficial da proposta/);
+    assert.doesNotMatch(markup, /Baixa correspondência|Pontuação técnica|Relevância/);
+    assert.equal(
+      w.JurixRagUI.buildSourceUrl({ ...source, page: 3 }),
+      'https://sapl.natal.rn.leg.br/media/original.pdf#page=3',
+    );
+  } finally {
+    w.close();
+  }
 });

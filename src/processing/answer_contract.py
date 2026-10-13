@@ -32,6 +32,12 @@ def _safe_temporal_version(value):
         candidate = str(value.get(key) or "")
         if re.fullmatch(r"[a-fA-F0-9]{64}", candidate):
             result[key] = candidate.lower()
+    snapshot_id = value.get("snapshot_id")
+    if isinstance(snapshot_id, int) and not isinstance(snapshot_id, bool) and snapshot_id > 0:
+        result["snapshot_id"] = snapshot_id
+    status_note = value.get("status_note")
+    if isinstance(status_note, str) and status_note.strip():
+        result["status_note"] = " ".join(status_note.split())[:240]
     for key in ("source_document_id", "effective_on"):
         candidate = value.get(key)
         if isinstance(candidate, str) and re.fullmatch(r"[0-9a-fA-F-]{36}" if key == "source_document_id" else r"\d{4}-\d{2}-\d{2}", candidate):

@@ -10,6 +10,7 @@ const html = `<!doctype html><section>
   <select id="archive-candidate-status"><option value="all">Todos</option><option value="pending">Pendente</option><option value="in_review">Em revisão</option></select>
   <select id="archive-candidate-extraction"><option value="all">Todos</option><option value="complete">Completa</option><option value="partial">Parcial</option><option value="unreadable">Ilegível</option><option value="none">Sem extração</option></select>
   <p id="archive-candidate-filter-summary" role="status" aria-live="polite"></p>
+  <a id="archive-global-search" data-search-base="/pesquisa/" href="/pesquisa/"></a>
   <div id="archive-candidates-list">
     <article class="jurix-archive-candidate" data-search="Lei Complementar nº 120/2010 LeiComplementar20101203_120.pdf 0" data-identity="resolved" data-review-status="pending" data-extraction-status="complete"></article>
     <article class="jurix-archive-candidate" data-search="Decreto nº 7795/2005 decreto_7795.pdf 2" data-identity="unresolved" data-review-status="pending" data-extraction-status="partial"></article>
@@ -18,9 +19,10 @@ const html = `<!doctype html><section>
   <p id="archive-candidates-no-results" hidden></p>
 </section>`;
 
-function boot(initialSearch = '') {
-  const dom = new JSDOM(html, { runScripts: 'outside-only' });
+function boot(initialSearch = '', totalCandidates = 3) {
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'http://localhost/normas/' });
   dom.window.document.getElementById('archive-candidate-search').value = initialSearch;
+  dom.window.document.getElementById('archive-candidates-list').dataset.totalCandidates = String(totalCandidates);
   dom.window.eval(source);
   const { document } = dom.window;
   return {
@@ -34,10 +36,34 @@ function boot(initialSearch = '') {
   };
 }
 
+test('keeps the corpus-wide candidate count distinct from the locally filtered first page', () => {
+  const ui = boot('', 6663);
+  assert.equal(
+    ui.document.getElementById('archive-candidate-filter-summary').textContent,
+    'Exibindo 3 de 3 documentos nesta página · 6.663 no acervo.',
+  );
+  ui.search.value = 'não existe';
+  ui.search.dispatchEvent(new ui.dom.window.Event('input', { bubbles: true }));
+  assert.equal(
+    ui.document.getElementById('archive-candidate-filter-summary').textContent,
+    'Exibindo 0 de 3 documentos nesta página · 6.663 no acervo.',
+  );
+});
+
 test('aplica a consulta da busca normativa ao abrir a lista do acervo histórico', () => {
   const ui = boot('Lei Complementar 120/2010');
   assert.deepEqual(ui.cards.map((card) => card.hidden), [false, true, true]);
   assert.equal(ui.document.getElementById('archive-candidate-filter-summary').textContent, 'Exibindo 1 de 3 documentos.');
+  assert.equal(new URL(ui.document.getElementById('archive-global-search').href).searchParams.get('q'), 'Lei Complementar 120/2010');
+});
+
+test('global archive search follows the live query instead of only filtering the current page', () => {
+  const ui = boot('', 6663);
+  ui.search.value = 'LC nº 258/2024';
+  ui.search.dispatchEvent(new ui.dom.window.Event('input', { bubbles: true }));
+  const target = new URL(ui.document.getElementById('archive-global-search').href);
+  assert.equal(target.pathname, '/pesquisa/');
+  assert.equal(target.searchParams.get('q'), 'LC nº 258/2024');
 });
 
 test('busca candidatos por número/ano sem diferenciar acentos ou caixa', () => {

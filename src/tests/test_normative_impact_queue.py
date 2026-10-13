@@ -28,7 +28,9 @@ pytestmark = pytest.mark.django_db
 
 def _queued():
     return enqueue_normative_work(
-        source_kind="norma", source_id="42", source_revision="a" * 64,
+        source_kind="norma",
+        source_id="42",
+        source_revision="a" * 64,
         stage=NormativeWorkItem.Stage.CHANGED,
     )[0]
 
@@ -37,13 +39,17 @@ def test_queue_enqueue_is_idempotent_and_rejects_over_limit(settings):
     settings.NORMATIVE_WORK_QUEUE_MAX_PENDING = 1
     first, created = _queued(), True
     duplicate, duplicate_created = enqueue_normative_work(
-        source_kind="norma", source_id="42", source_revision="a" * 64,
+        source_kind="norma",
+        source_id="42",
+        source_revision="a" * 64,
         stage=NormativeWorkItem.Stage.CHANGED,
     )
     assert first.pk == duplicate.pk and created and not duplicate_created
     with pytest.raises(RuntimeError, match="pending limit"):
         enqueue_normative_work(
-            source_kind="norma", source_id="43", source_revision="b" * 64,
+            source_kind="norma",
+            source_id="43",
+            source_revision="b" * 64,
             stage=NormativeWorkItem.Stage.CHANGED,
         )
 
@@ -219,7 +225,9 @@ def test_review_gate_resumes_same_stage_and_rejection_cancels():
     assert resumed.stage == NormativeWorkItem.Stage.CHANGED
 
     second = enqueue_normative_work(
-        source_kind="norma", source_id="43", source_revision="b" * 64,
+        source_kind="norma",
+        source_id="43",
+        source_revision="b" * 64,
         stage=NormativeWorkItem.Stage.CHANGED,
     )[0]
     _, second_token = claim_normative_work_item(second.pk)
@@ -232,18 +240,23 @@ def test_review_gate_resumes_same_stage_and_rejection_cancels():
 
 def test_worker_checkpoints_changed_and_extraction_then_waits_for_review(monkeypatch):
     norma = Norma.objects.create(
-        tipo="Lei Ordinária", numero="9001", ano=2020,
+        tipo="Lei Ordinária",
+        numero="9001",
+        ano=2020,
         texto_original="Art. 1º Esta norma é uma fixture técnica QA.",
     )
     from src.apps.ingestion.normative_impact import safe_norma_revision
 
     item, _ = enqueue_normative_work(
-        source_kind="norma", source_id=norma.pk,
-        source_revision=safe_norma_revision(norma), stage=NormativeWorkItem.Stage.CHANGED,
+        source_kind="norma",
+        source_id=norma.pk,
+        source_revision=safe_norma_revision(norma),
+        stage=NormativeWorkItem.Stage.CHANGED,
     )
     scheduled = []
     monkeypatch.setattr(
-        process_normative_work_item_task, "apply_async",
+        process_normative_work_item_task,
+        "apply_async",
         lambda *, args, **kwargs: scheduled.append((args, kwargs)),
     )
 
@@ -270,14 +283,18 @@ def test_worker_cancels_a_stale_source_without_mutating_it(monkeypatch):
     assert process_normative_work_item_task.acks_late is True
     assert process_normative_work_item_task.reject_on_worker_lost is True
     norma = Norma.objects.create(
-        tipo="Lei Ordinária", numero="9002", ano=2020,
+        tipo="Lei Ordinária",
+        numero="9002",
+        ano=2020,
         texto_original="Art. 1º Texto original QA.",
     )
     from src.apps.ingestion.normative_impact import safe_norma_revision
 
     item, _ = enqueue_normative_work(
-        source_kind="norma", source_id=norma.pk,
-        source_revision=safe_norma_revision(norma), stage=NormativeWorkItem.Stage.CHANGED,
+        source_kind="norma",
+        source_id=norma.pk,
+        source_revision=safe_norma_revision(norma),
+        stage=NormativeWorkItem.Stage.CHANGED,
     )
     norma.texto_original = "Art. 1º Texto alterado depois da fila."
     norma.save(update_fields=["texto_original", "updated_at"])
@@ -291,12 +308,15 @@ def test_worker_cancels_a_stale_source_without_mutating_it(monkeypatch):
 def test_manual_batch_dispatch_never_exceeds_ten(monkeypatch):
     for number in range(12):
         enqueue_normative_work(
-            source_kind="norma", source_id=str(100 + number),
-            source_revision=f"{number + 1:064x}", stage=NormativeWorkItem.Stage.CHANGED,
+            source_kind="norma",
+            source_id=str(100 + number),
+            source_revision=f"{number + 1:064x}",
+            stage=NormativeWorkItem.Stage.CHANGED,
         )
     scheduled = []
     monkeypatch.setattr(
-        process_normative_work_item_task, "apply_async",
+        process_normative_work_item_task,
+        "apply_async",
         lambda *, args, **kwargs: scheduled.append((args, kwargs)),
     )
     result = dispatch_normative_work_batch_task.run(max_items=50)
@@ -308,11 +328,15 @@ def test_manual_batch_dispatch_never_exceeds_ten(monkeypatch):
 def test_batch_dispatch_includes_only_expired_leases_and_pending_items(monkeypatch):
     pending = _queued()
     expired = enqueue_normative_work(
-        source_kind="norma", source_id="201", source_revision="c" * 64,
+        source_kind="norma",
+        source_id="201",
+        source_revision="c" * 64,
         stage=NormativeWorkItem.Stage.CHANGED,
     )[0]
     active = enqueue_normative_work(
-        source_kind="norma", source_id="202", source_revision="d" * 64,
+        source_kind="norma",
+        source_id="202",
+        source_revision="d" * 64,
         stage=NormativeWorkItem.Stage.CHANGED,
     )[0]
     _, expired_token = claim_normative_work_item(expired.pk)
@@ -322,7 +346,8 @@ def test_batch_dispatch_includes_only_expired_leases_and_pending_items(monkeypat
     expired.save(update_fields=["lease_until"])
     scheduled = []
     monkeypatch.setattr(
-        process_normative_work_item_task, "apply_async",
+        process_normative_work_item_task,
+        "apply_async",
         lambda *, args, **kwargs: scheduled.append((args, kwargs)),
     )
 
@@ -344,7 +369,9 @@ def test_redelivered_task_skips_an_active_lease_or_review_checkpoint():
     assert duplicate["status"] == NormativeWorkItem.Status.LEASED
 
     review = enqueue_normative_work(
-        source_kind="norma", source_id="203", source_revision="e" * 64,
+        source_kind="norma",
+        source_id="203",
+        source_revision="e" * 64,
         stage=NormativeWorkItem.Stage.CHANGED,
     )[0]
     review.stage = NormativeWorkItem.Stage.REVIEW
@@ -359,22 +386,33 @@ def test_segmentation_waits_for_approved_source_then_materializes_exact_extracti
     from src.apps.ingestion import normative_tasks
 
     text = "Art. 1º Texto exato da fonte aprovada.\nArt. 2º Esta Lei entra em vigor na publicação."
+
     def sha(value):
         return hashlib.sha256(value.encode()).hexdigest()
+
     norma = Norma.objects.create(tipo="Lei", numero="9003", ano=2020)
     document = DocumentoNormativo.objects.create(
-        norma=norma, document_key=sha("doc:9003"),
+        norma=norma,
+        document_key=sha("doc:9003"),
         source_kind=DocumentoNormativo.SourceKind.LEGACY,
-        source_ref="qa:queue-stage-test", content_sha256=sha("pdf:9003"), size_bytes=10,
+        source_ref="qa:queue-stage-test",
+        content_sha256=sha("pdf:9003"),
+        size_bytes=10,
         role=DocumentoNormativo.Role.ORIGINAL,
         condition_of_use=DocumentoNormativo.ConditionOfUse.PUBLIC_RECORD_REVIEWED,
     )
     extraction = ExtracaoDocumento.objects.create(
-        documento=document, extractor_version="queue-stage-test-v1",
-        policy_fingerprint=sha("policy"), text_version="technical_text_v1",
-        raw_text=text, legal_text=text, page_count=1,
-        metadata_candidates_json={}, quality_json={},
-        status=ExtracaoDocumento.Status.COMPLETE, extraction_sha256=sha("extraction"),
+        documento=document,
+        extractor_version="queue-stage-test-v1",
+        policy_fingerprint=sha("policy"),
+        text_version="technical_text_v1",
+        raw_text=text,
+        legal_text=text,
+        page_count=1,
+        metadata_candidates_json={},
+        quality_json={},
+        status=ExtracaoDocumento.Status.COMPLETE,
+        extraction_sha256=sha("extraction"),
     )
     document.accepted_extraction = extraction
     document.review_status = DocumentoNormativo.ReviewStatus.PENDING
@@ -385,18 +423,21 @@ def test_segmentation_waits_for_approved_source_then_materializes_exact_extracti
 
     assert safe_norma_revision(norma) == document.content_sha256
     item = NormativeWorkItem(
-        source_kind="norma", source_id=str(norma.pk), source_revision=sha("revision"),
+        source_kind="norma",
+        source_id=str(norma.pk),
+        source_revision=sha("revision"),
         stage=NormativeWorkItem.Stage.SEGMENT,
     )
     segment_calls = []
     monkeypatch.setattr(
-        normative_tasks, "segment_document_extraction",
-        lambda _id: segment_calls.append(_id) or SimpleNamespace(
-            created=2, unchanged=False, diagnostics=()
-        ),
+        normative_tasks,
+        "segment_document_extraction",
+        lambda _id: segment_calls.append(_id)
+        or SimpleNamespace(created=2, unchanged=False, diagnostics=()),
     )
     monkeypatch.setattr(
-        normative_tasks.segment_text_task, "apply",
+        normative_tasks.segment_text_task,
+        "apply",
         lambda **_kwargs: SimpleNamespace(get=lambda: {"success": True, "dispositivos_created": 2}),
     )
 
@@ -424,7 +465,6 @@ def test_approved_synthetic_pipeline_checkpoints_through_snapshot_and_defers_emb
     from src.apps.ingestion.document_promotion import promotion_fingerprint
     from src.apps.ingestion.normative_tasks import review_normative_work_item_task
     from src.apps.legislation.review_models import RevisaoJuridica
-    from src.processing.normative_projection import NormativeSnapshot
 
     qa_root = tmp_path / "isolated-normative-qa"
     qa_root.mkdir()
@@ -510,15 +550,18 @@ def test_approved_synthetic_pipeline_checkpoints_through_snapshot_and_defers_emb
 
     first = process_normative_work_item_task.apply(args=[item.pk], throw=True).get()
     assert first["stage"] == NormativeWorkItem.Stage.EXTRACTION
-    extraction_result = process_normative_work_item_task.apply(
-        args=[item.pk], throw=True
-    ).get()
+    extraction_result = process_normative_work_item_task.apply(args=[item.pk], throw=True).get()
     assert extraction_result["status"] == NormativeWorkItem.Status.AWAITING_REVIEW
     item.refresh_from_db()
     assert item.stage == NormativeWorkItem.Stage.REVIEW
 
     reviewed = review_normative_work_item_task.apply(
-        args=[item.pk, reviewer.pk, True, "[QA SINTÉTICO] Integração de pipeline; não é revisão jurídica."],
+        args=[
+            item.pk,
+            reviewer.pk,
+            True,
+            "[QA SINTÉTICO] Integração de pipeline; não é revisão jurídica.",
+        ],
         throw=True,
     ).get()
     assert reviewed["stage"] == NormativeWorkItem.Stage.SEGMENT
@@ -534,7 +577,14 @@ def test_approved_synthetic_pipeline_checkpoints_through_snapshot_and_defers_emb
     monkeypatch.setattr(
         normative_tasks,
         "reconcile_unresolved_event_targets",
-        lambda **_kwargs: {"resolved": 0, "synthetic_fixture": True},
+        lambda **_kwargs: {
+            "inspected": 0,
+            "resolved": 0,
+            "remaining_unresolved": 0,
+            "next_cursor": None,
+            "has_more": False,
+            "synthetic_fixture": True,
+        },
     )
     monkeypatch.setattr(
         normative_tasks,
@@ -551,20 +601,21 @@ def test_approved_synthetic_pipeline_checkpoints_through_snapshot_and_defers_emb
         NormativeWorkItem.Stage.EVENT,
         NormativeWorkItem.Stage.RECONCILE,
         NormativeWorkItem.Stage.SNAPSHOT,
-        NormativeWorkItem.Stage.INVALIDATE,
-        NormativeWorkItem.Stage.EMBEDDING,
     ]
     for stage in stages:
         item.refresh_from_db()
         assert item.stage == stage
         result = process_normative_work_item_task.apply(args=[item.pk], throw=True).get()
         item.refresh_from_db()
-        if stage != NormativeWorkItem.Stage.EMBEDDING:
+        if stage == NormativeWorkItem.Stage.SNAPSHOT:
+            assert result["status"] == NormativeWorkItem.Status.AWAITING_REVIEW
+        else:
             assert result["status"] == NormativeWorkItem.Status.PENDING, item.last_error
 
     item.refresh_from_db()
     norma.refresh_from_db()
-    assert item.status == NormativeWorkItem.Status.COMPLETED
+    assert item.status == NormativeWorkItem.Status.AWAITING_REVIEW
+    assert item.stage == NormativeWorkItem.Stage.SNAPSHOT
     assert item.result["human_review"] == "approved"
     assert set(item.result["stage_results"]) == {
         NormativeWorkItem.Stage.CHANGED,
@@ -572,13 +623,7 @@ def test_approved_synthetic_pipeline_checkpoints_through_snapshot_and_defers_emb
         NormativeWorkItem.Stage.SEGMENT,
         NormativeWorkItem.Stage.EVENT,
         NormativeWorkItem.Stage.RECONCILE,
-        NormativeWorkItem.Stage.SNAPSHOT,
-        NormativeWorkItem.Stage.INVALIDATE,
-        NormativeWorkItem.Stage.EMBEDDING,
     }
-    assert item.result["stage_results"][NormativeWorkItem.Stage.EMBEDDING]["embedding_status"] == "deferred"
-    snapshot = NormativeSnapshot.objects.filter(norma=norma).order_by("-as_of", "-pk").first()
-    assert snapshot is not None
-    assert snapshot.coverage_json["reason"] == "reviewed_source_projection"
+    assert item.result["review_gate"]["reason"]
     assert norma.texto_original == norma.documento_base.accepted_extraction.legal_text
     assert scheduled

@@ -51,6 +51,13 @@ Reavaliação anterior em 03/10/2026: **5,5/10 como MVP de produto jurídico**, 
 
 Consultar `NORMATIVE_GRAPH_OPERATIONS.md` para os comandos seguros e os gates de ativação. Este documento não autoriza uso de banco real.
 
+## Atualização do piloto PGM — 08/10/2026
+
+- O runtime QA mais recente exercitado nesta etapa foi `http://127.0.0.1:8028`, com perfil `config.settings_normative_qa`, armazenamento isolado e corpus explicitamente identificado na interface. Smoke PGM: 4 evidências dos Arts. 1º, 2º, 4º e 6º sob uma norma; PDF local HTTP 200 e íntegro; pergunta sem cadeia suficiente permaneceu inconclusiva; reflow 320–1920 px passou. Os excertos permanecem pendentes de revisão jurídica.
+- Pós-diff, regressão Python completa: **1.553 passed, 6 skipped, 0 failed**; JS exit 0; smoke PGM dedicado passou. A suíte JS genérica teve um skip de responsividade por não receber `JURIX_QA_BASE_URL`; o smoke PGM cobriu cinco larguras. Veja `PGM_PILOT_DELIVERY.md` e `PGM_USABILITY_RESULTS.md` para detalhes.
+- Esta validação de produto/engenharia não altera as conclusões científicas e jurídicas do snapshot: não há gold humano, cadeia temporal real adjudicada, avaliação PGM participante nem licença/condição de uso institucional confirmada. Não classificar os resultados como prontidão para fundamentar processo.
+- Uma migration aditiva da tarefa P-016 foi aplicada por engano no PostgreSQL QA isolado após autorização limitada à P-005; o escopo excedido está documentado no progresso e na entrega PGM. Não houve alteração de produção ou conteúdo jurídico, e nenhuma outra migration foi executada nesta rodada.
+
 ## Atualização da validação — 06/10/2026
 
 - No PostgreSQL QA isolado, a regressão integral mais recente executou **1.317 testes: 1.317 passaram, 3 foram ignorados, 7 avisos, zero falhas**. `manage.py check`, contrato documental e orçamento de arquitetura também passaram; a suíte JS integral encerrou com exit 0 e 37/37 Chromium no grupo integrado. Os comandos e limites de cada execução estão no progresso.

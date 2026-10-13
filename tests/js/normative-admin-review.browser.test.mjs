@@ -37,7 +37,7 @@ test('QA browser: authenticated reviewer can confirm then reject a synthetic eve
   const parsedBase = new URL(baseUrl);
   assert.equal(parsedBase.protocol, 'http:');
   assert.equal(parsedBase.hostname, '127.0.0.1');
-  assert.ok(['8007', '8009', '8010', '8011', '8015', '8022', '8023', '8024'].includes(parsedBase.port));
+  assert.ok(['8007', '8009', '8010', '8011', '8015', '8017', '8022', '8023', '8024'].includes(parsedBase.port));
   assert.ok(isPathInsideDirectory(fixtureMapPath, qaRoot), 'Fixture map must stay inside QA root.');
   const resolvedMap = fs.realpathSync(fixtureMapPath);
   const fixtureMap = JSON.parse(fs.readFileSync(resolvedMap, 'utf8'));
@@ -113,9 +113,23 @@ test('QA browser: normative work-item review resumes only the isolated queue', {
   const parsedBase = new URL(baseUrl);
   assert.equal(parsedBase.protocol, 'http:');
   assert.equal(parsedBase.hostname, '127.0.0.1');
-  assert.ok(['8022', '8024'].includes(parsedBase.port));
+  assert.ok(['8017', '8022', '8024'].includes(parsedBase.port));
   const itemId = Number(process.env.JURIX_QA_WORK_ITEM_ID);
   assert.ok(Number.isSafeInteger(itemId) && itemId > 0);
+  const syntheticNormId = Number(process.env.JURIX_QA_SYNTHETIC_NORM_ID);
+  assert.ok(Number.isSafeInteger(syntheticNormId) && syntheticNormId > 0);
+  assert.ok(isPathInsideDirectory(fixtureMapPath, qaRoot), 'Fixture map must stay inside QA root.');
+  const fixtureMap = JSON.parse(fs.readFileSync(fs.realpathSync(fixtureMapPath), 'utf8'));
+  assert.equal(fixtureMap.dataset, 'synthetic_not_gold');
+  assert.equal(fixtureMap.edge_case_fixtures?.synthetic_only, true);
+  assert.equal(fixtureMap.edge_case_fixtures?.no_real_corpus_mutation, true);
+  const fixtureNormIds = Object.values(fixtureMap.edge_case_fixtures?.norma_ids ?? {})
+    .flatMap((value) => (value && typeof value === 'object' ? [value.norma_id] : [value]))
+    .map(Number);
+  assert.ok(
+    fixtureNormIds.includes(syntheticNormId),
+    'Selected work item must point to a norm listed in the synthetic QA fixture map.',
+  );
   const reviewUrl = new URL(`/admin/operations/normativeworkitem/${itemId}/review/`, parsedBase).href;
   const queueUrl = new URL('/admin/operations/normativeworkitem/', parsedBase).href;
   const browser = await puppeteer.launch({
@@ -144,6 +158,10 @@ test('QA browser: normative work-item review resumes only the isolated queue', {
     await page.waitForSelector('#id_decision');
     const reviewText = await page.$eval('#content-main', (node) => node.innerText);
     assert.match(reviewText, /não substitui a revisão jurídica/i);
+    assert.ok(
+      reviewText.includes(`norma · ${syntheticNormId}`),
+      'Selected work item must point to the explicitly synthetic, non-gold QA norm.',
+    );
     assert.equal(await page.$eval('#id_decision', (field) => field.value), 'approve');
     await page.type('#id_reason', '[QA SINTÉTICO] Aprovação operacional para exercitar a fila isolada.');
     await Promise.all([

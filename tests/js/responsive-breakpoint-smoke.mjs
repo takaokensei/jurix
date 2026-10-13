@@ -24,7 +24,10 @@ if (!executablePath) throw new Error('Chrome/Edge executable not found.');
 
 const routes = [
   '/assistente/',
+  '/conta/entrar/',
   '/pesquisa/',
+  '/explorar/',
+  '/conferir/',
   '/pesquisa/?q=servidor+educa%C3%A7%C3%A3o&tipo=&ano=&similaridade=0',
   '/normas/',
   '/normas/?q=8205&tipo=&ano=2026&ordenar=recentes',
@@ -68,7 +71,17 @@ try {
           viewport: document.documentElement.clientWidth,
           document: document.documentElement.scrollWidth,
           mainVisible: Boolean(document.querySelector('main')?.getClientRects().length),
-          internalOverflow: location.pathname === '/normas/'
+          internalOverflow: document.querySelector('.workspace-auth-card')
+            ? (() => {
+              const main = document.querySelector('.workspace-main')?.getBoundingClientRect();
+              const card = document.querySelector('.workspace-auth-card');
+              if (!main || !card) return ['auth-card-main-missing'];
+              const rect = card.getBoundingClientRect();
+              return rect.left < main.left - 1 || rect.right > main.right + 1
+                ? [{ name: 'workspace-auth-card', left: Math.round(rect.left), right: Math.round(rect.right), mainLeft: Math.round(main.left), mainRight: Math.round(main.right) }]
+                : [];
+            })()
+            : location.pathname === '/normas/'
             ? (() => {
               const main = document.querySelector('main')?.getBoundingClientRect();
               if (!main) return ['main-missing'];

@@ -20,6 +20,7 @@ from .download_tasks import (
     full_sync_sapl_task,
     incremental_sync_sapl_task,
 )
+from .dom_tasks import sync_dom_natal_editions_task
 from .ner_tasks import extract_entities_task, generate_embedding_task
 from .normative_tasks import (
     claim_normative_work_item_task,
@@ -30,6 +31,7 @@ from .normative_tasks import (
     process_normative_work_item_task,
     review_normative_work_item_task,
 )
+from .reconcile_corpus import reconcile_new_normative_targets_task
 from .ocr_tasks import ocr_pdf_task
 from .segmentation_tasks import segment_text_task
 from .task_support import get_cache_service
@@ -89,6 +91,8 @@ __all__ = [
     "ingest_sapl_corpus_task",
     "ocr_pdf_task",
     "review_normative_work_item_task",
+    "reconcile_new_normative_targets_task",
     "process_normative_work_item_task",
     "segment_text_task",
+    "sync_dom_natal_editions_task",
 ]

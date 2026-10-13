@@ -15,6 +15,23 @@ urlpatterns = [
     ),
     path("configuracoes/", workspace_views.settings_view, name="settings"),
     path("pesquisa/", workspace_views.legal_search_view, name="legal_search"),
+    path("explorar/", workspace_views.explore_normative_graph_view, name="explore"),
+    path(
+        "explorar/demo-consolidacao/",
+        workspace_views.pgm_consolidation_demo_view,
+        name="pgm_consolidation_demo",
+    ),
+    path("conferir/", workspace_views.foundation_check_view, name="foundation_check"),
+    path(
+        "conferir/status/<uuid:job_id>/",
+        workspace_views.foundation_check_status_view,
+        name="foundation_check_status",
+    ),
+    path(
+        "conferir/<uuid:job_id>/cancelar/",
+        workspace_views.foundation_check_cancel_view,
+        name="foundation_check_cancel",
+    ),
     path("colecoes/", workspace_views.collections_view, name="collections"),
     path("colecoes/<int:pk>/", workspace_views.collection_detail_view, name="collection_detail"),
     path("historico/", workspace_views.history_view, name="history"),

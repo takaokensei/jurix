@@ -57,6 +57,16 @@ def _public_norma_ids(normas) -> set[int]:
     return {fingerprints[pair] for pair in reviewed if pair in fingerprints}
 
 
+def _norma_node(norma: Norma, *, public_norma_ids: set[int], include_pending: bool) -> dict:
+    if norma.pk in public_norma_ids:
+        url = f"/normas/{norma.pk}/"
+    elif include_pending and norma.documento_base_id:
+        url = f"/normas/documentos/{norma.documento_base.public_id}/"
+    else:
+        url = None
+    return {"id": f"norma:{norma.pk}", "kind": "norma", "label": str(norma), "url": url}
+
+
 def _event_temporal_status(event, reviewed_date_fingerprints: set[tuple[int, str, UUID]]) -> tuple[str, str | None]:
     action = event.acao.upper()
     source_norma = event.dispositivo_fonte.norma
@@ -106,7 +116,7 @@ def build_normative_graph(
     actions: tuple[str, ...] = (),
     include_pending: bool = False,
 ) -> dict:
-    """Return a bounded BFS graph; unreviewed relations are staff-only candidates."""
+    """Return a bounded graph; caller must authorize include_pending as staff-only."""
     if not 1 <= depth <= MAX_DEPTH:
         raise ValueError("depth deve ser 1 ou 2")
     if any(action not in VALID_ACTIONS for action in actions):
@@ -121,7 +131,10 @@ def build_normative_graph(
     nodes: dict[str, dict] = {}
     edges: dict[str, dict] = {}
     root_id = f"norma:{norma.pk}"
-    nodes[root_id] = {"id": root_id, "kind": "norma", "label": str(norma), "url": f"/normas/{norma.pk}/"}
+    starting_public_normas = _public_norma_ids([norma])
+    nodes[root_id] = _norma_node(
+        norma, public_norma_ids=starting_public_normas, include_pending=include_pending
+    )
     visited: set[int] = set()
     frontier = deque([(norma.pk, 0)])
     truncated = False
@@ -199,7 +212,14 @@ def build_normative_graph(
             if source_id not in nodes and len(nodes) >= MAX_NODES:
                 truncated = True
                 continue
-            nodes.setdefault(source_id, {"id": source_id, "kind": "norma", "label": str(source_norma), "url": f"/normas/{source_norma.pk}/"})
+            nodes.setdefault(
+                source_id,
+                _norma_node(
+                    source_norma,
+                    public_norma_ids=public_norma_ids,
+                    include_pending=include_pending,
+                ),
+            )
             target_norma = event.norma_alvo
             if target_norma:
                 target_id = f"norma:{target_norma.pk}"
@@ -207,7 +227,14 @@ def build_normative_graph(
                     truncated = True
                     continue
                 if include_pending or target_norma.pk in public_norma_ids:
-                    nodes.setdefault(target_id, {"id": target_id, "kind": "norma", "label": str(target_norma), "url": f"/normas/{target_norma.pk}/"})
+                    nodes.setdefault(
+                        target_id,
+                        _norma_node(
+                            target_norma,
+                            public_norma_ids=public_norma_ids,
+                            include_pending=include_pending,
+                        ),
+                    )
                 else:
                     continue
                 if target_norma.pk not in visited and current_depth + 1 < depth:
@@ -222,6 +249,10 @@ def build_normative_graph(
 
             edge_id = f"event:{event.pk}:{event.revision_fingerprint or event_review_fingerprint(event)[:16]}"
             evidence = event.evidence_json if isinstance(event.evidence_json, dict) else {}
+            can_disclose_evidence = source_norma.pk in public_norma_ids or (
+                include_pending and source_norma.documento_base_id is not None
+            )
+            source_document = source_norma.documento_base if can_disclose_evidence else None
             edge = {
                 "id": edge_id,
                 "source": source_id,
@@ -237,9 +268,9 @@ def build_normative_graph(
                 "effective_on": effective_on,
                 "publication_on": source_norma.data_publicacao.isoformat() if source_norma.data_publicacao else None,
                 "evidence": {
-                    "quote": evidence.get("quote") if source_norma.pk in public_norma_ids else None,
-                    "document_id": str(source_norma.documento_base.public_id) if source_norma.pk in public_norma_ids else None,
-                    "page": evidence.get("page") if source_norma.pk in public_norma_ids else None,
+                    "quote": evidence.get("quote") if can_disclose_evidence else None,
+                    "document_id": str(source_document.public_id) if source_document else None,
+                    "page": evidence.get("page") if can_disclose_evidence else None,
                 },
                 "official_url": safe_official_url(source_norma.documento_base.official_url) if source_norma.pk in public_norma_ids else None,
             }

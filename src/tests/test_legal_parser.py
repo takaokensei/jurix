@@ -549,6 +549,24 @@ def test_last_article_excludes_natal_mayoral_palace_signature(parser):
     )
 
 
+def test_last_article_excludes_natal_rn_mayoral_palace_signature_without_inventing_publication_date(parser):
+    text = (
+        "Art. 2º Esta Lei entra em vigor na data de sua publicação.\n"
+        "Palácio Felipe Camarão, em Natal/RN, 18 de Outubro de 2018.\n"
+        "ÁLVARO COSTA DIAS\nPrefeito\n"
+    )
+
+    segments = classify_closing_segments(text)
+    articles = [item for item in parser.parse_legal_text(text) if item["tipo"] == "artigo"]
+
+    assert [segment["kind"] for segment in segments] == ["legal_body", "editorial_colophon"]
+    assert articles[-1]["texto"].strip() == "Esta Lei entra em vigor na data de sua publicação."
+    assert extract_publication_metadata(text) == {
+        "data_publicacao": None,
+        "vigencia_na_publicacao": True,
+    }
+
+
 def test_closing_colophon_is_removed_but_normative_addendum_is_preserved(parser):
     text = """Art. 4º Esta Lei entra em vigor na data de sua publicação.
 Sala das Sessões, em Natal, 20 de agosto de 2026. Presidente.
@@ -571,6 +589,31 @@ Art. 1º A execução observará o limite anual previsto no quadro abaixo.
     assert [item["numero"] for item in articles] == ["4º", "1º"]
     assert "Presidente" not in articles[0]["texto"]
     assert "limite anual" in articles[1]["texto"]
+
+
+def test_publication_deadline_inside_article_is_not_mistaken_for_closing_colophon(parser):
+    text = (
+        "Art. 237. O auto deverá ser publicado no Diário Oficial do Município em até 30 dias.\n"
+        "Art. 262. Os processos sem despacho serão apreciados pela legislação em vigor à época do protocolo.\n"
+        "Art. 266. Esta Lei Complementar entra em vigor 90 dias após sua publicação.\n"
+        "Sala das Sessões, em Natal, 05 de dezembro de 2024.\n"
+        "Publicado no Diário Oficial do Município em: 27/12/2024\n"
+        "Autoria: Chefe do Executivo\n"
+        "ANEXO I\nTabela de dimensões.\n"
+    )
+
+    segments = classify_closing_segments(text)
+    articles = [item for item in parser.parse_legal_text(text) if item["tipo"] == "artigo"]
+
+    assert [item["kind"] for item in segments] == [
+        "legal_body",
+        "editorial_colophon",
+        "normative_appendix",
+    ]
+    assert segments[1]["start"] == text.index("Sala das Sessões")
+    assert [item["numero"] for item in articles] == ["237", "262", "266"]
+    assert "em até 30 dias" in articles[0]["texto"]
+    assert "Presidente" not in articles[-1]["texto"]
 
 
 def test_extract_normative_appendices_handles_parenthetical_heading_and_keeps_sections_separate():

@@ -1,0 +1,67 @@
+{% extends "legislation/workspace/base.html" %}
+{% load static %}
+
+{% block title %}Explorar relações — Jurix{% endblock %}
+{% block section_name %}Explorar relações{% endblock %}
+{% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Explorar relações' %}{% endblock %}
+{% block extra_css %}{% if normative_graph_enabled %}<link rel="stylesheet" href="{% static 'css/jurix-normative-graph.css' %}?v=20261008-explore1">{% endif %}{% endblock %}
+{% block extra_js %}{% if normative_graph_enabled %}<script src="{% static 'js/jurix-normative-graph.js' %}?v=20261008-explore1" defer></script>{% endif %}{% endblock %}
+
+{% block content %}
+<section class="workspace-page-header">
+    <div><span class="workspace-eyebrow">Exploração normativa</span><h1>Explorar relações</h1><p>{% if include_pending_relations %}Revise relações extraídas. Cada vínculo mostra seu próprio estado de revisão e não deve ser tratado automaticamente como efeito jurídico.{% else %}Navegue por normas consolidadas e consulte relações revisadas com suas evidências.{% endif %}</p></div>
+</section>
+
+{% if pgm_consolidation_demo_enabled %}<aside class="workspace-search-caveat" role="note"><strong>Demonstração PGM em QA:</strong> grafo somente leitura das sete referências expressas de revogação no Art. 260 da LC nº 258/2024, com PDFs candidatos e relações ainda pendentes de revisão jurídica. <a class="workspace-button workspace-button-secondary" href="{% url 'workspace:pgm_consolidation_demo' %}">Abrir grafo demonstrativo da LC 258/2024</a></aside>{% endif %}
+
+{% if can_view_candidates %}<nav class="workspace-filter-row" aria-label="Escopo das relações"><a class="workspace-button {% if not include_pending_relations %}workspace-button-primary{% else %}workspace-button-secondary{% endif %}" href="{% url 'workspace:explore' %}">Relações revisadas</a><a class="workspace-button {% if include_pending_relations %}workspace-button-primary{% else %}workspace-button-secondary{% endif %}" href="{% url 'workspace:explore' %}?escopo=candidatas">Relações candidatas</a></nav>{% endif %}
+
+{% if has_available_norms %}<form class="workspace-search-panel explore-filter-panel" method="get" role="search" aria-label="Filtrar normas para exploração">
+    {% if include_pending_relations %}<input type="hidden" name="escopo" value="candidatas">{% endif %}
+    <label class="workspace-search-input"><span class="sr-only">Norma, número ou ementa</span><input type="search" name="q" maxlength="160" value="{{ query }}" placeholder="Número, espécie ou assunto da ementa"></label>
+    <div class="workspace-filter-row explore-filter-grid">
+        <label>Tema confirmado<select name="tema"><option value="">Todos os temas confirmados</option>{% for item in topics %}<option value="{{ item.code }}"{% if topic_code == item.code %} selected{% endif %}>{{ item.label }}</option>{% endfor %}</select></label>
+        <label>Espécie normativa<select name="tipo"><option value="">Todas as espécies</option>{% for item in type_options %}<option value="{{ item }}"{% if norma_type == item %} selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
+        <label>Ano<select name="ano"><option value="">Todos os anos</option>{% for item in years %}<option value="{{ item }}"{% if year == item %} selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
+        <label>Publicada a partir de<input type="date" name="de" value="{{ date_from_raw }}"></label>
+        <label>Publicada até<input type="date" name="ate" value="{{ date_to_raw }}"></label>
+    </div>
+    <button class="workspace-button workspace-button-primary" type="submit">Aplicar filtros</button>
+</form>{% endif %}
+
+{% if error %}<div class="workspace-alert" role="alert">{{ error }}</div>{% endif %}
+{% if include_pending_relations %}<p class="workspace-search-caveat" role="note">Modo restrito a revisores: relações e trechos abaixo são candidatos extraídos. “Pendente” ou “Rejeitado” não comprova alteração, revogação, vigência ou aplicação ao caso. Abra o documento original para conferência.</p>{% else %}<p class="workspace-search-caveat" role="note">Associação temática é apenas afinidade. Ela não significa alteração, revogação ou vigência. Relações e dispositivos só são mostrados a partir de registros consolidados e revisados; documentos pendentes ficam na busca do acervo, não neste grafo.</p>{% endif %}
+
+{% if selected_norma and normative_graph_enabled %}
+<section class="explore-selected" aria-labelledby="explore-selected-title">
+    <div class="explore-selected-heading"><div><span class="workspace-eyebrow">{% if include_pending_relations %}Fonte selecionada para revisão{% else %}Norma selecionada{% endif %}</span><h2 id="explore-selected-title">{{ selected_norma.get_tipo_display_name }} nº {{ selected_norma.numero }}/{{ selected_norma.ano }}</h2></div>{% if include_pending_relations %}<a class="workspace-button workspace-button-secondary" href="{% url 'legislation:document_evidence' selected_norma.documento_base.public_id %}">Conferir documento original</a>{% else %}<a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_detail' selected_norma.pk %}">Abrir ficha da norma</a>{% endif %}</div>
+    {% include 'legislation/_norma_relations.html' with norma=selected_norma include_pending_relations=include_pending_relations %}
+</section>
+{% endif %}
+
+<section class="workspace-results-section" aria-labelledby="explore-results-title" aria-live="polite">
+    <div class="workspace-section-heading"><div><span class="workspace-eyebrow">{% if include_pending_relations %}Normas com relações extraídas{% else %}Normas disponíveis{% endif %}</span><h2 id="explore-results-title">{{ result_count }} {% if result_count == 1 %}norma{% else %}normas{% endif %}</h2></div>{% if page.paginator.num_pages > 1 %}<span class="workspace-badge">Página {{ page.number }} de {{ page.paginator.num_pages }}</span>{% endif %}</div>
+    {% if page.object_list %}
+    <div class="workspace-result-list">
+        {% for norma in page.object_list %}
+        <article class="workspace-result-card explore-norm-card">
+            <a class="explore-norm-main" href="{% if include_pending_relations %}{% url 'legislation:document_evidence' norma.documento_base.public_id %}{% else %}{% url 'legislation:norma_detail' norma.pk %}{% endif %}">
+                <div class="workspace-result-meta"><span>{{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }}</span>{% if include_pending_relations %}<span class="workspace-badge">Relações extraídas · confira o status</span>{% endif %}{% if norma.data_publicacao %}<span>Publicada em {{ norma.data_publicacao|date:"d/m/Y" }}</span>{% endif %}</div>
+                <h3>{{ norma.ementa|default:"Norma consolidada"|truncatechars:180 }}</h3>
+            </a>
+            {% if normative_graph_enabled %}<a class="workspace-button workspace-button-secondary explore-graph-action" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}norma={{ norma.pk }}#explore-selected-title">Explorar relações</a>{% endif %}
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="workspace-empty-state workspace-explore-empty"><strong>{% if include_pending_relations %}Nenhuma norma com relação candidata corresponde a estes filtros.{% elif topic_code %}Nenhuma norma revisada corresponde a estes filtros.{% else %}Nenhuma norma consolidada disponível para explorar.{% endif %}</strong><p>{% if include_pending_relations %}O modo de revisão não altera o status jurídico. Confirme cada evidência no documento original e registre decisões pelo fluxo autorizado de revisão.{% else %}O acervo local pode conter PDFs em revisão, mas eles não são tratados como normas confirmadas nem geram relações jurídicas públicas. Use a busca do acervo para localizar documentos candidatos.{% endif %}</p><a class="workspace-button workspace-button-secondary" href="{% url 'workspace:legal_search' %}">Buscar no acervo local</a></div>
+    {% endif %}
+    {% if page.paginator.num_pages > 1 %}
+    <nav class="workspace-archive-pagination" aria-label="Paginação de normas">
+        {% if page.has_previous %}<a class="workspace-button workspace-button-secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page={{ page.previous_page_number }}">Anterior</a>{% endif %}
+        <span>Página {{ page.number }} de {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}<a class="workspace-button workspace-button-secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page={{ page.next_page_number }}">Próxima</a>{% endif %}
+    </nav>
+    {% endif %}
+</section>
+{% endblock %}

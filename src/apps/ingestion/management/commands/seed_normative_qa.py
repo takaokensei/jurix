@@ -13,6 +13,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from src.apps.ingestion.document_promotion import promotion_fingerprint
+from src.apps.ingestion.document_review import segmentation_review_fingerprint
 from src.apps.legislation.document_models import (
     DocumentoDispositivo,
     DocumentoNormativo,
@@ -50,7 +51,10 @@ def _digest(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
 
-def _ensure_reviewed_document(*, slug, label, number, year, text, published, reviewer, series="municipal_lo"):
+def _ensure_reviewed_document(
+    *, slug, label, number, year, text, published, reviewer, series="municipal_lo",
+    review_segmentation=True,
+):
     identity = build_normative_identity(
         jurisdiction="BR-RN-NATAL", raw_type=label, series=series, number=number, year=year
     )
@@ -157,6 +161,24 @@ def _ensure_reviewed_document(*, slug, label, number, year, text, published, rev
             start_offset=0,
             end_offset=len(text),
         )
+    if review_segmentation and extraction.dispositivos_documentais.exists():
+        segmentation_fingerprint = segmentation_review_fingerprint(document, extraction)
+        if not RevisaoJuridica.objects.filter(
+            documento=document,
+            decision=RevisaoJuridica.Decision.APPROVE,
+            target_fingerprint=segmentation_fingerprint,
+            reason__startswith="[segmentação documental revisada]",
+        ).exists():
+            RevisaoJuridica.objects.create(
+                documento=document,
+                target_fingerprint=segmentation_fingerprint,
+                decision=RevisaoJuridica.Decision.APPROVE,
+                reason=(
+                    "[segmentação documental revisada] [QA SINTÉTICO] "
+                    "Aprovação artificial apenas para testar projeção."
+                ),
+                actor=reviewer,
+            )
     legacy, _ = Dispositivo.objects.get_or_create(
         norma=norma,
         structural_key=structural_key("root", "artigo", "5º" if slug == "a" else "1º"),

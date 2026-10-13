@@ -3,10 +3,14 @@ from __future__ import annotations
 from datetime import date
 
 import pytest
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.test import Client, override_settings
 
 from src.apps.ingestion.management.commands.seed_normative_qa import seed_fixture
+from src.apps.legislation.document_models import DocumentoNormativo
 from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
+from src.apps.legislation.temporal_api import norma_version_api  # noqa: F401
 from src.processing.normative_graph import build_normative_graph
 
 
@@ -126,6 +130,7 @@ def test_graph_at_exact_edge_limit_is_not_marked_truncated(graph_map):
 
 
 @pytest.mark.django_db(transaction=True)
+@override_settings(NORMATIVE_GRAPH_ENABLED=True)
 def test_relations_api_validates_filters_permissions_and_methods(graph_map):
     pk = graph_map["norma_a"]["norma_id"]
     client = Client()
@@ -152,6 +157,59 @@ def test_relations_api_validates_filters_permissions_and_methods(graph_map):
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(NORMATIVE_GRAPH_ENABLED=True)
+def test_candidate_evidence_api_requires_both_review_permissions(graph_map):
+    event = EventoAlteracao.objects.get(pk=graph_map["norma_b"]["event_id"])
+    source_norma = event.dispositivo_fonte.norma
+    document = DocumentoNormativo.objects.create(
+        document_key="candidate-evidence-api-test",
+        norma=source_norma,
+        source_kind=DocumentoNormativo.SourceKind.ARCHIVE,
+        source_ref="jurix-qa:candidate-evidence-api-test",
+        content_sha256="b" * 64,
+        size_bytes=100,
+        review_status=DocumentoNormativo.ReviewStatus.PENDING,
+    )
+    source_norma.documento_base = document
+    source_norma.save(update_fields=["documento_base", "updated_at"])
+    event.evidence_json = {"quote": "[QA] trecho candidato não revisado", "page": 2}
+    event.save(update_fields=["evidence_json", "updated_at"])
+    endpoint = f"/api/v1/normas/{source_norma.pk}/relations/?include_pending=true"
+    client = Client()
+
+    assert client.get(endpoint).status_code == 403
+    reviewer = get_user_model().objects.create_user(
+        username="candidate-evidence-reviewer",
+        password="qa-password",
+        is_staff=True,
+    )
+    reviewer.user_permissions.add(
+        Permission.objects.get(content_type__app_label="legislation", codename="view_eventoalteracao")
+    )
+    client.force_login(reviewer)
+    assert client.get(endpoint).status_code == 403
+    reviewer.user_permissions.add(
+        Permission.objects.get(content_type__app_label="legislation", codename="view_documentonormativo")
+    )
+
+    public_graph = client.get(endpoint.replace("include_pending=true", "include_pending=false"))
+    response = client.get(endpoint)
+
+    assert public_graph.status_code == 200
+    assert all("[QA] trecho candidato não revisado" not in str(edge) for edge in public_graph.json()["edges"])
+    assert response.status_code == 200
+    edge = next(item for item in response.json()["edges"] if item["id"].startswith(f"event:{event.pk}:"))
+    assert edge["review_status"] == "pending"
+    source_node = next(item for item in response.json()["nodes"] if item["id"] == f"norma:{source_norma.pk}")
+    assert source_node["url"] == f"/normas/documentos/{document.public_id}/"
+    assert edge["evidence"] == {
+        "quote": "[QA] trecho candidato não revisado",
+        "document_id": str(document.public_id),
+        "page": 2,
+    }
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(NORMATIVE_GRAPH_ENABLED=True)
 def test_norma_detail_mounts_lazy_relations_component_only_when_enabled(graph_map):
     norma_id = graph_map["norma_a"]["norma_id"]
     response = Client().get(f"/normas/{norma_id}/")
@@ -170,6 +228,7 @@ def test_norma_detail_does_not_advertise_disabled_relations_component(graph_map)
 
 
 @pytest.mark.django_db(transaction=True)
+@override_settings(NORMATIVE_HISTORY_ENABLED=True)
 def test_version_api_reads_projection_without_persisting_a_get(graph_map):
     pk = graph_map["norma_a"]["norma_id"]
     client = Client()

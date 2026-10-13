@@ -4,9 +4,15 @@ from datetime import date
 from io import StringIO
 
 import pytest
+from django.contrib.auth import get_user_model
 from django.core.management import call_command
+from django.core.management.base import CommandError
+from django.test import override_settings
 
-from src.apps.ingestion.management.commands.seed_normative_qa import seed_fixture
+from src.apps.ingestion.management.commands.seed_normative_qa import (
+    _ensure_reviewed_document,
+    seed_fixture,
+)
 from src.apps.legislation.document_models import NormativeSnapshot, SnapshotDispositivo
 from src.apps.legislation.event_review import _decision_fingerprint, event_review_fingerprint
 from src.apps.legislation.models import EventoAlteracao, Norma
@@ -75,7 +81,9 @@ def test_unreviewed_event_marks_projection_partial_without_applying(temporal_fix
     result = project_norma_as_of(norma, date(2021, 3, 2))
     assert result.status == "partial"
     assert result.devices[0].text == "O prazo é de vinte dias."
-    assert result.devices[0].legal_status == "in_force"
+    assert result.devices[0].legal_status == "unknown"
+    assert result.devices[0].provenance["known_legal_status_before_pending_events"] == "in_force"
+    assert result.devices[0].provenance["pending_event_ids"] == result.coverage["pending_event_ids"]
     assert len(result.coverage["pending_event_ids"]) == 1
 
 
@@ -89,6 +97,29 @@ def test_current_text_without_reviewed_source_is_not_renamed_as_history(temporal
     assert result.status == "not_reconstructable"
     assert result.devices == ()
     assert result.coverage["reason"] == "base_document_not_reviewed_or_temporally_unknown"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_projection_fails_closed_when_document_segmentation_has_no_human_review():
+    reviewer = get_user_model().objects.create_user(
+        username="segmentation-fixture-reviewer", is_active=True, is_staff=True
+    )
+    norma, _document, _extraction, _device = _ensure_reviewed_document(
+        slug="unreviewed-segmentation",
+        label="Lei",
+        number="9901",
+        year=2020,
+        text="Art. 1º O trecho sintético usado apenas para teste.\nArt. 2º Fim.",
+        published=date(2020, 1, 1),
+        reviewer=reviewer,
+        review_segmentation=False,
+    )
+
+    result = project_norma_as_of(norma, date(2020, 2, 1))
+
+    assert result.status == "not_reconstructable"
+    assert result.devices == ()
+    assert result.coverage["reason"] == "document_segmentation_not_human_reviewed"
 
 
 @pytest.mark.django_db(transaction=True)
@@ -117,6 +148,25 @@ def test_snapshot_command_is_dry_run_by_default_and_apply_is_idempotent(temporal
     after_first = NormativeSnapshot.objects.count()
     call_command("build_normative_snapshots", as_of="2021-03-01", norma_id=[norma_id], apply=True, stdout=StringIO())
     assert NormativeSnapshot.objects.count() == after_first
+
+
+@pytest.mark.django_db(transaction=True)
+def test_snapshot_command_rejects_non_qa_database_even_with_qa_flag(temporal_fixture):
+    with override_settings(
+        DATABASES={
+            "default": {
+                "ENGINE": "django.db.backends.sqlite3",
+                "NAME": ":memory:",
+            }
+        }
+    ):
+        with pytest.raises(CommandError, match="exigem settings QA"):
+            call_command(
+                "build_normative_snapshots",
+                as_of="2021-03-01",
+                norma_id=[temporal_fixture["norma_a"]["norma_id"]],
+                stdout=StringIO(),
+            )
 
 
 @pytest.mark.django_db(transaction=True)

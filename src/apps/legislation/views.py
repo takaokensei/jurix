@@ -10,9 +10,11 @@ import logging
 import re
 import uuid
 from collections import defaultdict
+from datetime import date
 from typing import Any
 
 from django.conf import settings
+from django.core.paginator import Paginator
 from django.db.models import Prefetch, Q
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -21,6 +23,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import DetailView, ListView
 
+from src.clients.dom_natal.client import DomNatalClient, DomNatalError
 from src.clients.sapl.sapl_types import resolve_norma_type_display
 from src.observability.safe_logging import log_exception_safely
 from src.processing.corpus_identity import get_corpus_revision
@@ -55,6 +58,34 @@ logger = logging.getLogger(__name__)
 MAX_NORMA_SEARCH_LENGTH = 160
 NORMA_COMPARE_MAX_LINES = 1_000
 NORMA_COMPARE_MAX_CHARS = 120_000
+
+
+def _assistant_source_update_notice() -> str:
+    """Return a safe notice when official source-sync state is not verified."""
+    try:
+        from src.apps.ingestion.source_sync_health import get_source_sync_health
+
+        statuses = [
+            get_source_sync_health(source)["status"] for source in ("sapl", "dom_natal")
+        ]
+    except Exception:
+        logger.warning("Unable to confirm official source update state for assistant")
+        return (
+            "Não foi possível confirmar a atualização das fontes oficiais neste ambiente; "
+            "confira a fonte oficial antes de usar a resposta."
+        )
+
+    if statuses == ["current", "current"]:
+        return ""
+    if statuses == ["not_configured", "not_configured"]:
+        return (
+            "A atualização do SAPL e do Diário Oficial não está configurada neste ambiente; "
+            "a cobertura das fontes pode estar incompleta."
+        )
+    return (
+        "A atualização de uma ou mais fontes oficiais não está confirmada neste ambiente; "
+        "confira a fonte oficial antes de usar a resposta."
+    )
 
 
 def _presentation_consolidated_text(norma: Norma) -> str:
@@ -131,6 +162,54 @@ def _exact_norma_query(
             return exact.none()
         exact = exact.filter(Q(tipo__in=choices) | Q(tipo__iexact=choices[0]))
     return exact
+
+
+def _sapl_catalog_queryset(
+    search_query: str,
+    *,
+    selected_type: str = "",
+    selected_year: str = "",
+    ordering: str = "recentes",
+):
+    """Find metadata-only SAPL rows without mixing them into consolidated law."""
+    queryset = Norma.objects.filter(
+        status="pending",
+        sapl_id__isnull=False,
+        sapl_metadata__has_key="_jurix_source_hash",
+        pdf_path="",
+        texto_original="",
+        texto_consolidado="",
+    )
+    if search_query:
+        exact = _exact_norma_query(
+            queryset,
+            search_query,
+            selected_type=selected_type,
+            selected_year=selected_year,
+        )
+        if exact is not None:
+            queryset = exact
+        else:
+            terms = Q(numero__icontains=search_query) | Q(tipo__icontains=search_query) | Q(
+                ementa__icontains=search_query
+            )
+            if re.fullmatch(r"[\d.]+", search_query):
+                normalized_number = normalize_number(search_query)
+                if normalized_number:
+                    terms |= Q(numero__icontains=normalized_number)
+            queryset = queryset.filter(terms)
+    if selected_type:
+        queryset = queryset.filter(tipo=selected_type)
+    if selected_year.isdigit() and len(selected_year) <= 4:
+        queryset = queryset.filter(ano=int(selected_year))
+    if ordering == "antigas":
+        queryset = order_normas_by_publication(queryset, descending=False)
+    else:
+        queryset = order_normas_by_publication(queryset)
+    return queryset.only(
+        "id", "tipo", "numero", "ano", "ementa", "data_publicacao", "sapl_id", "sapl_url",
+        "sapl_metadata",
+    )
 
 
 class NormaListView(ListView):
@@ -219,19 +298,59 @@ class NormaListView(ListView):
         # state as the list itself.
         context["total_consolidated"] = consolidated_normas_for_product().count()
 
+        # SAPL catalogue records without a local PDF/text are discovery aids
+        # only. Keep them out of the consolidated result set and show them only
+        # when the user has narrowed the search to a relevant reference.
+        catalog_query = context["search_query"]
+        selected_type = context["selected_type"]
+        selected_year = context["selected_year"]
+        context["sapl_catalog_page"] = None
+        context["sapl_catalog_total"] = 0
+        if catalog_query or selected_type or selected_year:
+            catalog_queryset = _sapl_catalog_queryset(
+                catalog_query,
+                selected_type=selected_type,
+                selected_year=selected_year,
+                ordering=context["ordering"],
+            )
+            catalog_page = Paginator(catalog_queryset, 10).get_page(
+                self.request.GET.get("sapl_catalog_page", "1")
+            )
+            for norma in catalog_page.object_list:
+                norma.sapl_url = canonical_norma_url(norma)
+                metadata = norma.sapl_metadata if isinstance(norma.sapl_metadata, dict) else {}
+                type_catalog = metadata.get("_jurix_type_catalog", {})
+                if not isinstance(type_catalog, dict):
+                    type_catalog = {}
+                raw_type_label = str(type_catalog.get("raw_label") or "").strip()
+                norma.sapl_catalog_type_label = (
+                    raw_type_label.title()
+                    if raw_type_label and not raw_type_label.isdecimal()
+                    else norma.get_tipo_display_name()
+                )
+            context["sapl_catalog_page"] = catalog_page
+            context["sapl_catalog_total"] = catalog_page.paginator.count
+
         # Keep unreviewed archive imports out of the consolidated corpus/RAG.
         # The isolated QA app gets a separate, clearly labelled view so real
         # PDFs are visible for inspection without presenting them as official.
         context["archive_candidates"] = []
+        context["archive_candidate_total"] = 0
         if getattr(settings, "NORMATIVE_ARCHIVE_ENABLED", False):
-            candidates = DocumentoNormativo.objects.filter(
+            candidate_queryset = DocumentoNormativo.objects.filter(
                 source_kind=DocumentoNormativo.SourceKind.ARCHIVE,
                 norma__isnull=True,
                 review_status__in=(
                     DocumentoNormativo.ReviewStatus.PENDING,
                     DocumentoNormativo.ReviewStatus.IN_REVIEW,
                 ),
-            ).prefetch_related(
+            )
+            context["archive_candidate_total"] = candidate_queryset.count()
+            candidate_page = Paginator(
+                candidate_queryset.order_by("entry_index", "pk"), 40
+            ).get_page(self.request.GET.get("arquivo_pagina", "1"))
+            context["archive_candidate_page"] = candidate_page
+            candidates = candidate_page.object_list.prefetch_related(
                 Prefetch(
                     "extracoes",
                     queryset=ExtracaoDocumento.objects.only(
@@ -245,7 +364,7 @@ class NormaListView(ListView):
                     ),
                     to_attr="qa_candidate_extractions",
                 )
-            ).order_by("entry_index", "pk")[:40]
+            )
             type_labels = {
                 "lei": "Lei Ordinária",
                 "lei_ordinaria": "Lei Ordinária",
@@ -298,6 +417,47 @@ class NormaListView(ListView):
         context["archive_assistant_enabled"] = getattr(
             settings, "NORMATIVE_ARCHIVE_ASSISTANT_ENABLED", False
         )
+
+        # Official Gazette PDFs are staged independently from the historical
+        # archive. Show only pending, unlinked candidates in isolated QA, and
+        # validate every external URL before it reaches an href.
+        context["dom_edition_candidates"] = []
+        context["dom_edition_candidate_total"] = 0
+        if getattr(settings, "NORMATIVE_ARCHIVE_ENABLED", False):
+            dom_queryset = DocumentoNormativo.objects.filter(
+                source_kind=DocumentoNormativo.SourceKind.OFFICIAL_GAZETTE,
+                norma__isnull=True,
+                review_status__in=(
+                    DocumentoNormativo.ReviewStatus.PENDING,
+                    DocumentoNormativo.ReviewStatus.IN_REVIEW,
+                ),
+            )
+            context["dom_edition_candidate_total"] = dom_queryset.count()
+            dom_page = Paginator(
+                dom_queryset.order_by("-created_at", "-pk"), 10
+            ).get_page(self.request.GET.get("dom_pagina", "1"))
+            context["dom_edition_page"] = dom_page
+            for document in dom_page.object_list:
+                metadata = document.metadata_json if isinstance(document.metadata_json, dict) else {}
+                try:
+                    publication_date = date.fromisoformat(
+                        str(metadata.get("publication_date", ""))
+                    ).strftime("%d/%m/%Y")
+                except (TypeError, ValueError):
+                    publication_date = "Data de publicação não confirmada"
+                try:
+                    official_pdf_url = DomNatalClient._validate_url(
+                        str(document.official_url or ""), pdf=True
+                    )
+                except (DomNatalError, ValueError):
+                    official_pdf_url = ""
+                context["dom_edition_candidates"].append({
+                    "label": str(metadata.get("label") or document.original_filename),
+                    "publication_date": publication_date,
+                    "special_edition": bool(metadata.get("special_edition")),
+                    "review_status": document.get_review_status_display(),
+                    "official_pdf_url": official_pdf_url,
+                })
 
         page_obj = context.get("page_obj")
         context["filtered_count"] = (
@@ -725,6 +885,11 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                     )
 
         # Render chat interface
+        qa_archive_mode = (
+            getattr(settings, "NORMATIVE_ARCHIVE_ASSISTANT_ENABLED", False)
+            and request.GET.get("corpus") == "archive-qa"
+        )
+        source_update_notice = _assistant_source_update_notice()
         context = {
             "page_title": "Assistente Jurídico - Jurix",
             "total_dispositivos": Dispositivo.objects.filter(embedding__isnull=False).count(),
@@ -735,9 +900,12 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
             "current_session_slug": session_slug,
             "prefill_question": prefill_question,
             "max_question_length": settings.LLM_MAX_QUESTION_LENGTH,
-            "qa_archive_mode": (
-                getattr(settings, "NORMATIVE_ARCHIVE_ASSISTANT_ENABLED", False)
-                and request.GET.get("corpus") == "archive-qa"
+            "qa_archive_mode": qa_archive_mode,
+            "qa_archive_source_update_notice": (
+                source_update_notice if qa_archive_mode else ""
+            ),
+            "assistant_source_update_notice": (
+                "" if qa_archive_mode else source_update_notice
             ),
         }
         return render(request, "legislation/chatbot.html", context)

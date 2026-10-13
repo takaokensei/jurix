@@ -29,12 +29,13 @@ def _strict_bool(value: str | None, name: str) -> bool:
     raise ValueError(f"{name} deve ser true ou false.")
 
 
-def _staff_can_view_pending(user) -> bool:
+def can_view_pending_relations(user) -> bool:
     return bool(
         user.is_authenticated
         and user.is_active
         and user.is_staff
         and user.has_perm("legislation.view_eventoalteracao")
+        and user.has_perm("legislation.view_documentonormativo")
     )
 
 
@@ -54,7 +55,7 @@ def norma_relations_api(request: HttpRequest, pk: int) -> JsonResponse:
         actions = tuple(sorted({action.strip().upper() for action in raw_actions.split(",") if action.strip()}))
         if any(action not in VALID_ACTIONS for action in actions):
             raise ValueError("actions contém uma ação inválida.")
-        if include_pending and not _staff_can_view_pending(request.user):
+        if include_pending and not can_view_pending_relations(request.user):
             return JsonResponse({"success": False, "error": "Permissão insuficiente."}, status=403)
     except ValueError as exc:
         return JsonResponse({"success": False, "error": str(exc)}, status=400)

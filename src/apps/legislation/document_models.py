@@ -188,8 +188,8 @@ class ExtracaoDocumento(TimeStampedModel):
 
     def clean(self):
         super().clean()
-        if len(self.page_map_json or []) > 200:
-            raise ValidationError({"page_map_json": "O mapa não pode exceder 200 páginas."})
+        if len(self.page_map_json or []) > 500:
+            raise ValidationError({"page_map_json": "O mapa não pode exceder 500 páginas."})
         try:
             encoded = json.dumps(self.page_map_json, ensure_ascii=False).encode("utf-8")
         except (TypeError, ValueError) as exc:

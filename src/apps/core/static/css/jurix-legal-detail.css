@@ -164,10 +164,55 @@
 .document-evidence-page .relation-extraction-details > div:nth-child(4) { grid-column:1 / -1; }
 .document-evidence-filename { margin-top:-6px; color:var(--figma-text-muted); overflow-wrap:anywhere; }
 .document-evidence-metadata code { overflow-wrap:anywhere; font-size:.78rem; }
+.document-evidence-hash { margin-top:5px; }
+.document-evidence-hash summary { width:fit-content; min-height:32px; padding:5px 2px; color:var(--figma-text-muted); cursor:pointer; font-size:.78rem; }
+.document-evidence-hash summary:focus-visible { outline:2px solid var(--figma-accent); outline-offset:2px; border-radius:4px; }
+.document-evidence-hash > code { display:block; margin-top:4px; padding:7px 9px; border:1px solid var(--figma-border); border-radius:6px; background:var(--figma-bg-surface); font-size:.75rem; overflow-wrap:anywhere; }
 .document-evidence-actions { grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); }
 .document-evidence-device { margin-top:18px; padding:16px; border:1px solid var(--figma-border); border-radius:12px; background:var(--figma-bg-sidebar); }
 .document-evidence-device pre { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; color:var(--figma-text-body); font:inherit; line-height:1.65; }
 .document-evidence-raw-text { max-height:70vh; margin-top:12px!important; overflow:auto; padding:14px; border:1px solid var(--figma-border); border-radius:10px; background:var(--figma-bg-surface); }
+.document-review-panel { display:grid; gap:16px; margin:22px 0; padding:clamp(16px,3vw,24px); border:1px solid var(--figma-border-strong); border-radius:14px; background:var(--figma-bg-sidebar); }
+.document-review-panel__header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+.document-review-panel h2 { margin:0; font-size:1.15rem; }
+.document-review-panel__notice { margin:0; padding:12px 14px; border-inline-start:3px solid var(--figma-amber-soft); border-radius:8px; background:var(--figma-bg-surface); color:var(--figma-text-body); line-height:1.55; }
+.document-extraction-quality__counts, .document-extraction-quality__pages { display:flex; flex-wrap:wrap; gap:8px; margin:0; padding:0; list-style:none; }
+.document-extraction-quality__counts li { padding:7px 10px; border:1px solid var(--figma-border); border-radius:9px; background:var(--figma-bg-surface); color:var(--figma-text-muted); font-size:.88rem; }
+.document-extraction-quality__counts strong { color:var(--figma-text-body); }
+.document-extraction-quality__pages a { display:inline-flex; min-height:44px; align-items:center; padding:8px 12px; border:1px solid var(--figma-border-strong); border-radius:9px; color:var(--figma-blue-light); text-decoration:underline; text-underline-offset:3px; }
+.document-extraction-quality__pages a:focus-visible { outline:3px solid var(--figma-blue-light); outline-offset:2px; }
+.document-review-status { flex:0 0 auto; padding:6px 10px; border:1px solid var(--figma-border-strong); border-radius:999px; color:var(--figma-text-muted); font-size:.8rem; font-weight:650; }
+.document-review-form { display:grid; gap:16px; }
+.document-review-identity { min-width:0; margin:0; padding:14px; border:1px solid var(--figma-border); border-radius:10px; }
+.document-review-identity legend { padding-inline:6px; font-weight:700; }
+.document-review-identity p { margin:6px 0; overflow-wrap:anywhere; }
+.document-review-field { display:grid; gap:7px; min-width:0; }
+.document-review-field > label { font-weight:650; }
+.document-review-field input:not([type="checkbox"]), .document-review-field select, .document-review-field textarea { box-sizing:border-box; width:100%; min-height:44px; padding:10px 12px; border:1px solid var(--figma-border-strong); border-radius:9px; background:var(--figma-bg-surface); color:var(--figma-text-body); font:inherit; }
+.document-review-field textarea { min-height:110px; resize:vertical; }
+.document-review-confirm { grid-template-columns:22px minmax(0,1fr); align-items:start; gap:10px; margin-top:12px; }
+.document-review-confirm input { width:20px; height:20px; margin:1px 0 0; accent-color:var(--figma-blue-primary); }
+.document-review-confirm label { line-height:1.5; }
+.document-review-help { margin:0; color:var(--figma-text-muted); font-size:.88rem; line-height:1.5; }
+.document-review-errors { color:var(--figma-red-soft); font-size:.9rem; }
+.document-review-errors ul { margin:0; padding-inline-start:1.2rem; }
+.document-segmentation-preview { display:grid; gap:10px; max-height:65vh; overflow:auto; padding:2px; }
+.document-segmentation-preview__item { min-width:0; padding:14px; border:1px solid var(--figma-border); border-radius:10px; background:var(--figma-bg-surface); }
+.document-segmentation-preview__item h3 { margin:0 0 8px; font-size:1rem; }
+.document-segmentation-preview__item h3 span { color:var(--figma-text-muted); font-size:.85rem; font-weight:500; }
+.document-segmentation-preview__item pre { max-height:18rem; margin:0; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; color:var(--figma-text-body); font:inherit; line-height:1.55; }
+.document-review-observations h3 { margin:4px 0; font-size:1rem; }
+.document-review-observations__list { margin:0; padding-inline-start:1.25rem; color:var(--figma-text-body); line-height:1.55; }
+.document-review-observations__list li + li { margin-top:12px; }
+.document-review-observations blockquote { margin:6px 0 0; padding-inline-start:12px; border-inline-start:2px solid var(--figma-border-strong); color:var(--figma-text-muted); }
+.document-review-history { display:grid; gap:12px; margin:0; padding-inline-start:1.4rem; }
+.document-review-history li { padding:12px 14px; border:1px solid var(--figma-border); border-radius:10px; background:var(--figma-bg-surface); overflow-wrap:anywhere; }
+.document-review-history p { margin:8px 0; color:var(--figma-text-body); white-space:pre-wrap; }
+.document-review-history small { color:var(--figma-text-muted); }
+.document-review-submit { width:max-content; min-height:44px; }
+.document-review-form :focus-visible { outline:3px solid var(--figma-blue-light); outline-offset:3px; }
+.document-review-form [aria-invalid="true"] { border-color:var(--figma-red-soft); }
+@media (max-width:520px) { .document-review-panel__header { flex-direction:column; } .document-review-status { white-space:normal; } .document-review-submit { width:100%; } }
 .compare-intro, .tree-intro { color:var(--figma-text-muted); margin-top:8px; }
 .compare-pre { max-height:600px; overflow-y:auto; }
 .compare-diff { max-height: 700px; overflow: auto; border: 1px solid var(--figma-border); border-radius: 10px; background: var(--figma-bg-sidebar); }
