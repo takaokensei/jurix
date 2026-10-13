@@ -9,6 +9,7 @@ from PIL import Image
 
 from src.apps.legislation.document_models import ExtracaoDocumento
 from src.processing.document_extraction import (
+    EXTRACTION_POLICY,
     _default_ocr,
     extract_pdf_document,
     should_ocr_page,
@@ -45,7 +46,12 @@ def test_native_text_pdf_does_not_call_ocr_and_has_verifiable_offsets(tmp_path):
     result = extract_pdf_document(str(path), ocr=forbidden_ocr)
 
     assert result["complete"] is True
-    assert result["quality"]["page_methods"] == {"native": 1, "ocr": 0, "unreadable": 0}
+    assert result["quality"]["page_methods"] == {
+        "native": 1,
+        "ocr": 0,
+        "blank": 0,
+        "unreadable": 0,
+    }
     assert result["raw_text"]
     assert not result["raw_text"].startswith("--- Página")
     span = result["source_map"][0]
@@ -60,6 +66,24 @@ def test_short_legitimate_page_without_image_is_not_sent_to_ocr(tmp_path):
     result = extract_pdf_document(str(path), ocr=lambda *_args, **_kwargs: "não esperado")
     assert result["pages"][0]["method"] == "native"
     assert result["complete"] is True
+
+
+def test_trailing_blank_page_does_not_make_document_unreadable(tmp_path):
+    path = tmp_path / "trailing-blank-page.pdf"
+    _make_pdf(path, [("Decreto nº 10.850/2015. Art. 1º Conteúdo normativo.", None), ("", None)])
+
+    def forbidden_ocr(*args, **kwargs):
+        raise AssertionError("página realmente vazia não deve disparar OCR")
+
+    result = extract_pdf_document(str(path), ocr=forbidden_ocr)
+
+    assert result["complete"] is True
+    assert result["needs_review"] is False
+    assert [page["method"] for page in result["pages"]] == ["native", "blank"]
+    assert [page["status"] for page in result["pages"]] == ["complete", "blank"]
+    assert result["quality"]["blank_pages"] == [2]
+    assert result["quality"]["unreadable_pages"] == []
+    assert "Conteúdo normativo" in result["technical_text"]
 
 
 def test_extracts_epigraph_and_publication_as_candidates_without_promoting_dates(tmp_path):
@@ -209,6 +233,41 @@ def test_incremental_ocr_reuses_verified_pages_and_processes_only_selected_backl
     assert "Art. 2º OCR recuperado nesta execução." in resumed["legal_text"]
     assert resumed["source_map"][0]["reused_from_extraction_sha256"] == original_source_hash
     assert resumed["source_map"][1]["method"] == "ocr"
+
+
+def test_explicit_ocr_retry_can_process_unreadable_page_without_detected_image(tmp_path):
+    path = tmp_path / "unreadable-vector-page.pdf"
+    _make_pdf(path, [("", None)])
+    calls = []
+
+    def retry_ocr(_image, *, timeout):
+        calls.append(timeout)
+        return "Art. 7º Texto recuperado por OCR sob revisão humana."
+
+    result = extract_pdf_document(
+        str(path),
+        max_ocr_pages=1,
+        ocr_timeout_seconds=15,
+        ocr_pages_to_process={1},
+        ocr=retry_ocr,
+    )
+
+    assert calls == [15]
+    assert result["complete"] is True
+    assert result["quality"]["ocr_pages_attempted"] == [1]
+    assert result["pages"][0]["method"] == "ocr"
+    assert result["pages"][0]["reason"] == "explicit_ocr_retry"
+    assert result["quality"]["ocr_text_is_not_certified_verbatim"] is True
+
+
+def test_extraction_policy_revision_changes_fingerprint(tmp_path, monkeypatch):
+    path = tmp_path / "policy-version.pdf"
+    _make_pdf(path, [("Art. 1º Texto nativo.", None)])
+    original = extract_pdf_document(str(path))
+    monkeypatch.setitem(EXTRACTION_POLICY, "version", "normative-pdf-extraction-test-vnext")
+    updated = extract_pdf_document(str(path))
+
+    assert original["policy_fingerprint"] != updated["policy_fingerprint"]
 
 
 def test_incremental_ocr_rejects_page_selection_outside_pdf(tmp_path):

@@ -366,17 +366,36 @@ def _allowed_command(command: list[str]) -> list[str]:
                         raise ValueError("--document-id must be a valid UUID") from exc
                 elif command_args[:1] == ["resume_archive_ocr_qa"]:
                     options = command_args[1:]
-                    allowed_flags = {"--document-id", "--batch-pages", "--dry-run", "--apply", "--pick-next"}
+                    allowed_flags = {
+                        "--document-id", "--batch-pages", "--dry-run", "--apply",
+                        "--pick-next", "--pick-unreadable", "--retry-unreadable",
+                        "--reclassify-blank",
+                    }
                     if any(item.startswith("--") and item not in allowed_flags for item in options):
                         raise ValueError("archive OCR resume received an unsupported flag")
                     if options.count("--dry-run") + options.count("--apply") != 1:
                         raise ValueError("archive OCR resume requires exactly one of --dry-run or --apply")
-                    if options.count("--document-id") + options.count("--pick-next") != 1:
+                    selectors = options.count("--document-id") + options.count("--pick-next") + options.count("--pick-unreadable")
+                    if selectors != 1:
                         raise ValueError("archive OCR resume requires exactly one document selector")
-                    if options.count("--batch-pages") > 1 or options.count("--pick-next") > 1:
+                    if (
+                        options.count("--batch-pages") > 1
+                        or options.count("--pick-next") > 1
+                        or options.count("--pick-unreadable") > 1
+                        or options.count("--retry-unreadable") > 1
+                    ):
                         raise ValueError("archive OCR resume options must not be repeated")
-                    if "--pick-next" in options and "--apply" in options:
-                        raise ValueError("archive OCR --pick-next is read-only and requires --dry-run")
+                    if {"--pick-next", "--pick-unreadable"}.intersection(options) and "--apply" in options:
+                        raise ValueError("archive OCR pick selectors are read-only and require --dry-run")
+                    if "--pick-next" in options and "--retry-unreadable" in options:
+                        raise ValueError("archive OCR --pick-next cannot select unreadable pages")
+                    if "--pick-unreadable" in options and "--retry-unreadable" in options:
+                        raise ValueError("archive OCR --pick-unreadable already selects unreadable pages")
+                    if "--reclassify-blank" in options and (
+                        "--document-id" not in options
+                        or {"--pick-next", "--pick-unreadable", "--retry-unreadable"}.intersection(options)
+                    ):
+                        raise ValueError("blank-page reclassification requires one explicit document and no retry selector")
                     if "--document-id" in options:
                         document_index = options.index("--document-id")
                         if document_index + 1 >= len(options):

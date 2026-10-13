@@ -1,4 +1,4 @@
-"""Resume only OCR-budget-skipped pages for one pending QA archive PDF."""
+"""Resume a small batch of OCR-skipped or unreadable pages for a pending QA PDF."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from src.apps.ingestion.management.commands.extract_archive_candidates_batch_qa 
 )
 from src.apps.ingestion.normative_tasks import _extract_archive_candidate
 from src.apps.legislation.document_models import DocumentoNormativo, ExtracaoDocumento
+from src.processing.document_extraction import page_has_image, page_is_blank
 
 MAX_BATCH_PAGES = 10
 OCR_TIMEOUT_SECONDS = 15
@@ -35,6 +36,11 @@ class Command(BaseCommand):
             action="store_true",
             help="Somente no dry-run: selecionar o menor backlog OCR elegível, sem gravar dados.",
         )
+        selector.add_argument(
+            "--pick-unreadable",
+            action="store_true",
+            help="Somente no dry-run: selecionar o menor backlog de páginas ilegíveis, sem gravar dados.",
+        )
         parser.add_argument("--batch-pages", type=int, default=MAX_BATCH_PAGES)
         mode = parser.add_mutually_exclusive_group(required=True)
         mode.add_argument("--dry-run", action="store_true")
@@ -43,6 +49,11 @@ class Command(BaseCommand):
             "--retry-unreadable",
             action="store_true",
             help="Retenta somente páginas marcadas ilegíveis na última extração QA.",
+        )
+        parser.add_argument(
+            "--reclassify-blank",
+            action="store_true",
+            help="Reprocessa um PDF QA sem OCR somente se todas as páginas ilegíveis forem realmente vazias.",
         )
 
     def handle(self, *args, **options):
@@ -56,12 +67,18 @@ class Command(BaseCommand):
         batch_pages = options["batch_pages"]
         if not 1 <= batch_pages <= MAX_BATCH_PAGES:
             raise CommandError(f"--batch-pages deve estar entre 1 e {MAX_BATCH_PAGES}.")
-        if options["pick_next"] and not options["dry_run"]:
-            raise CommandError("--pick-next é permitido somente em --dry-run.")
+        if (options["pick_next"] or options["pick_unreadable"]) and not options["dry_run"]:
+            raise CommandError("--pick-next e --pick-unreadable são permitidos somente em --dry-run.")
         if options["pick_next"] and options["retry_unreadable"]:
-            raise CommandError("--pick-next não seleciona páginas ilegíveis; informe --document-id.")
+            raise CommandError("--pick-next seleciona backlog de orçamento; remova --retry-unreadable.")
+        if options["pick_unreadable"] and options["retry_unreadable"]:
+            raise CommandError("--pick-unreadable já seleciona páginas ilegíveis; remova --retry-unreadable.")
+        if options["reclassify_blank"] and (
+            options["pick_next"] or options["pick_unreadable"] or options["retry_unreadable"]
+        ):
+            raise CommandError("--reclassify-blank exige --document-id e não pode combinar opções de retry.")
 
-        if options["pick_next"]:
+        if options["pick_next"] or options["pick_unreadable"]:
             latest = ExtracaoDocumento.objects.filter(documento_id=OuterRef("pk")).order_by(
                 "-created_at", "-pk"
             )
@@ -78,13 +95,17 @@ class Command(BaseCommand):
                 latest_status__in=(ExtracaoDocumento.Status.PARTIAL, ExtracaoDocumento.Status.UNREADABLE)
             ).values_list("public_id", "latest_quality").iterator(chunk_size=100):
                 details = quality if isinstance(quality, dict) else {}
-                skipped = details.get("ocr_budget_skipped_pages")
+                page_field = (
+                    "unreadable_pages" if options["pick_unreadable"] else "ocr_budget_skipped_pages"
+                )
+                skipped = details.get(page_field)
                 if isinstance(skipped, list):
                     pages = sorted({page for page in skipped if type(page) is int and page > 0})
                     if pages:
                         choices.append((len(pages), str(public_id), public_id))
             if not choices:
-                raise CommandError("Nenhum candidato pendente tem backlog de OCR por orçamento.")
+                reason = "páginas ilegíveis" if options["pick_unreadable"] else "backlog de OCR por orçamento"
+                raise CommandError(f"Nenhum candidato pendente tem {reason}.")
             _count, _sort_key, document_id = min(choices)
         else:
             try:
@@ -125,7 +146,8 @@ class Command(BaseCommand):
         }:
             raise CommandError("A retomada exige uma extração incompleta anterior.")
         quality = latest.quality_json if isinstance(latest.quality_json, dict) else {}
-        page_field = "unreadable_pages" if options["retry_unreadable"] else "ocr_budget_skipped_pages"
+        retry_unreadable = options["retry_unreadable"] or options["pick_unreadable"] or options["reclassify_blank"]
+        page_field = "unreadable_pages" if retry_unreadable else "ocr_budget_skipped_pages"
         page_values = quality.get(page_field)
         if not isinstance(page_values, list):
             page_values = []
@@ -133,7 +155,7 @@ class Command(BaseCommand):
             {page for page in page_values if type(page) is int and page > 0}
         )
         if not retry_pages:
-            reason = "ilegíveis" if options["retry_unreadable"] else "omitidas pelo orçamento OCR"
+            reason = "ilegíveis" if retry_unreadable else "omitidas pelo orçamento OCR"
             raise CommandError(f"A extração mais recente não tem páginas {reason}.")
 
         qa_root = Path(os.environ.get("JURIX_QA_ROOT", "")).resolve()
@@ -144,23 +166,37 @@ class Command(BaseCommand):
         )
         with fitz.open(pdf_path) as pdf:
             page_count = len(pdf)
+            if options["reclassify_blank"]:
+                for page_number in retry_pages:
+                    if page_number > page_count or not page_is_blank(
+                        pdf[page_number - 1],
+                        pdf[page_number - 1].get_text("text") or "",
+                        page_has_image(pdf[page_number - 1]),
+                    ):
+                        raise CommandError(
+                            "Reclassificação cancelada: existe página ilegível com conteúdo; use retry OCR revisável."
+                        )
         if page_count > MAX_PDF_PAGES:
             raise CommandError(f"PDF excede o limite seguro de {MAX_PDF_PAGES} páginas.")
         if retry_pages[-1] > page_count:
             raise CommandError("Metadados de páginas para retomada excedem o PDF verificado.")
 
-        selected_pages = retry_pages[:batch_pages]
+        selected_pages = [] if options["reclassify_blank"] else retry_pages[:batch_pages]
         if options["dry_run"]:
             self.stdout.write(json.dumps({
                 "mode": "dry-run",
-                "retry_kind": "unreadable" if options["retry_unreadable"] else "ocr_budget",
-                "selection": "smallest_pending_backlog" if options["pick_next"] else "explicit_document",
+                "retry_kind": "blank_reclassification" if options["reclassify_blank"] else "unreadable" if retry_unreadable else "ocr_budget",
+                "selection": (
+                    "smallest_unreadable_backlog" if options["pick_unreadable"]
+                    else "smallest_pending_backlog" if options["pick_next"]
+                    else "explicit_document"
+                ),
                 "document_id": str(document.public_id),
                 "source_extraction_sha256": latest.extraction_sha256,
                 "pdf_pages": page_count,
                 "retry_backlog_pages": len(retry_pages),
                 "selected_pages": selected_pages,
-                "max_ocr_calls": batch_pages,
+                "max_ocr_calls": 0 if options["reclassify_blank"] else batch_pages,
                 "ocr_timeout_seconds": OCR_TIMEOUT_SECONDS,
                 "checkpoint": "immutable extraction versions in QA database",
                 "will_accept_or_promote": False,
@@ -168,20 +204,21 @@ class Command(BaseCommand):
             return
 
         with transaction.atomic():
-            candidate = _extract_archive_candidate(
-                document,
-                max_pages=MAX_PDF_PAGES,
-                max_ocr_pages=batch_pages,
-                ocr_timeout_seconds=OCR_TIMEOUT_SECONDS,
-                ocr_pages_to_process=set(selected_pages),
-                reuse_from=latest,
-            )
+            extraction_options = {
+                "max_pages": MAX_PDF_PAGES,
+                "max_ocr_pages": 0 if options["reclassify_blank"] else batch_pages,
+                "ocr_timeout_seconds": OCR_TIMEOUT_SECONDS,
+                "reuse_from": latest,
+            }
+            if not options["reclassify_blank"]:
+                extraction_options["ocr_pages_to_process"] = set(selected_pages)
+            candidate = _extract_archive_candidate(document, **extraction_options)
         document.refresh_from_db()
         new_quality = candidate.quality_json if isinstance(candidate.quality_json, dict) else {}
         remaining = new_quality.get("ocr_budget_skipped_pages")
         self.stdout.write(json.dumps({
             "mode": "apply",
-            "retry_kind": "unreadable" if options["retry_unreadable"] else "ocr_budget",
+            "retry_kind": "blank_reclassification" if options["reclassify_blank"] else "unreadable" if retry_unreadable else "ocr_budget",
             "document_id": str(document.public_id),
             "extraction_id": candidate.pk,
             "extraction_status": candidate.status,
@@ -189,6 +226,7 @@ class Command(BaseCommand):
             "ocr_pages_reused": len(new_quality.get("ocr_pages_reused", [])),
             "remaining_budget_skipped_pages": len(remaining) if isinstance(remaining, list) else 0,
             "remaining_unreadable_pages": len(new_quality.get("unreadable_pages", [])),
+            "blank_pages": new_quality.get("blank_pages", []),
             "review_status": document.review_status,
             "accepted_extraction": document.accepted_extraction_id is not None,
             "norma_linkage_created": False,

@@ -859,6 +859,10 @@ def test_archive_ocr_resume_guard_requires_one_document_and_tiny_explicit_batch(
         base + ["--document-id", document_id, "--apply", "--batch-pages", "1"]
     )[0] == qa.sys.executable
     assert qa._allowed_command(base + ["--pick-next", "--dry-run"])[0] == qa.sys.executable
+    assert qa._allowed_command(base + ["--pick-unreadable", "--dry-run"])[0] == qa.sys.executable
+    assert qa._allowed_command(
+        base + ["--document-id", document_id, "--reclassify-blank", "--dry-run"]
+    )[0] == qa.sys.executable
     for options in (
         ["--document-id", document_id, "--dry-run", "--apply"],
         ["--document-id", "invalid", "--dry-run"],
@@ -868,6 +872,12 @@ def test_archive_ocr_resume_guard_requires_one_document_and_tiny_explicit_batch(
         ["--pick-next", "--apply"],
         ["--document-id", document_id, "--pick-next", "--dry-run"],
         ["--pick-next", "--dry-run", "--batch-pages", "0"],
+        ["--pick-unreadable", "--apply"],
+        ["--pick-unreadable", "--dry-run", "--retry-unreadable"],
+        ["--pick-next", "--dry-run", "--retry-unreadable"],
+        ["--pick-next", "--pick-unreadable", "--dry-run"],
+        ["--pick-unreadable", "--reclassify-blank", "--dry-run"],
+        ["--document-id", document_id, "--retry-unreadable", "--reclassify-blank", "--apply"],
     ):
         with pytest.raises(ValueError):
             qa._allowed_command(base + options)

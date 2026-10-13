@@ -667,6 +667,22 @@ def test_archive_ocr_resume_can_retry_unreadable_pages_without_acceptance(
     output = StringIO()
     call_command(
         "resume_archive_ocr_qa",
+        pick_unreadable=True,
+        batch_pages=1,
+        dry_run=True,
+        stdout=output,
+    )
+    picked = json.loads(output.getvalue())
+    assert picked["selection"] == "smallest_unreadable_backlog"
+    assert picked["retry_kind"] == "unreadable"
+    assert picked["document_id"] == str(document.public_id)
+    assert picked["selected_pages"] == [2]
+    assert picked["will_accept_or_promote"] is False
+    assert calls == []
+
+    output = StringIO()
+    call_command(
+        "resume_archive_ocr_qa",
         document_id=str(document.public_id),
         batch_pages=1,
         retry_unreadable=True,
@@ -702,3 +718,96 @@ def test_archive_ocr_resume_can_retry_unreadable_pages_without_acceptance(
     assert document.accepted_extraction_id is None
     assert document.norma_id is None
     assert document.extracoes.count() == 2
+
+
+@pytest.mark.django_db
+def test_archive_ocr_resume_can_reclassify_only_visually_empty_pages_without_ocr(
+    monkeypatch, tmp_path, settings
+):
+    qa_root = tmp_path / "qa-root"
+    archive_root = qa_root / "normative-archive"
+    archive_root.mkdir(parents=True)
+    monkeypatch.setenv("JURIX_QA_ONLY", "1")
+    monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "config.settings_normative_qa")
+    monkeypatch.setenv("JURIX_QA_ROOT", str(qa_root))
+    monkeypatch.setattr(settings, "QA_ROOT", qa_root)
+    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True)
+
+    pdf = fitz.open()
+    pdf.new_page().insert_text((72, 72), "Decreto QA com conteúdo normativo")
+    pdf.new_page()
+    content = pdf.tobytes()
+    pdf.close()
+    (archive_root / "blank-trailer.pdf").write_bytes(content)
+    document = DocumentoNormativo.objects.create(
+        norma=None,
+        document_key=hashlib.sha256(b"blank-trailer-document").hexdigest(),
+        source_kind=DocumentoNormativo.SourceKind.ARCHIVE,
+        source_ref="archive:qa:blank-trailer",
+        storage_key="blank-trailer.pdf",
+        content_sha256=hashlib.sha256(content).hexdigest(),
+        size_bytes=len(content),
+        review_status=DocumentoNormativo.ReviewStatus.PENDING,
+    )
+    previous = ExtracaoDocumento.objects.create(
+        documento=document,
+        extractor_version="qa-test-v1",
+        policy_fingerprint=hashlib.sha256(b"blank-policy-old").hexdigest(),
+        text_version="technical_text_v1",
+        raw_text="Decreto QA com conteúdo normativo\f",
+        legal_text="Decreto QA com conteúdo normativo",
+        page_count=2,
+        quality_json={"unreadable_pages": [2]},
+        status=ExtracaoDocumento.Status.PARTIAL,
+        extraction_sha256=hashlib.sha256(b"blank-extraction-old").hexdigest(),
+    )
+    calls = []
+
+    def extract(candidate_document, **kwargs):
+        calls.append((candidate_document.pk, kwargs))
+        return ExtracaoDocumento.objects.create(
+            documento=candidate_document,
+            extractor_version="qa-test-v2",
+            policy_fingerprint=hashlib.sha256(b"blank-policy-new").hexdigest(),
+            text_version="technical_text_v1",
+            raw_text="Decreto QA com conteúdo normativo\f",
+            legal_text="Decreto QA com conteúdo normativo",
+            page_count=2,
+            quality_json={"blank_pages": [2], "unreadable_pages": []},
+            status=ExtracaoDocumento.Status.COMPLETE,
+            extraction_sha256=hashlib.sha256(b"blank-extraction-new").hexdigest(),
+        )
+
+    from src.apps.ingestion.management.commands import resume_archive_ocr_qa
+
+    monkeypatch.setattr(resume_archive_ocr_qa, "_extract_archive_candidate", extract)
+    output = StringIO()
+    call_command(
+        "resume_archive_ocr_qa",
+        document_id=str(document.public_id),
+        reclassify_blank=True,
+        dry_run=True,
+        stdout=output,
+    )
+    dry_run = json.loads(output.getvalue())
+    assert dry_run["retry_kind"] == "blank_reclassification"
+    assert dry_run["selected_pages"] == []
+    assert dry_run["max_ocr_calls"] == 0
+    assert calls == []
+
+    output = StringIO()
+    call_command(
+        "resume_archive_ocr_qa",
+        document_id=str(document.public_id),
+        reclassify_blank=True,
+        apply=True,
+        stdout=output,
+    )
+    applied = json.loads(output.getvalue())
+    assert applied["extraction_status"] == ExtracaoDocumento.Status.COMPLETE
+    assert applied["blank_pages"] == [2]
+    assert applied["accepted_extraction"] is False
+    assert applied["norma_linkage_created"] is False
+    assert calls[0][1]["max_ocr_pages"] == 0
+    assert "ocr_pages_to_process" not in calls[0][1]
+    assert calls[0][1]["reuse_from"].pk == previous.pk

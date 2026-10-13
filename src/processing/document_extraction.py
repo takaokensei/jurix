@@ -23,7 +23,7 @@ from src.processing.legal_parser import (
 )
 
 EXTRACTION_POLICY = {
-    "version": "normative-pdf-extraction-v3",
+    "version": "normative-pdf-extraction-v5",
     "ocr_useful_characters_below": 40,
     "ocr_replacement_control_ratio_above": 0.02,
     "ocr_timeout_seconds": 90,
@@ -79,6 +79,23 @@ def page_has_image(page: Any) -> bool:
         return bool(page.get_image_info(xrefs=True))
     except (AttributeError, RuntimeError, ValueError):
         return False
+
+
+def page_is_blank(page: Any, native_text: str, has_image: bool) -> bool:
+    """Return true only when a page has no text or visible PDF objects."""
+    if native_text.strip() or has_image:
+        return False
+    try:
+        if page.get_drawings():
+            return False
+        if list(page.annots() or ()):
+            return False
+        if page.get_links():
+            return False
+    except (AttributeError, RuntimeError, ValueError):
+        # Uninspectable content must remain reviewable, not be silently skipped.
+        return False
+    return True
 
 
 def should_ocr_page(text: str, has_image: bool) -> tuple[bool, str]:
@@ -257,11 +274,27 @@ def extract_pdf_document(
             page = document[index]
             raw_native = page.get_text("text") or ""
             has_image = page_has_image(page)
+            page_number = index + 1
+            blank = page_is_blank(page, raw_native, has_image)
             run_ocr, reason = should_ocr_page(raw_native, has_image)
+            explicitly_selected = (
+                ocr_pages_to_process is not None and page_number in ocr_pages_to_process
+            )
+            if blank and not explicitly_selected:
+                method, status, page_text = "blank", "blank", ""
+                reason = "page_has_no_text_or_visible_objects"
+            elif explicitly_selected:
+                # A reviewer-requested retry must be able to recover scans that
+                # PyMuPDF does not expose as image XObjects (for example, vector
+                # outlines or malformed embedded text). Automatic extraction
+                # still follows should_ocr_page(); only a bounded explicit retry
+                # overrides that detection decision.
+                run_ocr = True
+                reason = "explicit_ocr_retry"
             ocr_attempted = False
-            method, status, page_text = "native", "complete", raw_native
-            if run_ocr:
-                page_number = index + 1
+            if not blank or explicitly_selected:
+                method, status, page_text = "native", "complete", raw_native
+            if run_ocr and (not blank or explicitly_selected):
                 reusable_page = reusable_ocr_pages.get(page_number)
                 if reusable_page and normalize_extracted_text(reusable_page[0]):
                     page_text = reusable_page[0]
@@ -407,8 +440,9 @@ def extract_pdf_document(
             "quality": {
                 "page_methods": {
                     method: sum(page.method == method for page in pages)
-                    for method in ("native", "ocr", "unreadable")
+                    for method in ("native", "ocr", "blank", "unreadable")
                 },
+                "blank_pages": [page.page for page in pages if page.method == "blank"],
                 "unreadable_pages": unreadable,
                 "ocr_pages_attempted": [page.page for page in pages if page.ocr_attempted],
                 "ocr_pages_reused": ocr_pages_reused,
