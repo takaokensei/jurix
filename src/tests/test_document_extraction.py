@@ -12,6 +12,7 @@ from src.processing.document_extraction import (
     EXTRACTION_POLICY,
     _default_ocr,
     extract_pdf_document,
+    page_is_blank,
     should_ocr_page,
 )
 
@@ -84,6 +85,21 @@ def test_trailing_blank_page_does_not_make_document_unreadable(tmp_path):
     assert result["quality"]["blank_pages"] == [2]
     assert result["quality"]["unreadable_pages"] == []
     assert "Conteúdo normativo" in result["technical_text"]
+
+
+def test_white_page_background_drawing_is_blank_but_visible_vector_ink_is_not(tmp_path):
+    path = tmp_path / "vector-blank-and-ink.pdf"
+    document = fitz.open()
+    white_page = document.new_page()
+    white_page.draw_rect(white_page.rect, fill=(1, 1, 1), color=None)
+    ink_page = document.new_page()
+    ink_page.draw_line((40, 40), (120, 120), color=(0, 0, 0), width=1)
+    document.save(path)
+    document.close()
+
+    with fitz.open(path) as saved:
+        assert page_is_blank(saved[0], saved[0].get_text("text") or "", False)
+        assert not page_is_blank(saved[1], saved[1].get_text("text") or "", False)
 
 
 def test_extracts_epigraph_and_publication_as_candidates_without_promoting_dates(tmp_path):

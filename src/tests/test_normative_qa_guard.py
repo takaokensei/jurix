@@ -860,6 +860,7 @@ def test_archive_ocr_resume_guard_requires_one_document_and_tiny_explicit_batch(
     )[0] == qa.sys.executable
     assert qa._allowed_command(base + ["--pick-next", "--dry-run"])[0] == qa.sys.executable
     assert qa._allowed_command(base + ["--pick-unreadable", "--dry-run"])[0] == qa.sys.executable
+    assert qa._allowed_command(base + ["--pick-blank", "--dry-run"])[0] == qa.sys.executable
     assert qa._allowed_command(
         base + ["--document-id", document_id, "--reclassify-blank", "--dry-run"]
     )[0] == qa.sys.executable
@@ -874,6 +875,9 @@ def test_archive_ocr_resume_guard_requires_one_document_and_tiny_explicit_batch(
         ["--pick-next", "--dry-run", "--batch-pages", "0"],
         ["--pick-unreadable", "--apply"],
         ["--pick-unreadable", "--dry-run", "--retry-unreadable"],
+        ["--pick-blank", "--apply"],
+        ["--pick-blank", "--dry-run", "--retry-unreadable"],
+        ["--document-id", document_id, "--pick-blank", "--dry-run"],
         ["--pick-next", "--dry-run", "--retry-unreadable"],
         ["--pick-next", "--pick-unreadable", "--dry-run"],
         ["--pick-unreadable", "--reclassify-blank", "--dry-run"],

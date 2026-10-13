@@ -23,7 +23,7 @@ from src.processing.legal_parser import (
 )
 
 EXTRACTION_POLICY = {
-    "version": "normative-pdf-extraction-v5",
+    "version": "normative-pdf-extraction-v6",
     "ocr_useful_characters_below": 40,
     "ocr_replacement_control_ratio_above": 0.02,
     "ocr_timeout_seconds": 90,
@@ -86,8 +86,23 @@ def page_is_blank(page: Any, native_text: str, has_image: bool) -> bool:
     if native_text.strip() or has_image:
         return False
     try:
-        if page.get_drawings():
-            return False
+        for drawing in page.get_drawings():
+            fill = drawing.get("fill")
+            color = drawing.get("color")
+            fill_opacity = drawing.get("fill_opacity", 1.0)
+            stroke_opacity = drawing.get("stroke_opacity", 1.0)
+            has_visible_fill = (
+                fill is not None
+                and (fill_opacity is None or fill_opacity > 0)
+                and any(channel < 0.98 for channel in fill)
+            )
+            has_visible_stroke = (
+                color is not None
+                and (stroke_opacity is None or stroke_opacity > 0)
+                and any(channel < 0.98 for channel in color)
+            )
+            if has_visible_fill or has_visible_stroke:
+                return False
         if list(page.annots() or ()):
             return False
         if page.get_links():

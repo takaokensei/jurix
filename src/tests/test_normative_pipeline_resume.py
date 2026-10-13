@@ -784,6 +784,21 @@ def test_archive_ocr_resume_can_reclassify_only_visually_empty_pages_without_ocr
     output = StringIO()
     call_command(
         "resume_archive_ocr_qa",
+        pick_blank=True,
+        dry_run=True,
+        stdout=output,
+    )
+    picked_blank = json.loads(output.getvalue())
+    assert picked_blank["retry_kind"] == "blank_reclassification"
+    assert picked_blank["selection"] == "smallest_blank_page_candidate"
+    assert picked_blank["document_id"] == str(document.public_id)
+    assert picked_blank["selected_pages"] == []
+    assert picked_blank["max_ocr_calls"] == 0
+    assert calls == []
+
+    output = StringIO()
+    call_command(
+        "resume_archive_ocr_qa",
         document_id=str(document.public_id),
         reclassify_blank=True,
         dry_run=True,
