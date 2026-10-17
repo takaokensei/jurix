@@ -25,6 +25,77 @@ def test_parse_target_reference_from_target_text():
     assert ref.ano == 2026
 
 
+def test_parse_target_reference_accepts_full_civil_date_after_norm_number():
+    event = SimpleNamespace(
+        target_text=(
+            "Art. 14 da Lei Complementar nº 208, de 7 de março de 2022"
+        )
+    )
+
+    ref = parse_target_reference(event)
+
+    assert ref is not None
+    assert ref.type_key == "lei_complementar"
+    assert ref.number_key == "208"
+    assert ref.ano == 2022
+
+
+def test_parse_target_reference_uses_exact_evidence_for_article_only_target():
+    event = SimpleNamespace(
+        target_text="Art. 14",
+        evidence_json={
+            "target_quote": (
+                "Art. 14 da Lei Complementar nº 208, de 7 de março de 2022"
+            )
+        },
+        target_reference_json={"resolution_status": "candidate"},
+    )
+
+    reference = parse_target_reference(event)
+
+    assert reference is not None
+    assert reference.type_key == "lei_complementar"
+    assert reference.number_key == "208"
+    assert reference.ano == 2022
+
+
+def test_parse_target_reference_uses_explicit_structured_ner_candidate():
+    event = SimpleNamespace(
+        target_text="Art. 14",
+        evidence_json={},
+        target_reference_json={
+            "kind": "normative_reference",
+            "type_candidate": "lei_complementar",
+            "number_candidate": "208,",
+            "year_candidate": "2022",
+            "resolution_status": "candidate",
+        },
+    )
+
+    reference = parse_target_reference(event)
+
+    assert reference is not None
+    assert reference.type_key == "lei_complementar"
+    assert reference.number_key == "208"
+    assert reference.ano == 2022
+
+
+@pytest.mark.parametrize("status", ["ambiguous_multiple_normas", "unresolved_or_ambiguous_reference"])
+def test_parse_target_reference_does_not_promote_ambiguous_structured_candidate(status):
+    event = SimpleNamespace(
+        target_text="Art. 14",
+        evidence_json={},
+        target_reference_json={
+            "type_candidate": "lei_complementar",
+            "number_candidate": "208",
+            "year_candidate": "2022",
+            "resolution_status": status,
+        },
+    )
+
+    assert parse_target_reference(event) is None
+
+
 def test_yearless_structured_reference_does_not_inherit_altering_norm_year():
     event = SimpleNamespace(
         referencia_tipo="Lei",
@@ -100,6 +171,41 @@ def test_reconcile_distinguishes_law_from_complementary_law_and_normalizes_leadi
     assert event.norma_alvo_id != ordinary.pk
     assert event.target_reference_json["match_method"] == "unique_legacy_type_number_year"
     assert event.validado is False
+
+
+@pytest.mark.django_db
+def test_second_pass_resolves_article_only_display_using_target_evidence_span():
+    source = Norma.objects.create(tipo="Lei Complementar", numero="258", ano=2024)
+    device = Dispositivo.objects.create(norma=source, tipo="artigo", numero="261", ordem=261)
+    target = Norma.objects.create(tipo="Lei Complementar", numero="208", ano=2022)
+    event = EventoAlteracao.objects.create(
+        dispositivo_fonte=device,
+        acao="ALTERA",
+        target_text="Art. 14",
+        referencia_tipo="artigo",
+        referencia_numero="14",
+        evidence_json={
+            "target_quote": (
+                "Art. 14 da Lei Complementar nº 208, de 7 de março de 2022"
+            )
+        },
+        target_reference_json={
+            "kind": "normative_reference",
+            "type_candidate": "Lei Complementar",
+            "number_candidate": "208,",
+            "year_candidate": 2022,
+            "resolution_status": "candidate",
+        },
+        validado=False,
+    )
+
+    assert resolve_event_target(event) is True
+
+    event.refresh_from_db()
+    assert event.norma_alvo_id == target.pk
+    assert event.dispositivo_alvo_id is None
+    assert event.validado is False
+    assert event.target_reference_json["resolution_status"] == "resolved_unreviewed"
 
 
 @pytest.mark.django_db

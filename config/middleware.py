@@ -78,6 +78,7 @@ def _build_content_security_policy() -> str:
     if settings.CSP_ALLOW_GOOGLE_FONTS:
         style_sources.append("https://fonts.googleapis.com")
         font_sources.append("https://fonts.gstatic.com")
+    upgrade_insecure_requests = "upgrade-insecure-requests; " if not settings.DEBUG else ""
     return (
         "default-src 'self'; "
         "script-src 'self'; "
@@ -91,7 +92,7 @@ def _build_content_security_policy() -> str:
         "frame-ancestors 'none'; "
         "manifest-src 'self'; "
         "worker-src 'self' blob:; "
-        "upgrade-insecure-requests"
+        f"{upgrade_insecure_requests}"
     )
 
 

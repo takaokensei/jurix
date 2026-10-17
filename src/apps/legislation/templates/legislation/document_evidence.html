@@ -11,6 +11,7 @@
   {% if identity_review_registered %}<p class="historical-message" role="status" tabindex="-1">Identidade registrada com trilha de revisão. A Norma permanece pendente; texto e segmentação não foram aprovados.</p>{% endif %}
   {% if extraction_review_registered %}<p class="historical-message" role="status" tabindex="-1">Extração registrada como revisada para esta versão. O documento ainda não foi promovido nem segmentado para uso consolidado.</p>{% endif %}
   {% if segmentation_generated %}<p class="historical-message" role="status" tabindex="-1">Prévia de segmentação gerada. Os dispositivos ainda precisam de cotejo humano e não podem alimentar a projeção temporal.</p>{% endif %}
+  {% if segmentation_preview_generated %}<p class="historical-message" role="status" tabindex="-1">Prévia temporária calculada em memória. Nada foi gravado, aprovado ou incluído no RAG; confira os limites diretamente no PDF.</p>{% endif %}
   {% if request.GET.segmentation == 'reviewed' %}<p class="historical-message" role="status" tabindex="-1">Revisão da segmentação registrada para esta versão exata. Isso não aprova eventos de alteração nem certifica a vigência histórica.</p>{% endif %}
   {% if candidate_identity_label and not document.norma_id %}<p class="document-evidence-filename"><strong>Arquivo recebido:</strong> {{ document.original_filename }}</p>{% endif %}
   {% if document.source_kind == 'archive' %}<p class="historical-message historical-message--warning" role="note"><strong>Documento do acervo histórico local.</strong> O PDF arquivado permanece preservado; a identificação normativa, a extração do texto e a segmentação precisam de revisão antes de integrar o corpus consolidado.</p>{% endif %}
@@ -60,6 +61,62 @@
       {% if identity_epigraph_check.status == 'conflict' %}
         <div class="document-review-panel__notice" role="alert"><strong>Divergência entre nome do arquivo e epígrafe.</strong> A identidade normativa não está confirmada; os campos divergentes são {{ identity_epigraph_check.fields|join:', ' }}. O sistema não escolherá um ano automaticamente. Confira a primeira página do PDF antes de registrar ou usar esta norma.</div>
       {% endif %}
+      {% if persisted_relation_candidates %}
+        <h3>Relações candidatas persistidas nesta extração</h3>
+        <p class="document-review-help">Estes registros são imutáveis e vinculados ao hash desta extração. A revisão abaixo avalia apenas se a extração do vínculo está correta; não cria aresta operativa, não altera texto consolidado, RAG ou vigência.</p>
+        {% if can_explore_relation_candidates %}<p><a class="workspace-button workspace-button-secondary" href="{% url 'workspace:explore' %}?escopo=candidatas&amp;documento={{ document.public_id }}">Ver grafo das menções deste PDF</a></p>{% endif %}
+        <ol class="document-review-observations__list">
+          {% for candidate in persisted_relation_candidates %}
+            <li>
+              <strong>{{ candidate.action }} · {{ candidate.source_device_label }}</strong>
+              <p><strong>Cláusula do dispositivo pai:</strong> “{{ candidate.evidence_json.action_quote }}”{% if candidate.evidence_json.action_page %} · página {{ candidate.evidence_json.action_page }}{% if local_pdf_available %} · <a href="{% url 'legislation:document_pdf' document.public_id %}#page={{ candidate.evidence_json.action_page }}" target="_blank" rel="noopener noreferrer">conferir no PDF</a>{% endif %}{% endif %}</p>
+              <blockquote>{{ candidate.evidence_json.item_quote }}</blockquote>
+              <p><strong>Trecho-alvo rastreado:</strong> {{ candidate.evidence_json.target_quote }}{% if candidate.evidence_json.target_page %} · página {{ candidate.evidence_json.target_page }}{% if local_pdf_available %} · <a href="{% url 'legislation:document_pdf' document.public_id %}#page={{ candidate.evidence_json.target_page }}" target="_blank" rel="noopener noreferrer">conferir no PDF</a>{% endif %}{% endif %}</p>
+              {% if candidate.target_reference_json.type_candidate %}<p><strong>Identidade candidata:</strong> {{ candidate.target_reference_json.type_candidate }} nº {{ candidate.target_reference_json.number_candidate }}{% if candidate.target_reference_json.year_candidate %}/{{ candidate.target_reference_json.year_candidate }}{% endif %}{% if candidate.target_reference_json.structural_type == 'artigo' %} · Art. {{ candidate.target_reference_json.structural_number }}{% endif %} · pendente de conferência</p>{% endif %}
+              {% if candidate.type_conflict_targets %}
+                <div class="document-review-panel__notice" role="note">
+                  <strong>Possível conflito de espécie — não associado automaticamente.</strong>
+                  <p>O cadastro contém o mesmo número e ano, mas com tipo diferente do trecho extraído. Isso é uma pista para revisão, não prova de identidade nem de efeito jurídico.</p>
+                  <ul>{% for target in candidate.type_conflict_targets %}<li>{{ target.tipo }} nº {{ target.numero }}/{{ target.ano }}</li>{% endfor %}</ul>
+                </div>
+              {% endif %}
+              {% if candidate.target_document_candidates %}
+                <details class="document-review-panel__details document-review-target-documents">
+                  <summary>Ver PDFs locais candidatos para esta referência ({{ candidate.target_document_candidates|length }})</summary>
+                  <p class="document-review-help">Correspondência por metadados de número/ano no acervo público. Estes PDFs não estão vinculados à relação; confira a capa, a espécie e o ato no documento antes de qualquer revisão.</p>
+                  <ul>{% for item in candidate.target_document_candidates %}<li><a href="{% url 'legislation:document_evidence' item.document.public_id %}">{{ item.document.original_filename|default:item.document.get_source_kind_display }}</a> · {{ item.document.get_source_kind_display }} · {% if item.type_matches %}espécie cadastral compatível com a citação{% else %}espécie cadastral divergente: {{ item.identity_type }}{% endif %} · estado {{ item.document.get_review_status_display }}
+                    {% if item.device_preview %}
+                      <div class="document-review-target-preview">
+                        <p><strong>Prévia automática do Art. {{ item.device_preview.article_number }}</strong> · extração não revisada · SHA-256 {{ item.device_preview.extraction_sha256_prefix }}</p>
+                        <blockquote>{{ item.device_preview.text }}{% if item.device_preview.truncated %} … [trecho limitado para exibição]{% endif %}</blockquote>
+                        <p class="document-review-help">Esta prévia ajuda a localizar o dispositivo, mas não confirma a identidade do PDF, a fidelidade da extração nem o efeito jurídico. Confira o original.</p>
+                        {% if item.device_preview.page_index %}<a href="{% url 'legislation:document_pdf' item.document.public_id %}#page={{ item.device_preview.page_index }}" target="_blank" rel="noopener noreferrer">Abrir Art. {{ item.device_preview.article_number }} no PDF (nova aba)</a>{% endif %}
+                      </div>
+                    {% endif %}
+                  </li>{% endfor %}</ul>
+                </details>
+              {% endif %}
+              <p class="document-review-help">Fingerprint {{ candidate.fingerprint|slice:":12" }} · {% if candidate.latest_relation_review %}{% if candidate.latest_relation_review.decision == 'confirm' %}{% if candidate.latest_relation_review.target_norma_id %}menção e alvo exato confirmados por revisor{% else %}menção extraída confirmada; alvo não resolvido{% endif %}{% else %}extração rejeitada por revisor{% endif %} · {{ candidate.latest_relation_review.created_at }}{% else %}aguardando revisão humana{% endif %}.</p>
+              {% if candidate.latest_relation_review.reason %}<p><strong>Nota de revisão:</strong> {{ candidate.latest_relation_review.reason }}</p>{% endif %}
+              {% if can_review_relation_candidates and candidate.relation_review_form %}
+                <details class="document-review-panel__details">
+                  <summary>Registrar revisão humana deste vínculo</summary>
+                  <p class="document-review-help">Confira o trecho no PDF. “Confirmar” registra apenas que a menção foi extraída corretamente. Só vincule uma norma quando espécie, número e ano coincidirem exatamente; divergências ficam sem destino associado até conferência na fonte oficial. A revisão não cria evento operativo, não declara vigência e não promove a norma.</p>
+                  <form method="post" class="document-review-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="review_relation_candidate">
+                    {{ candidate.relation_review_form.candidate_id }}
+                    {{ candidate.relation_review_form.expected_fingerprint }}
+                    {{ candidate.relation_review_form.non_field_errors }}
+                    {% for field in candidate.relation_review_form %}{% if field.name != 'candidate_id' and field.name != 'expected_fingerprint' %}<label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span aria-hidden="true"> *</span>{% endif %}</label>{{ field }}{% for error in field.errors %}<p class="document-review-errors" role="alert">{{ error }}</p>{% endfor %}{% endif %}{% endfor %}
+                    <button type="submit">Salvar revisão append-only</button>
+                  </form>
+                </details>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ol>
+      {% endif %}
       {% if epigraph_candidates %}
         <h3>Epígrafe detectada</h3>
         <p class="document-review-help">A data abaixo identifica a epígrafe do ato; não deve ser tratada automaticamente como publicação ou início da vigência.</p>
@@ -89,6 +146,48 @@
       {% if publication_candidate_date %}
         <p><strong>Possível publicação encontrada no texto:</strong> {{ publication_candidate_date }}. Este candidato vem da extração automática e não altera a data registrada na Norma nem confirma vigência.</p>
         {% if publication_effects_on_date %}<p class="document-review-help">O texto contém uma cláusula candidata de vigência na publicação; a frase precisa ser conferida no PDF.</p>{% endif %}
+      {% endif %}
+      {% if effective_clause_candidates %}
+        <h3>Cláusulas candidatas de vigência</h3>
+        <p class="document-review-help">Trechos detectados automaticamente; não calculam nem confirmam a data de eficácia. Confira a redação e a publicação oficial antes de registrar uma data.</p>
+        <ol class="document-review-observations__list">
+          {% for candidate in effective_clause_candidates %}
+            <li><blockquote>{{ candidate.quote }}</blockquote>{% if candidate.page %}Página {{ candidate.page }}{% if local_pdf_available %} · <a href="{% url 'legislation:document_pdf' document.public_id %}#page={{ candidate.page }}" target="_blank" rel="noopener noreferrer">Conferir no PDF</a>{% endif %}{% else %}Página não mapeada na extração{% endif %}</li>
+          {% endfor %}
+        </ol>
+      {% endif %}
+      {% if layout_table_candidates %}
+        <h3>Tabelas candidatas extraídas do PDF</h3>
+        <p class="document-review-help">Prévia estrutural automática, não revisada e não citável. A detecção pode fragmentar células ou omitir tabelas; confira alinhamento, valores e conteúdo no PDF original. {% if layout_table_detection_scope %}{{ layout_table_detection_scope }}{% endif %}</p>
+        <ol class="document-review-observations__list document-table-candidate-list">
+          {% for candidate in layout_table_candidates %}
+            <li>
+              <strong>Candidato na página {{ candidate.page }}</strong> · {{ candidate.row_count }} linhas × {{ candidate.column_count }} colunas · preenchimento técnico {{ candidate.cell_occupancy|floatformat:0 }}%
+              {% if local_pdf_available %} · <a href="{% url 'legislation:document_pdf' document.public_id %}#page={{ candidate.page }}" target="_blank" rel="noopener noreferrer">Conferir no PDF</a>{% endif %}
+              <div class="document-table-candidate__viewport" role="region" aria-label="Prévia não revisada da tabela da página {{ candidate.page }}" tabindex="0">
+                <table class="document-table-candidate__table"><tbody>
+                  {% for row in candidate.rows %}<tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>{% endfor %}
+                </tbody></table>
+              </div>
+              {% if candidate.markdown_preview %}
+                <details class="document-table-candidate__markdown">
+                  <summary>Ver estrutura em Markdown (não revisada)</summary>
+                  <p class="document-review-help">A primeira linha é representada como cabeçalho apenas para atender à sintaxe Markdown. Confira células, ordem e cabeçalhos no PDF; esta prévia não integra a extração jurídica nem é citável.</p>
+                  <pre><code>{{ candidate.markdown_preview }}</code></pre>
+                </details>
+              {% endif %}
+              {% if candidate.truncated %}<p class="document-review-errors" role="note">Prévia truncada por limite técnico; os dados restantes não foram incluídos.</p>{% endif %}
+              <p class="document-review-help">{{ candidate.review_note }}</p>
+            </li>
+          {% endfor %}
+        </ol>
+      {% endif %}
+      {% if layout_table_image_pages %}
+        <details class="document-review-help">
+          <summary>Verificação visual necessária em {{ layout_table_image_pages|length }} página(s) com imagem</summary>
+          <p>O detector estrutural atual não analisa linhas/células dentro de imagens rasterizadas. Isso não significa que essas páginas não tenham tabelas; confira diretamente no PDF antes de concluir a revisão.</p>
+          {% if local_pdf_available %}<ul>{% for page in layout_table_image_pages %}<li><a href="{% url 'legislation:document_pdf' document.public_id %}#page={{ page }}" target="_blank" rel="noopener noreferrer">Abrir página {{ page }} do PDF</a></li>{% endfor %}</ul>{% endif %}
+        </details>
       {% endif %}
     </section>
   {% endif %}
@@ -190,17 +289,38 @@
       </form>
     </section>
   {% endif %}
-  {% if can_review_segmentation or segmentation_generation_form %}
+  {% if can_review_segmentation or segmentation_generation_form or can_preview_candidate_segmentation or segmentation_preview_only %}
     <section class="document-review-panel" aria-labelledby="segmentation-review-title">
       <div class="document-review-panel__header">
         <div>
           <p class="legal-detail-eyebrow">Etapa 4 · Curadoria documental</p>
           <h2 id="segmentation-review-title">Segmentação dos dispositivos</h2>
         </div>
-        <span class="document-review-status">{% if segmentation_reviewed %}Segmentação revisada{% elif devices %}{{ devices|length }} dispositivos · revisão pendente{% else %}Prévia ainda não gerada{% endif %}</span>
+        <span class="document-review-status">{% if segmentation_preview_only %}Prévia temporária · não persistida{% elif segmentation_reviewed %}Segmentação revisada{% elif devices %}{{ devices|length }} dispositivos · revisão pendente{% else %}Prévia ainda não gerada{% endif %}</span>
       </div>
-      <p class="document-review-panel__notice" role="note">A segmentação automática é apenas uma proposta de limites e hierarquia. Compare cada dispositivo e seu trecho com o PDF. A revisão registra a conferência desta versão; ela não promove o documento, não revisa eventos normativos e não torna a reconstrução temporal juridicamente completa.</p>
-      {% if can_generate_segmentation or segmentation_generation_form %}
+      {% if segmentation_preview_only %}
+        <p class="document-review-panel__notice" role="note"><strong>Prévia exploratória, não persistida.</strong> Os limites foram calculados em memória para apoiar a triagem deste candidato. Não são segmentos aprovados, não podem alimentar o RAG nem a projeção temporal e desaparecem ao sair desta página. Compare cada trecho com o PDF.</p>
+      {% else %}
+        <p class="document-review-panel__notice" role="note">A segmentação automática é apenas uma proposta de limites e hierarquia. Compare cada dispositivo e seu trecho com o PDF. A revisão registra a conferência desta versão; ela não promove o documento, não revisa eventos normativos e não torna a reconstrução temporal juridicamente completa.</p>
+      {% endif %}
+      {% if segmentation_appendix_scope %}
+        <p class="document-review-panel__notice" role="note"><strong>Escopo do texto estruturado:</strong> anexos detectados a partir da página {{ segmentation_appendix_scope.start_page }} do PDF foram mantidos no documento original, mas excluídos da segmentação dos artigos e dispositivos. {% if segmentation_appendix_scope.ocr_pages %}{{ segmentation_appendix_scope.ocr_pages|length }} páginas anexas dependem de OCR e não são tratadas como transcrição certificada; consulte o PDF para tabelas, mapas e medidas.{% else %}Consulte o PDF para conteúdo de tabelas, mapas e demais anexos.{% endif %}</p>
+      {% endif %}
+      {% if can_preview_candidate_segmentation and not segmentation_preview_only %}
+        <form method="post" class="document-review-form" data-document-review-form>
+          {% csrf_token %}
+          <input type="hidden" name="action" value="preview_candidate_segmentation">
+          {{ segmentation_preview_form.extraction_id }}
+          {{ segmentation_preview_form.expected_fingerprint }}
+          {% if segmentation_preview_form.non_field_errors %}<div class="document-review-errors" role="alert" tabindex="-1">{{ segmentation_preview_form.non_field_errors }}</div>{% endif %}
+          <div class="document-review-field document-review-confirm">
+            {{ segmentation_preview_form.confirm_generation }}
+            <label for="{{ segmentation_preview_form.confirm_generation.id_for_label }}">{{ segmentation_preview_form.confirm_generation.label }}</label>
+            {% if segmentation_preview_form.confirm_generation.errors %}<div class="document-review-errors">{{ segmentation_preview_form.confirm_generation.errors }}</div>{% endif %}
+          </div>
+          <button class="btn btn-primary document-review-submit" type="submit" data-document-review-submit data-submitting-label="Calculando prévia…">Calcular prévia temporária dos dispositivos</button>
+        </form>
+      {% elif can_generate_segmentation or segmentation_generation_form %}
         <form method="post" class="document-review-form" data-document-review-form>
           {% csrf_token %}
           <input type="hidden" name="action" value="generate_segmentation">
@@ -214,18 +334,52 @@
           </div>
           <button class="btn btn-primary document-review-submit" type="submit" data-document-review-submit data-submitting-label="Gerando prévia…">Gerar prévia de segmentação</button>
         </form>
-      {% elif devices and not segmentation_reviewed and segmentation_review_form %}
+      {% elif show_segmentation_devices %}
+        {% if segmentation_preview_only %}
+          <section class="document-review-panel document-review-observations" aria-labelledby="candidate-relations-title">
+            <div class="document-review-panel__header">
+              <div><p class="legal-detail-eyebrow">Triagem de relações</p><h3 id="candidate-relations-title">Relações normativas candidatas</h3></div>
+              <span class="document-review-status">{{ candidate_relation_preview|length }} menções · não revisadas</span>
+            </div>
+            <p class="document-review-panel__notice" role="note">Triagem automática e somente em memória. Menções que compartilham a mesma cláusula são agrupadas; abra um grupo para conferir os dispositivos citados no PDF. A identidade e o alcance jurídico não estão confirmados, e estes candidatos não alimentam o grafo, o RAG ou a vigência.</p>
+            {% if candidate_relation_preview %}
+              <ol class="document-review-observations__list">
+                {% regroup candidate_relation_preview by action_start_offset as action_groups %}
+                {% for action_group in action_groups %}
+                  {% with targets=action_group.list %}
+                  {% with candidate=targets.0 %}
+                  <li>
+                    <strong>{{ candidate.action }} · {{ targets|length }} alvos candidatos</strong>
+                    <p><strong>Cláusula no {{ candidate.action_device }}:</strong> “{{ candidate.action_quote }}”{% if candidate.action_page %} · página {{ candidate.action_page }}{% if local_pdf_available %} · <a href="{% url 'legislation:document_pdf' document.public_id %}#page={{ candidate.action_page }}" target="_blank" rel="noopener noreferrer">conferir no PDF</a>{% endif %}{% endif %}</p>
+                    {% if candidate.norma_candidate.tipo %}<p><strong>Norma candidata:</strong> {{ candidate.norma_candidate.tipo }} nº {{ candidate.norma_candidate.numero }}{% if candidate.norma_candidate.ano %}/{{ candidate.norma_candidate.ano }}{% endif %} · identidade não confirmada</p>{% endif %}
+                    <details>
+                      <summary>Conferir {{ targets|length }} referências de dispositivo</summary>
+                      <ul>
+                        {% for target in targets %}
+                          <li><strong>{{ target.device_type }} {{ target.device_number }}</strong> · {{ target.target_quote }}{% if target.norma_candidate.tipo %} · {{ target.norma_candidate.tipo }} nº {{ target.norma_candidate.numero }}{% if target.norma_candidate.ano %}/{{ target.norma_candidate.ano }}{% endif %}{% endif %}{% if target.target_page %} · página {{ target.target_page }}{% if local_pdf_available %} · <a href="{% url 'legislation:document_pdf' document.public_id %}#page={{ target.target_page }}" target="_blank" rel="noopener noreferrer">abrir fonte</a>{% endif %}{% endif %}</li>
+                        {% endfor %}
+                      </ul>
+                    </details>
+                    <span class="document-review-status">{{ candidate.status }}</span>
+                  </li>
+                  {% endwith %}
+                  {% endwith %}
+                {% endfor %}
+              </ol>
+            {% else %}<p class="document-review-help">Nenhuma relação enumerada foi extraída nesta prévia. Isso não prova que o ato não altere ou revogue outras normas.</p>{% endif %}
+          </section>
+        {% endif %}
         <div class="document-segmentation-preview" aria-label="Prévia dos dispositivos a revisar">
           {% for device in devices %}
             <article class="document-segmentation-preview__item">
               <h3>{{ device.tipo }} {{ device.numero }}{% if device.page_index %}<span> · página {{ device.page_index }}</span>{% endif %}</h3>
-              {% if device.parent_key %}<p class="document-review-help">Dispositivo subordinado · chave estrutural {{ device.parent_key }}</p>{% endif %}
-              {% if device.marker != 'none' %}<p class="document-review-errors" role="note">Marcador automático: {{ device.get_marker_display }}. Confira manualmente.</p>{% endif %}
+              {% if device.parent_label %}<p class="document-review-help">Dispositivo subordinado a {{ device.parent_label }} · confira a hierarquia no PDF.</p>{% endif %}
+              {% if device.marker != 'none' %}<p class="document-review-errors" role="note">Marcador automático: {% if device.get_marker_display %}{{ device.get_marker_display }}{% elif device.marker == 'revogado' %}Revogado{% elif device.marker == 'vetado' %}Vetado{% else %}Desconhecido{% endif %}. Confira manualmente.</p>{% endif %}
               <pre>{{ device.texto }}</pre>
             </article>
           {% endfor %}
         </div>
-        <form method="post" class="document-review-form" data-document-review-form>
+        {% if not segmentation_preview_only %}<form method="post" class="document-review-form" data-document-review-form>
           {% csrf_token %}
           <input type="hidden" name="action" value="review_segmentation">
           {{ segmentation_review_form.extraction_id }}
@@ -243,7 +397,7 @@
             {% if segmentation_review_form.reason.errors %}<div class="document-review-errors">{{ segmentation_review_form.reason.errors }}</div>{% endif %}
           </div>
           <button class="btn btn-primary document-review-submit" type="submit" data-document-review-submit data-submitting-label="Registrando revisão…">Confirmar segmentação revisada</button>
-        </form>
+        </form>{% endif %}
       {% elif segmentation_reviewed %}
         <p class="document-review-panel__notice" role="status">A fingerprint da segmentação corresponde à revisão registrada. Se a extração ou qualquer dispositivo mudar, esta revisão deixa de valer.</p>
       {% endif %}

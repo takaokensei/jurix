@@ -302,6 +302,29 @@ def test_legacy_archive_source_citation_rewrites_outdated_test_label():
     )
 
 
+def test_staged_consolidation_edition_survives_archive_source_serialization():
+    source = {
+        "evidence_scope": "isolated_qa_archive",
+        "norma_ref": "Lei nº 3.882/1989",
+        "dispositivo_ref": "Art. 20",
+        "citation_label": "Lei nº 3.882/1989, Art. 20",
+        "edition_label": "Consolidação municipal · exercício 2024 · revisão pendente",
+        "source_type": "Consolidação oficial municipal — revisão pendente",
+        "contribution": "Trecho da consolidação de 2024; revisão pendente",
+        "full_text": "Art. 20. Texto da consolidação municipal apresentado para cotejo.",
+    }
+    with patch(
+        "src.apps.legislation.serializers._legacy_archive_document_id",
+        return_value="00000000-0000-0000-0000-000000000001",
+    ):
+        result = serialize_dispositivo_source(source)
+
+    assert result["citation_label"] == "Lei nº 3.882/1989, Art. 20"
+    assert result["edition_label"] == source["edition_label"]
+    assert result["source_type"] == source["source_type"]
+    assert result["contribution"] == source["contribution"]
+
+
 @override_settings(NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True)
 def test_legacy_archive_pdf_recovery_requires_one_identity_and_text_match():
     from src.apps.legislation.document_models import ExtracaoDocumento

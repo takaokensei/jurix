@@ -902,7 +902,7 @@ html[data-sidebar-collapsed="true"] .figma-sidebar .figma-nav-list { gap: 7px; }
 .jurix-source-group[open] .jurix-source-group__disclosure { transform: rotate(45deg); }
 .jurix-source-group__header:focus-visible { outline: 2px solid var(--figma-blue-light); outline-offset: 3px; border-radius: 4px; }
 .jurix-source-group-controls { display: flex; justify-content: flex-end; }
-.jurix-source-group-toggle-all { min-height: 36px; padding: 0 10px; border: 1px solid var(--figma-border); border-radius: 9px; color: var(--figma-blue-light); background: transparent; font: inherit; font-size: 12px; cursor: pointer; }
+.jurix-source-group-toggle-all { min-height: 44px; padding: 0 10px; border: 1px solid var(--figma-border); border-radius: 9px; color: var(--figma-blue-light); background: transparent; font: inherit; font-size: 12px; cursor: pointer; }
 .jurix-source-group-toggle-all:hover { background: color-mix(in srgb, var(--figma-blue-light) 8%, transparent); }
 .jurix-source-group__title {
   min-width: 0;

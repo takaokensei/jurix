@@ -10,8 +10,15 @@ def test_build_norma_timeline_accepts_as_of(monkeypatch):
     # The public contract is tested at the pure-function boundary; integration
     # tests in the temporal suite cover actual EventoAlteracao rows.
     norma = SimpleNamespace(
+        pk=1,
         data_publicacao=date(2020, 1, 1),
         data_vigencia=date(2020, 2, 1),
+        documento_base_id=1,
+        documento_base=SimpleNamespace(
+            norma_id=1,
+            review_status="approved",
+            accepted_extraction_id=5,
+        ),
     )
     # With no event manager supplied, publication/effectivity still form a valid
     # historical timeline. The function must preserve both dates <= as_of.
@@ -28,6 +35,41 @@ def test_build_norma_timeline_accepts_as_of(monkeypatch):
     timeline = build_norma_timeline(norma, as_of=date(2024, 1, 1))
     assert [item["kind"] for item in timeline] == ["publication", "effective"]
     assert [item["date_display"] for item in timeline] == ["01/01/2020", "01/02/2020"]
+
+
+@pytest.mark.django_db
+def test_pending_norma_dates_are_rendered_as_unreviewed_registry_metadata():
+    from django.test import Client
+
+    from src.apps.legislation.models import Norma
+
+    norma = Norma.objects.create(
+        tipo="Lei Complementar",
+        numero="198",
+        ano=2021,
+        status=Norma.Status.PENDING,
+        data_publicacao=date(2021, 12, 20),
+        data_vigencia=date(2021, 12, 20),
+    )
+
+    timeline = build_norma_timeline(norma, as_of=date(2022, 1, 1))
+
+    assert [item["kind"] for item in timeline] == [
+        "registry_candidate",
+        "registry_candidate",
+    ]
+    assert all(item["confidence"] is None for item in timeline)
+    assert all("não foram revisados" in item["description"] for item in timeline)
+
+    response = Client().get(
+        f"/api/v1/normas/{norma.pk}/timeline/?as_of=2022-01-01"
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["temporal_status"] == "data_indeterminada"
+    assert all(
+        item["kind"] == "registry_candidate" for item in payload["timeline"]
+    )
 
 
 @pytest.mark.django_db
@@ -295,10 +337,11 @@ def test_amending_norma_timeline_distinguishes_publication_from_reviewed_effect(
     timeline = build_norma_timeline(source)
 
     assert [(item["kind"], item["date"]) for item in timeline] == [
-        ("publication", "2021-01-10"),
-        ("effective", "2021-01-10"),
+        ("registry_candidate", "2021-01-10"),
+        ("registry_candidate", "2021-01-10"),
         ("event", "2021-03-01"),
     ]
+    assert all(item["confidence"] is None for item in timeline[:2])
     effect = timeline[-1]
     assert effect["timeline_role"] == "source"
     assert effect["title"] == "Efeito em outra norma — Alteração"

@@ -113,3 +113,50 @@ def test_empty_reextraction_inactivates_instead_of_deleting_events():
     event.refresh_from_db()
     assert event.is_active is False
     assert EventoAlteracao.objects.filter(pk=event.pk).exists()
+
+
+@pytest.mark.django_db
+def test_action_introduction_is_inherited_by_child_list_items_as_pending_candidates():
+    from src.apps.ingestion.ner_tasks import extract_entities_task
+
+    norma = Norma.objects.create(
+        tipo="Lei Complementar", numero="99102", ano=2026, status="segmented"
+    )
+    parent = Dispositivo.objects.create(
+        norma=norma,
+        tipo="artigo",
+        numero="260",
+        texto="Art. 260. Ficam revogados:",
+        ordem=1,
+        structural_key="source-260",
+        revision_fingerprint=revision_fingerprint(
+            "Art. 260. Ficam revogados:", "Art. 260. Ficam revogados:"
+        ),
+    )
+    child_text = "I - Lei Complementar nº 1.894 de 31 de dezembro de 1969;"
+    child = Dispositivo.objects.create(
+        norma=norma,
+        tipo="inciso",
+        numero="I",
+        texto=child_text,
+        ordem=2,
+        structural_key="source-260/inciso-I",
+        dispositivo_pai=parent,
+        revision_fingerprint=revision_fingerprint(child_text, child_text),
+    )
+
+    result = extract_entities_task.run(norma.pk)
+
+    assert result["success"] is True
+    events = list(EventoAlteracao.objects.filter(dispositivo_fonte=child, is_active=True))
+    assert len(events) == 1
+    event = events[0]
+    assert event.acao == "REVOGA"
+    assert event.referencia_tipo == "lei complementar"
+    assert event.target_text == "Lei Complementar nº 1.894 de 31 de dezembro de 1969"
+    assert event.target_reference_json["number_candidate"] == "1.894"
+    assert event.target_reference_json["year_candidate"] == "1969"
+    assert event.validado is False
+    assert not EventoAlteracao.objects.filter(
+        dispositivo_fonte=parent, is_active=True, referencia_tipo=""
+    ).exists()

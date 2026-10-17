@@ -124,8 +124,14 @@ def revoked_dispositivo_ids(norma_ids: Iterable[int], as_of: date | None) -> set
 
 
 def temporal_status(norma, *, as_of: date | None = None) -> str:
-    """Return a conservative temporal state, including recorded revocation."""
+    """Return dated facts and confirmed repeal signals without inferring continuity.
+
+    A publication/effective date plus no recorded repeal is not enough to claim
+    that a municipal norm remains in force: the event corpus may be incomplete.
+    """
     when = as_of or timezone.localdate()
+    if not norma_base_identity_reviewed(norma):
+        return "data_indeterminada"
     publication = getattr(norma, "data_publicacao", None)
     effective = getattr(norma, "data_vigencia", None)
 
@@ -143,7 +149,24 @@ def temporal_status(norma, *, as_of: date | None = None) -> str:
         return "data_indeterminada"
     if _partially_revoked(getattr(norma, "id", 0), when):
         return "parcialmente_revogada"
-    return "vigente"
+    return "situacao_nao_verificada"
+
+
+def norma_base_identity_reviewed(norma) -> bool:
+    """Whether dates belong to a norm with an approved, accepted base document."""
+    if not hasattr(norma, "documento_base_id"):
+        # Lightweight pure-function test doubles predate the document registry.
+        return True
+    document = getattr(norma, "documento_base", None)
+    if document is None:
+        return False
+    from src.apps.legislation.document_models import DocumentoNormativo
+
+    return bool(
+        document.norma_id == norma.pk
+        and document.review_status == DocumentoNormativo.ReviewStatus.APPROVED
+        and document.accepted_extraction_id
+    )
 
 
 def _partially_revoked(norma_id: int, as_of: date) -> bool:
@@ -241,28 +264,54 @@ def build_norma_timeline(norma, *, as_of: date | None = None) -> list[dict[str, 
         return None
 
     items: list[dict[str, Any]] = []
+    base_identity_reviewed = norma_base_identity_reviewed(norma)
+    date_kind = "publication" if base_identity_reviewed else "registry_candidate"
     if norma.data_publicacao and (as_of is None or norma.data_publicacao <= as_of):
         items.append(
             {
-                "kind": "publication",
+                "kind": date_kind,
                 "date": norma.data_publicacao.isoformat(),
                 "date_display": date_display(norma.data_publicacao),
-                "title": "Publicação",
-                "description": f"{norma} publicada no corpus municipal.",
+                "title": (
+                    "Publicação"
+                    if base_identity_reviewed
+                    else "Data de publicação indicada no cadastro — não revisada"
+                ),
+                "description": (
+                    f"{norma} publicada no corpus municipal."
+                    if base_identity_reviewed
+                    else (
+                        f"O cadastro informa esta data para {norma}, mas a identidade do ato "
+                        "e seu documento-base ainda não foram revisados. Não trate esta data "
+                        "como confirmação de publicação ou vigência."
+                    )
+                ),
                 "source_norma": str(norma),
-                "confidence": 1.0,
+                "confidence": 1.0 if base_identity_reviewed else None,
             }
         )
     if norma.data_vigencia and (as_of is None or norma.data_vigencia <= as_of):
         items.append(
             {
-                "kind": "effective",
+                "kind": "effective" if base_identity_reviewed else "registry_candidate",
                 "date": norma.data_vigencia.isoformat(),
                 "date_display": date_display(norma.data_vigencia),
-                "title": "Início da vigência",
-                "description": f"Vigência indicada para {norma}.",
+                "title": (
+                    "Início da vigência"
+                    if base_identity_reviewed
+                    else "Data de vigência indicada no cadastro — não revisada"
+                ),
+                "description": (
+                    f"Vigência indicada para {norma}."
+                    if base_identity_reviewed
+                    else (
+                        f"O cadastro informa uma data de vigência para {norma}, mas a "
+                        "identidade do ato e seu documento-base ainda não foram revisados. "
+                        "Não trate esta data como confirmação de vigência."
+                    )
+                ),
                 "source_norma": str(norma),
-                "confidence": 1.0,
+                "confidence": 1.0 if base_identity_reviewed else None,
             }
         )
 

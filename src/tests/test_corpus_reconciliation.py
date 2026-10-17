@@ -6,6 +6,7 @@ from src.apps.ingestion.normative_impact import (
     claim_normative_work_item,
     fail_normative_stage,
     finish_normative_stage,
+    safe_target_identity_revision,
 )
 from src.apps.ingestion.reconcile_corpus import (
     enqueue_target_reconciliation,
@@ -14,8 +15,10 @@ from src.apps.ingestion.reconcile_corpus import (
 from src.apps.legislation.event_review import event_review_status
 from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
 from src.apps.operations.models import NormativeWorkItem
+from src.processing.document_metadata import build_normative_identity
 from src.processing.event_revision import event_revision_identity
 from src.processing.target_reconciliation import (
+    inspect_event_target_resolution,
     reconcile_unresolved_event_targets,
     resolve_event_target,
 )
@@ -100,6 +103,72 @@ def test_late_target_resolution_updates_provenance_but_never_validates_relation(
     assert event.validado is False
 
 
+def test_reconciliation_dry_run_reports_late_target_without_mutating_event():
+    event = _late_reference_event("ALTERA")
+    target = _norma("Lei", "8206", 2026)
+    original_reference = dict(event.target_reference_json)
+    original_fingerprint = event.revision_fingerprint
+
+    decision = inspect_event_target_resolution(event, target_norma_ids=[target.pk])
+    stats = reconcile_unresolved_event_targets(
+        target_norma_ids=[target.pk],
+        dry_run=True,
+        return_cursor=True,
+    )
+
+    event.refresh_from_db()
+    assert decision == {
+        "status": "resolved_unreviewed",
+        "target_norma_id": target.pk,
+        "identity_key": target.identity_key or None,
+        "match_method": "unique_legacy_type_number_year",
+    }
+    assert stats["dry_run"] is True
+    assert stats["inspected"] == 1
+    assert stats["resolved"] == 1
+    assert stats["resolution_status_counts"] == {"resolved_unreviewed": 1}
+    assert event.norma_alvo_id is None
+    assert event.target_reference_json == original_reference
+    assert event.revision_fingerprint == original_fingerprint
+
+
+def test_reconciliation_dry_run_diagnostics_explain_without_emitting_raw_target_text():
+    event = _late_reference_event("ALTERA")
+    source_norma = event.dispositivo_fonte.norma
+    source_norma.identity_json = {"synthetic_fixture": True}
+    source_norma.save(update_fields=["identity_json"])
+    target = _norma("Lei", "8206", 2026)
+
+    report = reconcile_unresolved_event_targets(
+        target_norma_ids=[target.pk],
+        dry_run=True,
+        return_cursor=True,
+        include_diagnostics=True,
+    )
+
+    assert report["diagnostics"] == [
+        {
+            "synthetic_fixture": True,
+            "source_norma": {"type": "Lei", "number": "8801", "year": 2025},
+            "source_device": {"type": "artigo", "number": "1º"},
+            "action": "ALTERA",
+            "reference_count": 1,
+            "parsed_reference": {
+                "type": "lei",
+                "number": "8206",
+                "year": 2026,
+                "jurisdiction": "unknown",
+            },
+            "status": "resolved_unreviewed",
+        }
+    ]
+    assert "Faz referência expressa" not in str(report["diagnostics"])
+    assert event.target_text not in str(report["diagnostics"])
+    event.refresh_from_db()
+    assert event.norma_alvo_id is None
+    assert event.target_reference_json["resolution_status"] == "not_found_in_corpus"
+
+
 def test_late_repeal_target_is_linked_as_unreviewed_candidate_only():
     event = _late_reference_event("REVOGA")
 
@@ -155,6 +224,44 @@ def test_new_target_queue_is_bounded_idempotent_and_finishes_only_reconcile():
     assert event.norma_alvo_id == target.pk
     assert event.acao == "REFERENCIA"
     assert event.validado is False
+
+
+def test_identity_only_target_is_queued_and_worker_accepts_its_fingerprint():
+    from src.apps.ingestion.normative_tasks import _current_norma, _execute_normative_stage
+
+    identity = build_normative_identity(
+        jurisdiction="BR-RN-NATAL",
+        raw_type="Lei",
+        series="municipal_lo",
+        number="8206",
+        year=2026,
+    )
+    target = Norma.objects.create(
+        tipo="Lei",
+        numero="8206",
+        ano=2026,
+        identity_key=identity.identity_key,
+        identity_json=identity.identity_json,
+        texto_original="",
+        texto_consolidado="",
+    )
+    event = _late_reference_event("REFERENCIA")
+
+    queued = enqueue_target_reconciliation([target.pk])
+    item = NormativeWorkItem.objects.get(pk=queued["queued"][0]["item_id"])
+    assert queued["created"] == 1
+    assert item.source_revision == safe_target_identity_revision(target)
+    assert _current_norma(item).pk == target.pk
+
+    leased, token = claim_normative_work_item(item.pk)
+    result = _execute_normative_stage(leased, target)
+    completed = finish_normative_stage(leased.pk, token, result=result)
+    event.refresh_from_db()
+    assert completed.status == NormativeWorkItem.Status.COMPLETED
+    assert event.norma_alvo_id == target.pk
+    assert event.acao == "REFERENCIA"
+    assert event.validado is False
+    assert event.target_reference_json["resolution_status"] == "resolved_unreviewed"
 
 
 def test_target_queue_rejects_unbounded_or_unknown_ids():

@@ -55,6 +55,7 @@ def _load_profile(env: dict[str, str]) -> subprocess.CompletedProcess[str]:
             "'cache': settings.CACHES['default']['LOCATION'],"
             "'qa_root': str(settings.QA_ROOT),"
             "'queue': settings.CELERY_TASK_ROUTES['ingestion.sync_dom_natal_editions']['queue'],"
+            "'foundation_queue': settings.CELERY_TASK_ROUTES['legislation.check_foundation']['queue'],"
             "'beat': settings.CELERY_BEAT_SCHEDULE,"
             "'matter_lookup': settings.SAPL_MATTER_LOOKUP_ENABLED,"
             "'sapl_base': settings.SAPL_BASE_URL}))",
@@ -81,8 +82,9 @@ def test_container_qa_profile_uses_only_isolated_services_and_disables_beat(tmp_
     assert settings["cache"] == "redis://redis:6379/1"
     assert settings["qa_root"] == str(qa_root.resolve())
     assert settings["queue"] == "normative_qa"
+    assert settings["foundation_queue"] == "normative_qa"
     assert settings["beat"] == {}
-    assert settings["matter_lookup"] is True
+    assert settings["matter_lookup"] is False
     assert settings["sapl_base"] == "https://sapl.natal.rn.leg.br/api"
 
 

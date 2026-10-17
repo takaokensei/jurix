@@ -989,13 +989,20 @@ test('real browser: theme preference stays synchronized with the legacy toggle',
 
 test('real browser: anonymous history survives reload (F5) and direct URL navigation', async () => {
   const persistedSource = {
-    id: 99,
+    id: 'archive-source-99',
     citation_index: 1,
-    tipo: 'Lei',
-    norma: 'Lei nº 8.206/2026',
+    source_id: '12345678-1234-5678-1234-567812345678',
+    document_id: '12345678-1234-5678-1234-567812345678',
+    document_sha256: 'a'.repeat(64),
+    source_kind: 'archive',
+    evidence_scope: 'isolated_qa_archive',
+    norma_ref: 'Lei nº 8.206/2026',
     dispositivo_ref: 'Art. 1º',
+    full_text: 'Dispositivo normativo de teste para validar a restauração das fontes.',
     text: 'Dispositivo normativo de teste para validar a restauração das fontes.',
-    source_type: 'Fonte normativa primária',
+    span: { start: 20, end: 89 },
+    local_pdf_url: '/normas/documentos/12345678-1234-5678-1234-567812345678/pdf/',
+    source_type: 'Acervo histórico local — extração pendente de revisão',
     contribution: 'Trecho de dispositivo',
   };
   const sseEvents = [
@@ -1005,6 +1012,7 @@ test('real browser: anonymous history survives reload (F5) and direct URL naviga
     { type: 'done', answer: 'Resposta anônima persistida com sucesso. [[1]]', grounded: true, sources: [persistedSource], session_id: null },
   ];
 
+  let pageResolutionRequests = 0;
   const server = createTestServer({
     isAuthenticated: () => false,
     '/api/v1/search/answer/stream/': (req, res) => {
@@ -1021,6 +1029,17 @@ test('real browser: anonymous history survives reload (F5) and direct URL naviga
     '/api/v1/chat/sessions/': (req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true, sessions: [] }));
+    },
+    '/api/v1/archive-citations/resolve-pages/': (req, res) => {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', () => {
+        pageResolutionRequests++;
+        const payload = JSON.parse(body || '{}');
+        assert.equal(payload.sources?.[0]?.document_id, persistedSource.document_id);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, resolved: [{ index: 0, page: 2 }] }));
+      });
     },
   });
 
@@ -1105,6 +1124,14 @@ test('real browser: anonymous history survives reload (F5) and direct URL naviga
     assert.match(await page.$eval('#jurix-sources-drawer-panel', (panel) => panel.innerText), /Dispositivo normativo de teste/);
     const restoredMessageTimes = await page.$$eval('.message-time', (nodes) => nodes.map((node) => node.textContent));
     assert.deepEqual(restoredMessageTimes, expectedMessageTimes, 'F5 must preserve original user and assistant message times');
+    await page.click('.message-assistant .jurix-citation[data-source-index="1"]');
+    await page.waitForSelector('#jurix-sources-drawer-panel[aria-hidden="false"] .jurix-rag-source__open');
+    assert.match(
+      await page.$eval('#jurix-sources-drawer-panel .jurix-rag-source__open', link => link.href),
+      /\/normas\/documentos\/12345678-1234-5678-1234-567812345678\/pdf\/#page=2$/,
+      'anonymous history must restore a verified local PDF page for an old citation',
+    );
+    assert.ok(pageResolutionRequests >= 1, 'restoring the anonymous chat must request page resolution');
 
     // 2. Direct URL navigation in a new tab
     const page2 = await browser.newPage();
@@ -2705,7 +2732,7 @@ test('real browser: workspace routes scroll naturally and desktop sidebar collap
   }
 });
 
-test('real browser: sidebar items stay inside the shell and fully offscreen when collapsed on mobile', async () => {
+test('real browser: mobile navigation and composer keep evidence visible through viewport resizing', async () => {
   const server = createTestServer();
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const port = server.address().port;
@@ -2745,6 +2772,39 @@ test('real browser: sidebar items stay inside the shell and fully offscreen when
     assert.equal(mobileComposer.barWidth, 390, `Composer mobile deve ocupar a largura útil: ${JSON.stringify(mobileComposer)}`);
     assert.ok(mobileComposer.formWidth >= 320 && mobileComposer.formRight <= 390, `Formulário mobile não pode ficar estreito ou sair do viewport: ${JSON.stringify(mobileComposer)}`);
     assert.ok(mobileComposer.sourcesBottom < mobileComposer.barTop, `O botão de fontes deve permanecer acessível acima do composer: ${JSON.stringify(mobileComposer)}`);
+    await page.waitForFunction(() => document.getElementById('messages-container')?.__jurixWasAtBottom === true);
+
+    for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+      await page.setViewport(viewport);
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const resizedLayout = await page.evaluate(() => {
+        const container = document.getElementById('messages-container');
+        const composer = document.getElementById('conversation-input-bar').getBoundingClientRect();
+        const sources = document.querySelector('.jurix-sources-pill-btn').getBoundingClientRect();
+        return {
+          width: innerWidth,
+          sourceBottom: sources.bottom,
+          composerTop: composer.top,
+          scrollRemaining: container.scrollHeight - container.scrollTop - container.clientHeight,
+        };
+      });
+      assert.ok(
+        resizedLayout.sourceBottom <= resizedLayout.composerTop - 8,
+        `Evidence controls must stay above the composer after viewport resize: ${JSON.stringify(resizedLayout)}`,
+      );
+      assert.ok(
+        resizedLayout.scrollRemaining < 100,
+        `The conversation should retain its bottom anchor after viewport resize: ${JSON.stringify(resizedLayout)}`,
+      );
+    }
+    await page.$eval('#messages-container', (container) => { container.scrollTop = 0; });
+    await page.waitForFunction(() => document.getElementById('messages-container')?.__jurixWasAtBottom === false);
+    await page.setViewport({ width: 1280, height: 844 });
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.ok(
+      await page.$eval('#messages-container', (container) => container.scrollTop < 100),
+      'Resizing while reading older messages must not force-scroll to the latest message',
+    );
 
     for (const theme of ['light', 'dark']) {
       for (const width of [360, 390, 399, 640, 768, 1280]) {
@@ -3739,6 +3799,16 @@ test('real browser: evidence drawer groups same-norm citations without hiding ar
       ]);
     });
     await page.waitForFunction(() => document.activeElement?.id === 'jurix-sources-drawer-close');
+    await page.waitForFunction(() => {
+      const panel = document.getElementById('jurix-sources-drawer-panel');
+      const closeButton = document.getElementById('jurix-sources-drawer-close');
+      const bounds = closeButton?.getBoundingClientRect();
+      return panel?.classList.contains('is-open')
+        && panel.getAttribute('aria-hidden') === 'false'
+        && bounds?.width > 0
+        && bounds.left >= 0
+        && bounds.right <= innerWidth;
+    });
     await page.click('#jurix-sources-drawer-close');
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'test-source-trigger');
     assert.equal(await page.$eval('#jurix-sources-drawer-panel', (panel) => panel.inert), true);

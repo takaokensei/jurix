@@ -27,21 +27,41 @@ class Command(BaseCommand):
         from django.conf import settings
 
         database = settings.DATABASES.get("default", {})
-        qa_database = (
+        host_qa_database = (
             database.get("ENGINE") == "django.db.backends.postgresql"
             and database.get("HOST") == "127.0.0.1"
             and str(database.get("PORT")) == "55432"
             and database.get("USER") == "jurix_audit"
             and database.get("NAME") in {"jurix_audit", "test_jurix_audit"}
         )
-        if os.environ.get("JURIX_QA_ONLY") != "1" or not qa_database:
+        container_qa_database = (
+            os.environ.get("DJANGO_SETTINGS_MODULE") == "config.settings_normative_container_qa"
+            and database.get("ENGINE") == "django.db.backends.postgresql"
+            and database.get("HOST") == "db"
+            and str(database.get("PORT")) == "5432"
+            and database.get("USER") == "jurix_audit"
+            and database.get("NAME") in {"jurix_audit", "test_jurix_audit"}
+        )
+        qa_database = host_qa_database or container_qa_database
+        ephemeral_test_database = (
+            database.get("ENGINE") == "django.db.backends.sqlite3"
+            and str(database.get("NAME"))
+            in {":memory:", "file:memorydb_default?mode=memory&cache=shared"}
+        )
+        if os.environ.get("JURIX_QA_ONLY") != "1":
+            raise CommandError("Snapshots desta tarefa exigem JURIX_QA_ONLY=1.")
+        if options["apply"] and not qa_database:
             target = ", ".join(
                 f"{key}={database.get(key)}"
                 for key in ("ENGINE", "HOST", "PORT", "USER", "NAME")
             )
             raise CommandError(
-                "Snapshots desta tarefa exigem settings QA e JURIX_QA_ONLY=1 "
+                "Persistência de snapshots exige PostgreSQL QA dedicado "
                 f"(qa_flag={os.environ.get('JURIX_QA_ONLY')!r}; {target})."
+            )
+        if not options["apply"] and not (qa_database or ephemeral_test_database):
+            raise CommandError(
+                "Prévia de snapshots exige PostgreSQL QA ou SQLite efêmero de teste."
             )
         try:
             as_of = date.fromisoformat(options["as_of"])
@@ -51,11 +71,17 @@ class Command(BaseCommand):
         if not 1 <= limit <= 40:
             raise CommandError("--limit deve estar entre 1 e 40.")
         ids = sorted(set(options["norma_id"]))
-        query = Norma.objects.filter(documento_base__isnull=False).order_by("pk")
+        # Explicit identities must be reportable even when their source has not
+        # passed review yet. project_norma_as_of() returns a fail-closed
+        # NOT_RECONSTRUCTABLE result for those rows; the default batch remains
+        # limited to norms with a document base so an unscoped run stays useful.
+        query = Norma.objects.order_by("pk") if ids else Norma.objects.filter(
+            documento_base__isnull=False
+        ).order_by("pk")
         if ids:
             query = query.filter(pk__in=ids)
             if query.count() != len(ids):
-                raise CommandError("Um ou mais IDs não apontam para norma com documento-base.")
+                raise CommandError("Um ou mais IDs não apontam para uma norma existente.")
         normas = list(query[: limit + 1])
         if len(normas) > limit:
             raise CommandError("Escopo excede o limite; use --norma-id explícito ou reduza --limit.")

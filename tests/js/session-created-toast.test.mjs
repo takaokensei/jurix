@@ -13,9 +13,9 @@ const chatScript = read('src/apps/core/static/js/chat.js');
 const sidebarScript = read('src/apps/core/static/js/jurix-sidebar.js');
 
 test('new conversation feedback highlights its sidebar row without covering the answer', () => {
-  assert.match(template, /static 'css\/jurix-chat\.css' %\}\?v=20261009-session-feedback-sidebar1/);
+  assert.match(template, /static 'css\/jurix-chat\.css' %\}\?v=20261015-composer-desktop-grid2/);
   assert.match(template, /static 'css\/jurix-sidebar\.css' %\}\?v=20261009-short-viewport-history2/);
-  assert.match(template, /static 'js\/chat\.js' %\}\?v=20261013-no-source-answer-scroll1/);
+  assert.match(template, /static 'js\/chat\.js' %\}\?v=20261016-dom-unreviewed-restore2/);
   assert.match(template, /static 'js\/jurix-sidebar\.js' %\}\?v=20261009-session-feedback-sidebar1/);
   assert.doesNotMatch(chatScript, /session-created-toast|animateSessionCreated/);
   assert.doesNotMatch(chatStyles, /\.session-created-toast/, 'the chat must not load floating success-toast styles');

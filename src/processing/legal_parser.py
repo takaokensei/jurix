@@ -55,6 +55,12 @@ _PUBLICATION_EFFECT_RE = re.compile(
     r"\bentr(?:a|ará)\s+em\s+vigor\s+na\s+data\s+de\s+(?:sua\s+)?publica[çc][ãa]o\b",
     re.IGNORECASE,
 )
+_EFFECTIVE_CLAUSE_RE = re.compile(
+    r"\bentr(?:a|ará|ara)\s+em\s+vigor\b"
+    r"(?:(?![-=]{2,}[ \t]*(?:P[aá]gina|Page)[ \t]+\d+[ \t]*[-=]{2,})[^.;]){0,240}"
+    r"(?:[.;]|$)",
+    re.IGNORECASE | re.MULTILINE,
+)
 _NORMATIVE_APPENDIX_RE = re.compile(
     r"^[ \t]*(?P<label>ANEXO|ADENDO|AP[EÊ]NDICE|QUADRO|TABELA)"
     r"(?:[ \t]+(?P<number>[IVXLCDM]+|[0-9]+))?"
@@ -89,8 +95,9 @@ def extract_normative_appendices(text: str) -> list[dict[str, Any]]:
 
 
 def extract_publication_metadata(text: str) -> dict[str, Any]:
-    """Extract official publication date and explicit effective-date wording."""
-    match = _PUBLICATION_DATE_RE.search(text or "")
+    """Extract publication facts and quote effective-date clauses as unreviewed evidence."""
+    source = text or ""
+    match = _PUBLICATION_DATE_RE.search(source)
     publication_date = None
     if match:
         raw_date = match.group(1)
@@ -102,9 +109,24 @@ def extract_publication_metadata(text: str) -> dict[str, Any]:
                 publication_date = date(year, month, day)
         except ValueError:
             publication_date = None
+    effective_clause_candidates = []
+    for candidate in _EFFECTIVE_CLAUSE_RE.finditer(source):
+        raw_quote = candidate.group(0)
+        leading = len(raw_quote) - len(raw_quote.lstrip())
+        quote = raw_quote.strip()
+        start = candidate.start() + leading
+        effective_clause_candidates.append(
+            {
+                "quote": quote,
+                "start": start,
+                "end": start + len(quote),
+                "status": "unreviewed_candidate",
+            }
+        )
     return {
         "data_publicacao": publication_date,
-        "vigencia_na_publicacao": bool(_PUBLICATION_EFFECT_RE.search(text or "")),
+        "vigencia_na_publicacao": bool(_PUBLICATION_EFFECT_RE.search(source)),
+        "effective_clause_candidates": effective_clause_candidates,
     }
 
 
@@ -189,48 +211,56 @@ class LegalTextParser:
     # These patterns match the START of a device, not capture its text
     MARKER_PATTERNS = {
         "artigo": re.compile(
-            r"^\s*Art\.?\s+(\d+[ºª°]?(?:-[A-Z])?)\s*[\.–-]?\s*", re.MULTILINE | re.IGNORECASE
+            r"^[ \t]*Art\.?[ \t]*(\d+(?:[ºª°]|o(?=[ \t]*[\.–—-]))?(?:-[A-Z])?)[ \t]*[\.–-]?[ \t]*",
+            re.MULTILINE | re.IGNORECASE,
         ),
-        "paragrafo": re.compile(r"^\s*§\s*(\d+[ºª°]?(?:-[A-Z])?)\s*[\.–-]?\s*", re.MULTILINE),
+        "paragrafo": re.compile(
+            r"^[ \t]*§[ \t]*(\d+[ºª°]?(?:-[A-Z])?)[ \t]*[\.–-]?[ \t]*",
+            re.MULTILINE,
+        ),
         "paragrafo_unico": re.compile(
-            r"^\s*Parágrafo\s+único\.?\s*[\.–-]?\s*", re.MULTILINE | re.IGNORECASE
+            r"^[ \t]*Parágrafo[ \t]+único\.?[ \t]*[\.–-]?[ \t]*",
+            re.MULTILINE | re.IGNORECASE,
         ),
         # A real inciso needs an explicit separator ('-', '–', '—' or '.') right
         # after the roman numeral. Anchoring with [ \t]* (never \s*) keeps the
         # match on its own line. Numeral validity is checked in _is_valid_marker.
         "inciso": re.compile(r"^[ \t]*([IVX]+)[ \t]*[-–—.][ \t]*", re.MULTILINE),
-        "alinea": re.compile(r"^\s*([a-z])\)\s+", re.MULTILINE),
+        "alinea": re.compile(r"^[ \t]*([a-z])\)[ \t]+", re.MULTILINE),
         # Items are 1-2 digit numbers; a year ('2020.') at line start is not one.
         "item": re.compile(r"^[ \t]*(\d{1,2})[ \t]*\.[ \t]+", re.MULTILINE),
     }
 
     # Combined pattern to find ANY marker (for text extraction between markers)
     ALL_MARKERS_PATTERN = re.compile(
-        r"^\s*(?:Art\.?\s+\d+|§\s*\d+|Parágrafo\s+único|([IVX]+)\s*[\.–-]|([a-z])\)\s+|\d+\.\s+)",
+        r"^\s*(?:Art\.?\s*\d+|§\s*\d+|Parágrafo\s+único|([IVX]+)\s*[\.–-]|([a-z])\)\s+|\d+\.\s+)",
         re.MULTILINE | re.IGNORECASE,
     )
 
     # Patterns for structural divisions (Parte, Livro, Título, Capítulo, Seção, Subseção)
     DIVISION_PATTERNS = {
         "parte": re.compile(
-            r"^\s*(?:PARTE|Parte)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$", re.MULTILINE
+            r"^[ \t]*(?:PARTE|Parte)[ \t]+([IVX0-9]+|[A-ZÀ-Ú \t]+?)(?:[ \t–-]+(.*))?$",
+            re.MULTILINE,
         ),
         "livro": re.compile(
-            r"^\s*(?:LIVRO|Livro)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$", re.MULTILINE
+            r"^[ \t]*(?:LIVRO|Livro)[ \t]+([IVX0-9]+|[A-ZÀ-Ú \t]+?)(?:[ \t–-]+(.*))?$",
+            re.MULTILINE,
         ),
         "titulo": re.compile(
-            r"^\s*(?:T[IÍ]TULO|T[ií]tulo)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$", re.MULTILINE
+            r"^[ \t]*(?:T[IÍ]TULO|T[ií]tulo)[ \t]+([IVX0-9]+|[A-ZÀ-Ú \t]+?)(?:[ \t–-]+(.*))?$",
+            re.MULTILINE,
         ),
         "capitulo": re.compile(
-            r"^\s*(?:CAP[IÍ]TULO|Cap[ií]tulo)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$",
+            r"^[ \t]*(?:CAP[IÍ]TULO|Cap[ií]tulo)[ \t]+([IVX0-9]+|[A-ZÀ-Ú \t]+?)(?:[ \t–-]+(.*))?$",
             re.MULTILINE,
         ),
         "secao": re.compile(
-            r"^\s*(?:SE[ÇC][ÃA]O|Se[çc][ãa]o)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$",
+            r"^[ \t]*(?:SE[ÇC][ÃA]O|Se[çc][ãa]o)[ \t]+([IVX0-9]+|[A-ZÀ-Ú \t]+?)(?:[ \t–-]+(.*))?$",
             re.MULTILINE,
         ),
         "subsecao": re.compile(
-            r"^\s*(?:SUBSE[ÇC][ÃA]O|Subse[çc][ãa]o)\s+([IVX0-9]+|[A-ZÀ-Ú\s]+?)(?:[\s–-]+(.*))?$",
+            r"^[ \t]*(?:SUBSE[ÇC][ÃA]O|Subse[çc][ãa]o)[ \t]+([IVX0-9]+|[A-ZÀ-Ú \t]+?)(?:[ \t–-]+(.*))?$",
             re.MULTILINE,
         ),
     }
@@ -256,6 +286,15 @@ class LegalTextParser:
         if tipo == "inciso":
             return bool(LegalTextParser._ROMAN_INCISO_RE.match(match.group(1)))
         if tipo == "artigo":
+            marker_text = match.group(0).lstrip()
+            # Body citations are often wrapped onto a new line and begin with
+            # lowercase ``art. 38.``. They are not operative article markers;
+            # requiring the conventional capitalized ``Art.`` (or all-caps
+            # ``ART.``) here prevents amendments that quote old articles from
+            # being split into fictitious devices.
+            marker_word = marker_text[:4].rstrip(". ")
+            if marker_word and marker_word.islower():
+                return False
             nxt = text[match.end() : match.end() + 1]
             if nxt and (nxt.islower() or nxt == ","):
                 return False
@@ -296,7 +335,11 @@ class LegalTextParser:
 
     @staticmethod
     def _extract_text_until_next_marker(
-        text: str, marker_start: int, marker_end: int, all_markers: list[tuple[int, str, Any]]
+        text: str,
+        marker_start: int,
+        marker_end: int,
+        all_markers: list[tuple[int, str, Any]],
+        stop_types: set[str] | None = None,
     ) -> str:
         """
         Extract text from a device marker until the next marker (multiline).
@@ -312,8 +355,8 @@ class LegalTextParser:
         """
         # Find the next marker after current position
         next_marker_pos = None
-        for pos, _, _ in all_markers:
-            if pos > marker_start:
+        for pos, marker_type, _ in all_markers:
+            if pos > marker_start and (stop_types is None or marker_type in stop_types):
                 next_marker_pos = pos
                 break
 
@@ -359,19 +402,33 @@ class LegalTextParser:
         if all_markers is None:
             all_markers = LegalTextParser._find_all_markers(text)
 
+        article_body_markers = sorted(
+            [
+                *all_markers,
+                *((match.start(), "appendix", match) for match in _NORMATIVE_APPENDIX_RE.finditer(text)),
+            ],
+            key=lambda marker: marker[0],
+        )
+
         articles = []
 
         for match in LegalTextParser._iter_valid("artigo", text):
             marker_start = match.start()
             marker_end = match.end()
+            article_number = match.group(1).strip()
+            article_number = re.sub(r"(?<=\d)o$", "º", article_number, flags=re.IGNORECASE)
             texto = LegalTextParser._extract_text_until_next_marker(
-                text, marker_start, marker_end, all_markers
+                text,
+                marker_start,
+                marker_end,
+                article_body_markers,
+                stop_types={"artigo", "appendix", *LegalTextParser.DIVISION_PATTERNS},
             )
 
             articles.append(
                 {
                     "tipo": "artigo",
-                    "numero": match.group(1).strip(),
+                    "numero": article_number,
                     "texto": texto,
                     "start_pos": marker_start,
                     "end_pos": marker_end + len(texto),

@@ -345,3 +345,15 @@ def safe_norma_revision(norma: Norma) -> str:
     legal_text = norma.texto_consolidado or norma.texto_original or ""
     content = "\n".join((norma.ementa or "", legal_text))
     return hashlib.sha256(content.encode("utf-8")).hexdigest() if content.strip() else ""
+
+
+def safe_target_identity_revision(norma: Norma) -> str:
+    """Fingerprint a reviewed canonical identity when no normative text exists yet."""
+    from src.apps.ingestion.document_promotion import identity_for_norma
+
+    identity = identity_for_norma(norma)
+    if not identity.identity_key:
+        return ""
+    return hashlib.sha256(
+        f"target-identity-v1:{identity.identity_key}".encode()
+    ).hexdigest()

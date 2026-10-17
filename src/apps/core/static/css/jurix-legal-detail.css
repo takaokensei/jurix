@@ -205,6 +205,18 @@
 .document-review-observations__list { margin:0; padding-inline-start:1.25rem; color:var(--figma-text-body); line-height:1.55; }
 .document-review-observations__list li + li { margin-top:12px; }
 .document-review-observations blockquote { margin:6px 0 0; padding-inline-start:12px; border-inline-start:2px solid var(--figma-border-strong); color:var(--figma-text-muted); }
+.document-review-target-preview { display:grid; gap:8px; margin:10px 0 14px; padding:12px; border-inline-start:3px solid var(--figma-amber-soft); border-radius:8px; background:var(--figma-bg-surface); }
+.document-review-target-preview p { margin:0; }
+.document-review-target-preview blockquote { max-height:18rem; overflow:auto; margin:0; padding:10px 12px; border:1px solid var(--figma-border); border-radius:8px; color:var(--figma-text-body); white-space:pre-wrap; overflow-wrap:anywhere; }
+.document-review-target-preview a { width:max-content; max-width:100%; min-height:44px; display:inline-flex; align-items:center; }
+.document-table-candidate__viewport { max-width:100%; margin-top:8px; overflow:auto; border:1px solid var(--figma-border); border-radius:8px; background:var(--figma-bg-surface); }
+.document-table-candidate__viewport:focus-visible { outline:3px solid var(--figma-blue-light); outline-offset:2px; }
+.document-table-candidate__table { width:max-content; min-width:100%; border-collapse:collapse; color:var(--figma-text-body); font-size:.9rem; }
+.document-table-candidate__table td { min-width:5rem; max-width:24rem; padding:8px 10px; border:1px solid var(--figma-border); vertical-align:top; white-space:pre-wrap; overflow-wrap:anywhere; }
+.document-table-candidate__markdown { margin-top:8px; padding:10px 12px; border:1px solid var(--figma-border); border-radius:8px; background:var(--figma-bg-surface); }
+.document-table-candidate__markdown summary { display:flex; min-height:44px; align-items:center; color:var(--figma-blue-light); cursor:pointer; }
+.document-table-candidate__markdown pre { max-height:20rem; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; color:var(--figma-text-body); font: .82rem/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }
+.document-table-candidate-list > li { min-width:0; }
 .document-review-history { display:grid; gap:12px; margin:0; padding-inline-start:1.4rem; }
 .document-review-history li { padding:12px 14px; border:1px solid var(--figma-border); border-radius:10px; background:var(--figma-bg-surface); overflow-wrap:anywhere; }
 .document-review-history p { margin:8px 0; color:var(--figma-text-body); white-space:pre-wrap; }

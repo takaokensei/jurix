@@ -45,8 +45,15 @@ def _validate_checkpoint_page(*, checkpoint, page: dict, client, limit: int) -> 
     return records
 
 
-def _validate_existing_replay_anchors(Norma, records: list[dict]) -> None:
-    """Require persisted partial rows to anchor the replay to its original page."""
+def _validate_existing_replay_anchors(Norma, records: list[dict]) -> int:
+    """Reject conflicts with existing rows and return the matching row count.
+
+    A restored QA database can retain the exact partial cursor while its page
+    rows are absent. The caller validates the cursor URL and complete page
+    scope before this check, so zero local rows is safe to replay through the
+    idempotent SAPL-ID upsert. Any rows that do exist must still be pending and
+    match the upstream identity exactly.
+    """
     ids = [int(item["id"]) for item in records]
     if len(ids) != len(set(ids)):
         raise SystemExit("QA replay refused: fetched page contains duplicate SAPL IDs.")
@@ -56,8 +63,6 @@ def _validate_existing_replay_anchors(Norma, records: list[dict]) -> None:
             "sapl_id", "numero", "ano", "status", "pdf_path", "texto_consolidado"
         )
     }
-    if not existing:
-        raise SystemExit("QA replay refused: no existing row anchors this partial page.")
     by_id = {int(item["id"]): item for item in records}
     for sapl_id, row in existing.items():
         source = by_id[sapl_id]
@@ -69,6 +74,7 @@ def _validate_existing_replay_anchors(Norma, records: list[dict]) -> None:
             or row.ano != source.get("ano")
         ):
             raise SystemExit("QA replay refused: an existing row is not a matching pending metadata row.")
+    return len(existing)
 
 
 def main() -> int:
@@ -83,13 +89,17 @@ def main() -> int:
     normal_run = sys.argv[1:] == [
         "--tipo", "1", "--ano", "2026", "--limit", "10", "--max-pages", "1"
     ]
+    metadata_only_run = sys.argv[1:] == [
+        "--tipo", "1", "--ano", "2026", "--limit", "10", "--max-pages", "4",
+        "--metadata-only",
+    ]
     repair_run = sys.argv[1:] == [
         "--repair-checkpoint-page", "--tipo", "1", "--ano", "2026", "--limit", "10"
     ]
-    if not normal_run and not repair_run:
+    if not normal_run and not metadata_only_run and not repair_run:
         raise SystemExit("Only one bounded SAPL 2026 type-1 QA page or exact-checkpoint replay is allowed.")
 
-    os.environ["SAPL_INCREMENTAL_MAX_PAGES"] = "1"
+    os.environ["SAPL_INCREMENTAL_MAX_PAGES"] = "4" if metadata_only_run else "1"
     os.environ["SAPL_INCREMENTAL_OVERLAP_PAGES"] = "3"
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     import django
@@ -116,15 +126,20 @@ def main() -> int:
             records = _validate_checkpoint_page(
                 checkpoint=checkpoint, page=page, client=client, limit=10
             )
-            _validate_existing_replay_anchors(Norma, records)
+            anchored_rows = _validate_existing_replay_anchors(Norma, records)
             for item in records:
                 _process_payload(item, client=client)
         finally:
             client.close()
-        print(json.dumps({"replayed_metadata_rows": len(records), "pdf_downloads": 0, "checkpoint_advanced": False}, sort_keys=True))
+        print(json.dumps({"replayed_metadata_rows": len(records), "existing_rows_anchored": anchored_rows, "pdf_downloads": 0, "checkpoint_advanced": False}, sort_keys=True))
         return 0
 
-    result = run_incremental_sync(limit=10, tipo="1", ano=2026)
+    result = run_incremental_sync(
+        limit=10,
+        tipo="1",
+        ano=2026,
+        fingerprint_pdfs=not metadata_only_run,
+    )
     summary = {
         key: result.get(key)
         for key in (
@@ -132,6 +147,9 @@ def main() -> int:
             "pages", "cursor_start", "cursor_end", "safe_stop", "unchanged_pages",
         )
     }
+    if metadata_only_run:
+        summary["metadata_only"] = True
+        summary["pdf_fingerprints"] = False
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
     return 0 if result.get("fetched", 0) > 0 and result.get("failed", 0) == 0 else 2
 

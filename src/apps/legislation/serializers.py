@@ -249,6 +249,27 @@ def _without_url_fragment(value: str | None) -> str | None:
     return urlunsplit((parts.scheme, parts.netloc, parts.path, parts.query, ""))
 
 
+def _safe_official_general_legislation_url(source: dict[str, Any]) -> str | None:
+    """Keep only official federal legislation links from the Planalto legal corpus."""
+    if source.get("source_kind") != "official_general_legislation":
+        return None
+    candidate = str(source.get("source_url") or source.get("official_url") or "").strip()
+    try:
+        parsed = urlparse(candidate)
+        if (
+            parsed.scheme != "https"
+            or parsed.hostname != "www.planalto.gov.br"
+            or parsed.username
+            or parsed.password
+            or parsed.port not in {None, 443}
+            or not parsed.path.startswith("/ccivil_03/leis/")
+        ):
+            return None
+    except ValueError:
+        return None
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, ""))
+
+
 def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
     """
     Serialize a RAG source into a sanitized, frontend-ready dictionary.
@@ -415,6 +436,11 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
         norma_ref, dispositivo_ref
     )
     is_local_archive = source.get("evidence_scope") == "isolated_qa_archive"
+    edition_label = source.get("edition_label")
+    if not isinstance(edition_label, str) or not edition_label.strip():
+        edition_label = None
+    else:
+        edition_label = edition_label.strip()[:180]
     source_kind = source.get("source_kind") or ("archive" if is_local_archive else None)
     source_id = source.get("source_id") if is_local_archive else None
     if is_local_archive and not source_id:
@@ -424,8 +450,9 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
         citation_label = re.sub(
             r"\s*\(PDF de teste\)\s*$", "", str(citation_label), flags=re.IGNORECASE
         )
-        source_type = "Acervo histórico local — extração pendente de revisão"
-        contribution = "Trecho da extração do PDF arquivado; transcrição pendente de revisão"
+        if not edition_label:
+            source_type = "Acervo histórico local — extração pendente de revisão"
+            contribution = "Trecho da extração do PDF arquivado; transcrição pendente de revisão"
     if temporal_version and "redação projetada pelo Jurix" not in citation_label:
         citation_label += f" (redação projetada pelo Jurix em {temporal_version['as_of']})"
     graph_relation = _safe_graph_relation(source.get("graph_relation"))
@@ -494,6 +521,7 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
         "dispositivo_ref": dispositivo_ref,
         "citation_id": citation_id,
         "citation_label": citation_label,
+        "edition_label": edition_label,
         "source_id": str(source_id) if source_id else None,
         "document_id": str(source_id) if source_id else None,
         "document_sha256": document_sha256.lower() if document_sha256 else None,
@@ -508,6 +536,7 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
         "pdf_url": source.get("pdf_url"),
         "local_pdf_url": local_pdf_url,
         "sapl_url": canonical_sapl_url(source.get("sapl_url"), source.get("sapl_id")),
+        "official_url": _safe_official_general_legislation_url(source),
         "data_publicacao": source.get("data_publicacao"),
         "consulted_at": _safe_consulted_at(source.get("consulted_at")),
         "status_label": source.get("status_label"),
@@ -659,7 +688,9 @@ def serialize_chat_session(session: Any) -> dict[str, Any]:
     }
 
 
-def serialize_chat_message(message: Any) -> dict[str, Any]:
+def serialize_chat_message(
+    message: Any, *, sources: list[dict[str, Any]] | None = None
+) -> dict[str, Any]:
     """
     Serialize a ChatMessage model instance.
 
@@ -672,7 +703,11 @@ def serialize_chat_message(message: Any) -> dict[str, Any]:
         "id": message.id,
         "role": message.role,
         "content": message.content,
-        "sources": serialize_citation_sources(message.sources_json or []) if is_assistant else [],
+        "sources": serialize_citation_sources(
+            message.sources_json if sources is None else sources
+        )
+        if is_assistant
+        else [],
         "metadata": message.metadata_json if is_assistant else {},
         "created_at": message.created_at.isoformat() if message.created_at else None,
     }

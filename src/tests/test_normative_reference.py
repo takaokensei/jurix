@@ -33,6 +33,12 @@ def test_canonical_type_accepts_catalog_and_filename_aliases_without_conflating_
         ("Lei nº 8.205/2026", "lei", "8205", 2026),
         ("Lei n. 8205 de 2026", "lei", "8205", 2026),
         ("Lei Complementar nº 8.205/2026", "lei_complementar", "8205", 2026),
+        (
+            "Art. 14 da Lei Complementar nº 208, de 7 de março de 2022",
+            "lei_complementar",
+            "208",
+            2022,
+        ),
         ("Lei Complementar Municipal nº 120/2010", "lei_complementar", "120", 2010),
         ("LC nº 120/2010", "lei_complementar", "120", 2010),
         ("Decreto municipal nº 7.795/2005", "decreto", "7795", 2005),

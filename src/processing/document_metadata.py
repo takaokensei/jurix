@@ -30,7 +30,11 @@ _NUMBER_TOKEN = re.compile(r"^\d[\d.]*[A-Za-z]?(?:-[A-Za-z0-9]+)?$")
 _EPIGRAPH = re.compile(
     r"^\s*(?P<label>lei(?:\s+(?:complementar|ordin[áa]ria|org[âa]nica|promulgada))?|"
     r"decreto(?:-lei|\s+(?:legislativo|executivo))?)\s+"
-    r"(?:municipal\s+)?(?:n[º°o.]?\s*)?(?P<number>\d[\d.]*)"
+    # PDF text layers sometimes split the last digit of the act number across
+    # lines (e.g. ``Nº 21\n9 DE 22 DE DEZEMBRO DE 2022``). Permit whitespace
+    # between numeric groups; parse_initial_epigraphs removes it only from the
+    # captured number, never from the date.
+    r"(?:municipal\s+)?(?:n[º°o.]?\s*)?(?P<number>\d[\d.]*(?:\s+\d[\d.]*)*)"
     r"(?P<year_suffix>\s*/\s*(?:19|20)\d{2})?"
     r"(?:\s*,?\s+de\s+(?P<date>.+?))?\s*\.?\s*$",
     re.IGNORECASE,
@@ -197,13 +201,13 @@ def _parse_iso_filename_date(token: str) -> date | None:
 
 def _role_from_parts(parts: Iterable[str]) -> str:
     text = _fold(" ".join(parts))
-    if "retificacao" in text or "retificado" in text:
+    if re.search(r"(?<![a-z])retific(?:acao|ado|ada|ar)(?![a-z])", text):
         return "retificacao"
-    if "republicacao" in text or "republicado" in text:
+    if re.search(r"(?<![a-z])republic(?:acao|ado|ada)(?![a-z])", text):
         return "republicacao"
-    if "anexo" in text:
+    if re.search(r"(?<![a-z])anexos?(?![a-z])", text):
         return "anexo"
-    if "original" in text:
+    if re.search(r"(?<![a-z])original(?![a-z])", text):
         return "original"
     return "indeterminado"
 
@@ -354,21 +358,57 @@ def compare_identity_to_epigraph(identity: Any, epigraph: Any) -> dict[str, Any]
     }
 
 
+def extraction_identity_check(identity: Any, metadata_candidates: Any) -> dict[str, Any]:
+    """Compare a document's candidate identity with the epigraph in one extraction."""
+    candidates = metadata_candidates if isinstance(metadata_candidates, dict) else {}
+    epigraph = candidates.get("epigraph")
+    return compare_identity_to_epigraph(identity, epigraph)
+
+
 def parse_initial_epigraphs(pages: Iterable[str], *, max_pages: int = 3) -> EpigraphMetadata:
     """Read only heading-shaped epigraphs from bounded initial PDF pages."""
     found: list[EpigraphCandidate] = []
     for page_index, page in enumerate(islice(pages, max(1, min(max_pages, 3)))):
-        for line in (page or "")[:6000].splitlines()[:24]:
-            quote = " ".join(line.split())
-            if not quote or len(quote) > 240:
+        lines = (page or "")[:6000].splitlines()[:24]
+        # Join a short heading window because PDF extraction can split one
+        # epigraph into several lines or place blank lines between glyph spans.
+        # Stop at the act's ementa/body so unrelated body references cannot be
+        # promoted to document identity.
+        heading_windows = []
+        for start, line in enumerate(lines):
+            if not re.match(r"\s*(?:lei|decreto)\b", line, re.IGNORECASE):
                 continue
+            parts = []
+            for candidate_line in lines[start : start + 8]:
+                candidate_line = " ".join(candidate_line.split())
+                if not candidate_line:
+                    continue
+                if parts and re.match(
+                    r"(?:altera|revoga|ementa|o\s+prefeito|a\s+prefeita|a\s+c[aâ]mara)\b",
+                    candidate_line,
+                    re.IGNORECASE,
+                ):
+                    break
+                parts.append(candidate_line)
+                quote = " ".join(parts)
+                if len(quote) > 240:
+                    break
+                candidate_match = _EPIGRAPH.fullmatch(quote)
+                if candidate_match:
+                    raw_date = candidate_match.group("date") or ""
+                    parsed_date = _parse_epigraph_date(raw_date)
+                    year_source = raw_date or (candidate_match.group("year_suffix") or "").strip()
+                    if _epigraph_year(year_source, parsed_date) is not None:
+                        heading_windows.append(quote)
+
+        for quote in heading_windows:
             match = _EPIGRAPH.fullmatch(quote)
             if not match:
                 continue
             type_key = canonical_type(match.group("label"))
             if type_key not in KNOWN_TYPES:
                 continue
-            raw_number = match.group("number")
+            raw_number = re.sub(r"\s+", "", match.group("number"))
             normalized_number = normalize_document_number(raw_number)
             raw_date = match.group("date") or ""
             date_value = _parse_epigraph_date(raw_date)

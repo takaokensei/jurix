@@ -18,6 +18,7 @@ from src.apps.ingestion.management.commands.extract_archive_candidates_batch_qa 
 )
 from src.apps.ingestion.normative_tasks import _extract_archive_candidate
 from src.apps.legislation.document_models import DocumentoNormativo, ExtracaoDocumento
+from src.apps.legislation.models import Norma
 from src.processing.document_extraction import page_has_image, page_is_blank
 
 MAX_BATCH_PAGES = 10
@@ -47,6 +48,12 @@ class Command(BaseCommand):
             help="Somente no dry-run: localizar um PDF cujas páginas ilegíveis estejam estruturalmente vazias.",
         )
         parser.add_argument("--batch-pages", type=int, default=MAX_BATCH_PAGES)
+        parser.add_argument(
+            "--pages",
+            nargs="+",
+            type=int,
+            help="Páginas específicas do backlog de OCR (máximo 10), junto de --document-id.",
+        )
         mode = parser.add_mutually_exclusive_group(required=True)
         mode.add_argument("--dry-run", action="store_true")
         mode.add_argument("--apply", action="store_true")
@@ -64,7 +71,10 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if (
             os.environ.get("JURIX_QA_ONLY") != "1"
-            or os.environ.get("DJANGO_SETTINGS_MODULE") != "config.settings_normative_qa"
+            or os.environ.get("DJANGO_SETTINGS_MODULE") not in {
+                "config.settings_normative_qa",
+                "config.settings_normative_container_qa",
+            }
             or not getattr(settings, "NORMATIVE_ARCHIVE_ENABLED", False)
         ):
             raise CommandError("Este comando exige o ambiente QA normativo isolado.")
@@ -72,6 +82,23 @@ class Command(BaseCommand):
         batch_pages = options["batch_pages"]
         if not 1 <= batch_pages <= MAX_BATCH_PAGES:
             raise CommandError(f"--batch-pages deve estar entre 1 e {MAX_BATCH_PAGES}.")
+        requested_pages = options.get("pages")
+        if requested_pages is not None:
+            if (
+                options["pick_next"]
+                or options["pick_unreadable"]
+                or options["pick_blank"]
+                or options["reclassify_blank"]
+            ):
+                raise CommandError(
+                    "--pages exige --document-id e não pode combinar seletores de lote ou reclassificação."
+                )
+            if not 1 <= len(requested_pages) <= MAX_BATCH_PAGES:
+                raise CommandError(f"--pages deve listar de 1 a {MAX_BATCH_PAGES} páginas.")
+            if len(set(requested_pages)) != len(requested_pages) or any(page < 1 for page in requested_pages):
+                raise CommandError("--pages exige números positivos e sem repetição.")
+            if len(requested_pages) > batch_pages:
+                raise CommandError("A quantidade de --pages não pode exceder --batch-pages.")
         if (options["pick_next"] or options["pick_unreadable"] or options["pick_blank"]) and not options["dry_run"]:
             raise CommandError("Seletores de candidatos são permitidos somente em --dry-run.")
         if options["pick_next"] and options["retry_unreadable"]:
@@ -83,6 +110,7 @@ class Command(BaseCommand):
         ):
             raise CommandError("--reclassify-blank exige --document-id e não pode combinar opções de retry.")
 
+        skipped_unavailable_storage_count = 0
         if options["pick_next"] or options["pick_unreadable"] or options["pick_blank"]:
             latest = ExtracaoDocumento.objects.filter(documento_id=OuterRef("pk")).order_by(
                 "-created_at", "-pk"
@@ -112,20 +140,35 @@ class Command(BaseCommand):
                 if isinstance(skipped, list):
                     pages = sorted({page for page in skipped if type(page) is int and page > 0})
                     if pages:
-                        if options["pick_blank"]:
-                            pdf_path = _verified_pdf(qa_root, storage_key, content_sha256)
-                            with fitz.open(pdf_path) as pdf:
-                                if any(page > len(pdf) for page in pages) or not all(
-                                    page_is_blank(
-                                        pdf[page - 1],
-                                        pdf[page - 1].get_text("text") or "",
-                                        page_has_image(pdf[page - 1]),
-                                    )
-                                    for page in pages
-                                ):
-                                    continue
-                        choices.append((len(pages), str(public_id), public_id))
-            if not choices:
+                        choices.append(
+                            (len(pages), str(public_id), public_id, storage_key, content_sha256, pages)
+                        )
+            selected_document_id = None
+            for _backlog, _sort_key, candidate_id, storage_key, content_sha256, pages in sorted(choices):
+                try:
+                    pdf_path = _verified_pdf(qa_root, storage_key, content_sha256)
+                except CommandError:
+                    skipped_unavailable_storage_count += 1
+                    continue
+                if options["pick_blank"]:
+                    with fitz.open(pdf_path) as pdf:
+                        if any(page > len(pdf) for page in pages) or not all(
+                            page_is_blank(
+                                pdf[page - 1],
+                                pdf[page - 1].get_text("text") or "",
+                                page_has_image(pdf[page - 1]),
+                            )
+                            for page in pages
+                        ):
+                            continue
+                selected_document_id = candidate_id
+                break
+            if selected_document_id is None:
+                if skipped_unavailable_storage_count:
+                    raise CommandError(
+                        "Nenhum candidato elegível com PDF íntegro no armazenamento QA; "
+                        f"{skipped_unavailable_storage_count} candidato(s) sem arquivo verificável foram ignorados."
+                    )
                 reason = (
                     "páginas ilegíveis totalmente vazias"
                     if options["pick_blank"]
@@ -133,7 +176,7 @@ class Command(BaseCommand):
                     else "backlog de OCR por orçamento"
                 )
                 raise CommandError(f"Nenhum candidato pendente tem {reason}.")
-            _count, _sort_key, document_id = min(choices)
+            document_id = selected_document_id
         else:
             try:
                 document_id = UUID(options["document_id"])
@@ -144,14 +187,26 @@ class Command(BaseCommand):
             document = DocumentoNormativo.objects.get(public_id=document_id)
         except DocumentoNormativo.DoesNotExist as exc:
             raise CommandError("Documento candidato não encontrado no banco QA.") from exc
+        safe_sapl_candidate = (
+            document.source_kind == DocumentoNormativo.SourceKind.SAPL
+            and document.norma_id is not None
+            and document.norma.status == Norma.Status.PENDING
+            and document.norma.documento_base_id is None
+            and not document.norma.texto_original
+            and not document.norma.texto_consolidado
+        )
         if (
             document.source_kind != DocumentoNormativo.SourceKind.ARCHIVE
-            or not document.storage_key
+            and not safe_sapl_candidate
+        ) or (
+            not document.storage_key
             or not document.content_sha256
             or document.accepted_extraction_id is not None
             or document.review_status != DocumentoNormativo.ReviewStatus.PENDING
         ):
-            raise CommandError("A retomada exige PDF staging pendente e ainda não aceito.")
+            raise CommandError(
+                "A retomada exige PDF staging pendente; SAPL também exige Norma vinculada, pendente e vazia."
+            )
 
         latest = document.extracoes.order_by("-created_at", "-pk").first()
         if latest is None:
@@ -189,6 +244,8 @@ class Command(BaseCommand):
         if not retry_pages:
             reason = "ilegíveis" if retry_unreadable else "omitidas pelo orçamento OCR"
             raise CommandError(f"A extração mais recente não tem páginas {reason}.")
+        if requested_pages is not None and not set(requested_pages).issubset(retry_pages):
+            raise CommandError("--pages só pode selecionar páginas do backlog de OCR da extração mais recente.")
 
         qa_root = Path(os.environ.get("JURIX_QA_ROOT", "")).resolve()
         pdf_path = _verified_pdf(
@@ -213,7 +270,12 @@ class Command(BaseCommand):
         if retry_pages[-1] > page_count:
             raise CommandError("Metadados de páginas para retomada excedem o PDF verificado.")
 
-        selected_pages = [] if reclassify_blank else retry_pages[:batch_pages]
+        selected_pages = (
+            []
+            if reclassify_blank
+            else sorted(requested_pages) if requested_pages is not None
+            else retry_pages[:batch_pages]
+        )
         if options["dry_run"]:
             self.stdout.write(json.dumps({
                 "mode": "dry-run",
@@ -224,6 +286,7 @@ class Command(BaseCommand):
                     else "smallest_pending_backlog" if options["pick_next"]
                     else "explicit_document"
                 ),
+                "skipped_unavailable_storage_count": skipped_unavailable_storage_count,
                 "document_id": str(document.public_id),
                 "source_extraction_sha256": latest.extraction_sha256,
                 "pdf_pages": page_count,

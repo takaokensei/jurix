@@ -4,11 +4,14 @@ import hashlib
 from unittest.mock import patch
 
 import pytest
+from django.db import connection
 from django.test import Client, override_settings
+from django.test.utils import CaptureQueriesContext
 
 from src.apps.legislation.document_models import DocumentoNormativo, ExtracaoDocumento
 from src.processing.document_search import (
     _query_groups,
+    _requested_archive_types,
     _without_explicit_norm_identity,
     search_archive_documents,
 )
@@ -26,6 +29,7 @@ def _document(
     identity_type: str = "lei_complementar",
     number: str = "198",
     year: int = 2021,
+    publication_date: str | None = None,
     review_status: str = DocumentoNormativo.ReviewStatus.PENDING,
     extraction_status: str | None = "complete",
 ):
@@ -56,10 +60,77 @@ def _document(
             raw_text=text,
             legal_text=text,
             page_count=2,
+            metadata_candidates_json=(
+                {"publication": {"data_publicacao": publication_date}}
+                if publication_date
+                else {}
+            ),
             status=extraction_status,
             extraction_sha256="",
         )
     return document
+
+
+@pytest.mark.django_db
+def test_archive_filter_options_distinct_queries_clear_default_document_ordering():
+    _document(0, identity_type="lei_complementar", number="258", year=2024)
+    _document(1, identity_type="lei_complementar", number="259", year=2024)
+
+    with CaptureQueriesContext(connection) as captured:
+        result = search_archive_documents("", include_results=False)
+
+    option_queries = [
+        query["sql"]
+        for query in captured.captured_queries
+        if "SELECT DISTINCT" in query["sql"].upper()
+        and "metadata_json" in query["sql"]
+    ]
+    assert result["types"] == ["lei_complementar"]
+    assert result["years"] == [2024]
+    assert len(option_queries) == 2
+    assert all('"created_at"' not in sql and '"public_id"' not in sql for sql in option_queries)
+
+
+@pytest.mark.django_db
+def test_unfiltered_archive_review_queue_orders_candidate_year_and_number_descending():
+    oldest = _document(1, year=2004, number="900")
+    lower_number = _document(2, year=2026, number="9")
+    higher_number = _document(3, year=2026, number="120")
+    middle_year = _document(4, year=2025, number="9999")
+    unknown = _document(5, year=0, number="uncertain")
+
+    result = search_archive_documents("")
+
+    assert [row["document"].pk for row in result["results"]] == [
+        higher_number.pk,
+        lower_number.pk,
+        middle_year.pk,
+        oldest.pk,
+        unknown.pk,
+    ]
+
+
+@pytest.mark.django_db
+def test_unfiltered_archive_queue_orders_year_then_publication_date_then_number():
+    older_date = _document(
+        10, year=2025, number="900", publication_date="2025-11-09"
+    )
+    newest_date = _document(
+        11, year=2025, number="1", publication_date="2025-11-10"
+    )
+    fallback_lower = _document(12, year=2025, number="9")
+    fallback_higher = _document(13, year=2025, number="120")
+    oldest_year = _document(14, year=2024, number="999")
+
+    result = search_archive_documents("")
+
+    assert [row["document"].pk for row in result["results"]] == [
+        newest_date.pk,
+        older_date.pk,
+        fallback_higher.pk,
+        fallback_lower.pk,
+        oldest_year.pk,
+    ]
 
 
 @pytest.mark.django_db
@@ -79,6 +150,49 @@ def test_archive_search_expands_controlled_synonyms_and_returns_latest_text():
     assert "resíduos" in result["results"][0]["text"]
     assert result["results"][0]["extraction_status"] == "complete"
     assert result["results"][0]["page_count"] == 2
+
+
+@pytest.mark.django_db
+def test_natural_cosip_query_ignores_question_verbs_but_preserves_negative_scope():
+    unbuilt_units = _document(
+        250,
+        filename="Decreto_COSIP_nao_edificadas.pdf",
+        identity_type="decreto",
+        number="8355",
+        year=2024,
+        text=(
+            "Art. 3º Os recolhimentos do IPTU, TLP e da Contribuição de Iluminação Pública "
+            "COSIP incidente sobre unidades imobiliárias não edificadas podem ser realizados em parcelas."
+        ),
+    )
+    built_units = _document(
+        251,
+        filename="Decreto_COSIP_edificadas.pdf",
+        identity_type="decreto",
+        number="8356",
+        year=2024,
+        text=(
+            "Art. 3º O pagamento da Contribuição de Iluminação Pública COSIP incidente sobre "
+            "unidades imobiliárias edificadas será feito em parcela única."
+        ),
+    )
+    unrelated = _document(
+        252,
+        filename="Lei_COSIP.pdf",
+        identity_type="lei",
+        number="8357",
+        year=2024,
+        text="Art. 1º A contribuição de iluminação pública financia a rede municipal.",
+    )
+
+    result = search_archive_documents(
+        "Quais atos tratam da cobrança da COSIP em unidades imobiliárias não edificadas?"
+    )
+
+    assert result["count"] == 1
+    assert result["results"][0]["document"].pk == unbuilt_units.pk
+    assert built_units.pk not in {row["document"].pk for row in result["results"]}
+    assert unrelated.pk not in {row["document"].pk for row in result["results"]}
 
 
 @pytest.mark.django_db
@@ -140,6 +254,42 @@ def test_archive_search_matches_accented_portuguese_text_when_query_is_folded():
 
 
 @pytest.mark.django_db
+def test_archive_search_matches_unaccented_query_against_portuguese_text():
+    document = _document(
+        107,
+        text="Art. 1º A taxa de iluminação pública será regulamentada por esta Lei.",
+    )
+
+    result = search_archive_documents("iluminacao publica")
+
+    assert result["count"] == 1
+    assert result["results"][0]["document"].pk == document.pk
+
+
+@pytest.mark.django_db
+def test_archive_search_ignores_matching_text_from_superseded_extraction():
+    document = _document(
+        108,
+        text="Art. 1º A taxa de iluminação pública será regulamentada por esta Lei.",
+    )
+    ExtracaoDocumento.objects.create(
+        documento=document,
+        extractor_version="document-search-test-latest-108",
+        policy_fingerprint=_digest("search-policy-latest-108"),
+        text_version="legal-text-test-v2",
+        raw_text="Art. 1º Regras administrativas sem relação com iluminação.",
+        legal_text="Art. 1º Regras administrativas sem relação com iluminação.",
+        page_count=1,
+        status="complete",
+        extraction_sha256="",
+    )
+
+    result = search_archive_documents("iluminação pública")
+
+    assert result["count"] == 0
+
+
+@pytest.mark.django_db
 def test_archive_search_excerpt_shows_late_matching_passage_and_page_number():
     document = _document(
         105,
@@ -157,8 +307,160 @@ def test_archive_search_excerpt_shows_late_matching_passage_and_page_number():
     assert match["document"].pk == document.pk
     assert match["excerpt_matched"] is True
     assert match["excerpt_page"] == 4
+    assert match["excerpt_matched_group_count"] == match["excerpt_total_group_count"]
     assert "destinação final de resíduos sólidos" in match["excerpt"]
     assert "apresentação institucional" not in match["excerpt"]
+
+
+@pytest.mark.django_db
+def test_archive_excerpt_reports_partial_query_coverage_when_terms_are_far_apart():
+    document = _document(
+        110,
+        text=(
+            "--- Página 1 --- A entidade ambiental promove atividades públicas. "
+            + ("Texto institucional sem outros termos de busca. " * 12)
+            + "A coleta de lixo é organizada pelos serviços municipais."
+        ),
+    )
+
+    result = search_archive_documents("ambiental lixo")
+
+    assert result["count"] == 1
+    match = result["results"][0]
+    assert match["document"].pk == document.pk
+    assert match["excerpt_matched"] is True
+    assert match["excerpt_matched_group_count"] == 1
+    assert match["excerpt_total_group_count"] == 2
+    assert not ("ambiental" in match["excerpt"].casefold() and "lixo" in match["excerpt"].casefold())
+
+
+@pytest.mark.django_db
+def test_archive_excerpt_marks_matches_in_entity_name_before_first_article():
+    document = _document(
+        111,
+        text=(
+            "--- Página 1 --- LEI Nº 5.791. Reconhece a Rede Sociedade Ambiental Cultural "
+            "Lixo e Cidadania.\n\nArt. 1º Fica reconhecida a entidade como de utilidade pública."
+        ),
+    )
+
+    result = search_archive_documents("ambiental lixo")
+
+    assert result["count"] == 1
+    match = result["results"][0]
+    assert match["document"].pk == document.pk
+    assert match["excerpt_match_region"] == "before_first_article"
+    assert match["excerpt_matched_group_count"] == 2
+
+
+@pytest.mark.django_db
+def test_archive_excerpt_marks_matches_after_first_article():
+    document = _document(
+        112,
+        text=(
+            "--- Página 1 --- LEI Nº 6.881. Dispõe sobre publicidade municipal.\n\n"
+            "Art. 1º A educação ambiental orientará a destinação de lixo."
+        ),
+    )
+
+    result = search_archive_documents("ambiental lixo")
+
+    assert result["count"] == 1
+    match = result["results"][0]
+    assert match["document"].pk == document.pk
+    assert match["excerpt_match_region"] == "after_first_article"
+
+
+@pytest.mark.django_db
+def test_archive_search_prefers_article_body_match_over_preamble_entity_match():
+    preamble_match = _document(
+        130,
+        filename="LeiOrdinaria_5791.pdf",
+        identity_type="lei",
+        number="5791",
+        year=2007,
+        text=(
+            "--- Página 1 --- Reconhece a Rede Sociedade Ambiental Lixo e Cidadania.\n\n"
+            "Art. 1º Fica reconhecida a entidade como de utilidade pública."
+        ),
+    )
+    dispositive_match = _document(
+        131,
+        filename="LeiOrdinaria_6881.pdf",
+        identity_type="lei",
+        number="6881",
+        year=2019,
+        text=(
+            "--- Página 1 --- Dispõe sobre ações de educação ambiental.\n\n"
+            "Art. 1º A destinação de lixo observará a política municipal de educação ambiental."
+        ),
+    )
+
+    result = search_archive_documents("ambiental lixo")
+
+    assert result["count"] == 2
+    assert [row["document"].pk for row in result["results"]] == [
+        dispositive_match.pk,
+        preamble_match.pk,
+    ]
+    assert result["results"][0]["excerpt_match_region"] == "after_first_article"
+    assert result["results"][1]["excerpt_match_region"] == "before_first_article"
+
+
+@pytest.mark.django_db
+def test_archive_search_prefers_excerpts_covering_more_query_groups_within_article_body():
+    partial_excerpt = _document(
+        132,
+        filename="LeiOrdinaria_7400.pdf",
+        number="7400",
+        year=2020,
+        text=(
+            "Art. 1º A educação ambiental orientará o programa municipal.\n"
+            + ("Texto genérico sem correspondência temática. " * 14)
+            + "\nArt. 2º A destinação de lixo será disciplinada em regulamento."
+        ),
+    )
+    complete_excerpt = _document(
+        133,
+        filename="LeiOrdinaria_7401.pdf",
+        number="7401",
+        year=2020,
+        text="Art. 1º A educação ambiental orientará a destinação de lixo.",
+    )
+
+    result = search_archive_documents("ambiental lixo")
+
+    assert result["count"] == 2
+    assert {row["document"].pk for row in result["results"]} == {
+        partial_excerpt.pk,
+        complete_excerpt.pk,
+    }
+    assert result["results"][0]["document"].pk == complete_excerpt.pk
+    assert result["results"][0]["excerpt_match_region"] == "after_first_article"
+    assert result["results"][0]["excerpt_matched_group_count"] == 2
+    assert result["results"][1]["excerpt_matched_group_count"] == 1
+
+
+@pytest.mark.django_db
+def test_archive_search_excerpt_prefers_denser_later_match_over_first_complete_window():
+    document = _document(
+        109,
+        text=(
+            "--- Página 1 --- Destinação final de resíduos sólidos. "
+            + ("Apresentação genérica sem relação direta. " * 20)
+            + "--- Página 8 --- Parágrafo temático: "
+            + ("destinação final de resíduos sólidos; " * 6)
+        ),
+    )
+
+    result = search_archive_documents("destinação final de resíduos sólidos")
+
+    assert result["count"] == 1
+    match = result["results"][0]
+    assert match["document"].pk == document.pk
+    assert match["excerpt_matched"] is True
+    assert match["excerpt_page"] == 8
+    assert "Parágrafo temático" in match["excerpt"]
 
 
 @pytest.mark.django_db
@@ -259,6 +561,113 @@ def test_archive_search_ranks_terms_found_together_above_terms_scattered_across_
         near_match.pk,
         scattered_match.pk,
     ]
+
+
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    [
+        ("Qual lei institui a COSIP em Natal?", ("lei", "lei_complementar", "lei_organica", "lei_promulgada")),
+        ("Encontre a Lei Complementar que disciplina a COSIP", ("lei_complementar",)),
+        ("Quais decretos legislativos tratam do tema?", ("decreto_legislativo",)),
+        ("Como funciona a COSIP em Natal?", ()),
+    ],
+)
+def test_archive_search_recognizes_explicit_requested_act_kind(query, expected):
+    assert _requested_archive_types(query) == expected
+
+
+@pytest.mark.django_db
+def test_requested_act_kind_is_intent_not_a_required_term_in_extracted_text():
+    ordinary = _document(
+        620,
+        filename="Lei_620.pdf",
+        identity_type="lei",
+        number="620",
+        text="A norma disciplina a contribuição para custeio da iluminação pública COSIP.",
+    )
+    complementary = _document(
+        621,
+        filename="Lei_Complementar_621.pdf",
+        identity_type="lei_complementar",
+        number="621",
+        text="A norma disciplina a contribuição para custeio da iluminação pública COSIP.",
+    )
+    decree = _document(
+        622,
+        filename="Decreto_622.pdf",
+        identity_type="decreto",
+        number="622",
+        text="A norma disciplina a contribuição para custeio da iluminação pública COSIP.",
+    )
+
+    result = search_archive_documents(
+        "Encontre a Lei Complementar que disciplina a COSIP"
+    )
+
+    assert result["count"] == 3
+    assert result["requested_types"] == ("lei_complementar",)
+    assert result["requested_type_found"] is True
+    assert [row["document"].pk for row in result["results"]] == [
+        complementary.pk,
+        ordinary.pk,
+        decree.pk,
+    ]
+
+
+@pytest.mark.django_db
+def test_archive_search_boosts_requested_laws_without_hiding_decree_candidates():
+    matching_text = "O Município institui a Contribuição de Iluminação Pública COSIP."
+    decree = _document(610, identity_type="decreto", text=matching_text)
+    ordinary_law = _document(611, identity_type="lei", text=matching_text)
+    complementary_law = _document(612, identity_type="lei_complementar", text=matching_text)
+
+    result = search_archive_documents("Qual lei institui a COSIP em Natal?")
+
+    assert [row["document"].pk for row in result["results"]] == [
+        ordinary_law.pk,
+        complementary_law.pk,
+        decree.pk,
+    ]
+    assert result["count"] == 3
+
+
+@pytest.mark.django_db
+def test_archive_search_groups_exact_duplicate_bytes_but_preserves_each_pdf_link():
+    shared_hash = _digest("same PDF bytes")
+    first = _document(
+        630,
+        filename="Lei_630.pdf",
+        identity_type="lei",
+        number="630",
+        text="A norma disciplina a contribuição COSIP municipal.",
+    )
+    second = _document(
+        631,
+        filename="Lei_Promulgada_630.pdf",
+        identity_type="lei_promulgada",
+        number="630",
+        text="A norma disciplina a contribuição COSIP municipal.",
+    )
+    DocumentoNormativo.objects.filter(pk__in=(first.pk, second.pk)).update(
+        content_sha256=shared_hash
+    )
+
+    with CaptureQueriesContext(connection) as captured:
+        result = search_archive_documents("contribuição COSIP municipal")
+
+    assert result["count"] == 1
+    assert result["record_count"] == 2
+    assert len(result["results"]) == 1
+    assert {
+        source.pk for source in result["results"][0]["identical_sources"]
+    } == {first.pk, second.pk}
+    candidate_count_queries = [
+        query["sql"]
+        for query in captured.captured_queries
+        if "COUNT(DISTINCT" in query["sql"].upper()
+        and "LEGISLATION_DOCUMENTONORMATIVO" in query["sql"].upper()
+    ]
+    assert len(candidate_count_queries) == 1
 
 
 @pytest.mark.django_db

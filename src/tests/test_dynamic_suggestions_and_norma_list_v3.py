@@ -75,6 +75,40 @@ class NormaListContractTests(TestCase):
             sapl_id=1002,
             status=Norma.Status.CONSOLIDATED,
         )
+
+    def test_norma_api_excludes_explicit_synthetic_records_for_every_status(self):
+        synthetic = Norma.objects.create(
+            tipo="Lei",
+            numero="9915",
+            ano=2095,
+            ementa="[QA SINTÉTICO] Fixture que não pode aparecer no catálogo.",
+            status=Norma.Status.PENDING,
+            identity_json={"synthetic_fixture": True},
+        )
+        legacy_synthetic = Norma.objects.create(
+            tipo="Lei",
+            numero="9914",
+            ano=2090,
+            ementa="[QA SINTÉTICO] Original ausente; fixture sem marcador estruturado legado.",
+            status=Norma.Status.PENDING,
+        )
+        real = Norma.objects.create(
+            tipo="Lei",
+            numero="8201",
+            ano=2026,
+            ementa="Cadastro Municipal de Protetores de Animais.",
+            status=Norma.Status.PENDING,
+            identity_json={"source": "sapl"},
+        )
+
+        response = self.client.get(reverse("legislation_api:norma_list"), {"page_size": 100})
+
+        self.assertEqual(response.status_code, 200)
+        ids = {item["id"] for item in response.json()["normas"]}
+        self.assertIn(real.pk, ids)
+        self.assertNotIn(synthetic.pk, ids)
+        self.assertNotIn(legacy_synthetic.pk, ids)
+
     def test_list_has_type_and_year_filters(self):
         response = self.client.get(
             reverse("legislation:norma_list"), {"tipo": "Lei", "ano": "2025"}

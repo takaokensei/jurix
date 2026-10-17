@@ -13,17 +13,31 @@ _GENERIC_LEGAL_WORDS = frozenset(
         "complementar", "municipio", "natal",
     }
 )
+_CAPITALIZED_SENTENCE_START = r"(?:(?:\*\*|__|\*|_)\s*)?[A-ZÁÉÍÓÚÂÊÔÃÕÇ]"
+_SENTENCE_BOUNDARY = (
+    r"(?<=[!?])\s+|"
+    rf"(?<=\.)\s+(?={_CAPITALIZED_SENTENCE_START})|"
+    rf"(?<=\]\])\s+(?={_CAPITALIZED_SENTENCE_START})|[\r\n]+"
+)
 
 
 def has_repeated_citation_marker(answer: str) -> bool:
-    """Reject citing the same device more than once in a partial overview.
+    """Reject citing the same device in separate claims of a partial overview.
 
     A partial overview is intentionally limited to one concise claim per
-    sampled device. Other answer modes may legitimately cite one provision
-    more than once and do not use this check.
+    sampled device. Some providers duplicate a citation marker within one
+    sentence; that does not create a second claim and should not invalidate an
+    otherwise grounded answer. Other answer modes do not use this check.
     """
-    markers = re.findall(r"\[\[(\d+)\]\]", str(answer or ""))
-    return len(markers) != len(set(markers))
+    text = str(answer or "")
+    seen: set[str] = set()
+    for sentence in re.split(_SENTENCE_BOUNDARY, text):
+        markers = re.findall(r"\[\[(\d+)\]\]", sentence)
+        unique_in_sentence = set(markers)
+        if seen & unique_in_sentence:
+            return True
+        seen.update(unique_in_sentence)
+    return False
 
 
 def has_redundant_content_phrase(answer: str) -> bool:
@@ -35,9 +49,8 @@ def has_redundant_content_phrase(answer: str) -> bool:
     not make separate claims look redundant.
     """
     text = re.sub(r"\[\[\d+\]\]", " ", str(answer or ""))
-    sentence_boundary = r"(?<=[!?])\s+|(?<=\.)\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])|[\r\n]+"
     seen_across_sentences: set[tuple[str, str, str, str]] = set()
-    for sentence in re.split(sentence_boundary, text):
+    for sentence in re.split(_SENTENCE_BOUNDARY, text):
         words = [word.casefold() for word in re.findall(r"[^\W_]+", sentence)]
         content_words = [
             word for word in words

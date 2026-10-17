@@ -744,7 +744,11 @@ try {
     );
     assert.equal(coverageComplete, false, 'a partial archive extraction must not be reported as complete');
     assert.ok(Number.isInteger(selectedArticles) && Number.isInteger(totalArticles));
-    assert.ok(selectedArticles < totalArticles, 'whole-norm retrieval must disclose its actual article coverage');
+    assert.ok(
+      selectedArticles <= totalArticles
+        && (selectedArticles < totalArticles || coverage.annexes_present === true),
+      'whole-norm coverage may include all parsed articles only when excluded annexes keep the archive partial',
+    );
     assert.equal(overviewUi.statesCoverage, true, 'the answer must explain the sample coverage');
     assert.equal(overviewUi.statesGenerationSample, true, 'the answer must distinguish recovered articles from excerpts used for generation');
     if (coverage.annexes_present === true) {
@@ -819,6 +823,33 @@ try {
     );
     const overviewScreenshot = path.join(resolvedEvidenceDir, 'whole-norm-overview.png');
     await overviewPage.setViewport({ width: 1280, height: 900 });
+    const composerOptionsLayout = await overviewPage.evaluate(() => {
+      const filters = document.querySelector('#conversation-input-bar .jurix-composer-filters');
+      const dropdowns = [...(filters?.querySelectorAll(':scope > .figma-search-dropdown') || [])];
+      const temporal = filters?.querySelector(':scope > .jurix-temporal-filter');
+      const rect = (element) => {
+        const bounds = element?.getBoundingClientRect();
+        return bounds ? {
+          left: Math.round(bounds.left),
+          top: Math.round(bounds.top),
+          width: Math.round(bounds.width),
+          height: Math.round(bounds.height),
+        } : null;
+      };
+      return {
+        display: filters ? getComputedStyle(filters).display : null,
+        dropdowns: dropdowns.map(rect),
+        temporal: rect(temporal),
+      };
+    });
+    assert.equal(composerOptionsLayout.display, 'grid',
+      `desktop search options must use a grid rather than squeezing controls into one row: ${JSON.stringify(composerOptionsLayout)}`);
+    assert.equal(composerOptionsLayout.dropdowns.length, 3);
+    assert.ok(composerOptionsLayout.dropdowns.every((control) => control.width >= 150 && control.height >= 44),
+      `desktop search controls must remain readable and meet the 44px target height: ${JSON.stringify(composerOptionsLayout)}`);
+    assert.ok(composerOptionsLayout.temporal
+      && composerOptionsLayout.temporal.top > Math.max(...composerOptionsLayout.dropdowns.map((control) => control.top)),
+    `historical date filter must have a dedicated row below the three search controls: ${JSON.stringify(composerOptionsLayout)}`);
     await overviewPage.evaluate(() => {
       document.querySelector('.message-assistant .message-body')?.scrollIntoView({ block: 'start' });
     });
@@ -907,6 +938,7 @@ try {
       sourceControlVisibleWithoutRefresh: overviewUi.sourceControlVisible,
       sourceDrawerGroups: overviewDrawerInitial.groupCount,
       sourceDrawerEvidenceCards: overviewDrawerInitial.evidenceCardCount,
+      composerOptionsLayout,
       sourceDrawerGroupsStartCollapsed: overviewDrawerInitial.openGroupCount === 0,
       expandAllButtonStateUpdates: overviewDrawerExpanded.toggleText === 'Recolher todas as evidências'
         && overviewDrawerExpanded.ariaExpanded === 'true',
@@ -1489,7 +1521,9 @@ try {
           && sources.every((source) => evidencePattern.test(String(source?.full_text || ''))),
         sourceControlVisible: Boolean(sourceContainer?.querySelector('.jurix-sources-pill-btn')
           ?.getClientRects().length),
-        citationLinkCount: answer?.querySelectorAll('a.jurix-legal-reference-link').length || 0,
+        citationLinkCount: answer?.querySelectorAll(
+          '.jurix-citation[data-source-index], a.jurix-legal-reference-link',
+        ).length || 0,
         rawCitationMarkerVisible: /\[\[\d+\]\]/.test(answer?.textContent || ''),
       };
     });

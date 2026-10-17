@@ -11,11 +11,16 @@ from django.http import HttpRequest, JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 
+from src.apps.legislation.document_models import DocumentoNormativo
 from src.apps.legislation.models import Norma
 from src.processing.cache_service import CacheService
 from src.processing.corpus_coverage import current_corpus_coverage
 from src.processing.corpus_identity import get_corpus_revision
-from src.processing.normative_graph import VALID_ACTIONS, build_normative_graph
+from src.processing.normative_graph import (
+    VALID_ACTIONS,
+    build_candidate_document_graph,
+    build_normative_graph,
+)
 from src.processing.temporal_scope import parse_iso_date
 
 
@@ -36,6 +41,7 @@ def can_view_pending_relations(user) -> bool:
         and user.is_staff
         and user.has_perm("legislation.view_eventoalteracao")
         and user.has_perm("legislation.view_documentonormativo")
+        and user.has_perm("legislation.review_eventonormativocandidato")
     )
 
 
@@ -77,7 +83,10 @@ def norma_relations_api(request: HttpRequest, pk: int) -> JsonResponse:
     cache_key = "jurix:normative-graph:" + hashlib.sha256(
         json.dumps(cache_payload, sort_keys=True).encode()
     ).hexdigest()
-    if corpus_digest != "unavailable":
+    # Reviewer graphs include append-only candidate/review tables outside the
+    # corpus digest. Avoid serving a stale pending view after a new review.
+    cache_pending_graph = corpus_digest != "unavailable" and not include_pending
+    if cache_pending_graph:
         try:
             cached = cache.get(cache_key)
             if cached is not None:
@@ -100,9 +109,48 @@ def norma_relations_api(request: HttpRequest, pk: int) -> JsonResponse:
         "corpus_coverage": current_corpus_coverage(get_corpus_revision()),
         **graph,
     }
-    if corpus_digest != "unavailable":
+    if cache_pending_graph:
         try:
             cache.set(cache_key, body, timeout=45)
         except Exception:
             pass
     return JsonResponse(body)
+
+
+@require_GET
+def document_candidate_relations_api(request: HttpRequest, public_id) -> JsonResponse:
+    """Expose one pending PDF's extracted relation graph to authorized reviewers only."""
+    if not getattr(settings, "NORMATIVE_GRAPH_ENABLED", False):
+        return JsonResponse({"success": False, "error": "Recurso indisponível."}, status=404)
+    if not can_view_pending_relations(request.user):
+        return JsonResponse({"success": False, "error": "Permissão insuficiente."}, status=403)
+    raw_actions = request.GET.get("actions", "")
+    actions = tuple(
+        sorted({action.strip().upper() for action in raw_actions.split(",") if action.strip()})
+    )
+    if any(action not in VALID_ACTIONS for action in actions):
+        return JsonResponse(
+            {"success": False, "error": "actions contém uma ação inválida."}, status=400
+        )
+    document = DocumentoNormativo.objects.filter(public_id=public_id).first()
+    if document is None:
+        return JsonResponse({"success": False, "error": "Documento não encontrado."}, status=404)
+    try:
+        graph = build_candidate_document_graph(document, actions=actions)
+    except ValueError:
+        return JsonResponse({"success": False, "error": "Documento não elegível."}, status=404)
+    metadata = document.metadata_json if isinstance(document.metadata_json, dict) else {}
+    identity = metadata.get("identity_candidate")
+    identity = identity if isinstance(identity, dict) else {}
+    label = " ".join(
+        str(identity.get(key) or "").strip()
+        for key in ("type", "number", "year")
+        if str(identity.get(key) or "").strip()
+    ) or (document.original_filename or "Documento pendente")
+    return JsonResponse(
+        {
+            "success": True,
+            "source_document": {"public_id": str(document.public_id), "label": label[:180]},
+            **graph,
+        }
+    )

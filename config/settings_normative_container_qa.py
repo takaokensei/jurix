@@ -101,6 +101,26 @@ CACHE_REDIS_URL = "redis://redis:6379/1"
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_BEAT_SCHEDULE = {}
+if os.environ.get("SAPL_SYNC_SCHEDULE_ENABLED") == "1":
+    sapl_incremental_limit = max(
+        1, min(50, int(os.environ.get("SAPL_INCREMENTAL_SYNC_LIMIT", "50")))
+    )
+    CELERY_BEAT_SCHEDULE.update(
+        {
+            "incremental-sapl-sync-daily-qa": {
+                "task": "ingestion.incremental_sync_sapl_task",
+                "schedule": crontab(hour=2, minute=0),
+                "kwargs": {"limit": sapl_incremental_limit},
+                "options": {"queue": "normative_qa"},
+            },
+            "sapl-full-sweep-weekly-qa": {
+                "task": "ingestion.full_sync_sapl_task",
+                "schedule": crontab(day_of_week="sun", hour=3, minute=0),
+                "kwargs": {"limit": 50},
+                "options": {"queue": "normative_qa"},
+            },
+        }
+    )
 if os.environ.get("JURIX_QA_DOM_NATAL_SYNC_SCHEDULE_ENABLED") == "1":
     CELERY_BEAT_SCHEDULE["dom-natal-editions-daily-qa"] = {
         "task": "ingestion.sync_dom_natal_editions",
@@ -112,6 +132,7 @@ CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TASK_ROUTES = {
     task: {"queue": "normative_qa"}
     for task in (
+        "legislation.check_foundation",
         "ingestion.enqueue_normative_impact",
         "ingestion.claim_normative_work_item",
         "ingestion.process_normative_work_item",
@@ -120,6 +141,8 @@ CELERY_TASK_ROUTES = {
         "ingestion.fail_normative_stage",
         "ingestion.review_normative_work_item",
         "ingestion.reconcile_new_normative_targets",
+        "ingestion.incremental_sync_sapl_task",
+        "ingestion.full_sync_sapl_task",
         "ingestion.sync_dom_natal_editions",
     )
 }
@@ -144,7 +167,7 @@ LOGGING = deepcopy(_base.LOGGING)
 LOGGING["handlers"]["file"]["filename"] = str(LOG_ROOT / "jurix.log")
 NORMATIVE_ARCHIVE_ENABLED = True
 NORMATIVE_ARCHIVE_ASSISTANT_ENABLED = True
-SAPL_MATTER_LOOKUP_ENABLED = True
+SAPL_MATTER_LOOKUP_ENABLED = False
 NORMATIVE_ARCHIVE_SAPL_LINKS_ENABLED = True
 NORMATIVE_ARCHIVE_REVIEW_UI_ENABLED = True
 NORMATIVE_GRAPH_ENABLED = True

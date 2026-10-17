@@ -223,6 +223,44 @@ def test_broad_partial_prefix_can_finish_without_retry_or_internal_notice():
     assert "".join(visible) == result["answer"]
 
 
+def test_stop_callback_closes_model_after_a_complete_validated_prefix():
+    state = {"requested_extra_chunk": False, "closed": False}
+
+    def provider(_prompt):
+        try:
+            yield "O Art. 1º cria a regra inicial. [[1]] "
+            yield "O Art. 2º define o procedimento. [[2]] "
+            yield "O Art. 3º estabelece a consequência. [[3]] "
+            state["requested_extra_chunk"] = True
+            yield "Afirmação não solicitada. [[4]]"
+        finally:
+            state["closed"] = True
+
+    events = stream_grounded_generation(
+        "prompt",
+        stream_attempt=provider,
+        validate_attempt=_grounded_validation,
+        stop_after_validated_prefix=lambda answer, _validation: "[[3]]" in answer,
+        include_partial_notice=False,
+    )
+    visible = []
+    while True:
+        try:
+            event = next(events)
+        except StopIteration as completed:
+            result = completed.value
+            break
+        if event.get("event") == "chunk":
+            visible.append(event["chunk"])
+
+    assert state == {"requested_extra_chunk": False, "closed": True}
+    assert result["partial"] is True
+    assert result["generation_attempts"][0]["attempt"] == 1
+    assert result["answer"].count("[[") == 3
+    assert "Afirmação não solicitada" not in result["answer"]
+    assert "".join(visible) == result["answer"]
+
+
 def test_partial_prefix_callback_can_still_request_revision_when_too_narrow():
     prompts = []
 

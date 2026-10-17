@@ -9,7 +9,7 @@ Provides RESTful API endpoints for:
 
 from django.urls import path
 
-from . import api_cancel, api_views, relations_api, temporal_api
+from . import api_cancel, api_views, document_views, relations_api, temporal_api
 
 app_name = "legislation_api"
 
@@ -32,6 +32,11 @@ urlpatterns = [
     path("search/answer/", api_views.rag_answer_api, name="rag_answer"),
     path("search/answer/stream/", api_views.chatbot_stream_api, name="rag_answer_stream"),
     path("search/cancel/", api_cancel.cancel_generation_api, name="search_cancel"),
+    path(
+        "archive-citations/resolve-pages/",
+        document_views.resolve_archive_citation_pages_api,
+        name="archive_citation_resolve_pages",
+    ),
     # Norma listing
     path("normas/", api_views.norma_list_api, name="norma_list"),
     path("suggestions/", api_views.dynamic_suggestions_api, name="dynamic_suggestions"),
@@ -40,6 +45,11 @@ urlpatterns = [
     path("normas/<int:pk>/timeline/", temporal_api.norma_timeline_api, name="norma_timeline"),
     path("normas/<int:pk>/conflicts/", temporal_api.norma_conflicts_api, name="norma_conflicts"),
     path("normas/<int:pk>/relations/", relations_api.norma_relations_api, name="norma_relations"),
+    path(
+        "documentos/<uuid:public_id>/relations/",
+        relations_api.document_candidate_relations_api,
+        name="document_candidate_relations",
+    ),
     path("normas/<int:pk>/version/", temporal_api.norma_version_api, name="norma_version"),
     # Chat sessions endpoints
     path("chat/sessions/", api_views.chat_sessions_api, name="chat_sessions"),

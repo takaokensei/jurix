@@ -15,6 +15,7 @@ def get_source_sync_health(
     now=None,
     max_age: timedelta = timedelta(hours=36),
     full_sweep_max_age: timedelta = timedelta(days=8),
+    include_scope_diagnostics: bool = False,
 ) -> dict:
     """Report freshness without implying corpus completeness or legal validity.
 
@@ -33,7 +34,7 @@ def get_source_sync_health(
     checked_at = now or timezone.now()
     states = list(SaplSyncState.objects.filter(source=source).order_by("filter_fingerprint"))
     if not states:
-        return {
+        report = {
             "source": source,
             "status": "not_configured",
             "scope_count": 0,
@@ -44,10 +45,15 @@ def get_source_sync_health(
             "uninitialized_scope_count": 0,
             "partial_scope_count": 0,
             "stale_scope_count": 0,
+            "stale_incremental_scope_count": 0,
+            "stale_full_sweep_scope_count": 0,
             "full_sweep_scope_count": 0,
             "active_scope_count": 0,
             "has_error": False,
         }
+        if include_scope_diagnostics:
+            report["scope_diagnostics"] = []
+        return report
 
     active = [state for state in states if state.lease_until and state.lease_until > checked_at]
     initialized = [state for state in states if state.last_success_at is not None]
@@ -78,18 +84,22 @@ def get_source_sync_health(
         and state.last_started_at
         and (state.last_success_at is None or state.last_started_at > state.last_success_at)
     ]
-    stale = [
+    stale_incremental = [
         state
         for state in initialized
-        if (
-            checked_at - (state.last_full_sync_at or state.last_success_at)
-        ).total_seconds()
-        > (
-            full_sweep_max_age.total_seconds()
-            if state.last_full_sync_at
-            else max_age.total_seconds()
-        )
+        if (checked_at - state.last_success_at).total_seconds() > max_age.total_seconds()
     ]
+    stale_full_sweep = [
+        state
+        for state in initialized
+        if state.last_full_sync_at is not None
+        and (checked_at - state.last_full_sync_at).total_seconds()
+        > full_sweep_max_age.total_seconds()
+    ]
+    stale_ids = {state.pk for state in stale_incremental} | {
+        state.pk for state in stale_full_sweep
+    }
+    stale = [state for state in initialized if state.pk in stale_ids]
     successes = [state.last_success_at for state in states if state.last_success_at is not None]
     latest_success = max(successes, default=None)
     latest_age = (
@@ -111,7 +121,7 @@ def get_source_sync_health(
     else:
         status = "current"
 
-    return {
+    report = {
         "source": source,
         "status": status,
         "scope_count": len(states),
@@ -122,7 +132,54 @@ def get_source_sync_health(
         "uninitialized_scope_count": len(uninitialized),
         "partial_scope_count": len(partial),
         "stale_scope_count": len(stale),
+        "stale_incremental_scope_count": len(stale_incremental),
+        "stale_full_sweep_scope_count": len(stale_full_sweep),
         "full_sweep_scope_count": sum(state.last_full_sync_at is not None for state in states),
         "active_scope_count": len(active),
         "has_error": bool(failed),
     }
+    if include_scope_diagnostics:
+        active_ids = {state.pk for state in active}
+        failed_ids = {state.pk for state in failed}
+        stale_incremental_ids = {state.pk for state in stale_incremental}
+        stale_full_sweep_ids = {state.pk for state in stale_full_sweep}
+        diagnostics = []
+        for index, state in enumerate(states, start=1):
+            if state.pk in active_ids:
+                checkpoint_state = "active"
+            elif state.pk in failed_ids:
+                checkpoint_state = "failed"
+            elif state.last_success_at is None and (state.last_cursor or state.last_cursor_url):
+                checkpoint_state = "partial_without_success"
+            elif state.last_success_at is None and state.last_started_at is not None:
+                checkpoint_state = "started_without_success"
+            elif state.last_success_at is None:
+                checkpoint_state = "never_started"
+            elif state.pk in stale_incremental_ids and state.pk in stale_full_sweep_ids:
+                checkpoint_state = "stale_incremental_and_full_sweep"
+            elif state.pk in stale_incremental_ids:
+                checkpoint_state = "stale_incremental"
+            elif state.pk in stale_full_sweep_ids:
+                checkpoint_state = "stale_full_sweep"
+            elif state.last_cursor or state.last_cursor_url:
+                checkpoint_state = "successful_with_cursor"
+            else:
+                checkpoint_state = "successful"
+            diagnostics.append(
+                {
+                    "scope_index": index,
+                    "checkpoint_state": checkpoint_state,
+                    "last_started_at": state.last_started_at,
+                    "last_success_at": state.last_success_at,
+                    "last_full_sync_at": state.last_full_sync_at,
+                    "incremental_stale": state.pk in stale_incremental_ids,
+                    "full_sweep_stale": state.pk in stale_full_sweep_ids,
+                    "cursor_position": state.last_cursor,
+                    "cursor_url_present": bool(state.last_cursor_url),
+                    "last_sync_count": state.last_sync_count,
+                    "full_sweep_expected_count": state.full_sweep_expected_count,
+                    "error_recorded": bool(state.last_error),
+                }
+            )
+        report["scope_diagnostics"] = diagnostics
+    return report

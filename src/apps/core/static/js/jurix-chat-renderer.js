@@ -294,6 +294,8 @@
             let verificationLimit = 'As evidências recuperadas não certificam exaustividade do corpus nem aplicabilidade ao caso concreto.';
             if (source?.evidence_scope === 'isolated_qa_archive') {
                 verificationLimit = 'Extração de acervo histórico local; revisão jurídica e consolidação não são atestadas por este pacote.';
+            } else if (source?.source_kind === 'official_gazette_extraction') {
+                verificationLimit = 'Trecho extraído automaticamente de edição oficial do Diário Oficial; confira o PDF e não presuma vigência atual ou ausência de alterações posteriores.';
             } else if (temporalVersion) {
                 verificationLimit = projectionCoverage?.complete === true
                     ? 'Projeção registrada para a data indicada; não determina aplicabilidade ao caso concreto.'
@@ -318,6 +320,9 @@
                 ? rawLocalPdfUrl : null;
             const citationIndex = Number(source?.citation_index);
             const page = Number(source?.page);
+            const anchoredLocalPdfUrl = localPdfUrl && Number.isInteger(page) && page > 0
+                && !/#page=\d+$/i.test(localPdfUrl)
+                ? `${localPdfUrl}#page=${page}` : localPdfUrl;
             const rawSpan = source?.span;
             const span = Number.isInteger(rawSpan?.start) && Number.isInteger(rawSpan?.end)
                 && rawSpan.start >= 0 && rawSpan.end >= rawSpan.start
@@ -330,6 +335,7 @@
                 norma_id: source?.norma_id == null ? null : String(source.norma_id).slice(0, 64),
                 dispositivo: String(source?.dispositivo_ref || '').slice(0, 240) || null,
                 evidence_type: String(source?.source_type || '').slice(0, 120) || null,
+                edition_label: String(source?.edition_label || '').slice(0, 180) || null,
                 source_kind: String(source?.source_kind || '').slice(0, 80) || null,
                 contribution: String(source?.contribution || '').slice(0, 240) || null,
                 matter_status: typeof source?.matter_status === 'boolean' ? source.matter_status : null,
@@ -351,7 +357,7 @@
                 span,
                 span_basis: String(source?.span_basis || '').slice(0, 80) || null,
                 official_url: officialUrl,
-                local_pdf_url: localPdfUrl,
+                local_pdf_url: anchoredLocalPdfUrl,
                 excerpt: String(source?.evidence_text || source?.full_text || source?.text || '').slice(0, 4000) || null,
             };
             return row;
@@ -370,6 +376,16 @@
     function sanitizeCorpusCoverage(coverage) {
         if (!coverage || typeof coverage !== 'object' || Array.isArray(coverage)) return null;
         const allowedStatuses = new Set(['unknown', 'partial', 'reviewed']);
+        const safeCount = (value) => {
+            if (typeof value === 'number') {
+                return Number.isSafeInteger(value) && value >= 0 ? value : null;
+            }
+            if (typeof value === 'string' && /^\d+$/.test(value)) {
+                const parsed = Number(value);
+                return Number.isSafeInteger(parsed) ? parsed : null;
+            }
+            return null;
+        };
         const safeDate = (value) => {
             const candidate = String(value || '');
             if (!/^\d{4}-\d{2}-\d{2}$/.test(candidate)) return null;
@@ -386,7 +402,7 @@
                     end: safeDate(interval?.end),
                 })).filter((interval) => interval.start || interval.end)
                 : null;
-            const pendingReview = Number(scope.pending_review);
+            const pendingReview = safeCount(scope.pending_review);
             return {
                 source: String(scope.source || '').slice(0, 80) || null,
                 jurisdiction: String(scope.jurisdiction || '').slice(0, 100) || null,
@@ -398,8 +414,7 @@
                     ? String(scope.source_checksum).toLowerCase() : null,
                 coverage_status: status,
                 missing_intervals: intervals,
-                pending_review: Number.isInteger(pendingReview) && pendingReview >= 0
-                    ? pendingReview : null,
+                pending_review: pendingReview,
                 last_success_at: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(String(scope.last_success_at || ''))
                     ? String(scope.last_success_at) : null,
             };
@@ -420,12 +435,12 @@
                 end: safeDate(interval?.end),
             })).filter((interval) => interval.start || interval.end)
             : null;
-        const pendingReview = Number(coverage.pending_review);
-        const revisionNumber = Number(revision.revision);
+        const pendingReview = safeCount(coverage.pending_review);
+        const revisionNumber = safeCount(revision.revision);
         return {
             coverage_status: status,
             corpus_revision: {
-                revision: Number.isInteger(revisionNumber) && revisionNumber >= 0 ? revisionNumber : null,
+                revision: revisionNumber,
                 digest: /^[a-f0-9]{64}$/i.test(String(revision.digest || ''))
                     ? String(revision.digest).toLowerCase() : null,
             },
@@ -433,7 +448,7 @@
             checked_until: safeDate(coverage.checked_until),
             sources_checked: scopes,
             missing_intervals: missingIntervals,
-            pending_review: Number.isInteger(pendingReview) && pendingReview >= 0 ? pendingReview : null,
+            pending_review: pendingReview,
             reason: ['no_reviewed_coverage_scope', 'registered_scopes_only_not_a_universal_completeness_claim']
                 .includes(coverage.reason) ? coverage.reason : null,
         };

@@ -43,6 +43,8 @@ services:
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       DJANGO_SETTINGS_MODULE: config.settings_normative_container_qa
       DJANGO_SECRET_KEY: audit-only-local-secret-not-for-production
+      JURIX_BUILD_VERSION: ${JURIX_BUILD_VERSION:-}
+      JURIX_BUILD_REVISION: ${JURIX_BUILD_REVISION:-}
       DEBUG: "True"
       USE_LOCMEM_CACHE: "False"
       CELERY_TASK_ALWAYS_EAGER: "False"
@@ -66,7 +68,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     entrypoint: ["/usr/local/bin/jurix-runtime"]
-    command: celery -A config worker -l warning --pool=solo --concurrency=1
+    command: celery -A config worker -l warning --pool=solo --concurrency=1 --queues normative_qa,celery
     environment:
       JURIX_QA_ONLY: "1"
       JURIX_QA_ROOT: /app/data/normative-qa
@@ -94,6 +96,39 @@ services:
       timeout: 8s
       retries: 3
       start_period: 20s
+
+  beat:
+    profiles: ["qa-sync-scheduler"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    entrypoint: ["/usr/local/bin/jurix-runtime"]
+    command: ["celery", "-A", "config", "beat", "--loglevel=info", "--schedule=/tmp/jurix-qa-celerybeat-schedule"]
+    environment:
+      JURIX_QA_ONLY: "1"
+      JURIX_QA_ROOT: /app/data/normative-qa
+      DJANGO_SKIP_DOTENV: "1"
+      DJANGO_SETTINGS_MODULE: config.settings_normative_container_qa
+      DATABASE_URL: postgresql://jurix_audit:audit-only-local-fixture@db:5432/jurix_audit
+      REDIS_URL: redis://redis:6379/0
+      CACHE_REDIS_URL: redis://redis:6379/1
+      DJANGO_SECRET_KEY: audit-only-local-secret-not-for-production
+      SAPL_SYNC_SCHEDULE_ENABLED: ${JURIX_QA_SAPL_SYNC_SCHEDULE_ENABLED:-0}
+      SAPL_INCREMENTAL_SYNC_LIMIT: ${JURIX_QA_SAPL_INCREMENTAL_LIMIT:-50}
+      JURIX_QA_DOM_NATAL_SYNC_SCHEDULE_ENABLED: ${JURIX_QA_DOM_NATAL_SYNC_SCHEDULE_ENABLED:-0}
+      DEBUG: "True"
+      USE_LOCMEM_CACHE: "False"
+      CELERY_TASK_ALWAYS_EAGER: "False"
+      TEMP: /app/data
+    volumes:
+      - audit_qa_root:/app/data/normative-qa
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      worker:
+        condition: service_healthy
 
 volumes:
   audit_pgdata:

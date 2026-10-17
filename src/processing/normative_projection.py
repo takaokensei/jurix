@@ -21,6 +21,7 @@ from src.apps.legislation.event_review import event_review_fingerprint, event_re
 from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
 from src.apps.legislation.review_models import RevisaoJuridica as LegalReview
 from src.processing.consolidation_engine import ConsolidationEngine
+from src.processing.corpus_coverage import current_corpus_coverage
 from src.processing.device_revision import legacy_device_identity_map
 from src.processing.event_temporal_policy import (
     _PUBLICATION_CLAUSE,
@@ -194,6 +195,7 @@ def project_norma_as_of(norma: Norma | int, as_of: date) -> NormativeProjection:
     document, extraction, published, source_devices = base
     if published > as_of:
         return _not_reconstructable(norma, as_of, "base_document_not_yet_published")
+    corpus_coverage = current_corpus_coverage()
 
     legacy = list(
         Dispositivo.objects.filter(norma=norma).select_related("dispositivo_pai").order_by("ordem", "pk")
@@ -228,12 +230,44 @@ def project_norma_as_of(norma: Norma | int, as_of: date) -> NormativeProjection:
     temporal_decisions = _temporal_decisions(all_events)
     candidates = []
     pending_ids = []
+    events_by_id = {event.pk: event for event in all_events}
+    pending_targets: dict[int, set[str] | None] = {}
+
+    def mark_pending(event_id: int, target_key: str | None = None) -> None:
+        """Record which device states an unresolved event can actually affect.
+
+        A relation with a resolved target makes that target (and, for an explicit
+        revocation, its descendants) uncertain. An event with no resolvable target
+        remains conservatively scoped to the whole norm.
+        """
+        event = events_by_id[event_id]
+        target_key = target_key or legacy_to_key.get(event.dispositivo_alvo_id)
+        if not target_key or target_key not in states:
+            pending_targets[event_id] = None
+            return
+        action = event.acao.upper()
+        if action not in {"ALTERA", "SUBSTITUI", "REVOGA"}:
+            pending_targets[event_id] = set()
+            return
+        affected = {target_key}
+        # Replacing or revoking a parent device can alter its structural children;
+        # keep uncertainty within that subtree, not across unrelated articles.
+        changed = True
+        while changed:
+            changed = False
+            for key, candidate in states.items():
+                if candidate["source"].parent_key in affected and key not in affected:
+                    affected.add(key)
+                    changed = True
+        pending_targets[event_id] = affected
+
     for event in all_events:
         relation = event_review_status(event)
         temporal = temporal_decisions[event.pk]
         if relation != "confirmed" or temporal["status"] != "confirmed" or not temporal["operative"]:
             if temporal["status"] in {"unknown", "candidate", "unsupported"} or relation == "pending":
                 pending_ids.append(event.pk)
+                mark_pending(event.pk)
             continue
         if temporal["date"] and temporal["date"] <= as_of:
             target_key = legacy_to_key.get(event.dispositivo_alvo_id)
@@ -271,6 +305,12 @@ def project_norma_as_of(norma: Norma | int, as_of: date) -> NormativeProjection:
         ) > 1:
             conflict_ids.update(event.pk for event in whole_events)
     pending_ids.extend(sorted(conflict_ids))
+    for event_id in conflict_ids:
+        candidate_target = next(
+            (target for _date, target, event in candidates if event.pk == event_id),
+            None,
+        )
+        mark_pending(event_id, candidate_target)
 
     applied_ids = []
     for effective_on, target_key, event in sorted(
@@ -282,6 +322,7 @@ def project_norma_as_of(norma: Norma | int, as_of: date) -> NormativeProjection:
         whole_norma = target_key == "__explicit_norma_target__" and action == "REVOGA"
         if state is None and not whole_norma:
             pending_ids.append(event.pk)
+            mark_pending(event.pk, target_key)
             continue
         provenance = {
             "base_document_id": str(document.public_id),
@@ -308,10 +349,12 @@ def project_norma_as_of(norma: Norma | int, as_of: date) -> NormativeProjection:
         elif action in {"ALTERA", "SUBSTITUI"}:
             if state["status"] in {"vetoed", "revoked"}:
                 pending_ids.append(event.pk)
+                mark_pending(event.pk, target_key)
                 continue
             new_text, reason = ConsolidationEngine._new_wording(event, event.dispositivo_fonte)
             if not new_text:
                 pending_ids.append(event.pk)
+                mark_pending(event.pk, target_key)
                 continue
             state["text"] = new_text
             state["status"] = "in_force"
@@ -319,6 +362,7 @@ def project_norma_as_of(norma: Norma | int, as_of: date) -> NormativeProjection:
         else:
             # ADDITION placement requires structural evidence not represented by this adapter.
             pending_ids.append(event.pk)
+            mark_pending(event.pk, target_key)
             continue
         applied_ids.append(event.pk)
 
@@ -327,8 +371,19 @@ def project_norma_as_of(norma: Norma | int, as_of: date) -> NormativeProjection:
     # any device in this projection. Keep the best-known state in provenance
     # for audit, but do not expose it as a definitive in-force/revoked/vetoed
     # label while the projection is incomplete.
+    uncertain_keys = set().union(
+        *(scope for scope in pending_targets.values() if scope is not None)
+    ) if pending_targets else set()
+    if any(scope is None for scope in pending_targets.values()):
+        uncertain_keys.update(states)
     if pending_ids:
-        for state in states.values():
+        pending_by_key: dict[str, list[int]] = {}
+        for event_id, scope in pending_targets.items():
+            keys = states if scope is None else scope
+            for key in keys:
+                pending_by_key.setdefault(key, []).append(event_id)
+        for key in uncertain_keys:
+            state = states[key]
             known_status = state["status"]
             if known_status == "unknown":
                 continue
@@ -336,7 +391,7 @@ def project_norma_as_of(norma: Norma | int, as_of: date) -> NormativeProjection:
             state["provenance"] = {
                 **state["provenance"],
                 "known_legal_status_before_pending_events": known_status,
-                "pending_event_ids": pending_ids,
+                "pending_event_ids": sorted(pending_by_key.get(key, [])),
             }
     projected = tuple(
         ProjectionDevice(
@@ -379,8 +434,9 @@ def project_norma_as_of(norma: Norma | int, as_of: date) -> NormativeProjection:
             for event in all_events
         ],
         "base_publication_on": published.isoformat(),
+        "corpus_coverage": corpus_coverage,
         "content_sha256": content_hash,
-        "policy": "normative-projection-v1",
+        "policy": "normative-projection-v2",
     }
     input_hash = hashlib.sha256(
         json.dumps(input_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
@@ -390,9 +446,11 @@ def project_norma_as_of(norma: Norma | int, as_of: date) -> NormativeProjection:
         "base_document_id": str(document.public_id),
         "base_extraction_id": extraction.pk,
         "base_publication_on": published.isoformat(),
+        "corpus_coverage": corpus_coverage,
         "device_count": len(projected),
         "applied_event_ids": applied_ids,
         "pending_event_ids": pending_ids,
+        "pending_device_keys": sorted(uncertain_keys),
         "pending_reasons": pending_reasons,
     }
     return NormativeProjection(norma.pk, as_of, status, input_hash, content_hash, projected, coverage)

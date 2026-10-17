@@ -133,6 +133,12 @@ def _summarize(records: list[dict], archive_hash: str, *, complete: bool) -> dic
             by_hash[record["content_sha256"]].append(record["entry_index"])
         name_key = record["normalized_entry_name"].casefold()
         by_name[name_key].append(record["entry_index"])
+        # HTML companions are extraction representations of the same archived
+        # act, not separate legal instruments. Identity collision candidates
+        # must compare PDF source documents only; duplicate HTML basenames are
+        # evaluated separately by the name-collision metric above.
+        if record["extension"] != ".pdf":
+            continue
         metadata = record["filename_metadata"]
         if metadata["type_key"] and metadata["series"] and metadata["number"]:
             # This is a filename-level candidate, not a confirmed legal identity.
@@ -175,6 +181,13 @@ def _summarize(records: list[dict], archive_hash: str, *, complete: bool) -> dic
             record["entry_index"]
             for record in records
             if record["extension"] == ".pdf" and record["hash_status"] != "hashed"
+        ],
+        # A zero-byte member can be inventoried and hashed successfully, but
+        # it is not a usable PDF and must not be staged as a legal document.
+        "empty_pdf_entries": [
+            record["entry_index"]
+            for record in records
+            if record["extension"] == ".pdf" and record["uncompressed_bytes"] == 0
         ],
     }
 

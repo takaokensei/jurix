@@ -273,6 +273,32 @@ def test_metadata_update_still_processes_record_and_passes_pdf_fingerprint(monke
     assert calls[0][1]["pdf_fingerprint"] == "etag:pdf-56"
 
 
+def test_metadata_only_incremental_sync_never_fingerprints_pdfs(monkeypatch):
+    p = payload(58, title="Metadados sem consulta ao PDF")
+    Norma.objects.create(
+        tipo="Lei",
+        numero="58",
+        ano=2026,
+        ementa="Metadados sem consulta ao PDF",
+        sapl_id=58,
+        sapl_metadata={"_jurix_source_hash": sapl_sync.payload_hash(p)},
+    )
+    fake = FakeClient({0: {"count": 1, "next": None, "results": [p]}})
+
+    def forbidden_fingerprint(_url):
+        raise AssertionError("metadata-only sync must not request a PDF fingerprint")
+
+    fake.fingerprint_pdf = forbidden_fingerprint
+    monkeypatch.setattr(sapl_sync, "SaplAPIClient", lambda: fake)
+
+    result = sapl_sync.run_incremental_sync(limit=10, fingerprint_pdfs=False)
+
+    assert result["success"] is True
+    assert result["unchanged"] == 1
+    assert result["failed"] == 0
+    assert fake.closed is True
+
+
 def test_pdf_fingerprint_timeout_preserves_incremental_cursor(monkeypatch):
     import requests
 

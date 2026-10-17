@@ -26,6 +26,7 @@ from django.views.generic import DetailView, ListView
 from src.clients.dom_natal.client import DomNatalClient, DomNatalError
 from src.clients.sapl.sapl_types import resolve_norma_type_display
 from src.observability.safe_logging import log_exception_safely
+from src.processing.corpus_coverage import current_corpus_coverage
 from src.processing.corpus_identity import get_corpus_revision
 from src.processing.legal_diff import build_legal_diff, build_version_diff
 from src.processing.normative_reference import (
@@ -33,11 +34,13 @@ from src.processing.normative_reference import (
     canonical_type,
     normalize_number,
     parse_normative_reference_query,
+    parse_normative_references,
 )
 from src.processing.rag_service import RAGService
 from src.processing.temporal_scope import (
     build_norma_timeline,
     deduplicate_event_revisions,
+    norma_base_identity_reviewed,
     parse_iso_date,
     temporal_status,
 )
@@ -64,10 +67,12 @@ def _assistant_source_update_notice() -> str:
     """Return a safe notice when official source-sync state is not verified."""
     try:
         from src.apps.ingestion.source_sync_health import get_source_sync_health
+        from src.apps.operations.worker_health import get_normative_worker_health
 
         statuses = [
             get_source_sync_health(source)["status"] for source in ("sapl", "dom_natal")
         ]
+        queue_status = get_normative_worker_health(timeout=0.5)["status"]
     except Exception:
         logger.warning("Unable to confirm official source update state for assistant")
         return (
@@ -75,8 +80,13 @@ def _assistant_source_update_notice() -> str:
             "confira a fonte oficial antes de usar a resposta."
         )
 
-    if statuses == ["current", "current"]:
+    if statuses == ["current", "current"] and queue_status == "current":
         return ""
+    if queue_status != "current":
+        return (
+            "A fila de atualização das fontes oficiais não está disponível neste ambiente; "
+            "o acervo pode ficar desatualizado. Confira a fonte oficial antes de usar a resposta."
+        )
     if statuses == ["not_configured", "not_configured"]:
         return (
             "A atualização do SAPL e do Diário Oficial não está configurada neste ambiente; "
@@ -113,6 +123,45 @@ def _norma_tipo_label(value: object) -> str:
 
 def _normalize_norma_query(value: object) -> str:
     return str(value or "").strip()[:MAX_NORMA_SEARCH_LENGTH]
+
+
+def _archive_candidate_search_query(query: str) -> str:
+    """Prefer one explicit citation over unrelated prose when bridging to PDFs."""
+    references = parse_normative_references(query)
+    if len(references) != 1:
+        return query
+
+    reference = references[0]
+    if reference.ambiguous or reference.year is None:
+        return query
+
+    type_labels = {
+        "lei": "Lei",
+        "lei_complementar": "Lei Complementar",
+        "lei_organica": "Lei Orgânica",
+        "lei_promulgada": "Lei Promulgada",
+        "decreto": "Decreto",
+        "decreto_legislativo": "Decreto Legislativo",
+        "decreto_lei": "Decreto-Lei",
+        "resolucao": "Resolução",
+        "portaria": "Portaria",
+        "emenda": "Emenda",
+        "emenda_constitucional": "Emenda Constitucional",
+    }
+    label = type_labels.get(reference.type_key)
+    if not label:
+        return query
+
+    lookup = f"{label} nº {reference.number}/{reference.year}"
+    if reference.article:
+        lookup += f", Art. {reference.article}"
+    if reference.paragraph:
+        lookup += f", § {reference.paragraph}"
+    if reference.item:
+        lookup += f", inciso {reference.item}"
+    if reference.alinea:
+        lookup += f", alínea {reference.alinea}"
+    return lookup
 
 
 def _norma_list_facets() -> tuple[list[str], list[int]]:
@@ -271,8 +320,11 @@ class NormaListView(ListView):
         for norma in context.get("normas", []):
             norma.sapl_url = canonical_norma_url(norma)
         context["search_query"] = _normalize_norma_query(self.request.GET.get("q"))
-        context["archive_candidate_query"] = _normalize_norma_query(
-            self.request.GET.get("arquivo_q", context["search_query"])
+        raw_archive_query = self.request.GET.get("arquivo_q")
+        context["archive_candidate_query"] = (
+            _normalize_norma_query(raw_archive_query)
+            if raw_archive_query is not None
+            else _archive_candidate_search_query(context["search_query"])
         )
         context["selected_type"] = _normalize_norma_query(self.request.GET.get("tipo"))
         selected_year = self.request.GET.get("ano", "").strip()
@@ -555,6 +607,7 @@ class NormaDetailView(DetailView):
                 "timeline": build_norma_timeline(norma),
                 "temporal_status": temporal_status(norma),
                 "temporal_status_verified": corpus_revision.get("completeness") == "complete",
+                "temporal_metadata_reviewed": norma_base_identity_reviewed(norma),
                 "normative_graph_enabled": getattr(settings, "NORMATIVE_GRAPH_ENABLED", False),
             }
         )
@@ -612,6 +665,7 @@ def norma_compare_view(request: HttpRequest, pk: int) -> HttpResponse:
         "historical_notice": "",
         "before_projection": None,
         "after_projection": None,
+        "corpus_coverage_note": "",
     }
     if historical_mode:
         if not historical_context["history_enabled"]:
@@ -619,7 +673,42 @@ def norma_compare_view(request: HttpRequest, pk: int) -> HttpResponse:
                 "A comparação histórica está indisponível nesta instalação. "
                 "Nenhuma versão atual foi apresentada como se fosse histórica."
             )
-        elif dates_submitted:
+        else:
+            corpus_coverage = current_corpus_coverage()
+            historical_context["corpus_coverage"] = corpus_coverage
+            coverage_status = str(corpus_coverage.get("coverage_status") or "unknown")
+            pending_review = corpus_coverage.get("pending_review")
+            checked_until = corpus_coverage.get("checked_until")
+            if coverage_status == "reviewed" and checked_until and pending_review == 0:
+                note = (
+                    f"Cobertura registrada como revisada até {checked_until} nos recortes listados. "
+                    "Esse corte se limita às fontes, séries e períodos listados; não comprova "
+                    "cobertura universal da legislação municipal."
+                )
+            else:
+                status_note = (
+                    "Cobertura do corpus: parcial."
+                    if coverage_status == "partial"
+                    else "Cobertura do corpus: desconhecida."
+                )
+                if isinstance(pending_review, int) and pending_review > 0:
+                    pending_display = f"{pending_review:,}".replace(",", ".")
+                    noun = "PDF candidato aguarda" if pending_review == 1 else "PDFs candidatos aguardam"
+                    pending_note = f" {pending_display} {noun} revisão."
+                else:
+                    pending_note = ""
+                cutoff_note = (
+                    f" O corte registrado é {checked_until}."
+                    if checked_until
+                    else " Data de corte não informada."
+                )
+                note = (
+                    f"{status_note}{pending_note}{cutoff_note} Uma projeção completa descreve "
+                    "apenas os documentos e eventos revisados disponíveis para esta norma; "
+                    "não confirma que toda a legislação municipal foi verificada."
+                )
+            historical_context["corpus_coverage_note"] = note
+        if historical_mode and historical_context["history_enabled"] and dates_submitted:
             try:
                 before_date = parse_iso_date(request.GET.get("from_as_of"), "Data inicial")
                 after_date = parse_iso_date(request.GET.get("to_as_of"), "Data final")

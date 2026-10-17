@@ -388,6 +388,42 @@ def test_dom_sync_records_sanitized_source_failure_and_health_is_degraded(tmp_pa
     assert checkpoint.last_success_at is None
 
 
+def test_dom_sync_empty_catalog_is_failure_and_never_marks_checkpoint_current(
+    tmp_path, monkeypatch
+):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from src.apps.ingestion.source_sync_health import get_source_sync_health
+
+    monkeypatch.setenv("JURIX_QA_ONLY", "1")
+    monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "config.settings_normative_qa")
+
+    class EmptyClient:
+        def list_editions(self, *, month, year):
+            return []
+
+    with override_settings(QA_ROOT=tmp_path / "qa", NORMATIVE_ARCHIVE_ENABLED=True):
+        report = sync_dom_natal_editions(
+            client=EmptyClient(),
+            as_of=date(2026, 10, 8),
+            lookback_months=1,
+        )
+        health = get_source_sync_health(
+            "dom_natal", now=timezone.now(), max_age=timedelta(hours=36)
+        )
+
+    checkpoint = SaplSyncState.objects.get(source="dom_natal")
+    assert report["status"] == "degraded"
+    assert report["scopes"][0]["error_class"] == "DomNatalCandidateError"
+    assert health["status"] == "unavailable"
+    assert health["has_error"] is True
+    assert checkpoint.last_error == "source_error:DomNatalCandidateError"
+    assert checkpoint.last_success_at is None
+    assert checkpoint.last_sync_count == 0
+
+
 def test_dom_catalog_inspection_is_read_only_and_reports_only_counts(tmp_path, monkeypatch):
     monkeypatch.setenv("JURIX_QA_ONLY", "1")
     monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "config.settings_normative_qa")
@@ -419,6 +455,38 @@ def test_dom_catalog_inspection_is_read_only_and_reports_only_counts(tmp_path, m
                 "edition_count": 1,
                 "known_url_count": 0,
                 "new_candidate_count": 1,
+            }
+        ],
+    }
+    assert DocumentoNormativo.objects.count() == 0
+    assert SaplSyncState.objects.count() == 0
+    assert not qa_root.exists()
+
+
+def test_empty_dom_catalog_inspection_is_unavailable_and_read_only(tmp_path, monkeypatch):
+    monkeypatch.setenv("JURIX_QA_ONLY", "1")
+    monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "config.settings_normative_qa")
+
+    class EmptyClient:
+        def list_editions(self, *, month, year):
+            return []
+
+    qa_root = tmp_path / "qa"
+    with override_settings(QA_ROOT=qa_root, NORMATIVE_ARCHIVE_ENABLED=True):
+        report = inspect_dom_natal_editions(
+            client=EmptyClient(), as_of=date(2026, 9, 30), lookback_months=1
+        )
+
+    assert report == {
+        "source": "dom_natal",
+        "catalog_status": "unavailable",
+        "read_only": True,
+        "scopes": [
+            {
+                "year": 2026,
+                "month": 9,
+                "catalog_status": "unavailable",
+                "error_class": "DomNatalCandidateError",
             }
         ],
     }

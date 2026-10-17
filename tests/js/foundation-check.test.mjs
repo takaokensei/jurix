@@ -5,7 +5,7 @@ import { JSDOM } from 'jsdom';
 
 const script = readFileSync(new URL('../../src/apps/core/static/js/jurix-foundation-check.js', import.meta.url), 'utf8');
 const formMarkup = (id = 'job-1') => `<section id="foundation-workspace"><h1>Conferir fundamentação</h1>
-<form method="post" action="/conferir/" data-foundation-form data-status-url="/conferir/status/${id}/" data-cancel-url="/conferir/${id}/cancelar/">
+<form method="post" action="/conferir/" data-foundation-form data-status-url="/conferir/status/${id}/" data-result-url="/conferir/resultado/${id}/" data-cancel-url="/conferir/${id}/cancelar/" data-job-status="">
 <input type="hidden" name="csrfmiddlewaretoken" value="csrf"/><input type="hidden" name="job_id" value="${id}"/>
 <textarea name="text" required>Art. 1º da Lei nº 10/2020</textarea><input name="from_date" type="date" value="2020-01-01"/><input name="to_date" type="date" value="2021-01-01"/>
 <button type="submit" name="action" value="review">Identificar referências</button><button type="submit" name="action" value="compare" data-foundation-compare>Conferir dispositivos</button>
@@ -26,13 +26,14 @@ test('envia comparação uma vez, acompanha progresso e substitui resultado mant
   const dom = await mount(async (url, options = {}) => {
     if (String(url).includes('/status/')) {
       progressCount += 1;
-      return { ok: true, json: async () => ({ status: 'running', completed: 1, total: 2 }) };
+      return { ok: true, json: async () => ({ status: 'completed', completed: 2, total: 2 }) };
     }
+    if (String(url).includes('/resultado/')) return { ok: true, url: '/conferir/', text: async () => formMarkup('job-2').replace('<h1>Conferir fundamentação</h1>', '<h1>Conferir fundamentação</h1><section data-foundation-summary tabindex="-1">Resumo</section>') };
     assert.equal(options.method, 'POST');
     assert.equal(options.body.get('csrfmiddlewaretoken'), 'csrf');
     assert.equal(options.body.get('action'), 'compare');
     postCount += 1;
-    return { url: '/conferir/', text: async () => `${formMarkup('job-2').replace('<h1>Conferir fundamentação</h1>', '<h1>Conferir fundamentação</h1><section data-foundation-summary tabindex="-1">Resumo</section>')}` };
+    return { ok: true, url: '/conferir/', text: async () => formMarkup('job-2').replace('data-job-status=""', 'data-job-status="queued"') };
   });
   const form = dom.window.document.querySelector('form');
   const compare = form.querySelector('[data-foundation-compare]');
@@ -94,17 +95,21 @@ test('posta na URL do formulário mesmo quando o botão name=action sombreia for
 
 // End of the real-form interaction regressions.
 test('cancelamento envia POST com CSRF e mantém o texto no fragmento devolvido', async () => {
-  let finishPost;
   let cancelPosted = false;
+  let statusPolls = 0;
   const dom = await mount(async (url, options = {}) => {
-    if (String(url).includes('/status/')) return { ok: false, json: async () => ({}) };
+    if (String(url).includes('/status/')) {
+      statusPolls += 1;
+      return { ok: true, json: async () => ({ status: statusPolls > 1 ? 'cancelled' : 'running' }) };
+    }
+    if (String(url).includes('/resultado/')) return { ok: true, url: '/conferir/', text: async () => `${formMarkup('job-2')}<p role="status">Conferência interrompida</p>` };
     if (String(url).includes('/cancelar/')) {
       cancelPosted = true;
       assert.equal(options.method, 'POST');
       assert.equal(options.headers['X-CSRFToken'], 'csrf');
       return { ok: true, json: async () => ({ status: 'cancelling' }) };
     }
-    return await new Promise((resolve) => { finishPost = resolve; });
+    return { ok: true, url: '/conferir/', text: async () => formMarkup('job-1').replace('data-job-status=""', 'data-job-status="queued"') };
   });
   const form = dom.window.document.querySelector('form');
   const compare = form.querySelector('[data-foundation-compare]');
@@ -115,8 +120,9 @@ test('cancelamento envia POST com CSRF e mantém o texto no fragmento devolvido'
   cancel.click();
   await settle();
   assert.equal(cancelPosted, true);
-  assert.match(form.querySelector('textarea').value, /Lei nº 10\/2020/);
-  finishPost({ url: '/conferir/', text: async () => `${formMarkup('job-2')}<p role="status">Conferência interrompida</p>` });
+  await new Promise((resolve) => setTimeout(resolve, 850));
+  assert.match(dom.window.document.querySelector('textarea').value, /Lei nº 10\/2020/);
+  assert.ok(statusPolls >= 2);
   await settle();
   dom.window.close();
 });

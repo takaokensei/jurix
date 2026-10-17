@@ -21,7 +21,7 @@ MAX_REDIRECTS = 3
 MAX_REQUEST_RETRIES = 2
 RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
 DEFAULT_TIMEOUT = (4.0, 15.0)
-_EDITION_FILENAME = re.compile(r"^dom_\d{8}(?:_especial)?_[a-f0-9]{24,64}\.pdf$", re.I)
+_EDITION_FILENAME = re.compile(r"^dom_\d{8}(?:_(?:especial|extra))?_[a-f0-9]{24,64}\.pdf$", re.I)
 _NUMBER = re.compile(r"\b(?:num\.?|n[º°.]?)\s*(\d{1,8})\b", re.I)
 _DATE = re.compile(r"\b(\d{2})/(\d{2})/(\d{4})\b")
 
@@ -55,6 +55,7 @@ class _EditionLinkParser(HTMLParser):
         self._href: str | None = None
         self._text: list[str] = []
         self.links: list[tuple[str, str]] = []
+        self.document_text: list[str] = []
 
     def handle_starttag(self, tag, attrs):
         if tag.lower() == "a":
@@ -62,6 +63,7 @@ class _EditionLinkParser(HTMLParser):
             self._text = []
 
     def handle_data(self, data):
+        self.document_text.append(data)
         if self._href is not None:
             self._text.append(data)
 
@@ -180,13 +182,23 @@ class DomNatalClient:
         response, body = self._request(
             "POST",
             PORTAL_URL,
-            data={"mes": str(month), "ano": str(year), "list": "Consultar"},
+            data={"mes": f"{month:02d}", "ano": str(year), "list": "Consultar"},
             max_bytes=MAX_LISTING_BYTES,
         )
         if "text/html" not in str(response.headers.get("Content-Type", "")).lower():
             raise DomNatalError("A consulta do DOM não retornou HTML.")
         parser = _EditionLinkParser()
         parser.feed(body.decode(response.encoding or "utf-8", errors="replace"))
+        document_text = " ".join(" ".join(parser.document_text).split())
+        month_heading = re.search(
+            r"DOMs?\s+do\s+M[eê]s\s*\(\s*(\d{1,2})/(\d{4})\s*\)",
+            document_text,
+            re.I,
+        )
+        if month_heading and (
+            int(month_heading.group(1)) != month or int(month_heading.group(2)) != year
+        ):
+            raise DomNatalError("O portal do DOM não confirmou o mês e ano solicitados.")
         editions = {}
         for href, label in parser.links:
             full_url = urljoin(PORTAL_URL, href)
@@ -207,7 +219,7 @@ class DomNatalClient:
             if published.year != year or published.month != month:
                 continue
             number = int(number_match.group(1))
-            special = bool(re.search(r"\bespecial\b", f"{label} {full_url}", re.I))
+            special = bool(re.search(r"\b(?:especial|extra)\b", f"{label} {full_url}", re.I))
             edition_kind = "special" if special else "regular"
             identity = f"natal-dom:{published.year}:{number}:{published.isoformat()}:{edition_kind}"
             editions[identity] = DomNatalEdition(
@@ -219,6 +231,8 @@ class DomNatalClient:
                 label=label,
                 official_url=full_url,
             )
+        if not editions:
+            raise DomNatalError("O portal do DOM não retornou edições verificáveis para o período consultado.")
         return sorted(editions.values(), key=lambda item: (item.publication_date, item.number, item.special))
 
     def download_edition(self, edition: DomNatalEdition) -> DomNatalPdf:

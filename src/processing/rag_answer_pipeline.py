@@ -131,6 +131,7 @@ def stream_grounded_generation(
     should_cancel: Callable[[], bool] | None = None,
     retry_after_partial_rejection: bool = False,
     should_retry_after_partial: Callable[[str, dict[str, Any]], bool] | None = None,
+    stop_after_validated_prefix: Callable[[str, dict[str, Any]], bool] | None = None,
     include_partial_notice: bool = True,
     revision_instruction: str | None = None,
 ) -> Iterator[dict[str, Any]]:
@@ -193,6 +194,15 @@ def stream_grounded_generation(
                     if delta:
                         yield {"event": "chunk", "chunk": delta, "provisional": False}
                         streamed_answer = validated_prefix
+                    if stop_after_validated_prefix is not None and stop_after_validated_prefix(
+                        validated_prefix, candidate_validation
+                    ):
+                        # A caller may define a complete-enough answer contract
+                        # (for example, three distinct grounded devices in a
+                        # partial overview). Stop at that validated boundary
+                        # instead of inviting unsupported trailing claims.
+                        stopped_on_rejection = True
+                        break
                     last_validation = candidate_validation
                 if stopped_on_rejection:
                     break

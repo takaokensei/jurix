@@ -254,6 +254,16 @@
         const composer = document.getElementById('conversation-input-bar');
         if (!container || !composer) return;
 
+        if (!container.__jurixClearanceScrollBound) {
+            container.addEventListener('scroll', () => {
+                container.__jurixWasAtBottom = container.scrollHeight
+                    - container.scrollTop - container.clientHeight < 100;
+            }, { passive: true });
+            container.__jurixClearanceScrollBound = true;
+            container.__jurixWasAtBottom = container.scrollHeight
+                - container.scrollTop - container.clientHeight < 100;
+        }
+
         const updateClearance = () => {
             const composerHeight = Math.ceil(composer.getBoundingClientRect().height);
             const wrapper = document.getElementById('messages-wrapper');
@@ -263,8 +273,10 @@
             const nextClearance = `${Math.max(80, composerHeight + 24 - wrapperBottomPadding)}px`;
             const messageList = document.getElementById('messages-wrapper');
             const hasConversationMessages = Boolean(messageList?.querySelector('.message'));
-            const wasAtBottom = hasConversationMessages
-                && container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+            const wasAtBottom = hasConversationMessages && (
+                container.__jurixWasAtBottom === true
+                || container.scrollHeight - container.scrollTop - container.clientHeight < 100
+            );
             if (container.style.getPropertyValue('--jurix-composer-clearance') === nextClearance) return;
             // The composer is fixed and overlays the scroll region. Reserve its
             // measured height plus a small reading gap, subtracting the wrapper's
@@ -286,7 +298,16 @@
             composer.__jurixClearanceObserver.observe(composer);
         }
         if (!window.__jurixComposerClearanceResizeBound) {
-            window.addEventListener('resize', updateClearance, { passive: true });
+            window.addEventListener('resize', () => {
+                const shouldFollowLatestMessage = container.__jurixWasAtBottom === true
+                    && Boolean(document.getElementById('messages-wrapper')?.querySelector('.message'));
+                updateClearance();
+                if (shouldFollowLatestMessage) {
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
+                        if (container.isConnected) container.scrollTop = container.scrollHeight;
+                    }));
+                }
+            }, { passive: true });
             window.__jurixComposerClearanceResizeBound = true;
         }
     }
@@ -427,6 +448,58 @@
         }
     }
 
+    async function resolveAnonymousArchivePages(messages) {
+        if (!window.JurixAnonymousHistory?.isAnonymous?.()
+            || typeof chatAPI?.resolveArchiveCitationPages !== 'function') return;
+
+        const references = [];
+        const sourceLocations = [];
+        for (const message of [...(messages || [])].reverse()) {
+            if (message?.role !== 'assistant') continue;
+            for (const source of message.sources || []) {
+                const page = Number(source?.page);
+                const text = source?.full_text || source?.evidence_text || source?.text;
+                if (source?.evidence_scope !== 'isolated_qa_archive'
+                    || (Number.isInteger(page) && page > 0)
+                    || !source?.span || typeof text !== 'string'
+                    || text.length > 32768) continue;
+                references.push({
+                    evidence_scope: source.evidence_scope,
+                    source_id: source.source_id,
+                    document_id: source.document_id,
+                    document_sha256: source.document_sha256,
+                    span: source.span,
+                    full_text: text,
+                });
+                sourceLocations.push(source);
+                if (references.length >= 20) break;
+            }
+            if (references.length >= 20) break;
+        }
+        if (!references.length) return;
+        while (references.length && new Blob([JSON.stringify({ sources: references })]).size > 600_000) {
+            references.pop();
+            sourceLocations.pop();
+        }
+        if (!references.length) return;
+
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 1200);
+        try {
+            const result = await chatAPI.resolveArchiveCitationPages(references, controller.signal);
+            for (const item of result?.resolved || []) {
+                if (!Number.isInteger(item?.index) || !Number.isInteger(item?.page)
+                    || item.index < 0 || item.index >= sourceLocations.length || item.page < 1) continue;
+                sourceLocations[item.index].page = item.page;
+                sourceLocations[item.index].page_index = item.page - 1;
+            }
+        } catch (_) {
+            // Page recovery is an enhancement; a failed resolver must not block chat history.
+        } finally {
+            window.clearTimeout(timeout);
+        }
+    }
+
     async function loadSession(sessionId, pushHistory = true, navToken = null) {
         if (!sessionId) return;
         const thisToken = navToken !== null ? navToken : ++navSeq;
@@ -441,6 +514,8 @@
             const sessionData = await chatAPI.getSession(sessionId);
             if (thisToken !== navSeq) return;
             if (!sessionData || !sessionData.success || !sessionData.session) return;
+            await resolveAnonymousArchivePages(sessionData.messages);
+            if (thisToken !== navSeq) return;
 
             const sessionSlug = encodeURIComponent(sessionData.session.slug || sessionData.session.id);
             const archiveQaMode = new URLSearchParams(window.location.search).get('corpus') === 'archive-qa';
@@ -1017,6 +1092,8 @@
         const coverage = metadata?.coverage || rows.find((source) => source?.coverage)?.coverage;
         return {
             partial: metadata?.grounded === false,
+            unreviewedGazetteExtraction: rows.some((source) => source?.source_kind === 'official_gazette_extraction'
+                || source?.evidence_scope === 'official_gazette_unreviewed_extraction'),
             ...(coverage ? { coverage } : {}),
         };
     }
@@ -1142,11 +1219,22 @@
         // citation marker [[N]]. Never rank-sort the rendered evidence.
         const orderedSources = [...sources];
         const hasSyntheticFixture = orderedSources.some((source) => source?.synthetic_fixture === true);
+        const hasUnreviewedGazetteExtraction = metadata.unreviewedGazetteExtraction === true
+            || orderedSources.some((source) => source?.source_kind === 'official_gazette_extraction'
+                || source?.evidence_scope === 'official_gazette_unreviewed_extraction');
+        const hasCatalogMetadata = orderedSources.some(
+            (source) => source?.source_kind === 'sapl_normative_catalog'
+                || source?.evidence_scope === 'official_normative_catalog_metadata'
+        );
         const sourceCountLabel = metadata.pending
             ? (orderedSources.length === 1 ? 'fonte em análise' : 'fontes em análise')
             : (orderedSources.length === 1 ? 'fonte consultada' : 'fontes consultadas');
         const badgeLabel = hasSyntheticFixture
             ? 'Fixture sintética de QA'
+            : hasUnreviewedGazetteExtraction
+                ? 'DOM oficial · extração não revisada'
+            : hasCatalogMetadata
+                ? 'Cadastro SAPL — sem texto legal'
             : metadata.pending ? 'Verificação em andamento'
                 : metadata.partial ? 'Evidência citada · resposta parcial' : 'Fontes associadas à resposta';
 
@@ -1973,6 +2061,7 @@
                                 ? terminalSources
                                 : sourcesCitedByAnswer(finalAnswer, terminalSources);
                             const reasonCode = doneData.reason_code || doneData.contract?.reason_code || '';
+                            const isUnreviewedGazetteExtraction = reasonCode === 'qa_archive_official_gazette_extraction_unreviewed';
                             if (streamElements?.messageBody) {
                                 streamElements.messageBody._citationSources = answerSources;
                                 streamElements.messageBody._corpusRevision = doneData.contract?.corpus_revision || null;
@@ -1998,9 +2087,11 @@
                                 window.JurixRagUI.setStreamingState(streamElements.messageBody, false);
                                 window.JurixRagUI.announce(doneData.grounded === true
                                     ? 'Resposta concluída.'
-                                    : finalSources.length > 0
-                                        ? 'As fontes localizadas não foram suficientes para confirmar a resposta.'
-                                        : 'Não localizei fontes correspondentes no acervo consultado.');
+                                    : isUnreviewedGazetteExtraction
+                                        ? 'Texto localizado na edição oficial; transcrição automática ainda precisa de conferência humana.'
+                                        : finalSources.length > 0
+                                            ? 'As fontes localizadas não foram suficientes para confirmar a resposta.'
+                                            : 'Não localizei fontes correspondentes no acervo consultado.');
                             }
                             if (streamElements?.sourcesContainer && answerSources.length > 0) {
                                 const finalSourceMeta = {
@@ -2020,12 +2111,24 @@
                                 const hasSyntheticFixture = answerSources.some(
                                     (source) => source?.synthetic_fixture === true
                                 );
+                                const hasCatalogMetadata = answerSources.some(
+                                    (source) => source?.source_kind === 'sapl_normative_catalog'
+                                        || source?.evidence_scope === 'official_normative_catalog_metadata'
+                                );
+                                const hasUnreviewedGazetteExtraction = answerSources.some(
+                                    (source) => source?.source_kind === 'official_gazette_extraction'
+                                        || source?.evidence_scope === 'official_gazette_unreviewed_extraction'
+                                );
                                 if (badge) {
                                     badge.textContent = hasSyntheticFixture
                                         ? 'Fixture sintética de QA'
+                                        : hasUnreviewedGazetteExtraction || isUnreviewedGazetteExtraction
+                                            ? 'DOM oficial · extração não revisada'
+                                        : hasCatalogMetadata
+                                            ? 'Cadastro SAPL — sem texto legal'
                                         : doneData.grounded === true
                                             ? 'Fontes associadas à resposta'
-                                            : 'Evidência citada · resposta parcial';
+                                                : 'Evidência citada · resposta parcial';
                                 }
                                 if (pill) pill._sourcesMeta = { ...(pill._sourcesMeta || {}), pending: false };
                                 streamElements.sourcesContainer._sourcesMeta = { ...(streamElements.sourcesContainer._sourcesMeta || {}), pending: false };

@@ -42,6 +42,49 @@ def test_parser_keeps_two_explicit_law_article_pairs_separate():
     assert all(not ref.requires_confirmation for ref in refs)
 
 
+def test_parser_preserves_lettered_article_as_distinct_reference():
+    refs = parse_foundation_references("Art. 2º-A da Lei nº 10/2020.")
+
+    assert len(refs) == 1
+    assert refs[0].article == "2-A"
+    assert refs[0].text == "Art. 2º-A da Lei nº 10/2020"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected_articles"),
+    [
+        ("Arts. 1º e 2º da Lei nº 10/2020", ["1", "2"]),
+        ("Artigos 3º, 4º e 5º da Lei nº 10/2020", ["3", "4", "5"]),
+        ("Art. 2º-A e 2º-B da Lei nº 10/2020", ["2-A", "2-B"]),
+    ],
+)
+def test_parser_expands_coordinated_article_citations(text, expected_articles):
+    refs = parse_foundation_references(text)
+
+    assert [ref.article for ref in refs] == expected_articles
+    assert all(ref.number == "10" and ref.year == 2020 for ref in refs)
+    assert all(not ref.requires_confirmation for ref in refs)
+
+
+def test_parser_associates_coordinated_articles_with_their_explicit_norm_near_another_law():
+    text = (
+        "Na Lei Complementar nº 55/2004, Art. 21. "
+        "Na Lei Complementar nº 258/2024, Arts. 260 e 262."
+    )
+
+    refs = parse_foundation_references(text)
+
+    assert [
+        (ref.type_key, ref.number, ref.year, ref.article, ref.requires_confirmation)
+        for ref in refs
+    ] == [
+        ("lei_complementar", "55", 2004, "21", False),
+        ("lei_complementar", "258", 2024, "260", False),
+        ("lei_complementar", "258", 2024, "262", False),
+    ]
+    assert all(text[ref.start : ref.end] == ref.text for ref in refs)
+
+
 def test_parser_marks_unqualified_article_near_competing_laws_for_confirmation():
     refs = parse_foundation_references(
         "Lei nº 10/2020 e Lei nº 20/2021. O Art. 1º deve ser confirmado."

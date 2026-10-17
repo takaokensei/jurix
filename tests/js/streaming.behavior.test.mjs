@@ -208,7 +208,8 @@ test('SSE sources render immediately as pending and completion updates the same 
   assert.match(chat, /Never rank-sort the rendered evidence/);
   const completion = chat.slice(doneCallback, doneCallback + 6500);
   assert.match(completion, /Array\.isArray\(doneData\.sources\) \? doneData\.sources : finalSources/);
-  assert.match(completion, /finalSources\.length > 0[\s\S]*As fontes localizadas não foram suficientes para confirmar a resposta\.[\s\S]*Não localizei fontes correspondentes no acervo consultado\./);
+  assert.match(completion, /isUnreviewedGazetteExtraction[\s\S]*Texto localizado na edição oficial; transcrição automática ainda precisa de conferência humana\.[\s\S]*As fontes localizadas não foram suficientes para confirmar a resposta\.[\s\S]*Não localizei fontes correspondentes no acervo consultado\./);
+  assert.match(completion, /DOM oficial · extração não revisada/);
   assert.match(completion, /showSourcesGradually\([\s\S]*answerSources[\s\S]*finalSourceMeta/);
   assert.match(completion, /_corpusCoverage = doneData\.contract\?\.corpus_coverage \|\| null/);
   assert.match(completion, /source\?\.synthetic_fixture === true/);
@@ -234,6 +235,7 @@ test('SSE sources render immediately as pending and completion updates the same 
   assert.match(sourcePill, /metadata\.pending[\s\S]*fonte em análise[\s\S]*fontes em análise/);
   assert.match(sourcePill, /aria-label="Abrir painel com \$\{orderedSources\.length\} \$\{sourceCountLabel\}"/);
   assert.match(sourcePill, /Verificação em andamento/);
+  assert.match(sourcePill, /official_gazette_extraction[\s\S]*DOM oficial · extração não revisada/);
   assert.match(sourcePill, /Keep the trigger node stable/);
   assert.doesNotMatch(sourcePill, /topRawScore|Alta correspondência|Boa correspondência|Correspondência parcial/);
 
@@ -393,7 +395,7 @@ test('Markdown citation markers render using readable labels from structured sou
   }]);
   assert.match(html, /href="#jurix-evidence-1"/);
   assert.match(html, /data-citation-id="jurix:norma:3:dispositivo:12"/);
-  assert.match(html, />\[1\]<\/a>/);
+  assert.match(html, />Art\. 1º<\/a>/);
   assert.match(html, /aria-label="Ver Lei nº 8\.206\/2026, Art\. 1º"/);
   w.close();
 });
@@ -643,6 +645,23 @@ test('restored source metadata recovers article coverage from persisted citation
 
   assert.equal(metadata.partial, true);
   assert.deepEqual(JSON.parse(JSON.stringify(metadata.coverage)), coverage);
+  dom.window.close();
+});
+
+test('restored official gazette citation keeps its unreviewed extraction label', () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    url: 'http://localhost/assistente/',
+    runScripts: 'dangerously',
+  });
+  const { window: w } = dom;
+  w.eval(read('chat.js'));
+
+  const metadata = w.jurixChat.resolveSourceDisplayMetadata({}, [{
+    source_kind: 'official_gazette_extraction',
+    evidence_scope: 'official_gazette_unreviewed_extraction',
+  }]);
+
+  assert.equal(metadata.unreviewedGazetteExtraction, true);
   dom.window.close();
 });
 
@@ -1746,6 +1765,146 @@ test('SAPL legislative-matter source stays distinct, linked, and exportable', ()
     assert.equal(evidencePackage.sources[0].official_url, source.sapl_url);
     assert.equal(evidencePackage.sources[0].matter_status, false);
     assert.equal(evidencePackage.sources[0].consulted_at, source.consulted_at);
+  } finally {
+    w.close();
+  }
+});
+
+test('official general legislation source opens Planalto from the evidence drawer and rejects lookalike hosts', () => {
+  const w = guestWindow();
+  try {
+    w.eval(read('jurix-rag.js'));
+    const source = {
+      citation_index: 1,
+      citation_id: 'official:lc95-art8-paragraph1',
+      citation_label: 'Lei Complementar nº 95/1998, Art. 8º, § 1º',
+      norma_ref: 'Lei Complementar nº 95/1998',
+      dispositivo_ref: 'Art. 8º, § 1º',
+      source_kind: 'official_general_legislation',
+      source_type: 'Legislação federal oficial',
+      source_url: 'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp95.htm',
+      full_text: 'A contagem inclui a data da publicação e o último dia do prazo.',
+    };
+    const markup = w.JurixRagUI.renderEvidenceCard(source);
+    const holder = w.document.createElement('div');
+    holder.innerHTML = markup;
+    const link = holder.querySelector('.jurix-rag-source__open');
+    assert.equal(link?.getAttribute('href'), source.source_url);
+    assert.match(link?.textContent || '', /Abrir no Planalto/);
+    assert.equal(link?.getAttribute('target'), '_blank');
+    assert.match(link?.getAttribute('rel') || '', /noopener/);
+    assert.equal(w.JurixRagUI.buildSourceUrl({
+      ...source,
+      source_url: 'https://www.planalto.gov.br.evil.example/ccivil_03/leis/lcp/lcp95.htm',
+    }), null);
+    assert.equal(w.JurixRagUI.buildSourceUrl({
+      ...source,
+      source_url: 'http://www.planalto.gov.br/ccivil_03/leis/lcp/lcp95.htm',
+    }), null);
+    const sanitizedSource = { ...source, source_url: undefined, official_url: source.source_url };
+    assert.equal(w.JurixRagUI.buildSourceUrl(sanitizedSource), source.source_url);
+    const sanitizedMarkup = w.JurixRagUI.renderEvidenceCard(sanitizedSource);
+    assert.match(sanitizedMarkup, /Abrir no Planalto/);
+    assert.match(sanitizedMarkup, /https:\/\/www\.planalto\.gov\.br\/ccivil_03\/leis\/lcp\/lcp95\.htm/);
+  } finally { w.close(); }
+});
+
+test('metadata-only SAPL norm record is linked without being presented as legal text', () => {
+  const w = guestWindow();
+  try {
+    w.eval(read('jurix-rag.js'));
+    const source = {
+      citation_index: 1,
+      citation_id: 'sapl:norma-catalog:9382',
+      citation_label: 'Lei Ordinária nº 8.201/2026 — cadastro no SAPL',
+      norma_ref: 'Lei Ordinária nº 8.201/2026',
+      source_kind: 'sapl_normative_catalog',
+      source_type: 'Cadastro oficial SAPL — somente metadados, sem texto legal integrado',
+      contribution: 'Identifica o ato; não comprova conteúdo, vigência ou histórico de alterações',
+      evidence_scope: 'official_normative_catalog_metadata',
+      metadata_only: true,
+      sapl_url: 'https://sapl.natal.rn.leg.br/norma/9382',
+      similarity_score: 0,
+    };
+    const markup = w.JurixRagUI.renderEvidenceCard(source);
+
+    assert.match(markup, /Cadastro SAPL — texto legal não integrado/);
+    assert.match(markup, /não comprovam seu texto, vigência ou alterações/);
+    assert.match(markup, /Abrir registro oficial no SAPL/);
+    assert.match(markup, /https:\/\/sapl\.natal\.rn\.leg\.br\/norma\/9382/);
+    assert.match(markup, /Identifica o ato; não comprova conteúdo/);
+    assert.doesNotMatch(markup, /Trecho completo|Pontuação técnica|Alta correspondência/);
+    assert.equal(w.JurixRagUI.buildSourceUrl(source), source.sapl_url);
+
+    w.JurixRagUI.openSourcesDrawer([source]);
+    const panel = w.document.getElementById('jurix-sources-drawer-panel');
+    assert.match(panel.querySelector('.jurix-source-group__count')?.textContent || '', /1 registro de catálogo/);
+    assert.equal(panel.querySelector('.jurix-source-group-toggle-all')?.textContent, 'Expandir todos os itens');
+  } finally {
+    w.close();
+  }
+});
+
+test('official gazette extraction is linked as unreviewed source, not as a currentness finding', () => {
+  const w = guestWindow();
+  try {
+    w.eval(read('jurix-rag.js'));
+    const source = {
+      citation_index: 1,
+      citation_id: 'dom:verified-article-1',
+      citation_label: 'Lei Ordinária nº 8.201/2026, Art. 1º',
+      norma_ref: 'Lei Ordinária nº 8.201/2026',
+      dispositivo_ref: 'Art. 1º',
+      source_kind: 'official_gazette_extraction',
+      source_type: 'Diário Oficial de Natal — extração automatizada não revisada',
+      evidence_scope: 'official_gazette_unreviewed_extraction',
+      contribution: 'Texto localizado na edição oficial do Diário Oficial do Município; extração automatizada, confira o PDF.',
+      full_text: 'Art. 1º Fica instituído o Cadastro Protetor.',
+      pdf_url: 'https://www2.natal.rn.gov.br/_anexos/publicacao/dom/dom_20260910_' + 'a'.repeat(32) + '.pdf',
+      page: 1,
+    };
+    const markup = w.JurixRagUI.renderEvidenceCard(source);
+
+    assert.match(markup, /Diário Oficial — extração não revisada/);
+    assert.match(markup, /Abrir edição do Diário Oficial/);
+    assert.match(markup, /extração automatizada, confira o PDF/);
+    assert.doesNotMatch(markup, /Alta correspondência|Pontuação técnica/);
+    assert.equal(w.JurixRagUI.buildSourceUrl(source), source.pdf_url + '#page=1');
+
+    w.eval(read('jurix-markdown.js'));
+    w.eval(read('jurix-chat-renderer.js'));
+    const evidencePackage = w.JurixChatRenderer.buildEvidencePackage([source]);
+    assert.equal(evidencePackage.sources[0].source_kind, 'official_gazette_extraction');
+    assert.equal(evidencePackage.sources[0].official_url, source.pdf_url);
+    assert.match(evidencePackage.sources[0].verification_limit, /não presuma vigência atual/);
+  } finally {
+    w.close();
+  }
+});
+
+test('archive consolidation edition is visible and included in copied source citation', () => {
+  const w = guestWindow();
+  try {
+    w.eval(read('jurix-rag.js'));
+    const source = {
+      citation_index: 1,
+      citation_label: 'Lei nº 3.882/1989, Art. 20',
+      norma_ref: 'Lei nº 3.882/1989',
+      dispositivo_ref: 'Art. 20',
+      evidence_scope: 'isolated_qa_archive',
+      edition_label: 'Consolidação municipal · exercício 2024 · revisão pendente',
+      source_type: 'Consolidação oficial municipal — revisão pendente',
+      contribution: 'Trecho candidato para cotejo, sem atestar vigência.',
+      full_text: 'Art. 20. Texto da consolidação municipal apresentado para cotejo.',
+      local_pdf_url: '/normas/documentos/00000000-0000-0000-0000-000000000001/pdf/',
+    };
+    const holder = w.document.createElement('div');
+    holder.innerHTML = w.JurixRagUI.renderEvidenceCard(source);
+
+    assert.match(holder.textContent, /Consolidação municipal · exercício 2024 · revisão pendente/);
+    const copiedCitation = holder.querySelector('[data-copy-legal-citation]')?.getAttribute('data-copy-legal-citation');
+    assert.match(copiedCitation || '', /^\[Lei nº 3\.882\/1989, Art\. 20 — Consolidação municipal · exercício 2024 · revisão pendente\]\(<http:\/\/localhost\/normas\/documentos\//);
+    assert.match(copiedCitation || '', /Art\. 20\. Texto da consolidação municipal apresentado para cotejo\./);
   } finally {
     w.close();
   }

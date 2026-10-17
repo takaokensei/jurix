@@ -23,7 +23,8 @@ from src.processing.legal_parser import (
 )
 
 EXTRACTION_POLICY = {
-    "version": "normative-pdf-extraction-v6",
+    "version": "normative-pdf-extraction-v13",
+    "blank_page_visibility_check": "visible_text_and_footer_rule_v1",
     "ocr_useful_characters_below": 40,
     "ocr_replacement_control_ratio_above": 0.02,
     "ocr_timeout_seconds": 90,
@@ -31,6 +32,13 @@ EXTRACTION_POLICY = {
     "ocr_timeout_scope": "shared_per_page",
     "max_pages": 200,
     "text_version": "technical_text_v1",
+    "layout_table_candidates": True,
+    "max_layout_tables": 12,
+    "max_layout_table_rows": 40,
+    "max_layout_table_columns": 16,
+    "max_layout_table_chars": 24000,
+    "raster_table_projection_threshold": 150,
+    "raster_table_ocr_psm": 4,
 }
 
 
@@ -71,20 +79,85 @@ def text_quality(text: str) -> tuple[int, float]:
 def page_has_image(page: Any) -> bool:
     """Detect placed and inline images; inaccessible image metadata is not fatal."""
     try:
-        if page.get_images(full=True):
-            return True
-    except (AttributeError, RuntimeError, ValueError):
-        pass
+        image_info = page.get_image_info(xrefs=True)
+    except (AttributeError, RuntimeError, TypeError, ValueError):
+        image_info = None
+    if image_info is not None:
+        # get_images() also lists orphaned XObjects that are not painted on the
+        # page. Only use that resource inventory when placement info is absent.
+        return bool(image_info)
     try:
-        return bool(page.get_image_info(xrefs=True))
-    except (AttributeError, RuntimeError, ValueError):
+        return bool(page.get_images(full=True))
+    except (AttributeError, RuntimeError, TypeError, ValueError):
+        return False
+
+
+def _native_text_has_visible_ink(page: Any) -> bool | None:
+    """Check short native text spans by rendering their bounds; None means unknown."""
+    try:
+        blocks = page.get_text("dict").get("blocks", ())
+        found_text_span = False
+        for block in blocks:
+            for line in block.get("lines", ()):
+                for span in line.get("spans", ()):
+                    if not (span.get("text") or "").strip():
+                        continue
+                    found_text_span = True
+                    bounds = fitz.Rect(span["bbox"]) & page.rect
+                    if bounds.is_empty or bounds.is_infinite:
+                        return None
+                    pixmap = page.get_pixmap(
+                        matrix=fitz.Matrix(2, 2),
+                        clip=bounds,
+                        colorspace=fitz.csGRAY,
+                        alpha=False,
+                    )
+                    if sum(value < 250 for value in pixmap.samples) >= 2:
+                        return True
+        return False if found_text_span else None
+    except (AttributeError, KeyError, RuntimeError, TypeError, ValueError):
+        # If visibility cannot be established, retain the page for human review.
+        return None
+
+
+def _is_thin_light_footer_rule(drawing: dict[str, Any], page: Any) -> bool:
+    """Recognize only a single pale, thin horizontal rule in the bottom margin."""
+    try:
+        color = drawing.get("color")
+        if (
+            drawing.get("fill") is not None
+            or color is None
+            or len(color) < 3
+            or min(color[:3]) < 0.65
+            or max(color[:3]) > 0.97
+            or (drawing.get("stroke_opacity") or 0) <= 0
+            or float(drawing.get("width") or 0) > 2
+        ):
+            return False
+        items = drawing.get("items") or ()
+        if len(items) != 1 or items[0][0] != "l":
+            return False
+        start, end = items[0][1], items[0][2]
+        page_rect = page.rect
+        return (
+            abs(start.y - end.y) <= 0.5
+            and min(start.y, end.y) >= page_rect.y0 + page_rect.height * 0.88
+            and abs(end.x - start.x) >= page_rect.width * 0.70
+        )
+    except (AttributeError, IndexError, TypeError, ValueError):
         return False
 
 
 def page_is_blank(page: Any, native_text: str, has_image: bool) -> bool:
-    """Return true only when a page has no text or visible PDF objects."""
-    if native_text.strip() or has_image:
+    """Return true only when a page has no legible text or meaningful PDF objects."""
+    if has_image:
         return False
+    if native_text.strip():
+        if text_quality(native_text)[0] >= EXTRACTION_POLICY["ocr_useful_characters_below"]:
+            return False
+        text_is_visible = _native_text_has_visible_ink(page)
+        if text_is_visible is not False:
+            return False
     try:
         for drawing in page.get_drawings():
             fill = drawing.get("fill")
@@ -101,7 +174,9 @@ def page_is_blank(page: Any, native_text: str, has_image: bool) -> bool:
                 and (stroke_opacity is None or stroke_opacity > 0)
                 and any(channel < 0.98 for channel in color)
             )
-            if has_visible_fill or has_visible_stroke:
+            if has_visible_fill or (
+                has_visible_stroke and not _is_thin_light_footer_rule(drawing, page)
+            ):
                 return False
         if list(page.annots() or ()):
             return False
@@ -111,6 +186,279 @@ def page_is_blank(page: Any, native_text: str, has_image: bool) -> bool:
         # Uninspectable content must remain reviewable, not be silently skipped.
         return False
     return True
+
+
+def extract_layout_table_candidate(page: Any, page_number: int) -> list[dict[str, Any]]:
+    """Return bounded, unreviewed table-layout candidates without changing legal text."""
+    find_tables = getattr(page, "find_tables", None)
+    if not callable(find_tables):
+        return []
+    try:
+        found = find_tables()
+        tables = getattr(found, "tables", ()) or ()
+    except Exception:
+        # Layout detection is supplemental. A detector failure must never turn a
+        # readable PDF into a failed text extraction or imply no table exists.
+        return []
+
+    candidates = []
+    remaining_chars = EXTRACTION_POLICY["max_layout_table_chars"]
+    for table in tables[: EXTRACTION_POLICY["max_layout_tables"]]:
+        try:
+            extracted_rows = table.extract()
+        except Exception:
+            continue
+        if not isinstance(extracted_rows, list) or len(extracted_rows) < 2:
+            continue
+        column_count = max(
+            (len(row) for row in extracted_rows if isinstance(row, list | tuple)),
+            default=0,
+        )
+        if column_count < 2:
+            continue
+        row_limit = EXTRACTION_POLICY["max_layout_table_rows"]
+        column_limit = EXTRACTION_POLICY["max_layout_table_columns"]
+        display_columns = min(column_count, column_limit)
+        rows = []
+        was_truncated = len(extracted_rows) > row_limit or column_count > column_limit
+        for row in extracted_rows[:row_limit]:
+            if not isinstance(row, list | tuple):
+                continue
+            normalized_row = []
+            for cell in row[:display_columns]:
+                value = str(cell or "").strip()
+                if remaining_chars <= 0:
+                    was_truncated = was_truncated or bool(value)
+                    value = ""
+                else:
+                    was_truncated = was_truncated or len(value) > remaining_chars
+                    value = value[:remaining_chars]
+                    remaining_chars -= len(value)
+                normalized_row.append(value)
+            normalized_row.extend([""] * (display_columns - len(normalized_row)))
+            rows.append(normalized_row)
+        if len(rows) < 2:
+            continue
+        cell_count = sum(len(row) for row in rows)
+        nonempty_count = sum(bool(cell) for row in rows for cell in row)
+        bbox = getattr(table, "bbox", None)
+        try:
+            bounds = [round(float(value), 2) for value in bbox[:4]]
+        except (TypeError, ValueError, IndexError):
+            bounds = []
+        candidates.append(
+            {
+                "page": page_number,
+                "status": "unreviewed_candidate",
+                "detector": "pymupdf_find_tables",
+                "bbox": bounds,
+                "row_count": len(extracted_rows),
+                "column_count": column_count,
+                "cell_occupancy": round(nonempty_count / max(1, cell_count), 4),
+                "rows": rows,
+                "truncated": was_truncated,
+                "review_note": (
+                    "Candidato geométrico; compare células, alinhamento e conteúdo com o PDF. "
+                    "Não integra o texto legal nem comprova fidelidade."
+                ),
+            }
+        )
+        if remaining_chars <= 0:
+            break
+    return candidates
+
+
+def _projection_runs(values: list[int], *, max_gap: int = 3) -> list[tuple[int, int]]:
+    runs: list[list[int]] = []
+    for value in values:
+        if not runs or value > runs[-1][-1] + max_gap:
+            runs.append([value])
+        else:
+            runs[-1].append(value)
+    return [(run[0], run[-1]) for run in runs if len(run) >= 2]
+
+
+def _raster_grid_bounds(image: Image.Image) -> tuple[list[int], list[int]]:
+    """Find strong, repeated raster rules; this only locates cells, not their text."""
+    grayscale = image.convert("L")
+    threshold = EXTRACTION_POLICY["raster_table_projection_threshold"]
+    binary = grayscale.point(lambda value: 0 if value <= threshold else 255)
+    width, height = binary.size
+    pixels = binary.tobytes()
+
+    horizontal_rows = [
+        y
+        for y in range(height)
+        if pixels[y * width : (y + 1) * width].count(0) / max(1, width) >= 0.45
+    ]
+    horizontal = _projection_runs(horizontal_rows)
+
+    transposed = binary.transpose(Image.Transpose.ROTATE_90)
+    transposed_width = height
+    transposed_pixels = transposed.tobytes()
+    vertical_columns = sorted(
+        width - 1 - x
+        for x in range(width)
+        if transposed_pixels[x * transposed_width : (x + 1) * transposed_width].count(0)
+        / max(1, height)
+        >= 0.25
+    )
+    vertical_runs = _projection_runs(vertical_columns, max_gap=4)
+    vertical_lines: list[tuple[int, int, int]] = []
+    for left, right in vertical_runs:
+        dark_rows = []
+        for y in range(height):
+            row = pixels[y * width + left : y * width + right + 1]
+            if row.count(0) / max(1, right - left + 1) >= 0.5:
+                dark_rows.append(y)
+        spans = _projection_runs(dark_rows, max_gap=10)
+        if spans:
+            top, bottom = max(spans, key=lambda span: span[1] - span[0])
+            if bottom - top >= height * 0.18:
+                vertical_lines.append(((left + right) // 2, top, bottom))
+
+    best_group: list[tuple[int, int, int]] = []
+    best_overlap: tuple[int, int] | None = None
+    for _x, top, bottom in vertical_lines:
+        group = [
+            line
+            for line in vertical_lines
+            if min(bottom, line[2]) - max(top, line[1]) >= height * 0.12
+        ]
+        overlap = (
+            max((line[1] for line in group), default=0),
+            min((line[2] for line in group), default=0),
+        )
+        if len(group) > len(best_group) or (
+            len(group) == len(best_group)
+            and overlap[1] - overlap[0] > (best_overlap[1] - best_overlap[0] if best_overlap else 0)
+        ):
+            best_group, best_overlap = group, overlap
+
+    if len(best_group) < 3 or best_overlap is None or best_overlap[1] <= best_overlap[0]:
+        return [], []
+    x_lines = sorted({line[0] for line in best_group})
+    table_left, table_right = x_lines[0], x_lines[-1]
+    table_width = table_right - table_left
+    if table_width < width * 0.2:
+        return [], []
+    y_lines = [
+        (top + bottom) // 2
+        for top, bottom in horizontal
+        if best_overlap[0] - 8 <= (top + bottom) // 2 <= best_overlap[1] + 8
+        and pixels[((top + bottom) // 2) * width + table_left : ((top + bottom) // 2) * width + table_right + 1].count(0)
+        / max(1, table_width)
+        >= 0.65
+    ]
+    y_lines = sorted(set(y_lines))
+    return (x_lines, y_lines) if len(y_lines) >= 3 else ([], [])
+
+
+def extract_raster_table_candidate(
+    image: Image.Image,
+    page_number: int,
+    ocr_data: dict[str, Any],
+    *,
+    grid: tuple[list[int], list[int]] | None = None,
+) -> list[dict[str, Any]]:
+    """Build a review-only table candidate from raster rules and word boxes."""
+    x_lines, y_lines = grid if grid is not None else _raster_grid_bounds(image)
+    if len(x_lines) < 3 or len(y_lines) < 3:
+        return []
+
+    row_count, column_count = len(y_lines) - 1, len(x_lines) - 1
+    row_limit = EXTRACTION_POLICY["max_layout_table_rows"]
+    column_limit = EXTRACTION_POLICY["max_layout_table_columns"]
+    display_rows = min(row_count, row_limit)
+    display_columns = min(column_count, column_limit)
+    cells: list[list[list[tuple[int, int, str]]]] = [
+        [[] for _ in range(display_columns)] for _ in range(display_rows)
+    ]
+    for index, raw_text in enumerate(ocr_data.get("text", [])):
+        text = str(raw_text or "").strip()
+        try:
+            left = int(ocr_data["left"][index])
+            top = int(ocr_data["top"][index])
+            width = int(ocr_data["width"][index])
+            height = int(ocr_data["height"][index])
+            confidence = float(ocr_data.get("conf", [100] * len(ocr_data["text"]))[index])
+        except (KeyError, IndexError, TypeError, ValueError):
+            continue
+        center_x, center_y = left + width / 2, top + height / 2
+        if not text or confidence < 0 or not (x_lines[0] < center_x < x_lines[-1]):
+            continue
+        row_index = next(
+            (row for row in range(display_rows) if y_lines[row] < center_y < y_lines[row + 1]),
+            None,
+        )
+        column_index = next(
+            (
+                column
+                for column in range(display_columns)
+                if x_lines[column] < center_x < x_lines[column + 1]
+            ),
+            None,
+        )
+        if row_index is not None and column_index is not None:
+            cells[row_index][column_index].append((top, left, text))
+
+    nonempty_source_cells = sum(bool(cell) for row in cells for cell in row)
+    occupancy = nonempty_source_cells / max(1, display_rows * display_columns)
+    remaining_chars = EXTRACTION_POLICY["max_layout_table_chars"]
+    was_truncated = row_count > row_limit or column_count > column_limit
+    rows: list[list[str]] = []
+    for row in cells:
+        normalized_row = []
+        for cell in row:
+            value = " ".join(word for _top, _left, word in sorted(cell)).strip()
+            if remaining_chars <= 0:
+                was_truncated = was_truncated or bool(value)
+                value = ""
+            else:
+                was_truncated = was_truncated or len(value) > remaining_chars
+                value = value[:remaining_chars]
+                remaining_chars -= len(value)
+            normalized_row.append(value)
+        rows.append(normalized_row)
+    if nonempty_source_cells < 3 or occupancy < 0.1:
+        return []
+    return [
+        {
+            "page": page_number,
+            "status": "unreviewed_candidate",
+            "detector": "raster_grid+tesseract_word_boxes",
+            "bbox_pixels": [x_lines[0], y_lines[0], x_lines[-1], y_lines[-1]],
+            "row_count": row_count,
+            "column_count": column_count,
+            "cell_occupancy": round(occupancy, 4),
+            "rows": rows,
+            "truncated": was_truncated,
+            "review_note": (
+                "Prévia de OCR segmentada por linhas raster; confira cada célula no PDF. "
+                "Não integra o texto legal, não é citação certificada nem substitui revisão humana."
+            ),
+        }
+    ]
+
+
+def _extract_raster_table_candidate_from_image(
+    image: Image.Image,
+    page_number: int,
+    *,
+    timeout: float,
+    grid: tuple[list[int], list[int]] | None = None,
+) -> list[dict[str, Any]]:
+    grid = grid if grid is not None else _raster_grid_bounds(image)
+    if not grid[0] or not grid[1] or timeout <= 0:
+        return []
+    ocr_data = pytesseract.image_to_data(
+        image,
+        lang="por",
+        config=f"--psm {EXTRACTION_POLICY['raster_table_ocr_psm']}",
+        output_type=pytesseract.Output.DICT,
+        timeout=timeout,
+    )
+    return extract_raster_table_candidate(image, page_number, ocr_data, grid=grid)
 
 
 def should_ocr_page(text: str, has_image: bool) -> tuple[bool, str]:
@@ -173,6 +521,7 @@ def extract_pdf_document(
     ocr_timeout_seconds: int = 90,
     max_ocr_pages: int | None = None,
     ocr_pages_to_process: set[int] | None = None,
+    raster_table_pages_to_process: set[int] | None = None,
     reusable_ocr_pages: dict[int, tuple[str, str]] | None = None,
     ocr: Callable[..., str] = _default_ocr,
 ) -> dict[str, Any]:
@@ -192,6 +541,16 @@ def extract_pdf_document(
         if any(not isinstance(page, int) or page < 1 for page in ocr_pages_to_process):
             raise ValueError("OCR page selection must contain positive one-based page numbers")
         run_policy["ocr_pages_to_process"] = sorted(ocr_pages_to_process)
+    if raster_table_pages_to_process is not None:
+        if (
+            len(raster_table_pages_to_process) > 10
+            or any(
+                not isinstance(page, int) or page < 1
+                for page in raster_table_pages_to_process
+            )
+        ):
+            raise ValueError("Raster table page selection must contain up to 10 positive pages")
+        run_policy["raster_table_pages_to_process"] = sorted(raster_table_pages_to_process)
     reusable_ocr_pages = reusable_ocr_pages or {}
     if reusable_ocr_pages:
         if any(
@@ -246,6 +605,8 @@ def extract_pdf_document(
         page_count = len(document)
         if any(page > page_count for page in ocr_pages_to_process or set()):
             raise ValueError("OCR page selection exceeds the PDF page count")
+        if any(page > page_count for page in raster_table_pages_to_process or set()):
+            raise ValueError("Raster table page selection exceeds the PDF page count")
         if any(page > page_count for page in reusable_ocr_pages):
             raise ValueError("Reusable OCR page exceeds the PDF page count")
         if page_count > max_pages:
@@ -279,6 +640,8 @@ def extract_pdf_document(
             }
 
         pages: list[PageExtraction] = []
+        layout_table_candidates: list[dict[str, Any]] = []
+        raster_image_pages_not_analyzed_for_tables: list[int] = []
         raw_page_texts: list[str] = []
         ocr_pages_attempted = 0
         ocr_pages_reused: list[int] = []
@@ -290,6 +653,21 @@ def extract_pdf_document(
             raw_native = page.get_text("text") or ""
             has_image = page_has_image(page)
             page_number = index + 1
+            if (
+                raster_table_pages_to_process is not None
+                and page_number in raster_table_pages_to_process
+                and not has_image
+            ):
+                raise ValueError("Raster table page selection includes a page without an image")
+            if (
+                EXTRACTION_POLICY["layout_table_candidates"]
+                and len(layout_table_candidates) < EXTRACTION_POLICY["max_layout_tables"]
+            ):
+                layout_table_candidates.extend(
+                    extract_layout_table_candidate(page, page_number)[
+                        : EXTRACTION_POLICY["max_layout_tables"] - len(layout_table_candidates)
+                    ]
+                )
             blank = page_is_blank(page, raw_native, has_image)
             run_ocr, reason = should_ocr_page(raw_native, has_image)
             explicitly_selected = (
@@ -317,6 +695,34 @@ def extract_pdf_document(
                     status = "reused"
                     ocr_pages_reused.append(page_number)
                     reused_source_by_page[page_number] = reusable_page[1]
+                    if (
+                        has_image
+                        and raster_table_pages_to_process is not None
+                        and page_number in raster_table_pages_to_process
+                        and len(layout_table_candidates)
+                        < EXTRACTION_POLICY["max_layout_tables"]
+                    ):
+                        pixmap = page.get_pixmap(dpi=300)
+                        try:
+                            image_bytes = pixmap.tobytes("png")
+                        finally:
+                            pixmap = None
+                        try:
+                            with Image.open(io.BytesIO(image_bytes)) as image:
+                                layout_table_candidates.extend(
+                                    _extract_raster_table_candidate_from_image(
+                                        image,
+                                        page_number,
+                                        timeout=ocr_timeout_seconds,
+                                    )[
+                                        : EXTRACTION_POLICY["max_layout_tables"]
+                                        - len(layout_table_candidates)
+                                    ]
+                                )
+                        except Exception:
+                            # The reused text remains valid; failed layout OCR stays
+                            # explicitly unreviewed and cannot invalidate that text.
+                            pass
                 elif (
                     ocr_pages_to_process is not None
                     and page_number not in ocr_pages_to_process
@@ -343,12 +749,52 @@ def extract_pdf_document(
                         pixmap = None
                     try:
                         with Image.open(io.BytesIO(image_bytes)) as image:
+                            raster_grid = (
+                                _raster_grid_bounds(image)
+                                if has_image
+                                and ocr is _default_ocr
+                                and len(layout_table_candidates)
+                                < EXTRACTION_POLICY["max_layout_tables"]
+                                else ([], [])
+                            )
+                            ocr_started = time.monotonic()
                             page_text = ocr(image, timeout=ocr_timeout_seconds)
+                            if raster_grid[0] and raster_grid[1] and ocr is _default_ocr:
+                                remaining_timeout = ocr_timeout_seconds - (
+                                    time.monotonic() - ocr_started
+                                )
+                                if remaining_timeout > 0.1:
+                                    try:
+                                        layout_table_candidates.extend(
+                                            _extract_raster_table_candidate_from_image(
+                                            image,
+                                                page_number,
+                                                timeout=remaining_timeout,
+                                                grid=raster_grid,
+                                            )[
+                                                : EXTRACTION_POLICY["max_layout_tables"]
+                                                - len(layout_table_candidates)
+                                            ]
+                                        )
+                                    except Exception:
+                                        # OCR layout is supplemental. Preserve text extraction
+                                        # and surface the page for visual review if it fails.
+                                        pass
                     except Exception as exc:  # OCR errors must not certify partial text.
                         method = "unreadable"
                         status = "timeout" if "timeout" in str(exc).casefold() else "failed"
                         reason = f"ocr_{status}"
                         page_text = ""
+
+            if has_image and not any(
+                candidate.get("page") == page_number
+                and candidate.get("detector") == "raster_grid+tesseract_word_boxes"
+                for candidate in layout_table_candidates
+            ):
+                # find_tables inspects PDF text/vector geometry, not raster pixels.
+                # Keep undetected scans visible to reviewers rather than implying
+                # that no table exists because the structural detector found none.
+                raster_image_pages_not_analyzed_for_tables.append(page_number)
 
             raw_page_texts.append(page_text or raw_native)
             normalized = normalize_extracted_text(page_text)
@@ -446,6 +892,20 @@ def extract_pdf_document(
                     ),
                 },
                 "gazette_act_boundaries": act_boundaries,
+                "layout_tables": {
+                    "status": (
+                        "unreviewed_candidates"
+                        if layout_table_candidates
+                        else "no_candidates_detected"
+                    ),
+                    "candidate_count": len(layout_table_candidates),
+                    "detection_scope": (
+                        "Geometria textual detectável no PDF; tabelas em imagem/OCR podem não ser "
+                        "detectadas. Ausência de candidatos não significa ausência de tabelas."
+                    ),
+                    "raster_image_pages_not_analyzed": raster_image_pages_not_analyzed_for_tables,
+                    "candidates": layout_table_candidates,
+                },
             },
             "text_version": EXTRACTION_POLICY["text_version"],
             "policy_fingerprint": policy_fingerprint,

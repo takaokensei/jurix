@@ -584,7 +584,11 @@ class EventoAlteracao(TimeStampedModel):
     effective_on = models.DateField(null=True, blank=True, db_index=True)
     effective_date_status = models.CharField(
         max_length=16,
-        choices=[("unknown", "Desconhecida"), ("candidate", "Candidata"), ("confirmed", "Confirmada")],
+        choices=[
+            ("unknown", "Desconhecida"),
+            ("candidate", "Candidata"),
+            ("confirmed", "Confirmada"),
+        ],
         default="unknown",
         db_index=True,
     )
@@ -747,7 +751,9 @@ class CollectionEvidenceVersion(models.Model):
 
         super().clean()
         if self.collection_id and self.owner_id and self.collection.user_id != self.owner_id:
-            raise ValidationError({"owner": "A evidência deve pertencer ao proprietário da coleção."})
+            raise ValidationError(
+                {"owner": "A evidência deve pertencer ao proprietário da coleção."}
+            )
         if self.snapshot_id and self.norma_id and self.snapshot.norma_id != self.norma_id:
             raise ValidationError({"snapshot": "O snapshot deve pertencer à norma referenciada."})
         if self.evidence_hash and (
@@ -755,6 +761,7 @@ class CollectionEvidenceVersion(models.Model):
             or any(char not in "0123456789abcdef" for char in self.evidence_hash)
         ):
             raise ValidationError({"evidence_hash": "Informe um SHA-256 hexadecimal válido."})
+
 
 class ChatSession(TimeStampedModel):
     """
@@ -966,6 +973,7 @@ class ChatMessage(TimeStampedModel):
 from src.apps.legislation.document_models import (  # noqa: E402,F401
     DocumentoDispositivo,
     DocumentoNormativo,
+    EventoNormativoCandidato,
     ExtracaoDocumento,
 )
 from src.apps.legislation.review_models import RevisaoJuridica  # noqa: E402,F401

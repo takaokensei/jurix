@@ -8,12 +8,14 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from django.db import close_old_connections
+from django.test import override_settings
 
 from src.apps.ingestion.document_promotion import PromotionBlocked, promotion_fingerprint
 from src.apps.ingestion.norma_registry import register_reviewed_identity
 from src.apps.legislation.document_models import DocumentoNormativo
 from src.apps.legislation.models import Norma
 from src.apps.legislation.review_models import RevisaoJuridica
+from src.apps.operations.models import NormativeWorkItem
 from src.processing.document_metadata import build_normative_identity
 
 
@@ -45,6 +47,40 @@ def _candidate(*, key: str = "registry-candidate", raw_type: str = "Lei Compleme
             "identity_key": identity.identity_key,
             "identity_candidate": identity.identity_json,
             "synthetic": False,
+        },
+        condition_of_use=DocumentoNormativo.ConditionOfUse.UNKNOWN,
+        review_status=DocumentoNormativo.ReviewStatus.PENDING,
+    )
+    return document, identity
+
+
+def _sapl_candidate(*, key: str = "sapl-legacy-candidate"):
+    identity = build_normative_identity(
+        jurisdiction="BR-RN-NATAL",
+        raw_type="Lei Ordinária",
+        series="municipal_lo",
+        number="8219",
+        year=2026,
+    )
+    official_url = (
+        "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2026/9406/"
+        "lei_no_8.219_2026.pdf"
+    )
+    document = DocumentoNormativo.objects.create(
+        document_key=_sha(key),
+        source_kind=DocumentoNormativo.SourceKind.SAPL,
+        source_ref="sapl:9406:sha256:" + _sha(f"pdf:{key}"),
+        original_filename="lei_no_8.219_2026.pdf",
+        role=DocumentoNormativo.Role.UNDETERMINED,
+        content_sha256=_sha(f"pdf:{key}"),
+        size_bytes=100,
+        official_url=official_url,
+        metadata_json={
+            "sapl_id": 9406,
+            "sapl_url": "https://sapl.natal.rn.leg.br/norma/9406",
+            "publication_date": "2026-10-14",
+            "identity_key": identity.identity_key,
+            "identity_candidate": identity.identity_json,
         },
         condition_of_use=DocumentoNormativo.ConditionOfUse.UNKNOWN,
         review_status=DocumentoNormativo.ReviewStatus.PENDING,
@@ -99,6 +135,33 @@ def test_register_identity_creates_pending_norma_without_sapl_or_text(registry_r
 
 
 @pytest.mark.django_db(transaction=True)
+@override_settings(NORMATIVE_ARCHIVE_ENABLED=True)
+def test_qa_identity_registration_queues_reconcile_after_commit(registry_reviewer, monkeypatch):
+    from src.apps.ingestion.normative_tasks import process_normative_work_item_task
+
+    document, identity = _candidate(key="qa-identity-reconcile")
+    dispatched = []
+    monkeypatch.setenv("JURIX_QA_ONLY", "1")
+    monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "config.settings_normative_qa")
+    monkeypatch.setattr(
+        process_normative_work_item_task,
+        "apply_async",
+        lambda **kwargs: dispatched.append(kwargs),
+    )
+
+    result = _register(document, identity, registry_reviewer)
+
+    item = NormativeWorkItem.objects.get(pk=result["reconciliation_work_item_id"])
+    assert item.stage == NormativeWorkItem.Stage.RECONCILE
+    assert item.status == NormativeWorkItem.Status.PENDING
+    assert item.payload["reconciliation_only"] is True
+    assert item.payload["target_identity"]["identity_key"] == identity.identity_key
+    assert dispatched == [{"args": [item.pk], "queue": "normative_qa"}]
+    norma = Norma.objects.get(pk=result["norma_id"])
+    assert norma.texto_original == norma.texto_consolidado == ""
+
+
+@pytest.mark.django_db(transaction=True)
 def test_identity_registration_is_idempotent_for_same_document(registry_reviewer):
     document, identity = _candidate()
     fingerprint = promotion_fingerprint(document)
@@ -110,6 +173,22 @@ def test_identity_registration_is_idempotent_for_same_document(registry_reviewer
     assert second["idempotent"] is True
     assert Norma.objects.count() == 1
     assert RevisaoJuridica.objects.filter(documento=document).count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_idempotent_retry_rejects_stale_fingerprint_after_document_change(registry_reviewer):
+    document, identity = _candidate()
+    fingerprint = promotion_fingerprint(document)
+    first = _register(document, identity, registry_reviewer, fingerprint=fingerprint)
+    document.role = DocumentoNormativo.Role.ANNEX
+    document.save(update_fields=["role", "updated_at"])
+
+    with pytest.raises(PromotionBlocked, match="Fingerprint desatualizado"):
+        _register(document, identity, registry_reviewer, fingerprint=fingerprint)
+
+    assert Norma.objects.count() == 1
+    assert RevisaoJuridica.objects.filter(documento=document).count() == 1
+    assert first["idempotent"] is False
 
 
 @pytest.mark.django_db(transaction=True)
@@ -130,6 +209,100 @@ def test_legacy_norma_with_same_canonical_identity_is_reused(registry_reviewer):
     assert legacy.identity_key == identity.identity_key
     assert legacy.status == Norma.Status.PENDING
     assert legacy.sapl_id is None
+
+
+@pytest.mark.django_db(transaction=True)
+def test_reviewed_sapl_identity_reconciles_empty_legacy_row_without_promoting_text(
+    registry_reviewer,
+):
+    document, identity = _sapl_candidate()
+    legacy = Norma.objects.create(
+        sapl_id=9406,
+        tipo="Lei",
+        numero="8219",
+        ano=2026,
+        data_publicacao="2026-10-14",
+        pdf_url=(
+            "http://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2026/9406/"
+            "lei_no_8.219_2026.pdf"
+        ),
+        identity_key="legacy-sapl-9406",
+        identity_json={"type": "lei", "jurisdiction": "BR-RN-NATAL"},
+        sapl_metadata={"materia": 52586},
+        status=Norma.Status.PENDING,
+        needs_review=True,
+    )
+
+    result = _register(document, identity, registry_reviewer)
+
+    legacy.refresh_from_db()
+    document.refresh_from_db()
+    assert result["norma_id"] == legacy.pk
+    assert result["legacy_sapl_identity_reconciled"] is True
+    assert legacy.identity_key == identity.identity_key
+    assert legacy.identity_json == identity.identity_json
+    assert legacy.tipo == "Lei Ordinária"
+    assert legacy.pdf_url == document.official_url
+    assert legacy.sapl_metadata == {"materia": 52586}
+    assert legacy.status == Norma.Status.PENDING
+    assert legacy.texto_original == legacy.texto_consolidado == ""
+    assert legacy.documento_base_id is None
+    assert document.norma_id == legacy.pk
+    assert document.review_status == DocumentoNormativo.ReviewStatus.PENDING
+    assert document.accepted_extraction_id is None
+    review = RevisaoJuridica.objects.get(documento=document)
+    assert "chave anterior=legacy-sapl-9406" in review.reason
+    assert "chave confirmada=" + identity.identity_key in review.reason
+
+
+@pytest.mark.django_db(transaction=True)
+def test_sapl_legacy_identity_reconciliation_refuses_number_conflict(registry_reviewer):
+    document, identity = _sapl_candidate(key="sapl-number-conflict")
+    legacy = Norma.objects.create(
+        sapl_id=9406,
+        tipo="Lei",
+        numero="8218",
+        ano=2026,
+        data_publicacao="2026-10-14",
+        pdf_url=document.official_url.replace("https://", "http://"),
+        identity_key="legacy-sapl-conflict",
+        identity_json={"type": "lei", "jurisdiction": "BR-RN-NATAL"},
+        status=Norma.Status.PENDING,
+    )
+    before = (legacy.tipo, legacy.numero, legacy.identity_key, legacy.identity_json, legacy.pdf_url)
+
+    with pytest.raises(PromotionBlocked, match="Número ou ano"):
+        _register(document, identity, registry_reviewer)
+
+    legacy.refresh_from_db()
+    document.refresh_from_db()
+    assert (legacy.tipo, legacy.numero, legacy.identity_key, legacy.identity_json, legacy.pdf_url) == before
+    assert document.norma_id is None
+    assert RevisaoJuridica.objects.filter(documento=document).count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+def test_synthetic_norma_identity_collision_blocks_reviewed_registration(registry_reviewer):
+    document, identity = _candidate(key="synthetic-identity-collision")
+    synthetic_identity = {**identity.identity_json, "synthetic_fixture": True}
+    synthetic_norma = Norma.objects.create(
+        tipo="Lei Complementar",
+        numero="120",
+        ano=2010,
+        identity_key=identity.identity_key,
+        identity_json=synthetic_identity,
+    )
+
+    with pytest.raises(PromotionBlocked, match="Norma sintética"):
+        _register(document, identity, registry_reviewer)
+
+    document.refresh_from_db()
+    synthetic_norma.refresh_from_db()
+    assert document.norma_id is None
+    assert document.condition_of_use == DocumentoNormativo.ConditionOfUse.UNKNOWN
+    assert synthetic_norma.identity_json == synthetic_identity
+    assert synthetic_norma.documento_base_id is None
+    assert RevisaoJuridica.objects.filter(documento=document).count() == 0
 
 
 @pytest.mark.django_db(transaction=True)

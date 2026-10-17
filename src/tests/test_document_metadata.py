@@ -87,6 +87,12 @@ def test_filename_role_and_unrecognized_segments_are_preserved():
     assert parsed.unparsed_segments == ("anexo", "retificacao", "extra")
 
 
+def test_filename_role_requires_delimited_marker_but_accepts_annex_number_suffix():
+    assert parse_filename_metadata("Lei_8206_2026_originalidade.pdf").role == "indeterminado"
+    assert parse_filename_metadata("LeiComplementar_20241227_82 ANEXO III.pdf").role == "anexo"
+    assert parse_filename_metadata("Lei_8206_2026_republicada.pdf").role == "republicacao"
+
+
 def test_identity_normalizes_numeric_zeroes_but_preserves_suffix_and_type_series():
     first = build_normative_identity(
         jurisdiction="BR-RN-NATAL",
@@ -217,6 +223,22 @@ def test_initial_epigraph_accepts_year_only_and_ignores_body_references():
     assert parsed.candidates[0].number == "8205"
     assert parsed.candidates[0].year == 2026
     assert parsed.candidates[0].act_date is None
+
+
+def test_initial_epigraph_rejoins_number_and_date_split_across_pdf_lines():
+    parsed = parse_initial_epigraphs(
+        [
+            "LEI COMPLEMENTAR Nº 21\n9 DE\n22 DE DEZEMBRO DE 2022\n\n"
+            "Altera e revoga artigos da Lei nº 3.882/1989."
+        ]
+    )
+
+    assert parsed.status == "candidate"
+    assert len(parsed.candidates) == 1
+    assert parsed.candidates[0].type_key == "lei_complementar"
+    assert parsed.candidates[0].number == "219"
+    assert parsed.candidates[0].year == 2022
+    assert parsed.candidates[0].act_date == "2022-12-22"
 
 
 def test_distinct_initial_epigraphs_mark_a_multi_norm_document():

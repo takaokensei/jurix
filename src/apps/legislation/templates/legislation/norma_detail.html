@@ -25,9 +25,10 @@
     {% endif %}
 
     <dl class="legal-detail-dates" aria-label="Publicação e vigência">
-        <div><dt>Publicação</dt><dd>{% if norma.data_publicacao %}<time datetime="{{ norma.data_publicacao|date:'c' }}">{{ norma.data_publicacao|date:'d/m/Y' }}</time>{% else %}<span>Não registrada</span>{% endif %}</dd></div>
-        <div><dt>Vigência</dt><dd>{% if norma.data_vigencia %}<time datetime="{{ norma.data_vigencia|date:'c' }}">{{ norma.data_vigencia|date:'d/m/Y' }}</time>{% else %}<span>Não determinada no corpus</span>{% endif %}</dd></div>
+        <div><dt>{% if temporal_metadata_reviewed %}Publicação{% else %}Data de publicação · cadastro não revisado{% endif %}</dt><dd>{% if norma.data_publicacao %}<time datetime="{{ norma.data_publicacao|date:'c' }}">{{ norma.data_publicacao|date:'d/m/Y' }}</time>{% else %}<span>Não registrada</span>{% endif %}</dd></div>
+        <div><dt>{% if temporal_metadata_reviewed %}Vigência{% else %}Data de vigência · cadastro não revisado{% endif %}</dt><dd>{% if norma.data_vigencia %}<time datetime="{{ norma.data_vigencia|date:'c' }}">{{ norma.data_vigencia|date:'d/m/Y' }}</time>{% else %}<span>Não determinada no corpus</span>{% endif %}</dd></div>
     </dl>
+    {% if not temporal_metadata_reviewed %}<p class="temporal-disclaimer">As datas acima são metadados não revisados; não confirmam publicação nem vigência.</p>{% endif %}
     
     {% if norma.ementa %}
     {% if norma.ementa|length > 220 %}
@@ -139,11 +140,11 @@
     <h2>Informações Temporais</h2>
     <dl class="legal-temporal-facts">
         <div>
-            <dt>Data de publicação</dt>
+            <dt>{% if temporal_metadata_reviewed %}Data de publicação{% else %}Data de publicação cadastrada · não revisada{% endif %}</dt>
             <dd>{{ norma.data_publicacao|date:"d/m/Y"|default:"-" }}</dd>
         </div>
         <div>
-            <dt>Data de vigência</dt>
+            <dt>{% if temporal_metadata_reviewed %}Data de vigência{% else %}Data de vigência cadastrada · não revisada{% endif %}</dt>
             <dd>{{ norma.data_vigencia|date:"d/m/Y"|default:"Não informada" }}</dd>
         </div>
         <div>
@@ -153,7 +154,7 @@
                 <span class="badge badge-warning">Revogada</span>
                 {% elif temporal_status == "parcialmente_revogada" %}
                 <span class="badge badge-warning">Parcialmente revogada</span>
-                {% elif norma.is_em_vacatio_legis %}
+                {% elif temporal_metadata_reviewed and norma.is_em_vacatio_legis %}
                 <span class="badge badge-warning">Vacatio Legis</span>
                 {% elif temporal_status == "data_indeterminada" and not norma.data_publicacao and not norma.data_vigencia %}
                 <span class="badge badge-neutral">Data não determinada</span>
@@ -188,7 +189,7 @@
         <li class="norma-timeline-item">
             <div>
                 {% if item.date %}<time datetime="{{ item.date }}">{{ item.date_display|default:item.date }}</time>{% else %}<span>Data não informada</span>{% endif %}
-                <div class="timeline-kind">{% if item.kind == 'publication' %}Publicação{% elif item.kind == 'effective' %}Início de vigência registrado{% elif item.kind == 'event' %}{% if item.timeline_role == 'source' and item.effective_date_status == 'not_applicable' %}Referência desta norma a outra{% elif item.timeline_role == 'source' %}Efeito desta norma sobre outra{% elif item.validated %}Relação e efeito revisados{% elif item.effective_date_status == 'not_applicable' and item.relation_status == 'confirmed' %}Referência revisada · sem efeito de alteração{% elif item.relation_status == 'confirmed' %}Vínculo revisado · efeito não confirmado{% else %}Candidato extraído · não confirmado{% endif %}{% else %}Evento normativo{% endif %}</div>
+                <div class="timeline-kind">{% if item.kind == 'publication' %}Publicação{% elif item.kind == 'effective' %}Início de vigência registrado{% elif item.kind == 'registry_candidate' %}Data cadastral não revisada{% elif item.kind == 'event' %}{% if item.timeline_role == 'source' and item.effective_date_status == 'not_applicable' %}Referência desta norma a outra{% elif item.timeline_role == 'source' %}Efeito desta norma sobre outra{% elif item.validated %}Relação e efeito revisados{% elif item.effective_date_status == 'not_applicable' and item.relation_status == 'confirmed' %}Referência revisada · sem efeito de alteração{% elif item.relation_status == 'confirmed' %}Vínculo revisado · efeito não confirmado{% else %}Candidato extraído · não confirmado{% endif %}{% else %}Evento normativo{% endif %}</div>
             </div>
             <div>
                 <strong>{{ item.title }}</strong>
@@ -202,6 +203,7 @@
                     {% elif item.pending %}<small class="temporal-disclaimer">Candidato automático. Não use como prova de alteração vigente sem revisão jurídica.</small>{% endif %}
                     {% if item.extraction_signal %}<small class="timeline-source">Sinal do extrator: {{ item.extraction_signal|floatformat:2 }} (não representa confiança jurídica).</small>{% endif %}
                 {% endif %}
+                {% if item.kind == 'registry_candidate' %}<small class="temporal-disclaimer">Metadado não revisado; não é confirmação de publicação ou vigência.</small>{% endif %}
                 {% if item.publication_date %}<small class="timeline-source-date">Publicação da fonte: <time datetime="{{ item.publication_date }}">{{ item.publication_date_display|default:item.publication_date }}</time></small>{% endif %}
                 {% if item.source_norma %}<small class="timeline-source">Fonte: {{ item.source_norma }}</small>{% endif %}
             </div>

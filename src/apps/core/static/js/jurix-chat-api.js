@@ -100,6 +100,14 @@
         });
     }
 
+    function resolveArchiveCitationPages(sources, signal) {
+        return requestJson('/api/v1/archive-citations/resolve-pages/', {
+            method: 'POST',
+            body: JSON.stringify({ sources: Array.isArray(sources) ? sources.slice(0, 20) : [] }),
+            signal,
+        });
+    }
+
     function regenerateSession(sessionId) {
         if (!sessionId) return Promise.reject(new Error('sessionId is required'));
         return requestJson(
@@ -382,6 +390,7 @@
         getSessionBySlug,
         deleteSession,
         updateSession,
+        resolveArchiveCitationPages,
         regenerateSession,
         streamAnswer,
         cancelStream,

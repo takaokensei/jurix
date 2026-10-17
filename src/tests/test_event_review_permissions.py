@@ -120,6 +120,63 @@ def test_natal_canonical_identity_is_available_and_valid_for_human_review(review
 
 
 @pytest.mark.django_db(transaction=True)
+def test_article_only_display_target_can_be_reviewed_from_structured_citation(review_case):
+    event, target = review_case
+    target_device = Dispositivo.objects.create(
+        norma=target,
+        tipo="artigo",
+        numero="14",
+        ordem=14,
+        texto="Art. 14. Redação-alvo de exemplo.",
+    )
+    event.target_text = "Art. 14"
+    event.referencia_tipo = "artigo"
+    event.referencia_numero = "14"
+    event.evidence_json = {
+        "status": "mapped",
+        "quote": "Altera o Art. 14 da Lei nº 8.206/2020.",
+        "target_quote": "Art. 14 da Lei nº 8.206/2020",
+    }
+    event.target_reference_json = {
+        "kind": "normative_reference",
+        "type_candidate": "Lei",
+        "number_candidate": "8.206",
+        "year_candidate": 2020,
+        "structural_type": "artigo",
+        "structural_number": "14",
+        "resolution_status": "candidate",
+    }
+    event.save(
+        update_fields=[
+            "target_text",
+            "referencia_tipo",
+            "referencia_numero",
+            "evidence_json",
+            "target_reference_json",
+            "updated_at",
+        ]
+    )
+
+    assert candidate_normas_for_review(event) == [target]
+    form = EventReviewForm(data={"target_norma_id": str(target.pk)}, event=event)
+    assert str(target_device.pk) in {
+        str(choice[0]) for choice in form.fields["target_dispositivo_id"].choices
+    }
+
+    review = _review(
+        event,
+        _reviewer(username="article-target-reviewer"),
+        target,
+        target_dispositivo_id=target_device.pk,
+    )
+
+    event.refresh_from_db()
+    assert review.decision == RevisaoJuridica.Decision.APPROVE
+    assert event.dispositivo_alvo_id == target_device.pk
+    assert event.validado is True
+
+
+@pytest.mark.django_db(transaction=True)
 def test_duplicate_approval_is_idempotent_and_does_not_confirm_effect_date(review_case):
     event, target = review_case
     actor = _reviewer()

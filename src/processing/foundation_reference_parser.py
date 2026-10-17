@@ -20,7 +20,16 @@ _NORM_RE = re.compile(
     r"(?:\s*(?:/|de)\s*(?P<year>(?:19|20)\d{2}))?",
     re.IGNORECASE,
 )
-_ARTICLE_RE = re.compile(r"\bart(?:igo)?\.?\s*(?P<number>\d+)\s*[ºª°o]?", re.IGNORECASE)
+_ARTICLE_RE = re.compile(
+    r"\bart(?:igo)?s?\.?\s*(?P<number>\d+)\s*[ºª°o]?"
+    r"(?:\s*-\s*(?P<suffix>[A-Z]))?",
+    re.IGNORECASE,
+)
+_ARTICLE_LIST_ITEM_RE = re.compile(
+    r"\s*(?:,|e)\s*(?P<number>\d+)\s*[ºª°o]?"
+    r"(?:\s*-\s*(?P<suffix>[A-Z]))?",
+    re.IGNORECASE,
+)
 _PARAGRAPH_RE = re.compile(r"§\s*(?P<number>único|\d+\s*[ºª°o]?)", re.IGNORECASE)
 _ITEM_RE = re.compile(r"\binciso\s+(?P<number>[IVXLCDM]+)\b", re.IGNORECASE)
 _ALINEA_RE = re.compile(r"\balínea\s+(?P<number>[a-z])\b", re.IGNORECASE)
@@ -60,24 +69,43 @@ def _stable_id(start: int, end: int, identity: tuple | None, device: tuple | Non
 def _hierarchies(text: str) -> list[dict]:
     found = []
     for article in _ARTICLE_RE.finditer(text):
-        tail = text[article.end() : article.end() + 80]
-        hierarchy = _HIERARCHY_TAIL_RE.match(tail)
-        suffix = hierarchy.group(0) if hierarchy else ""
-        paragraph = _PARAGRAPH_RE.search(suffix)
-        item = _ITEM_RE.search(suffix)
-        alinea = _ALINEA_RE.search(suffix)
-        end = article.end() + (hierarchy.end() if hierarchy else 0)
-        found.append(
-            {
-                "start": article.start(),
-                "end": end,
-                "article": normalize_number(article.group("number")),
-                "paragraph": paragraph.group("number").strip().lower() if paragraph else None,
-                "item": item.group("number").upper() if item else None,
-                "alinea": alinea.group("number").lower() if alinea else None,
-            }
-        )
+        citation_group = article.start()
+        entries = [
+            (article.start(), article.end(), article.group("number"), article.group("suffix"))
+        ]
+        cursor = article.end()
+        while listed := _ARTICLE_LIST_ITEM_RE.match(text, cursor):
+            entries.append(
+                (listed.start("number"), listed.end(), listed.group("number"), listed.group("suffix"))
+            )
+            cursor = listed.end()
+
+        for start, article_end, number, letter_suffix in entries:
+            tail = text[article_end : article_end + 80]
+            hierarchy = _HIERARCHY_TAIL_RE.match(tail)
+            suffix = hierarchy.group(0) if hierarchy else ""
+            paragraph = _PARAGRAPH_RE.search(suffix)
+            item = _ITEM_RE.search(suffix)
+            alinea = _ALINEA_RE.search(suffix)
+            end = article_end + (hierarchy.end() if hierarchy else 0)
+            found.append(
+                {
+                    "start": start,
+                    "end": end,
+                    "citation_group": citation_group,
+                    "article": _normalize_article_number(number, letter_suffix),
+                    "paragraph": paragraph.group("number").strip().lower() if paragraph else None,
+                    "item": item.group("number").upper() if item else None,
+                    "alinea": alinea.group("number").lower() if alinea else None,
+                }
+            )
     return found
+
+
+def _normalize_article_number(number: str, suffix: str | None = None) -> str:
+    """Keep lettered article identity (e.g. 2º-A) distinct from article 2."""
+    digits = normalize_number(number)
+    return f"{digits}-{suffix.upper()}" if suffix else digits
 
 
 def parse_foundation_references(text: str) -> list[FoundationReference]:
@@ -132,7 +160,8 @@ def parse_foundation_references(text: str) -> list[FoundationReference]:
                     else:
                         continue
                     if len(gap) <= 50 and re.fullmatch(
-                        r"[\s,():\-]*(?:da|do|de|na|no)?[\s,():\-]*",
+                        r"[\s,():\-]*(?:(?:arts?|artigos?)\.?[\s,():\-]*)?"
+                        r"(?:(?:da|do|de|na|no)[\s,():\-]*)?",
                         gap,
                         re.IGNORECASE,
                     ):
@@ -145,6 +174,28 @@ def parse_foundation_references(text: str) -> list[FoundationReference]:
                     )
         else:
             norm_assignments = [(-1, True, "artigo sem norma antecedente explícita") for _ in devices]
+
+        # A coordinated citation such as “LC 258/2024, Arts. 260 e 262” has
+        # one explicit norm attached to the whole article list. The second
+        # list item does not repeat “Arts.”, so its local text gap alone cannot
+        # identify that same norm. Propagate only from a uniquely resolved
+        # sibling in that syntactic list; never join separate article mentions.
+        grouped_devices: dict[int, list[int]] = {}
+        for device_index, device in enumerate(devices):
+            grouped_devices.setdefault(device["citation_group"], []).append(device_index)
+        for device_indices in grouped_devices.values():
+            resolved_norms = {
+                norm_assignments[index][0]
+                for index in device_indices
+                if norm_assignments[index][0] >= 0 and not norm_assignments[index][1]
+            }
+            if len(resolved_norms) != 1:
+                continue
+            norm_index = next(iter(resolved_norms))
+            for index in device_indices:
+                assigned_norm, ambiguous, _reason = norm_assignments[index]
+                if ambiguous and (assigned_norm < 0 or assigned_norm == norm_index):
+                    norm_assignments[index] = (norm_index, False, None)
 
         attached: set[int] = set()
         for device_index, device in enumerate(devices):

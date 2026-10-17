@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from datetime import date, datetime
 
 from src.apps.legislation.document_models import NormativeSnapshot
@@ -12,6 +13,7 @@ from src.processing.corpus_identity import get_corpus_revision
 from src.processing.document_metadata import TYPE_SERIES
 from src.processing.foundation_reference_parser import (
     MAX_FOUNDATION_REFERENCES,
+    FoundationReference,
     parse_foundation_references,
 )
 from src.processing.normative_projection import project_norma_as_of
@@ -28,11 +30,11 @@ def _device_matches(projection, reference) -> list:
     devices = list(projection.devices)
     if not reference.article:
         return devices
-    article_number = normalize_number(reference.article)
+    article_number = _normalize_article_number(reference.article)
     articles = [
         item for item in devices
         if item.source.tipo.casefold() == "artigo"
-        and normalize_number(item.source.numero) == article_number
+        and _normalize_article_number(item.source.numero) == article_number
     ]
     if len(articles) != 1:
         return []
@@ -60,6 +62,15 @@ def _device_matches(projection, reference) -> list:
         selected = matches
         parent_key = matches[0].source.structural_key
     return selected
+
+
+def _normalize_article_number(raw_number: str) -> str:
+    """Normalize article markers without conflating 2º and 2º-A."""
+    match = re.fullmatch(r"\s*(\d+)\s*[ºª°o]?\s*(?:-\s*([A-Za-z]))?\s*", raw_number)
+    if not match:
+        return normalize_number(raw_number)
+    digits, suffix = match.groups()
+    return f"{normalize_number(digits)}-{suffix.upper()}" if suffix else normalize_number(digits)
 
 
 def _projection_evidence(norma, projection, devices, as_of: date) -> list[dict]:
@@ -153,8 +164,9 @@ def _reviewed_scope_for(norma, coverage: dict, from_date: date, to_date: date) -
 
 
 def check_foundation(
-    text: str,
+    text: str | None = None,
     *,
+    references: list[FoundationReference] | None = None,
     from_date: date,
     to_date: date,
     should_cancel=None,
@@ -162,9 +174,11 @@ def check_foundation(
 ) -> dict:
     """Compare parsed citations against two explicit, read-only projections.
 
-    The submitted text is parsed in memory only. This function never invokes an
-    LLM, persists the input, or writes snapshots. Incomplete projections remain
-    inconclusive; they are never treated as evidence of no change.
+    The submitted text is parsed in memory only. Background callers may provide
+    the already-parsed references so the original pasted text never enters the
+    task queue. This function never invokes an LLM, persists the input, or writes
+    snapshots. Incomplete projections remain inconclusive; they are never
+    treated as evidence of no change.
     """
     if (
         not isinstance(from_date, date)
@@ -175,7 +189,12 @@ def check_foundation(
         raise TypeError("from_date e to_date devem ser datetime.date")
     if from_date >= to_date:
         raise ValueError("from_date deve ser anterior a to_date")
-    references = parse_foundation_references(text)
+    if references is None:
+        references = parse_foundation_references(text or "")
+    else:
+        references = list(references)
+        if not all(isinstance(reference, FoundationReference) for reference in references):
+            raise TypeError("references devem ser objetos FoundationReference")
     if len(references) > MAX_FOUNDATION_REFERENCES:
         raise ValueError("limite de referências excedido")
 

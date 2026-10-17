@@ -31,7 +31,9 @@
       const toCenterY = toRect.top + toRect.height / 2;
       const fanBranch = Boolean(from.dataset.graphRelation && to.dataset.graphTarget
         && toCenterX >= fromRect.left && toCenterX <= fromRect.right);
-      const horizontal = !fanBranch && Math.abs(toCenterX - fromCenterX) > Math.abs(toCenterY - fromCenterY);
+      const verticalOverlap = fromRect.top < toRect.bottom && fromRect.bottom > toRect.top;
+      const horizontal = !fanBranch && verticalOverlap
+        && Math.abs(toCenterX - fromCenterX) > Math.abs(toCenterY - fromCenterY);
       const direction = horizontal ? Math.sign(toCenterX - fromCenterX) || 1 : Math.sign(toCenterY - fromCenterY) || 1;
       const fanOffset = fanCount > 1 ? (index + 1) / (fanCount + 1) : 0.5;
       const startX = (horizontal
@@ -63,7 +65,7 @@
 
     relations.forEach((relation, index) => {
       const kind = relation.dataset.graphRelation;
-      drawConnection(source, relation, `${kind}-source`, index);
+      drawConnection(source, relation, `${kind}-source`, index, relations.length);
       const relatedTargets = targets.filter((target) => target.dataset.graphRelationTarget === kind);
       relatedTargets.forEach((target, targetIndex) =>
         drawConnection(relation, target, kind, targetIndex, relatedTargets.length));

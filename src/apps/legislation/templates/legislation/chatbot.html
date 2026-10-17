@@ -16,10 +16,10 @@
     <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20261009-auth-card-box-sizing1">
     <link rel="stylesheet" href="{% static 'css/jurix-rag.css' %}?v=20261009-side-sheet-follow-up5">
     <link rel="stylesheet" href="{% static 'css/jurix-markdown.css' %}">
-    <link rel="stylesheet" href="{% static 'css/jurix-chat.css' %}?v=20261009-session-feedback-sidebar1">
+    <link rel="stylesheet" href="{% static 'css/jurix-chat.css' %}?v=20261015-composer-desktop-grid2">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-renderer.css' %}?v=20261007-answer-pending1">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-controller.css' %}?v=20261002-grounded-stream1">
-    <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}?v=20260930-focus-outline1">
+    <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}?v=20261015-compact-corpus-notice1">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-sessions.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-shell.css' %}?v=20260929-sidebar-utilities1">
 <meta name="jurix-authenticated" content="{{ request.user.is_authenticated|yesno:'true,false' }}">
@@ -56,12 +56,18 @@
             </div>
             {% endif %}
             {% if qa_archive_mode %}
-            <div class="anonymous-banner jurix-anonymous-banner" role="status">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M12 3 2.8 19h18.4L12 3Z"></path><path d="M12 9v4m0 3h.01"></path>
-                </svg>
-                <span><strong>Acervo histórico local:</strong> respostas usam extrações dos PDFs arquivados. Metadados e segmentação estão sob revisão; abra o PDF citado para conferir o texto original. {% if qa_archive_source_update_notice %}<strong>{{ qa_archive_source_update_notice }}</strong>{% endif %}</span>
-            </div>
+            <details class="anonymous-banner jurix-anonymous-banner jurix-corpus-notice">
+                <summary class="jurix-corpus-notice__summary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 3 2.8 19h18.4L12 3Z"></path><path d="M12 9v4m0 3h.01"></path>
+                    </svg>
+                    <span><strong>Acervo histórico local — extrações pendentes de revisão.</strong> Confira o PDF citado antes de usar a resposta.{% if qa_archive_source_update_notice %} <strong class="jurix-corpus-notice__freshness">Atualização do acervo não confirmada.</strong>{% endif %}</span>
+                </summary>
+                <div class="jurix-corpus-notice__details">
+                    <p>As respostas usam texto extraído dos PDFs arquivados. Metadados e segmentação estão sob revisão; a extração não é uma versão consolidada nem valida vigência. Compare o trecho com o documento original.</p>
+                    {% if qa_archive_source_update_notice %}<p class="jurix-corpus-notice__source-warning">{{ qa_archive_source_update_notice }} Este aviso descreve a sincronização geral do SAPL e do Diário Oficial neste ambiente: não confirma a publicação de cada documento citado nem garante que o acervo contenha todas as edições posteriores.</p>{% endif %}
+                </div>
+            </details>
             {% elif assistant_source_update_notice %}
             <div class="anonymous-banner jurix-anonymous-banner" role="status">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -319,7 +325,7 @@
     <!-- Jurix Configuration: read from data-* attributes on <body> by config.js (CSP: no inline script) -->
     <script src="{% static 'js/config.js' %}"></script>
     <script src="{% static 'js/jurix-markdown.js' %}?v=20261007-compact-citations-no-hyphen-bullets1"></script>
-        <script src="{% static 'js/jurix-rag.js' %}?v=20261012-sources-drawer-cache1"></script>
+        <script src="{% static 'js/jurix-rag.js' %}?v=20261016-reference-destination-label3"></script>
         <script src="{% static 'js/jurix-anonymous-history.js' %}?v=20261009-sapl-consultation-time1"></script>
     <script src="{% static 'js/jurix-chat-api.js' %}?v=20261007-session-id-contract3"></script>
     <script src="{% static 'js/jurix-api-reliability-overlay.js' %}?v=20261009-coverage-persistence1"></script>
@@ -327,7 +333,7 @@
     <script src="{% static 'js/jurix-chat-state.js' %}"></script>
         <script src="{% static 'js/jurix-chat-renderer.js' %}?v=20261012-evidence-event-metadata1"></script>
     <script src="{% static 'js/jurix-dynamic-suggestions.js' %}?v=20261005-archive-qa-suggestions1"></script>
-        <script src="{% static 'js/chat.js' %}?v=20261013-no-source-answer-scroll1"></script>
+        <script src="{% static 'js/chat.js' %}?v=20261016-dom-unreviewed-restore2"></script>
     <script src="{% static 'js/jurix-chat-controller.js' %}?v=20261005-finalizing-cancel1"></script>
     <script src="{% static 'js/command_palette.js' %}?v=20260930-query-race1-sidebar2"></script>
     <script src="{% static 'js/jurix-sidebar.js' %}?v=20261009-session-feedback-sidebar1"></script>

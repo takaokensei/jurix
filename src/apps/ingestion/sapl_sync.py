@@ -459,8 +459,14 @@ def run_incremental_sync(
     limit: int = 100,
     tipo: str | None = None,
     ano: int | None = None,
+    fingerprint_pdfs: bool = True,
 ) -> dict[str, Any]:
-    """Resume from the persisted cursor and overlap unchanged pages before stopping."""
+    """Resume from the persisted cursor and overlap unchanged pages before stopping.
+
+    Set ``fingerprint_pdfs=False`` only for explicitly metadata-only syncs. This
+    skips all PDF HEAD/GET fingerprint requests, so PDF-only changes are not
+    detected by that run. The default keeps the regular sync behavior intact.
+    """
     limit = max(1, min(int(limit), 50))
     max_pages = max(1, int(getattr(settings, "SAPL_INCREMENTAL_MAX_PAGES", 20)))
     overlap_pages = max(
@@ -572,7 +578,9 @@ def run_incremental_sync(
                 if remote_dt and (newest_remote is None or remote_dt > newest_remote):
                     newest_remote = remote_dt
                 digest = payload_hash(payload)
-                pdf_fingerprint = _remote_pdf_fingerprint(client, payload)
+                pdf_fingerprint = (
+                    _remote_pdf_fingerprint(client, payload) if fingerprint_pdfs else None
+                )
                 if (
                     _old_hash(int(sapl_id)) == digest
                     and not _type_catalog_refresh_required(int(sapl_id), payload)

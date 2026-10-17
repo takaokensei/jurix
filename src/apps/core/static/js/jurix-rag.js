@@ -218,11 +218,24 @@
         }
     }
 
+    function safeOfficialGeneralLegislationUrl(source = {}) {
+        const candidate = source.source_url || source.official_url;
+        if (source.source_kind !== 'official_general_legislation' || !candidate) return null;
+        try {
+            const url = new URL(String(candidate));
+            if (url.protocol !== 'https:' || url.hostname !== 'www.planalto.gov.br' || url.username || url.password) return null;
+            return url.href;
+        } catch (_) {
+            return null;
+        }
+    }
+
     function buildSourceUrl(source = {}) {
         const isLocalArchive = source.evidence_scope === 'isolated_qa_archive';
         const localPdfUrl = isLocalArchive ? safeHttpUrl(source.local_pdf_url) : null;
         const pdfUrl = isLocalArchive ? localPdfUrl : safeHttpUrl(source.pdf_url);
-        const url = pdfUrl || (isLocalArchive ? null : safeHttpUrl(source.sapl_url));
+        const officialGeneralUrl = safeOfficialGeneralLegislationUrl(source);
+        const url = pdfUrl || officialGeneralUrl || (isLocalArchive ? null : safeHttpUrl(source.sapl_url));
         if (!url) return null;
 
         const isPdf = Boolean(pdfUrl) || new URL(url).pathname.toLowerCase().endsWith('.pdf');
@@ -316,12 +329,15 @@
         const explicitReference = safeSource.match_kind === 'explicit_reference';
         const isLegislativeMatter = safeSource.source_kind === 'sapl_legislative_matter';
         const isProposalDocument = safeSource.source_kind === 'sapl_matter_original_pdf';
+        const isCatalogMetadata = safeSource.source_kind === 'sapl_normative_catalog'
+            || safeSource.evidence_scope === 'official_normative_catalog_metadata';
+        const isOfficialGazetteExtraction = safeSource.source_kind === 'official_gazette_extraction';
         // Restored conversations keep graph_relation but may not keep match_kind.
         const graphRelation = safeSource.match_kind === 'normative_graph_relation'
             || Boolean(safeSource.graph_relation && typeof safeSource.graph_relation === 'object');
         const isLocalArchive = safeSource.evidence_scope === 'isolated_qa_archive';
         const { normalized, percent } = getSourceScore(safeSource);
-        const band = isLegislativeMatter || isProposalDocument ? 'matter' : scopeBased ? 'coverage' : explicitReference ? 'explicit' : graphRelation ? 'relation' : isLocalArchive ? 'archive' : normalized >= 0.8 ? 'high' : normalized >= 0.6 ? 'medium' : 'low';
+        const band = isCatalogMetadata ? 'catalog' : isLegislativeMatter || isProposalDocument ? 'matter' : isOfficialGazetteExtraction ? 'gazette' : scopeBased ? 'coverage' : explicitReference ? 'explicit' : graphRelation ? 'relation' : isLocalArchive ? 'archive' : normalized >= 0.8 ? 'high' : normalized >= 0.6 ? 'medium' : 'low';
         const relevanceLabel = getRelevanceLabel(normalized);
         const contributionLabel = getContributionLabel(safeSource, normalized);
 
@@ -348,22 +364,31 @@
                 .join('<span aria-hidden="true"> … </span>')
             : `${escapeHtml(snippet.substring(0, 280))}${snippet.length > 280 ? '…' : ''}`;
         const linkUrl = buildSourceUrl(safeSource);
-        const cardLabel = `Fonte jurídica ${index + 1}: ${normaRef}`;
+        const cardLabel = isCatalogMetadata
+            ? `Registro de catálogo SAPL: ${normaRef}; não contém texto legal`
+            : `Fonte jurídica ${index + 1}: ${normaRef}`;
 
         const meta = [
             dispositivoRef ? `<span class="jurix-rag-source__meta-item">${escapeHtml(dispositivoRef)}</span>` : '',
             sourceType ? `<span class="jurix-rag-source__meta-item">${escapeHtml(sourceType)}</span>` : '',
             status ? `<span class="jurix-rag-source__meta-item jurix-rag-source__meta-item--status">${escapeHtml(status)}</span>` : '',
             consultedAtLabel ? `<span class="jurix-rag-source__meta-item">Consulta SAPL: ${escapeHtml(consultedAtLabel)} (hora local)</span>` : '',
+            safeSource.edition_label ? `<span class="jurix-rag-source__meta-item">${escapeHtml(safeSource.edition_label)}</span>` : '',
             temporalVersion?.as_of ? `<span class="jurix-rag-source__meta-item">Redação histórica projetada em ${escapeHtml(temporalVersion.as_of)}</span>` : '',
         ].join('');
 
         const openLabel = isProposalDocument
             ? 'Abrir PDF oficial da proposta'
+            : isCatalogMetadata
+            ? 'Abrir registro oficial no SAPL'
             : isLegislativeMatter
             ? 'Abrir matéria no SAPL'
             : isLocalArchive
             ? 'Abrir PDF do acervo'
+            : isOfficialGazetteExtraction
+            ? 'Abrir edição do Diário Oficial'
+            : safeSource.source_kind === 'official_general_legislation' && linkUrl?.includes('www.planalto.gov.br')
+            ? 'Abrir no Planalto'
             : linkUrl?.includes('sapl') ? 'Abrir no SAPL' : 'Abrir fonte oficial';
         const additionalSaplAction = isLocalArchive && safeHttpUrl(safeSource.sapl_url)
             ? `<a class="jurix-rag-source__open jurix-rag-source__open--secondary" href="${escapeHtml(safeHttpUrl(safeSource.sapl_url))}" target="_blank" rel="noopener noreferrer" title="Abrir o registro correspondente no SAPL">Ver registro SAPL <span aria-hidden="true">↗</span></a>`
@@ -383,7 +408,10 @@
             ` + additionalSaplAction
             : '';
         const citationLabel = safeSource.citation_label || `${normaRef}${dispositivoRef ? `, ${dispositivoRef}` : ''}`;
-        const escapedCitationLabel = citationLabel
+        const citationSourceLabel = safeSource.edition_label
+            ? `${citationLabel} — ${safeSource.edition_label}`
+            : citationLabel;
+        const escapedCitationLabel = citationSourceLabel
             .replace(/\\/g, '\\\\')
             .replace(/\[/g, '\\[')
             .replace(/\]/g, '\\]');
@@ -404,6 +432,10 @@
                     ${options.showNormTitle === false ? '' : `<div class="source-title">${escapeHtml(normaRef)}</div>`}
                     ${isProposalDocument
                         ? `<div class="source-score" aria-label="Documento oficial de uma proposta legislativa; não representa norma vigente"><span class="jurix-rag-score-text">Texto oficial da proposta — não é norma vigente</span></div>`
+                        : isCatalogMetadata
+                        ? `<div class="source-score" aria-label="Registro de catálogo SAPL; metadados identificam o ato, mas não comprovam seu texto, vigência ou alterações"><span class="jurix-rag-score-text">Cadastro SAPL — texto legal não integrado</span></div>`
+                        : isOfficialGazetteExtraction
+                        ? `<div class="source-score" aria-label="Texto localizado na edição oficial do Diário Oficial por extração automatizada ainda não revisada"><span class="jurix-rag-score-text">Diário Oficial — extração não revisada</span></div>`
                         : isLegislativeMatter
                         ? `<div class="source-score" aria-label="Registro oficial de matéria legislativa; não representa norma vigente"><span class="jurix-rag-score-text">Registro de matéria legislativa</span></div>`
                         : scopeBased
@@ -452,7 +484,7 @@
                     ${openAction}
                 </div>
 
-                ${isLegislativeMatter || isProposalDocument || scopeBased || explicitReference || graphRelation || isLocalArchive ? '' : `<span class="jurix-rag-sr-only">${escapeHtml(relevanceLabel)}. Pontuação técnica de recuperação: ${percent}%.</span>`}
+                ${isCatalogMetadata || isLegislativeMatter || isProposalDocument || isOfficialGazetteExtraction || scopeBased || explicitReference || graphRelation || isLocalArchive ? '' : `<span class="jurix-rag-sr-only">${escapeHtml(relevanceLabel)}. Pontuação técnica de recuperação: ${percent}%.</span>`}
             </article>
         `;
     }
@@ -492,6 +524,7 @@
             return identity && href ? {
                 identity, article, inciso, href, label: norm + ', ' + device, device,
                 localArchive: source?.evidence_scope === 'isolated_qa_archive',
+                officialGeneralLegislation: source?.source_kind === 'official_general_legislation',
             } : null;
         }).filter(Boolean);
         if (!references.length) return;
@@ -560,6 +593,8 @@
                 anchor.rel = 'noopener noreferrer';
                 anchor.title = reference.localArchive
                     ? 'Abrir ' + targetLabel + ' no PDF do acervo local (nova aba)'
+                    : reference.officialGeneralLegislation
+                    ? 'Abrir ' + targetLabel + ' no Planalto (nova aba)'
                     : 'Abrir ' + targetLabel + ' no SAPL (nova aba)';
                 anchor.setAttribute('aria-label', anchor.title);
                 anchor.textContent = token;
@@ -716,6 +751,10 @@
         const safeSources = Array.isArray(sources) ? sources : [];
         const count = safeSources.length;
         const groups = groupEvidenceByNorm(safeSources);
+        const hasCatalogMetadata = safeSources.some((source) => source?.source_kind === 'sapl_normative_catalog'
+            || source?.evidence_scope === 'official_normative_catalog_metadata');
+        const bulkExpandLabel = hasCatalogMetadata ? 'Expandir todos os itens' : 'Expandir todas as evidências';
+        const bulkCollapseLabel = hasCatalogMetadata ? 'Recolher todos os itens' : 'Recolher todas as evidências';
         currentSourcesDrawerContext = { count, groups, metadata: { ...metadata } };
         const displayTitle = metadata.pending && title === 'Fontes Consultadas' ? 'Fontes em análise' : title;
         if (titleEl) titleEl.textContent = `${displayTitle} (${count})`;
@@ -726,7 +765,7 @@
         if (groups.length) {
             const controls = document.createElement('div');
             controls.className = 'jurix-source-group-controls';
-            controls.innerHTML = '<button type="button" class="jurix-source-group-toggle-all" aria-expanded="false">Expandir todas as evidências</button>';
+            controls.innerHTML = `<button type="button" class="jurix-source-group-toggle-all" aria-expanded="false">${bulkExpandLabel}</button>`;
             const toggleAll = controls.querySelector('button');
             const groupsContainer = document.createElement('div');
             groupsContainer.className = 'jurix-source-groups';
@@ -736,10 +775,10 @@
                 const allOpen = groups.length > 0 && openCount === groups.length;
                 toggleAll.setAttribute('aria-expanded', String(allOpen));
                 toggleAll.textContent = allOpen
-                    ? 'Recolher todas as evidências'
+                    ? bulkCollapseLabel
                     : openCount
                         ? `Expandir restantes (${openCount} de ${groups.length} abertas)`
-                        : 'Expandir todas as evidências';
+                        : bulkExpandLabel;
                 toggleAll.dataset.state = allOpen ? 'all-open' : openCount ? 'partially-open' : 'all-closed';
             };
             toggleAll.addEventListener('click', () => {
@@ -755,12 +794,22 @@
             groupSection.className = 'jurix-source-group';
             groupSection.open = false;
             groupSection.setAttribute('aria-labelledby', `jurix-source-group-title-${groupIndex}`);
-            const evidenceLabel = group.sources.length === 1 ? '1 evidência' : `${group.sources.length} evidências`;
+            const catalogCount = group.sources.filter(({ source }) => source?.source_kind === 'sapl_normative_catalog'
+                || source?.evidence_scope === 'official_normative_catalog_metadata').length;
+            const evidenceCount = group.sources.length - catalogCount;
+            const countLabels = [];
+            if (evidenceCount > 0) {
+                countLabels.push(evidenceCount === 1 ? '1 evidência' : `${evidenceCount} evidências`);
+            }
+            if (catalogCount > 0) {
+                countLabels.push(catalogCount === 1 ? '1 registro de catálogo' : `${catalogCount} registros de catálogo`);
+            }
+            const groupCountLabel = countLabels.join(' · ');
             groupSection.innerHTML = `
                 <summary class="jurix-source-group__header">
                     <span class="jurix-source-group__disclosure" aria-hidden="true"></span>
                     <h4 class="jurix-source-group__title" id="jurix-source-group-title-${groupIndex}">${escapeHtml(group.title)}</h4>
-                    <span class="jurix-source-group__count">${evidenceLabel}</span>
+                    <span class="jurix-source-group__count">${escapeHtml(groupCountLabel)}</span>
                 </summary>
                 <div class="jurix-source-group__cards"><div class="jurix-source-group__cards-inner"></div></div>
             `;
@@ -838,7 +887,12 @@
     function renderSourcesDrawerSubtitle(subtitleEl, context) {
         if (!subtitleEl || !context) return;
         const { count, groups, metadata } = context;
-        const evidenceLabel = count === 1 ? 'evidência' : 'evidências';
+        const sourceRows = groups.flatMap((group) => group.sources.map(({ source }) => source));
+        const catalogCount = sourceRows.filter((source) => source?.source_kind === 'sapl_normative_catalog'
+            || source?.evidence_scope === 'official_normative_catalog_metadata').length;
+        const gazetteCount = sourceRows.filter((source) => source?.source_kind === 'official_gazette_extraction').length;
+        const evidenceCount = Math.max(0, count - catalogCount);
+        const evidenceLabel = evidenceCount === 1 ? 'evidência' : 'evidências';
         const normLabel = groups.length === 1 ? 'norma' : 'normas';
         const validation = metadata.cancelled
             ? ' A geração foi interrompida; estas fontes não foram validadas como suporte da resposta.'
@@ -860,7 +914,6 @@
                     ? ' Anexos normativos foram detectados e não estão incluídos nesta cobertura de artigos.'
                     : ''
             : '';
-        const sourceRows = groups.flatMap((group) => group.sources.map(({ source }) => source));
         const isMatterSource = (source) => source?.source_kind === 'sapl_legislative_matter'
             || source?.evidence_scope === 'official_legislative_matter'
             || /matéria legislativa.*(?:registro oficial )?sapl/i.test(source?.source_type || '');
@@ -881,10 +934,19 @@
             : isArchiveCorpus
             ? ' do acervo histórico local; a extração e os metadados ainda estão sob revisão'
             : ' do corpus municipal de Natal';
-        const summary = matterSources.length
-            ? `${count} ${evidenceLabel}${corpusLabel}.`
-            : `${count} ${evidenceLabel} em ${groups.length} ${normLabel}${corpusLabel}.`;
-        subtitleEl.textContent = `${summary}${scope}${validation}`;
+        const evidenceSummary = matterSources.length
+            ? `${evidenceCount} ${evidenceLabel}${corpusLabel}.`
+            : `${evidenceCount} ${evidenceLabel} em ${groups.length} ${normLabel}${corpusLabel}.`;
+        const gazetteSummary = gazetteCount
+            ? ` ${gazetteCount === 1 ? 'Trecho extraído' : 'Trechos extraídos'} de edição oficial do DOM; conferência humana do PDF recomendada.`
+            : '';
+        const catalogSummary = catalogCount
+            ? evidenceCount === 0
+                ? `${catalogCount} ${catalogCount === 1 ? 'registro' : 'registros'} de catálogo SAPL; não são evidência do texto legal.`
+                : ` ${catalogCount} ${catalogCount === 1 ? 'registro' : 'registros'} SAPL contêm apenas metadados, não texto legal.`
+            : '';
+        const summary = evidenceCount > 0 ? evidenceSummary : '';
+        subtitleEl.textContent = `${summary}${catalogSummary}${gazetteSummary}${scope}${validation}`;
     }
 
     function updateSourcesDrawerMetadata(metadata = {}) {

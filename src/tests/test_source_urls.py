@@ -54,3 +54,34 @@ def test_cached_source_legacy_sapl_route_is_canonicalized():
         }
     )
     assert serialized["sapl_url"] == "https://sapl.natal.rn.leg.br/norma/9387"
+
+
+def test_official_general_legislation_url_survives_citation_serialization():
+    official_url = "https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp95.htm"
+    serialized = serialize_dispositivo_source(
+        {
+            "norma_ref": "Lei Complementar nº 95/1998",
+            "dispositivo_ref": "Art. 8º, § 1º",
+            "citation_id": "official:lc95-art8-paragraph1",
+            "source_kind": "official_general_legislation",
+            "source_url": official_url,
+        }
+    )
+    assert serialized["official_url"] == official_url
+
+
+def test_official_general_legislation_rejects_untrusted_or_wrong_path_urls():
+    for url in (
+        "http://www.planalto.gov.br/ccivil_03/leis/lcp/lcp95.htm",
+        "https://www.planalto.gov.br.evil.example/ccivil_03/leis/lcp/lcp95.htm",
+        "https://www.planalto.gov.br/other/lcp95.htm",
+        "https://user@www.planalto.gov.br/ccivil_03/leis/lcp/lcp95.htm",
+    ):
+        serialized = serialize_dispositivo_source(
+            {
+                "citation_id": "official:lc95-art8-paragraph1",
+                "source_kind": "official_general_legislation",
+                "source_url": url,
+            }
+        )
+        assert serialized["official_url"] is None

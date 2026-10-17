@@ -75,16 +75,90 @@ class TargetReference:
 
 
 def parse_target_reference(event: EventoAlteracao) -> TargetReference | None:
-    """Parse one explicit type/number/year; never inherit the source norm's year."""
+    """Parse one explicit type/number/year; never inherit the source norm's year.
+
+    Entity extraction intentionally stores a structural target (for example,
+    ``Art. 14``) separately from the cited statute. In that case the exact
+    evidence span and the structured NER metadata are the citation source; do
+    not require the short display label in ``target_text`` to repeat it.
+    """
     text = str(getattr(event, "target_text", "") or "")
     references = parse_normative_references(text)
     if len(references) > 1:
         return None
     parsed = references[0] if references else None
+    if parsed is None:
+        evidence = getattr(event, "evidence_json", {})
+        evidence = evidence if isinstance(evidence, dict) else {}
+        evidence_text = str(evidence.get("target_quote") or evidence.get("quote") or "")
+        evidence_references = parse_normative_references(evidence_text)
+        if len(evidence_references) > 1:
+            return None
+        if evidence_references:
+            text = evidence_text
+            references = evidence_references
+            parsed = references[0]
+
+    # Explicit jurisdiction prefixes are intentionally parsed by this richer
+    # matcher (the generic citation parser accepts only the municipal label).
+    scoped_matches = list(_REFERENCE_SCOPE_RE.finditer(text))
+    if len(scoped_matches) > 1:
+        return None
+    if scoped_matches and parsed is None:
+        match = scoped_matches[0]
+        display_type = match.group("type")
+        display_number = match.group("number").rstrip(".,;:")
+        year = int(match.group("year"))
+        jurisdiction = (match.group("scope") or "unknown").lower()
+        if canonical_type(display_type) in _ALLOWED_TYPES:
+            return TargetReference(display_type, display_number, year, jurisdiction)
+
+    structured = getattr(event, "target_reference_json", {})
+    structured = structured if isinstance(structured, dict) else {}
+    if parsed is None:
+        # Only use metadata emitted as a single, explicit NER candidate. Do not
+        # turn a generic unresolved/ambiguous result into a resolvable citation.
+        if structured.get("resolution_status") not in {"candidate", "resolved_unreviewed"}:
+            return None
+        raw_type = str(structured.get("type_candidate") or "").strip()
+        canonical_types = {
+            "lei": "Lei",
+            "lei_complementar": "Lei Complementar",
+            "lei_organica": "Lei Orgânica",
+            "lei_promulgada": "Lei Promulgada",
+            "decreto": "Decreto",
+            "decreto_legislativo": "Decreto Legislativo",
+            "decreto_lei": "Decreto-Lei",
+            "resolucao": "Resolução",
+            "portaria": "Portaria",
+            "emenda": "Emenda",
+            "emenda_constitucional": "Emenda Constitucional",
+        }
+        display_type = canonical_types.get(raw_type.casefold(), raw_type)
+        display_number = str(structured.get("number_candidate") or "").strip().rstrip(".,;:")
+        try:
+            year = int(structured.get("year_candidate"))
+        except (TypeError, ValueError):
+            return None
+        if (
+            canonical_type(display_type) not in _ALLOWED_TYPES
+            or not _normalize_number(display_number)
+            or not 1900 <= year <= 2099
+        ):
+            return None
+        jurisdiction = str(
+            structured.get("jurisdiction_status")
+            or structured.get("jurisdiction_candidate")
+            or "unknown"
+        ).strip().lower()
+        return TargetReference(display_type, display_number, year, jurisdiction)
+
     display_type = parsed.type_key if parsed else ""
     display_number = parsed.number if parsed else ""
     year = parsed.year if parsed else None
-    jurisdiction = "unknown"
+    jurisdiction = str(
+        structured.get("jurisdiction_status") or "unknown"
+    ).strip().lower()
     for match in _REFERENCE_SCOPE_RE.finditer(text):
         if (
             (not parsed or canonical_type(match.group("type")) == parsed.type_key)
@@ -201,53 +275,72 @@ def _candidate_normas(reference: TargetReference, target_norma_ids: set[int] | N
     return matched
 
 
+def inspect_event_target_resolution(
+    event: EventoAlteracao,
+    *,
+    target_norma_ids: Iterable[int] | None = None,
+) -> dict:
+    """Return the exact second-pass decision without mutating an event or relation."""
+    if getattr(event, "norma_alvo_id", None):
+        return {"status": "already_linked", "target_norma_id": event.norma_alvo_id}
+    reference = parse_target_reference(event)
+    if reference is None:
+        return {"status": "unresolved_or_ambiguous_reference", "target_norma_id": None}
+    if reference.jurisdiction in _EXPLICIT_EXTERNAL_SCOPES:
+        return {"status": "external_jurisdiction", "target_norma_id": None}
+
+    scope = set(int(value) for value in target_norma_ids) if target_norma_ids is not None else None
+    matched = _candidate_normas(reference, scope)
+    if len(matched) != 1:
+        status = "ambiguous_multiple_candidates" if len(matched) > 1 else "not_found_in_corpus"
+        return {"status": status, "target_norma_id": None}
+
+    target = matched[0]
+    return {
+        "status": "resolved_unreviewed",
+        "target_norma_id": target.pk,
+        "identity_key": target.identity_key or None,
+        "match_method": "identity_key" if target.identity_key else "unique_legacy_type_number_year",
+    }
+
+
 def resolve_event_target(
     event: EventoAlteracao,
     *,
     target_norma_ids: Iterable[int] | None = None,
 ) -> bool:
     """CAS-update a unique target; return whether a relation exists after the call."""
-    if getattr(event, "norma_alvo_id", None):
+    inspected = inspect_event_target_resolution(event, target_norma_ids=target_norma_ids)
+    if inspected["status"] == "already_linked":
         return True
-    reference = parse_target_reference(event)
-    if reference is None:
-        _record_unresolved(event, None, "unresolved_or_ambiguous_reference")
-        return False
-    if reference.jurisdiction in _EXPLICIT_EXTERNAL_SCOPES:
-        _record_unresolved(event, reference, "external_jurisdiction")
+    if inspected["status"] != "resolved_unreviewed":
+        _record_unresolved(event, parse_target_reference(event), inspected["status"])
         return False
 
-    scope = set(int(value) for value in target_norma_ids) if target_norma_ids is not None else None
-    matched = _candidate_normas(reference, scope)
-    if len(matched) != 1:
-        status = "ambiguous_multiple_candidates" if len(matched) > 1 else "not_found_in_corpus"
-        _record_unresolved(event, reference, status)
-        return False
-
-    target = matched[0]
+    target_id = inspected["target_norma_id"]
     result_json = _outcome(
-        reference,
+        parse_target_reference(event),
         "resolved_unreviewed",
         existing=(
             event.target_reference_json
             if isinstance(getattr(event, "target_reference_json", None), dict)
             else {}
         ),
-        matched_norma_id=target.pk,
-        identity_key=target.identity_key or None,
-        match_method="identity_key" if target.identity_key else "unique_legacy_type_number_year",
+        matched_norma_id=target_id,
+        identity_key=inspected["identity_key"],
+        match_method=inspected["match_method"],
     )
-    revision_fingerprint, provenance = event_revision_for_target(event, target.pk)
+    revision_fingerprint, provenance = event_revision_for_target(event, target_id)
     with transaction.atomic():
         changed = EventoAlteracao.objects.filter(pk=event.pk, norma_alvo__isnull=True).update(
-            norma_alvo_id=target.pk,
+            norma_alvo_id=target_id,
             target_reference_json=result_json,
             revision_fingerprint=revision_fingerprint,
             provenance_json=provenance,
         )
         if changed:
             return True
-        return EventoAlteracao.objects.filter(pk=event.pk, norma_alvo_id=target.pk).exists()
+        return EventoAlteracao.objects.filter(pk=event.pk, norma_alvo_id=target_id).exists()
 
 
 def reconcile_unresolved_event_targets(
@@ -257,6 +350,8 @@ def reconcile_unresolved_event_targets(
     after_event_id: int = 0,
     max_event_id: int | None = None,
     return_cursor: bool = False,
+    dry_run: bool = False,
+    include_diagnostics: bool = False,
 ) -> dict[str, int | bool | None]:
     """Resolve a bounded set of unresolved events, optionally scoped to new targets."""
     limit = max(1, min(int(limit), 50_000))
@@ -302,9 +397,59 @@ def reconcile_unresolved_event_targets(
         next_cursor = event_list[-1].pk if event_list else None
 
     inspected = resolved = unresolved = 0
+    status_counts: dict[str, int] = {}
+    diagnostics = []
     for event in event_list:
         inspected += 1
-        if resolve_event_target(event, target_norma_ids=ids):
+        if dry_run:
+            resolution = inspect_event_target_resolution(event, target_norma_ids=ids)
+            status = resolution["status"]
+            status_counts[status] = status_counts.get(status, 0) + 1
+            is_resolved = status in {"resolved_unreviewed", "already_linked"}
+            if include_diagnostics:
+                references = parse_normative_references(
+                    str(getattr(event, "target_text", "") or "")
+                )
+                parsed = parse_target_reference(event)
+                source_device = event.dispositivo_fonte
+                source_norma = source_device.norma
+                identity = (
+                    source_norma.identity_json
+                    if isinstance(source_norma.identity_json, dict)
+                    else {}
+                )
+                diagnostics.append(
+                    {
+                        "synthetic_fixture": identity.get("synthetic_fixture") is True,
+                        "source_norma": {
+                            "type": source_norma.tipo,
+                            "number": source_norma.numero,
+                            "year": source_norma.ano,
+                        },
+                        "source_device": {
+                            "type": source_device.tipo,
+                            "number": source_device.numero,
+                        },
+                        "action": event.acao,
+                        "reference_count": len(references),
+                        "parsed_reference": (
+                            {
+                                "type": parsed.type_key,
+                                "number": parsed.number_key,
+                                "year": parsed.ano,
+                                "jurisdiction": parsed.jurisdiction,
+                            }
+                            if parsed
+                            else None
+                        ),
+                        "status": status,
+                    }
+                )
+        else:
+            is_resolved = resolve_event_target(event, target_norma_ids=ids)
+            status = "resolved_unreviewed" if is_resolved else "unresolved"
+            status_counts[status] = status_counts.get(status, 0) + 1
+        if is_resolved:
             resolved += 1
         else:
             unresolved += 1
@@ -319,6 +464,10 @@ def reconcile_unresolved_event_targets(
         "resolved": resolved,
         "remaining_unresolved": unresolved,
     }
+    if dry_run:
+        result.update({"dry_run": True, "resolution_status_counts": status_counts})
+        if include_diagnostics:
+            result["diagnostics"] = diagnostics
     if return_cursor:
         result.update({"next_cursor": next_cursor, "has_more": has_more})
     return result

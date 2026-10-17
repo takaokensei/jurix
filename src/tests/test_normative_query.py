@@ -36,6 +36,19 @@ def test_ambiguous_multiple_normas_do_not_force_whole_norma_retrieval():
     )
 
 
+def test_each_article_request_selects_the_explicitly_named_target_norm():
+    plan = classify_normative_query(
+        "O que previa cada artigo da Lei nº 6.535/2015, indicada como revogada "
+        "pelo Art. 2º da LC nº 219/2022? Liste o texto recuperado."
+    )
+
+    assert plan.kind == "norma_overview"
+    assert plan.reference.identity == ("lei", "6535", 2015)
+    assert plan.article_targets == ()
+    assert plan.relation_intent is None
+    assert plan.explicit_target_overview is True
+
+
 def test_abbreviated_complementary_law_overview_uses_broad_retrieval():
     plan = classify_normative_query("Quais são os principais eixos da LC nº 120/2010?")
 
@@ -84,6 +97,16 @@ def test_abbreviated_law_article_still_uses_provision_retrieval():
     assert plan.reference.article == "17"
 
 
+def test_comparison_of_original_and_new_wording_uses_relation_retrieval():
+    plan = classify_normative_query(
+        "A redação do § 2º do Art. 18 da LC nº 208/2022 foi alterada pela LC nº 261/2025? "
+        "Compare a redação anterior com a redação nova."
+    )
+
+    assert plan.relation_intent == "modification"
+    assert plan.article_targets == ("18",)
+
+
 def test_plural_article_targets_do_not_turn_a_specific_question_into_a_whole_law_overview():
     plan = classify_normative_query(
         "Explique a diferença entre as regras dos arts. 17 e 18 da Lei Complementar nº 120/2010."
@@ -122,6 +145,24 @@ def test_relation_intent_detects_norma_as_subject_of_amendment_question():
     assert plan.relation_intent == "modification"
 
 
+def test_relation_intent_detects_explicit_relation_between_abbreviated_acts():
+    plan = classify_normative_query("A LC nº 258/2024 revogou a LC nº 55/2004?")
+
+    assert plan.kind == "general"
+    assert plan.relation_intent == "modification"
+    assert plan.article_targets == ()
+
+
+def test_relation_intent_detects_request_to_find_repeal_devices_between_acts():
+    plan = classify_normative_query(
+        "Quais dispositivos da LC nº 258/2024 tratam da transição e da revogação da LC nº 55/2004?"
+    )
+
+    assert plan.kind == "general"
+    assert plan.relation_intent == "modification"
+    assert plan.article_targets == ()
+
+
 def test_relation_intent_detects_question_comparing_amendment_and_reference():
     plan = classify_normative_query(
         "Qual é a relação normativa entre a Lei nº 9002/2021 e a Lei nº 9001/2020? "
@@ -158,6 +199,28 @@ def test_relation_intent_detects_explicit_article_with_change_question():
 
     assert plan.kind == "provision"
     assert plan.reference.identity == ("lei_complementar", "120", 2010)
+    assert plan.relation_intent == "modification"
+
+
+def test_relation_intent_detects_noun_form_of_change_question():
+    plan = classify_normative_query(
+        "O Art. 21 da Lei Complementar nº 55/2004 sofreu alteração ou "
+        "revogação expressa em ato posterior?"
+    )
+
+    assert plan.kind == "provision"
+    assert plan.article_targets == ("21",)
+    assert plan.relation_intent == "modification"
+
+
+def test_relation_intent_detects_new_wording_question():
+    plan = classify_normative_query(
+        "O Art. 18 da Lei Complementar nº 208/2022 recebeu nova redação "
+        "em ato posterior?"
+    )
+
+    assert plan.kind == "provision"
+    assert plan.article_targets == ("18",)
     assert plan.relation_intent == "modification"
 
 
@@ -205,3 +268,14 @@ def test_relation_intent_detects_whether_explicitly_named_article_is_currently_a
 
     assert plan.relation_intent == "modification"
     assert plan.article_targets == ("21", "260")
+
+
+def test_relation_intent_detects_whether_repealed_article_can_still_apply_in_transition_case():
+    plan = classify_normative_query(
+        "Em um processo protocolado antes da entrada em vigor da LC 258/2024 e ainda sem "
+        "despacho decisório, como devo verificar se a regra do Art. 21 da LC 55/2004 ainda "
+        "pode ser aplicada? Considere também o Art. 260, IV, e o Art. 262 da LC 258/2024."
+    )
+
+    assert plan.relation_intent == "modification"
+    assert plan.article_targets == ("21", "260", "262")

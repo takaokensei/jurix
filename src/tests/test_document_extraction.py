@@ -5,13 +5,16 @@ from io import BytesIO
 
 import fitz
 from django.core.exceptions import ValidationError
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from src.apps.legislation.document_models import ExtracaoDocumento
 from src.processing.document_extraction import (
     EXTRACTION_POLICY,
     _default_ocr,
+    extract_layout_table_candidate,
     extract_pdf_document,
+    extract_raster_table_candidate,
+    page_has_image,
     page_is_blank,
     should_ocr_page,
 )
@@ -100,6 +103,304 @@ def test_white_page_background_drawing_is_blank_but_visible_vector_ink_is_not(tm
     with fitz.open(path) as saved:
         assert page_is_blank(saved[0], saved[0].get_text("text") or "", False)
         assert not page_is_blank(saved[1], saved[1].get_text("text") or "", False)
+
+
+def test_invisible_native_text_with_thin_footer_rule_is_blank(tmp_path):
+    path = tmp_path / "invisible-text-footer-rule.pdf"
+    document = fitz.open()
+    page = document.new_page()
+    page.insert_text((120, 120), "conteudo invisivel sem texto normativo", render_mode=3)
+    footer_y = page.rect.height * 0.94
+    page.draw_line(
+        (page.rect.width * 0.15, footer_y),
+        (page.rect.width * 0.95, footer_y),
+        color=(0.72, 0.72, 0.72),
+        width=1.5,
+    )
+    document.save(path)
+    document.close()
+
+    with fitz.open(path) as saved:
+        native_text = saved[0].get_text("text") or ""
+        assert native_text.strip()
+        assert page_is_blank(saved[0], native_text, False)
+
+
+def test_visible_short_text_with_footer_rule_is_not_blank(tmp_path):
+    path = tmp_path / "visible-short-text-footer-rule.pdf"
+    document = fitz.open()
+    page = document.new_page()
+    page.insert_text((72, 72), "Art. 4º Vigência na publicação.")
+    footer_y = page.rect.height * 0.94
+    page.draw_line(
+        (page.rect.width * 0.15, footer_y),
+        (page.rect.width * 0.95, footer_y),
+        color=(0.72, 0.72, 0.72),
+        width=1.5,
+    )
+    document.save(path)
+    document.close()
+
+    with fitz.open(path) as saved:
+        native_text = saved[0].get_text("text") or ""
+        assert not page_is_blank(saved[0], native_text, False)
+
+
+def test_page_has_image_ignores_unplaced_image_resources():
+    class PageWithOrphanedImageResource:
+        @staticmethod
+        def get_image_info(*, xrefs):
+            assert xrefs is True
+            return []
+
+        @staticmethod
+        def get_images(*, full):
+            assert full is True
+            return [(10, 0, 120, 80, 8, "DeviceRGB", "", "Im0", "FlateDecode", 0)]
+
+    assert page_has_image(PageWithOrphanedImageResource()) is False
+
+
+def test_page_has_image_detects_placed_image_even_without_resource_inventory():
+    class PageWithPlacedImage:
+        @staticmethod
+        def get_image_info(*, xrefs):
+            assert xrefs is True
+            return [{"bbox": (10, 10, 110, 80)}]
+
+        @staticmethod
+        def get_images(*, full):
+            assert full is True
+            return []
+
+    assert page_has_image(PageWithPlacedImage()) is True
+
+
+def test_table_layout_candidates_are_separate_from_legal_text(tmp_path, monkeypatch):
+    path = tmp_path / "ruled-table.pdf"
+    document = fitz.open()
+    page = document.new_page()
+    for y in (50, 80, 110):
+        page.draw_line((50, y), (250, y), color=(0, 0, 0), width=0.7)
+    for x in (50, 150, 250):
+        page.draw_line((x, 50), (x, 110), color=(0, 0, 0), width=0.7)
+    for point, text in (
+        ((60, 70), "Código"),
+        ((160, 70), "Valor"),
+        ((60, 100), "COSIP"),
+        ((160, 100), "2,5%"),
+    ):
+        page.insert_text(point, text)
+    document.save(path)
+    document.close()
+
+    monkeypatch.setitem(EXTRACTION_POLICY, "layout_table_candidates", False)
+    without_candidates = extract_pdf_document(str(path), ocr=lambda *_args, **_kwargs: "")
+    monkeypatch.setitem(EXTRACTION_POLICY, "layout_table_candidates", True)
+    with_candidates = extract_pdf_document(str(path), ocr=lambda *_args, **_kwargs: "")
+
+    tables = with_candidates["metadata_candidates"]["layout_tables"]["candidates"]
+    assert without_candidates["legal_text"] == with_candidates["legal_text"]
+    assert with_candidates["metadata_candidates"]["layout_tables"]["status"] == "unreviewed_candidates"
+    assert len(tables) == 1
+    assert tables[0]["status"] == "unreviewed_candidate"
+    assert tables[0]["page"] == 1
+    assert tables[0]["rows"] == [["Código", "Valor"], ["COSIP", "2,5%"]]
+    assert "não integra o texto legal" in tables[0]["review_note"].casefold()
+
+
+def test_table_candidate_payload_obeys_row_column_and_character_limits():
+    class Table:
+        bbox = (1, 2, 3, 4)
+
+        @staticmethod
+        def extract():
+            return [["x" * 1000 for _ in range(20)] for _ in range(60)]
+
+    class Page:
+        @staticmethod
+        def find_tables():
+            return type("Finder", (), {"tables": [Table()]})()
+
+    candidate = extract_layout_table_candidate(Page(), 3)[0]
+    assert len(candidate["rows"]) == 40
+    assert all(len(row) == 16 for row in candidate["rows"])
+    assert sum(len(cell) for row in candidate["rows"] for cell in row) <= 24_000
+    assert candidate["truncated"] is True
+
+
+def test_raster_table_candidate_uses_grid_and_word_boxes_without_certifying_text():
+    image = Image.new("RGB", (400, 240), "white")
+    draw = ImageDraw.Draw(image)
+    for y in (20, 70, 130, 200):
+        draw.line((20, y, 380, y), fill="black", width=2)
+    for x in (20, 120, 300, 380):
+        draw.line((x, 20, x, 200), fill="black", width=2)
+    data = {
+        "text": ["Item", "Descrição", "Valor", "A", "Taxa", "2%"],
+        "left": [35, 135, 315, 35, 135, 315],
+        "top": [35, 35, 35, 85, 85, 85],
+        "width": [30, 55, 25, 18, 40, 20],
+        "height": [12] * 6,
+        "conf": [90] * 6,
+    }
+
+    candidate = extract_raster_table_candidate(image, 69, data)
+
+    assert len(candidate) == 1
+    assert candidate[0]["status"] == "unreviewed_candidate"
+    assert candidate[0]["detector"] == "raster_grid+tesseract_word_boxes"
+    assert candidate[0]["rows"][:2] == [
+        ["Item", "Descrição", "Valor"],
+        ["A", "Taxa", "2%"],
+    ]
+    assert "não integra o texto legal" in candidate[0]["review_note"].casefold()
+
+
+def test_raster_table_candidate_character_limit_truncates_without_negative_slicing(monkeypatch):
+    image = Image.new("RGB", (400, 240), "white")
+    draw = ImageDraw.Draw(image)
+    for y in (20, 70, 130, 200):
+        draw.line((20, y, 380, y), fill="black", width=2)
+    for x in (20, 120, 300, 380):
+        draw.line((x, 20, x, 200), fill="black", width=2)
+    monkeypatch.setitem(EXTRACTION_POLICY, "max_layout_table_chars", 5)
+    data = {
+        "text": ["abc", "de", "fg"],
+        "left": [30, 130, 310],
+        "top": [30, 30, 30],
+        "width": [20, 20, 20],
+        "height": [12] * 3,
+        "conf": [90] * 3,
+    }
+
+    candidate = extract_raster_table_candidate(image, 69, data)
+
+    assert candidate[0]["truncated"] is True
+    assert sum(len(cell) for row in candidate[0]["rows"] for cell in row) <= 5
+    assert candidate[0]["rows"][0] == ["abc", "de", ""]
+
+
+def test_default_ocr_raster_grid_candidate_stays_separate_from_legal_text(tmp_path, monkeypatch):
+    image = Image.new("RGB", (400, 240), "white")
+    draw = ImageDraw.Draw(image)
+    for y in (20, 70, 130, 200):
+        draw.line((20, y, 380, y), fill="black", width=2)
+    for x in (20, 120, 300, 380):
+        draw.line((x, 20, x, 200), fill="black", width=2)
+    image_bytes = BytesIO()
+    image.save(image_bytes, format="PNG")
+    path = tmp_path / "raster-ruled-table.pdf"
+    document = fitz.open()
+    page = document.new_page(width=200, height=120)
+    page.insert_image(fitz.Rect(0, 0, 200, 120), stream=image_bytes.getvalue())
+    document.save(path)
+    document.close()
+
+    monkeypatch.setattr(
+        "src.processing.document_extraction.pytesseract.image_to_string",
+        lambda *_args, **_kwargs: "Texto OCR independente da prévia tabular.",
+    )
+
+    def fake_image_to_data(rendered, **_kwargs):
+        width, height = rendered.size
+        return {
+            "text": ["Item", "Descrição", "Valor", "A", "Taxa", "2%"],
+            "left": [int(width * r) for r in (0.08, 0.35, 0.80, 0.08, 0.35, 0.80)],
+            "top": [int(height * r) for r in (0.18, 0.18, 0.18, 0.40, 0.40, 0.40)],
+            "width": [20] * 6,
+            "height": [12] * 6,
+            "conf": [90] * 6,
+        }
+
+    monkeypatch.setattr(
+        "src.processing.document_extraction.pytesseract.image_to_data", fake_image_to_data
+    )
+
+    result = extract_pdf_document(str(path))
+    layout = result["metadata_candidates"]["layout_tables"]
+
+    assert result["legal_text"].endswith("Texto OCR independente da prévia tabular.")
+    assert layout["candidate_count"] == 1
+    assert layout["candidates"][0]["page"] == 1
+    assert layout["raster_image_pages_not_analyzed"] == []
+
+
+def test_reused_ocr_can_create_only_bounded_raster_table_preview(tmp_path, monkeypatch):
+    image = Image.new("RGB", (400, 240), "white")
+    draw = ImageDraw.Draw(image)
+    for y in (20, 70, 130, 200):
+        draw.line((20, y, 380, y), fill="black", width=2)
+    for x in (20, 120, 300, 380):
+        draw.line((x, 20, x, 200), fill="black", width=2)
+    image_bytes = BytesIO()
+    image.save(image_bytes, format="PNG")
+    path = tmp_path / "reused-raster-table.pdf"
+    document = fitz.open()
+    page = document.new_page(width=200, height=120)
+    page.insert_image(fitz.Rect(0, 0, 200, 120), stream=image_bytes.getvalue())
+    document.save(path)
+    document.close()
+
+    def fake_image_to_data(rendered, **_kwargs):
+        width, height = rendered.size
+        return {
+            "text": ["Cabeçalho", "Linha", "2%"],
+            "left": [int(width * ratio) for ratio in (0.08, 0.35, 0.80)],
+            "top": [int(height * ratio) for ratio in (0.18, 0.40, 0.40)],
+            "width": [24] * 3,
+            "height": [12] * 3,
+            "conf": [90] * 3,
+        }
+
+    monkeypatch.setattr(
+        "src.processing.document_extraction.pytesseract.image_to_data", fake_image_to_data
+    )
+    source_text = "OCR anterior verificado, preservado sem alteração."
+    result = extract_pdf_document(
+        str(path),
+        max_ocr_pages=0,
+        raster_table_pages_to_process={1},
+        reusable_ocr_pages={1: (source_text, "source-extraction-hash")},
+    )
+
+    layout = result["metadata_candidates"]["layout_tables"]
+    assert result["legal_text"].endswith(source_text)
+    assert result["quality"]["ocr_pages_attempted"] == []
+    assert result["quality"]["ocr_pages_reused"] == [1]
+    assert layout["candidate_count"] == 1
+    assert layout["raster_image_pages_not_analyzed"] == []
+
+
+def test_extraction_flags_raster_pages_for_visual_table_review(tmp_path):
+    path = tmp_path / "raster-page.pdf"
+    image = Image.new("RGB", (120, 80), "white")
+    image_bytes = BytesIO()
+    image.save(image_bytes, format="PNG")
+    document = fitz.open()
+    page = document.new_page()
+    page.insert_image(fitz.Rect(20, 20, 140, 100), stream=image_bytes.getvalue())
+    document.save(path)
+    document.close()
+
+    result = extract_pdf_document(
+        str(path),
+        max_ocr_pages=0,
+        ocr=lambda *_args, **_kwargs: "",
+    )
+
+    layout = result["metadata_candidates"]["layout_tables"]
+    assert layout["raster_image_pages_not_analyzed"] == [1]
+    assert "Ausência de candidatos não significa ausência de tabelas" in layout["detection_scope"]
+
+
+def test_table_detector_failure_does_not_fail_pdf_text_extraction():
+    class Page:
+        @staticmethod
+        def find_tables():
+            raise RuntimeError("layout detector unavailable")
+
+    assert extract_layout_table_candidate(Page(), 4) == []
 
 
 def test_extracts_epigraph_and_publication_as_candidates_without_promoting_dates(tmp_path):

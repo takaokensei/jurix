@@ -26,10 +26,11 @@
                 <span class="workspace-badge">{{ source.status_label }}</span>
             </div>
             <p><small>{% if source.last_success_at %}Último ciclo concluído: {{ source.last_success_at|date:"d/m/Y H:i T" }}.{% else %}Nenhum ciclo concluído registrado.{% endif %}</small></p>
+            <p><small>Escopos acompanhados: {{ source.scope_count }} · varreduras completas do catálogo: {{ source.full_sweep_scope_count }} · parciais: {{ source.partial_scope_count }} · sem conclusão registrada: {{ source.uninitialized_scope_count }} · falhas: {{ source.failed_scope_count }} · sucessos incrementais vencidos: {{ source.stale_incremental_scope_count }} · varreduras completas vencidas: {{ source.stale_full_sweep_scope_count }} · escopos vencidos: {{ source.stale_scope_count }}.</small></p>
         </div>
         {% endfor %}
     </div>
-    <p role="note">Este estado descreve checkpoints de sincronização; não comprova que o corpus esteja completo nem que normas ou alterações tenham sido revisadas juridicamente.</p>
+    <p role="note">Os indicadores podem se sobrepor: escopos parciais também contam como sem execução concluída. Eles descrevem checkpoints de sincronização; não comprovam que o corpus esteja completo nem que normas ou alterações tenham sido revisadas juridicamente.</p>
 </section>
 {% endif %}
 

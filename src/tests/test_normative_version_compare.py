@@ -124,6 +124,14 @@ def test_temporal_compare_keeps_dates_in_url_and_labels_jurix_projection(norma):
                 "pending": False,
             }
         ],
+        ), patch(
+            "src.apps.legislation.views.current_corpus_coverage",
+            return_value={
+                "coverage_status": "partial",
+                "checked_until": None,
+                "pending_review": 6664,
+                "scope_limited": True,
+            },
     ):
         response = Client().get(
             f"/normas/{norma.pk}/compare/?from_as_of=2025-01-01&to_as_of=2026-01-01"
@@ -134,6 +142,10 @@ def test_temporal_compare_keeps_dates_in_url_and_labels_jurix_projection(norma):
     assert 'value="2025-01-01"' in body
     assert 'value="2026-01-01"' in body
     assert "consolidação histórica do Jurix" in body
+    assert "Cobertura do corpus: parcial" in body
+    assert "6.664 PDFs candidatos aguardam revisão" in body
+    assert "Data de corte não informada" in body
+    assert "não confirma que toda a legislação municipal foi verificada" in body
     assert "Diferença textual estrutural" in body
     assert "Texto antigo" in body and "Texto novo" in body
     assert "Abrir norma fonte" in body

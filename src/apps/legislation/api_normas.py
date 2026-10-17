@@ -32,6 +32,7 @@ from src.apps.legislation.models import (
     EventoAlteracao,
     Norma,
 )
+from src.apps.legislation.norma_queries import normas_for_product
 from src.apps.legislation.norma_ordering import order_normas_by_publication
 from src.apps.legislation.retrieval_api import build_retrieval_options
 from src.apps.legislation.serializers import serialize_chat_session, serialize_dispositivo_source
@@ -82,7 +83,7 @@ def norma_list_api(request: HttpRequest) -> JsonResponse:
             page_size = 20
 
         # Build queryset
-        queryset = Norma.objects.all()
+        queryset = normas_for_product()
 
         if status:
             queryset = queryset.filter(status=status)

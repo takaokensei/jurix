@@ -5,6 +5,7 @@ from django.test import override_settings
 from django.utils import timezone
 
 from src.processing.sapl_matter_lookup import (
+    _extract_proposed_effect_clause,
     _extract_proposed_wording,
     lookup_explicit_matter_sources,
     lookup_related_matter_result,
@@ -368,3 +369,144 @@ def test_related_lookup_distinguishes_completed_empty_search_from_sapl_outage():
     assert completed.sources == ()
     assert unavailable.status == "unavailable"
     assert unavailable.sources == ()
+
+
+def test_extract_proposed_revocation_requires_exact_norm_and_article_in_same_bill_article():
+    bill_text = (
+        "Art. 1º A matriz remuneratória da Lei Complementar nº 120, de 2010, fica atualizada.\n"
+        "Art. 3º Ficam revogados o art. 18 da Lei Complementar nº 120, de 3 de dezembro de 2010, "
+        "e outras disposições em contrário.\n"
+        "Art. 4º Esta Lei Complementar entra em vigor na data de sua publicação."
+    )
+
+    clause = _extract_proposed_effect_clause(
+        bill_text,
+        type_key="lei_complementar",
+        number="120",
+        year=2010,
+        article="18",
+    )
+    unrelated_article = _extract_proposed_effect_clause(
+        bill_text,
+        type_key="lei_complementar",
+        number="120",
+        year=2010,
+        article="26",
+    )
+
+    assert clause is not None
+    assert clause.startswith("Art. 3º Ficam revogados")
+    assert "art. 18 da Lei Complementar nº 120" in clause
+    assert unrelated_article is None
+
+
+def test_related_article_lookup_follows_explicit_amendment_to_parent_bill_and_original_pdf():
+    amendment_ementa = (
+        "Suprime o art. 3º do Projeto de Lei Complementar nº 09/2026, "
+        "para preservar o art. 18 da Lei Complementar nº 120, de 3 de dezembro de 2010."
+    )
+    bill_ementa = "Altera o Anexo I da Lei Complementar nº 120, de 3 de dezembro de 2010."
+    bill_pdf_url = (
+        "https://sapl.natal.rn.leg.br/media/sapl/public/materialegislativa/2026/54742/original.pdf"
+    )
+    bill_text = (
+        "Art. 1º A matriz da LC nº 120/2010 fica atualizada.\n"
+        "Art. 3º Ficam revogados o art. 18 da Lei Complementar nº 120, de 3 de dezembro de 2010, "
+        "e outras disposições em contrário.\n"
+        "Art. 4º Esta Lei Complementar entra em vigor na data de sua publicação."
+    )
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            assert kwargs == {"timeout": 5, "max_retries": 0}
+            self.session = type("Session", (), {"close": lambda self: None})()
+
+        @staticmethod
+        def _normalize_matter_type_label(value):
+            return " ".join(str(value).casefold().split())
+
+        def search_public_materias_by_ementa(self, expression):
+            assert expression == "Art. 18 Lei Complementar 120 2010"
+            return [{
+                "id": 54885,
+                "numero": 1,
+                "ano": 2026,
+                "tipo__descricao": "Emenda Supressiva",
+                "ementa": amendment_ementa,
+            }]
+
+        def fetch_materia_by_id(self, matter_id):
+            if matter_id == 54885:
+                return {
+                    "id": 54885,
+                    "numero": 1,
+                    "ano": 2026,
+                    "tipo__descricao": "Emenda Supressiva",
+                    "em_tramitacao": False,
+                    "ementa": amendment_ementa,
+                }
+            assert matter_id == 54742
+            return {
+                "id": 54742,
+                "numero": 9,
+                "ano": 2026,
+                "tipo__descricao": "Projeto de Lei Complementar",
+                "em_tramitacao": False,
+                "resultado": "",
+                "data_publicacao": None,
+                "ementa": bill_ementa,
+                "data_ultima_atualizacao": "2026-05-19T08:25:10-03:00",
+                "texto_original": bill_pdf_url,
+            }
+
+        def fetch_materias_by_references(self, references):
+            assert references == [
+                {"tipo": "Projeto de Lei Complementar", "numero": 9, "ano": 2026}
+            ]
+            return {
+                ("projeto de lei complementar", 9, 2026): [{
+                    "_jurix_materia_id": 54742,
+                    "numero": 9,
+                    "ano": 2026,
+                    "tipo__descricao": "Projeto de Lei Complementar",
+                    "ementa": bill_ementa,
+                }]
+            }
+
+        def get_public_materia_url(self, matter_id):
+            return f"https://sapl.natal.rn.leg.br/materia/{matter_id}"
+
+        def _validated_sapl_pdf_url(self, value):
+            assert value == bill_pdf_url
+            return value
+
+        def read_pdf_text(self, value, *, include_pages=False):
+            assert value == bill_pdf_url
+            if include_pages:
+                return bill_text, (bill_text,)
+            return bill_text
+
+    question = (
+        "O art. 18 da Lei Complementar nº 120/2010 foi alterado ou revogado? "
+        "Identifique o ato modificador e compare a redação anterior e posterior."
+    )
+    with (
+        override_settings(SAPL_MATTER_LOOKUP_ENABLED=True),
+        patch("src.clients.sapl.sapl_client.SaplAPIClient", FakeClient),
+    ):
+        result = lookup_related_matter_result(question)
+
+    by_citation = {source["citation_id"]: source for source in result.sources}
+    assert result.status == "searched"
+    assert set(by_citation) == {
+        "sapl:materia:54885",
+        "sapl:materia:54742",
+        "sapl:materia:54742:texto-original:art-3",
+    }
+    assert by_citation["sapl:materia:54885"]["matter_status"] is False
+    assert by_citation["sapl:materia:54742"]["data_publicacao"] is None
+    proposed_clause = by_citation["sapl:materia:54742:texto-original:art-3"]
+    assert proposed_clause["source_kind"] == "sapl_matter_original_pdf"
+    assert proposed_clause["page"] == 1
+    assert "art. 18 da Lei Complementar nº 120" in proposed_clause["full_text"]
+    assert "não é norma promulgada" in proposed_clause["contribution"]

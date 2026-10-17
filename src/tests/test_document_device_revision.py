@@ -79,6 +79,24 @@ def test_document_segmentation_offsets_exclude_colophon_and_keep_annex():
 
 
 @pytest.mark.django_db(transaction=True)
+def test_repeal_clause_does_not_mark_the_declaring_article_as_revoked():
+    text = (
+        "Art. 260. Ficam revogados:\n"
+        "I - Lei Complementar nº 55, de 2004.\n"
+        "Art. 266. Esta Lei entra em vigor após sua publicação, revogadas as disposições em contrário.\n"
+        "Art. 267. Revogado pela Lei Complementar nº 999/2026.\n"
+        "Art. 268. (VETADO) O trecho vetado permanece no original."
+    )
+    _norma, _document, extraction = _accepted_document(text)
+    result = segment_document_extraction(extraction.pk)
+    articles = {row["numero"]: row for row in result.devices if row["tipo"] == "artigo"}
+    assert articles["260"]["marker"] == DocumentoDispositivo.Marker.NONE
+    assert articles["266"]["marker"] == DocumentoDispositivo.Marker.NONE
+    assert articles["267"]["marker"] == DocumentoDispositivo.Marker.REVOKED
+    assert articles["268"]["marker"] == DocumentoDispositivo.Marker.VETOED
+
+
+@pytest.mark.django_db(transaction=True)
 def test_article_suffix_and_hierarchical_parent_keys_remain_distinct():
     text = "Art. 5º Caput.\nArt. 5-A O artigo acrescido.\nArt. 6º Final."
     _norma, _document, extraction = _accepted_document(text)

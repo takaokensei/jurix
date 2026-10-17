@@ -38,6 +38,54 @@ def test_extract_articles_basic(parser):
     assert articles[2]["numero"] == "15-A"
 
 
+def test_article_text_includes_subdevices_and_stops_before_the_normative_appendix(parser):
+    text = textwrap.dedent("""\
+        Art. 260. Ficam revogados:
+        I - a Lei Municipal nº 1;
+        II - a Lei Complementar nº 55/2004.
+        Art. 261. Esta Lei entra em vigor.
+        Art. 262. Regra de transição.
+        ANEXO I
+        TABELA DE DIMENSÕES
+        Sala: 10 m².
+    """)
+
+    articles = parser.extract_articles(text)
+
+    assert "I - a Lei Municipal nº 1" in articles[0]["texto"]
+    assert "II - a Lei Complementar nº 55/2004" in articles[0]["texto"]
+    assert "Art. 261" not in articles[0]["texto"]
+    assert "ANEXO I" not in articles[-1]["texto"]
+
+
+def test_article_marker_without_space_is_segmented_as_its_own_device(parser):
+    text = textwrap.dedent("""\
+        Art. 13. Dispositivo anterior.
+        Art.14. Para o cálculo do coeficiente, aplica-se esta regra.
+        Art. 140. Dispositivo distinto cujo número começa com 14.
+        Art. 15. Dispositivo posterior.
+    """)
+
+    articles = parser.extract_articles(text)
+
+    assert [article["numero"] for article in articles] == ["13", "14", "140", "15"]
+    assert articles[1]["texto"] == "Para o cálculo do coeficiente, aplica-se esta regra."
+    assert articles[2]["texto"] == "Dispositivo distinto cujo número começa com 14."
+
+
+def test_legacy_letter_o_ordinal_is_normalized_without_parsing_article_citations(parser):
+    text = textwrap.dedent("""\
+        Art. 1o – Primeiro dispositivo.
+        A referência ao Art. 10 da Lei 3.175/84 permanece no corpo deste artigo.
+        Art. 2o – Segundo dispositivo.
+    """)
+
+    articles = parser.extract_articles(text)
+
+    assert [article["numero"] for article in articles] == ["1º", "2º"]
+    assert "Art. 10 da Lei 3.175/84" in articles[0]["texto"]
+
+
 def test_extract_paragraphs_numbered_and_unico(parser):
     text = textwrap.dedent("""
     Art. 5º O tributo incidirá anualmente.
@@ -249,6 +297,21 @@ def test_article_reference_broken_across_lines_is_not_a_new_article(parser):
     )
     assert [(r[0], r[1]) for r in result] == [("artigo", "5º"), ("artigo", "6º")]
     assert "Art. 10 da Lei 123/2020" in result[0][3]
+
+
+def test_lowercase_article_citation_on_own_line_does_not_split_amendment_text(parser):
+    result = _flat(
+        parser,
+        """\
+        Art. 1º Altera a redação da lei:
+        I) multa por descumprimento das obrigações previstas no
+        art. 38. §§ 9º, 10 e 11 da Lei nº 3.882/1989.
+        Art. 2º Esta Lei entra em vigor na data de sua publicação.
+    """,
+    )
+
+    assert [(row[0], row[1]) for row in result] == [("artigo", "1º"), ("artigo", "2º")]
+    assert "art. 38." in result[0][3]
 
 
 def test_numbered_items_become_children_of_their_inciso(parser):
@@ -561,10 +624,9 @@ def test_last_article_excludes_natal_rn_mayoral_palace_signature_without_inventi
 
     assert [segment["kind"] for segment in segments] == ["legal_body", "editorial_colophon"]
     assert articles[-1]["texto"].strip() == "Esta Lei entra em vigor na data de sua publicação."
-    assert extract_publication_metadata(text) == {
-        "data_publicacao": None,
-        "vigencia_na_publicacao": True,
-    }
+    metadata = extract_publication_metadata(text)
+    assert metadata["data_publicacao"] is None
+    assert metadata["vigencia_na_publicacao"] is True
 
 
 def test_closing_colophon_is_removed_but_normative_addendum_is_preserved(parser):
@@ -616,6 +678,25 @@ def test_publication_deadline_inside_article_is_not_mistaken_for_closing_colopho
     assert "Presidente" not in articles[-1]["texto"]
 
 
+def test_effective_clause_is_preserved_as_unreviewed_evidence_without_computing_date():
+    text = (
+        "Art. 266. Esta Lei Complementar entra em vigor 90 (noventa) dias após a data de \n"
+        "sua publicação.\n"
+        "Sala das Sessões, em Natal, 27 de dezembro de 2024."
+    )
+
+    metadata = extract_publication_metadata(text)
+    candidate = metadata["effective_clause_candidates"][0]
+
+    assert candidate["quote"] == (
+        "entra em vigor 90 (noventa) dias após a data de \nsua publicação."
+    )
+    assert text[candidate["start"] : candidate["end"]] == candidate["quote"]
+    assert candidate["status"] == "unreviewed_candidate"
+    assert metadata["data_publicacao"] is None
+    assert metadata["vigencia_na_publicacao"] is False
+
+
 def test_extract_normative_appendices_handles_parenthetical_heading_and_keeps_sections_separate():
     text = (
         "Art. 1º Abre crédito.\n"
@@ -654,7 +735,8 @@ def test_publication_metadata_does_not_invent_dates():
         "Art. 4º Esta Lei entra em vigor na data de sua publicação. "
         "Sala das Sessões, em Natal, 20 de agosto de 2026."
     )
-    assert metadata == {"data_publicacao": None, "vigencia_na_publicacao": True}
+    assert metadata["data_publicacao"] is None
+    assert metadata["vigencia_na_publicacao"] is True
 
 
 @pytest.mark.django_db

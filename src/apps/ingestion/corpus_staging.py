@@ -157,7 +157,13 @@ def stage_normative_corpus(
             "created": int(run_stats.get("created", 0)),
             "unchanged": int(run_stats.get("unchanged", 0)),
             "failed": len(run_stats.get("errors", {})),
-            "reason": "corpus_complete" if complete else "next_pdf_exceeds_byte_budget",
+            "reason": (
+                "corpus_processed_with_errors"
+                if complete and run_stats.get("errors")
+                else "corpus_complete"
+                if complete
+                else "next_pdf_exceeds_byte_budget"
+            ),
         }
     selected_bytes = sum(int(row["uncompressed_bytes"]) for row in batch)
 
@@ -224,6 +230,29 @@ def stage_normative_corpus(
                 entry_index = str(row["entry_index"])
                 if entry_index in completed:
                     current_position += 1
+                    continue
+                if int(row["uncompressed_bytes"]) == 0:
+                    # Preserve the archive entry in the manifest/checkpoint,
+                    # but never create a document row or attempt extraction for
+                    # bytes that cannot form a PDF. This is terminal for this
+                    # archive revision and must not consume retry attempts.
+                    errors[entry_index] = "empty_pdf"
+                    invocation["failed"] += 1
+                    invocation["processed"] += 1
+                    current_position += 1
+                    run_stats.update({
+                        "completed": sorted(completed, key=int),
+                        "attempts": attempts,
+                        "errors": errors,
+                    })
+                    with transaction.atomic():
+                        locked = ArchiveImportRun.objects.select_for_update().get(pk=run.pk)
+                        if locked.lease_token != lease_token:
+                            raise ArchiveImportError("lease do staging foi perdida")
+                        locked.cursor = current_position
+                        locked.stats_json = {**run_stats, "corpus_status": "partial"}
+                        locked.lease_until = timezone.now() + timedelta(seconds=LEASE_SECONDS)
+                        locked.save(update_fields=["cursor", "stats_json", "lease_until", "updated_at"])
                     continue
                 attempt_count = int(attempts.get(entry_index, 0))
                 if attempt_count >= MAX_RETRIES:

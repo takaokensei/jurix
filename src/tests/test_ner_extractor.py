@@ -124,6 +124,122 @@ class TestLegalNERExtractor:
         events = extractor.extract_events("Fica revogado o art. 5º da Lei nº 123/2020.")
         assert [(e["acao"], e["referencia_numero"]) for e in events] == [("REVOGA", "5º")]
 
+    def test_common_legal_vocabulary_is_not_misclassified_as_change_actions(self, extractor):
+        text = (
+            "A norma apresenta alternativas de atendimento, incluindo opções adicionais "
+            "para o interessado."
+        )
+        events = extractor.extract_events(text)
+        assert not {
+            "ALTERA",
+            "ADICIONA",
+            "SUBSTITUI",
+            "REVOGA",
+        }.intersection(event["acao"] for event in events)
+
+    def test_dotted_thousands_separator_does_not_truncate_statute_reference(self, extractor):
+        text = (
+            "Ficam revogados o art. 21 da Lei Complementar nº 1.894/1969."
+        )
+        events = extractor.extract_events(text)
+        article_event = next(event for event in events if event["referencia_tipo"] == "artigo")
+        assert article_event["referencia_numero"] == "21"
+        assert article_event["norma_referenciada"]["numero"] == "1.894"
+        assert article_event["norma_referenciada"]["ano"] == "1969"
+
+    def test_comma_after_statute_number_is_not_part_of_its_identity(self, extractor):
+        text = (
+            "Fica alterado o art. 14 da Lei Complementar nº 208, "
+            "de 07 de março de 2022."
+        )
+        events = extractor.extract_events(text)
+        article_event = next(event for event in events if event["referencia_tipo"] == "artigo")
+        assert article_event["norma_referenciada"]["tipo"] == "Lei Complementar"
+        assert article_event["norma_referenciada"]["numero"] == "208"
+        assert article_event["norma_referenciada"]["ano"] == "2022"
+
+    def test_action_clause_is_inherited_by_each_enumerated_target_without_cross_linking(
+        self, extractor
+    ):
+        introduction = extractor.list_action_introduction(
+            "Art. 260. Ficam revogados:"
+        )
+        assert introduction == {
+            "action": "REVOGA",
+            "quote": "Ficam revogados",
+            "start_offset": 10,
+            "end_offset": 25,
+        }
+        items = [
+            ("I - Lei Complementar nº 1.894 de 31 de dezembro de 1969;", "1.894", "1969"),
+            ("II - Lei Nº 4.566 de 19 de maio de 1992;", "4.566", "1992"),
+            ("III - Lei nº 4.885 de 07 de outubro de 1997;", "4.885", "1997"),
+            ("IV - Lei Complementar nº 055 de 27 de janeiro de 2004;", "055", "2004"),
+            (
+                "V - Art. 21 da Lei Promulgada nº 275 de 12 de março de 2009;",
+                "275",
+                "2009",
+            ),
+            ("VI - Lei Promulgada nº 562 de 14 de setembro de 2018;", "562", "2018"),
+            ("VII - Lei nº 198 de 12 de novembro de 2021.", "198", "2021"),
+        ]
+        extracted = []
+        for item, expected_number, expected_year in items:
+            events = extractor.extract_inherited_list_item_events(introduction, item)
+            assert len(events) == 1
+            event = events[0]
+            assert event["acao"] == "REVOGA"
+            assert event["norma_referenciada"]["numero"] == expected_number
+            assert event["norma_referenciada"]["ano"] == expected_year
+            assert event["evidence"]["quote"] == item
+            assert event["evidence"]["action_context"]["source_quote"] == "Ficam revogados"
+            extracted.append(event["norma_referenciada"]["numero"])
+        assert extracted == ["1.894", "4.566", "4.885", "055", "275", "562", "198"]
+        article_event = extractor.extract_inherited_list_item_events(introduction, items[4][0])[0]
+        assert article_event["referencia_tipo"] == "artigo"
+        assert article_event["referencia_numero"] == "21"
+
+    def test_list_action_introduction_requires_a_terminal_colon(self, extractor):
+        assert extractor.list_action_introduction("Ficam revogados:") is not None
+        assert extractor.list_action_introduction("Art. 117. Revogam-se:")["quote"] == "Revogam-se"
+        assert extractor.list_action_introduction("Ficam revogados os arts. 1º e 2º.") is None
+
+    def test_inherited_revocation_resolves_municipal_qualifier_but_keeps_article_target(self, extractor):
+        introduction = extractor.list_action_introduction("Art. 117. Revogam-se:")
+        events = extractor.extract_inherited_list_item_events(
+            introduction,
+            "I - Art. 21 e Anexo A da Lei Municipal nº 208 de 08 de março de 2022;",
+        )
+        article_event = next(event for event in events if event["referencia_tipo"] == "artigo")
+        assert article_event["referencia_numero"] == "21"
+        assert article_event["norma_referenciada"]["tipo"] == "Lei"
+        assert article_event["norma_referenciada"]["numero"] == "208"
+        assert article_event["norma_referenciada"]["ano"] == "2022"
+
+    def test_inherited_action_expands_each_numbered_law_in_a_plural_list_item(self, extractor):
+        introduction = extractor.list_action_introduction("Art. 117. Revogam-se:")
+        item = (
+            "II - Leis Municipais nº 4.664 de 31 de julho de 1995, nº 5.273 de 20 de junho de "
+            "2001, nº 4.912 de 10 de dezembro de 1997, nº 5.565 de 21 de junho de 2004, "
+            "nº 221 de 22 de dezembro de 2022, nº 222 de 22 de dezembro de 2022, "
+            "nº 223 de 22 de dezembro de 2022;"
+        )
+        events = extractor.extract_inherited_list_item_events(introduction, item)
+        assert [
+            (event["norma_referenciada"]["numero"], event["norma_referenciada"]["ano"])
+            for event in events
+        ] == [
+            ("4.664", "1995"),
+            ("5.273", "2001"),
+            ("4.912", "1997"),
+            ("5.565", "2004"),
+            ("221", "2022"),
+            ("222", "2022"),
+            ("223", "2022"),
+        ]
+        assert all(event["acao"] == "REVOGA" for event in events)
+        assert all(event["evidence"]["quote"] == item for event in events)
+
     # ---- lists and ranges of articles (a partial extraction silently leaves articles in force) ----
     @staticmethod
     def _articles(events):
@@ -179,3 +295,19 @@ class TestLegalNERExtractor:
             extractor.extract_events("Ficam revogados os arts. 9º a 5º da Lei nº 123/2020.")
         )
         assert inverted == [("REVOGA", "9º a 5º")]
+
+    def test_line_wrapped_article_suffix_keeps_the_remainder_of_real_amendment_list(
+        self, extractor
+    ):
+        text = (
+            "Os artigos 2º, 3º, 16, 23, 25, 31, 38, 43, 43-A, 48, 50, 57, 60, 64, 68, 86, "
+            "97, 98-\n A, 99, 100, 107, 112, 113, 131, 133, 143, 146, 156, 160-B, 161 e 169 "
+            "da Lei 3.882 de 11 de dezembro de 1989 passam a vigorar com as seguintes redações."
+        )
+        expected = [
+            "2º", "3º", "16", "23", "25", "31", "38", "43", "43-A", "48", "50",
+            "57", "60", "64", "68", "86", "97", "98-A", "99", "100", "107", "112",
+            "113", "131", "133", "143", "146", "156", "160-B", "161", "169",
+        ]
+
+        assert [number for _, number in self._articles(extractor.extract_events(text))] == expected

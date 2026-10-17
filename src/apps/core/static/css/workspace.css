@@ -281,6 +281,22 @@ html[data-sidebar-collapsed="true"] .workspace-account-name { display: none; }
 .workspace-archive-active-filters strong { color: var(--figma-text-white); }
 .workspace-archive-result-card { border-left: 3px solid var(--figma-amber-soft); }
 .workspace-archive-result-card small { overflow-wrap: anywhere; }
+.workspace-archive-result-link { display: grid; gap: 10px; color: inherit; text-decoration: none; }
+.workspace-archive-result-link:focus-visible,
+.workspace-archive-identical-copies a:focus-visible { outline: 2px solid var(--figma-blue-light); outline-offset: 3px; border-radius: 4px; }
+.workspace-archive-group-count { margin: 4px 0 0; color: var(--figma-text-muted); font-size: var(--jurix-type-caption, .8125rem); }
+.workspace-archive-identical-copies { border-top: 1px solid var(--figma-border); padding-top: 10px; color: var(--figma-text-muted); font-size: var(--jurix-type-caption, .8125rem); }
+.workspace-archive-identical-copies summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--figma-blue-light); font-weight: 600; }
+.workspace-archive-identical-copies p { margin: 0 0 8px; }
+.workspace-archive-identical-copies ul { display: grid; gap: 8px; margin: 0; padding-left: 18px; }
+.workspace-archive-identical-copies a { color: var(--figma-blue-light); overflow-wrap: anywhere; }
+.workspace-archive-repeat-note { margin: 0; padding: 9px 11px; border-left: 2px solid var(--figma-border); border-radius: 6px; background: var(--figma-bg-surface); color: var(--figma-text-muted); font-size: var(--jurix-type-caption, .8125rem); line-height: var(--jurix-leading-body, 1.65); }
+.workspace-archive-repeat-note strong { color: var(--figma-text-body); }
+.workspace-archive-duplicate-excerpt { margin-top: 9px; border-top: 1px solid var(--figma-border); padding-top: 4px; }
+.workspace-archive-duplicate-excerpt summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--figma-blue-light); font-size: var(--jurix-type-caption, .8125rem); font-weight: 600; }
+.workspace-archive-duplicate-excerpt summary:focus-visible { outline: 2px solid var(--figma-blue-light); outline-offset: 3px; border-radius: 4px; }
+.workspace-archive-duplicate-excerpt .workspace-result-snippet { margin: 4px 0 8px; }
+.workspace-archive-repeat-caveat { margin: 0 0 8px; color: var(--figma-text-muted); font-size: var(--jurix-type-caption, .8125rem); }
 .workspace-archive-open {
   color: var(--figma-blue-light);
   font-size: var(--jurix-type-label, .875rem);

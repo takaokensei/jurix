@@ -7,11 +7,20 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.test import Client, override_settings
 
+from src.apps.ingestion.document_relation_candidates import persist_document_relation_candidates
 from src.apps.ingestion.management.commands.seed_normative_qa import seed_fixture
-from src.apps.legislation.document_models import DocumentoNormativo
+from src.apps.legislation.document_models import (
+    DocumentoNormativo,
+    ExtracaoDocumento,
+    RevisaoEventoNormativoCandidato,
+)
+from src.apps.legislation.document_relation_review import review_document_relation_candidate
 from src.apps.legislation.models import Dispositivo, EventoAlteracao, Norma
 from src.apps.legislation.temporal_api import norma_version_api  # noqa: F401
-from src.processing.normative_graph import build_normative_graph
+from src.processing.normative_graph import (
+    build_candidate_document_graph,
+    build_normative_graph,
+)
 
 
 @pytest.fixture
@@ -190,6 +199,13 @@ def test_candidate_evidence_api_requires_both_review_permissions(graph_map):
     reviewer.user_permissions.add(
         Permission.objects.get(content_type__app_label="legislation", codename="view_documentonormativo")
     )
+    assert client.get(endpoint).status_code == 403
+    reviewer.user_permissions.add(
+        Permission.objects.get(
+            content_type__app_label="legislation",
+            codename="review_eventonormativocandidato",
+        )
+    )
 
     public_graph = client.get(endpoint.replace("include_pending=true", "include_pending=false"))
     response = client.get(endpoint)
@@ -206,6 +222,266 @@ def test_candidate_evidence_api_requires_both_review_permissions(graph_map):
         "document_id": str(document.public_id),
         "page": 2,
     }
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(NORMATIVE_GRAPH_ENABLED=True)
+def test_reviewer_graph_includes_reviewed_extraction_as_nonoperative_candidate_only():
+    from src.apps.ingestion.normative_impact import affected_norma_ids
+
+    source_norma = Norma.objects.create(
+        tipo="Lei Complementar",
+        numero="400",
+        ano=2026,
+        identity_json={"jurisdiction": "BR-RN-NATAL"},
+    )
+    target_norma = Norma.objects.create(
+        tipo="Lei",
+        numero="10",
+        ano=2000,
+        identity_json={"jurisdiction": "BR-RN-NATAL"},
+    )
+    text = "Art. 4º Ficam revogados:\nI - Lei nº 10/2000.\n"
+    document = DocumentoNormativo.objects.create(
+        document_key="reviewed-relation-graph-document",
+        norma=source_norma,
+        source_kind=DocumentoNormativo.SourceKind.ARCHIVE,
+        source_ref="qa:reviewed-relation-graph",
+        content_sha256="c" * 64,
+        size_bytes=100,
+        review_status=DocumentoNormativo.ReviewStatus.PENDING,
+    )
+    source_norma.documento_base = document
+    source_norma.save(update_fields=["documento_base", "updated_at"])
+    extraction = ExtracaoDocumento.objects.create(
+        documento=document,
+        extractor_version="graph-candidate-v1",
+        policy_fingerprint="d" * 64,
+        text_version="legal-text-v1",
+        raw_text=text,
+        legal_text=text,
+        page_count=1,
+        page_map_json=[{"start": 0, "end": len(text), "page": 1}],
+        status=ExtracaoDocumento.Status.COMPLETE,
+        extraction_sha256="",
+    )
+    persist_document_relation_candidates(extraction)
+    candidate = extraction.eventos_normativos_candidatos.get()
+    reviewer = get_user_model().objects.create_user(
+        username="relation-graph-reviewer", is_staff=True
+    )
+    reviewer.user_permissions.add(
+        *Permission.objects.filter(
+            content_type__app_label="legislation",
+            codename__in=(
+                "view_documentonormativo",
+                "review_eventonormativocandidato",
+                "view_eventoalteracao",
+            ),
+        )
+    )
+    review_document_relation_candidate(
+        candidate_id=candidate.pk,
+        actor=reviewer,
+        decision=RevisaoEventoNormativoCandidato.Decision.CONFIRM,
+        reason="Conferi que o texto expresso cita essa identidade normativa.",
+        expected_fingerprint=candidate.fingerprint,
+        target_norma_id=target_norma.pk,
+    )
+
+    public_graph = build_normative_graph(source_norma, include_pending=False)
+    reviewer_graph = build_normative_graph(source_norma, include_pending=True)
+    client = Client()
+    client.force_login(reviewer)
+    api_graph = client.get(f"/api/v1/normas/{source_norma.pk}/relations/?include_pending=true")
+
+    assert public_graph["edges"] == []
+    candidate_edges = [edge for edge in reviewer_graph["edges"] if edge["id"].startswith("document-candidate:")]
+    assert len(candidate_edges) == 1
+    edge = candidate_edges[0]
+    assert edge["review_status"] == "candidate_confirmed"
+    assert edge["effective_status"] == "not_assessed"
+    assert edge["resolution"] == "resolved_candidate"
+    assert edge["evidence"]["document_id"] == str(document.public_id)
+    # Confirming the literal extraction and exact target identity is still not
+    # a legal-effect decision: candidate edges must not enter impact traversal.
+    assert affected_norma_ids(source_norma.pk) == [source_norma.pk]
+    assert api_graph.status_code == 200
+    assert any(item["id"].startswith("document-candidate:") for item in api_graph.json()["edges"])
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(NORMATIVE_GRAPH_ENABLED=True)
+def test_unlinked_pending_document_has_reviewer_only_candidate_graph():
+    text = "Art. 260. Ficam revogados:\nI - Lei nº 55/2004.\n"
+    document = DocumentoNormativo.objects.create(
+        document_key="e" * 64,
+        source_kind=DocumentoNormativo.SourceKind.ARCHIVE,
+        source_ref="qa:unlinked-candidate-graph",
+        original_filename="lc258-2024-candidato.pdf",
+        role=DocumentoNormativo.Role.ORIGINAL,
+        content_sha256="f" * 64,
+        size_bytes=100,
+        review_status=DocumentoNormativo.ReviewStatus.PENDING,
+        metadata_json={
+            "identity_candidate": {
+                "jurisdiction": "BR-RN-NATAL",
+                "type": "Lei Complementar",
+                "number": "258",
+                "year": "2024",
+            }
+        },
+    )
+    target_document = DocumentoNormativo.objects.create(
+        document_key="target-pending-law-55-2004",
+        source_kind=DocumentoNormativo.SourceKind.SAPL,
+        source_ref="qa:target-law-55-2004",
+        original_filename="lei-55-2004.pdf",
+        role=DocumentoNormativo.Role.UNDETERMINED,
+        content_sha256="a" * 64,
+        size_bytes=100,
+        review_status=DocumentoNormativo.ReviewStatus.PENDING,
+        metadata_json={
+            "identity_candidate": {
+                "jurisdiction": "BR-RN-NATAL",
+                "type": "Lei",
+                "number": "55",
+                "year": "2004",
+            }
+        },
+    )
+    conflicting_type_document = DocumentoNormativo.objects.create(
+        document_key="target-pending-lc-55-2004",
+        source_kind=DocumentoNormativo.SourceKind.ARCHIVE,
+        source_ref="qa:target-lc-55-2004-conflicting-type",
+        original_filename="lei-complementar-55-2004.pdf",
+        role=DocumentoNormativo.Role.UNDETERMINED,
+        content_sha256="b" * 64,
+        size_bytes=100,
+        review_status=DocumentoNormativo.ReviewStatus.PENDING,
+        metadata_json={
+            "identity_candidate": {
+                "jurisdiction": "BR-RN-NATAL",
+                "type": "Lei Complementar",
+                "number": "55",
+                "year": "2004",
+            }
+        },
+    )
+    synthetic_target_document = DocumentoNormativo.objects.create(
+        document_key="synthetic-target-law-55-2004",
+        source_kind=DocumentoNormativo.SourceKind.ARCHIVE,
+        source_ref="qa:synthetic-target-law-55-2004",
+        original_filename="synthetic-law-55-2004.pdf",
+        role=DocumentoNormativo.Role.UNDETERMINED,
+        content_sha256="d" * 64,
+        size_bytes=100,
+        review_status=DocumentoNormativo.ReviewStatus.PENDING,
+        metadata_json={
+            "synthetic_fixture": True,
+            "identity_candidate": {
+                "jurisdiction": "BR-RN-NATAL",
+                "type": "Lei",
+                "number": "55",
+                "year": "2004",
+            },
+        },
+    )
+    extraction = ExtracaoDocumento.objects.create(
+        documento=document,
+        extractor_version="unlinked-candidate-graph-v1",
+        policy_fingerprint="1" * 64,
+        text_version="legal-text-v1",
+        raw_text=text,
+        legal_text=text,
+        page_count=1,
+        page_map_json=[{"start": 0, "end": len(text), "page": 59}],
+        status=ExtracaoDocumento.Status.COMPLETE,
+        extraction_sha256="",
+    )
+    persist_document_relation_candidates(extraction)
+    candidate = extraction.eventos_normativos_candidatos.get()
+    endpoint = f"/api/v1/documentos/{document.public_id}/relations/"
+
+    client = Client()
+    assert client.get(endpoint).status_code == 403
+    reviewer = get_user_model().objects.create_user(
+        username="unlinked-candidate-graph-reviewer", is_staff=True
+    )
+    reviewer.user_permissions.add(
+        *Permission.objects.filter(
+            content_type__app_label="legislation",
+            codename__in=(
+                "view_documentonormativo",
+                "review_eventonormativocandidato",
+                "view_eventoalteracao",
+            ),
+        )
+    )
+    client.force_login(reviewer)
+    response = client.get(endpoint)
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["source_document"]["label"] == "Lei Complementar 258 2024"
+    assert payload["root_id"] == f"candidate-document:{document.public_id}"
+    assert payload["filters"]["include_pending"] is True
+    assert len(payload["edges"]) == 1
+    edge = payload["edges"][0]
+    assert edge["action"] == "REVOGA"
+    assert edge["review_status"] == "candidate_pending"
+    assert edge["effective_status"] == "not_assessed"
+    assert edge["resolution"] == "unresolved_candidate"
+    assert edge["evidence"]["quote"] == "I - Lei nº 55/2004.\n"
+    target_leads = edge["evidence"]["target_document_candidates"]
+    assert synthetic_target_document.public_id not in {
+        item["url"].rsplit("/", 2)[-2] for item in target_leads
+    }
+    assert target_leads == [
+        {
+            "url": f"/normas/documentos/{target_document.public_id}/",
+            "filename": "lei-55-2004.pdf",
+            "source": "SAPL",
+            "review_status": "Pendente",
+            "identity_type": "lei",
+            "type_matches": True,
+        },
+        {
+            "url": f"/normas/documentos/{conflicting_type_document.public_id}/",
+            "filename": "lei-complementar-55-2004.pdf",
+            "source": "Acervo local",
+            "review_status": "Pendente",
+            "identity_type": "lei_complementar",
+            "type_matches": False,
+        },
+    ]
+    assert client.get(endpoint + "?actions=NOT-A-RELATION").status_code == 400
+
+    explore = client.get(
+        f"/explorar/?escopo=candidatas&documento={document.public_id}"
+    )
+    assert explore.status_code == 200
+    assert b"PDF selecionado para revis\xc3\xa3o" in explore.content
+    assert b"Rela\xc3\xa7\xc3\xb5es mencionadas neste PDF" in explore.content
+    assert f"/api/v1/documentos/{document.public_id}/relations/".encode() in explore.content
+
+    graph = build_candidate_document_graph(document)
+    assert graph["edges"] == payload["edges"]
+
+    review_document_relation_candidate(
+        candidate_id=candidate.pk,
+        actor=reviewer,
+        decision=RevisaoEventoNormativoCandidato.Decision.CONFIRM,
+        reason="O trecho foi conferido; a espécie do alvo permanece conflitante.",
+        expected_fingerprint=candidate.fingerprint,
+        target_norma_id=None,
+    )
+    confirmed_text_payload = client.get(endpoint).json()
+    confirmed_text_edge = confirmed_text_payload["edges"][0]
+    assert confirmed_text_edge["review_status"] == "candidate_text_confirmed_unresolved"
+    assert confirmed_text_edge["resolution"] == "unresolved_candidate"
+    assert build_candidate_document_graph(document)["edges"][0]["review_status"] == (
+        "candidate_text_confirmed_unresolved"
+    )
 
 
 @pytest.mark.django_db(transaction=True)

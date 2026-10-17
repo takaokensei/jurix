@@ -40,6 +40,28 @@ def test_login_rejects_bad_credentials_without_disclosing_account_existence():
     assert client.session.get("_auth_user_id") is None
 
 
+def test_login_explains_protected_foundation_check_destination():
+    response = Client().get(
+        reverse("workspace:login"),
+        {"next": reverse("workspace:foundation_check")},
+    )
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "Acesse Conferir fundamentação" in body
+    assert "exige uma conta autorizada" in body
+    assert "não há cadastro público" in body
+    assert "coleções privadas" not in body
+
+
+def test_login_keeps_generic_copy_for_other_destinations():
+    response = Client().get(reverse("workspace:login"))
+
+    assert response.status_code == 200
+    assert "Entre no Jurix" in response.content.decode()
+    assert "recursos privados" in response.content.decode()
+
+
 def test_login_blocks_external_redirect_and_defaults_to_assistant():
     user = get_user_model().objects.create_user("safe-redirect-user", password="fixture-pass")
     client = Client()

@@ -32,7 +32,18 @@ def test_seed_normative_qa_is_idempotent_synthetic_and_has_no_credentials(tmp_pa
     second = seed_fixture(output_two)
     assert first["dataset"] == "synthetic_not_gold"
     assert first["scenarios"] == second["scenarios"]
-    assert first["temporal_scenarios"] == second["temporal_scenarios"]
+    first_temporal = dict(first["temporal_scenarios"])
+    second_temporal = dict(second["temporal_scenarios"])
+    first_snapshots = first_temporal.pop("snapshots")
+    second_snapshots = second_temporal.pop("snapshots")
+    assert first_temporal == second_temporal
+    # The test deliberately changes a synthetic Norma's status between seeds.
+    # Snapshot inputs include the corpus revision, so the immutable record IDs
+    # and input hashes may change even when the projected legal text is stable.
+    for boundary in first_snapshots:
+        assert first_snapshots[boundary]["snapshot_id"] != second_snapshots[boundary]["snapshot_id"]
+        assert first_snapshots[boundary]["input_sha256"] != second_snapshots[boundary]["input_sha256"]
+        assert first_snapshots[boundary]["content_sha256"] == second_snapshots[boundary]["content_sha256"]
     assert first["edge_case_fixtures"] == second["edge_case_fixtures"]
     edge_cases = first["normative_edge_cases"]
     assert len(edge_cases) >= 12
@@ -135,7 +146,12 @@ def test_seed_normative_qa_is_idempotent_synthetic_and_has_no_credentials(tmp_pa
     assert temporal["snapshots"]["d_minus_1"]["article_5_text"] == "Art. 5º O prazo é de dez dias."
     assert temporal["snapshots"]["d"]["article_5_text"] == "O prazo é de vinte dias."
     assert temporal["snapshots"]["d_plus_1"]["content_sha256"] == temporal["snapshots"]["d"]["content_sha256"]
-    assert NormativeSnapshot.objects.filter(norma_id=temporal["norma_a"]["norma_id"]).count() == 3
+    snapshots = NormativeSnapshot.objects.filter(norma_id=temporal["norma_a"]["norma_id"])
+    assert snapshots.count() == 6
+    assert all(
+        snapshots.filter(as_of=boundary).count() == 2
+        for boundary in (date(2021, 2, 28), date(2021, 3, 1), date(2021, 3, 2))
+    )
     conflict_fixture = temporal["same_date_conflict"]
     assert conflict_fixture["synthetic_only"] is True
     assert conflict_fixture["expected_projection"] == "partial"

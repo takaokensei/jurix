@@ -6,7 +6,11 @@ from collections.abc import Iterable
 
 from celery import shared_task
 
-from src.apps.ingestion.normative_impact import enqueue_normative_work, safe_norma_revision
+from src.apps.ingestion.normative_impact import (
+    enqueue_normative_work,
+    safe_norma_revision,
+    safe_target_identity_revision,
+)
 from src.apps.ingestion.normative_tasks import _require_normative_qa
 from src.apps.legislation.models import Norma
 from src.apps.operations.models import NormativeWorkItem
@@ -28,7 +32,7 @@ def enqueue_target_reconciliation(target_norma_ids: Iterable[int]) -> dict:
     created = 0
     for norma_id in ids:
         norma = normas[norma_id]
-        revision = safe_norma_revision(norma)
+        revision = safe_norma_revision(norma) or safe_target_identity_revision(norma)
         if not revision:
             continue
         item, was_created = enqueue_normative_work(

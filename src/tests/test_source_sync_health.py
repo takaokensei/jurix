@@ -60,7 +60,7 @@ def test_weekly_full_sweep_uses_its_own_freshness_window():
     now = timezone.now()
     _state(
         "weekly-full",
-        success=now - timedelta(days=2),
+        success=now - timedelta(hours=2),
         full_success=now - timedelta(days=2),
     )
 
@@ -68,6 +68,8 @@ def test_weekly_full_sweep_uses_its_own_freshness_window():
 
     assert report["status"] == "current"
     assert report["stale_scope_count"] == 0
+    assert report["stale_incremental_scope_count"] == 0
+    assert report["stale_full_sweep_scope_count"] == 0
     assert report["full_sweep_scope_count"] == 1
 
     SaplSyncState.objects.all().delete()
@@ -78,6 +80,44 @@ def test_weekly_full_sweep_uses_its_own_freshness_window():
     )
     stale = get_source_sync_health("sapl", now=now)
     assert stale["status"] == "stale"
+
+
+def test_recent_full_sweep_does_not_hide_stale_incremental_success():
+    now = timezone.now()
+    _state(
+        "recent-full-old-incremental",
+        success=now - timedelta(hours=40),
+        full_success=now - timedelta(days=2),
+    )
+
+    report = get_source_sync_health(
+        "sapl", now=now, include_scope_diagnostics=True
+    )
+
+    assert report["status"] == "stale"
+    assert report["stale_scope_count"] == 1
+    assert report["stale_incremental_scope_count"] == 1
+    assert report["stale_full_sweep_scope_count"] == 0
+    assert report["scope_diagnostics"][0]["checkpoint_state"] == "stale_incremental"
+
+
+def test_recent_incremental_success_does_not_hide_stale_full_sweep():
+    now = timezone.now()
+    _state(
+        "recent-incremental-old-full",
+        success=now - timedelta(hours=2),
+        full_success=now - timedelta(days=9),
+    )
+
+    report = get_source_sync_health(
+        "sapl", now=now, include_scope_diagnostics=True
+    )
+
+    assert report["status"] == "stale"
+    assert report["stale_scope_count"] == 1
+    assert report["stale_incremental_scope_count"] == 0
+    assert report["stale_full_sweep_scope_count"] == 1
+    assert report["scope_diagnostics"][0]["checkpoint_state"] == "stale_full_sweep"
 
 
 def test_sync_health_fails_closed_for_first_failure_and_redacts_error_text():
@@ -106,6 +146,46 @@ def test_sync_health_reports_partial_cursor_as_uninitialized_until_first_success
     assert report["partial_scope_count"] == 1
     assert report["failed_scope_count"] == 0
     assert "sapl.invalid" not in repr(report)
+
+
+def test_optional_scope_diagnostics_are_actionable_without_exposing_cursor_or_error():
+    now = timezone.now()
+    _state(
+        "private-scope-fingerprint",
+        started=now - timedelta(minutes=5),
+        cursor=40,
+        cursor_url="https://sapl.invalid/private/page?token=secret",
+    )
+
+    report = get_source_sync_health("sapl", now=now, include_scope_diagnostics=True)
+
+    assert report["scope_diagnostics"] == [
+        {
+            "scope_index": 1,
+            "checkpoint_state": "partial_without_success",
+            "last_started_at": now - timedelta(minutes=5),
+            "last_success_at": None,
+            "last_full_sync_at": None,
+            "incremental_stale": False,
+            "full_sweep_stale": False,
+            "cursor_position": 40,
+            "cursor_url_present": True,
+            "last_sync_count": 0,
+            "full_sweep_expected_count": None,
+            "error_recorded": False,
+        }
+    ]
+    serialized = repr(report)
+    assert "private-scope-fingerprint" not in serialized
+    assert "sapl.invalid" not in serialized
+    assert "secret" not in serialized
+
+
+def test_optional_scope_diagnostics_is_empty_when_source_has_no_scope():
+    report = get_source_sync_health("dom_natal", include_scope_diagnostics=True)
+
+    assert report["scope_count"] == 0
+    assert report["scope_diagnostics"] == []
 
 
 def test_sync_health_reports_reachable_dom_with_bounded_backlog_as_degraded():

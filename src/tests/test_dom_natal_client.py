@@ -63,6 +63,9 @@ def test_list_editions_parses_regular_and_special_dates_and_keeps_identity():
       <a href="/_anexos/publicacao/dom/dom_20261003_especial_{'b' * 32}.pdf">
         Ano XXVI - Num. 6208 - Especial - 03/10/2026
       </a>
+      <a href="/_anexos/publicacao/dom/dom_20261003_extra_{'d' * 32}.pdf">
+        Ano XXVI - Num. 6209 - Edição Extra - 03/10/2026
+      </a>
       <a href="https://evil.example/document.pdf">Ano XXVI - Num. 1 - 03/10/2026</a>
       <a href="/_anexos/publicacao/dom/dom_20261002_{'c' * 32}.pdf">
         Ano XXVI - Num. 6206 - 02/10/2026
@@ -75,11 +78,29 @@ def test_list_editions_parses_regular_and_special_dates_and_keeps_identity():
         (6206, False, date(2026, 10, 2)),
         (6207, False, date(2026, 10, 3)),
         (6208, True, date(2026, 10, 3)),
+        (6209, True, date(2026, 10, 3)),
     ]
     assert editions[1].identity.endswith(":regular")
     assert editions[2].identity.endswith(":special")
+    assert editions[3].identity.endswith(":special")
     assert session.calls[0][0] == "POST"
     assert session.calls[0][2]["data"] == {"mes": "10", "ano": "2026", "list": "Consultar"}
+
+
+def test_list_editions_zero_pads_single_digit_month_for_official_portal():
+    html = f"""
+      <h2>DOMs do Mês (09/2026)</h2>
+      <a href="/_anexos/publicacao/dom/dom_20260910_{'a' * 32}.pdf">
+        Ano XXVI - Num. 6189 - 10/09/2026
+      </a>
+    """.encode()
+    session = _Session([_Response(headers={"Content-Type": "text/html; charset=utf-8"}, body=html)])
+
+    editions = DomNatalClient(session=session).list_editions(month=9, year=2026)
+
+    assert len(editions) == 1
+    assert editions[0].publication_date == date(2026, 9, 10)
+    assert session.calls[0][2]["data"] == {"mes": "09", "ano": "2026", "list": "Consultar"}
 
 
 def test_list_editions_parses_sanitized_snapshot_from_official_dom_portal():
@@ -95,6 +116,42 @@ def test_list_editions_parses_sanitized_snapshot_from_official_dom_portal():
         (6211, date(2026, 10, 7), False),
     ]
     assert len({item.identity for item in editions}) == 3
+
+
+def test_list_editions_rejects_portal_response_for_a_different_month():
+    html = """
+      <h2>DOMs do Mês (10/2026)</h2>
+      <a href="/_anexos/publicacao/dom/dom_20261001_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.pdf">
+        Ano XXVI - Num. 6206 - 01/10/2026
+      </a>
+    """.encode()
+    session = _Session([_Response(headers={"Content-Type": "text/html"}, body=html)])
+
+    with pytest.raises(DomNatalError, match="não confirmou o mês e ano"):
+        DomNatalClient(session=session).list_editions(month=9, year=2026)
+
+
+def test_empty_month_requires_explicit_matching_period_heading():
+    session = _Session(
+        [_Response(headers={"Content-Type": "text/html"}, body=b"<h2>Busca DOM</h2>")]
+    )
+
+    with pytest.raises(DomNatalError, match="não retornou edições verificáveis"):
+        DomNatalClient(session=session).list_editions(month=9, year=2026)
+
+
+def test_empty_month_is_not_treated_as_a_successful_catalog_sync():
+    session = _Session(
+        [
+            _Response(
+                headers={"Content-Type": "text/html"},
+                body="<h2>DOMs do Mês (09/2026)</h2>".encode(),
+            )
+        ]
+    )
+
+    with pytest.raises(DomNatalError, match="não retornou edições verificáveis"):
+        DomNatalClient(session=session).list_editions(month=9, year=2026)
 
 
 @pytest.mark.parametrize(("month", "year"), [(0, 2026), (13, 2026), (1, 2000), (1, 2101)])

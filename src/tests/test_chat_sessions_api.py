@@ -17,6 +17,7 @@ from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
+from src.apps.legislation.document_models import DocumentoNormativo, ExtracaoDocumento
 from src.apps.legislation.models import ChatMessage, ChatSession, ChatTurn
 
 pytestmark = pytest.mark.django_db
@@ -178,6 +179,100 @@ class TestDetailAndSlugContract:
     def test_other_users_session_is_404(self, fetch):
         foreign = ChatSession.objects.create(user=User.objects.create_user("x"), title="t")
         assert fetch(foreign).status_code == 404
+
+    def test_archive_history_restores_verified_pdf_page_without_mutating_saved_sources(
+        self, fetch, user
+    ):
+        legal_text = "Prefácio sem relação. Art. 1º Trata da regra aplicável ao caso. Art. 2º Outra regra."
+        start = legal_text.index("Art. 1º")
+        end = legal_text.index(" Art. 2º")
+        page_split = start + 12
+        document = DocumentoNormativo.objects.create(
+            document_key="f" * 64,
+            source_kind=DocumentoNormativo.SourceKind.ARCHIVE,
+            source_ref="qa/archive.pdf",
+            content_sha256="a" * 64,
+            original_filename="archive.pdf",
+        )
+        ExtracaoDocumento.objects.create(
+            documento=document,
+            extractor_version="test-v1",
+            policy_fingerprint="b" * 64,
+            text_version="technical_text_v1",
+            legal_text=legal_text,
+            page_map_json=[
+                {"page": 1, "start": 0, "end": page_split},
+                {"page": 2, "start": page_split, "end": len(legal_text)},
+            ],
+        )
+        session = ChatSession.objects.create(user=user, title="Artigo citado")
+        assistant = ChatMessage.objects.create(
+            session=session,
+            role="assistant",
+            content="A regra está no artigo citado.",
+            sources_json=[
+                {
+                    "evidence_scope": "isolated_qa_archive",
+                    "source_kind": "archive",
+                    "source_id": str(document.public_id),
+                    "document_id": str(document.public_id),
+                    "document_sha256": "a" * 64,
+                    "norma_ref": "Lei nº 1/2020",
+                    "dispositivo_ref": "Art. 1º",
+                    "full_text": legal_text[start:end],
+                    "span": {"start": start, "end": end},
+                }
+            ],
+        )
+        original_sources = assistant.sources_json
+
+        response = fetch(session)
+
+        assert response.status_code == 200
+        restored = response.json()["messages"][0]["sources"][0]
+        assert restored["page"] == 2
+        assert restored["local_pdf_url"].endswith("/pdf/")
+        assistant.refresh_from_db()
+        assert assistant.sources_json == original_sources
+
+    def test_archive_history_does_not_guess_page_for_stale_or_ambiguous_excerpt(
+        self, fetch, user
+    ):
+        legal_text = "Texto oficial em uma única página."
+        document = DocumentoNormativo.objects.create(
+            document_key="e" * 64,
+            source_kind=DocumentoNormativo.SourceKind.ARCHIVE,
+            source_ref="qa/stale.pdf",
+            content_sha256="c" * 64,
+        )
+        ExtracaoDocumento.objects.create(
+            documento=document,
+            extractor_version="test-v1",
+            policy_fingerprint="d" * 64,
+            text_version="technical_text_v1",
+            legal_text=legal_text,
+            page_map_json=[{"page": 1, "start": 0, "end": len(legal_text)}],
+        )
+        session = ChatSession.objects.create(user=user, title="Trecho divergente")
+        ChatMessage.objects.create(
+            session=session,
+            role="assistant",
+            content="Trecho divergente.",
+            sources_json=[
+                {
+                    "evidence_scope": "isolated_qa_archive",
+                    "source_id": str(document.public_id),
+                    "document_sha256": "c" * 64,
+                    "full_text": "Texto de outra versão.",
+                    "span": {"start": 0, "end": len(legal_text)},
+                }
+            ],
+        )
+
+        restored = fetch(session).json()["messages"][0]["sources"][0]
+
+        assert restored["page"] is None
+        assert restored["local_pdf_url"].endswith("/pdf/")
 
 
 class TestDetailMisc:

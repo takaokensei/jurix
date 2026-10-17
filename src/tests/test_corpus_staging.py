@@ -141,6 +141,52 @@ def test_staging_deduplicates_content_blob_but_preserves_each_archive_entry(tmp_
     assert result["copied"] == 2
 
 
+@pytest.mark.django_db(transaction=True)
+def test_staging_records_zero_byte_pdf_as_terminal_error_without_document(tmp_path, monkeypatch):
+    qa_root = tmp_path / "qa"
+    qa_root.mkdir()
+    archive_path = qa_root / "source-with-empty-pdf.zip"
+    with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("Lei_20200101_1.pdf", _pdf_bytes("PDF válido de QA."))
+        archive.writestr("Lei_20200101_2.pdf", b"")
+        archive.writestr("Lei_20200101_3.pdf", _pdf_bytes("Segundo PDF válido de QA."))
+    manifest_path = qa_root / "inventory.jsonl"
+    summary = inventory_archive(archive_path, manifest_path)
+    qa_settings = _enable_isolated_qa(monkeypatch, qa_root)
+
+    assert summary["complete"] is True
+    assert summary["empty_pdf_entries"] == [1]
+    with qa_settings:
+        result = stage_normative_corpus(
+            archive_path=archive_path,
+            manifest_path=manifest_path,
+            apply=True,
+            batch_size=3,
+        )
+        resumed = stage_normative_corpus(
+            archive_path=archive_path,
+            manifest_path=manifest_path,
+            apply=True,
+            batch_size=3,
+            resume=result["run_id"],
+        )
+
+    assert result["corpus_status"] == "partial"
+    assert result["cursor"] == 3
+    assert result["created"] == 2
+    assert result["failed"] == 1
+    assert result["processed"] == 3
+    assert DocumentoNormativo.objects.count() == 2
+    assert DocumentoNormativo.objects.filter(size_bytes=0).count() == 0
+    assert ExtracaoDocumento.objects.count() == 0
+    run = ArchiveImportRun.objects.get(pk=result["run_id"])
+    assert run.stats_json["errors"] == {"1": "empty_pdf"}
+    assert run.stats_json["attempts"] == {"0": 1, "2": 1}
+    assert resumed["mode"] == "partial"
+    assert resumed["reason"] == "corpus_processed_with_errors"
+    assert resumed["failed"] == 1
+
+
 def test_staging_rejects_extractor_injection_and_oversized_batch(tmp_path, monkeypatch):
     qa_root = tmp_path / "qa"
     archive_path, manifest_path = _archive_inputs(qa_root, 1)

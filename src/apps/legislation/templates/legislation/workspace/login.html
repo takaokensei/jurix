@@ -6,7 +6,15 @@
 
 {% block content %}
 <section class="workspace-page-header">
-    <div><span class="workspace-eyebrow">Acesso à conta</span><h1>Entre no Jurix</h1><p>Use uma conta fornecida pelo administrador desta instalação para acessar suas coleções privadas.</p></div>
+    <div>
+        <span class="workspace-eyebrow">{% if foundation_check_requested %}Área protegida{% else %}Acesso à conta{% endif %}</span>
+        <h1>{% if foundation_check_requested %}Acesse Conferir fundamentação{% else %}Entre no Jurix{% endif %}</h1>
+        {% if foundation_check_requested %}
+            <p>Conferir fundamentação exige uma conta autorizada nesta instalação. Entre com os dados fornecidos pelo administrador; não há cadastro público.</p>
+        {% else %}
+            <p>Use uma conta fornecida pelo administrador desta instalação para acessar seus recursos privados.</p>
+        {% endif %}
+    </div>
 </section>
 <section class="workspace-card workspace-auth-card" aria-labelledby="login-heading">
     <h2 id="login-heading">Entrar na sua conta</h2>

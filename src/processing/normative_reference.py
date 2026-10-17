@@ -12,7 +12,9 @@ _REFERENCE_RE = re.compile(
     r"emenda(?:\s+constitucional)?|lc)\s*"
     r"(?:\s+(?:municipal(?:\s+de\s+Natal)?|do\s+munic[ií]pio(?:\s+de\s+Natal)?))?\s*"
     r"(?:n[º°o.]?\s*)?(?P<number>\d[\d.]*)"
-    r"(?:\s*(?:/|de)\s*(?P<year>(?:19|20)\d{2}))?",
+    r"(?:\s*(?:/|de)\s*(?P<year>(?:19|20)\d{2})"
+    r"|\s*,?\s+de\s+\d{1,2}\s+de\s+[A-Za-zÀ-ÿ]+\s+de\s+"
+    r"(?P<date_year>(?:19|20)\d{2}))?",
     re.IGNORECASE,
 )
 _ARTICLE_RE = re.compile(r"\bart(?:igo)?\.?\s*(\d+)\s*[ºª°o]?", re.IGNORECASE)
@@ -98,7 +100,7 @@ def parse_normative_references(text: str) -> tuple[NormativeReference, ...]:
         number = normalize_number(match.group("number"))
         if not number:
             continue
-        year_text = match.group("year")
+        year_text = match.group("year") or match.group("date_year")
         result.append(
             NormativeReference(
                 type_key=canonical_type(match.group("type")),

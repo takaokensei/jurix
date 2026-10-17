@@ -7,11 +7,13 @@ import pytest
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.core.management import CommandError, call_command
+from django.db import connection
 from django.test import override_settings
 
 from src.apps.ingestion.document_promotion import (
     PromotionBlocked,
     promote_document,
+    promotion_candidates,
     promotion_fingerprint,
 )
 from src.apps.legislation.document_models import DocumentoNormativo, ExtracaoDocumento
@@ -137,6 +139,80 @@ def test_promotion_blocks_conflict_existing_base_and_synthetic_records(reviewed_
             confirmed_identity_key=identity_key, confirmed_role=DocumentoNormativo.Role.ORIGINAL,
             confirm_public_record=True,
         )
+    assert RevisaoJuridica.objects.filter(documento=document).count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+def test_promotion_blocks_target_norma_marked_as_synthetic(reviewed_candidate):
+    document, norma, reviewer, identity_key = reviewed_candidate
+    norma.identity_json = {**norma.identity_json, "synthetic_fixture": True}
+    norma.save(update_fields=["identity_json", "updated_at"])
+
+    candidates = promotion_candidates(document)
+    assert candidates == {
+        "identity_key": identity_key,
+        "norma_ids": [],
+        "status": "blocked",
+        "reason": "synthetic_norma_identity_conflict",
+    }
+
+    with pytest.raises(PromotionBlocked, match="synthetic_norma_identity_conflict"):
+        promote_document(
+            document_id=str(document.public_id), norma_id=norma.pk, actor=reviewer,
+            reason="Tentativa de promoção com identidade sintética.",
+            expected_fingerprint=promotion_fingerprint(document),
+            confirmed_identity_key=identity_key,
+            confirmed_role=DocumentoNormativo.Role.ORIGINAL,
+            confirm_public_record=True,
+        )
+
+    document.refresh_from_db()
+    norma.refresh_from_db()
+    assert document.norma_id is None
+    assert document.review_status == DocumentoNormativo.ReviewStatus.PENDING
+    assert norma.documento_base_id is None
+    assert norma.identity_json["synthetic_fixture"] is True
+    assert RevisaoJuridica.objects.filter(documento=document).count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+def test_promotion_blocks_accepted_extraction_with_mismatched_epigraph(reviewed_candidate):
+    document, norma, reviewer, identity_key = reviewed_candidate
+    extraction = document.accepted_extraction
+    # Simulate a legacy/corrupt row from before the promotion guard existed;
+    # the normal model save correctly rejects edits to immutable extractions.
+    metadata_field = ExtracaoDocumento._meta.get_field("metadata_candidates_json")
+    corrupted_metadata = {
+        "epigraph": {
+            "status": "candidate",
+            "candidates": [{"type_key": "lei", "number": "9002", "year": 2020}],
+        }
+    }
+    table = connection.ops.quote_name(ExtracaoDocumento._meta.db_table)
+    column = connection.ops.quote_name(metadata_field.column)
+    pk_column = connection.ops.quote_name(ExtracaoDocumento._meta.pk.column)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"UPDATE {table} SET {column} = %s WHERE {pk_column} = %s",
+            [metadata_field.get_db_prep_save(corrupted_metadata, connection), extraction.pk],
+        )
+
+    with pytest.raises(PromotionBlocked, match="epígrafe extraída diverge"):
+        promote_document(
+            document_id=str(document.public_id),
+            norma_id=norma.pk,
+            actor=reviewer,
+            reason="Tentativa de promover PDF com número divergente.",
+            expected_fingerprint=promotion_fingerprint(document),
+            confirmed_identity_key=identity_key,
+            confirmed_role=DocumentoNormativo.Role.ORIGINAL,
+            confirm_public_record=True,
+        )
+
+    document.refresh_from_db()
+    norma.refresh_from_db()
+    assert document.norma_id is None
+    assert norma.documento_base_id is None
     assert RevisaoJuridica.objects.filter(documento=document).count() == 0
 
 

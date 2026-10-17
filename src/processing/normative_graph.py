@@ -7,11 +7,15 @@ from collections import deque
 from datetime import date
 from uuid import UUID
 
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.utils import timezone
 
 from src.apps.ingestion.document_promotion import promotion_fingerprint
-from src.apps.legislation.document_models import DocumentoNormativo
+from src.apps.legislation.document_models import (
+    DocumentoNormativo,
+    EventoNormativoCandidato,
+    RevisaoEventoNormativoCandidato,
+)
 from src.apps.legislation.event_review import event_review_fingerprint, event_review_status
 from src.apps.legislation.models import EventoAlteracao, Norma
 from src.apps.legislation.review_models import RevisaoJuridica
@@ -144,6 +148,7 @@ def build_normative_graph(
         if current_depth >= depth or current_id in visited:
             continue
         visited.add(current_id)
+        current_norma = Norma.objects.select_related("documento_base").get(pk=current_id)
         queryset = (
             EventoAlteracao.objects.filter(Q(norma_alvo_id=current_id) | Q(dispositivo_fonte__norma_id=current_id))
             .select_related(
@@ -275,6 +280,138 @@ def build_normative_graph(
                 "official_url": safe_official_url(source_norma.documento_base.official_url) if source_norma.pk in public_norma_ids else None,
             }
             edges.setdefault(edge_id, edge)
+
+        # Extracted document relations are visible only in the explicitly
+        # authorized reviewer graph. They remain separate candidate edges and
+        # never contribute to event traversal or temporal projection.
+        if include_pending:
+            source_document = (
+                current_norma.documentos_normativos.filter(
+                    review_status__in={
+                        DocumentoNormativo.ReviewStatus.PENDING,
+                        DocumentoNormativo.ReviewStatus.IN_REVIEW,
+                    },
+                    accepted_extraction__isnull=True,
+                )
+                .order_by("-created_at", "-pk")
+                .first()
+            )
+            if (
+                source_document
+                and source_document.review_status
+                in {DocumentoNormativo.ReviewStatus.PENDING, DocumentoNormativo.ReviewStatus.IN_REVIEW}
+                and source_document.accepted_extraction_id is None
+            ):
+                latest_extraction = source_document.extracoes.order_by("-created_at", "-pk").first()
+                if latest_extraction:
+                    candidates = EventoNormativoCandidato.objects.filter(
+                        extracao=latest_extraction
+                    ).prefetch_related(
+                        Prefetch(
+                            "revisoes",
+                            queryset=RevisaoEventoNormativoCandidato.objects.order_by(
+                                "created_at", "pk"
+                            ),
+                        )
+                    ).order_by("source_structural_key", "pk")[: MAX_EDGES - len(edges)]
+                    for candidate in candidates:
+                        reviews = list(candidate._prefetched_objects_cache.get("revisoes", []))
+                        latest_review = reviews[-1] if reviews else None
+                        reference = (
+                            candidate.target_reference_json
+                            if isinstance(candidate.target_reference_json, dict)
+                            else {}
+                        )
+                        type_label = str(reference.get("type_candidate") or "Norma")
+                        number = str(reference.get("number_candidate") or "")
+                        year = str(reference.get("year_candidate") or "")
+                        if not number or not year:
+                            continue
+                        target_norma = latest_review.target_norma if latest_review else None
+                        if target_norma:
+                            target_id = f"norma:{target_norma.pk}"
+                            if target_id not in nodes and len(nodes) >= MAX_NODES:
+                                truncated = True
+                                continue
+                            nodes.setdefault(
+                                target_id,
+                                _norma_node(
+                                    target_norma,
+                                    public_norma_ids=_public_norma_ids([target_norma]),
+                                    include_pending=True,
+                                ),
+                            )
+                            resolution = "resolved_candidate"
+                        else:
+                            identity = f"{type_label}|{number}|{year}"
+                            target_id = "candidate:" + hashlib.sha256(
+                                identity.encode("utf-8")
+                            ).hexdigest()[:24]
+                            if target_id not in nodes and len(nodes) >= MAX_NODES:
+                                truncated = True
+                                continue
+                            nodes.setdefault(
+                                target_id,
+                                {
+                                    "id": target_id,
+                                    "kind": "candidate_target",
+                                    "label": f"{type_label} nº {number}/{year} · alvo não resolvido",
+                                    "url": None,
+                                },
+                            )
+                            resolution = "unresolved_candidate"
+                        evidence = candidate.evidence_json
+                        decision = latest_review.decision if latest_review else None
+                        if decision == RevisaoEventoNormativoCandidato.Decision.CONFIRM:
+                            review_status = (
+                                "candidate_confirmed"
+                                if target_norma
+                                else "candidate_text_confirmed_unresolved"
+                            )
+                        elif decision == RevisaoEventoNormativoCandidato.Decision.REJECT:
+                            review_status = "candidate_rejected"
+                        else:
+                            review_status = "candidate_pending"
+                        if selected_actions and candidate.action not in selected_actions:
+                            continue
+                        edge_id = f"document-candidate:{candidate.fingerprint}"
+                        edges.setdefault(
+                            edge_id,
+                            {
+                                "id": edge_id,
+                                "source": f"norma:{current_norma.pk}",
+                                "target": target_id,
+                                "action": candidate.action,
+                                "source_device_key": None,
+                                "target_device_key": None,
+                                "source_device": {
+                                    "label": str(evidence.get("action_device") or candidate.source_device_label),
+                                    "structural_key": None,
+                                },
+                                "target_device": {
+                                    "label": (
+                                        f"{reference.get('structural_type')} {reference.get('structural_number')}"
+                                        if reference.get("structural_type")
+                                        and reference.get("structural_number")
+                                        else None
+                                    ),
+                                    "structural_key": None,
+                                },
+                                "resolution": resolution,
+                                "review_status": review_status,
+                                "effective_status": "not_assessed",
+                                "effective_on": None,
+                                "publication_on": None,
+                                "evidence": {
+                                    "quote": evidence.get("item_quote"),
+                                    "document_id": str(source_document.public_id),
+                                    "page": evidence.get("item_page")
+                                    or evidence.get("target_page")
+                                    or evidence.get("action_page"),
+                                },
+                                "official_url": None,
+                            },
+                        )
         if truncated and len(edges) >= MAX_EDGES:
             break
     return {
@@ -284,4 +421,199 @@ def build_normative_graph(
         "truncated": truncated,
         "limits": {"nodes": MAX_NODES, "edges": MAX_EDGES},
         "filters": {"actions": sorted(selected_actions), "include_pending": include_pending},
+    }
+
+
+def build_candidate_document_graph(
+    document: DocumentoNormativo,
+    *,
+    actions: tuple[str, ...] = (),
+) -> dict:
+    """Build a direct, non-operative graph for one unlinked pending PDF.
+
+    The root remains a document identity candidate rather than a ``Norma``;
+    this lets a reviewer inspect extracted links before identity approval.
+    """
+    if any(action not in VALID_ACTIONS for action in actions):
+        raise ValueError("ação de relação inválida")
+    if (
+        document.source_kind not in {
+            DocumentoNormativo.SourceKind.ARCHIVE,
+            DocumentoNormativo.SourceKind.SAPL,
+        }
+        or document.review_status not in {
+            DocumentoNormativo.ReviewStatus.PENDING,
+            DocumentoNormativo.ReviewStatus.IN_REVIEW,
+        }
+        or document.accepted_extraction_id is not None
+    ):
+        raise ValueError("documento não elegível para grafo de revisão")
+
+    metadata = document.metadata_json if isinstance(document.metadata_json, dict) else {}
+    identity = metadata.get("identity_candidate")
+    identity = identity if isinstance(identity, dict) else {}
+    if any(
+        value is True
+        for value in (
+            metadata.get("synthetic"),
+            metadata.get("synthetic_fixture"),
+            identity.get("synthetic"),
+            identity.get("synthetic_fixture"),
+        )
+    ):
+        raise ValueError("documento sintético não pode ser exibido como candidato real")
+
+    type_label = str(identity.get("type") or "Norma não identificada")[:100]
+    number = str(identity.get("number") or "").strip()[:40]
+    year = str(identity.get("year") or "").strip()[:4]
+    if number and year.isdecimal():
+        root_label = f"{type_label} nº {number}/{year} · identidade pendente"
+    else:
+        root_label = f"Documento pendente · {document.original_filename or document.public_id}"
+    root_id = f"candidate-document:{document.public_id}"
+    nodes = {
+        root_id: {
+            "id": root_id,
+            "kind": "candidate_document",
+            "label": root_label[:180],
+            "url": f"/normas/documentos/{document.public_id}/",
+        }
+    }
+    edges = {}
+    truncated = False
+    latest_extraction = document.extracoes.order_by("-created_at", "-pk").first()
+    if latest_extraction is not None:
+        candidates = list(
+            EventoNormativoCandidato.objects.filter(extracao=latest_extraction)
+            .prefetch_related(
+                Prefetch(
+                    "revisoes",
+                    queryset=RevisaoEventoNormativoCandidato.objects.select_related(
+                        "target_norma__documento_base"
+                    ).order_by("created_at", "pk"),
+                )
+            )
+            .order_by("source_structural_key", "pk")[: MAX_EDGES + 1]
+        )
+        from src.apps.legislation.document_relation_review import (
+            candidate_target_documents_for_candidates,
+        )
+
+        target_document_index = candidate_target_documents_for_candidates(candidates)
+        truncated = len(candidates) > MAX_EDGES
+        for candidate in candidates[:MAX_EDGES]:
+            if actions and candidate.action not in actions:
+                continue
+            reference = (
+                candidate.target_reference_json
+                if isinstance(candidate.target_reference_json, dict)
+                else {}
+            )
+            target_type = str(reference.get("type_candidate") or "Norma")[:100]
+            target_number = str(reference.get("number_candidate") or "").strip()[:40]
+            target_year = str(reference.get("year_candidate") or "").strip()[:4]
+            if not target_number or not target_year.isdecimal():
+                continue
+            reviews = list(candidate._prefetched_objects_cache.get("revisoes", []))
+            latest_review = reviews[-1] if reviews else None
+            target_norma = latest_review.target_norma if latest_review else None
+            if target_norma:
+                target_id = f"norma:{target_norma.pk}"
+                target_url = (
+                    f"/normas/documentos/{target_norma.documento_base.public_id}/"
+                    if target_norma.documento_base_id
+                    else None
+                )
+                target_label = str(target_norma)
+                target_kind = "norma_candidate"
+                resolution = "resolved_candidate"
+            else:
+                target_identity = f"{target_type}|{target_number}|{target_year}"
+                target_id = "candidate-target:" + hashlib.sha256(
+                    target_identity.encode("utf-8")
+                ).hexdigest()[:24]
+                target_url = None
+                target_label = f"{target_type} nº {target_number}/{target_year} · alvo não resolvido"
+                target_kind = "candidate_target"
+                resolution = "unresolved_candidate"
+            if target_id not in nodes and len(nodes) >= MAX_NODES:
+                truncated = True
+                break
+            nodes.setdefault(
+                target_id,
+                {"id": target_id, "kind": target_kind, "label": target_label[:180], "url": target_url},
+            )
+            decision = latest_review.decision if latest_review else None
+            if decision == RevisaoEventoNormativoCandidato.Decision.CONFIRM:
+                review_status = (
+                    "candidate_confirmed"
+                    if target_norma
+                    else "candidate_text_confirmed_unresolved"
+                )
+            elif decision == RevisaoEventoNormativoCandidato.Decision.REJECT:
+                review_status = "candidate_rejected"
+            else:
+                review_status = "candidate_pending"
+            if latest_extraction.extraction_sha256 != candidate.evidence_json.get(
+                "source_extraction_sha256"
+            ):
+                review_status = "stale_candidate"
+            edge_id = f"document-candidate:{candidate.fingerprint}"
+            evidence = candidate.evidence_json if isinstance(candidate.evidence_json, dict) else {}
+            target_document_leads = target_document_index.get(candidate.pk, [])
+            serialized_target_documents = [
+                {
+                    "url": f"/normas/documentos/{item['document'].public_id}/",
+                    "filename": str(item["document"].original_filename or "PDF sem nome")[:180],
+                    "source": item["document"].get_source_kind_display(),
+                    "review_status": item["document"].get_review_status_display(),
+                    "identity_type": item["identity_type"],
+                    "type_matches": item["type_matches"],
+                }
+                for item in target_document_leads[:5]
+            ]
+            edges[edge_id] = {
+                "id": edge_id,
+                "source": root_id,
+                "target": target_id,
+                "action": candidate.action,
+                "source_device_key": candidate.source_structural_key or None,
+                "target_device_key": None,
+                "source_device": {
+                    "label": str(evidence.get("action_device") or candidate.source_device_label),
+                    "structural_key": candidate.source_structural_key or None,
+                },
+                "target_device": {
+                    "label": (
+                        f"{reference.get('structural_type')} {reference.get('structural_number')}"
+                        if reference.get("structural_type") and reference.get("structural_number")
+                        else None
+                    ),
+                    "structural_key": None,
+                },
+                "resolution": resolution,
+                "review_status": review_status,
+                "effective_status": "not_assessed",
+                "effective_on": None,
+                "publication_on": None,
+                "evidence": {
+                    "quote": evidence.get("item_quote"),
+                    "document_id": str(document.public_id),
+                    "page": evidence.get("item_page")
+                    or evidence.get("target_page")
+                    or evidence.get("action_page"),
+                    "target_document_candidates": serialized_target_documents,
+                    "target_document_candidates_truncated": len(target_document_leads) > 5,
+                },
+                "official_url": None,
+            }
+
+    return {
+        "root_id": root_id,
+        "scope": {"as_of": None, "depth": 1},
+        "nodes": list(nodes.values()),
+        "edges": list(edges.values()),
+        "truncated": truncated,
+        "limits": {"nodes": MAX_NODES, "edges": MAX_EDGES},
+        "filters": {"actions": sorted(actions), "include_pending": True},
     }

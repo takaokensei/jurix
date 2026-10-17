@@ -110,6 +110,7 @@ CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_BEAT_SCHEDULE = {}
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TASK_ROUTES = {
+    "legislation.check_foundation": {"queue": "normative_qa"},
     "ingestion.enqueue_normative_impact": {"queue": "normative_qa"},
     "ingestion.claim_normative_work_item": {"queue": "normative_qa"},
     "ingestion.process_normative_work_item": {"queue": "normative_qa"},
@@ -148,7 +149,7 @@ LOGGING = deepcopy(_base.LOGGING)
 LOGGING["handlers"]["file"]["filename"] = str(LOG_ROOT / "jurix.log")
 NORMATIVE_ARCHIVE_ENABLED = True
 NORMATIVE_ARCHIVE_ASSISTANT_ENABLED = True
-SAPL_MATTER_LOOKUP_ENABLED = True
+SAPL_MATTER_LOOKUP_ENABLED = False
 NORMATIVE_ARCHIVE_SAPL_LINKS_ENABLED = True
 NORMATIVE_ARCHIVE_REVIEW_UI_ENABLED = True
 NORMATIVE_GRAPH_ENABLED = True

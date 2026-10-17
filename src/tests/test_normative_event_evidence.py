@@ -120,3 +120,110 @@ def test_event_evidence_maps_to_exact_selected_document_and_extraction_span():
     assert evidence["document_key"] == document.document_key
     assert evidence["extraction_sha256"] == extraction.extraction_sha256
     assert source[evidence["source_start_offset"] : evidence["source_end_offset"]] == evidence["source_quote"]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_inherited_list_action_maps_action_and_target_to_separate_exact_source_spans():
+    def sha(value):
+        return hashlib.sha256(value.encode()).hexdigest()
+
+    action_text = "Ficam revogados:"
+    action_quote = "Ficam revogados"
+    item_text = "I - Art. 21 da Lei Promulgada nº 275 de 12 de março de 2009;"
+    source = f"Art. 260. {action_text}\n{item_text}\nArt. 261. Texto seguinte."
+    item_start = source.index(item_text)
+    norma = Norma.objects.create(tipo="Lei Complementar", numero="9003", ano=2024)
+    document = DocumentoNormativo.objects.create(
+        norma=norma,
+        document_key=sha("inherited-action-doc"),
+        source_kind=DocumentoNormativo.SourceKind.LEGACY,
+        source_ref="qa:inherited-action",
+        role=DocumentoNormativo.Role.ORIGINAL,
+        content_sha256=sha("inherited-action-bytes"),
+        size_bytes=100,
+    )
+    extraction = ExtracaoDocumento.objects.create(
+        documento=document,
+        extractor_version="inherited-action-test-v1",
+        policy_fingerprint=sha("inherited-action-policy"),
+        text_version="technical_text_v1",
+        raw_text=source,
+        legal_text=source,
+        raw_text_sha256=sha(source),
+        legal_text_sha256=sha(source),
+        page_count=1,
+        page_map_json=[{"start": 0, "end": len(source), "page": 1}],
+        metadata_candidates_json={},
+        quality_json={},
+        status=ExtracaoDocumento.Status.COMPLETE,
+        extraction_sha256=sha("inherited-action-extraction"),
+    )
+    parent_key = structural_key("root", "artigo", "260")
+    child_key = structural_key(parent_key, "inciso", "I")
+    document.accepted_extraction = extraction
+    document.save(update_fields=["accepted_extraction", "updated_at"])
+    norma.documento_base = document
+    norma.save(update_fields=["documento_base", "updated_at"])
+    DocumentoDispositivo.objects.create(
+        extracao=extraction,
+        structural_key=parent_key,
+        tipo="artigo",
+        numero="260",
+        ordem=1,
+        texto=source[:item_start].rstrip(),
+        start_offset=0,
+        end_offset=len(source[:item_start].rstrip()),
+        page_index=1,
+    )
+    DocumentoDispositivo.objects.create(
+        extracao=extraction,
+        structural_key=child_key,
+        parent_key=parent_key,
+        tipo="inciso",
+        numero="I",
+        ordem=2,
+        texto=item_text,
+        start_offset=item_start,
+        end_offset=item_start + len(item_text),
+        page_index=1,
+    )
+    parent = Dispositivo.objects.create(
+        norma=norma,
+        tipo="artigo",
+        numero="260",
+        texto=source[:item_start].rstrip(),
+        ordem=1,
+        structural_key=parent_key,
+        revision_fingerprint=sha(source[:item_start].rstrip()),
+    )
+    child = Dispositivo.objects.create(
+        norma=norma,
+        tipo="inciso",
+        numero="I",
+        texto=item_text,
+        ordem=2,
+        structural_key=child_key,
+        dispositivo_pai=parent,
+        revision_fingerprint=sha(item_text),
+    )
+
+    extractor = LegalNERExtractor()
+    introduction = extractor.list_action_introduction(parent.texto)
+    event = extractor.extract_inherited_list_item_events(introduction, child.texto)[0]
+    event["evidence"]["action_context"].update(
+        {
+            "source_structural_key": parent.structural_key,
+            "source_revision_fingerprint": parent.revision_fingerprint,
+        }
+    )
+    evidence = _map_event_evidence(child, event["evidence"])
+
+    assert evidence["source_status"] == "verified_span"
+    assert evidence["source_quote"] == item_text
+    assert source[evidence["source_start_offset"] : evidence["source_end_offset"]] == item_text
+    assert evidence["action_context"]["source_status"] == "verified_span"
+    assert evidence["action_context"]["source_quote"] == action_quote
+    assert source[
+        evidence["action_context"]["source_start_offset"] :
+        evidence["action_context"]["source_end_offset"]
+    ] == action_quote

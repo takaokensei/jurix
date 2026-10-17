@@ -1,3 +1,4 @@
+import hashlib
 from datetime import date
 from types import SimpleNamespace
 
@@ -140,6 +141,11 @@ def test_manually_confirmed_date_without_review_record_is_not_operative():
 
 @pytest.mark.django_db
 def test_effect_date_review_is_separate_from_relation_review_and_has_d_minus_d_plus():
+    from src.apps.legislation.document_models import (
+        DocumentoNormativo,
+        ExtracaoDocumento,
+    )
+
     target = Norma.objects.create(
         tipo="Lei",
         numero="77",
@@ -153,6 +159,43 @@ def test_effect_date_review_is_separate_from_relation_review_and_has_d_minus_d_p
     target_device = Dispositivo.objects.create(
         norma=target, tipo="artigo", numero="1º", texto="Texto alvo.", ordem=1
     )
+    target_text = "Art. 1º Texto alvo."
+
+    def digest(value: str) -> str:
+        return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+    target_document = DocumentoNormativo.objects.create(
+        norma=target,
+        document_key=digest("temporal-target-document"),
+        source_kind=DocumentoNormativo.SourceKind.LEGACY,
+        source_ref="qa:temporal-policy-approved-target",
+        role=DocumentoNormativo.Role.ORIGINAL,
+        content_sha256=digest("temporal-target-pdf"),
+        size_bytes=100,
+        review_status=DocumentoNormativo.ReviewStatus.APPROVED,
+        condition_of_use=DocumentoNormativo.ConditionOfUse.PUBLIC_RECORD_REVIEWED,
+        metadata_json={"synthetic_fixture": True},
+    )
+    target_extraction = ExtracaoDocumento.objects.create(
+        documento=target_document,
+        extractor_version="temporal-policy-test-v1",
+        policy_fingerprint=digest("temporal-policy-test-policy"),
+        text_version="technical_text_v1",
+        raw_text=target_text,
+        legal_text=target_text,
+        raw_text_sha256=digest(target_text),
+        legal_text_sha256=digest(target_text),
+        page_count=1,
+        page_map_json=[{"start": 0, "end": len(target_text), "page": 1}],
+        metadata_candidates_json={},
+        quality_json={"synthetic_fixture": True},
+        status=ExtracaoDocumento.Status.COMPLETE,
+        extraction_sha256=digest("temporal-target-extraction"),
+    )
+    target_document.accepted_extraction = target_extraction
+    target_document.save(update_fields=["accepted_extraction", "updated_at"])
+    target.documento_base = target_document
+    target.save(update_fields=["documento_base", "updated_at"])
     source_device = Dispositivo.objects.create(
         norma=source_norma,
         tipo="artigo",

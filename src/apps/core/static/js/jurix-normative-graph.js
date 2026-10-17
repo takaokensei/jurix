@@ -111,19 +111,54 @@ function createEventDetails(edge, nodes) {
   if (edge.target_device?.label) item.append(element('p', `Dispositivo de destino: ${edge.target_device.label}`));
   const reviewLabel = edge.review_status === 'confirmed'
     ? 'Confirmado após revisão humana'
+    : edge.review_status === 'candidate_confirmed'
+      ? 'Trecho e identidade da referência conferidos; efeito jurídico ainda não avaliado'
+      : edge.review_status === 'candidate_text_confirmed_unresolved'
+        ? 'Trecho citado conferido; identidade do alvo ainda não confirmada'
+      : edge.review_status === 'candidate_rejected'
+        ? 'Extração rejeitada pelo revisor; preservada para auditoria'
     : edge.review_status === 'rejected'
       ? 'Rejeitado; preservado para auditoria'
       : 'Candidato pendente de revisão';
-  item.append(element('p', `Revisão do vínculo: ${reviewLabel}. ${edge.review_status === 'confirmed' ? '' : 'Este candidato não comprova efeito jurídico.'}`));
+  item.append(element('p', `Revisão do vínculo: ${reviewLabel}. ${['confirmed', 'candidate_confirmed'].includes(edge.review_status) ? '' : 'Este candidato não comprova efeito jurídico.'}`));
   if (edge.action === 'REFERENCIA' || edge.action === 'REGULAMENTA') {
     item.append(element('p', `Data considerada: publicação da norma de origem${edge.publication_on ? ` (${edge.publication_on})` : ' (não informada)'}. Esta relação não afirma alteração ou revogação.`));
   } else {
-    const dateLabel = edge.effective_status === 'confirmed' && edge.effective_on
+    const dateLabel = edge.effective_status === 'not_assessed'
+      ? 'Efeito jurídico: não avaliado; este vínculo representa somente uma relação extraída do documento.'
+      : edge.effective_status === 'confirmed' && edge.effective_on
       ? `Efeito registrado em ${edge.effective_on}`
       : `Efeito não confirmado (${edge.effective_status || 'sem dados'})`;
     item.append(element('p', dateLabel));
   }
   if (edge.evidence?.quote) item.append(element('blockquote', edge.evidence.quote));
+  const targetDocuments = Array.isArray(edge.evidence?.target_document_candidates)
+    ? edge.evidence.target_document_candidates
+    : [];
+  if (targetDocuments.length) {
+    item.append(element('p', 'PDFs candidatos ao alvo (coincidência de metadados; vínculo não confirmado):'));
+    const documentList = element('ul', null, 'normative-relations__candidate-documents');
+    for (const candidate of targetDocuments) {
+      const row = element('li');
+      const candidateUrl = safeNormaLink(candidate);
+      if (candidateUrl) {
+        const link = element('a', candidate.filename || 'Abrir PDF candidato');
+        link.href = candidateUrl.href;
+        row.append(link);
+      } else {
+        row.append(element('span', candidate.filename || 'PDF sem nome'));
+      }
+      const identityLabel = candidate.type_matches
+        ? candidate.identity_type
+        : `conflito de espécie: ${candidate.identity_type}`;
+      row.append(element('span', ` · ${candidate.source} · ${candidate.review_status} · ${identityLabel}`));
+      documentList.append(row);
+    }
+    item.append(documentList);
+    if (edge.evidence.target_document_candidates_truncated) {
+      item.append(element('p', 'Há outros PDFs com metadados coincidentes; a lista foi limitada para revisão.'));
+    }
+  }
   const official = validUrl(edge.official_url);
   if (official) {
     const link = element('a', 'Abrir fonte oficial (nova aba)');
@@ -198,7 +233,7 @@ function setupRelations(root) {
       list.append(item);
     }
     graphWrap.hidden = groups.length === 0;
-    renderGraph(svg, groups, nodes, `norma:${payload.norma?.id}`);
+    renderGraph(svg, groups, nodes, payload.root_id || `norma:${payload.norma?.id}`);
     truncated.hidden = !payload.truncated;
     const availability = edges.length === 1 ? 'disponível' : 'disponíveis';
     setStatus(groups.length ? `${groups.length} grupo${groups.length === 1 ? '' : 's'} de relações; ${edges.length} vínculo${edges.length === 1 ? '' : 's'} ${availability}.` : (chosen ? 'Nenhuma relação corresponde a este filtro.' : 'Esta norma não possui relações públicas disponíveis no corpus.'));

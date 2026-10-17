@@ -163,3 +163,107 @@ def test_dom_qa_schedule_requires_its_separate_explicit_opt_in():
     assert entry["task"] == "ingestion.sync_dom_natal_editions"
     assert entry["kwargs"] == {"lookback_months": 3, "max_new_total": 5}
     assert entry["options"] == {"queue": "normative_qa"}
+
+
+def _read_container_qa_schedule(
+    *, sapl_enabled=False, dom_enabled=False, incremental_limit="50"
+):
+    with tempfile.TemporaryDirectory(prefix="jurix-container-schedule-qa-") as qa_root:
+        environment = {
+            key: os.environ[key]
+            for key in ("PATH", "SYSTEMROOT", "WINDIR", "TEMP", "TMP")
+            if key in os.environ
+        }
+        environment.update(
+            {
+                "DJANGO_SKIP_DOTENV": "1",
+                "DJANGO_SETTINGS_MODULE": "config.settings_normative_container_qa",
+                "DEBUG": "1",
+                "DJANGO_SECRET_KEY": "audit-only-local-secret-not-for-production",
+                "JURIX_QA_ONLY": "1",
+                "JURIX_QA_ROOT": qa_root,
+                "DATABASE_URL": (
+                    "postgresql://jurix_audit:audit-only-local-fixture@db:5432/jurix_audit"
+                ),
+                "REDIS_URL": "redis://redis:6379/0",
+                "CACHE_REDIS_URL": "redis://redis:6379/1",
+                "SAPL_SYNC_SCHEDULE_ENABLED": "1" if sapl_enabled else "0",
+                "SAPL_INCREMENTAL_SYNC_LIMIT": incremental_limit,
+                "JURIX_QA_DOM_NATAL_SYNC_SCHEDULE_ENABLED": (
+                    "1" if dom_enabled else "0"
+                ),
+            }
+        )
+        code = """
+import json
+from config.settings_normative_container_qa import CELERY_BEAT_SCHEDULE
+
+result = {}
+for name, entry in CELERY_BEAT_SCHEDULE.items():
+    schedule = entry.get("schedule")
+    result[name] = {
+        "task": entry.get("task"),
+        "kwargs": entry.get("kwargs", {}),
+        "options": entry.get("options", {}),
+        "minute": getattr(schedule, "_orig_minute", None),
+        "hour": getattr(schedule, "_orig_hour", None),
+        "day_of_week": getattr(schedule, "_orig_day_of_week", None),
+    }
+print(json.dumps(result, sort_keys=True))
+"""
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                code,
+            ],
+            cwd=PROJECT_ROOT,
+            env=environment,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    return json.loads(completed.stdout)
+
+
+def test_container_qa_sync_schedules_are_disabled_by_default():
+    assert _read_container_qa_schedule() == {}
+
+
+def test_container_qa_sapl_and_dom_schedules_are_separately_opt_in_and_routed():
+    sapl_only = _read_container_qa_schedule(
+        sapl_enabled=True, incremental_limit="500"
+    )
+    assert set(sapl_only) == {
+        "incremental-sapl-sync-daily-qa",
+        "sapl-full-sweep-weekly-qa",
+    }
+    assert sapl_only["incremental-sapl-sync-daily-qa"]["kwargs"] == {"limit": 50}
+
+    dom_only = _read_container_qa_schedule(dom_enabled=True)
+    assert set(dom_only) == {"dom-natal-editions-daily-qa"}
+
+    schedule = _read_container_qa_schedule(sapl_enabled=True, dom_enabled=True)
+
+    daily = schedule["incremental-sapl-sync-daily-qa"]
+    assert daily["task"] == "ingestion.incremental_sync_sapl_task"
+    assert daily["kwargs"] == {"limit": 50}
+    assert daily["options"] == {"queue": "normative_qa"}
+    assert daily["hour"] == 2
+    assert daily["minute"] == 0
+
+    weekly = schedule["sapl-full-sweep-weekly-qa"]
+    assert weekly["task"] == "ingestion.full_sync_sapl_task"
+    assert weekly["kwargs"] == {"limit": 50}
+    assert weekly["options"] == {"queue": "normative_qa"}
+    assert weekly["day_of_week"] == "sun"
+    assert weekly["hour"] == 3
+    assert weekly["minute"] == 0
+
+    dom = schedule["dom-natal-editions-daily-qa"]
+    assert dom["task"] == "ingestion.sync_dom_natal_editions"
+    assert dom["kwargs"] == {"lookback_months": 3, "max_new_total": 5}
+    assert dom["options"] == {"queue": "normative_qa"}
+    assert dom["hour"] == 2
+    assert dom["minute"] == 30

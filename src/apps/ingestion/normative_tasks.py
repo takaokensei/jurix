@@ -99,11 +99,45 @@ def _extract_archive_candidate(
     max_ocr_pages: int | None = None,
     ocr_timeout_seconds: int = 90,
     ocr_pages_to_process: set[int] | None = None,
+    raster_table_pages_to_process: set[int] | None = None,
     reuse_from: ExtracaoDocumento | None = None,
 ) -> ExtracaoDocumento:
     """Extract verified bytes inside QA storage without accepting/promoting the text."""
-    if document.source_kind != DocumentoNormativo.SourceKind.ARCHIVE or not document.storage_key:
-        raise PermissionError("A extração exige PDF do acervo staging no storage QA.")
+    allowed_source_kinds = {
+        DocumentoNormativo.SourceKind.ARCHIVE,
+        DocumentoNormativo.SourceKind.SAPL,
+    }
+    if document.source_kind not in allowed_source_kinds or not document.storage_key:
+        raise PermissionError("A extração exige PDF candidato no storage QA.")
+    if document.source_kind == DocumentoNormativo.SourceKind.SAPL:
+        if document.norma_id:
+            if (
+                document.norma.status != "pending"
+                or document.norma.documento_base_id is not None
+                or document.norma.texto_original
+                or document.norma.texto_consolidado
+            ):
+                raise PermissionError(
+                    "PDF SAPL vinculado só pode ser extraído enquanto a Norma QA está pendente e vazia."
+                )
+        else:
+            metadata = document.metadata_json if isinstance(document.metadata_json, dict) else {}
+            identity = metadata.get("identity_candidate") or {}
+            provenance = metadata.get("source_provenance") or {}
+            if (
+                document.review_status != DocumentoNormativo.ReviewStatus.PENDING
+                or document.accepted_extraction_id is not None
+                or metadata.get("identity_status") != "candidate"
+                or identity.get("jurisdiction") != "BR-RN-NATAL"
+                or not metadata.get("identity_key")
+                or provenance.get("kind") != "sapl_norma_pdf"
+                or not str(provenance.get("official_url") or "").startswith(
+                    "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/"
+                )
+            ):
+                raise PermissionError(
+                    "PDF SAPL sem Norma exige identidade municipal candidata e proveniência oficial verificáveis."
+                )
     root = Path(getattr(settings, "QA_ROOT", os.environ.get("JURIX_QA_ROOT", ""))).resolve()
     archive_root = (root / "normative-archive").resolve()
     pdf_path = (archive_root / document.storage_key).resolve()
@@ -129,6 +163,7 @@ def _extract_archive_candidate(
         ocr_timeout_seconds=ocr_timeout_seconds,
         max_ocr_pages=max_ocr_pages,
         ocr_pages_to_process=ocr_pages_to_process,
+        raster_table_pages_to_process=raster_table_pages_to_process,
         reusable_ocr_pages=reusable_pages,
     )
     policy_fingerprint = str(extracted["policy_fingerprint"])
@@ -191,7 +226,16 @@ def _current_norma(item: NormativeWorkItem) -> Norma:
     norma = Norma.objects.select_related("documento_base__accepted_extraction").get(
         pk=int(item.source_id)
     )
-    if safe_norma_revision(norma) != item.source_revision:
+    expected_revision = safe_norma_revision(norma)
+    if (
+        item.stage == NormativeWorkItem.Stage.RECONCILE
+        and isinstance(item.payload, dict)
+        and item.payload.get("reconciliation_only") is True
+    ):
+        from src.apps.ingestion.normative_impact import safe_target_identity_revision
+
+        expected_revision = expected_revision or safe_target_identity_revision(norma)
+    if expected_revision != item.source_revision:
         raise StaleNormativeSource("Source revision changed after queueing.")
     return norma
 

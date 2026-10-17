@@ -8,10 +8,11 @@ const baseUrl = process.env.JURIX_BASE_URL || '';
 const qaRoot = process.env.JURIX_QA_ROOT || '';
 const evidenceDir = process.env.JURIX_EVIDENCE_DIR || '';
 const allowUnversionedLocalQa = process.env.JURIX_ALLOW_UNVERSIONED_LOCAL_QA === '1';
+const includeProposalRagSmoke = process.env.JURIX_INCLUDE_PROPOSAL_RAG_SMOKE === '1';
 const base = new URL(baseUrl);
 assert.equal(base.protocol, 'http:');
 assert.ok(['127.0.0.1', 'localhost'].includes(base.hostname));
-assert.ok(['8010', '8011', '8016', '8017', '8028', '8029', '8030', '8040', '8280', '8281', '8282', '8283', '8284', '8285', '8286', '8289', '8291', '8292'].includes(base.port), 'PGM workflow smoke is restricted to isolated QA servers :8010/:8011/:8016/:8017/:8028/:8029/:8030/:8040/:8280/:8281/:8282/:8283/:8284/:8285/:8286/:8289/:8291/:8292');
+assert.ok(['8010', '8011', '8016', '8017', '8028', '8029', '8030', '8040', '8280', '8281', '8282', '8283', '8284', '8285', '8286', '8287', '8289', '8291', '8292'].includes(base.port), 'PGM workflow smoke is restricted to isolated QA servers :8010/:8011/:8016/:8017/:8028/:8029/:8030/:8040/:8280/:8281/:8282/:8283/:8284/:8285/:8286/:8287/:8289/:8291/:8292');
 assert.ok(qaRoot && evidenceDir, 'QA root and evidence directory are required');
 
 const tempRoot = await fs.realpath(os.tmpdir());
@@ -196,6 +197,156 @@ try {
     caveat: 'candidates are unreviewed PDF extractions, not legal conclusions',
   });
 
+  const duplicateSearchUrl = new URL('/pesquisa/', baseUrl);
+  duplicateSearchUrl.searchParams.set('q', '5791');
+  duplicateSearchUrl.searchParams.set('corpus', 'archive-qa');
+  const duplicateSearchResponse = await page.goto(duplicateSearchUrl.href, {
+    waitUntil: 'domcontentloaded',
+    timeout: 20000,
+  });
+  assert.equal(duplicateSearchResponse?.status(), 200, 'duplicate archive search must load');
+  await page.$$eval('.workspace-archive-identical-copies', (groups) => {
+    for (const group of groups) group.open = true;
+  });
+  const duplicateGroupResult = await page.evaluate(() => {
+    const groups = [...document.querySelectorAll('.workspace-archive-identical-copies')];
+    return {
+      title: document.querySelector('#workspace-archive-results-title')?.innerText || '',
+      groupCount: document.querySelector('.workspace-archive-group-count')?.innerText || '',
+      summary: document.querySelector('.workspace-archive-search-summary')?.innerText || '',
+      groups: groups.map((group) => ({
+        summary: group.querySelector('summary')?.textContent?.trim() || '',
+        caveat: group.querySelector('p')?.textContent?.trim() || '',
+        copies: [...group.querySelectorAll('a')].map((link) => ({
+          label: link.textContent?.trim() || '',
+          href: link.getAttribute('href'),
+        })),
+      })),
+    };
+  });
+  const conflictingIdentityGroup = duplicateGroupResult.groups.find((group) => {
+    const labels = group.copies.map((copy) => copy.label).join(' ').toLowerCase();
+    return labels.includes('leiordinaria_5791.pdf') && labels.includes('leipromulgada_5791.pdf');
+  });
+  assert.ok(
+    conflictingIdentityGroup,
+    `byte-identical 5791 files with conflicting type hints must be grouped: ${JSON.stringify(duplicateGroupResult)}`,
+  );
+  assert.equal(conflictingIdentityGroup.copies.length, 2, 'both original PDF evidence links must remain visible');
+  assert.ok(conflictingIdentityGroup.copies.every((copy) => copy.href.startsWith('/normas/documentos/')));
+  assert.match(conflictingIdentityGroup.caveat, /n[aã]o que tenham a mesma identidade jur[ií]dica/i);
+  assert.match(duplicateGroupResult.summary, /agrupadas em 1 resultado\./);
+  assert.match(duplicateGroupResult.groupCount, /^1 grupo de conteúdo/);
+  const duplicateScreenshot = path.join(resolvedEvidenceDir, 'pgm-archive-identical-pdfs-grouped.png');
+  await page.screenshot({ path: duplicateScreenshot, fullPage: true });
+  report.evidence.push(duplicateScreenshot);
+  report.checks.push({
+    id: 'archive-groups-byte-identical-conflicting-identities-without-merging-records',
+    status: 'passed',
+    title: duplicateGroupResult.title,
+    summary: duplicateGroupResult.summary,
+    group: conflictingIdentityGroup,
+    caveat: 'identical bytes do not establish legal identity or force',
+  });
+
+  const cosipArchiveUrl = new URL('/pesquisa/', baseUrl);
+  cosipArchiveUrl.searchParams.set(
+    'q',
+    'Quais atos tratam da cobrança da COSIP em unidades imobiliárias não edificadas?',
+  );
+  cosipArchiveUrl.searchParams.set('corpus', 'archive-qa');
+  const cosipArchiveResponse = await page.goto(cosipArchiveUrl.href, {
+    waitUntil: 'domcontentloaded',
+    timeout: 20000,
+  });
+  assert.equal(cosipArchiveResponse?.status(), 200, 'natural COSIP archive search must load');
+  const cosipArchiveResult = await page.evaluate(() => ({
+    title: document.querySelector('#workspace-archive-results-title')?.innerText || '',
+    cards: [...document.querySelectorAll('.workspace-archive-result-card')].slice(0, 5).map((card) => ({
+      filename: card.querySelector('h3')?.innerText || '',
+      excerpt: card.querySelector('.workspace-result-snippet')?.innerText || '',
+      status: card.querySelector('.workspace-score-neutral')?.innerText || '',
+    })),
+  }));
+  assert.match(cosipArchiveResult.title, /[1-9]\d* documentos? candidatos/);
+  assert.ok(
+    cosipArchiveResult.cards.some((card) => /COSIP/i.test(card.excerpt)
+      && /n[aã]o edificadas/i.test(card.excerpt)),
+    'natural query must surface a real PDF excerpt about COSIP on unbuilt properties without depending on fixed document IDs',
+  );
+  assert.ok(
+    cosipArchiveResult.cards.every((card) => /Pendente|Em revisão/.test(card.status)),
+    'topical COSIP results must remain visibly unreviewed candidates',
+  );
+  const cosipScreenshot = path.join(resolvedEvidenceDir, 'pgm-cosip-natural-archive-search.png');
+  await page.screenshot({ path: cosipScreenshot, fullPage: true });
+  report.evidence.push(cosipScreenshot);
+  report.checks.push({
+    id: 'natural-cosip-query-finds-real-unbuilt-property-pdf-without-legal-promotion',
+    status: 'passed',
+    title: cosipArchiveResult.title,
+    topCandidates: cosipArchiveResult.cards,
+    caveat: 'authentic local PDFs remain pending review; search is not a legal conclusion',
+  });
+
+  const environmentalArchiveUrl = new URL('/pesquisa/', baseUrl);
+  environmentalArchiveUrl.searchParams.set('q', 'ambiental lixo');
+  environmentalArchiveUrl.searchParams.set('corpus', 'archive-qa');
+  const environmentalArchiveResponse = await page.goto(environmentalArchiveUrl.href, {
+    waitUntil: 'domcontentloaded',
+    timeout: 20000,
+  });
+  assert.equal(environmentalArchiveResponse?.status(), 200, 'environmental/waste archive search must load');
+  const environmentalArchiveResult = await page.evaluate(() => ({
+    query: document.querySelector('input[name="q"]')?.value || '',
+    title: document.querySelector('#workspace-archive-results-title')?.innerText || '',
+    caveats: [...document.querySelectorAll('.workspace-search-caveat, .workspace-archive-expansion')]
+      .map((item) => item.innerText),
+    cards: [...document.querySelectorAll('.workspace-archive-result-card')].slice(0, 10).map((card) => ({
+      filename: card.querySelector('h3')?.innerText || '',
+      matchLabel: card.querySelector('.workspace-archive-snippet-label')?.innerText || '',
+      excerpt: card.querySelector('.workspace-result-snippet')?.innerText || '',
+      status: card.querySelector('.workspace-score-neutral')?.innerText || '',
+    })),
+  }));
+  assert.equal(environmentalArchiveResult.query, 'ambiental lixo');
+  assert.match(environmentalArchiveResult.title, /[1-9]\d* documentos? candidatos/);
+  assert.ok(
+    environmentalArchiveResult.cards.some((card) => /LeiOrdinaria_20190408_6881/i.test(card.filename)
+      && /educa[cç][aã]o ambiental/i.test(card.excerpt)
+      && /destina[cç][aã]o adequada do lixo/i.test(card.excerpt)),
+    'the real archive must surface a passage that addresses both environmental education and waste disposal',
+  );
+  assert.ok(
+    environmentalArchiveResult.cards.every((card) => /Pendente|Em revisão/.test(card.status)),
+    'environmental/waste results must remain visibly unreviewed candidates',
+  );
+  assert.ok(
+    environmentalArchiveResult.cards.some((card) => /corresponde a \d+ de \d+ grupos da busca/i.test(card.matchLabel)),
+    'each excerpt should disclose how much of the natural-language query it matches',
+  );
+  assert.ok(
+    environmentalArchiveResult.caveats.some((text) => /relev[aâ]ncia.*estimativa autom[aá]tica/i.test(text))
+      && environmentalArchiveResult.caveats.some((text) => /descoberta textual, n[aã]o equival[eê]ncia jur[ií]dica/i.test(text)),
+    'the UI must distinguish lexical affinity from a legal conclusion',
+  );
+  assert.match(
+    environmentalArchiveResult.cards[0]?.matchLabel || '',
+    /ap[oó]s o primeiro artigo detectado/i,
+    'a real-corpus result matching inside a legal article should rank ahead of a preamble-only entity-name match',
+  );
+  const environmentalScreenshot = path.join(resolvedEvidenceDir, 'pgm-environmental-waste-natural-search.png');
+  await page.screenshot({ path: environmentalScreenshot, fullPage: true });
+  report.evidence.push(environmentalScreenshot);
+  report.checks.push({
+    id: 'natural-environmental-waste-search-shows-real-relevant-pdf-without-legal-promotion',
+    status: 'passed',
+    title: environmentalArchiveResult.title,
+    topCandidates: environmentalArchiveResult.cards,
+    caveats: environmentalArchiveResult.caveats,
+    caveat: 'the archive also contains lexical false positives; each PDF is an unreviewed candidate',
+  });
+
   const normsViewportChecks = [];
   let normsOverview = null;
   for (const width of [320, 360, 640, 768, 1280, 1920]) {
@@ -284,7 +435,7 @@ try {
       viewportHeight: window.innerHeight,
     };
   });
-  assert.equal(new URL(archiveBridge.href).searchParams.get('q'), 'LC 258/2024');
+  assert.equal(new URL(archiveBridge.href).searchParams.get('q'), 'Lei Complementar nº 258/2024');
   assert.equal(new URL(archiveBridge.href).searchParams.get('arquivo_tipo'), 'Lei Complementar');
   assert.equal(new URL(archiveBridge.href).searchParams.get('arquivo_ano'), '2024');
   assert.ok(archiveBridge.top >= 0 && archiveBridge.bottom <= archiveBridge.viewportHeight,
@@ -298,7 +449,7 @@ try {
   ]);
   assert.equal(archiveBridgeResponse?.status(), 200);
   assert.equal(new URL(page.url()).pathname, '/pesquisa/');
-  assert.equal(new URL(page.url()).searchParams.get('q'), 'LC 258/2024');
+  assert.equal(new URL(page.url()).searchParams.get('q'), 'Lei Complementar nº 258/2024');
   assert.equal(new URL(page.url()).searchParams.get('arquivo_tipo'), 'Lei Complementar');
   assert.equal(new URL(page.url()).searchParams.get('arquivo_ano'), '2024');
   const filteredArchiveResult = await page.$eval('.workspace-archive-result-card', (card) => card.innerText);
@@ -449,6 +600,7 @@ try {
   });
 
   const repealGraphViewports = [];
+  const ctmTimelineViewports = [];
   for (const width of [320, 360, 768, 1280, 1920]) {
     await page.setViewport({ width, height: 900 });
     const response = await page.goto(new URL('/explorar/demo-consolidacao/', baseUrl).href, {
@@ -459,14 +611,133 @@ try {
     await page.waitForFunction(() => document.querySelectorAll('.pgm-demo__edges .pgm-demo__edge').length === 12, {
       timeout: 5000,
     });
+    const ctmTimeline = await page.evaluate(() => {
+      const section = document.querySelector('#pgm-ctm-art20-title')?.closest('.pgm-demo__case');
+      const list = section?.querySelector('.pgm-demo__timeline');
+      const summary = section?.querySelector('.pgm-demo__notice p')?.innerText || '';
+      const diff = section?.querySelector('#pgm-ctm-diff-title')?.closest('.pgm-demo__text-diff');
+      const amendment = list?.querySelector(':scope > li:last-child');
+      const addedArticleList = document.querySelector(
+        '.pgm-demo__change-list[aria-label="Dispositivos novos acrescentados ao Código Tributário"]',
+      );
+      const consolidatedArt150 = document.querySelector('#pgm-consolidated-150')
+        ?.closest('.pgm-demo__consolidated-device')?.querySelector('pre')?.innerText || '';
+      const consolidatedArt23 = document.querySelector('#pgm-consolidated-23')
+        ?.closest('.pgm-demo__consolidated-device')?.querySelector('pre')?.innerText || '';
+      const consolidatedCount = document.querySelector('#pgm-consolidated-texts-title')
+        ?.closest('section')?.querySelector('.pgm-demo__diff-heading span')?.innerText || '';
+      return {
+        labels: [...(list?.querySelectorAll(':scope > li h3') || [])].map((node) => node.innerText.trim()),
+        summary,
+        hasRemovedText: Boolean(diff?.querySelector('del')),
+        hasAddedText: Boolean(diff?.querySelector('ins')),
+        sourceAction: amendment?.innerText || '',
+        officialNormaRecord: amendment?.querySelector('a[href="https://sapl.natal.rn.leg.br/norma/8975"]')?.innerText || '',
+        addedArticles: [...(addedArticleList?.querySelectorAll('summary') || [])].map((node) => node.innerText.trim()),
+        addedArticleSourceLinks: addedArticleList?.querySelectorAll('a[href*="/2025/8975/"]').length || 0,
+        consolidatedArt23,
+        consolidatedArt150,
+        consolidatedCount,
+        width: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+      };
+    });
+    assert.deepEqual(ctmTimeline.labels, [
+      'Consolidação municipal · exercício 2021',
+      'Consolidação municipal · exercício 2022',
+      'Consolidação municipal · exercício 2024',
+      'LC nº 271/2025 · Art. 1º (redação substitutiva do Art. 20)',
+      'Redação integrada candidata · Art. 20 em 16/12/2025',
+    ], 'CTM Art. 20 should show three dated official snapshots and its later promulgated amendment');
+    assert.match(ctmTimeline.summary, /texto extraído do Art\. 20 nas edições de 2021, 2022 e 2024 coincide/i);
+    assert.match(ctmTimeline.summary, /As quatro fontes continuam pendentes de revisão no QA/i);
+    assert.equal(ctmTimeline.hasRemovedText, true, 'the 2024-to-2025 textual diff should retain removed wording');
+    assert.equal(ctmTimeline.hasAddedText, true, 'the 2024-to-2025 textual diff should retain added wording');
+    assert.match(ctmTimeline.sourceAction, /Menção de alteração no ato-fonte.*passam a vigorar.*arts\. 20, 23, 25/i,
+      'the timeline must expose the exact pending target/action evidence from LC 271/2025');
+    assert.match(ctmTimeline.sourceAction, /marco temporal inicial confirmado em fonte oficial.*16\/12\/2025/i,
+      'the DOM issue and LC 271 Art. 6 should support the initial effective-date marker');
+    assert.match(ctmTimeline.sourceAction, /colofão da cópia PDF hospedada no SAPL informa 2025-12-17/i,
+      'the conflicting SAPL PDF colophon date must remain visible as source metadata');
+    assert.deepEqual(ctmTimeline.addedArticles, [
+      'Art. 133-A · inclusão candidata',
+      'Art. 133-B · inclusão candidata',
+      'Art. 133-C · inclusão candidata',
+      'Art. 133-D · inclusão candidata',
+      'Art. 133-E · inclusão candidata',
+    ], 'the five complete new CTM devices must appear as separate expandable candidates');
+    assert.equal(ctmTimeline.addedArticleSourceLinks, 5, 'each added device must retain an official source link');
+    assert.match(ctmTimeline.consolidatedArt150, /Art\. 150\..*Parágrafo único\./s,
+      'the candidate Art. 150 text must preserve the caput and replace its sole paragraph');
+    assert.match(ctmTimeline.consolidatedArt23, /Art\. 23\b.*§ 5º.*§ 6º A base de cálculo/s,
+      'the candidate Art. 23 text must preserve the complete 2024 paragraphs and append the explicit § 6º');
+    assert.match(ctmTimeline.consolidatedCount, /3 recomposições determinísticas/);
+    assert.match(ctmTimeline.officialNormaRecord, /ficha da norma no SAPL/i);
+    assert.equal(ctmTimeline.scrollWidth, ctmTimeline.width, `CTM timeline should reflow at ${width}px`);
+    ctmTimelineViewports.push({ width, scrollWidth: ctmTimeline.scrollWidth, labels: ctmTimeline.labels.length });
+    if (width === 1280) {
+      const section = await page.$('.pgm-demo__case[aria-labelledby="pgm-ctm-art20-title"]');
+      const screenshot = path.join(resolvedEvidenceDir, 'pgm-ctm-art20-dated-timeline-1280px.png');
+      await section.screenshot({ path: screenshot });
+      report.evidence.push(screenshot);
+    }
     const graphLayout = await page.evaluate((width) => ({
       width: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
       sourceNodes: document.querySelectorAll('.pgm-demo__source-node').length,
+      lc55HistoryTitle: document.querySelector('#pgm-lc55-history-title')?.textContent?.trim() || '',
+      lc55TimelineColumns: (() => {
+        const timeline = document.querySelector('.pgm-demo__timeline--lc55');
+        return timeline ? getComputedStyle(timeline).gridTemplateColumns.trim().split(/\s+/).length : 0;
+      })(),
+      lc55OriginalQuote: document.querySelector('.pgm-demo__timeline--lc55 > li:first-child blockquote')?.innerText || '',
+      lc55OriginalLink: document.querySelector('.pgm-demo__timeline--lc55 > li:first-child a')?.href || '',
+      lc55OriginalReviewState: document.querySelector('.pgm-demo__timeline--lc55 > li:first-child small')?.innerText || '',
+      lc55HistoryGridColumns: (() => {
+        const grid = document.querySelector('.pgm-demo__timeline--lc55');
+        return grid ? getComputedStyle(grid).gridTemplateColumns.split(/\s+/).length : 0;
+      })(),
+      lc55HistoryActs: [...document.querySelectorAll('[data-chain-state="candidate"] > strong')]
+        .map((node) => node.textContent.trim()),
+      lc55HistorySnapshots: [...document.querySelectorAll('[data-chain-state="snapshot"] > strong')]
+        .map((node) => node.textContent.trim()),
+      lc55HistoryLinks: [...document.querySelectorAll('[data-chain-state] > a')]
+        .map((link) => ({ href: link.href, text: link.textContent.trim() })),
+      lc55HistoryNotice: document.querySelector('#pgm-lc55-history-title')?.closest('section')?.querySelector('[aria-label="Lacuna da consolidação do Art. 34"]')?.innerText || '',
+      lc55TimelineNotice: [...(document.querySelector('#pgm-lc55-history-title')?.closest('section')?.querySelectorAll('.pgm-demo__notice') || [])].at(-1)?.innerText || '',
+      lc258DomPublicationLink: [...document.querySelectorAll('a')]
+        .find((link) => /edição extra nº 5615 do DOM/i.test(link.innerText))?.href || '',
+      lc55ParagraphComparison: document.querySelector('[data-lc55-paragraph-comparison]')?.innerText || '',
+      lc55ComparisonStatus: document.querySelector('#pgm-lc55-history-title')
+        ?.closest('section')?.querySelector('.pgm-demo__comparison-status')?.innerText || '',
+      lc55ParagraphSourceLinks: document.querySelectorAll('[data-lc55-paragraph-comparison] a').length,
+      lc208OriginalParagraphLink: [...(document.querySelector('#pgm-working-art18-title')
+        ?.closest('article')?.querySelectorAll('a') || [])]
+        .find((link) => /redação original da LC 208\/2022, Art\. 18/i.test(link.innerText))?.href || '',
+      lc261ReplacementLink: [...(document.querySelector('#pgm-working-art18-title')
+        ?.closest('article')?.querySelectorAll('a') || [])]
+        .find((link) => /Fonte oficial · LC 261\/2025, Art\. 118/i.test(link.innerText))?.href || '',
+      lc261ReplacementQuote: document.querySelector('#pgm-working-art18-title')
+        ?.closest('article')?.querySelector('blockquote')?.innerText || '',
+      lc208OriginalParagraphQuote: [...document.querySelectorAll('.pgm-demo__case-grid h3')]
+        .find((heading) => /LC 208\/2022 · Art\. 18, § 2º/i.test(heading.innerText))
+        ?.closest('article')?.querySelector('blockquote')?.innerText || '',
       relationNodes: document.querySelectorAll('[data-graph-relation]').length,
       graphTargets: document.querySelectorAll('[data-graph-target]').length,
+      targetCardGridColumns: (() => {
+        const grid = document.querySelector('.pgm-demo__target-grid');
+        return grid ? getComputedStyle(grid).gridTemplateColumns.split(/\s+/).length : 0;
+      })(),
+      targetCardWidth: document.querySelector('.pgm-demo__target-node[data-graph-target]')?.getBoundingClientRect().width || 0,
+      diagramHeight: document.querySelector('.pgm-demo__diagram')?.getBoundingClientRect().height || 0,
       namedTargets: document.querySelectorAll('.pgm-demo__target-node[data-graph-relation-target="express"]').length,
       repealEdges: document.querySelectorAll('.pgm-demo__edge-label:not(.pgm-demo__edge-label--amendment):not(.pgm-demo__edge-label--generic)').length,
+      targetScopeCounts: [...document.querySelectorAll('.pgm-demo__target-node[data-graph-relation-target="express"]')].reduce((counts, card) => {
+        const scope = card.dataset.targetScope;
+        counts[scope] = (counts[scope] || 0) + 1;
+        return counts;
+      }, {}),
+      targetScopeNotice: document.querySelector('.pgm-demo__targets-heading + .pgm-demo__notice')?.innerText || '',
       renderedGraphEdges: document.querySelectorAll('.pgm-demo__edges .pgm-demo__edge[marker-end="url(#pgm-demo-arrow)"]').length,
       graphEdgesDashPattern: [...document.querySelectorAll('.pgm-demo__edges .pgm-demo__edge')]
         .every((edge) => edge.getAttribute('d')?.startsWith('M ') && edge.getAttribute('d')?.includes(' C ')),
@@ -490,7 +761,9 @@ try {
           const verticalBranch = sourceType === 'relation' && targetType === 'target'
             && toRect.left + toRect.width / 2 >= fromRect.left
             && toRect.left + toRect.width / 2 <= fromRect.right;
-          const horizontal = !verticalBranch && Math.abs((toRect.left + toRect.width / 2) - (fromRect.left + fromRect.width / 2))
+          const verticalOverlap = fromRect.top < toRect.bottom && fromRect.bottom > toRect.top;
+          const horizontal = !verticalBranch && verticalOverlap
+            && Math.abs((toRect.left + toRect.width / 2) - (fromRect.left + fromRect.width / 2))
             > Math.abs((toRect.top + toRect.height / 2) - (fromRect.top + fromRect.height / 2));
           const direction = horizontal
             ? Math.sign((toRect.left + toRect.width / 2) - (fromRect.left + fromRect.width / 2)) || 1
@@ -498,7 +771,7 @@ try {
           const edgeIndex = Number(edge.dataset.edgeIndex) - 1;
           const relatedTargetCount = sourceType === 'relation'
             ? document.querySelectorAll(`[data-graph-relation-target="${sourceKey}"]`).length
-            : 1;
+            : targetType === 'relation' ? document.querySelectorAll('[data-graph-relation]').length : 1;
           const fanOffset = relatedTargetCount > 1 ? (edgeIndex + 1) / (relatedTargetCount + 1) : 0.5;
           const expectedStartX = (horizontal
             ? (direction > 0 ? fromRect.right : fromRect.left)
@@ -515,14 +788,23 @@ try {
             && Math.abs(coordinates[7] - expectedEndY) < 1.5;
         });
       })(),
-      desktopDestinationsFollowTheirEventHub: width < 1120 || (() => {
+      desktopTargetsFollowTheirEventHub: width < 1120 || (() => {
         const relationsByKind = Object.fromEntries([...document.querySelectorAll('[data-graph-relation]')]
           .map((node) => [node.dataset.graphRelation, node.getBoundingClientRect()]));
         return [...document.querySelectorAll('[data-graph-target]')].every((node) => {
           const relation = relationsByKind[node.dataset.graphRelationTarget];
           const target = node.getBoundingClientRect();
-          return target.left >= relation.right - 2;
+          return target.top >= relation.bottom - 2;
         });
+      })(),
+      desktopExpressFanoutStaysUnderItsHub: width < 921 || (() => {
+        const hub = document.querySelector('[data-graph-relation="express"]')?.getBoundingClientRect();
+        return Boolean(hub) && [...document.querySelectorAll('[data-graph-relation-target="express"]')]
+          .every((node) => {
+            const target = node.getBoundingClientRect();
+            const center = target.left + target.width / 2;
+            return center >= hub.left - 1 && center <= hub.right + 1;
+          });
       })(),
       graphSvgIsDecorative: document.querySelector('.pgm-demo__edges')?.getAttribute('aria-hidden') === 'true',
       saplRegistry: (() => {
@@ -534,8 +816,9 @@ try {
             links: [...card.querySelectorAll('.pgm-demo__sapl-evidence a')].map((link) => ({
               href: link.href,
               rel: link.rel,
+              text: link.textContent.trim(),
             })),
-            note: card.querySelector('.pgm-demo__sapl-evidence')?.innerText || '',
+            note: card.querySelector('.pgm-demo__sapl-evidence')?.textContent || '',
           },
         ]));
         return {
@@ -550,10 +833,11 @@ try {
             .every((disclosure) => disclosure.tagName === 'DETAILS'),
           disclosureSummariesNamed: [...document.querySelectorAll('.pgm-demo__sapl-evidence > summary')]
             .every((summary) => summary.getAttribute('aria-label')?.includes('SAPL')),
-          checkedDateVisible: cards.some((card) => card.querySelector('.pgm-demo__sapl-date')?.innerText.includes('2026-10-13')),
+          checkedDateVisible: cards.some((card) => card.querySelector('.pgm-demo__sapl-date')?.innerText.includes('2026-10-15')),
         };
       })(),
       parallelRelations: document.querySelectorAll('.pgm-demo__other-event').length,
+      demoTitle: document.querySelector('#pgm-demo-title')?.innerText || '',
       heading: document.querySelector('#pgm-network-title')?.innerText || '',
       genericRepeal: [...document.querySelectorAll('.pgm-demo__relation-kicker')]
         .some((item) => /Art\. 266.*REVOGAÇÃO GENÉRICA/i.test(item.innerText)),
@@ -570,28 +854,124 @@ try {
     }), width);
     assert.equal(graphLayout.width, width);
     assert.ok(graphLayout.scrollWidth <= width, `LC 258/2024 graph overflows at ${width}px`);
+    const expectedLc55Columns = width <= 700 ? 1 : width >= 1600 ? 4 : 2;
+    assert.equal(graphLayout.lc55TimelineColumns, expectedLc55Columns,
+      `LC 55 historical chain should use ${expectedLc55Columns} columns at ${width}px`);
     assert.equal(graphLayout.sourceNodes, 1);
+    assert.match(graphLayout.lc55HistoryTitle, /LC nº 55\/2004/i);
+    assert.match(graphLayout.lc55OriginalQuote, /Art\. 34.*§ 1º.*§ 2º/i);
+    assert.match(graphLayout.lc55OriginalQuote, /Licença Prévia.*Licença de Operação/i);
+    assert.equal(
+      new URL(graphLayout.lc55OriginalLink).pathname,
+      '/normas/documentos/80752f21-67b5-4190-8109-e7cfa30f1551/pdf/',
+      'the verified original candidate must open from the local source archive, not the 2019 compilation',
+    );
+    const originalPdfUrl = new URL(graphLayout.lc55OriginalLink);
+    assert.equal(originalPdfUrl.hash, '#page=9');
+    assert.equal((graphLayout.lc55OriginalLink.match(/#page=/g) || []).length, 1);
+    assert.match(graphLayout.lc55OriginalReviewState, /revisão pendente e extração complete/i);
+    assert.ok(graphLayout.lc55HistoryActs.includes('LC nº 173/2017 · Art. 2º'));
+    assert.ok(graphLayout.lc55HistoryActs.includes('LC nº 258/2024 · Art. 260, IV'));
+    assert.ok(graphLayout.lc55HistorySnapshots.includes('Compilação oficial municipal · julho/2019 (snapshot, não ato)'));
+    assert.equal(
+      graphLayout.lc55HistoryLinks.length,
+      6,
+      'archive candidates expose their source PDFs and, when available, the exact official copies; snapshots and later acts remain separately linked',
+    );
+    assert.match(graphLayout.lc55HistoryNotice, /§ 4º na compilação oficial de 2019/i);
+    assert.match(graphLayout.lc55HistoryNotice, /A compilação atribui o § 5º à LC 185\/2019/i);
+    assert.match(graphLayout.lc55HistoryNotice, /Decreto municipal nº 11\.681\/2018/i);
+    assert.match(graphLayout.lc55HistoryNotice, /LC 173\/2018.*28\/12\/2017/i);
+    assert.match(graphLayout.lc55HistoryNotice, /identidade do PDF da lei foi conferida pelo hash da cópia oficial/i);
+    assert.match(graphLayout.lc55TimelineNotice, /a data geral calculada é 27\/03\/2025/i);
+    assert.match(graphLayout.lc55TimelineNotice, /publicada na edição extra nº 5615 do Diário Oficial do Município, em 27\/12\/2024/i);
+    assert.match(graphLayout.lc55TimelineNotice, /Art. 262 prevê análise integral segundo a legislação da data do protocolo/i);
+    assert.match(graphLayout.lc55TimelineNotice, /edição extra nº 5615 do DOM, p\. 17 \(publicação da LC 258\)/i);
+    assert.match(graphLayout.lc258DomPublicationLink, /dom_20241227_extra_0aaf5ad445c342a04c28c91e2275c838\.pdf#page=17$/i);
+    assert.doesNotMatch(graphLayout.lc55TimelineNotice, /edição do Diário Oficial correspondente não foi confirmada/i);
+    assert.match(graphLayout.lc55TimelineNotice, /A lista do Art\. 260, IV, inclui expressamente a LC 55\/2004/i);
+    assert.doesNotMatch(graphLayout.lc55TimelineNotice, /a partir daí, o Art\. 260, IV, revoga/i);
+    assert.match(graphLayout.lc55TimelineNotice, /protocolados até a entrada em vigor e ainda sem despacho decisório/i);
+    assert.match(graphLayout.lc55TimelineNotice, /compilação municipal de julho\/2019 não reproduz o mesmo § 3º/i);
+    assert.match(graphLayout.lc55ParagraphComparison, /§ 3º · LC 173\/2017, Art\. 2º/);
+    assert.match(graphLayout.lc55ParagraphComparison, /§ 3º · LC 185\/2019, Art\. 87/);
+    assert.match(graphLayout.lc55ComparisonStatus, /nenhuma redação é escolhida automaticamente/i);
+    assert.equal(graphLayout.lc55ParagraphSourceLinks, 3);
+    assert.match(graphLayout.lc208OriginalParagraphLink, /#page=11$/,
+      'the original LC 208 Art. 18 § 2º citation must open the page where the paragraph begins');
+    assert.match(graphLayout.lc261ReplacementLink, /#page=35$/,
+      'the LC 261 Art. 118 replacement wording must open its continuation page');
+    assert.match(graphLayout.lc208OriginalParagraphQuote, /SZ-2.*Avenida da Integração/i,
+      'the original Art. 18 § 2º wording must be visible for before/after review');
+    assert.match(graphLayout.lc261ReplacementQuote, /Acrescer à Subzona de Uso Restrito da ZPA-1/i);
+    assert.equal(
+      graphLayout.lc55HistoryGridColumns,
+      width <= 700 ? 1 : width < 1600 ? 2 : 4,
+      `LC 55 timeline must adapt at ${width}px`,
+    );
     assert.equal(graphLayout.namedTargets, 7, 'the diagram must show all six acts and the cited device');
-    assert.equal(graphLayout.repealEdges, 7, 'every named target must label its explicit repeal edge');
+    assert.equal(graphLayout.repealEdges, 7, 'every named target must show its citation-scope label');
+    assert.deepEqual(graphLayout.targetScopeCounts, { act: 6, device: 1 }, 'the graph must distinguish act citations from device citations');
+    assert.match(graphLayout.targetScopeNotice, /não prova revogação integral/i);
+    assert.match(graphLayout.targetScopeNotice, /não confirma sozinho o alcance ou os efeitos no tempo/i);
     assert.equal(graphLayout.relationNodes, 3, 'the diagram must show the repeal list, amendment and generic clause as separate events');
     assert.equal(graphLayout.graphTargets, 9, 'the graph must include seven named repeal targets and two additional event targets');
+    assert.ok(width <= 1120 || graphLayout.targetCardGridColumns === 3, 'wide desktop must use three readable destination columns');
+    assert.ok(width <= 1120 || graphLayout.targetCardWidth >= 250, 'wide desktop target cards must not remain compressed into narrow side panels');
     assert.equal(graphLayout.renderedGraphEdges, 12, 'the three source links and nine event-to-target links must be visible');
     assert.equal(graphLayout.graphEdgesDashPattern, true, 'textual, unvalidated relations must use dashed graph edges');
     assert.equal(graphLayout.graphEdgesConnectNodes, true, 'each SVG edge must join the relation hub to its matching card');
-    assert.equal(graphLayout.desktopDestinationsFollowTheirEventHub, true, 'desktop destination nodes should be to the right of their event hub');
+    assert.equal(graphLayout.desktopTargetsFollowTheirEventHub, true, 'desktop target cards should follow their event hub in the vertical flow');
+    assert.equal(graphLayout.desktopExpressFanoutStaysUnderItsHub, true, 'desktop repeal destinations must stay beneath the two-column repeal hub to avoid crossing fan-out lines');
     assert.equal(graphLayout.graphSvgIsDecorative, true, 'the visual SVG must not duplicate the accessible HTML list');
     assert.equal(Object.values(graphLayout.saplRegistry.statuses).filter((item) => item.status === 'exact_identity_candidate').length, 1);
     assert.equal(Object.values(graphLayout.saplRegistry.statuses).filter((item) => item.status === 'species_conflict').length, 2);
-    assert.equal(Object.values(graphLayout.saplRegistry.statuses).filter((item) => item.status === 'ambiguous').length, 1);
-    assert.equal(Object.values(graphLayout.saplRegistry.statuses).filter((item) => item.status === 'not_checked').length, 3);
-    assert.equal(graphLayout.saplRegistry.candidateLinks.length, 5);
-    assert.equal(graphLayout.saplRegistry.disclosureCount, 4, 'SAPL detail panels must start collapsed to keep the graph scannable');
+    assert.equal(Object.values(graphLayout.saplRegistry.statuses).filter((item) => item.status === 'ambiguous').length, 0);
+    assert.equal(Object.values(graphLayout.saplRegistry.statuses).filter((item) => item.status === 'year_conflict').length, 1);
+    assert.equal(Object.values(graphLayout.saplRegistry.statuses).filter((item) => item.status === 'identity_conflict').length, 1);
+    assert.equal(Object.values(graphLayout.saplRegistry.statuses).filter((item) => item.status === 'date_matched_candidate').length, 1);
+    assert.equal(Object.values(graphLayout.saplRegistry.statuses).filter((item) => item.status === 'not_checked').length, 1);
+    assert.equal(Object.values(graphLayout.saplRegistry.statuses).filter((item) => !item.status).length, 2,
+      'the two non-SAPL targets must not be counted as catalog lookups');
+    assert.equal(graphLayout.saplRegistry.candidateLinks.length, 19,
+      'candidate details must include the public SAPL, DOM and municipal library sources currently mapped');
+    assert.equal(graphLayout.saplRegistry.disclosureCount, 6, 'available official-source detail panels must start collapsed to keep the graph scannable');
     assert.equal(graphLayout.saplRegistry.disclosureIsNative, true, 'SAPL evidence must use native keyboard-operable disclosures');
     assert.equal(graphLayout.saplRegistry.disclosureSummariesNamed, true, 'the native details controls must have accessible names');
+    const officialSourceHosts = new Set(['sapl.natal.rn.leg.br', 'www2.natal.rn.gov.br', 'natal.rn.gov.br']);
     assert.ok(graphLayout.saplRegistry.candidateLinks.every((link) =>
-      new URL(link.href).hostname === 'sapl.natal.rn.leg.br' && /noopener/.test(link.rel)));
+      officialSourceHosts.has(new URL(link.href).hostname) && /noopener/.test(link.rel)));
     assert.equal(graphLayout.saplRegistry.checkedDateVisible, true);
+    const promulgated562 = Object.entries(graphLayout.saplRegistry.statuses)
+      .find(([citation]) => /562.*2018/.test(citation))?.[1];
+    assert.equal(promulgated562?.status, 'date_matched_candidate');
+    const promulgated562Paths = promulgated562?.links.map((link) => new URL(link.href).pathname) || [];
+    assert.ok(promulgated562Paths.includes('/norma/254'));
+    assert.ok(promulgated562Paths.includes('/norma/9202'));
+    assert.ok(promulgated562Paths.includes('/media/sapl/public/normajuridica/2018/254/lp_562.18.pdf'));
+    assert.match(promulgated562?.links[0]?.text || '', /14\/09\/2018.*data citada/);
+    assert.match(promulgated562?.links[1]?.text || '', /18\/09\/2018/);
+    assert.match(promulgated562?.note || '', /não confirma identidade jurídica nem efeito da revogação/i);
+    const ordinary1894 = Object.entries(graphLayout.saplRegistry.statuses)
+      .find(([citation]) => /1\.894.*1969/.test(citation))?.[1];
+    assert.equal(ordinary1894?.status, 'species_conflict');
+    assert.match(ordinary1894?.note || '', /referência menciona 31\/12\/1969; a ficha SAPL está datada de 25\/12\/1969/i);
+    const lei4566 = Object.entries(graphLayout.saplRegistry.statuses)
+      .find(([citation]) => /4\.566.*1992/.test(citation))?.[1];
+    assert.equal(lei4566?.status, 'year_conflict');
+    assert.ok(lei4566?.links.some((link) => new URL(link.href).hostname === 'www2.natal.rn.gov.br'));
+    const leiPromulgada275 = Object.entries(graphLayout.saplRegistry.statuses)
+      .find(([citation]) => /275.*2009/.test(citation))?.[1];
+    assert.equal(leiPromulgada275?.status, 'identity_conflict');
+    assert.equal(leiPromulgada275?.links.filter((link) => /\/storage\/app\/media\/DOM\/anexos\/dom_20090317\.pdf$/.test(new URL(link.href).pathname)).length, 2,
+      'the original official gazette PDF and its page-specific link must both be available');
+    const lc55 = Object.entries(graphLayout.saplRegistry.statuses)
+      .find(([citation]) => /55.*2004/.test(citation))?.[1];
+    assert.equal(lc55?.status, 'not_checked');
+    assert.equal(lc55?.links.length, 0, 'do not imply that the locally extracted LC 55 identity has been matched in SAPL');
     assert.equal(graphLayout.parallelRelations, 2);
+    assert.match(graphLayout.demoTitle, /Art\. 260/i, 'the heading must identify the article that contains the seven repeal references');
+    assert.doesNotMatch(graphLayout.demoTitle, /sete atos/i);
     assert.match(graphLayout.heading, /relações normativas/i);
     assert.equal(graphLayout.genericRepeal, true, 'Art. 266 generic repeal must remain visible without invented targets');
     assert.equal(graphLayout.amendment, true, 'Art. 261 amendment must remain distinct from repeal');
@@ -609,6 +989,12 @@ try {
     viewports: repealGraphViewports,
     legalScope: 'seven named Art. 260 references plus Art. 261 amendment and Art. 266 generic repeal; no legal adjudication',
   });
+  report.checks.push({
+    id: 'ctm-art20-historical-snapshots-and-amendment-diff-responsive',
+    status: 'passed',
+    viewports: ctmTimelineViewports,
+    legalScope: 'three official historical consolidations plus one later promulgated partial amendment; all sources pending human review',
+  });
   await page.setViewport({ width: 1280, height: 900 });
   await page.goto(new URL('/explorar/demo-consolidacao/', baseUrl).href, {
     waitUntil: 'domcontentloaded',
@@ -621,6 +1007,35 @@ try {
     liveText: document.querySelector('[data-graph-live]')?.textContent,
     emphasizedTargets: document.querySelectorAll('[data-graph-target][data-graph-emphasis="active"]').length,
     mutedTargets: document.querySelectorAll('[data-graph-target][data-graph-emphasis="muted"]').length,
+    mutedLegibility: [...document.querySelectorAll('[data-graph-target][data-graph-emphasis="muted"]')]
+      .map((target) => {
+        const parseColor = (value) => {
+          const channels = value.match(/[\d.]+/g)?.map(Number);
+          if (channels?.length >= 3) return channels.slice(0, 3);
+          const hex = value.match(/^#([\da-f]{6})$/i)?.[1];
+          return hex ? [0, 2, 4].map((index) => Number.parseInt(hex.slice(index, index + 2), 16)) : null;
+        };
+        const composite = (foreground, background, opacity) => foreground.map(
+          (channel, index) => channel * opacity + background[index] * (1 - opacity),
+        );
+        const luminance = (channels) => channels.map((channel) => {
+          const normalized = channel / 255;
+          return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+        }).reduce((total, channel, index) => total + channel * [0.2126, 0.7152, 0.0722][index], 0);
+        const opacity = Number.parseFloat(getComputedStyle(target).opacity);
+        const canvas = parseColor(getComputedStyle(document.documentElement).getPropertyValue('--jurix-canvas').trim());
+        const background = composite(parseColor(getComputedStyle(target).backgroundColor), canvas, opacity);
+        const ratio = (element) => {
+          const foreground = composite(parseColor(getComputedStyle(element).color), canvas, opacity);
+          const [lighter, darker] = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+          return Number(((lighter + 0.05) / (darker + 0.05)).toFixed(2));
+        };
+        return {
+          opacity,
+          headingContrast: ratio(target.querySelector('h3')),
+          explanationContrast: ratio(target.querySelector('p')),
+        };
+      }),
     allTargetsRemainAvailable: [...document.querySelectorAll('[data-graph-target]')]
       .every((target) => target.getAttribute('aria-hidden') !== 'true'),
     edgeKinds: [...new Set([...document.querySelectorAll('.pgm-demo__edge[data-graph-emphasis="active"]')]
@@ -630,6 +1045,8 @@ try {
   assert.match(repealFocus.liveText, /seis leis e um artigo/i);
   assert.equal(repealFocus.emphasizedTargets, 7);
   assert.equal(repealFocus.mutedTargets, 2);
+  assert.ok(repealFocus.mutedLegibility.every((item) => item.opacity >= 0.82), 'filtered graph relations must remain visually secondary but legible');
+  assert.ok(repealFocus.mutedLegibility.every((item) => item.headingContrast >= 4.5 && item.explanationContrast >= 4.5), 'muted graph labels must retain 4.5:1 text contrast');
   assert.equal(repealFocus.allTargetsRemainAvailable, true);
   assert.deepEqual(repealFocus.edgeKinds, ['express']);
   const highlightedGraph = path.join(resolvedEvidenceDir, 'pgm-lc258-repeals-focused.png');
@@ -664,6 +1081,24 @@ try {
   });
   assert.equal(await page.$eval('body', (body) => body.dataset.qaArchiveCorpus), 'true');
   assert.equal(await page.$eval('meta[name="jurix-authenticated"]', (meta) => meta.content), 'false');
+  const corpusNotice = await page.$('details.jurix-corpus-notice');
+  assert.ok(corpusNotice, 'archive limitations must use an expandable native disclosure');
+  assert.match(await corpusNotice.$eval('summary', (summary) => summary.innerText), /extrações pendentes de revisão/i);
+  assert.match(await corpusNotice.$eval('summary', (summary) => summary.innerText), /atualização do acervo não confirmada/i);
+  await page.click('.jurix-corpus-notice__summary');
+  assert.equal(await corpusNotice.evaluate((details) => details.open), true);
+  const corpusNoticeDetails = await corpusNotice.$eval('.jurix-corpus-notice__details', (panel) => panel.innerText);
+  assert.match(corpusNoticeDetails, /Metadados e segmentação estão sob revisão/i);
+  assert.match(corpusNoticeDetails, /atualização.*não está confirmada/i);
+  assert.match(corpusNoticeDetails, /não confirma a publicação de cada documento citado/i);
+  await page.click('.jurix-corpus-notice__summary');
+  assert.equal(await corpusNotice.evaluate((details) => details.open), false);
+  await page.focus('.jurix-corpus-notice__summary');
+  await page.keyboard.press('Enter');
+  assert.equal(await corpusNotice.evaluate((details) => details.open), true);
+  await page.keyboard.press('Space');
+  assert.equal(await corpusNotice.evaluate((details) => details.open), false);
+  report.checks.push({ id: 'archive-caveat-disclosure-is-accessible-and-complete', status: 'passed' });
   const buildSummary = await page.$('.workspace-build-details > summary');
   assert.ok(buildSummary, 'shared shell must expose the technical instance disclosure');
   await buildSummary.click();
@@ -752,11 +1187,38 @@ try {
     return source.local_pdf_url === null
       || /^\/normas\/documentos\/[0-9a-f-]{36}\/pdf\/(?:#page=\d+)?$/i.test(source.local_pdf_url);
   }), 'local QA PDF routes must not be mislabeled as official or exported as absolute localhost URLs');
+  const pageAnchoredLocalEvidence = exportedEvidence.sources.filter((source) => (
+    source.local_pdf_url && Number.isInteger(source.page) && source.page > 0
+  ));
+  assert.ok(pageAnchoredLocalEvidence.length > 0, 'real local-PDF export should include page-addressable evidence');
+  assert.ok(pageAnchoredLocalEvidence.every((source) => (
+    new URL(source.local_pdf_url, baseUrl).hash === `#page=${source.page}`
+  )), 'local PDF export links must open at the exported evidence page');
+  const exportedPdfRoutes = [...new Set(pageAnchoredLocalEvidence.map((source) => (
+    new URL(source.local_pdf_url, baseUrl).pathname
+  )))];
+  const exportedPdfResponses = await page.evaluate(async (paths) => Promise.all(paths.map(async (path) => {
+    const response = await fetch(path);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const signature = new TextDecoder().decode(bytes.subarray(0, 5));
+    const tail = new TextDecoder().decode(bytes.subarray(Math.max(0, bytes.length - 2048)));
+    return {
+      path,
+      status: response.status,
+      contentType: response.headers.get('content-type') || '',
+      validPdf: signature.startsWith('%PDF') && tail.includes('%%EOF'),
+    };
+  })), exportedPdfRoutes);
+  assert.ok(exportedPdfResponses.every((response) => (
+    response.status === 200 && /application\/pdf/i.test(response.contentType) && response.validPdf
+  )), 'all unique exported local-PDF routes must resolve to valid PDF bytes');
   report.checks.push({
     id: 'evidence-export-downloads-structured-provenance',
     status: 'passed',
     schemaVersion: exportedEvidence.schema_version,
     sourceCount: exportedEvidence.sources.length,
+    pageAnchoredLocalEvidenceCount: pageAnchoredLocalEvidence.length,
+    validatedLocalPdfRouteCount: exportedPdfResponses.length,
     fields: ['citation_id', 'norma', 'dispositivo', 'excerpt'],
   });
   await downloadSession.detach();
@@ -768,6 +1230,33 @@ try {
     document.documentElement.clientWidth === 1024
     && window.matchMedia('(max-width: 1199px)').matches
   ));
+  const composerFilterLayout = await page.$eval('#conversation-input-bar .jurix-composer-filters', (filters) => {
+    const controls = [...filters.querySelectorAll(':scope > .figma-search-dropdown')];
+    const temporal = filters.querySelector('.jurix-temporal-filter');
+    const labels = controls.map((control) => {
+      const label = control.querySelector('[data-control-label]');
+      return {
+        text: label?.textContent?.trim() || '',
+        width: Math.round(control.getBoundingClientRect().width),
+        whiteSpace: label ? getComputedStyle(label).whiteSpace : '',
+      };
+    });
+    return {
+      display: getComputedStyle(filters).display,
+      columnCount: getComputedStyle(filters).gridTemplateColumns.split(' ').length,
+      width: Math.round(filters.getBoundingClientRect().width),
+      labels,
+      temporal: temporal ? {
+        width: Math.round(temporal.getBoundingClientRect().width),
+        gridColumn: getComputedStyle(temporal).gridColumn,
+      } : null,
+    };
+  });
+  assert.equal(composerFilterLayout.display, 'grid', `composer filters should reflow at 1024px: ${JSON.stringify(composerFilterLayout)}`);
+  assert.equal(composerFilterLayout.columnCount, 3, `composer should preserve three readable control columns: ${JSON.stringify(composerFilterLayout)}`);
+  assert.ok(composerFilterLayout.labels.length >= 3 && composerFilterLayout.labels.every((item) => item.width >= 140 && item.whiteSpace === 'nowrap'), `filter labels must not collapse into one-word-per-line controls: ${JSON.stringify(composerFilterLayout)}`);
+  assert.ok(composerFilterLayout.temporal?.width >= composerFilterLayout.width - 2, `temporal control should occupy its own full row: ${JSON.stringify(composerFilterLayout)}`);
+  report.checks.push({ id: 'composer-controls-remain-readable-at-1024px', status: 'passed', ...composerFilterLayout });
   await page.waitForFunction(() => {
     const trigger = [...document.querySelectorAll('.message-assistant .jurix-sources-pill-btn')].at(-1);
     if (!trigger?.getClientRects().length) return false;
@@ -985,8 +1474,8 @@ try {
   const chainQuestion = 'A Lei Complementar nº 198/2021 alterou o art. 21 da Lei Complementar nº 55/2004? Compare a redação anterior e posterior ou informe a lacuna.';
   const chainAnswer = await submitQuestion(chainQuestion);
   assert.match(chainAnswer, /redação de origem/i);
-  assert.match(chainAnswer, /n[aã]o permite confirmar se o dispositivo foi alterado ou revogado depois/i);
-  assert.match(chainAnswer, /nem concluir que continua vigente/i);
+  assert.match(chainAnswer, /não foi possível confirmar se o dispositivo consultado foi alterado ou revogado/i);
+  assert.match(chainAnswer, /nem afirmar sua vigência atual/i);
   assert.doesNotMatch(chainAnswer, /quem alterou|em que data|tente outra formula[cç][aã]o/i);
   const sourcePillsAfterChainQuestion = await page.$$('.message-assistant .jurix-sources-pill-btn');
   assert.equal(
@@ -999,16 +1488,24 @@ try {
     return (node?._sourcesData || []).map((item) => ({
       norma: item.norma_ref || '',
       dispositivo: item.dispositivo_ref || '',
+      sourceKind: item.source_kind || '',
+      page: item.page || null,
     }));
   });
-  assert.equal(chainSourceData.length, 1);
-  assert.match(chainSourceData[0].norma, /Lei Complementar nº 55\/2004/);
-  assert.match(chainSourceData[0].dispositivo, /Art\.\s*21/i);
+  assert.equal(chainSourceData.length, 2);
+  const originalArticleSource = chainSourceData.find((item) => /Lei Complementar nº 55\/2004/.test(item.norma));
+  const candidateRepealSource = chainSourceData.find((item) => /Lei Complementar nº 258\/2024/.test(item.norma));
+  assert.ok(originalArticleSource, 'the source drawer must preserve the original Art. 21 text');
+  assert.match(originalArticleSource.dispositivo, /Art\.\s*21/i);
+  assert.ok(candidateRepealSource, 'the source drawer must expose the later repeal clause as a separate candidate');
+  assert.match(candidateRepealSource.dispositivo, /Art\.\s*260/i);
+  assert.match(chainAnswer, /v[ií]nculo [eé] apenas candidato documental/i);
+  assert.match(chainAnswer, /n[aã]o confirma, por si s[oó], a revoga[cç][aã]o/i);
   report.checks.push({
     id: 'missing-amendment-chain-with-grounded-origin-text',
     status: 'passed',
     sourceCount: chainSourceData.length,
-    source: chainSourceData[0],
+    sources: chainSourceData,
     answer: chainAnswer,
   });
 
@@ -1106,22 +1603,68 @@ try {
   });
   await page.waitForFunction(() => JSON.parse(localStorage.getItem('jurix:search-options:v1') || '{}').as_of === null);
 
-  const transitionChainQuestion = 'Estou conferindo uma fundamentação antiga que usa o Art. 21 da Lei Complementar nº 55/2004. A LC 258/2024 menciona esse artigo? Considere também o Art. 260, inciso IV, e o Art. 262. Explique o que cada dispositivo informa e o que falta confirmar antes de usar isso em um processo concreto.';
+  const transitionChainQuestion = 'Em um processo de licenciamento protocolado antes da entrada em vigor da LC 258/2024 e ainda sem despacho decisório, como devo conferir a aplicação da regra do Art. 21 da Lei Complementar nº 55/2004? Considere o Art. 260, inciso IV, e o Art. 262 da LC 258/2024. Informe a data de publicação e a data calculada de entrada em vigor apenas se houver evidência oficial recuperável, e explique o que ainda exige revisão antes de usar no processo concreto.';
   const transitionChainAnswer = await submitQuestion(transitionChainQuestion);
   assert.match(transitionChainAnswer, /Art\.?\s*260/i);
   assert.match(transitionChainAnswer, /Art\.?\s*262/i);
   assert.match(transitionChainAnswer, /Art\.?\s*21/i);
+  assert.match(transitionChainAnswer, /27\/03\/2025/, 'verified DOM publication plus LC95 rule should expose the calculated general effective date');
   assert.doesNotMatch(transitionChainAnswer, /(?:Art\.?\s*21[^.]{0,80})(?:permanece|continua) vigente/i);
   const transitionSources = await page.$$eval('.message-assistant [id^="sources-"]', (containers) => {
     const node = containers.at(-1);
     return (node?._sourcesData || []).map((item) => ({
       norma: item.norma_ref || '',
       dispositivo: item.dispositivo_ref || '',
+      sourceKind: item.source_kind || '',
+      page: item.page || null,
     }));
   });
   assert.ok(transitionSources.some((item) => /Lei Complementar nº 258\/2024/i.test(item.norma) && /Art\.\s*260/i.test(item.dispositivo)));
   assert.ok(transitionSources.some((item) => /Lei Complementar nº 258\/2024/i.test(item.norma) && /Art\.\s*262/i.test(item.dispositivo)));
   assert.ok(transitionSources.some((item) => /Lei Complementar nº 55\/2004/i.test(item.norma) && /Art\.\s*21/i.test(item.dispositivo)));
+  assert.ok(transitionSources.some((item) => /Lei Complementar nº 258\/2024/i.test(item.norma) && /Art\.\s*266/i.test(item.dispositivo)));
+  assert.ok(transitionSources.some((item) => /Lei Complementar nº 95\/1998/i.test(item.norma) && /§\s*1/i.test(item.dispositivo)));
+  for (const article of ['260', '262', '266']) {
+    const officialArticle = transitionSources.find((item) =>
+      /Lei Complementar nº 258\/2024/i.test(item.norma)
+        && new RegExp(`Art\\.\\s*${article}\\b`, 'i').test(item.dispositivo));
+    assert.equal(officialArticle?.sourceKind, 'official_gazette_extraction', `Art. ${article} must cite the official DOM extraction`);
+    assert.ok(Number.isInteger(officialArticle.page) && officialArticle.page > 0, `Art. ${article} must carry its exact PDF page`);
+  }
+  const transitionSourcesPill = (await page.$$('.message-assistant .jurix-sources-pill-btn')).at(-1);
+  assert.ok(transitionSourcesPill, 'the transition answer must expose its consulted sources');
+  await transitionSourcesPill.click();
+  await page.waitForFunction(() =>
+    document.getElementById('jurix-sources-drawer-panel')?.getAttribute('aria-hidden') === 'false');
+  const transitionDrawerCards = await page.$$eval(
+    '#jurix-sources-drawer-panel .jurix-rag-source',
+    (cards) => cards.map((card) => ({
+      label: card.getAttribute('aria-label') || '',
+      text: card.innerText || '',
+      href: card.querySelector('.jurix-rag-source__open')?.href || '',
+    })),
+  );
+  const domCommencementCard = transitionDrawerCards.find((card) =>
+    /Lei Complementar nº 258\/2024/i.test(card.label)
+      && /dom_20241227_extra_/i.test(card.href));
+  assert.ok(domCommencementCard, `sources drawer must expose the DOM commencement article: ${JSON.stringify(transitionDrawerCards)}`);
+  const domCommencementUrl = new URL(domCommencementCard.href);
+  assert.equal(domCommencementUrl.hostname, 'www2.natal.rn.gov.br');
+  assert.match(domCommencementUrl.pathname, /dom_20241227_extra_.*\.pdf$/i);
+  assert.match(domCommencementUrl.hash, /^#page=\d+$/, 'official DOM source should open at the extracted page');
+  assert.ok(
+    transitionDrawerCards.some((card) => /Lei Complementar nº 258\/2024/i.test(card.label)
+      && /#page=69$/i.test(card.href)),
+    'the repeal clause should open the official DOM page containing Art. 260',
+  );
+  const lc95Card = transitionDrawerCards.find((card) =>
+    /Lei Complementar nº 95\/1998/i.test(card.label)
+      && /www\.planalto\.gov\.br/i.test(card.href));
+  assert.ok(lc95Card, 'sources drawer must expose the LC 95/1998 counting rule');
+  assert.equal(new URL(lc95Card.href).hostname, 'www.planalto.gov.br');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() =>
+    document.getElementById('jurix-sources-drawer-panel')?.getAttribute('aria-hidden') === 'true');
   const transitionChainScreenshot = path.join(resolvedEvidenceDir, 'pgm-lc258-transition-and-revocation.png');
   await page.screenshot({ path: transitionChainScreenshot, fullPage: false });
   report.evidence.push(transitionChainScreenshot);
@@ -1135,6 +1678,91 @@ try {
     screenshot: transitionChainScreenshot,
   });
 
+  await page.goto(new URL('/assistente/?new=1&corpus=archive-qa', baseUrl).href, {
+    waitUntil: 'domcontentloaded',
+    timeout: 20000,
+  });
+  const lp275Question = 'A Lei Complementar nº 258/2024, Art. 260, inciso V, revoga expressamente o Art. 21 da Lei Promulgada nº 275/2009? O que os documentos disponíveis permitem afirmar e o que permanece pendente de confirmação jurídica?';
+  const lp275Answer = await submitQuestion(lp275Question);
+  assert.match(lp275Answer, /Lei Promulgada nº 275\/2009/i);
+  assert.match(lp275Answer, /O rebaixamento de guias/i);
+  assert.match(lp275Answer, /Art\.\s*260/i);
+  assert.match(lp275Answer, /pendentes de revis[aã]o/i);
+  assert.doesNotMatch(lp275Answer, /n[aã]o localizei no acervo pesquis[aá]vel o texto de Art\. 21/i);
+  assert.doesNotMatch(lp275Answer, /Art\.\s*21[^.]{0,100}(?:permanece|continua) vigente/i);
+  const lp275Sources = await page.$$eval('.message-assistant [id^="sources-"]', (containers) => {
+    const node = containers.at(-1);
+    return (node?._sourcesData || []).map((item) => ({
+      norma: item.norma_ref || '',
+      dispositivo: item.dispositivo_ref || '',
+      sourceType: item.source_type || '',
+      localPdfUrl: item.local_pdf_url || '',
+      page: item.page || null,
+    }));
+  });
+  const lp275ArticleSource = lp275Sources.find((item) =>
+    /Lei Promulgada nº 275\/2009/i.test(item.norma) && /Art\.\s*21/i.test(item.dispositivo));
+  const lc258RepealSource = lp275Sources.find((item) =>
+    /Lei Complementar nº 258\/2024/i.test(item.norma) && /Art\.\s*260/i.test(item.dispositivo));
+  assert.ok(lp275ArticleSource, 'the cited LP 275/2009 Article 21 must remain a structured source');
+  assert.ok(lc258RepealSource, 'the LC 258/2024 repeal clause must remain a structured source');
+  assert.match(lp275ArticleSource.sourceType, /pendente de revis[aã]o/i);
+  assert.equal(lp275ArticleSource.page, 6);
+  assert.equal(new URL(lp275ArticleSource.localPdfUrl, baseUrl).pathname,
+    '/normas/documentos/c452bfe5-1138-4962-a3f2-c4cc9b662007/pdf/');
+
+  const lp275SourcesPill = (await page.$$('.message-assistant .jurix-sources-pill-btn')).at(-1);
+  assert.ok(lp275SourcesPill, 'the live answer must expose its source drawer without reload');
+  await lp275SourcesPill.click();
+  await page.waitForFunction(() =>
+    document.getElementById('jurix-sources-drawer-panel')?.getAttribute('aria-hidden') === 'false');
+  const lp275DrawerCards = await page.$$eval(
+    '#jurix-sources-drawer-panel .jurix-rag-source',
+    (cards) => cards.map((card) => ({
+      ariaLabel: card.getAttribute('aria-label') || '',
+      href: card.querySelector('.jurix-rag-source__open')?.href || '',
+      target: card.querySelector('.jurix-rag-source__open')?.target || '',
+    })),
+  );
+  const lp275DrawerCard = lp275DrawerCards.find((card) => /Lei Promulgada nº 275\/2009/i.test(card.ariaLabel));
+  assert.ok(lp275DrawerCard, `the consulted-sources drawer must expose an accessible target-law label: ${JSON.stringify(lp275DrawerCards)}`);
+  const lp275PdfLink = new URL(lp275DrawerCard.href);
+  assert.equal(lp275PdfLink.pathname, '/normas/documentos/c452bfe5-1138-4962-a3f2-c4cc9b662007/pdf/');
+  assert.equal(lp275PdfLink.hash, '#page=6');
+  assert.equal(lp275DrawerCard.target, '_blank');
+  const localPdfResponse = await page.evaluate(async (href) => {
+    const response = await fetch(href);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return {
+      status: response.status,
+      contentType: response.headers.get('content-type') || '',
+      signature: new TextDecoder().decode(bytes.slice(0, 4)),
+    };
+  }, lp275PdfLink.href);
+  assert.equal(localPdfResponse.status, 200);
+  assert.match(localPdfResponse.contentType, /application\/pdf/i);
+  assert.equal(localPdfResponse.signature, '%PDF');
+  const lp275Screenshot = path.join(resolvedEvidenceDir, 'pgm-lp275-revocation-and-source-drawer.png');
+  await page.screenshot({ path: lp275Screenshot, fullPage: false });
+  report.evidence.push(lp275Screenshot);
+  report.checks.push({
+    id: 'real-lp275-article21-repeal-source-and-pdf-open',
+    status: 'passed',
+    sources: [
+      { norma: lp275ArticleSource.norma, dispositivo: lp275ArticleSource.dispositivo, page: lp275ArticleSource.page },
+      { norma: lc258RepealSource.norma, dispositivo: lc258RepealSource.dispositivo },
+    ],
+    answerStatesBothExtractionsArePending: /pendentes de revis[aã]o/i.test(lp275Answer),
+    sourceDrawerOpensLocalPdf: true,
+    localPdfResponse,
+    screenshot: lp275Screenshot,
+    caveat: 'public authentic PDF texts are retrieved; both extractions remain pending and no vigency conclusion is made',
+  });
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() =>
+    document.getElementById('jurix-sources-drawer-panel')?.getAttribute('aria-hidden') === 'true');
+
+  if (includeProposalRagSmoke) {
   await page.goto(new URL('/assistente/?new=1&corpus=archive-qa', baseUrl).href, {
     waitUntil: 'domcontentloaded',
     timeout: 20000,
@@ -1349,6 +1977,89 @@ try {
   });
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => document.getElementById('jurix-sources-drawer-panel')?.getAttribute('aria-hidden') === 'true');
+  } else {
+    report.checks.push({
+      id: 'proposal-rag-smoke',
+      status: 'deferred',
+      note: 'projeto de lei fora do RAG promulgado nesta etapa; habilite JURIX_INCLUDE_PROPOSAL_RAG_SMOKE=1 somente para o teste isolado dessa funcionalidade',
+    });
+  }
+
+  await page.goto(new URL('/assistente/?new=1&corpus=archive-qa', baseUrl).href, {
+    waitUntil: 'domcontentloaded',
+    timeout: 20000,
+  });
+  const ctmComparisonQuestion = 'Compare o texto do Art. 20 da Lei nº 3.882/1989 na consolidação municipal de 2024 com a redação substitutiva transcrita no Art. 1º da LC nº 271/2025. Mostre apenas as fontes e diferenças textuais, sem concluir vigência atual.';
+  const ctmComparisonAnswer = await submitQuestion(ctmComparisonQuestion);
+  assert.match(ctmComparisonAnswer, /difere textualmente/i);
+  assert.match(ctmComparisonAnswer, /termina com reticências/i);
+  assert.match(ctmComparisonAnswer, /não confirma vigência/i);
+  const ctmComparisonSources = await page.$$eval('.message-assistant [id^="sources-"]', (containers) => {
+    const node = containers.at(-1);
+    return (node?._sourcesData || []).map((item) => ({
+      citationId: item.citation_id || '',
+      norm: item.norma_ref || '',
+      device: item.dispositivo_ref || '',
+      edition: item.edition_label || '',
+    }));
+  });
+  assert.equal(ctmComparisonSources.length, 2,
+    `explicit article comparison should expose only the requested old edition and amendment; got ${JSON.stringify(ctmComparisonSources)}`);
+  assert.ok(ctmComparisonSources.some((source) => /3\.882\/1989/.test(source.norm)
+    && /Art\.? 20\b/i.test(source.device) && /exercício 2024/i.test(source.edition)));
+  assert.ok(ctmComparisonSources.some((source) => /271\/2025/.test(source.norm)
+    && /Art\.? 1º?/i.test(source.device)));
+  assert.ok(!ctmComparisonSources.some((source) => /219\/2023/.test(source.norm)));
+  const ctmSourcesPill = (await page.$$('.message-assistant .jurix-sources-pill-btn')).at(-1);
+  assert.ok(ctmSourcesPill, 'the comparison evidence drawer must appear without a reload');
+  await ctmSourcesPill.click();
+  await page.waitForFunction(() =>
+    document.getElementById('jurix-sources-drawer-panel')?.getAttribute('aria-hidden') === 'false');
+  await page.waitForFunction(() => {
+    const panel = document.getElementById('jurix-sources-drawer-panel');
+    if (!panel || panel.getAttribute('aria-hidden') !== 'false') return false;
+    const transform = new DOMMatrixReadOnly(getComputedStyle(panel).transform);
+    const rect = panel.getBoundingClientRect();
+    return Math.abs(transform.m41) < 0.5
+      && rect.left >= 0
+      && rect.right <= document.documentElement.clientWidth;
+  }, { timeout: 5000 });
+  const ctmExpandAll = await page.$('#jurix-sources-drawer-panel .jurix-source-group-toggle-all');
+  assert.ok(ctmExpandAll, 'the comparison sources drawer must expose expand-all');
+  await ctmExpandAll.click();
+  await page.waitForFunction(() =>
+    document.querySelector('#jurix-sources-drawer-panel .jurix-source-group-toggle-all')
+      ?.getAttribute('aria-expanded') === 'true');
+  const ctmDrawerCards = await page.$$eval(
+    '#jurix-sources-drawer-panel .jurix-rag-source',
+    (cards) => cards.map((card) => card.innerText),
+  );
+  const ctmDrawerText = await page.$eval(
+    '#jurix-sources-drawer-panel',
+    (panel) => panel.innerText,
+  );
+  assert.equal(ctmDrawerCards.length, 2);
+  assert.match(ctmDrawerText, /3\.882\/1989/);
+  assert.match(ctmDrawerText, /exerc[ií]cio 2024/i);
+  assert.match(ctmDrawerText, /271\/2025/);
+  assert.ok(ctmDrawerCards.every((text) => /pendente de revis[aã]o/i.test(text)));
+  const ctmComparisonScreenshot = path.join(resolvedEvidenceDir, 'pgm-ctm-article20-comparison.png');
+  await page.screenshot({ path: ctmComparisonScreenshot, fullPage: false });
+  report.evidence.push(ctmComparisonScreenshot);
+  report.checks.push({
+    id: 'real-ctm-article20-amendment-comparison-scoped-sources',
+    status: 'passed',
+    sourceCount: ctmComparisonSources.length,
+    sources: ctmComparisonSources,
+    answerWarnsAboutOmittedContinuation: /termina com reticências/i.test(ctmComparisonAnswer),
+    answerAvoidsCurrentnessClaim: /não confirma vigência/i.test(ctmComparisonAnswer),
+    drawerMatchesAnswerEvidence: true,
+    screenshot: ctmComparisonScreenshot,
+    caveat: 'authentic municipal PDF extractions remain pending human review; text comparison does not establish legal effect or current validity',
+  });
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() =>
+    document.getElementById('jurix-sources-drawer-panel')?.getAttribute('aria-hidden') === 'true');
 
   const reviewResponse = await page.goto(new URL('/conferir/', baseUrl).href, {
     waitUntil: 'domcontentloaded',
@@ -1357,9 +2068,23 @@ try {
   const reviewGate = {
     status: reviewResponse?.status() ?? null,
     finalPath: new URL(page.url()).pathname,
+    heading: await page.$eval('.workspace-page-header h1', (node) => node.innerText.trim()),
+    explainsAuthorization: /exige uma conta autorizada/i.test(
+      await page.$eval('.workspace-page-header p', (node) => node.innerText),
+    ),
   };
   assert.ok(reviewGate.finalPath.includes('/conta/entrar/'), 'review desk must not be accessible to an anonymous user');
-  report.checks.push({ id: 'anonymous-reviewer-access-gate', ...reviewGate, status: 'passed' });
+  assert.equal(reviewGate.heading, 'Acesse Conferir fundamentação');
+  assert.equal(reviewGate.explainsAuthorization, true, 'the login page must explain why this protected workflow requires sign-in');
+  const loginContextScreenshot = path.join(resolvedEvidenceDir, 'pgm-foundation-check-login-context.png');
+  await page.screenshot({ path: loginContextScreenshot, fullPage: true });
+  report.evidence.push(loginContextScreenshot);
+  report.checks.push({
+    id: 'anonymous-reviewer-access-gate',
+    ...reviewGate,
+    screenshot: loginContextScreenshot,
+    status: 'passed',
+  });
 
   assert.deepEqual(pageErrors, [], `uncaught browser errors: ${pageErrors.join(', ')}`);
   report.status = 'passed';

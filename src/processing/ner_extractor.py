@@ -37,12 +37,14 @@ class LegalNERExtractor:
     }
 
     ACTION_PATTERNS = {
-        "REVOGA": r"\b(revog[a-z]+|ficam?\s+revogad[oa]s?)\b",
+        "REVOGA": r"\b(revog(?:a|am|ou|ar|ando|ado|ada|ados|adas|ue|uem)|ficam?\s+revogad[oa]s?)\b",
         # 'dê-se ao art. 5º ...' and 'dá-se/fica dada nova redação ao art. 5º' precede their reference
-        "ALTERA": r"\b(alter[a-z]+|modific[a-z]+|ficam?\s+alterad[oa]s?|d[êe]-se|nova\s+reda[çc][ãa]o)\b",
-        "ADICIONA": r"\b(adicion[a-z]+|acrescen[a-z]+|inclui[a-z]*|ficam?\s+adicionad[oa]s?)\b",
-        "SUBSTITUI": r"\b(substitu[íi][a-z]*|ficam?\s+substitu[íi]d[oa]s?)\b",
-        "REGULAMENTA": r"\b(regulamenta[a-z]*|disciplina[a-z]*)\b",
+        # Ordinary concepts such as alternativas, adicionais, and incluindo are not
+        # themselves legal amendments. Match bounded verb inflections and explicit forms.
+        "ALTERA": r"\b(alter(?:a|am|ou|ar|ando|ado|ada|ados|adas|e|em)|modific(?:a|am|ou|ar|ando|ado|ada|ados|adas|e|em)|ficam?\s+alterad[oa]s?|d[êe]-se|nova\s+reda[çc][ãa]o)\b",
+        "ADICIONA": r"\b(adicion(?:a|am|ou|ar|ando|ado|ada|ados|adas|e|em)|acrescent(?:a|am|ou|ar|ando|ado|ada|ados|adas|e|em)|acrescid[oa]s?|inclui(?:-se)?|incluem-se|inclu[ií]d[oa]s?|ficam?\s+(?:adicionad[oa]s?|acrescid[oa]s?))\b",
+        "SUBSTITUI": r"\b(substitu[íi](?:a|am|iu|ir|indo|ído|ída|ídos|ídas)|ficam?\s+substitu[íi]d[oa]s?)\b",
+        "REGULAMENTA": r"\b(regulament(?:a|am|ou|ar|ando|ado|ada|ados|adas|e|em)|disciplin(?:a|am|ou|ar|ando|ado|ada|ados|adas|e|em))\b",
         "REFERENCIA": r"\b(conforme|nos\s+termos|de\s+acordo\s+com|previsto|disposto|refer[eê]ncia|referencia)\b",
     }
 
@@ -68,9 +70,11 @@ class LegalNERExtractor:
     #   / 'art. 5º-Aplicam' keep '5º'.
     # - Numbers after the first are at most 3 digits and are not followed by a unit, so 'art. 5º e
     #   10 dias', 'art. 5º, 2020' or 'art. 5º e 30%' are not swallowed into the list.
-    _ART_NUM = r"\d+[º°ª]?(?:-[A-Z](?![a-zà-ú]))?"
+    # PDF text extraction can wrap a suffixed article at the hyphen, e.g. ``98-\n A``.
+    # Accept layout whitespace only inside this suffix, then normalize the identifier below.
+    _ART_NUM = r"\d+[º°ª]?(?:-\s*[A-Z](?![a-zà-ú]))?"
     _ART_NEXT = (
-        r"\d{1,3}(?!\d)[º°ª]?(?:-[A-Z](?![a-zà-ú]))?"
+        r"\d{1,3}(?!\d)[º°ª]?(?:-\s*[A-Z](?![a-zà-ú]))?"
         r"(?!\s*(?:dias?|m[êe]s(?:es)?|anos?|horas?|%|por\s*cento|reais|unidades?|vezes))"
     )
     ARTICLE_PATTERN = re.compile(
@@ -85,6 +89,17 @@ class LegalNERExtractor:
     @classmethod
     def _is_abbreviation(cls, prefix: str) -> bool:
         return prefix.lower().endswith(cls.ABBREVIATIONS)
+
+    @staticmethod
+    def _is_numeric_separator(text: str, position: int) -> bool:
+        """A dot between digits is a thousands/decimal separator, not sentence punctuation."""
+        return (
+            text[position] == "."
+            and position > 0
+            and position + 1 < len(text)
+            and text[position - 1].isdigit()
+            and text[position + 1].isdigit()
+        )
 
     @staticmethod
     def _year_value(value: str | None) -> str:
@@ -130,8 +145,12 @@ class LegalNERExtractor:
     _YEAR_HUNDRED_RE = r"cento|duzentos|trezentos|quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos"
     _YEAR_WORD_RE = rf"(?:mil(?:\s+novecentos(?:\s+e\s+(?:{_YEAR_TENS_RE}))?)?|dois\s+mil(?:\s+e\s+(?:{_YEAR_HUNDRED_RE}|{_YEAR_TENS_RE}|{_YEAR_UNIT_RE}))?)"
     LEI_PATTERN = re.compile(
-        r"\b(lei\s+(?:complementar|ordinária|delegada)?|lc|decreto|resolução)\s*"
-        rf"(?:n[º°]?\s*)?([\d.,]+)(?:\s*[/\-]\s*(\d{{4}}|{_YEAR_WORD_RE})|"
+        r"\b(lei\s+(?:complementar|ordinária|delegada|promulgada)?|lc|decreto|resolução)s?\s*"
+        r"(?:municipal(?:is)?(?:\s+de\s+Natal)?|do\s+município(?:\s+de\s+Natal)?)?\s*"
+        # A small number of PDF text layers replace the numero ordinal glyph with
+        # U+FFFD (for example, ``n� 275``). Accept that damaged marker while
+        # preserving the literal evidence span; never infer a missing digit.
+        rf"(?:n[º°\ufffd]?\s*)?([\d.,]+)(?:\s*[/\-]\s*(\d{{4}}|{_YEAR_WORD_RE})|"
         rf"\s*,?\s+de\s+(?:(?:\d{{1,2}}\s+de\s+[A-Za-zÀ-ÿ]+\s+de\s+)?(\d{{4}}|{_YEAR_WORD_RE})))?",
         re.IGNORECASE,
     )
@@ -178,7 +197,7 @@ class LegalNERExtractor:
         if global_law_matches:
             last_match = global_law_matches[-1]
             tipo_lei = last_match.group(1).strip()
-            numero = last_match.group(2).strip()
+            numero = last_match.group(2).strip().rstrip(".,;:")
             ano = self._year_value(last_match.group(3) or last_match.group(4))
             global_norma_info = {
                 "tipo": tipo_lei,
@@ -209,6 +228,8 @@ class LegalNERExtractor:
                 punct_match = None
                 for m in re.finditer(r"[.;]", sub_after_action):
                     pos = m.start()
+                    if self._is_numeric_separator(sub_after_action, pos):
+                        continue
                     prefix = sub_after_action[max(0, pos - 5) : pos].lower()
                     if self._is_abbreviation(prefix):
                         continue
@@ -339,6 +360,8 @@ class LegalNERExtractor:
         """
         start = lower
         for m in re.finditer(r"[.;]", texto[lower:upper]):
+            if LegalNERExtractor._is_numeric_separator(texto, lower + m.start()):
+                continue
             prefix = texto[max(0, lower + m.start() - 5) : lower + m.start()].lower()
             if LegalNERExtractor._is_abbreviation(prefix):
                 continue
@@ -400,6 +423,238 @@ class LegalNERExtractor:
         filtered.sort(key=lambda x: x["span"][0])
         return filtered
 
+    def list_action_introduction(self, text: str) -> dict[str, Any] | None:
+        """Recognize a standalone action clause that introduces a following list."""
+        actions = self._detect_actions(text or "")
+        if len(actions) != 1:
+            return None
+        action = actions[0]
+        if action["action"] not in {"REVOGA", "ALTERA", "ADICIONA", "SUBSTITUI"}:
+            return None
+        stripped = (text or "").rstrip()
+        colon_index = stripped.rfind(":")
+        if colon_index < 0:
+            return None
+        trailing_layout = " ".join(
+            re.sub(
+                r"[-–—]*\s*p.gina\s+\d+\s*[-–—]*",
+                " ",
+                stripped[colon_index + 1 :],
+                flags=re.IGNORECASE,
+            )
+            .casefold()
+            .replace("\ufffd", "a")
+            .split()
+        )
+        if trailing_layout and not re.fullmatch(
+            r"(?:(?:estado do rio grande do norte|c.mara municipal de natal|"
+            r"pal.cio padre miguelinho)\s*)+",
+            trailing_layout,
+        ):
+            return None
+        # List introductions may carry a qualifying phrase between the verb and
+        # colon (e.g. “Revogam-se as disposições em contrário, em especial:”);
+        # retain that whole literal clause so the inherited action is auditable.
+        quote_end = colon_index
+        if quote_end < action["span"][1]:
+            return None
+        quote = stripped[action["span"][0] : quote_end].rstrip()
+        quote_end = action["span"][0] + len(quote)
+        return {
+            "action": action["action"],
+            "quote": quote,
+            "start_offset": action["span"][0],
+            "end_offset": quote_end,
+        }
+
+    def extract_inherited_list_item_events(
+        self, action_introduction: dict[str, Any], item_text: str
+    ) -> list[dict[str, Any]]:
+        """Extract a list item's explicit target under its parent's action clause.
+
+        The item text remains the event's primary evidence span. The inherited clause is
+        carried separately so callers can resolve and verify both immutable source spans.
+        """
+        item = (item_text or "").strip()
+        action_quote = str(action_introduction.get("quote") or "").strip()
+        expected_action = action_introduction.get("action")
+        if not item or not action_quote or expected_action not in {
+            "REVOGA",
+            "ALTERA",
+            "ADICIONA",
+            "SUBSTITUI",
+        }:
+            return []
+
+        repeated_citations = list(
+            re.finditer(
+                r"\bn[º°o.]?\s*(?P<number>\d[\d.]*)\s+de\s+\d{1,2}\s+de\s+"
+                r"[A-Za-zÀ-ÿ]+\s+de\s+(?P<year>(?:19|20)\d{2})\b",
+                item,
+                flags=re.IGNORECASE,
+            )
+        )
+        if len(repeated_citations) > 1:
+            type_match = re.search(
+                r"\blei(?:s)?\s+(?P<kind>complementar(?:es)?|promulgada(?:s)?|"
+                r"ordin[áa]ria(?:s)?|delegada(?:s)?|org[âa]nica(?:s)?)?",
+                item,
+                flags=re.IGNORECASE,
+            )
+            raw_type = (type_match.group("kind") if type_match else "") or ""
+            normalized_type = {
+                "complementar": "Lei Complementar",
+                "complementares": "Lei Complementar",
+                "promulgada": "Lei Promulgada",
+                "promulgadas": "Lei Promulgada",
+                "ordinária": "Lei",
+                "ordinarias": "Lei",
+                "delegada": "Lei",
+                "delegadas": "Lei",
+                "orgânica": "Lei Orgânica",
+                "organicas": "Lei Orgânica",
+            }.get(raw_type.casefold(), "Lei")
+            events = []
+            for citation in repeated_citations:
+                number = citation.group("number")
+                year = citation.group("year")
+                target_quote = citation.group(0)
+                target_start, target_end = citation.span()
+                events.append(
+                    {
+                        "acao": expected_action,
+                        "target_text": target_quote,
+                        "referencia_tipo": normalized_type.casefold(),
+                        "referencia_numero": f"{number}/{year}",
+                        "extraction_confidence": 0.8,
+                        "extraction_method": "regex_inherited_list",
+                        "norma_referenciada": {
+                            "tipo": normalized_type,
+                            "numero": number,
+                            "ano": year,
+                        },
+                        "target_resolution": "candidate",
+                        "evidence": {
+                            "schema_version": 3,
+                            "offset_unit": "python_unicode_codepoint",
+                            "start_offset": 0,
+                            "end_offset": len(item),
+                            "action_start_offset": None,
+                            "action_end_offset": None,
+                            "target_start_offset": target_start,
+                            "target_end_offset": target_end,
+                            "action_quote": action_quote,
+                            "target_quote": target_quote,
+                            "quote": item,
+                            "action_context": {
+                                "kind": "inherited_list_action",
+                                "action": expected_action,
+                                "source_quote": action_quote,
+                            },
+                        },
+                    }
+                )
+            return events
+
+        synthetic = f"{action_quote}: {item}"
+        item_offset = len(action_quote) + 2
+        extracted = self.extract_events(synthetic)
+        inciso_list = re.search(
+            r"\bincisos?\s+(?P<listing>[IVXLCDM]+(?:\s*,\s*[IVXLCDM]+)*"
+            r"(?:\s+e\s+[IVXLCDM]+)?)\s+do\s+art(?:igo)?\.?\s*"
+            r"(?P<article>\d+[A-Za-z]?(?:-[A-Za-z])?)\b",
+            item,
+            flags=re.IGNORECASE,
+        )
+        if inciso_list:
+            reference_event = next(
+                (
+                    event
+                    for event in extracted
+                    if event.get("acao") == expected_action
+                    and isinstance(event.get("norma_referenciada"), dict)
+                    and event["norma_referenciada"].get("ano")
+                ),
+                None,
+            )
+            if reference_event:
+                target_start, target_end = inciso_list.span()
+                target_quote = item[target_start:target_end]
+                article_number = inciso_list.group("article")
+                events = []
+                for token in re.finditer(r"[IVXLCDM]+", inciso_list.group("listing"), re.I):
+                    number = token.group(0).upper()
+                    events.append(
+                        {
+                            "acao": expected_action,
+                            "target_text": target_quote,
+                            "referencia_tipo": "inciso",
+                            "referencia_numero": number,
+                            "extraction_confidence": 0.8,
+                            "extraction_method": "regex_inherited_enumerated_incisos",
+                            "norma_referenciada": reference_event["norma_referenciada"],
+                            "target_resolution": "candidate",
+                            "evidence": {
+                                "schema_version": 3,
+                                "offset_unit": "python_unicode_codepoint",
+                                "start_offset": 0,
+                                "end_offset": len(item),
+                                "action_start_offset": None,
+                                "action_end_offset": None,
+                                "target_start_offset": target_start,
+                                "target_end_offset": target_end,
+                                "action_quote": action_quote,
+                                "target_quote": target_quote,
+                                "quote": item,
+                                "structural_article_number": article_number,
+                                "action_context": {
+                                    "kind": "inherited_list_action",
+                                    "action": expected_action,
+                                    "source_quote": action_quote,
+                                },
+                            },
+                        }
+                    )
+                return events
+        result = []
+        for event in extracted:
+            if event.get("acao") != expected_action:
+                continue
+            evidence = dict(event.get("evidence") or {})
+            target_start = evidence.get("target_start_offset")
+            target_end = evidence.get("target_end_offset")
+            if not isinstance(target_start, int) or not isinstance(target_end, int):
+                continue
+            target_start -= item_offset
+            target_end -= item_offset
+            if not 0 <= target_start < target_end <= len(item):
+                continue
+            target_quote = item[target_start:target_end]
+            if not target_quote.strip():
+                continue
+            evidence.update(
+                {
+                    "schema_version": 3,
+                    "start_offset": 0,
+                    "end_offset": len(item),
+                    "action_start_offset": None,
+                    "action_end_offset": None,
+                    "target_start_offset": target_start,
+                    "target_end_offset": target_end,
+                    "action_quote": action_quote,
+                    "target_quote": target_quote,
+                    "quote": item,
+                    "action_context": {
+                        "kind": "inherited_list_action",
+                        "action": expected_action,
+                        "source_quote": action_quote,
+                    },
+                }
+            )
+            event["evidence"] = evidence
+            result.append(event)
+        return result
+
     def _article_numbers(self, listing: str) -> list[str]:
         """
         Expand the number list of one article reference into individual references.
@@ -408,7 +663,10 @@ class LegalNERExtractor:
         reference: the consolidation resolves it against the norma, which is the only place that
         knows about suffixed articles such as 5º-A lying between the endpoints).
         """
-        tokens = [m.group(1) or "RANGE" for m in self._ART_TOKEN.finditer(listing)]
+        tokens = [
+            re.sub(r"-\s+(?=[A-Z](?:\b|$))", "-", m.group(1)) if m.group(1) else "RANGE"
+            for m in self._ART_TOKEN.finditer(listing)
+        ]
         numbers, i = [], 0
         while i < len(tokens):
             if tokens[i] == "RANGE":
@@ -433,7 +691,7 @@ class LegalNERExtractor:
         # 1. External law references (Lei X/YYYY)
         for match in self.LEI_PATTERN.finditer(texto):
             tipo_lei = match.group(1).strip()
-            numero = match.group(2).strip()
+            numero = match.group(2).strip().rstrip(".,;:")
             ano = self._year_value(match.group(3) or match.group(4))
             ref_text = match.group(0)
 

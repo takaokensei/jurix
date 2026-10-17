@@ -2,6 +2,8 @@ from datetime import date
 from types import SimpleNamespace
 
 import pytest
+from django.test import Client
+from django.urls import reverse
 
 from src.processing.temporal_scope import TemporalScope, parse_iso_date, temporal_status
 
@@ -85,11 +87,23 @@ def test_legacy_validated_flags_without_review_do_not_apply_revocation():
         validado=False,
     )
 
-    assert temporal_status(target, as_of=date(2025, 1, 1)) == "vigente"
+    assert temporal_status(target, as_of=date(2025, 1, 1)) == "data_indeterminada"
     event.validado = True
     event.save(update_fields=["validado"])
-    assert temporal_status(target, as_of=date(2025, 1, 1)) == "vigente"
+    assert temporal_status(target, as_of=date(2025, 1, 1)) == "data_indeterminada"
 
     event.dispositivo_alvo = None
     event.save(update_fields=["dispositivo_alvo"])
-    assert temporal_status(target, as_of=date(2025, 1, 1)) == "vigente"
+    assert temporal_status(target, as_of=date(2025, 1, 1)) == "data_indeterminada"
+
+    response = Client().get(
+        reverse("legislation_api:norma_timeline", args=(target.pk,)),
+        {"as_of": "2025-01-01"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["temporal_status"] == "data_indeterminada"
+    assert payload["status_basis"] == (
+        "registered_dates_and_reviewed_events_not_universal_completeness"
+    )
+    assert payload["corpus_coverage"]["coverage_status"] in {"unknown", "partial"}

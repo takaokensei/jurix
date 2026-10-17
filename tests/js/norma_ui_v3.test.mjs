@@ -279,9 +279,9 @@ test('changed assistant and workspace visual assets use cache-busted URLs', asyn
   assert.match(chat, /css\/jurix-rag\.css['"] %\}\?v=/);
   assert.match(chat, /js\/jurix-rag\.js['"] %\}\?v=/);
   assert.match(chat, /js\/jurix-chat-renderer\.js['"] %\}\?v=/);
-  assert.match(chat, /js\/jurix-rag\.js['"] %\}\?v=20261012-sources-drawer-cache1/);
+  assert.match(chat, /js\/jurix-rag\.js['"] %\}\?v=20261016-reference-destination-label3/);
   assert.match(chat, /js\/chat\.js['"] %\}\?v=/);
-  assert.match(chat, /js\/chat\.js['"] %\}\?v=20261013-no-source-answer-scroll1/);
+  assert.match(chat, /js\/chat\.js['"] %\}\?v=20261016-dom-unreviewed-restore2/);
   assert.match(workspace, /css\/jurix-figma\.css['"] %\}\?v=/);
 });
 
@@ -413,7 +413,7 @@ test('mobile norm detail keeps temporal labels and values stacked without squeez
   assert.match(styles, /@media \(max-width:640px\)[\s\S]*?\.legal-detail-card \.stats-grid \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\); \}/);
   assert.match(styles, /\.legal-detail-card \.stats-grid \.stat-card:last-child \{ grid-column:1 \/ -1; \}/);
   assert.match(template, /css\/jurix-legal-detail\.css['"] %\}\?v=20261006-temporal-facts-r1/);
-  assert.match(template, /<dl class="legal-temporal-facts">[\s\S]*?<dt>Data de publicação<\/dt>[\s\S]*?<dt>Data de vigência<\/dt>[\s\S]*?<dt>Status da vigência<\/dt>[\s\S]*?<\/dl>/);
+  assert.match(template, /<dl class="legal-temporal-facts">[\s\S]*?<dt>\{% if temporal_metadata_reviewed %\}Data de publicação\{% else %\}Data de publicação cadastrada · não revisada\{% endif %\}<\/dt>[\s\S]*?<dt>\{% if temporal_metadata_reviewed %\}Data de vigência\{% else %\}Data de vigência cadastrada · não revisada\{% endif %\}<\/dt>[\s\S]*?<dt>Status da vigência<\/dt>[\s\S]*?<\/dl>/);
   assert.match(styles, /\.legal-temporal-facts > div \{ display:grid; grid-template-columns:minmax\(150px, 22%\) minmax\(0, 1fr\)/);
   assert.match(styles, /@media \(max-width:720px\)[\s\S]*?\.legal-temporal-facts > div \{ grid-template-columns:minmax\(0,1fr\); gap:5px; \}/);
 });

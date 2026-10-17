@@ -9,10 +9,10 @@ from django.views.decorators.http import require_GET
 from src.apps.legislation.document_models import NormativeSnapshot
 from src.apps.legislation.document_views import local_pdf_available
 from src.apps.legislation.models import Norma
+from src.processing import normative_projection
 from src.processing.conflict_detection import detect_for_norma
 from src.processing.corpus_coverage import current_corpus_coverage
 from src.processing.corpus_identity import get_corpus_revision
-from src.processing.normative_projection import project_norma_as_of
 from src.processing.official_urls import safe_official_url
 from src.processing.temporal_scope import build_norma_timeline, parse_iso_date, temporal_status
 
@@ -30,12 +30,15 @@ def norma_timeline_api(request: HttpRequest, pk: int) -> JsonResponse:
     except ValueError as exc:
         return JsonResponse({"success": False, "error": str(exc)}, status=400)
     timeline = build_norma_timeline(norma, as_of=as_of)
+    corpus_coverage = current_corpus_coverage(get_corpus_revision())
     return JsonResponse(
         {
             "success": True,
             "norma": {"id": norma.id, "ref": str(norma)},
             "as_of": as_of.isoformat() if as_of else None,
             "temporal_status": temporal_status(norma, as_of=as_of),
+            "corpus_coverage": corpus_coverage,
+            "status_basis": "registered_dates_and_reviewed_events_not_universal_completeness",
             "timeline": timeline,
             "count": len(timeline),
         }
@@ -76,7 +79,7 @@ def norma_version_api(request: HttpRequest, pk: int) -> JsonResponse:
         return JsonResponse({"success": False, "error": str(exc)}, status=400)
     if as_of is None:
         return JsonResponse({"success": False, "error": "Informe as_of no formato AAAA-MM-DD."}, status=400)
-    projection = project_norma_as_of(norma, as_of)
+    projection = normative_projection.project_norma_as_of(norma, as_of)
     snapshot = NormativeSnapshot.objects.filter(
         norma=norma,
         as_of=as_of,

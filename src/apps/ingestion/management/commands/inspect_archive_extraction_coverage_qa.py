@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from collections import Counter
+from pathlib import Path
 from statistics import median
 
 from django.conf import settings
@@ -12,6 +13,58 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Count, OuterRef, Subquery
 
 from src.apps.legislation.document_models import DocumentoNormativo, ExtracaoDocumento
+from src.processing.archive_inventory import sha256_file
+
+
+def _inventory_content_hashes(qa_root: Path) -> set[str] | None:
+    """Load only verified PDF hashes from QA inventory files; never expose names."""
+    hashes: set[str] = set()
+    paths = [
+        path for path in qa_root.glob("archive-inventory-*.jsonl")
+        if "pdf-identity" not in path.name and path.is_file()
+    ]
+    if not paths:
+        return None
+    for path in paths:
+        with path.open(encoding="utf-8") as stream:
+            for line in stream:
+                try:
+                    row = json.loads(line)
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    continue
+                digest = row.get("content_sha256")
+                if (
+                    row.get("record_type") == "entry"
+                    and row.get("extension") == ".pdf"
+                    and row.get("hash_status") == "hashed"
+                    and isinstance(digest, str)
+                    and len(digest) == 64
+                ):
+                    hashes.add(digest)
+    return hashes
+
+
+def _incomplete_storage_coverage(
+    rows, qa_root: Path, inventory_hashes: set[str] | None
+) -> dict[str, int]:
+    """Summarize incomplete-document blob integrity without IDs or filenames."""
+    result = Counter()
+    archive_root = (qa_root / "normative-archive").resolve()
+    for storage_key, expected_sha256 in rows:
+        result["documents"] += 1
+        if inventory_hashes is not None:
+            if expected_sha256 in inventory_hashes:
+                result["hashes_in_archive_inventory"] += 1
+            else:
+                result["hashes_absent_from_archive_inventory"] += 1
+        path = (archive_root / storage_key).resolve()
+        if not path.is_relative_to(archive_root) or not path.is_file():
+            result["storage_missing_or_unsafe"] += 1
+        elif sha256_file(path) == expected_sha256:
+            result["storage_hash_verified"] += 1
+        else:
+            result["storage_hash_mismatch"] += 1
+    return dict(result)
 
 
 def _incomplete_reason(status: str, quality: object, page_count: object) -> str:
@@ -82,7 +135,10 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if (
             os.environ.get("JURIX_QA_ONLY") != "1"
-            or os.environ.get("DJANGO_SETTINGS_MODULE") != "config.settings_normative_qa"
+            or os.environ.get("DJANGO_SETTINGS_MODULE") not in {
+                "config.settings_normative_qa",
+                "config.settings_normative_container_qa",
+            }
             or not getattr(settings, "NORMATIVE_ARCHIVE_ENABLED", False)
         ):
             raise CommandError("Este diagnóstico somente-leitura exige o ambiente QA normativo isolado.")
@@ -133,6 +189,8 @@ class Command(BaseCommand):
             "latest_quality_json",
             "latest_page_count",
             "latest_policy_fingerprint",
+            "storage_key",
+            "content_sha256",
         )
         incomplete_reason_counts: Counter[str] = Counter()
         incomplete_policy_fingerprints: set[str] = set()
@@ -140,7 +198,16 @@ class Command(BaseCommand):
         incomplete_ocr_budget_skipped_pages = 0
         incomplete_unreadable_pages = 0
         ocr_budget_skipped_counts: list[int] = []
-        for status, quality, page_count, policy_fingerprint in incomplete_rows.iterator(chunk_size=250):
+        incomplete_storage_rows = []
+        for (
+            status,
+            quality,
+            page_count,
+            policy_fingerprint,
+            storage_key,
+            content_sha256,
+        ) in incomplete_rows.iterator(chunk_size=250):
+            incomplete_storage_rows.append((storage_key, content_sha256))
             details = quality if isinstance(quality, dict) else {}
             incomplete_reason_counts[_incomplete_reason(status, details, page_count)] += 1
             if policy_fingerprint:
@@ -170,6 +237,10 @@ class Command(BaseCommand):
             if extraction_count > 1
         )
         extraction_records = sum(records_by_status.values())
+        qa_root = Path(
+            getattr(settings, "QA_ROOT", os.environ.get("JURIX_QA_ROOT", ""))
+        ).resolve()
+        inventory_hashes = _inventory_content_hashes(qa_root) if qa_root.is_dir() else None
 
         self.stdout.write(json.dumps({
             "scope": "pending_archive_candidates_without_accepted_extraction",
@@ -189,6 +260,9 @@ class Command(BaseCommand):
             "incomplete_ocr_budget_skipped_page_count": incomplete_ocr_budget_skipped_pages,
             "ocr_budget_workload": _ocr_budget_workload(ocr_budget_skipped_counts),
             "incomplete_unreadable_page_count": incomplete_unreadable_pages,
+            "incomplete_document_storage_reconciliation": _incomplete_storage_coverage(
+                incomplete_storage_rows, qa_root, inventory_hashes
+            ),
             "incomplete_policy_variant_count": len(incomplete_policy_fingerprints),
             "records_minus_documents_with_extractions": (
                 extraction_records - documents_with_extractions

@@ -22,6 +22,7 @@
     <section class="historical-compare" aria-labelledby="historical-compare-title">
         <h2 id="historical-compare-title">{% if precedent_mode %}Checar mudanças desde a data de uma decisão{% else %}Comparar redações em duas datas{% endif %}</h2>
         <p class="compare-intro">A comparação usa projeções temporais auditáveis. Ela representa a consolidação do Jurix, não uma reprodução oficial do SAPL.</p>
+        {% if corpus_coverage_note %}<p class="historical-message historical-message--warning" role="note">{{ corpus_coverage_note }}</p>{% endif %}
         {% if precedent_mode %}<p class="historical-message historical-message--warning" role="note"><strong>Conferência temporal, não análise de precedente.</strong> Informe a data da decisão e compare a redação projetada com a atual. O Jurix não identifica automaticamente as normas citadas na decisão, não determina qual data rege os fatos do processo e não avalia validade, força vinculante ou aplicabilidade do precedente. Se a projeção não tiver cobertura revisada, não use a ausência de texto como prova de revogação.</p>{% endif %}
         <form class="historical-date-form" method="get" action="{% url 'legislation:norma_compare' norma.pk %}" data-default-from="{{ from_as_of }}" data-default-to="{{ to_as_of }}">
             {% if precedent_mode %}<input type="hidden" name="history" value="1"><input type="hidden" name="mode" value="precedent">{% endif %}

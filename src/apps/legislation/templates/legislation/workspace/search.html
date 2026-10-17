@@ -26,6 +26,7 @@
             <label>Revisão<select name="arquivo_revisao"><option value="">Pendente ou em revisão</option><option value="pending"{% if archive_review_status == 'pending' %} selected{% endif %}>Pendente</option><option value="in_review"{% if archive_review_status == 'in_review' %} selected{% endif %}>Em revisão</option></select></label>
             <label>Extração<select name="arquivo_extracao"><option value="">Todos os estados</option><option value="none"{% if archive_extraction_status == 'none' %} selected{% endif %}>Sem extração</option><option value="complete"{% if archive_extraction_status == 'complete' %} selected{% endif %}>Completa (não revisada)</option><option value="partial"{% if archive_extraction_status == 'partial' %} selected{% endif %}>Parcial</option><option value="unreadable"{% if archive_extraction_status == 'unreadable' %} selected{% endif %}>Ilegível</option></select></label>
         </div>
+        <button class="workspace-button workspace-button-secondary" type="submit" name="arquivo_recentes" value="1">Ver candidatos mais recentes</button>
     </details>
     {% endif %}
     <button class="workspace-button workspace-button-primary" type="submit">Pesquisar</button>
@@ -40,7 +41,8 @@
     {% if topic_code %}<p class="workspace-search-caveat" role="note">O filtro usa associações temáticas confirmadas. Afinidade temática não indica alteração, revogação ou vigência da norma.</p>{% endif %}
     {% if archive_search_submitted and archive_result_count %}
     <div class="workspace-archive-search-summary" role="status">
-        <p><strong>{{ archive_result_count }} PDF{% if archive_result_count != 1 %}s{% endif %} candidato{% if archive_result_count != 1 %}s{% endif %} no acervo local.</strong> Ainda em revisão; não são resultados consolidados.</p>
+        <p><strong>{{ archive_record_count }} PDF{% if archive_record_count != 1 %}s{% endif %} candidato{% if archive_record_count != 1 %}s{% endif %} no acervo local.</strong> Ainda em revisão; não são resultados consolidados.{% if archive_record_count != archive_result_count %} Cópias binariamente idênticas foram agrupadas em {{ archive_result_count }} resultado{% if archive_result_count != 1 %}s{% endif %}.{% endif %}</p>
+        <small>A busca prioriza, dentro desta página, correspondências após o primeiro artigo detectado. É uma heurística de triagem, não uma classificação jurídica.</small>
         <a class="workspace-button workspace-button-secondary" href="#workspace-archive-results-title">Ver PDFs candidatos</a>
     </div>
     {% endif %}
@@ -87,22 +89,29 @@
 {% if archive_search_available and archive_search_submitted %}
 <section class="workspace-results-section workspace-archive-results" aria-labelledby="workspace-archive-results-title" aria-live="polite">
     <div class="workspace-section-heading">
-        <div><span class="workspace-eyebrow">Acervo histórico local</span><h2 id="workspace-archive-results-title">{{ archive_result_count }} {% if archive_result_count == 1 %}documento candidato{% else %}documentos candidatos{% endif %}</h2></div>
+        <div><span class="workspace-eyebrow">Acervo histórico local</span><h2 id="workspace-archive-results-title">{{ archive_record_count }} {% if archive_record_count == 1 %}documento candidato{% else %}documentos candidatos{% endif %}</h2>{% if archive_record_count != archive_result_count %}<p class="workspace-archive-group-count">{{ archive_result_count }} grupo{% if archive_result_count != 1 %}s{% endif %} de conteúdo por hash SHA-256 idêntico; cada cópia segue acessível individualmente.</p>{% endif %}</div>
         <span class="workspace-badge">PDFs ainda não consolidados</span>
     </div>
     {% if archive_active_filters %}<p class="workspace-archive-active-filters" role="status" aria-label="Filtros aplicados aos PDFs locais"><strong>Filtros dos PDFs:</strong> {% for item in archive_active_filters %}<span>{{ item }}</span>{% if not forloop.last %}<span aria-hidden="true">·</span>{% endif %}{% endfor %}</p>{% endif %}
+    {% if archive_recent_browse %}<p class="workspace-archive-active-filters" role="status">Ordem decrescente pelo ano identificado; dentro do mesmo ano, usa a data candidata de publicação extraída do texto e depois o número. Os metadados não foram revisados.</p>{% endif %}
     <p class="workspace-search-caveat" role="note">Estes são documentos do acervo local, não normas consolidadas. A identidade vem do arquivo e o texto é extração automática; confira o PDF original antes de usar. Um resultado não comprova vigência nem efeito jurídico.</p>
-    {% if archive_query_expanded %}<p class="workspace-archive-expansion" role="status">A busca ampliou alguns termos por sinônimos controlados (por exemplo, lixo/resíduo). A expansão indica descoberta textual, não equivalência jurídica.</p>{% endif %}
+    {% if archive_requested_type_label and not archive_requested_type_found %}<p class="workspace-archive-expansion" role="status">Não foi localizado candidato identificado como <strong>{{ archive_requested_type_label }}</strong> para esta consulta. Os resultados abaixo podem ser de outras espécies e não confirmam a norma procurada; tente acrescentar número e ano ou ajuste o filtro de espécie.</p>{% endif %}
+    {% if archive_query_expanded %}<p class="workspace-archive-expansion" role="status">A busca ampliou alguns termos por sinônimos controlados. A expansão indica descoberta textual, não equivalência jurídica.</p>{% endif %}
     {% if archive_results %}
     <div class="workspace-result-list">
         {% for result in archive_results %}
-        <a class="workspace-result-card workspace-archive-result-card" href="{{ result.evidence_url }}">
+        <article class="workspace-result-card workspace-archive-result-card">
+          <a class="workspace-archive-result-link" href="{{ result.evidence_url }}">
             <div class="workspace-result-meta"><span>{{ result.label }}</span><span class="workspace-score workspace-score-neutral">{{ result.document.get_review_status_display }}</span></div>
             <h3>{{ result.filename|truncatechars:140 }}</h3>
-            <p class="workspace-result-snippet">{% if result.highlighted_text %}<span class="workspace-archive-snippet-label">{% if result.excerpt_matched %}Trecho coincidente{% if result.excerpt_page %} · p. {{ result.excerpt_page }}{% endif %}{% else %}Prévia do documento · sem trecho textual coincidente{% endif %}:</span> {{ result.highlighted_text }}{% else %}Nenhuma extração textual disponível; abra o PDF original.{% endif %}</p>
-            <small>Identidade: {% if result.identity_status == 'candidate' %}candidata, não revisada{% else %}não resolvida{% endif %} · Extração: {{ result.extraction_status }}{% if result.page_count %} · {{ result.page_count }} páginas{% endif %} · SHA-256 {{ result.document.content_sha256|slice:":12" }}</small>
+            {% if not result.excerpt_duplicate_of %}<p class="workspace-result-snippet">{% if result.highlighted_text %}<span class="workspace-archive-snippet-label"{% if result.excerpt_matched %} title="Um grupo pode incluir sinônimos controlados; a correspondência é textual e não comprova relevância jurídica. A posição estrutural é uma heurística, não classifica a validade do conteúdo."{% endif %}>{% if result.excerpt_matched %}Trecho coincidente · corresponde a {{ result.excerpt_matched_group_count }} de {{ result.excerpt_total_group_count }} grupos da busca{% if result.excerpt_match_region == 'before_first_article' %} · antes do primeiro artigo detectado{% elif result.excerpt_match_region == 'after_first_article' %} · após o primeiro artigo detectado{% elif result.excerpt_match_region == 'mixed_article_regions' %} · em diferentes posições do documento{% endif %}{% if result.excerpt_page %} · p. {{ result.excerpt_page }}{% endif %}{% else %}Prévia do documento · sem trecho textual coincidente{% endif %}:</span> {{ result.highlighted_text }}{% else %}Nenhuma extração textual disponível; abra o PDF original.{% endif %}</p>{% else %}<p class="workspace-archive-repeat-note">Este excerto é textualmente idêntico ao trecho exibido em <strong>{{ result.excerpt_duplicate_of }}</strong>. Este PDF continua sendo um documento distinto.</p>{% endif %}
+            <small>Identidade: {% if result.identity_status == 'conflicting_evidence' %}em conflito documental{% elif result.identity_status == 'candidate' %}candidata, não revisada{% else %}não resolvida{% endif %} · Extração: {{ result.extraction_status }}{% if result.page_count %} · {{ result.page_count }} páginas{% endif %} · SHA-256 {{ result.document.content_sha256|slice:":12" }}</small>
+            {% if result.identity_status == 'conflicting_evidence' %}<p class="workspace-archive-identity-warning" role="note"><strong>Identidade do ato não resolvida.</strong> {{ result.identity_conflict.catalogue }}; {{ result.identity_conflict.pdf_body }}. Este documento continua pendente e não é norma consolidada nem fonte elegível ao RAG.</p>{% endif %}
             <span class="workspace-archive-open">Inspecionar PDF e texto extraído <span aria-hidden="true">→</span></span>
-        </a>
+          </a>
+          {% if result.excerpt_duplicate_of %}<details class="workspace-archive-duplicate-excerpt"><summary>Ver trecho coincidente neste PDF{% if result.excerpt_page %} · p. {{ result.excerpt_page }}{% endif %}</summary><p class="workspace-result-snippet">{{ result.highlighted_text }}</p><p class="workspace-archive-repeat-caveat">A igualdade do trecho extraído não confirma identidade, vigência ou efeito jurídico iguais. Confira este PDF separadamente.</p></details>{% endif %}
+          {% if result.identical_sources|length > 1 %}<details class="workspace-archive-identical-copies"><summary>{{ result.identical_sources|length }} PDFs com bytes idênticos</summary><p>Hash igual confirma igualdade dos arquivos, não que tenham a mesma identidade jurídica, espécie ou vigência. Confira cada registro e o documento oficial.</p><ul>{% for source in result.identical_sources %}<li><a href="{{ source.evidence_url }}">{{ source.archive_label }} · {{ source.original_filename|default:source.entry_name|truncatechars:120 }}</a></li>{% endfor %}</ul></details>{% endif %}
+        </article>
         {% endfor %}
     </div>
     {% else %}

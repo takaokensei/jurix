@@ -36,6 +36,19 @@ class PartialOverviewQualityTests(SimpleTestCase):
             "A norma cria o plano. [[1]] A implantação do plano segue a lei. [[1]] [[2]] [[3]]"
         ))
 
+    def test_allows_duplicate_marker_within_one_grounded_claim(self):
+        self.assertFalse(has_repeated_citation_marker(
+            "A norma cria o plano [[1]] e define sua implantação [[1]]. [[2]]"
+        ))
+
+    def test_rejects_same_marker_repeated_after_a_long_second_claim(self):
+        answer = (
+            "A lei estabelece o plano de cargos dos servidores e o denomina Plano Municipal. [[1]] "
+            "**Fica criado o plano, cuja implantação ocorrerá conforme o regulamento próprio.** [[1]] [[2]] [[3]]"
+        )
+
+        self.assertTrue(has_repeated_citation_marker(answer))
+
     def test_allows_distinct_devices_in_partial_overview(self):
         self.assertFalse(has_repeated_citation_marker(
             "A norma cria o plano. [[1]] A carreira progride. [[2]] Os critérios constam no Art. 3º. [[3]]"

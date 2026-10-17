@@ -32,6 +32,15 @@ _WHOLE_NORMA_TOPICAL_INVENTORY_INTENT = re.compile(
     re.IGNORECASE,
 )
 _ARTICLE_TARGET = re.compile(r"\bart(?:igo)?\.?\s*\d+\s*[ºª°o]?", re.IGNORECASE)
+_EXPLICIT_WHOLE_NORMA_TARGET = re.compile(
+    r"\b(?:cada\s+(?:um\s+dos\s+)?artigos?|todos\s+os\s+artigos?|"
+    r"artigo\s+por\s+artigo)\s+(?:da|de)\s+"
+    r"(?P<reference>(?:lei(?:\s+(?:complementar|ordin[áa]ria|org[âa]nica|"
+    r"promulgada))?|lc|decreto(?:-lei|\s+(?:legislativo|executivo))?|"
+    r"resolu[çc][ãa]o|portaria)\s*(?:n[º°o.]?\s*)?\d[\d.]*\s*"
+    r"(?:/|de)\s*(?:19|20)\d{2})",
+    re.IGNORECASE,
+)
 _ARTICLE_NUMBER = r"\d{1,4}(?:\s*[ºª°o])?(?:\s*-\s*[A-Za-z])?"
 _PLURAL_ARTICLE_LIST = re.compile(
     rf"\barts\.?\s*(?P<targets>{_ARTICLE_NUMBER}"
@@ -49,17 +58,26 @@ _RELATION_INTENT = (
         re.IGNORECASE,
     )),
     ("modification", re.compile(
+        r"\b(?:compare|comparar|compara[cç][aã]o)\b.{0,120}\b"
+        r"(?:reda[cç][aã]o\s+(?:original|anterior|nova|dada)|texto\s+(?:original|anterior|novo))\b|"
         r"\b(?:plc|projeto\s+de\s+lei(?:\s+complementar)?|"
         r"emenda\s+(?:supressiva|modificativa|aditiva))\b.{0,160}\b"
         r"(?:alteraram|revogaram|modificaram|suprimiram|acrescentaram|adicionaram)\b|"
         r"\b(?:quem|qual\s+norma|quais\s+normas|o\s+que)\b.{0,80}\b"
         r"(?:alterou|altera|modificou|modifica|revogou|revoga|acrescentou|adicionou)\b|"
-        r"\b(?:altera[cç][aã]o|revoga[cç][aã]o)\b.{0,80}\b(?:art|lei|norma)|"
-        r"\b(?:lei|norma)\b.{0,80}\b(?:alterou|altera|modificou|modifica|revogou|revoga|"
-        r"acrescentou|adicionou)\b.{0,100}\b(?:art|dispositivo|lei|norma)|"
+        r"\b(?:quais|que)\s+(?:artigos?|dispositivos?)\b.{0,180}\b"
+        r"(?:tratam|disp[oõ]em|prev[eê]m|estabelecem)\b.{0,120}\b"
+        r"(?:altera[cç][aã]o|revoga[cç][aã]o)\b|"
+        r"\b(?:altera[cç][aã]o|revoga[cç][aã]o)\b.{0,80}\b(?:art|lei|norma|lc|lo)|"
+        r"\b(?:lei|norma|lc|lo)\b.{0,80}\b(?:alterou|altera|modificou|modifica|revogou|revoga|"
+        r"acrescentou|adicionou)\b.{0,100}\b(?:art|dispositivo|lei|norma|lc|lo)|"
+        r"\b(?:recebeu|ganhou|teve|passou\s+a\s+ter)\s+(?:uma\s+)?nova\s+"
+        r"red[aã][cç][aã]o\b|"
+        r"\bnova\s+red[aã][cç][aã]o\b|"
         r"\b(?:foi|foram|est[aá]|est[aã]o|houve|teve|tiveram|sofreu|sofreram)\b"
         r".{0,50}\b(?:alterad[oa]s?|revogad[oa]s?|modificad[oa]s?|"
-        r"altera[cç][õo]es?|revoga[cç][õo]es?|modifica[cç][õo]es?)\b|"
+        r"altera[cç][ãa]o|revoga[cç][ãa]o|modifica[cç][ãa]o|"
+        r"altera[cç][õo]es|revoga[cç][õo]es|modifica[cç][õo]es)\b|"
         r"\b(?:altera[cç][õo]es?|revoga[cç][õo]es?|modifica[cç][õo]es?)\b"
         r".{0,80}\b(?:posterior(?:es)?|depois|ap[oó]s|dispositivo|artigo|lei|norma)\b|"
         r"\b(?:proposi[cç][aã]o|proposta|projeto)\b.{0,100}"
@@ -67,6 +85,8 @@ _RELATION_INTENT = (
         r"(?:altera|modifica|revoga))\b|"
         r"\b(?:ainda\s+vigora|red[aã]c[aã]o\s+(?:atual|vigente|em\s+\d{4})|"
         r"vig[eê]ncia\s+(?:atual|em\s+\d{4}))\b|"
+        r"\b(?:ainda\s+(?:pode|podem)\s+ser\s+(?:aplicad[oa]s?|utilizad[oa]s?)|"
+        r"ainda\s+(?:se\s+)?aplica)\b|"
         r"\b(?:vigente|vig[eê]ncia)\b.{0,60}\b(?:hoje|atual|atualmente)\b|"
         r"\b(?:posso|pode|podemos)\s+(?:considerar|tratar|aplicar)\b.{0,100}\bvigente\b",
         re.IGNORECASE,
@@ -85,6 +105,7 @@ class NormativeQueryPlan:
     relation_intent: str | None = None
     article_targets: tuple[str, ...] = ()
     broad_topical_scope: bool = False
+    explicit_target_overview: bool = False
 
     @property
     def is_norma_overview(self) -> bool:
@@ -114,6 +135,19 @@ def classify_normative_query(question: str) -> NormativeQueryPlan:
         for match in _SINGLE_ARTICLE_TARGETS.finditer(question)
     )
     targets = tuple(dict.fromkeys(target for target in targets if target))
+
+    # Keep the scope of an explicit request for every article in one named act,
+    # even when another act and its article are mentioned as context.
+    overview_target = _EXPLICIT_WHOLE_NORMA_TARGET.search(question)
+    if overview_target:
+        target_references = parse_normative_references(overview_target.group("reference"))
+        if len(target_references) == 1 and target_references[0].year is not None:
+            return NormativeQueryPlan(
+                "norma_overview",
+                target_references[0],
+                broad_topical_scope=False,
+                explicit_target_overview=True,
+            )
 
     if len(references) != 1 or references[0].year is None:
         # Keep provision targets even when the user has not named the act.

@@ -3,7 +3,7 @@
 from datetime import date
 
 import pytest
-from django.test import Client
+from django.test import Client, override_settings
 
 from src.apps.ingestion.management.commands.seed_normative_qa import seed_fixture
 from src.apps.legislation.document_models import NormativeSnapshot
@@ -59,6 +59,7 @@ def test_pending_temporal_effect_is_not_exposed_as_in_force_evidence(temporal_ca
 
 
 @pytest.mark.django_db(transaction=True)
+@override_settings(NORMATIVE_HISTORY_ENABLED=True)
 def test_version_api_does_not_advertise_snapshot_with_mismatched_content_or_status(
     temporal_case,
 ):

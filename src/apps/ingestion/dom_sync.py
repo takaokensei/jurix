@@ -84,6 +84,10 @@ def inspect_dom_natal_editions(
     for year, month in _month_scopes(checked_at, lookback_months):
         try:
             editions = client.list_editions(month=month, year=year)
+            if not editions:
+                raise DomNatalCandidateError(
+                    "DOM returned no verifiable editions for the requested month."
+                )
             identities = [edition.identity for edition in editions]
             existing = set(
                 DocumentoNormativo.objects.filter(
@@ -216,6 +220,10 @@ def sync_dom_natal_editions(
         last_edition = None
         try:
             editions = client.list_editions(month=month, year=year)
+            if not editions:
+                raise DomNatalCandidateError(
+                    "DOM returned no verifiable editions for the requested month."
+                )
             source_refs = [edition.identity for edition in editions]
             existing = set(
                 DocumentoNormativo.objects.filter(

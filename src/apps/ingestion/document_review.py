@@ -16,6 +16,7 @@ from src.apps.legislation.document_models import (
 )
 from src.apps.legislation.review_models import RevisaoJuridica
 from src.processing.corpus_write_boundary import corpus_write_boundary
+from src.processing.document_metadata import extraction_identity_check
 
 _EXTRACTION_REVIEW_PREFIX = "[extração documental revisada] "
 _SEGMENTATION_REVIEW_PREFIX = "[segmentação documental revisada] "
@@ -69,6 +70,13 @@ def accept_document_extraction(
     metadata = document.metadata_json if isinstance(document.metadata_json, dict) else {}
     if metadata.get("synthetic"):
         raise DocumentReviewBlocked("Fixture sintética não pode ser aceita como extração jurídica revisada.")
+    identity_check = extraction_identity_check(
+        metadata.get("identity_candidate"), extraction.metadata_candidates_json
+    )
+    if identity_check["status"] == "conflict":
+        raise DocumentReviewBlocked(
+            "A epígrafe extraída diverge da identidade candidata; resolva a divergência antes de aceitar o texto."
+        )
     if document.conflicts_json:
         raise DocumentReviewBlocked("Resolva os conflitos documentais antes de aceitar a extração.")
     if document.review_status == DocumentoNormativo.ReviewStatus.REJECTED:

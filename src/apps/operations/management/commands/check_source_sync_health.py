@@ -17,6 +17,11 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--source", default="sapl")
         parser.add_argument("--max-age-hours", type=int, default=36)
+        parser.add_argument(
+            "--details",
+            action="store_true",
+            help="Inclui estados de checkpoint sanitizados, sem URL, fingerprint ou erro bruto.",
+        )
 
     def handle(self, *args, **options):
         source = options["source"]
@@ -27,11 +32,17 @@ class Command(BaseCommand):
             raise CommandError("--max-age-hours must be between 1 and 8760")
 
         report = get_source_sync_health(
-            source, max_age=timedelta(hours=max_age_hours)
+            source,
+            max_age=timedelta(hours=max_age_hours),
+            include_scope_diagnostics=options["details"],
         )
         report["checked_at"] = report["checked_at"].isoformat()
         if report["last_success_at"] is not None:
             report["last_success_at"] = report["last_success_at"].isoformat()
+        for scope in report.get("scope_diagnostics", []):
+            for field in ("last_started_at", "last_success_at", "last_full_sync_at"):
+                if scope[field] is not None:
+                    scope[field] = scope[field].isoformat()
         worker = get_normative_worker_health()
         self.stdout.write(
             json.dumps(

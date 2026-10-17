@@ -86,7 +86,13 @@
                 if (!source) return full;
                 const label = source?.citation_label || `Fonte ${index}`;
                 const citationId = source?.citation_id ? ` data-citation-id="${escapeHtml(source.citation_id)}"` : '';
-                return `<a class="jurix-citation" href="#jurix-evidence-${index}" data-source-index="${index}"${citationId} aria-label="Ver ${escapeHtml(label)}">[${index}]</a>`;
+                const deviceLabel = String(source?.dispositivo_ref || source?.device_ref || '')
+                    .trim()
+                    .replace(/\s*>\s*/g, ', ')
+                    .replace(/\b(Inciso|Alínea|Alinea|Parágrafo)\b/g, (part) => part.toLocaleLowerCase('pt-BR'));
+                const fallbackDevice = label.match(/\b(?:Art(?:igo)?\.?\s*\d+[º°ª]?(?:\s*,\s*(?:inciso\s+[IVXLCDM]+|§\s*\d+[º°ª]?))?)/i)?.[0];
+                const visibleLabel = deviceLabel || fallbackDevice || `Fonte ${index}`;
+                return `<a class="jurix-citation" href="#jurix-evidence-${index}" data-source-index="${index}"${citationId} aria-label="Ver ${escapeHtml(label)}">${escapeHtml(visibleLabel)}</a>`;
             });
         }).join('\n');
     }

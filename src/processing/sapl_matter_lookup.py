@@ -296,6 +296,208 @@ def _matter_ementa_mentions_target(
     return abs(norm_match.start() - article_match.start()) <= 180
 
 
+def _explicit_parent_projects(ementa: str) -> list[dict[str, Any]]:
+    """Return only a single, explicitly named PLC parent from an amendment ementa."""
+    references = parse_explicit_matter_references(ementa)
+    projects = [
+        reference
+        for reference in references
+        if reference["tipo"] == "Projeto de Lei Complementar"
+    ]
+    return projects if len(projects) == 1 else []
+
+
+def _extract_proposed_effect_clause(
+    document_text: str,
+    *,
+    type_key: str,
+    number: str,
+    year: int,
+    article: str | None,
+) -> str | None:
+    """Extract an article that proposes an effect on the exact cited norm/device."""
+    value = str(document_text or "")
+    headings = list(
+        re.finditer(
+            r"(?m)^\s*Art\.?\s*(\d{1,4})\s*[º°ª]?\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])",
+            value,
+        )
+    )
+    for index, heading in enumerate(headings):
+        end = headings[index + 1].start() if index + 1 < len(headings) else len(value)
+        section = value[heading.start() : end]
+        normalized = _normalized_label(section)
+        if not re.search(r"\brevog\w*", normalized):
+            continue
+        if not _matter_ementa_mentions_target(
+            section,
+            type_key=type_key,
+            number=number,
+            year=year,
+            article=article,
+        ):
+            continue
+        clause = re.sub(r"\s+", " ", section).strip()
+        if len(clause) > 1400:
+            clause = clause[:1400].rsplit(" ", 1)[0].rstrip(" ,;:")
+        return clause if len(clause) >= 24 else None
+    return None
+
+
+def _parent_project_sources(
+    client: Any,
+    amendment: dict[str, Any],
+    *,
+    target_type: str,
+    target_number: str,
+    target_year: int,
+    target_article: str | None,
+    consulted_at: datetime,
+) -> tuple[list[dict[str, Any]], bool]:
+    """Add an explicitly named PLC parent and its relevant official PDF excerpt.
+
+    An amendment is not evidence that its parent project was enacted. The
+    parent is included only when the amendment ementa names exactly one PLC,
+    SAPL resolves that exact identity, and the original PDF contains a
+    revocation article naming the queried norm/device.
+    """
+    parent_references = _explicit_parent_projects(str(amendment.get("ementa") or ""))
+    if len(parent_references) != 1:
+        return [], False
+
+    reference = parent_references[0]
+    key = (
+        client._normalize_matter_type_label(reference["tipo"]),
+        reference["numero"],
+        reference["ano"],
+    )
+    records_by_reference = client.fetch_materias_by_references([reference])
+    records = records_by_reference.get(key, [])
+    if len(records) != 1:
+        return [], False
+    parent = records[0]
+    parent_id = parent.get("_jurix_materia_id")
+    if not parent_id:
+        return [], False
+    detail = client.fetch_materia_by_id(parent_id)
+    if str(detail.get("id") or "") != str(parent_id):
+        return [], False
+    if (
+        int(detail.get("numero") or 0) != reference["numero"]
+        or int(detail.get("ano") or 0) != reference["ano"]
+    ):
+        return [], False
+
+    parent_title = (
+        f"Projeto de Lei Complementar nº {reference['numero']}/{reference['ano']}"
+    )
+    parent_url = client.get_public_materia_url(parent_id)
+    parent_ementa = str(detail.get("ementa") or parent.get("ementa") or "").strip()
+    parent_status = detail.get("em_tramitacao")
+    sources = [
+        {
+            "id": f"sapl-materia-{parent_id}",
+            "citation_id": f"sapl:materia:{parent_id}",
+            "citation_label": parent_title,
+            "norma_ref": parent_title,
+            "dispositivo_ref": "Matéria legislativa — PLC principal",
+            "source_kind": "sapl_legislative_matter",
+            "source_type": "Projeto de lei — registro oficial SAPL",
+            "evidence_scope": "official_legislative_matter",
+            "match_kind": "official_amendment_ementa_explicit_parent_reference",
+            "contribution": (
+                "PLC principal explicitamente nomeado na ementa da emenda consultada. "
+                "O registro de tramitação e o projeto não comprovam promulgação ou vigência."
+            ),
+            "relation_label": (
+                f"Matéria principal da Emenda nº {amendment.get('numero')}/"
+                f"{amendment.get('ano')}"
+            ),
+            "status_label": (
+                "Em tramitação no SAPL" if parent_status is True
+                else "Fora de tramitação no SAPL" if parent_status is False
+                else "Situação não informada pelo SAPL"
+            ),
+            "consulted_at": consulted_at.isoformat(timespec="seconds"),
+            "consulted_at_label": consulted_at.strftime("%d/%m/%Y %H:%M %Z").strip(),
+            "matter_status": parent_status,
+            "matter_result": detail.get("resultado") or None,
+            "data_publicacao": detail.get("data_publicacao") or None,
+            "matter_updated_at": detail.get("data_ultima_atualizacao") or None,
+            "matter_updated_at_label": _sapl_timestamp_label(
+                detail.get("data_ultima_atualizacao")
+            ),
+            "full_text": parent_ementa or "Ementa não informada pelo SAPL.",
+            "text": (parent_ementa or "Ementa não informada pelo SAPL.")[:200],
+            "sapl_url": parent_url,
+            "source_url": parent_url,
+            "similarity_score": None,
+            "_matter_id": int(parent_id),
+        }
+    ]
+
+    original_pdf_url = _original_pdf_url(client, detail.get("texto_original"))
+    if not original_pdf_url:
+        return sources, False
+    try:
+        pdf_text, pages = client.read_pdf_text(original_pdf_url, include_pages=True)
+    except Exception:
+        # Keep the exact SAPL matter record even when its attachment is unavailable.
+        return sources, False
+    clause = _extract_proposed_effect_clause(
+        pdf_text,
+        type_key=target_type,
+        number=target_number,
+        year=target_year,
+        article=target_article,
+    )
+    if not clause:
+        return sources, False
+    normalized_clause = re.sub(r"\s+", " ", clause).strip()
+    page_number = next(
+        (
+            page_index
+            for page_index, page_text in enumerate(pages, start=1)
+            if normalized_clause in re.sub(r"\s+", " ", page_text).strip()
+        ),
+        None,
+    )
+    article_match = re.match(r"Art\.?\s*(\d+)", clause, re.IGNORECASE)
+    proposal_article = article_match.group(1) if article_match else "?"
+    sources.append(
+        {
+            "id": f"sapl-materia-{parent_id}-texto-original-art-{proposal_article}",
+            "citation_id": (
+                f"sapl:materia:{parent_id}:texto-original:art-{proposal_article}"
+            ),
+            "citation_label": f"{parent_title}, Art. {proposal_article} (texto proposto)",
+            "norma_ref": parent_title,
+            "dispositivo_ref": f"Art. {proposal_article} — redação proposta",
+            "source_kind": "sapl_matter_original_pdf",
+            "source_type": "Texto original da proposição — PDF oficial SAPL",
+            "evidence_scope": "official_legislative_matter_document",
+            "match_kind": "proposed_revocation_clause_explicitly_names_target_article",
+            "contribution": (
+                "Trecho do PDF original do PLC que propõe revogação expressa; "
+                "não é norma promulgada e não comprova efeito jurídico."
+            ),
+            "relation_label": (
+                f"Proposta sobre {target_type.replace('_', ' ')} nº "
+                f"{target_number}/{target_year}"
+                + (f", Art. {target_article}" if target_article else "")
+            ),
+            "full_text": clause,
+            "text": clause[:200],
+            "page": page_number,
+            "pdf_url": original_pdf_url,
+            "source_url": original_pdf_url,
+            "sapl_url": parent_url,
+            "matter_id": int(parent_id),
+        }
+    )
+    return sources, True
+
+
 def lookup_related_matter_result(
     question: str, *, include_exact_article: bool = False
 ) -> RelatedMatterLookupResult:
@@ -352,6 +554,7 @@ def lookup_related_matter_result(
     client = None
     sources = []
     search_completed = False
+    parent_lookup_partial = False
     try:
         client = SaplAPIClient(timeout=5, max_retries=0)
         expression = (
@@ -461,9 +664,42 @@ def lookup_related_matter_result(
                 }
             )
             seen_ids.add(matter_id)
+            if matter_type.startswith("emenda") and article is not None:
+                parent_refs = _explicit_parent_projects(record_ementa)
+                if parent_refs:
+                    try:
+                        parent_sources, parent_pdf_verified = _parent_project_sources(
+                            client,
+                            record,
+                            target_type=reference.type_key,
+                            target_number=reference.number,
+                            target_year=reference.year,
+                            target_article=article,
+                            consulted_at=consulted_at,
+                        )
+                    except Exception as exc:
+                        parent_sources, parent_pdf_verified = [], False
+                        import logging
+
+                        logging.getLogger(__name__).warning(
+                            "Could not resolve explicit SAPL amendment parent (%s)",
+                            type(exc).__name__,
+                        )
+                    parent_lookup_partial = parent_lookup_partial or not parent_pdf_verified
+                    existing_citations = {
+                        str(source.get("citation_id") or "") for source in sources
+                    }
+                    for parent_source in parent_sources:
+                        citation_id = str(parent_source.get("citation_id") or "")
+                        if citation_id and citation_id not in existing_citations:
+                            sources.append(parent_source)
+                            existing_citations.add(citation_id)
             if len(sources) >= 5:
                 break
-        return RelatedMatterLookupResult("searched", tuple(sources))
+        return RelatedMatterLookupResult(
+            "partial" if parent_lookup_partial else "searched",
+            tuple(sources),
+        )
     except Exception:
         # Neither an outage nor a partially validated result list proves absence.
         return RelatedMatterLookupResult(

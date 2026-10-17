@@ -1,0 +1,39 @@
+<section class="card legal-detail-card normative-relations" data-normative-relations
+         data-api-url="{% url 'legislation_api:document_candidate_relations' document.public_id %}">
+  <details data-relations-disclosure>
+    <summary class="normative-relations__summary" data-relations-toggle>
+      <span>
+        <span class="normative-relations__eyebrow">Grafo documental · revisão restrita</span>
+        <span class="normative-relations__title">Relações mencionadas neste PDF</span>
+      </span>
+      <span class="normative-relations__summary-hint">Carregar relações</span>
+    </summary>
+    <div class="normative-relations__body">
+      <p class="normative-relations__intro">As relações abaixo são extrações documentais pendentes. Elas permanecem fora do grafo jurídico operativo e não indicam vigência ou efeito temporal.</p>
+      <div class="normative-relations__controls">
+        <label for="document-relations-action">Filtrar por tipo de relação</label>
+        <select id="document-relations-action" data-relations-action>
+          <option value="">Todas as relações</option>
+          <option value="ALTERA">Altera</option>
+          <option value="SUBSTITUI">Substitui</option>
+          <option value="ADICIONA">Adiciona</option>
+          <option value="REVOGA">Revoga</option>
+        </select>
+        <button type="button" class="normative-relations__retry" data-relations-retry hidden>Tentar novamente</button>
+      </div>
+      <p class="normative-relations__status" data-relations-status role="status" aria-live="polite" aria-atomic="true">Abra esta seção para carregar as menções extraídas.</p>
+      <p class="normative-relations__truncated" data-relations-truncated hidden>O limite de exploração foi atingido; a lista mostra apenas parte das menções deste PDF.</p>
+      <div class="normative-relations__graph-wrap" data-relations-graph-wrap hidden>
+        <svg class="normative-relations__svg" data-relations-svg aria-hidden="true" focusable="false"></svg>
+      </div>
+      <ul class="normative-relations__list" data-relations-list aria-label="Menções normativas extraídas"></ul>
+      <aside class="normative-relations__panel" data-relations-panel hidden tabindex="-1" aria-labelledby="document-relations-panel-title">
+        <div class="normative-relations__panel-head">
+          <h3 id="document-relations-panel-title">Detalhes da menção</h3>
+          <button type="button" class="normative-relations__close" data-relations-close aria-label="Fechar detalhes da menção">Fechar</button>
+        </div>
+        <div data-relations-panel-content></div>
+      </aside>
+    </div>
+  </details>
+</section>

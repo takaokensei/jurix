@@ -1,19 +1,19 @@
 {% extends "legislation/workspace/base.html" %}
 {% load static %}
 
-{% block title %}Grafo de relações da LC 258/2024 · Jurix{% endblock %}
-{% block section_name %}Grafo da LC 258/2024{% endblock %}
+{% block title %}LC 258/2024, Art. 260 · Jurix{% endblock %}
+{% block section_name %}Relações da LC 258/2024{% endblock %}
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Grafo demonstrativo · QA' %}{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'css/jurix-pgm-demo.css' %}?v=20261013-18">{% endblock %}
-{% block extra_js %}<script src="{% static 'js/jurix-pgm-demo.js' %}?v=20261013-6" defer></script>{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/jurix-pgm-demo.css' %}?v=20261016-ctm-change-set1">{% endblock %}
+{% block extra_js %}<script src="{% static 'js/jurix-pgm-demo.js' %}?v=20261013-7" defer></script>{% endblock %}
 
 {% block content %}
 <main class="pgm-demo" aria-labelledby="pgm-demo-title">
   <header class="workspace-page-header">
     <div>
       <span class="workspace-eyebrow">Demonstração PGM · ambiente QA</span>
-      <h1 id="pgm-demo-title">LC 258/2024 menciona sete atos na cláusula de revogação</h1>
-      <p><strong>A LC 55/2004 é apenas um deles:</strong> o Art. 260 também enumera outras cinco leis e o Art. 21 da Lei Promulgada nº 275/2009. O mapa separa essas sete menções da alteração do Art. 261 e da cláusula geral do Art. 266.</p>
+      <h1 id="pgm-demo-title">LC 258/2024, Art. 260 — revogações e alterações</h1>
+      <p>A LC 258/2024 e a LC 261/2025 contêm alterações textuais de dispositivos da LC 208; a associação de uma cláusula revogatória da LC 261 está destacada como pendente. O mapa abaixo também separa as sete referências expressas do Art. 260 da LC 258.</p>
     </div>
     <span class="pgm-demo__status">Grafo de evidências · revisão jurídica pendente</span>
   </header>
@@ -23,14 +23,160 @@
     <p>A LC nº 258/2024, Art. 260, diz “Ficam revogados” e lista seis leis e o Art. 21 da Lei Promulgada nº 275/2009. A tela demonstra as menções do texto; não certifica identidade, publicação, vigência, alcance ou efeitos no tempo. Nenhuma relação foi promovida ao grafo do produto.</p>
   </section>
 
+  <section class="pgm-demo__case" aria-labelledby="pgm-ctm-art20-title">
+    <header>
+      <span class="workspace-eyebrow">Cotejo temporal · Código Tributário Municipal</span>
+      <h2 id="pgm-ctm-art20-title">Art. 20 da Lei nº 3.882/1989 · consolidações 2021/2022/2024 e LC 271/2025</h2>
+      <p>Esta linha do tempo reúne três recortes oficiais do Código Tributário e a redação substitutiva que a LC 271/2025 transcreve. O cotejo destacado compara 2024 com o texto disponível da LC 271; cada bloco mantém a página e o PDF de origem.</p>
+    </header>
+    {% if ctm_art20_candidate_timeline.complete %}
+    <ol class="pgm-demo__timeline pgm-demo__timeline--dated-snapshots" aria-label="Evidências em ordem cronológica para o Art. 20 do Código Tributário Municipal">
+      {% for item in ctm_art20_candidate_timeline.rows %}
+      <li>
+        <span class="pgm-demo__target-index">{% if item.key == "amendment_2025" %}Ato modificador · extração pendente{% else %}Recorte consolidado · revisão pendente{% endif %}</span>
+        <h3>{{ item.label }}</h3>
+        {% if item.relation_evidence %}
+        <p><strong>Menção de alteração no ato-fonte ({{ item.relation_evidence.review_state }}):</strong> {{ item.relation_evidence.action_quote }} · {{ item.relation_evidence.target_text }}</p>
+        {% if item.relation_evidence.pdf_url %}<a href="{{ item.relation_evidence.pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir a cláusula de alteração{% if item.relation_evidence.page %}, p. {{ item.relation_evidence.page }}{% endif %}</a>{% endif %}
+        {% endif %}
+        {% if item.publication_evidence %}
+        <p class="pgm-demo__comparison-status"><strong>Marco temporal inicial confirmado em fonte oficial:</strong> a {{ item.publication_evidence.issue }} está datada de {{ item.publication_evidence.date|date:'d/m/Y' }}, reproduz a LC nº 271/2025 e seu Art. 6º determina vigência na data da publicação. Para este ato, a data inicial de vigência indicada pelo próprio dispositivo é <time datetime="{{ item.publication_evidence.initial_effective_date|date:'Y-m-d' }}">{{ item.publication_evidence.initial_effective_date|date:'d/m/Y' }}</time>. A ficha SAPL também registra {{ item.publication_evidence.sapl_record_date }}; o colofão da cópia PDF hospedada no SAPL informa {{ item.publication_evidence.pdf_colophon_date }}. Como essa data diverge, mantemos a cópia identificada separadamente e usamos a edição do DOM que contém o ato como evidência de publicação. Isso não demonstra que não houve alteração posterior nem estabelece a redação vigente hoje. <a href="{{ item.publication_evidence.url }}#page=1" target="_blank" rel="noopener noreferrer">Conferir a edição oficial do DOM, p. 1</a>.</p>
+        {% endif %}
+        {% if item.evidence %}<blockquote>{{ item.evidence.quote }}</blockquote>{% endif %}
+        {% if item.evidence.omitted_following_text %}<small class="pgm-demo__omission-note">O PDF usa reticências para indicar a continuação omitida do artigo; este trecho não deve ser tratado como a redação completa.</small>{% endif %}
+        {% if item.pdf_url %}<a href="{{ item.pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir PDF local{% if item.evidence.page %}, p. {{ item.evidence.page }}{% endif %}</a>{% endif %}
+        {% if item.official_pdf_url %}<a href="{{ item.official_pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir PDF na fonte oficial</a>{% endif %}
+        {% if item.official_record_url %}<a href="{{ item.official_record_url }}" target="_blank" rel="noopener noreferrer">Abrir ficha da norma no SAPL</a>{% endif %}
+        {% if item.key == "amendment_2025" and item.evidence and not item.evidence.omitted_following_text and item.publication_evidence %}
+        <section class="pgm-demo__text-diff" aria-label="Minuta integrada do Artigo 20 na data inicial de vigência">
+          <div class="pgm-demo__diff-heading">
+            <h3>Redação integrada candidata · Art. 20 em {{ item.publication_evidence.initial_effective_date|date:'d/m/Y' }}</h3>
+            <span>Substituição textual integral identificada</span>
+          </div>
+          <blockquote>{{ item.evidence.quote }}</blockquote>
+          <p class="pgm-demo__notice" role="note">Esta minuta usa a redação integral transcrita no Art. 1º da LC nº 271/2025 e a data inicial prevista no Art. 6º, corroborada pela edição do DOM acima. A extração e a relação ainda aguardam revisão humana; a tela não pesquisou exaustivamente alterações posteriores e, portanto, não afirma vigência atual.</p>
+        </section>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+    {% if ctm_art20_candidate_timeline.textual_diff %}
+    <section class="pgm-demo__text-diff" aria-labelledby="pgm-ctm-diff-title">
+      <div class="pgm-demo__diff-heading">
+        <h3 id="pgm-ctm-diff-title">Cotejo textual · edição 2024 × redação transcrita em 2025</h3>
+        <span>Somente comparação das extrações</span>
+      </div>
+      <p class="pgm-demo__diff-legend"><del>Trecho presente na edição 2024</del><ins>Trecho presente na redação transcrita pela LC 271/2025</ins></p>
+      <p class="pgm-demo__diff-body" aria-label="Comparação textual do Artigo 20; não representa conclusão de vigência">
+        {% for part in ctm_art20_candidate_timeline.textual_diff %}{% if part.kind == "removed" %}<del>{{ part.text }}</del>{% elif part.kind == "added" %}<ins>{{ part.text }}</ins>{% elif part.kind == "omitted" %}<span class="pgm-demo__diff-omission">{{ part.text }}</span>{% else %}<span>{{ part.text }}</span>{% endif %}{% endfor %}
+      </p>
+    </section>
+    {% endif %}
+    <aside class="pgm-demo__notice" role="note">
+      <strong>Resultado limitado ao cotejo textual das extrações.</strong>
+      <p>{% if ctm_art20_candidate_timeline.snapshot_texts_match %}O texto extraído do Art. 20 nas edições de 2021, 2022 e 2024 coincide.{% else %}Não foi possível afirmar que os textos extraídos do Art. 20 nas três edições coincidem.{% endif %} {% if ctm_art20_candidate_timeline.amendment_differs_from_2024 %}A redação transcrita pela LC 271/2025 difere textualmente do recorte de 2024.{% else %}Não foi possível confirmar diferença textual entre o recorte de 2024 e a redação transcrita pela LC 271/2025.{% endif %} As quatro fontes continuam pendentes de revisão no QA. Isto não certifica publicação, eficácia, completude de alterações posteriores ou vigência atual; não use esta prévia como decisão de aplicabilidade a um caso.</p>
+    </aside>
+    {% else %}
+    <p class="pgm-demo__notice" role="status">Cotejo indisponível ou ambíguo: uma das edições candidatas, extrações completas ou referências ao Art. 20 não foi localizada de forma única. Nenhuma redação foi presumida.</p>
+    {% endif %}
+  </section>
+
+  <section class="pgm-demo__case" aria-labelledby="pgm-ctm-change-set-title">
+    <header>
+      <span class="workspace-eyebrow">Cotejo artigo a artigo · evidência documental</span>
+      <h2 id="pgm-ctm-change-set-title">Dispositivos do Código Tributário reescritos pela LC nº 271/2025</h2>
+      <p>A LC nº 271/2025, Art. 1º, dá nova redação a 12 artigos do Código Tributário Municipal. Cada comparação abaixo confronta a consolidação municipal de 2024 com o texto que foi possível extrair do PDF do ato modificador. Isso ainda não é uma consolidação jurídica vigente.</p>
+    </header>
+    <aside class="pgm-demo__notice" role="note">
+      <strong>{{ ctm_lc271_change_set.source_pair_count }} de {{ ctm_lc271_change_set.target_count }} artigos com trechos-fonte localizados; {{ ctm_lc271_change_set.complete_pair_count }} par(es) integral(is) para cotejo.</strong>
+      <p>As extrações permanecem pendentes de revisão. Reticências e trechos ausentes são indicados; uma redação parcial não deve ser tratada como texto consolidado. Consulte os PDFs oficiais antes de usar em processo.</p>
+    </aside>
+    <div class="pgm-demo__change-list">
+      {% for change in ctm_lc271_change_set.changes %}
+      <details class="pgm-demo__change">
+        <summary>Art. {{ change.article_number }} <span>{% if change.state == "sources_found" %}trechos-fonte localizados{% else %}evidência incompleta{% endif %}</span></summary>
+        {% if change.before and change.after %}
+        <div class="pgm-demo__change-grid">
+          <section aria-label="Texto da consolidação municipal de 2024">
+            <h3>Consolidação municipal · 2024</h3>
+            <blockquote>{{ change.before.quote }}</blockquote>
+            {% if change.before_pdf_url %}<a href="{{ change.before_pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir PDF local{% if change.before.page %}, p. {{ change.before.page }}{% endif %}</a>{% endif %}
+            {% if change.before_official_pdf_url %}<a href="{{ change.before_official_pdf_url }}" target="_blank" rel="noopener noreferrer">PDF oficial</a>{% endif %}
+          </section>
+          <section aria-label="Redação transcrita pela Lei Complementar 271 de 2025">
+            <h3>Trecho promulgado pela LC nº 271/2025 · Art. 1º</h3>
+            <blockquote>{{ change.after.quote }}</blockquote>
+            {% if change.after.omitted_following_text %}<small class="pgm-demo__omission-note">O PDF apresenta reticências ou indicações de supressão neste dispositivo. Este texto não é integral.</small>{% endif %}
+            {% if change.after_pdf_url %}<a href="{{ change.after_pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir PDF local{% if change.after.page %}, p. {{ change.after.page }}{% endif %}</a>{% endif %}
+            {% if change.after_official_pdf_url %}<a href="{{ change.after_official_pdf_url }}" target="_blank" rel="noopener noreferrer">PDF oficial</a>{% endif %}
+          </section>
+        </div>
+        {% else %}
+        <p class="pgm-demo__notice" role="status">Não há extração única e legível dos dois lados para este artigo. Não foi criada uma redação consolidada.</p>
+        {% endif %}
+        {% if change.full_text_diff_available and change.diff %}
+        <section class="pgm-demo__text-diff" aria-label="Diferenças textuais do Artigo {{ change.article_number }}">
+          <h3>Diferença textual extraída</h3>
+          <p class="pgm-demo__diff-legend"><del>Texto de 2024 removido ou substituído</del><ins>Texto transcrito pela LC 271/2025</ins></p>
+          <p class="pgm-demo__diff-body">{% for part in change.diff %}{% if part.kind == "removed" %}<del>{{ part.text }}</del>{% elif part.kind == "added" %}<ins>{{ part.text }}</ins>{% elif part.kind == "omitted" %}<span class="pgm-demo__diff-omission">{{ part.text }}</span>{% else %}<span>{{ part.text }}</span>{% endif %}{% endfor %}</p>
+        </section>
+        {% elif change.state == "sources_found" %}
+        <p class="pgm-demo__notice" role="note"><strong>Sem diff integral:</strong> o PDF da LC 271/2025 omite parte deste dispositivo por reticências. Esta página não interpreta o conteúdo omitido como revogado ou inalterado nem tenta reconstruir o artigo.</p>
+        {% endif %}
+      </details>
+      {% endfor %}
+    </div>
+    <section class="pgm-demo__text-diff" aria-labelledby="pgm-consolidated-texts-title">
+      <div class="pgm-demo__diff-heading">
+        <h3 id="pgm-consolidated-texts-title">Minutas integradas por dispositivo · marco inicial de 16/12/2025</h3>
+        <span>{{ ctm_lc271_change_set.consolidation_previews|length }} recomposições determinísticas</span>
+      </div>
+      <p>Estas minutas mostram o resultado textual de preservar unidades omitidas pelo ato alterador e aplicar somente a alteração expressa. Não são uma consolidação oficial nem uma certificação de vigência atual; as extrações e relações seguem pendentes de revisão humana.</p>
+      {% for preview in ctm_lc271_change_set.consolidation_previews %}
+      <article class="pgm-demo__consolidated-device" aria-labelledby="pgm-consolidated-{{ preview.article_number }}">
+        <h4 id="pgm-consolidated-{{ preview.article_number }}">Art. {{ preview.article_number }} · {% if preview.status == 'candidate_integrated' %}minuta integrada candidata{% else %}recomposição incompleta{% endif %}</h4>
+        {% if preview.status == 'candidate_integrated' %}
+        <pre>{{ preview.text }}</pre>
+        <p>{{ preview.reason }}</p>
+        <small>Unidades preservadas: {{ preview.preserved_units|join:', '|default:'nenhuma' }}.{% if preview.replaced_units %} Unidades substituídas: {{ preview.replaced_units|join:', ' }}.{% endif %}{% if preview.added_units %} Unidades acrescidas: {{ preview.added_units|join:', ' }}.{% endif %}</small>
+        {% else %}<p role="status">{{ preview.reason }}</p>{% endif %}
+        {% for change in ctm_lc271_change_set.changes %}{% if change.article_number == preview.article_number %}
+          {% if change.before_official_pdf_url %}<a href="{{ change.before_official_pdf_url }}" target="_blank" rel="noopener noreferrer">Fonte do texto-base · PDF</a>{% endif %}
+          {% if change.after_official_pdf_url %}<a href="{{ change.after_official_pdf_url }}" target="_blank" rel="noopener noreferrer">Fonte da alteração · LC 271/2025, Art. 1º, PDF{% if change.after.page %}, p. {{ change.after.page }}{% endif %}</a>{% endif %}
+        {% endif %}{% endfor %}
+      </article>
+      {% empty %}<p role="status">Não há, neste conjunto, dispositivo cuja recomposição tenha passado pelas verificações de unicidade e integralidade.</p>{% endfor %}
+    </section>
+    <section class="pgm-demo__notice" aria-labelledby="pgm-ctm-explicit-effects-title">
+      <h3 id="pgm-ctm-explicit-effects-title">Outros efeitos expressos da LC nº 271/2025</h3>
+      <p><strong>Inclusões:</strong> arts. 133-A, 133-B, 133-C, 133-D e 133-E no CTM (Art. 2º). {% if ctm_lc271_change_set.added_articles|length == 5 %}O texto de cada inclusão foi extraído como minuta candidata abaixo; a fonte permanece pendente de revisão.{% else %}A extração do Art. 2º não permitiu isolar, com integralidade, os cinco dispositivos; não os reconstruímos.{% endif %}</p>
+      {% if ctm_lc271_change_set.added_articles %}
+      <div class="pgm-demo__change-list" aria-label="Dispositivos novos acrescentados ao Código Tributário">
+        {% for addition in ctm_lc271_change_set.added_articles %}
+        <details class="pgm-demo__change">
+          <summary>Art. {{ addition.article_number }} · inclusão candidata</summary>
+          <blockquote>{{ addition.text }}</blockquote>
+          <p class="pgm-demo__notice" role="note">{{ addition.reason }} Extração pendente de revisão humana; não apresentada como texto oficial consolidado.</p>
+          {% if ctm_lc271_change_set.added_articles_official_pdf_url %}<a href="{{ ctm_lc271_change_set.added_articles_official_pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir no PDF oficial da LC 271/2025, Art. 2º</a>{% endif %}
+        </details>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <p><strong>Revogações expressas no CTM:</strong> Art. 66, § 11, e Art. 68, § 1º (Art. 5º). A LC também revoga incisos do Art. 23 da LC nº 141/2014, que está fora desta consolidação do CTM.</p>
+      <p><strong>Regra transitória:</strong> remissão parcial da Taxa de Lixo referente ao exercício de 2025 (Art. 4º). <strong>Vigência inicial:</strong> o Art. 6º prevê vigência na data da publicação. {{ ctm_lc271_change_set.express_effects.scope_note }}</p>
+    </section>
+    <p class="pgm-demo__notice" role="note"><strong>Escopo jurídico:</strong> esta tela evidencia diferenças entre dois textos-fonte, não determina por si só a vigência atual. Para uma consolidação utilizável pela PGM ainda é necessária validação de identidade, publicação, integralidade do texto, alterações posteriores e revisão jurídica.</p>
+  </section>
+
   <section class="pgm-demo__pipeline" aria-labelledby="pgm-pipeline-title">
     <h2 id="pgm-pipeline-title">Cobertura documental deste caso</h2>
     <ol>
       <li><strong>6 leis + 1 artigo citados</strong><span>Sete referências expressas do Art. 260, segmentadas antes do Art. 261.</span></li>
       <li><strong>{{ target_count }} identidade(s) candidata(s)</strong><span>Correspondência de tipo, número e ano no acervo local.</span></li>
       <li><strong>{{ conflict_count }} conflito(s) de identidade</strong><span>Mesmo número/ano, mas espécie normativa diferente.</span></li>
+      <li><strong>{{ ambiguous_count }} identidade(s) ambígua(s)</strong><span>Há múltiplos PDFs compatíveis; nenhum é selecionado automaticamente.</span></li>
       <li><strong>{{ missing_count }} sem PDF correspondente</strong><span>Não encontrados neste lote QA; isso não prova inexistência do ato.</span></li>
-      <li><strong>Revisão e consolidação</strong><span>Pendentes. LC 258 tem {{ source_segmentation_count }} dispositivos estruturados nesta extração.</span></li>
+      <li><strong>Revisão e consolidação</strong><span>Pendentes. {{ source_segmentation_count }} dispositivos documentais persistidos; a segmentação e a identidade da fonte ainda exigem revisão.</span></li>
     </ol>
   </section>
 
@@ -67,12 +213,13 @@
     <div class="pgm-demo__diagram" role="group" aria-label="Fluxo da LC 258/2024, dos dispositivos que registram as relações e dos atos citados como destino">
     <article class="pgm-demo__source-node">
       <div class="pgm-demo__source-heading">
-        <span class="workspace-eyebrow">Ato que contém a lista · fonte primária arquivada em QA</span>
-        <span class="pgm-demo__badge">Extração {{ source_extraction.id }} · {{ source_document.get_review_status_display|lower }}</span>
+        <span class="workspace-eyebrow">Ato que contém a lista · {% if source_is_official_sapl %}PDF oficial do SAPL{% else %}cópia do acervo QA{% endif %}</span>
+        <span class="pgm-demo__badge">Extração {{ source_extraction.id }} · {{ source_extraction_status }} · revisão {{ source_document.get_review_status_display|lower }}</span>
       </div>
       <h2>Lei Complementar nº 258/2024</h2>
       <p><strong>Art. 260 — “Ficam revogados”</strong> · seis leis e um dispositivo citados</p>
-      <a href="{{ source_pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir LC 258/2024 no PDF{% if source_page %}, p. {{ source_page }}{% endif %}</a>
+      {% if source_pdf_url %}<a href="{{ source_pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir LC 258/2024 no PDF{% if source_page %}, p. {{ source_page }}{% endif %}</a>{% else %}<p>O PDF não está disponível nesta instância QA; use a fonte oficial listada abaixo.</p>{% endif %}
+      {% if source_extraction_status != 'complete' %}<p class="pgm-demo__notice" role="note">Extração parcial: {{ source_extraction_unreadable_pages }} página(s) sem texto legível nesta execução. Os trechos mostrados dependem apenas do texto extraído; consulte o PDF oficial para páginas ausentes. Não representa cobertura integral da lei.</p>{% endif %}
     </article>
 
     <div class="pgm-demo__event-hubs" aria-label="Eventos identificados na LC 258/2024">
@@ -97,24 +244,40 @@
       <span>Destinos e estado da identificação</span>
       <small>6 leis + 1 artigo citados · 1 dispositivo alterado · cláusula geral sem alvo nomeado</small>
     </div>
+    <p class="pgm-demo__notice" role="note">“Ato citado” significa que o texto não individualiza um artigo; isso não prova revogação integral. “Dispositivo citado” identifica o artigo mencionado, mas não confirma sozinho o alcance ou os efeitos no tempo.</p>
     <ol class="pgm-demo__target-grid" aria-label="Nove destinos das relações descritas na LC 258/2024">
       {% for item in references %}
-      <li class="pgm-demo__target-node pgm-demo__target-node--{{ item.state }}" data-graph-target="express-{{ item.roman|lower }}" data-graph-relation-target="express" data-sapl-status="{{ item.sapl_registry.status }}">
+      <li class="pgm-demo__target-node pgm-demo__target-node--{{ item.state }}" data-graph-target="express-{{ item.roman|lower }}" data-graph-relation-target="express" data-target-scope="{{ item.reference_scope.kind }}" data-sapl-status="{{ item.sapl_registry.status }}">
         <span class="pgm-demo__target-index">Art. 260 · Inciso {{ item.roman }}</span>
-        <span class="pgm-demo__edge-label">Revogação expressa</span>
+        <span class="pgm-demo__edge-label">{{ item.reference_scope.label }}</span>
         <h3>{{ item.citation }}</h3>
         {% if item.state == "candidate" %}
           <span class="pgm-demo__target-state">PDF candidato correspondente</span>
           <p>Identidade textual coincide por espécie, número e ano; o documento e sua edição seguem pendentes de revisão.</p>
-          <a href="{{ item.pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir PDF no acervo{% if item.page %}, p. {{ item.page }}{% endif %}</a>
+          {% if item.pdf_url %}<a href="{{ item.pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir PDF no acervo{% if item.page %}, p. {{ item.page }}{% endif %}</a>{% else %}<p>O documento candidato foi identificado, mas o PDF local não está disponível nesta sessão. Consulte a ficha oficial abaixo ou solicite acesso de revisão.</p>{% endif %}
+          {% if item.review_url %}<a href="{{ item.review_url }}">Revisar identidade e extração no Jurix (área restrita)</a>{% endif %}
           <small>{{ item.document.original_filename }}</small>
+        {% elif item.state == "ambiguous" %}
+          <span class="pgm-demo__target-state">Identidade ambígua · nenhum PDF selecionado</span>
+          <p>Há mais de um documento com o mesmo número e ano. Compare as edições abaixo; esta demonstração não escolhe um deles.</p>
+          <ul class="pgm-demo__candidate-list" aria-label="PDFs candidatos ambíguos">
+          {% for candidate in item.ambiguous_candidates %}
+            <li>{% if candidate.pdf_url %}<a href="{{ candidate.pdf_url }}" target="_blank" rel="noopener noreferrer">Inspecionar candidato identificado como {{ candidate.candidate_type }}</a>{% else %}<span>PDF candidato identificado como {{ candidate.candidate_type }} · indisponível nesta sessão</span>{% endif %}<small>{{ candidate.document.original_filename }}</small></li>
+          {% endfor %}
+          </ul>
+          {% if item.candidate_list_truncated %}<small>Lista limitada aos oito primeiros candidatos; existem outros documentos compatíveis.</small>{% endif %}
         {% elif item.state == "identity_conflict" %}
           <span class="pgm-demo__target-state">Conflito de espécie normativa</span>
           <p>A lista cita <strong>{{ item.expected_type_display }}</strong>, mas o arquivo encontrado tem outra identidade candidata. Não associamos os atos automaticamente.</p>
-          {% for conflict in item.conflicts %}<a href="{{ conflict.pdf_url }}" target="_blank" rel="noopener noreferrer">Inspecionar candidato identificado como {{ conflict.candidate_type }}</a><small>{{ conflict.document.original_filename }}</small>{% endfor %}
+          {% for conflict in item.conflicts %}{% if conflict.pdf_url %}<a href="{{ conflict.pdf_url }}" target="_blank" rel="noopener noreferrer">Inspecionar candidato identificado como {{ conflict.candidate_type }}</a>{% else %}<span>Candidato identificado como {{ conflict.candidate_type }} · PDF indisponível nesta sessão</span>{% endif %}<small>{{ conflict.document.original_filename }}</small>{% endfor %}
         {% else %}
-          <span class="pgm-demo__target-state">PDF não localizado neste lote QA</span>
-          <p>O Art. 260 cita este ato, mas não há documento local com identidade correspondente disponível para cotejo.</p>
+          {% if item.sapl_registry.official_sources %}
+            <span class="pgm-demo__target-state">PDF não integrado ao lote QA · fonte oficial candidata disponível</span>
+            <p>O Art. 260 cita este ato, mas ainda não há PDF local para cotejo. Expanda os detalhes do catálogo para abrir a fonte oficial candidata; ela não confirma, por si só, identidade ou efeito jurídico.</p>
+          {% else %}
+            <span class="pgm-demo__target-state">PDF não localizado neste lote QA</span>
+            <p>O Art. 260 cita este ato, mas não há documento local com identidade correspondente disponível para cotejo.</p>
+          {% endif %}
         {% endif %}
         {% if item.sapl_registry.records %}
         <details class="pgm-demo__sapl-evidence">
@@ -122,8 +285,16 @@
             <span class="pgm-demo__sapl-date">Catálogo SAPL · {{ item.sapl_registry.checked_on }}</span>
             {% if item.sapl_registry.status == "exact_identity_candidate" %}
               <span class="pgm-demo__sapl-status">1 ficha candidata</span>
+            {% elif item.sapl_registry.status == "date_matched_candidate" %}
+              <span class="pgm-demo__sapl-status">Data citada coincide · ficha candidata</span>
+            {% elif item.sapl_registry.status == "date_conflict" %}
+              <span class="pgm-demo__sapl-status">Conflito de data</span>
             {% elif item.sapl_registry.status == "species_conflict" %}
               <span class="pgm-demo__sapl-status">Conflito de espécie</span>
+            {% elif item.sapl_registry.status == "year_conflict" %}
+              <span class="pgm-demo__sapl-status">Conflito de ano</span>
+            {% elif item.sapl_registry.status == "identity_conflict" %}
+              <span class="pgm-demo__sapl-status">Conflito de ano e espécie</span>
             {% elif item.sapl_registry.status == "ambiguous" %}
               <span class="pgm-demo__sapl-status">{{ item.sapl_registry.records|length }} fichas · ambíguo</span>
             {% endif %}
@@ -132,15 +303,37 @@
           {% if item.sapl_registry.status == "exact_identity_candidate" %}
             <strong>Espécie, número e ano coincidem no cadastro SAPL</strong>
             <p>É uma correspondência cadastral candidata; não confirma que esta seja a edição citada nem que a revogação produziu efeitos.</p>
+          {% elif item.sapl_registry.status == "date_matched_candidate" %}
+            <strong>Uma ficha tem a data mencionada na citação</strong>
+            <p>A data ajuda a priorizar a inspeção, mas a ficha continua sendo apenas uma candidata e não confirma identidade jurídica nem efeito da revogação. Outras fichas permanecem listadas para comparação.</p>
+          {% elif item.sapl_registry.status == "date_conflict" %}
+            <strong>A data da ficha diverge da data citada</strong>
+            <p>O registro não foi associado automaticamente. Confira a referência e a ficha oficial antes de qualquer conclusão.</p>
           {% elif item.sapl_registry.status == "species_conflict" %}
             <strong>Conflito de espécie no cadastro SAPL</strong>
             <p>A consulta encontrou {{ item.sapl_registry.records.0.type_display }} nº {{ item.sapl_registry.records.0.number }}/{{ item.sapl_registry.records.0.year }}, mas a referência do Art. 260 indica outra espécie. Não associamos os registros.</p>
+          {% elif item.sapl_registry.status == "year_conflict" %}
+            <strong>O número aparece no SAPL em outro ano</strong>
+            <p>A referência do Art. 260 cita {{ item.expected_type_display }} nº {{ item.sapl_registry.records.0.number }}/{{ item.sapl_registry.reference_year }}; o catálogo retornou {{ item.sapl_registry.records.0.type_display }} nº {{ item.sapl_registry.records.0.number }}/{{ item.sapl_registry.records.0.year }}. Não associamos os atos.</p>
+          {% elif item.sapl_registry.status == "identity_conflict" %}
+            <strong>O número aparece no SAPL com ano e espécie diferentes</strong>
+            <p>A referência do Art. 260 cita {{ item.expected_type_display }} nº {{ item.sapl_registry.records.0.number }}/{{ item.sapl_registry.reference_year }}; o catálogo retornou {{ item.sapl_registry.records.0.type_display }} nº {{ item.sapl_registry.records.0.number }}/{{ item.sapl_registry.records.0.year }}. Não associamos os atos.</p>
           {% elif item.sapl_registry.status == "ambiguous" %}
             <strong>Mais de uma ficha coincide no cadastro SAPL</strong>
             <p>{{ item.sapl_registry.records|length }} fichas têm a mesma espécie, número e ano. Nenhuma foi escolhida automaticamente.</p>
           {% endif %}
           {% for record in item.sapl_registry.records %}
-            {% if record.url %}<a href="{{ record.url }}" target="_blank" rel="noopener noreferrer">Inspecionar ficha SAPL #{{ record.sapl_id }} · {{ record.type_display }} nº {{ record.number }}/{{ record.year }}</a>{% endif %}
+            {% if record.url %}<a href="{{ record.url }}" target="_blank" rel="noopener noreferrer">Inspecionar ficha SAPL #{{ record.sapl_id }} · {{ record.type_display }} nº {{ record.number }}/{{ record.year }} · {{ record.date_display }}{% if record.reference_date_match %} · data citada{% endif %}</a>{% endif %}
+            {% if item.sapl_registry.reference_date and not record.reference_date_match %}<small>Divergência de data: a referência menciona {{ item.sapl_registry.reference_date_display }}; a ficha SAPL está datada de {{ record.date_display }}. A correspondência exige conferência.</small>{% endif %}
+          {% endfor %}
+          {% for source in item.sapl_registry.official_sources %}
+            <section class="pgm-demo__official-source" aria-label="Fonte oficial adicional para conferência">
+              <strong>Fonte oficial municipal localizada · candidata para revisão</strong>
+              <p>{{ source.note }}</p>
+              <small>{{ source.source }} · {{ source.date_display }}</small>
+              {% if source.url %}<a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">Abrir ficha oficial: {{ source.title }}</a>{% endif %}
+              {% if source.document_url %}<a href="{{ source.document_url }}" target="_blank" rel="noopener noreferrer">Abrir documento oficial</a>{% endif %}
+            </section>
           {% endfor %}
           </div>
         </details>
@@ -163,6 +356,325 @@
     </div>
   </section>
 
+  <section class="pgm-demo__case" aria-labelledby="pgm-amendment-title">
+    <header>
+      <span class="workspace-eyebrow">Confronto de redações · atos promulgados</span>
+      <h2 id="pgm-amendment-title">LC 208/2022, Art. 14 → LC 258/2024, Art. 261</h2>
+      <p>O Art. 261 identifica expressamente o dispositivo alterado e traz uma redação substitutiva. A comparação abaixo é textual, baseada nas duas extrações; ainda não é uma consolidação juridicamente revisada.</p>
+    </header>
+    {% if lc208_article_14 and lc258_new_article_14 %}
+    <div class="pgm-demo__case-grid pgm-demo__amendment-comparison">
+      <article>
+        <span class="pgm-demo__target-index">Redação da fonte anterior · extração pendente</span>
+        <h3>LC nº 208/2022 · Art. 14</h3>
+        <blockquote>{{ lc208_article_14.quote }}</blockquote>
+        {% if lc208_article_14_pdf_url %}<a href="{{ lc208_article_14_pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir PDF candidato{% if lc208_article_14.page %}, p. {{ lc208_article_14.page }}{% endif %}</a>{% endif %}
+        {% if lc208_official_pdf_url %}<a href="{{ lc208_official_pdf_url }}" target="_blank" rel="noopener noreferrer">Fonte oficial SAPL da LC 208/2022</a>{% endif %}
+      </article>
+      <article>
+        <span class="pgm-demo__target-index">Redação substitutiva citada · extração pendente</span>
+        <h3>LC nº 258/2024 · Art. 261</h3>
+        <blockquote>{{ lc258_new_article_14.quote }}</blockquote>
+        {% if lc258_article_261_pdf_url %}<a href="{{ lc258_article_261_pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir o Art. 261 no PDF{% if lc258_new_article_14.page %}, p. {{ lc258_new_article_14.page }}{% endif %}</a>{% endif %}
+        {% if lc258_official_pdf_url %}<a href="{{ lc258_official_pdf_url }}" target="_blank" rel="noopener noreferrer">Fonte oficial SAPL da LC 258/2024</a>{% endif %}
+      </article>
+    </div>
+    <aside class="pgm-demo__notice" role="note">
+      <strong>Resultado desta comparação: alteração expressa no texto-fonte; efeito e redação consolidada ainda pendentes.</strong>
+      <p>Ambos os PDFs e suas extrações permanecem candidatos não aceitos no QA. O sistema não promoveu evento, não calculou vigência nem concluiu que esta é a única alteração posterior do Art. 14. Confirme a íntegra, publicação, vigência e eventuais atos posteriores antes de aplicar a redação a um processo.</p>
+    </aside>
+    {% else %}
+    <p class="pgm-demo__notice" role="status">O confronto de redações não está disponível: uma das fontes candidatas ou o trecho correspondente não foi localizado. Nenhuma versão foi presumida.</p>
+    {% endif %}
+  </section>
+
+  <section class="pgm-demo__case" aria-labelledby="pgm-working-consolidation-title">
+    <header>
+      <span class="workspace-eyebrow">Resultado de trabalho · atos promulgados</span>
+      <h2 id="pgm-working-consolidation-title">Minuta de consolidação textual por dispositivo</h2>
+      <p>Em vez de juntar PDFs inteiros, esta vista aplica apenas as redações substitutivas expressas que foram localizadas e mantém cada dispositivo ligado ao ato e à página de origem. É uma minuta técnica: não é snapshot aceito nem certificação de vigência para um caso concreto.</p>
+    </header>
+    <div class="pgm-demo__case-grid">
+      {% if lc258_new_article_14 %}
+      <article aria-labelledby="pgm-working-art14-title">
+        <span class="pgm-demo__target-index">Texto resultante localizado · LC 208/2022, Art. 14</span>
+        <h3 id="pgm-working-art14-title">Redação substitutiva da LC 258/2024, Art. 261</h3>
+        <blockquote>{{ lc258_new_article_14.quote }}</blockquote>
+        <p><strong>Estado:</strong> alteração expressa identificada; eficácia e completude da cadeia posterior ainda não certificadas. A LC 258/2024, Art. 266, prevê vigência 90 dias após a publicação; seu Art. 262 contém regra de transição para processos protocolados antes da entrada em vigor.</p>
+        {% if lc258_article_261_pdf_url %}<a href="{{ lc258_article_261_pdf_url }}" target="_blank" rel="noopener noreferrer">Fonte oficial · LC 258/2024, Art. 261{% if lc258_new_article_14.page %}, PDF p. {{ lc258_new_article_14.page }}{% endif %}</a>{% endif %}
+        {% if lc208_article_14_pdf_url %}<a href="{{ lc208_article_14_pdf_url }}" target="_blank" rel="noopener noreferrer">Comparar com a redação original da LC 208/2022, Art. 14</a>{% endif %}
+      </article>
+      {% endif %}
+      {% if lc261_replacement_article_18_paragraph_2 %}
+      <article aria-labelledby="pgm-working-art18-title">
+        <span class="pgm-demo__target-index">Texto resultante localizado · LC 208/2022, Art. 18, § 2º</span>
+        <h3 id="pgm-working-art18-title">Redação substitutiva da LC 261/2025, Art. 118</h3>
+        <blockquote>{{ lc261_replacement_article_18_paragraph_2.quote }}</blockquote>
+        <p><strong>Estado:</strong> alteração expressa identificada. A LC 261/2025, Art. 120, determina vigência na data da publicação; o cadastro SAPL informa publicação em 04/07/2025. Atos posteriores e cobertura completa desse dispositivo ainda precisam ser conferidos.</p>
+        {% if lc261_article_118_pdf_url %}<a href="{{ lc261_article_118_pdf_url }}" target="_blank" rel="noopener noreferrer">Fonte oficial · LC 261/2025, Art. 118{% if lc261_replacement_article_18_paragraph_2.page %}, PDF p. {{ lc261_replacement_article_18_paragraph_2.page }}{% elif lc261_article_118.page %}, PDF p. {{ lc261_article_118.page }}{% endif %}</a>{% endif %}
+        {% if lc208_article_18_pdf_url %}<a href="{{ lc208_article_18_pdf_url }}" target="_blank" rel="noopener noreferrer">Comparar com a redação original da LC 208/2022, Art. 18, § 2º</a>{% endif %}
+      </article>
+      {% endif %}
+      {% if lc261_article_117 %}
+      <article aria-labelledby="pgm-working-art21-title">
+        <span class="pgm-demo__target-index">Efeito não incorporado · alvo depende de revisão</span>
+        <h3 id="pgm-working-art21-title">Art. 21 e Anexo A · identidade a confirmar</h3>
+        <blockquote>{{ lc261_article_117.quote }}</blockquote>
+        <p>A cláusula revogatória escreve “Lei Municipal nº 208”, com data de 08/03/2022, sem o qualificador “Complementar”. A associação à LC 208/2022 é candidata e, por isso, este dispositivo não foi removido da minuta como se a revogação estivesse validada.</p>
+        {% if lc261_pdf_url %}<a href="{{ lc261_pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir a cláusula no PDF oficial da LC 261/2025{% if lc261_article_117.page %}, p. {{ lc261_article_117.page }}{% endif %}</a>{% endif %}
+        {% if lc208_article_21_pdf_url %}<a href="{{ lc208_article_21_pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir o Art. 21 candidato da LC 208/2022</a>{% endif %}
+      </article>
+      {% endif %}
+    </div>
+    {% if lc261_repeal_targets %}
+    <section class="pgm-demo__target-review" aria-labelledby="pgm-lc261-targets-title">
+      <header>
+        <span class="workspace-eyebrow">Confronto de identidade · sem promoção automática</span>
+        <h3 id="pgm-lc261-targets-title">Alvos nomeados pela LC 261/2025, Art. 117 · {{ lc261_repeal_targets|length }}</h3>
+        <p>O texto da cláusula é separado em referências individuais. “Conflito de espécie” significa que a espécie citada não coincide com a encontrada no cadastro/PDF; “não localizado” vale apenas para este lote QA e não prova inexistência nem vigência.</p>
+      </header>
+      <div class="pgm-demo__relation-graph" aria-label="Relações candidatas de revogação da LC 261/2025, Art. 117">
+        {% for target in lc261_repeal_targets %}
+        <div class="pgm-demo__relation-row pgm-demo__relation-row--uncertain" role="group" aria-label="{{ target.source_device }} cita {{ target.citation }}; estado {{ target.state }}">
+          <article class="pgm-demo__relation-node pgm-demo__relation-node--source">
+            <span>FONTE · RELAÇÃO TEXTUAL PENDENTE</span>
+            <strong>LC 261/2025 · Art. 117 · {{ target.source_device }}</strong>
+            {% if target.source_pdf_url %}<a href="{{ target.source_pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir cláusula no PDF oficial</a>{% endif %}
+          </article>
+          <div class="pgm-demo__relation-edge pgm-demo__relation-edge--uncertain"><span>revogação citada · revisar</span><b aria-hidden="true">⇢</b></div>
+          <article class="pgm-demo__relation-node pgm-demo__relation-node--uncertain">
+            <span>ESPÉCIE ESPERADA NO TEXTO · {{ target.expected_type }}</span>
+            <strong>{{ target.citation }}</strong>
+            <small>{{ target.target_text }}</small>
+            {% if target.state == "identity_conflict" %}<small>Conflito de espécie ou cadastro; associação não confirmada.</small>
+            {% elif target.state == "ambiguous" %}<small>Múltiplos documentos candidatos; nenhum foi escolhido.</small>
+            {% elif target.state == "candidate" %}<small>PDF candidato correspondente localizado; identidade/efeito ainda pendentes.</small>
+            {% else %}<small>PDF correspondente não localizado no lote QA; isso não prova inexistência.</small>{% endif %}
+            {% for document in target.documents %}
+              {% if document.pdf_url %}<a href="{{ document.pdf_url }}" target="_blank" rel="noopener noreferrer">PDF local candidato · {{ document.type_display }}{% if document.filename %} · {{ document.filename }}{% endif %}</a>{% endif %}
+              {% if document.pdf_access_required %}<small>PDF local candidato disponível apenas para revisor autenticado.</small>{% endif %}
+              {% if document.official_url %}<a href="{{ document.official_url }}" target="_blank" rel="noopener noreferrer">Abrir registro oficial deste documento</a>{% endif %}
+            {% endfor %}
+            {% if target.sapl_url %}<a href="{{ target.sapl_url }}" target="_blank" rel="noopener noreferrer">SAPL: {{ target.sapl_type_display }} · publicação {{ target.sapl_publication_date }}</a>{% endif %}
+          </article>
+        </div>
+        {% endfor %}
+      </div>
+      <p><strong>Limite:</strong> esses nós documentam o que a LC 261/2025, Art. 117, cita e o que foi localizado como candidato. Não criam arestas operativas nem declaram os dispositivos revogados.</p>
+    </section>
+    {% endif %}
+    <aside class="pgm-demo__notice" role="note">
+      <strong>Este texto é a versão mais recente localizada nas relações expressas desta demonstração, não uma declaração de que todo o ato está vigente hoje.</strong>
+      <p>A busca posterior considerada aqui abrange textos extraíveis de atos municipais catalogados, mas não OCR de todas as páginas, atos sem PDF ou confirmação de todas as edições. O material permanece candidato no QA, sem aceitação da extração, validação de eventos ou promoção ao corpus de produto.</p>
+    </aside>
+  </section>
+
+  <section class="pgm-demo__case" aria-labelledby="pgm-history-title">
+    <header>
+      <span class="workspace-eyebrow">Histórico por dispositivo · consulta em fontes oficiais</span>
+      <h2 id="pgm-history-title">Outros eventos posteriores na LC 208/2022</h2>
+      <p>A LC nº 261/2025 acrescenta dois eventos distintos ao histórico: uma revogação expressa de dispositivos e uma nova redação para o § 2º do Art. 18. As relações aparecem como evidências pendentes, não como consolidação jurídica aprovada.</p>
+    </header>
+    <ol class="pgm-demo__timeline" aria-label="Linha temporal de atos que mencionam dispositivos da LC 208/2022">
+      <li>
+        <span class="pgm-demo__timeline-date">08/03/2022 · ato-base</span>
+        <strong>LC nº 208/2022</strong>
+        <p>Plano Diretor de Natal. O cadastro SAPL identifica a publicação nesta data.</p>
+        {% if lc208_official_pdf_url %}<a href="{{ lc208_official_pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir fonte oficial SAPL</a>{% endif %}
+      </li>
+      <li>
+        <span class="pgm-demo__timeline-date">27/12/2024 · alteração</span>
+        <strong>LC nº 258/2024 · Art. 261</strong>
+        <p>Substitui a redação do Art. 14 da LC 208/2022, conforme confronto acima.</p>
+        {% if lc258_official_pdf_url %}<a href="{{ lc258_official_pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir fonte oficial SAPL</a>{% endif %}
+      </li>
+      <li>
+        <span class="pgm-demo__timeline-date">04/07/2025 · atos do Art. 117 e 118</span>
+        <strong>LC nº 261/2025</strong>
+        <p>O Art. 117 cita a revogação do Art. 21 e do Anexo A de “Lei Municipal nº 208”; o Art. 118 identifica expressamente a LC 208/2022 ao alterar seu Art. 18, § 2º.</p>
+        {% if lc261_pdf_url %}<a href="{{ lc261_pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir Art. 117 no PDF candidato{% if lc261_article_117.page %}, p. {{ lc261_article_117.page }}{% endif %}</a>{% endif %}
+        {% if lc261_official_pdf_url %}<a href="{{ lc261_official_pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir fonte oficial SAPL</a>{% endif %}
+      </li>
+    </ol>
+
+    <div class="pgm-demo__relation-graph" aria-label="Grafo de relações entre os atos posteriores e dispositivos da LC 208/2022">
+      <div class="pgm-demo__relation-row" role="group" aria-label="LC 258/2024, Art. 261 substitui a redação do Art. 14 da LC 208/2022">
+        <article class="pgm-demo__relation-node pgm-demo__relation-node--source">
+          <span>ATO MODIFICADOR · 27/12/2024</span><strong>LC 258/2024 · Art. 261</strong>
+          {% if lc258_article_261_pdf_url %}<a href="{{ lc258_article_261_pdf_url }}" target="_blank" rel="noopener noreferrer">Fonte, p. {{ lc258_new_article_14.page }}</a>{% endif %}
+        </article>
+        <div class="pgm-demo__relation-edge"><span>substitui a redação</span><b aria-hidden="true">→</b></div>
+        <article class="pgm-demo__relation-node pgm-demo__relation-node--target">
+          <span>DISPOSITIVO-ALVO</span><strong>LC 208/2022 · Art. 14</strong>
+          {% if lc208_article_14_pdf_url %}<a href="{{ lc208_article_14_pdf_url }}" target="_blank" rel="noopener noreferrer">Redação anterior, p. {{ lc208_article_14.page }}</a>{% endif %}
+        </article>
+      </div>
+      <div class="pgm-demo__relation-row" role="group" aria-label="LC 261/2025, Art. 118 altera o parágrafo 2 do Art. 18 da LC 208/2022">
+        <article class="pgm-demo__relation-node pgm-demo__relation-node--source">
+          <span>ATO MODIFICADOR · 04/07/2025</span><strong>LC 261/2025 · Art. 118</strong>
+          {% if lc261_article_118_pdf_url %}<a href="{{ lc261_article_118_pdf_url }}" target="_blank" rel="noopener noreferrer">Fonte, p. {{ lc261_replacement_article_18_paragraph_2.page|default:lc261_article_118.page }}</a>{% endif %}
+        </article>
+        <div class="pgm-demo__relation-edge"><span>altera o § 2º</span><b aria-hidden="true">→</b></div>
+        <article class="pgm-demo__relation-node pgm-demo__relation-node--target">
+          <span>DISPOSITIVO-ALVO</span><strong>LC 208/2022 · Art. 18, § 2º</strong>
+          {% if lc208_article_18_pdf_url %}<a href="{{ lc208_article_18_pdf_url }}" target="_blank" rel="noopener noreferrer">Redação anterior, p. {{ lc208_article_18_paragraph_2.page }}</a>{% endif %}
+        </article>
+      </div>
+      <div class="pgm-demo__relation-row pgm-demo__relation-row--uncertain" role="group" aria-label="A LC 261/2025, Art. 117 cita revogação do Art. 21 e Anexo A de Lei Municipal 208; a identidade com a LC 208/2022 precisa de revisão">
+        <article class="pgm-demo__relation-node pgm-demo__relation-node--source">
+          <span>ATO COM CLÁUSULA · 04/07/2025</span><strong>LC 261/2025 · Art. 117</strong>
+          {% if lc261_pdf_url %}<a href="{{ lc261_pdf_url }}" target="_blank" rel="noopener noreferrer">Fonte, p. {{ lc261_article_117.page }}</a>{% endif %}
+        </article>
+        <div class="pgm-demo__relation-edge pgm-demo__relation-edge--uncertain"><span>revogação citada · identidade pendente</span><b aria-hidden="true">⇢</b></div>
+        <article class="pgm-demo__relation-node pgm-demo__relation-node--uncertain">
+          <span>ALVO CANDIDATO · NÃO CONFIRMADO</span><strong>“Lei Municipal nº 208” · Art. 21 + Anexo A</strong>
+          {% if lc208_article_21_pdf_url %}<a href="{{ lc208_article_21_pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir Art. 21 candidato, p. {{ lc208_article_21.page }}</a>{% endif %}
+        </article>
+      </div>
+    </div>
+
+    <div class="pgm-demo__case-grid">
+      <article>
+        <span class="pgm-demo__target-index">Redação anterior · candidata</span>
+        <h3>LC 208/2022 · Art. 18, § 2º</h3>
+        {% if lc208_article_18_paragraph_2 %}<blockquote>{{ lc208_article_18_paragraph_2.quote }}</blockquote>{% else %}<p>O parágrafo não foi localizado na extração disponível.</p>{% endif %}
+        {% if lc208_article_18_pdf_url %}<a href="{{ lc208_article_18_pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir PDF candidato da LC 208/2022, Art. 18, § 2º{% if lc208_article_18_paragraph_2.page %}, p. {{ lc208_article_18_paragraph_2.page }}{% endif %}</a>{% endif %}
+      </article>
+      <article>
+        <span class="pgm-demo__target-index">Nova redação citada · candidata</span>
+        <h3>LC 261/2025 · Art. 118</h3>
+        {% if lc261_replacement_article_18_paragraph_2 %}<p><strong>{{ lc261_replacement_article_18_paragraph_2.target }}</strong></p><blockquote>{{ lc261_replacement_article_18_paragraph_2.quote }}</blockquote>{% else %}<p>A redação substitutiva não foi localizada automaticamente.</p>{% endif %}
+        {% if lc261_article_118_pdf_url %}<a href="{{ lc261_article_118_pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir Art. 118 no PDF{% if lc261_replacement_article_18_paragraph_2.page %}, p. {{ lc261_replacement_article_18_paragraph_2.page }}{% elif lc261_article_118.page %}, p. {{ lc261_article_118.page }}{% endif %}</a>{% endif %}
+      </article>
+      <article>
+        <span class="pgm-demo__target-index">Revogação expressa · associação pendente</span>
+        <h3>LC 261/2025 · Art. 117</h3>
+        {% if lc261_article_117 %}<blockquote>{{ lc261_article_117.quote }}</blockquote>{% endif %}
+        <p>A cláusula escreve “Lei Municipal nº 208”, sem o qualificador “Complementar”. A associação com a LC 208/2022 é uma candidata baseada no número, data e contexto; requer conferência humana antes de registrar o evento.</p>
+        {% if lc261_pdf_url %}<a href="{{ lc261_pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir a cláusula no PDF candidato{% if lc261_article_117.page %}, p. {{ lc261_article_117.page }}{% endif %}</a>{% endif %}
+      </article>
+      <article>
+        <span class="pgm-demo__target-index">Redação anterior · candidata</span>
+        <h3>LC 208/2022 · Art. 21</h3>
+        {% if lc208_article_21 %}<details class="pgm-demo__full-evidence"><summary>Ver trecho extraído do Art. 21</summary><blockquote>{{ lc208_article_21.quote }}</blockquote></details>{% else %}<p>O Art. 21 não foi localizado na extração disponível.</p>{% endif %}
+      </article>
+    </div>
+    <aside class="pgm-demo__notice" role="note">
+      <strong>O sistema identificou alterações e uma revogação textual, mas ainda não certifica o estado jurídico consolidado.</strong>
+      <p>Foram pesquisados os textos extraíveis de 570 PDFs oficiais catalogados em 2025–2026 e 17 atos publicados no fim de 2024; não foi localizada menção posterior ao Art. 14 da LC 208. A busca não usou OCR e não prova ausência de alteração em páginas-imagem, atos não catalogados ou documentos sem PDF. As três normas continuam candidatas pendentes no QA; nenhuma relação foi promovida nem um status de vigência foi calculado.</p>
+    </aside>
+  </section>
+
+  <section class="pgm-demo__case" aria-labelledby="pgm-case-title">
+    <header>
+      <span class="workspace-eyebrow">Aplicação prática · processo de licenciamento</span>
+      <h2 id="pgm-case-title">A regra antiga ainda pode reger um processo em andamento?</h2>
+      <p>Exemplo de triagem: pedido de licença protocolado antes da entrada em vigor da LC nº 258/2024 e ainda sem despacho decisório. O resultado depende da data de protocolo e de eventual opção formal pelo novo Código.</p>
+    </header>
+    <div class="pgm-demo__case-grid">
+      <article>
+        <span class="pgm-demo__target-index">Texto anterior · candidato do acervo</span>
+        <h3>LC nº 55/2004 · Art. 21</h3>
+        {% if old_article_21 %}<details class="pgm-demo__full-evidence"><summary>Ver trecho extraído do Art. 21</summary><blockquote>{{ old_article_21.quote }}</blockquote></details>{% else %}<p>O Art. 21 não foi localizado na extração candidata; consulte o PDF diretamente.</p>{% endif %}
+        <p><strong>Limite da evidência:</strong> o PDF local é uma consolidação de julho de 2019, não a redação histórica completa na data de qualquer protocolo posterior.</p>
+        {% if old_article_21_pdf_url %}<a href="{{ old_article_21_pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir Art. 21 no PDF arquivado{% if old_article_21.page %}, p. {{ old_article_21.page }}{% endif %}</a>{% endif %}
+      </article>
+      <article>
+        <span class="pgm-demo__target-index">Ato posterior · extração candidata</span>
+        <h3>LC nº 258/2024 · revogação expressa</h3>
+        {% if lc55_repeal_reference %}<p><strong>Art. 260, inciso IV:</strong> {{ lc55_repeal_reference.citation }}. A referência está no texto da LC 258; sua associação jurídica ainda não foi revisada nem promovida.</p>{% endif %}
+        <h3>Regra de transição · Art. 262</h3>
+        {% if transition_articles.262 %}<blockquote>{{ transition_articles.262.quote }}</blockquote>{% endif %}
+        <h3>Início de vigência · Art. 266</h3>
+        {% if transition_articles.266 %}<blockquote>{{ transition_articles.266.quote }}</blockquote>{% endif %}
+        <p>O cadastro SAPL indica publicação em 27/12/2024; o Art. 266 prevê vigência 90 dias após a publicação. Confirme a publicação oficial e a contagem aplicável ao caso.</p>
+        {% if transition_articles.262 %}<a href="{{ transition_articles.262.pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir arts. 262 e 266 na LC 258/2024{% if transition_articles.262.page %}, p. {{ transition_articles.262.page }}{% endif %}</a>{% endif %}
+      </article>
+    </div>
+    <aside class="pgm-demo__notice" role="note">
+      <strong>O sistema não conclui “aplique a LC 55” automaticamente.</strong>
+      <p>Para a triagem, confira: (1) a data exata do protocolo; (2) se havia despacho decisório na entrada em vigor; (3) se houve opção formal pelo novo Código; (4) as alterações da LC 55 posteriores à consolidação local de julho de 2019. O Art. 262 descreve a regra de transição, mas o acervo atual ainda não prova sozinho a redação completa aplicável ao processo.</p>
+    </aside>
+  </section>
+
+  <section class="pgm-demo__case" aria-labelledby="pgm-lc55-history-title">
+    <header>
+      <span class="workspace-eyebrow">Confronto histórico · cadeia expressa de atos</span>
+      <h2 id="pgm-lc55-history-title">O que aconteceu com a LC nº 55/2004?</h2>
+      <p>Esta linha do tempo confronta o original de 2004, a inclusão de §§ pela LC 173/2017, a nova redação da LC 185/2019, o texto compilado pela Prefeitura em julho de 2019 e a revogação expressa pela LC 258/2024. Os PDFs do ZIP de 2017 e 2019 foram comparados por SHA-256 com os arquivos publicados no portal oficial de Natal. A cadeia agora tem fontes identificadas; a projeção continua sendo minuta de QA até a revisão jurídica e a conferência do período sem cobertura.</p>
+    </header>
+    <ol class="pgm-demo__timeline pgm-demo__timeline--lc55" aria-label="Atos candidatos na cadeia documental da LC 55/2004">
+      <li>
+        <span class="pgm-demo__timeline-date">2004 · norma-base</span>
+        <strong>LC nº 55/2004 · Código de Obras</strong>
+        <p>O PDF original promulgado está disponível na Biblioteca Virtual do Natal. {% if lc55_article_34_original %}A extração candidata do original indica que o Art. 34 contém os §§ 1º e 2º; os §§ 3º, 4º e 5º aparecem em fontes posteriores.{% else %}O trecho do Art. 34 não foi localizado em uma extração nesta instância; não é possível comparar aqui a redação original com os atos posteriores.{% endif %}</p>
+        {% if lc55_article_34_original %}<blockquote>{{ lc55_article_34_original.quote }}</blockquote>{% if lc55_article_34_original.page %}<a href="{{ lc55_article_34_original.pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir Art. 34 no PDF original, p. {{ lc55_article_34_original.page }}</a>{% else %}<a href="{{ lc55_article_34_original.pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir PDF original para conferência do Art. 34</a>{% endif %}{% if lc55_article_34_original.document %}<a href="{{ lc55_article_34_original.official_pdf_url }}{% if lc55_article_34_original.page %}#page={{ lc55_article_34_original.page }}{% endif %}" target="_blank" rel="noopener noreferrer">Abrir fonte original na Biblioteca Virtual do Natal</a>{% endif %}{% else %}<a href="{{ lc55_original_official_pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir fonte original na Biblioteca Virtual do Natal</a>{% endif %}
+        {% if lc55_article_34_original.document %}<small>Trecho lido da extração do PDF oficial no staging QA; revisão {{ lc55_article_34_original.review_status|lower }} e extração {{ lc55_article_34_original.extraction_status }}. É evidência documental, não redação consolidada aprovada.</small>{% endif %}
+        <p>A compilação municipal de julho/2019 permanece como snapshot separado e não prova, sozinha, a vigência posterior.</p>
+      </li>
+      {% for item in lc55_history %}
+      <li data-chain-state="{{ item.state }}">
+        <span class="pgm-demo__timeline-date">{% if item.state == "candidate" %}Ato promulgado · candidato do acervo{% elif item.state == "snapshot" %}Compilação oficial · snapshot textual{% elif item.state == "ambiguous" %}Identidade ambígua{% else %}Fonte textual não localizada{% endif %}</span>
+        <strong>{{ item.source_label }}</strong>
+        {% if item.evidence %}<blockquote>{{ item.evidence.quote }}</blockquote>{% else %}<p>Não há um trecho único e completo para exibir nesta instância QA; nenhuma redação foi presumida.</p>{% endif %}
+        {% if item.pdf_url %}<a href="{{ item.pdf_url }}" target="_blank" rel="noopener noreferrer">{% if item.state == "snapshot" %}Abrir compilação oficial da Prefeitura{% else %}Conferir PDF de origem{% endif %}{% if item.evidence.page %}, p. {{ item.evidence.page }}{% endif %}</a>{% endif %}
+        {% if item.official_pdf_url %}<a href="{{ item.official_pdf_url }}{% if item.evidence.page %}#page={{ item.evidence.page }}{% endif %}" target="_blank" rel="noopener noreferrer">Abrir cópia publicada no portal oficial de Natal{% if item.evidence.page %}, p. {{ item.evidence.page }}{% endif %}</a>{% endif %}
+        {% if item.official_hash_match %}<small>Integridade da cópia confirmada: SHA-256 idêntico ao PDF do portal oficial.</small>{% elif item.official_pdf_url %}<small>O arquivo local ainda não foi confirmado por hash contra a cópia oficial.</small>{% endif %}
+        {% if item.document %}<small>{{ item.document.original_filename }} · revisão {{ item.document.get_review_status_display|lower }}</small>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+    <aside class="pgm-demo__notice" role="note" aria-labelledby="pgm-lc55-current-status-title">
+      <strong id="pgm-lc55-current-status-title">Status temporal para triagem do procurador</strong>
+      <p><strong>Regra geral:</strong> a LC nº 258/2024, Art. 260, IV, revoga expressamente a LC nº 55/2004. Como a publicação ocorreu em 27/12/2024 e o Art. 266 prevê vacância de 90 dias, a data geral calculada de vigência é <time datetime="{{ lc258_effective_date|date:'Y-m-d' }}">{{ lc258_effective_date|date:'d/m/Y' }}</time>. Essa conclusão descreve a cláusula geral; não resolve, por si só, a lei aplicável a um processo de licenciamento específico.</p>
+      <p><strong>Exceção de transição:</strong> verifique se o processo foi protocolado antes de 27/03/2025, se ainda não tinha despacho decisório quando a LC 258 entrou em vigor e se houve manifestação formal do interessado pela aplicação integral da lei nova. Satisfeitos os pressupostos do Art. 262, a regra textual determina a análise integral conforme a legislação vigente na data do protocolo, salvo essa opção formal.</p>
+      <p><strong>Para fechar a redação histórica do Art. 34 da LC 55:</strong> a LC 185/2019, Art. 87, e o snapshot municipal de julho de 2019 divergem na numeração/conteúdo do § 3º. Portanto, ainda não exibimos uma redação consolidada desse artigo como se estivesse revisada; consulte os atos e encaminhe a divergência para validação jurídica.</p>
+    </aside>
+    <article class="pgm-demo__case" aria-labelledby="pgm-lc55-snapshot-title">
+      <span class="pgm-demo__target-index">Snapshot oficial municipal · julho/2019 · divergência pendente</span>
+      <h3 id="pgm-lc55-snapshot-title">LC 55/2004 · Art. 34 como aparece na compilação</h3>
+      {% if lc55_article_34_2019_snapshot %}
+        <blockquote>{{ lc55_article_34_2019_snapshot.quote }}</blockquote>
+        {% if lc55_history.2.pdf_url %}<a href="{{ lc55_history.2.pdf_url }}#page={{ lc55_article_34_2019_snapshot.page }}" target="_blank" rel="noopener noreferrer">Conferir o Art. 34 no PDF oficial compilado, p. {{ lc55_article_34_2019_snapshot.page }}</a>{% endif %}
+      {% else %}<p>O Art. 34 completo não foi localizado no snapshot; não é possível exibir esta redação consolidada documental.</p>{% endif %}
+      <p><strong>Leitura documental:</strong> este é o texto que aparece no snapshot municipal, não uma versão conciliada. O Art. 87 da LC 185/2019 tem redação diferente para o § 3º. O Art. 260, IV, da LC 258/2024 inclui a LC 55/2004 na cláusula “Ficam revogados”. A edição extra nº 5615 do Diário Oficial confirma a publicação da LC 258 em 27/12/2024; o Art. 266 prevê vacância de 90 dias, e o Art. 262 traz regra de transição. O intervalo e a divergência textual não são preenchidos automaticamente.</p>
+    </article>
+    <div class="pgm-demo__case-grid pgm-demo__amendment-comparison" data-lc55-paragraph-comparison>
+      <article>
+        <span class="pgm-demo__target-index">Redação documentada em 2017 · candidata</span>
+        <h3>Art. 34, § 3º · LC 173/2017, Art. 2º</h3>
+        {% if lc55_paragraph_3_2017 %}<blockquote>{{ lc55_paragraph_3_2017.quote }}</blockquote>{% else %}<p>O parágrafo não foi localizado na extração disponível.</p>{% endif %}
+        {% if lc55_history.0.pdf_url %}<a href="{{ lc55_history.0.pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir fonte de 2017{% if lc55_paragraph_3_2017.page %}, p. {{ lc55_paragraph_3_2017.page }}{% endif %}</a>{% endif %}
+      </article>
+      <article>
+        <span class="pgm-demo__target-index">Ato alterador promulgado · LC 185/2019</span>
+        <h3>Art. 34, § 3º · LC 185/2019, Art. 87</h3>
+        {% if lc55_paragraph_3_185 %}<blockquote>{{ lc55_paragraph_3_185.quote }}</blockquote>{% else %}<p>O parágrafo não foi localizado na extração disponível.</p>{% endif %}
+        {% if lc55_replacement_article_34_2019 %}<p>O Art. 87 da LC 185/2019 diz expressamente que o Art. 34 da LC 55 passa a vigorar com nova redação:</p><blockquote>{{ lc55_replacement_article_34_2019.quote }}</blockquote>{% endif %}
+        {% if lc55_history_185.pdf_url %}<a href="{{ lc55_history_185.pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir Art. 87 no PDF do acervo{% if lc55_replacement_article_34_2019.page %}, p. {{ lc55_replacement_article_34_2019.page }}{% endif %}</a>{% endif %}
+        {% if lc55_history_185.official_pdf_url %}<a href="{{ lc55_history_185.official_pdf_url }}{% if lc55_replacement_article_34_2019.page %}#page={{ lc55_replacement_article_34_2019.page }}{% endif %}" target="_blank" rel="noopener noreferrer">Conferir a cópia oficial da LC 185/2019</a>{% endif %}
+      </article>
+    </div>
+    <p class="pgm-demo__comparison-status"><strong>Confronto entre o ato alterador e o snapshot:</strong> {% if lc55_paragraph_3_comparison == "match" %}o § 3º extraído do Art. 87 da LC 185/2019 coincide com o § 3º da compilação oficial de julho de 2019 após normalização de espaços e caixa.{% elif lc55_paragraph_3_comparison == "mismatch" %}há divergência material: o Art. 87 da LC 185/2019 imprime a regra das micro e pequenas empresas como § 3º; o snapshot municipal mantém no § 3º a regra da Licença Simplificada e registra a regra das micro e pequenas empresas como § 5º. Nenhuma redação é escolhida automaticamente.{% else %}não há evidência suficiente nos dois lados para comparar o texto.{% endif %}</p>
+    <aside class="pgm-demo__notice" role="note" aria-label="Lacuna da consolidação do Art. 34">
+      <strong>Fontes primárias identificadas, mas a cadeia do Art. 34 ainda tem uma divergência material entre o Art. 87 da LC 185/2019 e a compilação municipal.</strong>
+      {% if lc55_paragraph_4_2017 %}<p><strong>§ 4º no ato candidato de 2017:</strong> {{ lc55_paragraph_4_2017.quote }}</p>{% endif %}
+      {% if lc55_paragraph_4_2019 %}<p><strong>§ 4º na compilação oficial de 2019:</strong> {{ lc55_paragraph_4_2019.quote }}</p>{% endif %}
+      {% if lc55_paragraph_5_2019 %}<p><strong>§ 5º na compilação oficial de 2019:</strong> {{ lc55_paragraph_5_2019.quote }}</p>{% endif %}
+      <p>O PDF municipal da LC 173 traz no próprio cabeçalho a data de 28/12/2017; o <a href="https://www.natal.rn.gov.br/storage/app/media/semurb/servicos/Decreto_11681-2018.pdf" target="_blank" rel="noopener noreferrer">Decreto municipal nº 11.681/2018</a> menciona “LC 173/2018” apesar de citar a data de 28/12/2017. A divergência está localizada na referência do decreto; a identidade do PDF da lei foi conferida pelo hash da cópia oficial, sem usar a proposição legislativa como fonte de vigência.</p>
+      <p>A compilação atribui o § 5º à LC 185/2019, enquanto o Art. 87 do PDF promulgado fornece redação de § 3º com outro conteúdo. O sistema registra as duas evidências e deixa o alcance legislativo para revisão jurídica. A LC 258/2024 depois lista a LC 55 entre as revogadas; para processos de licenciamento, seu Art. 262 prevê regra de transição que depende do protocolo e de eventual opção formal pelo novo Código.</p>
+    </aside>
+    <aside class="pgm-demo__notice" role="note">
+      <strong>Resultado: localizamos a cadeia promulgada e os documentos oficiais, mas não é seguro publicar uma redação consolidada final do Art. 34 ainda.</strong>
+      <p>Estão documentados os atos e a sucessão: a LC 173/2017 acrescenta §§ 3º e 4º; o Art. 87 da LC 185/2019 declara nova redação para o Art. 34; a compilação municipal de julho/2019 não reproduz o mesmo § 3º; e o Art. 260, IV, da LC 258/2024 lista a LC 55/2004 na cláusula “Ficam revogados”. A publicação da LC 258 está confirmada no DOM; o efeito geral da cláusula depende da vacância do Art. 266, sem afastar a regra de transição do Art. 262. O snapshot é mostrado como fonte, não escolhido como texto final.</p>
+      <p><strong>Estado temporal documentado:</strong> a LC 258/2024 foi publicada na edição extra nº 5615 do Diário Oficial do Município, em 27/12/2024; a própria edição contém a lei. O Art. 266 prevê vacância de 90 dias. Aplicando a regra de contagem do Art. 8º, § 1º, da LC 95/1998 — inclusão da publicação e do último dia, com vigência no dia seguinte à consumação do prazo — a data geral calculada é <time datetime="{{ lc258_effective_date|date:'Y-m-d' }}">{{ lc258_effective_date|date:'d/m/Y' }}</time>. A lista do Art. 260, IV, inclui expressamente a LC 55/2004. Para processos de licenciamento protocolados até a entrada em vigor e ainda sem despacho decisório, o Art. 262 prevê análise integral segundo a legislação da data do protocolo, salvo opção formal pela lei nova; confira esses fatos antes de aplicar a regra ao caso concreto. Consulte a <a href="{{ lc258_dom_issue_url }}#page=17" target="_blank" rel="noopener noreferrer">edição extra nº 5615 do DOM, p. 17 (publicação da LC 258)</a>, a <a href="https://sapl.natal.rn.leg.br/norma/4052" target="_blank" rel="noopener noreferrer">ficha oficial da LC 258/2024</a>, o <a href="{{ lc258_official_pdf_url }}#page=59" target="_blank" rel="noopener noreferrer">PDF oficial no SAPL, Arts. 260, 262 e 266</a> e a <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp95.htm" target="_blank" rel="noopener noreferrer">regra de contagem da LC 95/1998</a>.</p>
+      <p><strong>Exceção que importa à PGM:</strong> pelo Art. 262 da LC 258, processos de licenciamento protocolados até a entrada em vigor e ainda sem despacho decisório são apreciados integralmente segundo a legislação vigente na data do protocolo, salvo manifestação formal do interessado pela análise integral conforme a lei nova. Antes de aplicar isso, confirme protocolo, existência de despacho e eventual opção formal no processo.</p>
+      <p><strong>Próxima revisão necessária:</strong> decidir juridicamente o alcance das reticências e do § 3º do Art. 87, explicar por que a compilação apresenta texto diferente e pesquisar atos posteriores ao snapshot até a entrada em vigor da LC 258. Até lá, a resposta correta do sistema é “cadeia identificada; redação consolidada inconclusiva”.</p>
+      <p><strong>Divergência de identidade para revisão:</strong> o Art. 260, VII, da LC 258/2024 escreve “Lei nº 198, de 12 de novembro de 2021”, enquanto o <a href="https://sapl.natal.rn.leg.br/norma/925" target="_blank" rel="noopener noreferrer">cadastro oficial do SAPL identifica a norma nº 198 daquela data como Lei Complementar</a>. Não tratamos esses rótulos como equivalentes sem confirmar a identidade do ato e a intenção da referência.</p>
+      <p>Para usar a regra em um processo, o procurador ainda precisa confirmar o texto do ato no DOM, a data do protocolo, a existência de despacho decisório na entrada em vigor e eventual opção formal do interessado pelo novo Código.</p>
+    </aside>
+  </section>
+
   <section class="pgm-demo__evidence" aria-labelledby="pgm-evidence-title">
     <div><span class="workspace-eyebrow">Trecho que fundamenta as sete referências</span><h2 id="pgm-evidence-title">Evidência do Art. 260</h2></div>
     <article class="pgm-demo__quote">
@@ -176,6 +688,13 @@
     <h2 id="pgm-transition-title">O que o grafo ainda não responde</h2>
     <p>Antes de tratar qualquer aresta como efeito jurídico, é preciso conferir cada ato citado em fonte oficial, sua publicação e vigência, eventuais republicações e alterações posteriores. Também é necessário modelar dispositivos — não apenas documentos — e revisar as relações por pessoa autorizada.</p>
     <p>Um caso concreto ainda exigiria a data relevante e a redação aplicável nessa data. A LC nº 258/2024, Art. 262, traz uma regra de transição para certos processos de licenciamento; ela deve ser lida junto do histórico oficial, não inferida deste desenho.</p>
+    {% if pending_proposal_watch %}
+    <aside class="pgm-demo__notice" role="note" aria-label="Monitoramento de proposição legislativa fora da consolidação">
+      <strong>Proposta legislativa pendente — não incorporada à consolidação nem ao RAG</strong>
+      <p>{{ pending_proposal_watch.title }}. O cadastro SAPL consultado em {{ pending_proposal_watch.checked_on }} indica: {{ pending_proposal_watch.status }}. {{ pending_proposal_watch.latest_event }} A proposta não é tratada como alteração promulgada nem como redação vigente.</p>
+      <p><a href="{{ pending_proposal_watch.matter_url }}" target="_blank" rel="noopener noreferrer">Conferir tramitação do PLC nº 12/2025 no SAPL</a> · <a href="{{ pending_proposal_watch.opinion_url }}" target="_blank" rel="noopener noreferrer">Ler o Parecer nº 993/2026</a></p>
+    </aside>
+    {% endif %}
     <a class="workspace-button workspace-button-secondary" href="{% url 'workspace:explore' %}">Voltar à exploração normativa</a>
   </section>
 </main>

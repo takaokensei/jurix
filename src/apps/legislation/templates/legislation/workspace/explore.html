@@ -32,10 +32,52 @@
 {% if error %}<div class="workspace-alert" role="alert">{{ error }}</div>{% endif %}
 {% if include_pending_relations %}<p class="workspace-search-caveat" role="note">Modo restrito a revisores: relações e trechos abaixo são candidatos extraídos. “Pendente” ou “Rejeitado” não comprova alteração, revogação, vigência ou aplicação ao caso. Abra o documento original para conferência.</p>{% else %}<p class="workspace-search-caveat" role="note">Associação temática é apenas afinidade. Ela não significa alteração, revogação ou vigência. Relações e dispositivos só são mostrados a partir de registros consolidados e revisados; documentos pendentes ficam na busca do acervo, não neste grafo.</p>{% endif %}
 
+{% if include_pending_relations %}
+<section class="workspace-results-section" aria-labelledby="unlinked-candidate-documents-title">
+    <div class="workspace-section-heading"><div><span class="workspace-eyebrow">Acervo aguardando vinculação</span><h2 id="unlinked-candidate-documents-title">{{ candidate_document_count }} PDF{% if candidate_document_count != 1 %}s{% endif %} com menções candidatas sem norma vinculada</h2></div>{% if candidate_documents_page.paginator.num_pages > 1 %}<span class="workspace-badge">Página {{ candidate_documents_page.number }} de {{ candidate_documents_page.paginator.num_pages }}</span>{% endif %}</div>
+    <p class="workspace-search-caveat" role="note">A identidade exibida veio do cadastro/arquivo e ainda não está vinculada a uma Norma. A contagem considera somente menções da extração completa mais recente ainda sem revisão. Confira a capa e o trecho no PDF antes de registrar qualquer decisão.</p>
+    {% if candidate_documents_page.object_list %}
+    <div class="workspace-result-list">
+        {% for document in candidate_documents_page.object_list %}
+        {% with identity=document.metadata_json.identity_candidate %}
+        <article class="workspace-result-card explore-norm-card">
+            <div class="explore-norm-main">
+                <div class="workspace-result-meta"><span>{{ identity.type|default:document.get_source_kind_display }}{% if identity.number %} nº {{ identity.number }}{% endif %}{% if identity.year %}/{{ identity.year }}{% endif %}</span><span>{{ document.get_source_kind_display }} · identidade pendente</span><span>{{ document.pending_relation_count }} {% if document.pending_relation_count == 1 %}menção{% else %}menções{% endif %} sem revisão</span></div>
+                <h3>{{ document.original_filename|default:"Documento normativo sem identidade confirmada"|truncatechars:180 }}</h3>
+            </div>
+            <div class="workspace-filter-row">
+                <a class="workspace-button workspace-button-secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}documento={{ document.public_id }}#explore-document-title">Abrir menções</a>
+                <a class="workspace-button workspace-button-secondary" href="{% url 'legislation:document_evidence' document.public_id %}">Conferir PDF e identidade</a>
+            </div>
+        </article>
+        {% endwith %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="workspace-empty-state"><strong>Nenhum PDF sem vínculo corresponde aos filtros.</strong><p>Documentos pendentes não equivalem a normas consolidadas; tente limpar os filtros ou pesquise o acervo.</p></div>
+    {% endif %}
+    {% if candidate_documents_page.paginator.num_pages > 1 %}
+    <nav class="workspace-archive-pagination" aria-label="Paginação de PDFs com menções pendentes">
+        {% if candidate_documents_page.has_previous %}<a class="workspace-button workspace-button-secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}documentos_page={{ candidate_documents_page.previous_page_number }}#unlinked-candidate-documents-title">Anterior</a>{% endif %}
+        <span>Página {{ candidate_documents_page.number }} de {{ candidate_documents_page.paginator.num_pages }}</span>
+        {% if candidate_documents_page.has_next %}<a class="workspace-button workspace-button-secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}documentos_page={{ candidate_documents_page.next_page_number }}#unlinked-candidate-documents-title">Próxima</a>{% endif %}
+    </nav>
+    {% endif %}
+</section>
+{% endif %}
+
 {% if selected_norma and normative_graph_enabled %}
 <section class="explore-selected" aria-labelledby="explore-selected-title">
-    <div class="explore-selected-heading"><div><span class="workspace-eyebrow">{% if include_pending_relations %}Fonte selecionada para revisão{% else %}Norma selecionada{% endif %}</span><h2 id="explore-selected-title">{{ selected_norma.get_tipo_display_name }} nº {{ selected_norma.numero }}/{{ selected_norma.ano }}</h2></div>{% if include_pending_relations %}<a class="workspace-button workspace-button-secondary" href="{% url 'legislation:document_evidence' selected_norma.documento_base.public_id %}">Conferir documento original</a>{% else %}<a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_detail' selected_norma.pk %}">Abrir ficha da norma</a>{% endif %}</div>
+    <div class="explore-selected-heading"><div><span class="workspace-eyebrow">{% if include_pending_relations %}Fonte selecionada para revisão{% else %}Norma selecionada{% endif %}</span><h2 id="explore-selected-title">{{ selected_norma.get_tipo_display_name }} nº {{ selected_norma.numero }}/{{ selected_norma.ano }}</h2></div>{% if include_pending_relations and selected_norma.candidate_document_public_id %}<a class="workspace-button workspace-button-secondary" href="{% url 'legislation:document_evidence' selected_norma.candidate_document_public_id %}">Conferir documento original</a>{% elif include_pending_relations %}<a class="workspace-button workspace-button-secondary" href="{% url 'legislation:document_evidence' selected_norma.documento_base.public_id %}">Conferir documento original</a>{% else %}<a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_detail' selected_norma.pk %}">Abrir ficha da norma</a>{% endif %}</div>
     {% include 'legislation/_norma_relations.html' with norma=selected_norma include_pending_relations=include_pending_relations %}
+</section>
+{% endif %}
+
+{% if selected_candidate_document and include_pending_relations and normative_graph_enabled %}
+<section class="explore-selected" aria-labelledby="explore-document-title">
+    <div class="explore-selected-heading"><div><span class="workspace-eyebrow">PDF selecionado para revisão</span><h2 id="explore-document-title">{{ selected_candidate_document.original_filename|default:"Documento normativo candidato" }}</h2></div><a class="workspace-button workspace-button-secondary" href="{% url 'legislation:document_evidence' selected_candidate_document.public_id %}">Conferir extração e fonte</a></div>
+    <p class="workspace-search-caveat" role="note">Este grafo parte de um PDF pendente cuja identidade ainda pode não estar vinculada a uma norma do cadastro. As arestas são menções extraídas da versão mais recente; não confirmam identidade, alteração, revogação, efeitos ou vigência.</p>
+    {% include 'legislation/_document_candidate_relations.html' with document=selected_candidate_document %}
 </section>
 {% endif %}
 
@@ -45,7 +87,7 @@
     <div class="workspace-result-list">
         {% for norma in page.object_list %}
         <article class="workspace-result-card explore-norm-card">
-            <a class="explore-norm-main" href="{% if include_pending_relations %}{% url 'legislation:document_evidence' norma.documento_base.public_id %}{% else %}{% url 'legislation:norma_detail' norma.pk %}{% endif %}">
+            <a class="explore-norm-main" href="{% if include_pending_relations and norma.candidate_document_public_id %}{% url 'legislation:document_evidence' norma.candidate_document_public_id %}{% elif include_pending_relations %}{% url 'legislation:document_evidence' norma.documento_base.public_id %}{% else %}{% url 'legislation:norma_detail' norma.pk %}{% endif %}">
                 <div class="workspace-result-meta"><span>{{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }}</span>{% if include_pending_relations %}<span class="workspace-badge">Relações extraídas · confira o status</span>{% endif %}{% if norma.data_publicacao %}<span>Publicada em {{ norma.data_publicacao|date:"d/m/Y" }}</span>{% endif %}</div>
                 <h3>{{ norma.ementa|default:"Norma consolidada"|truncatechars:180 }}</h3>
             </a>

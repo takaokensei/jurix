@@ -92,6 +92,94 @@ test('distingue vínculos pendentes e rejeitados dos confirmados', async () => {
   dom.window.close();
 });
 
+test('usa a identidade de raiz de um PDF pendente sem Norma vinculada', async () => {
+  const documentGraph = {
+    success: true,
+    root_id: 'candidate-document:pdf-1',
+    nodes: [
+      { id: 'candidate-document:pdf-1', kind: 'candidate_document', label: 'LC nº 258/2024 · identidade pendente' },
+      { id: 'candidate-target:old-law', kind: 'candidate_target', label: 'Lei nº 55/2004 · alvo não resolvido' },
+    ],
+    edges: [{
+      id: 'document-candidate:1',
+      source: 'candidate-document:pdf-1',
+      target: 'candidate-target:old-law',
+      action: 'REVOGA',
+      review_status: 'candidate_pending',
+      effective_status: 'not_assessed',
+      evidence: {
+        quote: 'I - Lei nº 55/2004.',
+        target_document_candidates: [
+          {
+            url: '/normas/documentos/target-pdf/',
+            filename: 'lei-55-2004.pdf',
+            source: 'SAPL',
+            review_status: 'Pendente de revisão',
+            identity_type: 'lei',
+            type_matches: true,
+          },
+          {
+            url: 'https://external.example/target.pdf',
+            filename: 'lei-complementar-55-2004.pdf',
+            source: 'Arquivo histórico',
+            review_status: 'Pendente de revisão',
+            identity_type: 'lei_complementar',
+            type_matches: false,
+          },
+        ],
+      },
+    }],
+  };
+  const dom = await boot(async () => ({ ok: true, json: async () => documentGraph }));
+  open(dom);
+  await settle();
+  assert.equal(
+    dom.window.document.querySelectorAll('.normative-relations__node--root').length,
+    1,
+  );
+  dom.window.document.querySelector('.normative-relations__group-button').click();
+  assert.match(
+    dom.window.document.querySelector('[data-relations-panel-content]').textContent,
+    /Candidato pendente de revisão/,
+  );
+  const panel = dom.window.document.querySelector('[data-relations-panel-content]');
+  assert.match(panel.textContent, /coincidência de metadados; vínculo não confirmado/);
+  assert.match(panel.textContent, /conflito de espécie: lei_complementar/);
+  assert.equal([...panel.querySelectorAll('a')].find((link) => link.textContent === 'lei-55-2004.pdf')?.href, 'http://jurix.test/normas/documentos/target-pdf/');
+  assert.equal(panel.querySelectorAll('a[href^="https://external.example"]').length, 0);
+  dom.window.close();
+});
+
+test('distingue texto conferido de identidade de alvo ainda não resolvida', async () => {
+  const documentGraph = {
+    success: true,
+    root_id: 'candidate-document:pdf-1',
+    nodes: [
+      { id: 'candidate-document:pdf-1', kind: 'candidate_document', label: 'LC nº 258/2024' },
+      { id: 'candidate-target:law-1894', kind: 'candidate_target', label: 'Lei Complementar nº 1894/1969 · alvo não resolvido' },
+    ],
+    edges: [{
+      id: 'document-candidate:1',
+      source: 'candidate-document:pdf-1',
+      target: 'candidate-target:law-1894',
+      action: 'REVOGA',
+      review_status: 'candidate_text_confirmed_unresolved',
+      resolution: 'unresolved_candidate',
+      effective_status: 'not_assessed',
+      evidence: { quote: 'I - Lei Complementar nº 1.894 de 31 de dezembro de 1969;' },
+    }],
+  };
+  const dom = await boot(async () => ({ ok: true, json: async () => documentGraph }));
+  open(dom);
+  await settle();
+  dom.window.document.querySelector('.normative-relations__group-button').click();
+  const panel = dom.window.document.querySelector('[data-relations-panel-content]');
+  assert.match(panel.textContent, /Trecho citado conferido; identidade do alvo ainda não confirmada/);
+  assert.match(panel.textContent, /não comprova efeito jurídico/);
+  assert.match(panel.textContent, /I - Lei Complementar nº 1\.894/);
+  dom.window.close();
+});
+
 test('Escape fecha painel e devolve foco ao controle de origem', async () => {
   const dom = await boot();
   open(dom);

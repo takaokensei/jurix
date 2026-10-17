@@ -385,6 +385,28 @@ test('assistant references to a sourced law article link directly to the officia
   window.close();
 });
 
+test('assistant references to general federal legislation identify the Planalto destination', async () => {
+  const { window } = await renderWithSource();
+  const body = window.document.createElement('div');
+  body.innerHTML = window.JurixMarkdown.render('Conforme a **Lei Complementar nº 95/1998, Art. 8º**, conta-se o prazo.');
+  window.JurixRagUI.linkLegalReferences(body, [source({
+    source_kind: 'official_general_legislation',
+    source_url: 'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp95.htm',
+    norma_ref: 'Lei Complementar nº 95/1998',
+    dispositivo_ref: 'Art. 8º, § 1º',
+  })]);
+  const lawLink = [...body.querySelectorAll('.jurix-legal-reference-link')]
+    .find((link) => link.textContent === 'Lei Complementar nº 95/1998');
+  const articleLink = [...body.querySelectorAll('.jurix-legal-reference-link')]
+    .find((link) => link.textContent === 'Art. 8º');
+  assert.ok(lawLink);
+  assert.ok(articleLink);
+  assert.equal(new URL(lawLink.href).hostname, 'www.planalto.gov.br');
+  assert.match(lawLink.title, /no Planalto/);
+  assert.match(articleLink.title, /no Planalto/);
+  window.close();
+});
+
 test('assistant references backed by archived PDFs are labelled as local-file links, not SAPL links', async () => {
   const archived = source({
     evidence_scope: 'isolated_qa_archive',

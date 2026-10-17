@@ -105,6 +105,40 @@ def test_exact_duplicate_contents_and_candidate_identity_are_reported_separately
     assert summary["potential_filename_identity_collision_groups"] == [[0, 1]]
 
 
+def test_html_companion_is_not_counted_as_a_normative_identity_collision(tmp_path):
+    archive = _zip(
+        tmp_path / "html-companion.zip",
+        [
+            ("LeiComplementar_20240101_55.pdf", b"first pdf"),
+            ("LeiComplementar_20240101_55.html", b"html companion"),
+            ("LeiComplementar_20240601_55.pdf", b"later pdf"),
+        ],
+    )
+
+    summary = inventory_archive(archive, tmp_path / "manifest.jsonl")
+
+    assert summary["potential_filename_identity_collision_groups"] == [[0, 2]]
+
+
+def test_zero_byte_pdf_is_counted_separately_from_a_complete_inventory(tmp_path):
+    archive = _zip(
+        tmp_path / "empty-pdf.zip",
+        [
+            ("Lei_20200101_1.pdf", b"%PDF-1.4 valid candidate bytes"),
+            ("Lei_20200101_2.pdf", b""),
+        ],
+    )
+
+    summary = inventory_archive(archive, tmp_path / "empty-pdf.jsonl")
+    rows = _records(tmp_path / "empty-pdf.jsonl")
+
+    assert summary["complete"] is True
+    assert summary["entry_count"] == 2
+    assert summary["empty_pdf_entries"] == [1]
+    assert rows[1]["uncompressed_bytes"] == 0
+    assert rows[1]["hash_status"] == "hashed"
+
+
 def test_symlink_entry_is_listed_but_not_hashed(tmp_path):
     link = zipfile.ZipInfo("link.pdf")
     link.create_system = 3

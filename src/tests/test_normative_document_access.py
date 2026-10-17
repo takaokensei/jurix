@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 
 import pytest
 from django.contrib.auth.models import User
@@ -8,7 +9,7 @@ from django.test import Client, override_settings
 from django.urls import reverse
 
 from src.apps.ingestion.management.commands.seed_normative_qa import seed_fixture
-from src.apps.legislation.document_models import DocumentoNormativo
+from src.apps.legislation.document_models import DocumentoNormativo, ExtracaoDocumento
 from src.apps.legislation.document_views import _document_path
 from src.processing.official_urls import safe_official_url
 
@@ -44,8 +45,6 @@ def test_approved_document_evidence_is_public_and_candidate_is_hidden(document_m
 
 @pytest.mark.django_db
 def test_archive_candidates_are_inspectable_only_behind_explicit_qa_flag():
-    from src.apps.legislation.document_models import ExtracaoDocumento
-
     text = "Art. 1º. Texto extraído para revisão, não para consolidação automática."
     document = DocumentoNormativo.objects.create(
         document_key=hashlib.sha256(b"archive-candidate-test").hexdigest(),
@@ -107,6 +106,58 @@ def test_archive_candidates_are_inspectable_only_behind_explicit_qa_flag():
 
     with override_settings(DEBUG=True, NORMATIVE_ARCHIVE_REVIEW_UI_ENABLED=False):
         assert client.get(evidence_url).status_code == 404
+
+
+@pytest.mark.django_db
+def test_archive_page_resolver_uses_pdf_access_policy_and_returns_only_verified_page():
+    legal_text = "Introdução. Art. 1º Conteúdo verificável na segunda página."
+    start = legal_text.index("Art. 1º")
+    document = DocumentoNormativo.objects.create(
+        document_key=hashlib.sha256(b"page-resolver-doc").hexdigest(),
+        source_kind=DocumentoNormativo.SourceKind.ARCHIVE,
+        source_ref="qa/page-resolver.pdf",
+        content_sha256=hashlib.sha256(b"page-resolver-pdf").hexdigest(),
+        original_filename="page-resolver.pdf",
+    )
+    ExtracaoDocumento.objects.create(
+        documento=document,
+        extractor_version="qa-page-resolver-v1",
+        policy_fingerprint=hashlib.sha256(b"page-resolver-policy").hexdigest(),
+        text_version="qa-page-resolver-text-v1",
+        legal_text=legal_text,
+        page_map_json=[
+            {"page": 1, "start": 0, "end": start + 8},
+            {"page": 2, "start": start + 8, "end": len(legal_text)},
+        ],
+    )
+    request_source = {
+        "evidence_scope": "isolated_qa_archive",
+        "document_id": str(document.public_id),
+        "document_sha256": document.content_sha256,
+        "span": {"start": start, "end": len(legal_text)},
+        "full_text": legal_text[start:],
+    }
+    url = reverse("legislation_api:archive_citation_resolve_pages")
+    client = Client()
+
+    with override_settings(DEBUG=True, NORMATIVE_ARCHIVE_REVIEW_UI_ENABLED=True):
+        response = client.post(
+            url,
+            data=json.dumps({"sources": [request_source]}),
+            content_type="application/json",
+        )
+    assert response.status_code == 200
+    assert response.json() == {"success": True, "resolved": [{"index": 0, "page": 2}]}
+    assert response["Cache-Control"] == "private, no-store, max-age=0"
+
+    with override_settings(DEBUG=True, NORMATIVE_ARCHIVE_REVIEW_UI_ENABLED=False):
+        hidden = client.post(
+            url,
+            data=json.dumps({"sources": [request_source]}),
+            content_type="application/json",
+        )
+    assert hidden.status_code == 200
+    assert hidden.json() == {"success": True, "resolved": []}
 
 
 @pytest.mark.django_db(transaction=True)

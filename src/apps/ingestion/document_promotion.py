@@ -12,7 +12,11 @@ from src.apps.legislation.document_models import DocumentoNormativo, ExtracaoDoc
 from src.apps.legislation.models import Norma
 from src.apps.legislation.review_models import RevisaoJuridica
 from src.processing.corpus_write_boundary import corpus_write_boundary
-from src.processing.document_metadata import TYPE_SERIES, build_normative_identity
+from src.processing.document_metadata import (
+    TYPE_SERIES,
+    build_normative_identity,
+    extraction_identity_check,
+)
 from src.processing.normative_reference import canonical_type
 
 
@@ -49,6 +53,11 @@ def identity_for_norma(norma: Norma):
     )
 
 
+def _is_synthetic_norma(norma: Norma) -> bool:
+    identity_json = norma.identity_json if isinstance(norma.identity_json, dict) else {}
+    return identity_json.get("synthetic_fixture") is True or identity_json.get("synthetic") is True
+
+
 def promotion_candidates(document: DocumentoNormativo) -> dict:
     candidate_key = (document.metadata_json or {}).get("identity_key")
     reason = None
@@ -63,9 +72,12 @@ def promotion_candidates(document: DocumentoNormativo) -> dict:
     elif document.accepted_extraction.status != ExtracaoDocumento.Status.COMPLETE:
         reason = "extraction_incomplete"
     matches = list(Norma.objects.filter(identity_key=candidate_key)) if candidate_key else []
+    synthetic_conflict = any(_is_synthetic_norma(norma) for norma in matches)
+    if synthetic_conflict:
+        reason = "synthetic_norma_identity_conflict"
     return {
         "identity_key": candidate_key,
-        "norma_ids": [norma.pk for norma in matches],
+        "norma_ids": [] if synthetic_conflict else [norma.pk for norma in matches],
         "status": "blocked" if reason or len(matches) != 1 else "candidate",
         "reason": reason or ("no_matching_norma" if not matches else "multiple_matching_normas" if len(matches) > 1 else None),
     }
@@ -93,6 +105,15 @@ def promote_document(
         raise PromotionBlocked("Fingerprint desatualizado; recarregue o candidato antes de revisar.")
     if (document.metadata_json or {}).get("synthetic"):
         raise PromotionBlocked("Fixture sintética não pode ser promovida como evidência jurídica humana.")
+    if document.accepted_extraction_id:
+        identity_check = extraction_identity_check(
+            (document.metadata_json or {}).get("identity_candidate"),
+            document.accepted_extraction.metadata_candidates_json,
+        )
+        if identity_check["status"] == "conflict":
+            raise PromotionBlocked(
+                "A epígrafe extraída diverge da identidade candidata; promoção bloqueada até revisão da identidade."
+            )
     if not confirm_public_record:
         raise PromotionBlocked("Confirme explicitamente a condição de registro público/licenciado.")
     if confirmed_role != DocumentoNormativo.Role.ORIGINAL:

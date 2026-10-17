@@ -34,6 +34,40 @@
     resize: none;
 }
 
+@media (min-width: 768px) {
+    .figma-theme #conversation-input-bar .jurix-composer-filters {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        width: 100%;
+        gap: 8px;
+    }
+
+    .figma-theme #conversation-input-bar .jurix-composer-filters > .figma-search-dropdown {
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        min-height: 44px;
+        height: auto;
+        padding-inline: 10px;
+        justify-content: flex-start;
+        white-space: nowrap;
+    }
+
+    .figma-theme #conversation-input-bar .jurix-composer-filters [data-control-label] {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .figma-theme #conversation-input-bar .jurix-composer-filters .jurix-temporal-filter {
+        grid-column: 1 / -1;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+    }
+}
+
 @media (max-width: 767px) {
     .figma-theme #conversation-input-bar {
         padding-top: 8px;

@@ -107,6 +107,12 @@ def _validation_shape_metrics(
                 len(sources or []),
                 available_sample_sources=sampled_source_count,
             ),
+            "meets_partial_overview_source_alignment": qa_archive_rag._has_partial_overview_breadth(
+                answer_text,
+                len(sources or []),
+                available_sample_sources=sampled_source_count,
+                sources=sources,
+            ),
             "has_repeated_citation_marker": has_repeated_citation_marker(answer_text),
             "has_redundant_content_phrase": has_redundant_content_phrase(answer_text),
         },
@@ -133,6 +139,70 @@ def _answer_shape_metrics(answer: str) -> dict[str, object]:
     }
 
 
+def _whole_norm_selection_metrics(
+    candidates: list[dict], selected: list[dict], *, context_budget_chars: int
+) -> dict[str, object]:
+    """Report selected/missing article labels and sizes, never legal text."""
+    candidate_refs = list(dict.fromkeys(
+        str(row.get("dispositivo_ref") or "").strip()
+        for row in candidates
+        if str(row.get("dispositivo_ref") or "").strip()
+    ))
+    selected_refs = list(dict.fromkeys(
+        str(row.get("dispositivo_ref") or "").strip()
+        for row in selected
+        if str(row.get("dispositivo_ref") or "").strip()
+    ))
+    selected_ref_set = set(selected_refs)
+    return {
+        "candidate_article_count": len(candidate_refs),
+        "selected_article_count": len(selected_refs),
+        "omitted_article_refs": [ref for ref in candidate_refs if ref not in selected_ref_set],
+        "candidate_text_characters": sum(len(str(row.get("full_text") or "")) for row in candidates),
+        "selected_text_characters": sum(len(str(row.get("full_text") or "")) for row in selected),
+        "context_budget_characters": context_budget_chars,
+    }
+
+
+def _citation_alignment_shapes(answer: str, sources: list[dict]) -> list[dict[str, object]]:
+    """Return only device labels and article numbers for alignment debugging."""
+    marker_pattern = re.compile(r"\[\[(\d+)\]\]")
+    article_pattern = re.compile(r"\b(?:art\.?|artigo)\s*(\d+[a-z]?)\s*[-º°ª]?", re.I)
+    boundary_pattern = re.compile(
+        r"(?<=[!?])\s+|(?<=\.)\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])|"
+        r"(?<=\]\])\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])|[\r\n]+"
+    )
+    rows = []
+    for marker in marker_pattern.finditer(str(answer or "")):
+        source_index = int(marker.group(1))
+        sentence_start = max(
+            (boundary.end() for boundary in boundary_pattern.finditer(answer, 0, marker.start())),
+            default=0,
+        )
+        sentence_end = min(
+            (boundary.start() for boundary in boundary_pattern.finditer(answer, marker.end())),
+            default=len(answer),
+        )
+        sentence_text = answer[sentence_start:sentence_end]
+        article_mentions = [
+            match.group(1).casefold()
+            for match in article_pattern.finditer(sentence_text)
+        ]
+        device_ref = (
+            str(sources[source_index - 1].get("dispositivo_ref") or "")
+            if 1 <= source_index <= len(sources)
+            else ""
+        )
+        source_article = qa_archive_rag._article_key(device_ref)
+        rows.append({
+            "citation_index": source_index,
+            "source_device_ref": device_ref[:80],
+            "source_article_key": source_article,
+            "article_mentions_before_marker": article_mentions[-4:],
+        })
+    return rows
+
+
 class Command(BaseCommand):
     help = "Measure QA archive overview grounding without saving legal text."
 
@@ -157,19 +227,86 @@ class Command(BaseCommand):
         validation_metrics: list[dict[str, object]] = []
         model_stream_chunks: list[str] = []
         quality_gate_checks: list[dict[str, object]] = []
+        stop_callback_checks: list[dict[str, object]] = []
+        whole_norm_selection_metrics: list[dict[str, object]] = []
         original_generation = qa_archive_rag.stream_grounded_generation
         original_quality_check = qa_archive_rag.has_redundant_content_phrase
+        original_whole_norm_sampler = qa_archive_rag._sample_whole_norm_rows
         from src.processing.rag_service import RAGService
+
+        def capture_whole_norm_selection(rows, **kwargs):
+            selected, total = original_whole_norm_sampler(rows, **kwargs)
+            whole_norm_selection_metrics.append(
+                _whole_norm_selection_metrics(
+                    rows,
+                    selected,
+                    context_budget_chars=qa_archive_rag._WHOLE_NORM_CONTEXT_BUDGET_CHARS,
+                )
+            )
+            return selected, total
 
         original_validate = RAGService._validate_answer
 
         def capture_validation(prompt, *, validate_attempt, **kwargs):
+            last_sources: list[dict] = []
+
             def validate_with_metrics(service, answer, sources):
+                last_sources[:] = sources
                 result = original_validate(service, answer, sources)
                 validation_metrics.append(
                     _validation_shape_metrics(result, sources, answer)
                 )
                 return result
+
+            original_stop = kwargs.get("stop_after_validated_prefix")
+            if original_stop is not None:
+                def stop_with_metrics(answer, validation):
+                    stop = bool(original_stop(answer, validation))
+                    marker_matches = list(_CITATION_MARKER_RE.finditer(answer))
+                    markers = [int(match.group(1)) for match in marker_matches]
+                    last_marker_ends: dict[int, int] = {}
+                    repeated_marker_gaps = []
+                    for match, marker in zip(marker_matches, markers, strict=True):
+                        if marker in last_marker_ends:
+                            gap = answer[last_marker_ends[marker] : match.start()]
+                            repeated_marker_gaps.append({
+                                "gap_chars": len(gap),
+                                "contains_sentence_boundary": bool(re.search(
+                                    r"(?<=[!?])\s+|(?<=\.)\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])|[\r\n]+",
+                                    gap,
+                                )),
+                            })
+                        last_marker_ends[marker] = match.end()
+                    stop_callback_checks.append({
+                        "character_count": len(answer),
+                        "citation_marker_count": len(markers),
+                        "distinct_citation_marker_count": len(set(markers)),
+                        "citation_alignment_shapes": _citation_alignment_shapes(answer, last_sources),
+                        "repeated_marker_gaps": repeated_marker_gaps,
+                        "broad_without_source_alignment": qa_archive_rag._has_partial_overview_breadth(
+                            answer,
+                            len(last_sources),
+                            available_sample_sources=sum(
+                                bool(source.get("evidence_text")) for source in last_sources
+                            ),
+                        ),
+                        "source_alignment": qa_archive_rag._has_partial_overview_breadth(
+                            answer,
+                            len(last_sources),
+                            available_sample_sources=sum(
+                                bool(source.get("evidence_text")) for source in last_sources
+                            ),
+                            sources=last_sources,
+                        ),
+                        "grounded": bool(validation.get("grounded")),
+                        "source_only": bool(validation.get("source_only")),
+                        "repeated_citation_marker": has_repeated_citation_marker(answer),
+                        "redundant_content": original_quality_check(answer),
+                        "stop": stop,
+                    })
+                    return stop
+
+                kwargs["stop_after_validated_prefix"] = stop_with_metrics
 
             with patch.object(RAGService, "_validate_answer", validate_with_metrics):
                 generation = original_generation(
@@ -210,6 +347,10 @@ class Command(BaseCommand):
                 qa_archive_rag,
                 "has_redundant_content_phrase",
                 side_effect=capture_quality_check,
+            ), patch.object(
+                qa_archive_rag,
+                "_sample_whole_norm_rows",
+                side_effect=capture_whole_norm_selection,
             ):
                 events = list(
                     qa_archive_rag.stream_archive_qa_answer(
@@ -253,6 +394,7 @@ class Command(BaseCommand):
             "model_stream_chunk_count": len(model_stream_chunks),
             "model_stream_answer_shape": model_stream_shape,
             "retrieved_source_count": len(source_rows),
+            "whole_norm_selection_metrics": whole_norm_selection_metrics,
             "coverage": {
                 key: coverage.get(key)
                 for key in (
@@ -265,6 +407,7 @@ class Command(BaseCommand):
             "candidate_validation_metrics": validation_metrics,
             "quality_gate_check_count": len(quality_gate_checks),
             "quality_gate_checks": quality_gate_checks,
+            "stop_callback_checks": stop_callback_checks,
             "answer_text_persisted": False,
             "source_text_persisted": False,
             "generated_at": datetime.now(UTC).isoformat(),

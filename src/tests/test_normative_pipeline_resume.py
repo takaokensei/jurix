@@ -331,8 +331,12 @@ def test_extraction_creates_only_candidate_for_hash_verified_qa_pdf(
     assert document.extracoes.filter(legal_text="candidate text").exists()
 
 
+@pytest.mark.parametrize(
+    "settings_module",
+    ["config.settings_normative_qa", "config.settings_normative_container_qa"],
+)
 def test_single_archive_extraction_command_stops_at_human_review(
-    monkeypatch, tmp_path, settings
+    monkeypatch, tmp_path, settings, settings_module
 ):
     qa_root = tmp_path / "qa-root"
     pdf_path = qa_root / "normative-archive" / "sha256" / "lc258.pdf"
@@ -349,12 +353,39 @@ def test_single_archive_extraction_command_stops_at_human_review(
         condition_of_use=DocumentoNormativo.ConditionOfUse.UNKNOWN,
         review_status=DocumentoNormativo.ReviewStatus.PENDING,
     )
+    monkeypatch.setenv("JURIX_QA_ONLY", "1")
+    monkeypatch.setenv("DJANGO_SETTINGS_MODULE", settings_module)
+    monkeypatch.setenv("JURIX_QA_ROOT", str(qa_root))
     monkeypatch.setattr(settings, "QA_ROOT", qa_root)
+    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True)
     extraction_hash = hashlib.sha256(b"candidate legal text").hexdigest()
-    monkeypatch.setattr(
-        normative_tasks,
-        "extract_pdf_document",
-        lambda *_args, **_kwargs: {
+    reused_text = "previous OCR page"
+    previous_extraction = ExtracaoDocumento.objects.create(
+        documento=document,
+        extractor_version="previous-ocr-v1",
+        policy_fingerprint=hashlib.sha256(b"previous-ocr-policy").hexdigest(),
+        text_version="technical_text_v1",
+        raw_text=reused_text,
+        legal_text=reused_text,
+        page_count=1,
+        page_map_json=[{
+            "text_version": "technical_text_v1",
+            "start": 0,
+            "end": len(reused_text),
+            "page": 1,
+            "method": "ocr",
+            "status": "complete",
+            "quote_hash": hashlib.sha256(reused_text.encode()).hexdigest(),
+        }],
+        quality_json={"ocr_pages_attempted": [1]},
+        status=ExtracaoDocumento.Status.PARTIAL,
+        extraction_sha256=hashlib.sha256(b"previous-ocr-extraction").hexdigest(),
+    )
+    received = {}
+
+    def extract_pdf(*_args, **kwargs):
+        received.update(kwargs)
+        return {
             "policy_fingerprint": "c" * 64,
             "extractor_version": "test-extractor-v1",
             "text_version": "technical_text_v1",
@@ -363,12 +394,22 @@ def test_single_archive_extraction_command_stops_at_human_review(
             "page_count": 1,
             "source_map": [],
             "metadata_candidates": {},
-            "quality": {"page_methods": {"native": 1}},
+            "quality": {
+                "page_methods": {"native": 1},
+                "ocr_pages_attempted": [],
+                "ocr_pages_reused": [1],
+                "ocr_budget_skipped_pages": [],
+            },
             "complete": True,
             "needs_review": True,
             "extraction_sha256": extraction_hash,
             "duration_seconds": 0.01,
-        },
+        }
+
+    monkeypatch.setattr(
+        normative_tasks,
+        "extract_pdf_document",
+        extract_pdf,
     )
 
     output = StringIO()
@@ -377,6 +418,10 @@ def test_single_archive_extraction_command_stops_at_human_review(
     report = json.loads(output.getvalue())
     document.refresh_from_db()
     assert report["candidate_created"] is True
+    assert report["ocr_pages_reused"] == 1
+    assert received["reusable_ocr_pages"] == {
+        1: (reused_text, previous_extraction.extraction_sha256)
+    }
     assert report["text_accepted"] is False
     assert report["document_review_status"] == DocumentoNormativo.ReviewStatus.PENDING
     assert report["norma_linked"] is False
@@ -548,10 +593,23 @@ def test_archive_ocr_resume_is_one_document_bounded_and_never_accepts_candidate(
     from src.apps.ingestion.management.commands import resume_archive_ocr_qa
 
     monkeypatch.setattr(resume_archive_ocr_qa, "_extract_archive_candidate", extract)
+    with pytest.raises(CommandError, match="só pode selecionar páginas do backlog"):
+        call_command(
+            "resume_archive_ocr_qa",
+            document_id=str(document.public_id),
+            pages=[1],
+            batch_pages=1,
+            dry_run=True,
+            stdout=StringIO(),
+        )
+    assert calls == []
+    assert document.extracoes.count() == 1
+
     output = StringIO()
     call_command(
         "resume_archive_ocr_qa",
         document_id=str(document.public_id),
+        pages=[2],
         batch_pages=1,
         dry_run=True,
         stdout=output,
@@ -566,6 +624,7 @@ def test_archive_ocr_resume_is_one_document_bounded_and_never_accepts_candidate(
     call_command(
         "resume_archive_ocr_qa",
         document_id=str(document.public_id),
+        pages=[2],
         batch_pages=1,
         apply=True,
         stdout=output,
@@ -606,10 +665,10 @@ def test_archive_ocr_resume_can_retry_unreadable_pages_without_acceptance(
     archive_root = qa_root / "normative-archive"
     archive_root.mkdir(parents=True)
     monkeypatch.setenv("JURIX_QA_ONLY", "1")
-    monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "config.settings_normative_qa")
+    monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "config.settings_normative_container_qa")
     monkeypatch.setenv("JURIX_QA_ROOT", str(qa_root))
-    monkeypatch.setattr(settings, "QA_ROOT", qa_root)
-    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True)
+    monkeypatch.setattr(settings, "QA_ROOT", qa_root, raising=False)
+    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True, raising=False)
 
     pdf = fitz.open()
     pdf.new_page().insert_text((72, 72), "QA página um")
@@ -684,6 +743,7 @@ def test_archive_ocr_resume_can_retry_unreadable_pages_without_acceptance(
     call_command(
         "resume_archive_ocr_qa",
         document_id=str(document.public_id),
+        pages=[2],
         batch_pages=1,
         retry_unreadable=True,
         dry_run=True,
@@ -700,6 +760,7 @@ def test_archive_ocr_resume_can_retry_unreadable_pages_without_acceptance(
     call_command(
         "resume_archive_ocr_qa",
         document_id=str(document.public_id),
+        pages=[2],
         batch_pages=1,
         retry_unreadable=True,
         apply=True,
@@ -718,6 +779,199 @@ def test_archive_ocr_resume_can_retry_unreadable_pages_without_acceptance(
     assert document.accepted_extraction_id is None
     assert document.norma_id is None
     assert document.extracoes.count() == 2
+
+
+@pytest.mark.django_db
+def test_sapl_normative_candidate_can_resume_selected_ocr_pages_without_acceptance(
+    monkeypatch, tmp_path, settings
+):
+    qa_root = tmp_path / "qa-root"
+    archive_root = qa_root / "normative-archive"
+    archive_root.mkdir(parents=True)
+    monkeypatch.setenv("JURIX_QA_ONLY", "1")
+    monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "config.settings_normative_container_qa")
+    monkeypatch.setenv("JURIX_QA_ROOT", str(qa_root))
+    monkeypatch.setattr(settings, "QA_ROOT", qa_root)
+    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True)
+
+    pdf = fitz.open()
+    pdf.new_page().insert_text((72, 72), "LC 258 artigo recuperável")
+    pdf.new_page()
+    content = pdf.tobytes()
+    pdf.close()
+    (archive_root / "lc-258-2024.pdf").write_bytes(content)
+    digest = hashlib.sha256(content).hexdigest()
+    norma = Norma.objects.create(
+        tipo="Lei Complementar",
+        numero="258",
+        ano=2024,
+        sapl_id=4052,
+        status=Norma.Status.PENDING,
+    )
+    document = DocumentoNormativo.objects.create(
+        norma=norma,
+        document_key=hashlib.sha256(b"sapl-lc258-resume").hexdigest(),
+        source_kind=DocumentoNormativo.SourceKind.SAPL,
+        source_ref="https://sapl.natal.rn.leg.br/norma/4052",
+        storage_key="lc-258-2024.pdf",
+        content_sha256=digest,
+        size_bytes=len(content),
+        review_status=DocumentoNormativo.ReviewStatus.PENDING,
+    )
+    previous = ExtracaoDocumento.objects.create(
+        documento=document,
+        extractor_version="qa-sapl-v1",
+        policy_fingerprint=hashlib.sha256(b"sapl-lc258-policy-old").hexdigest(),
+        text_version="technical_text_v1",
+        raw_text="LC 258 artigo recuperável\f",
+        legal_text="LC 258 artigo recuperável",
+        page_count=2,
+        quality_json={"ocr_budget_skipped_pages": [2]},
+        status=ExtracaoDocumento.Status.PARTIAL,
+        extraction_sha256=hashlib.sha256(b"sapl-lc258-extraction-old").hexdigest(),
+    )
+    calls = []
+
+    def extract(candidate_document, **kwargs):
+        calls.append((candidate_document.pk, kwargs))
+        return ExtracaoDocumento.objects.create(
+            documento=candidate_document,
+            extractor_version="qa-sapl-v2",
+            policy_fingerprint=hashlib.sha256(b"sapl-lc258-policy-new").hexdigest(),
+            text_version="technical_text_v1",
+            raw_text="LC 258 artigo recuperável\fOCR candidato",
+            legal_text="LC 258 artigo recuperável\nOCR candidato",
+            page_count=2,
+            quality_json={
+                "ocr_pages_attempted": [2],
+                "ocr_pages_reused": [1],
+                "ocr_budget_skipped_pages": [],
+                "unreadable_pages": [],
+            },
+            status=ExtracaoDocumento.Status.COMPLETE,
+            extraction_sha256=hashlib.sha256(b"sapl-lc258-extraction-new").hexdigest(),
+        )
+
+    from src.apps.ingestion.management.commands import resume_archive_ocr_qa
+
+    monkeypatch.setattr(resume_archive_ocr_qa, "_extract_archive_candidate", extract)
+    output = StringIO()
+    call_command(
+        "resume_archive_ocr_qa",
+        document_id=str(document.public_id),
+        pages=[2],
+        batch_pages=1,
+        dry_run=True,
+        stdout=output,
+    )
+    dry_run = json.loads(output.getvalue())
+    assert dry_run["selected_pages"] == [2]
+    assert dry_run["will_accept_or_promote"] is False
+    assert calls == []
+    assert document.extracoes.count() == 1
+
+    output = StringIO()
+    call_command(
+        "resume_archive_ocr_qa",
+        document_id=str(document.public_id),
+        pages=[2],
+        batch_pages=1,
+        apply=True,
+        stdout=output,
+    )
+    result = json.loads(output.getvalue())
+    assert result["ocr_pages_attempted"] == 1
+    assert result["ocr_pages_reused"] == 1
+    assert result["accepted_extraction"] is False
+    assert result["norma_linkage_created"] is False
+    assert calls[0][1]["ocr_pages_to_process"] == {2}
+    assert calls[0][1]["reuse_from"].pk == previous.pk
+    document.refresh_from_db()
+    norma.refresh_from_db()
+    assert document.review_status == DocumentoNormativo.ReviewStatus.PENDING
+    assert document.accepted_extraction_id is None
+    assert norma.status == Norma.Status.PENDING
+    assert norma.documento_base_id is None
+    assert not norma.texto_original
+    assert not norma.texto_consolidado
+
+    norma.status = Norma.Status.CONSOLIDATED
+    norma.save(update_fields=["status", "updated_at"])
+    with pytest.raises(CommandError, match="Norma vinculada, pendente e vazia"):
+        call_command(
+            "resume_archive_ocr_qa",
+            document_id=str(document.public_id),
+            pages=[2],
+            batch_pages=1,
+            dry_run=True,
+            stdout=StringIO(),
+        )
+
+
+def test_archive_ocr_dry_run_skips_missing_blob_and_picks_next_verified_candidate(
+    monkeypatch, tmp_path, settings
+):
+    qa_root = tmp_path / "qa-root"
+    archive_root = qa_root / "normative-archive"
+    archive_root.mkdir(parents=True)
+    monkeypatch.setenv("JURIX_QA_ONLY", "1")
+    monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "config.settings_normative_container_qa")
+    monkeypatch.setenv("JURIX_QA_ROOT", str(qa_root))
+    monkeypatch.setattr(settings, "QA_ROOT", qa_root)
+    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True)
+
+    pdf = fitz.open()
+    pdf.new_page().insert_text((72, 72), "PDF íntegro de QA")
+    pdf.new_page().insert_text((72, 72), "Segunda página do PDF QA")
+    content = pdf.tobytes()
+    pdf.close()
+    (archive_root / "available.pdf").write_bytes(content)
+
+    def create_candidate(key, digest, unreadable_pages):
+        document = DocumentoNormativo.objects.create(
+            norma=None,
+            document_key=hashlib.sha256(f"document-{key}".encode()).hexdigest(),
+            source_kind=DocumentoNormativo.SourceKind.ARCHIVE,
+            source_ref=f"archive:qa:{key}",
+            storage_key=key,
+            content_sha256=digest,
+            size_bytes=1,
+            review_status=DocumentoNormativo.ReviewStatus.PENDING,
+        )
+        ExtracaoDocumento.objects.create(
+            documento=document,
+            extractor_version="qa-test-v1",
+            policy_fingerprint=hashlib.sha256(f"policy-{key}".encode()).hexdigest(),
+            text_version="technical_text_v1",
+            raw_text="QA extraído parcialmente",
+            legal_text="QA extraído parcialmente",
+            page_count=max(unreadable_pages),
+            quality_json={"unreadable_pages": unreadable_pages},
+            status=ExtracaoDocumento.Status.PARTIAL,
+            extraction_sha256=hashlib.sha256(f"extraction-{key}".encode()).hexdigest(),
+        )
+        return document
+
+    missing = create_candidate("missing.pdf", hashlib.sha256(b"missing").hexdigest(), [1])
+    available = create_candidate("available.pdf", hashlib.sha256(content).hexdigest(), [1, 2])
+
+    output = StringIO()
+    call_command(
+        "resume_archive_ocr_qa",
+        pick_unreadable=True,
+        batch_pages=1,
+        dry_run=True,
+        stdout=output,
+    )
+
+    report = json.loads(output.getvalue())
+    assert report["document_id"] == str(available.public_id)
+    assert report["selection"] == "smallest_unreadable_backlog"
+    assert report["skipped_unavailable_storage_count"] == 1
+    assert report["selected_pages"] == [1]
+    assert report["will_accept_or_promote"] is False
+    assert missing.extracoes.count() == 1
+    assert available.extracoes.count() == 1
 
 
 @pytest.mark.django_db

@@ -57,14 +57,39 @@ def test_qa_runner_allows_only_one_bounded_sapl_incremental_page():
     with pytest.raises(ValueError):
         qa._allowed_command(repair + ["--force"])
 
+    metadata_only = [
+        "python", "scripts/run_qa_sapl_incremental.py",
+        "--tipo", "1", "--ano", "2026", "--limit", "10", "--max-pages", "4",
+        "--metadata-only",
+    ]
+    assert qa._allowed_command(metadata_only) == [qa.sys.executable, *metadata_only[1:]]
+    for unsafe in (
+        metadata_only + ["--force"],
+        [*metadata_only[:-1], "--max-pages", "5", "--metadata-only"],
+        [*metadata_only[:-1], "--limit", "11", "--metadata-only"],
+    ):
+        with pytest.raises(ValueError):
+            qa._allowed_command(unsafe)
 
-def test_qa_runner_limits_dom_sync_to_one_month_and_one_edition():
+
+def test_qa_runner_allows_only_read_only_relation_target_coverage_inspection():
+    command = ["python", "manage.py", "inspect_archive_relation_target_coverage_qa"]
+    assert qa._allowed_command(command) == [qa.sys.executable, *command[1:]]
+    with pytest.raises(ValueError):
+        qa._allowed_command(command + ["--apply"])
+
+
+def test_qa_runner_limits_dom_sync_to_two_months_and_one_edition():
     base = ["python", "manage.py", "sync_dom_natal_editions_qa"]
     dry_run = base + ["--lookback-months", "1", "--max-new-total", "1"]
     apply = dry_run + ["--apply"]
+    two_month_dry_run = base + ["--lookback-months", "2", "--max-new-total", "1"]
+    two_month_apply = two_month_dry_run + ["--apply"]
 
     assert qa._allowed_command(dry_run) == [qa.sys.executable, *dry_run[1:]]
     assert qa._allowed_command(apply) == [qa.sys.executable, *apply[1:]]
+    assert qa._allowed_command(two_month_dry_run) == [qa.sys.executable, *two_month_dry_run[1:]]
+    assert qa._allowed_command(two_month_apply) == [qa.sys.executable, *two_month_apply[1:]]
     historical = base + [
         "--lookback-months", "1", "--max-new-total", "1", "--as-of", "2026-01-01"
     ]
@@ -75,8 +100,10 @@ def test_qa_runner_limits_dom_sync_to_one_month_and_one_edition():
     ]
     today = date.today()
     for options in (
-        ["--lookback-months", "2", "--max-new-total", "1"],
+        ["--lookback-months", "3", "--max-new-total", "1"],
+        ["--lookback-months", "4", "--max-new-total", "1", "--apply"],
         ["--lookback-months", "1", "--max-new-total", "2"],
+        ["--lookback-months", "2", "--max-new-total", "2"],
         ["--lookback-months", "1", "--max-new-total", "1", "--force"],
         ["--lookback-months", "1", "--max-new-total", "1", "--as-of", "2026-01-1"],
         ["--lookback-months", "1", "--max-new-total", "1", "--as-of", (today + timedelta(days=1)).isoformat()],
@@ -141,6 +168,32 @@ def test_qa_runner_limits_archive_retrieval_inspection_to_the_authorized_case():
         qa.sys.executable, *effective_date_followup[1:]
     ]
 
+    lc271_article_20 = [
+        "python", "manage.py", "inspect_archive_candidate_retrieval_qa",
+        "--document-id", "cb810b42-ecea-4cbc-870a-b2581c30df6c",
+        "--question", "O que prevê o Art. 1º da Lei Complementar nº 271/2025?",
+    ]
+    assert qa._allowed_command(lc271_article_20) == [
+        qa.sys.executable, *lc271_article_20[1:]
+    ]
+    lc271_vs_ctm_2024 = [
+        "python", "manage.py", "inspect_archive_candidate_retrieval_qa",
+        "--document-id", "cb810b42-ecea-4cbc-870a-b2581c30df6c",
+        "--question",
+        "Compare o texto do Art. 20 da Lei nº 3.882/1989 na consolidação municipal de 2024 com a redação substitutiva transcrita no Art. 1º da LC nº 271/2025. Mostre apenas as fontes e diferenças textuais, sem concluir vigência atual.",
+    ]
+    assert qa._allowed_command(lc271_vs_ctm_2024) == [
+        qa.sys.executable, *lc271_vs_ctm_2024[1:]
+    ]
+    assert qa._allowed_command(lc271_vs_ctm_2024 + ["--generate"]) == [
+        qa.sys.executable, *lc271_vs_ctm_2024[1:], "--generate"
+    ]
+    with pytest.raises(ValueError, match="exact questions"):
+        qa._allowed_command(
+            lc271_vs_ctm_2024[:-1]
+            + ["Pergunta arbitrária sobre uma peça processual.", "--generate"]
+        )
+
     lc120_art18 = [
         "python", "manage.py", "inspect_archive_candidate_retrieval_qa",
         "--document-id", "f4a5c8f6-7ca2-4b5c-935e-033572a33510",
@@ -160,6 +213,140 @@ def test_qa_runner_limits_archive_retrieval_inspection_to_the_authorized_case():
         qa.sys.executable, *pgm_currentness_check[1:]
     ]
 
+    pgm_transition_case = [
+        "python", "manage.py", "inspect_archive_candidate_retrieval_qa",
+        "--document-id", "6b025442-7977-4f27-96f2-2318d2c714be",
+        "--question",
+        "Em um processo protocolado antes da entrada em vigor da LC 258/2024 e ainda sem despacho decisório, como devo verificar se a regra do Art. 21 da LC 55/2004 ainda pode ser aplicada? Considere também o Art. 260, IV, e o Art. 262 da LC 258/2024. Separe o que os PDFs comprovam do que permanece inconclusivo.",
+    ]
+    assert qa._allowed_command(pgm_transition_case + ["--generate"]) == [
+        qa.sys.executable, *pgm_transition_case[1:], "--generate"
+    ]
+    with pytest.raises(ValueError, match="exact public PGM QA scenario"):
+        qa._allowed_command(command + ["--generate"])
+
+    lp275_revocation_question = [
+        "python", "manage.py", "inspect_archive_candidate_retrieval_qa",
+        "--document-id", "c452bfe5-1138-4962-a3f2-c4cc9b662007",
+        "--question",
+        "A Lei Complementar nº 258/2024, Art. 260, inciso V, revoga expressamente o Art. 21 da Lei Promulgada nº 275/2009? O que os documentos disponíveis permitem afirmar e o que permanece pendente de confirmação jurídica?",
+    ]
+    assert qa._allowed_command(lp275_revocation_question) == [
+        qa.sys.executable, *lp275_revocation_question[1:]
+    ]
+    with pytest.raises(ValueError, match="restricted to the authorized"):
+        qa._allowed_command(lp275_revocation_question[:-1] + [
+            "Pergunta não autorizada sobre outro documento."
+        ])
+    assert qa._allowed_command(lp275_revocation_question + ["--generate"]) == [
+        qa.sys.executable, *lp275_revocation_question[1:], "--generate"
+    ]
+
+
+def test_qa_runner_limits_sapl_candidate_extraction_to_promulgated_candidates():
+    command = [
+        "python", "manage.py", "extract_sapl_normative_candidate_qa",
+        "--document-id", "00c841d2-4b08-42a3-80b1-f018b1e86d43",
+        "--max-pages", "200", "--max-ocr-pages", "0",
+    ]
+    assert qa._allowed_command(command) == [qa.sys.executable, *command[1:]]
+    new_public_law_candidate = command.copy()
+    new_public_law_candidate[4] = "a2334a00-772f-4b38-9153-c88ba13ebe5b"
+    assert qa._allowed_command(new_public_law_candidate) == [
+        qa.sys.executable,
+        *new_public_law_candidate[1:],
+    ]
+    lc198_candidate = command.copy()
+    lc198_candidate[4] = "fe950bad-c738-4404-822b-2214f802f236"
+    assert qa._allowed_command(lc198_candidate) == [
+        qa.sys.executable,
+        *lc198_candidate[1:],
+    ]
+    newly_staged_ordinary_law = command.copy()
+    newly_staged_ordinary_law[4] = "f08cb4c6-41e8-4332-8c4f-2a764ca2f6a6"
+    assert qa._allowed_command(newly_staged_ordinary_law) == [
+        qa.sys.executable,
+        *newly_staged_ordinary_law[1:],
+    ]
+    newly_staged_4885 = command.copy()
+    newly_staged_4885[4] = "4f246b2d-6c49-4c70-9014-5c255f969242"
+    assert qa._allowed_command(newly_staged_4885) == [
+        qa.sys.executable,
+        *newly_staged_4885[1:],
+    ]
+    with pytest.raises(ValueError, match="promulgated QA allowlist"):
+        qa._allowed_command(command[:4] + ["f4a5c8f6-7ca2-4b5c-935e-033572a33510"] + command[5:])
+
+
+def test_qa_runner_limits_relation_candidate_extraction_to_two_exact_chain_ids():
+    base = ["python", "manage.py", "extract_lc_chain_relation_candidates_qa"]
+    dry_run = base + ["--extraction-id", "7135"]
+    apply = dry_run + ["--apply"]
+    both = base + ["--extraction-id", "7135", "--extraction-id", "7141"]
+    article_dry_run = base + ["--extraction-id", "7135", "--source-article", "118"]
+    article_apply = article_dry_run + ["--apply"]
+
+    assert qa._allowed_command(dry_run) == [qa.sys.executable, *dry_run[1:]]
+    assert qa._allowed_command(apply) == [qa.sys.executable, *apply[1:]]
+    assert qa._allowed_command(both) == [qa.sys.executable, *both[1:]]
+    assert qa._allowed_command(article_dry_run) == [qa.sys.executable, *article_dry_run[1:]]
+    assert qa._allowed_command(article_apply) == [qa.sys.executable, *article_apply[1:]]
+    lc198_reference_preview = base + ["--extraction-id", "7144"]
+    assert qa._allowed_command(lc198_reference_preview) == [
+        qa.sys.executable, *lc198_reference_preview[1:]
+    ]
+    lc271_ocr_revision = base + ["--extraction-id", "7150", "--source-article", "5"]
+    assert qa._allowed_command(lc271_ocr_revision) == [
+        qa.sys.executable, *lc271_ocr_revision[1:]
+    ]
+    lc271_later_amendments = base + ["--extraction-id", "7149", "--source-article", "3"]
+    assert qa._allowed_command(lc271_later_amendments) == [
+        qa.sys.executable, *lc271_later_amendments[1:]
+    ]
+    lc271_native_revision = base + ["--extraction-id", "7151", "--source-article", "5"]
+    assert qa._allowed_command(lc271_native_revision) == [
+        qa.sys.executable, *lc271_native_revision[1:]
+    ]
+    lc258_article_261 = base + ["--extraction-id", "7141", "--source-article", "261"]
+    assert qa._allowed_command(lc258_article_261) == [
+        qa.sys.executable, *lc258_article_261[1:]
+    ]
+    for unsafe in (
+        base + ["--extraction-id", "1"],
+        base + ["--extraction-id", "7135", "--extraction-id", "7135"],
+        base + ["--extraction-id", "7135", "--apply", "--extraction-id", "7141"],
+        base + ["--extraction-id", "7135", "--dry-run"],
+        base + ["--extraction-id", "7135", "--apply", "--force"],
+        base + ["--extraction-id", "7141", "--source-article", "118"],
+        base + ["--extraction-id", "7141", "--source-article", "260"],
+        base + ["--extraction-id", "7135", "--source-article", "117"],
+        base + ["--extraction-id", "7135", "--source-article", "118", "--source-article", "118"],
+        base + ["--extraction-id", "7135", "--source-article"],
+    ):
+        with pytest.raises(ValueError):
+            qa._allowed_command(unsafe)
+
+
+def test_qa_runner_allows_only_bounded_resumable_archive_relation_candidates():
+    base = ["python", "manage.py", "extract_archive_relation_candidates_qa"]
+    dry_run = base + ["--dry-run", "--batch-size", "10"]
+    first_batch = base + ["--apply", "--batch-size", "10", "--max-batches", "10"]
+    resume = base + ["--apply", "--batch-size", "10", "--max-batches", "10", "--resume"]
+
+    assert qa._allowed_command(dry_run) == [qa.sys.executable, *dry_run[1:]]
+    assert qa._allowed_command(first_batch) == [qa.sys.executable, *first_batch[1:]]
+    assert qa._allowed_command(resume) == [qa.sys.executable, *resume[1:]]
+    for unsafe in (
+        base + ["--apply", "--dry-run"],
+        base + ["--apply", "--batch-size", "11"],
+        base + ["--apply", "--batch-size", "0"],
+        base + ["--apply", "--max-batches", "11"],
+        base + ["--dry-run", "--resume", "--resume"],
+        base + ["--apply", "--force"],
+    ):
+        with pytest.raises(ValueError):
+            qa._allowed_command(unsafe)
+
 
 def test_qa_runner_confines_lc55_candidate_staging_to_its_qa_evidence_file(tmp_path, monkeypatch):
     qa_root = tmp_path / "qa"
@@ -169,6 +356,44 @@ def test_qa_runner_confines_lc55_candidate_staging_to_its_qa_evidence_file(tmp_p
     monkeypatch.setenv("JURIX_QA_ROOT", str(qa_root))
     base = [
         "python", "manage.py", "stage_lc55_official_candidate_qa",
+        "--pdf-path", str(pdf),
+    ]
+
+    assert qa._allowed_command(base) == [qa.sys.executable, *base[1:]]
+    assert qa._allowed_command(base + ["--apply"]) == [qa.sys.executable, *base[1:], "--apply"]
+    with pytest.raises(ValueError, match="exact QA evidence directory"):
+        qa._allowed_command(base[:-1] + [str(tmp_path / "outside.pdf")])
+    with pytest.raises(ValueError, match="only --pdf-path and --apply"):
+        qa._allowed_command(base + ["--source-url", "https://attacker.invalid/file.pdf"])
+
+
+def test_qa_runner_confines_bvn_4566_staging_to_exact_qa_evidence_file(tmp_path, monkeypatch):
+    qa_root = tmp_path / "qa"
+    pdf = qa_root / "evidence" / "lc258-4566-1992" / "lei_4.566.pdf"
+    pdf.parent.mkdir(parents=True)
+    pdf.write_bytes(b"%PDF-test")
+    monkeypatch.setenv("JURIX_QA_ROOT", str(qa_root))
+    base = [
+        "python", "manage.py", "stage_bvn_4566_1992_candidate_qa",
+        "--pdf-path", str(pdf),
+    ]
+
+    assert qa._allowed_command(base) == [qa.sys.executable, *base[1:]]
+    assert qa._allowed_command(base + ["--apply"]) == [qa.sys.executable, *base[1:], "--apply"]
+    with pytest.raises(ValueError, match="exact QA evidence directory"):
+        qa._allowed_command(base[:-1] + [str(tmp_path / "outside.pdf")])
+    with pytest.raises(ValueError, match="only --pdf-path and --apply"):
+        qa._allowed_command(base + ["--source-url", "https://attacker.invalid/file.pdf"])
+
+
+def test_qa_runner_confines_lp275_staging_to_exact_qa_evidence_file(tmp_path, monkeypatch):
+    qa_root = tmp_path / "qa"
+    pdf = qa_root / "evidence" / "lp275-2009" / "lei-promulgada-0275-2009-oficial.pdf"
+    pdf.parent.mkdir(parents=True)
+    pdf.write_bytes(b"%PDF-test")
+    monkeypatch.setenv("JURIX_QA_ROOT", str(qa_root))
+    base = [
+        "python", "manage.py", "stage_lp275_2009_candidate_qa",
         "--pdf-path", str(pdf),
     ]
 
@@ -241,10 +466,14 @@ def test_archive_diagnostic_records_only_grounding_shape_not_claim_text():
             },
         },
         sources=[
-            {"citation_index": 1, "evidence_text": "texto do excerto selecionado"},
+            {
+                "citation_index": 1,
+                "evidence_text": "texto do excerto selecionado",
+                "dispositivo_ref": "Art. 1º",
+            },
             {"citation_index": 2, "evidence_text": ""},
         ],
-        answer="Texto jurídico que não deve ser persistido. [[1]]",
+        answer="O Art. 1º apresenta a afirmação teste. [[1]]",
     )
 
     assert metrics["failed_claim_count"] == 3
@@ -265,10 +494,23 @@ def test_archive_diagnostic_records_only_grounding_shape_not_claim_text():
     assert metrics["candidate_answer_shape"]["distinct_citation_marker_count"] == 1
     assert metrics["candidate_answer_shape"]["repeated_citation_marker_count"] == 0
     assert metrics["candidate_answer_shape"]["meets_partial_overview_breadth"] is True
+    assert metrics["candidate_answer_shape"]["meets_partial_overview_source_alignment"] is True
     assert metrics["candidate_answer_shape"]["has_redundant_content_phrase"] is False
     assert "failure_shapes" not in metrics
     assert "segredo jurídico" not in str(metrics)
-    assert "Texto jurídico que não deve ser persistido" not in str(metrics)
+    assert "afirmação teste" not in str(metrics)
+
+
+def test_archive_diagnostic_reports_article_citation_misalignment_without_text():
+    metrics = _validation_shape_metrics(
+        {"grounded": True, "source_only": True, "grounding": {"claims": [], "failed_claims": []}},
+        sources=[{"citation_index": 1, "evidence_text": "conteúdo", "dispositivo_ref": "Art. 2º"}],
+        answer="O Art. 1º apresenta a afirmação teste. [[1]]",
+    )
+
+    assert metrics["candidate_answer_shape"]["meets_partial_overview_breadth"] is True
+    assert metrics["candidate_answer_shape"]["meets_partial_overview_source_alignment"] is False
+    assert "afirmação teste" not in str(metrics)
 
 
 def test_archive_diagnostic_records_answer_shape_without_answer_text():
@@ -340,6 +582,11 @@ def test_qa_runner_allows_only_the_live_rag_browser_smoke():
     with pytest.raises(ValueError):
         qa._allowed_command(currentness_command + ["https://example.com"])
 
+    foundation_command = ["node", "tests/js/foundation-check.browser.smoke.mjs"]
+    assert qa._allowed_command(foundation_command) == ["node.exe", *foundation_command[1:]]
+    with pytest.raises(ValueError):
+        qa._allowed_command(foundation_command + ["https://example.com"])
+
 
 @pytest.mark.parametrize(
     "database,redis,cache",
@@ -371,12 +618,35 @@ def test_read_only_source_health_command_is_allowlisted_without_extra_arguments(
     assert qa._allowed_command(command) == [qa.sys.executable, *command[1:]]
     dom_command = command + ["--source", "dom_natal", "--max-age-hours", "72"]
     assert qa._allowed_command(dom_command) == [qa.sys.executable, *dom_command[1:]]
+    details_command = command + ["--source", "sapl", "--max-age-hours", "8760", "--details"]
+    assert qa._allowed_command(details_command) == [qa.sys.executable, *details_command[1:]]
     with pytest.raises(ValueError, match="not on the QA allowlist"):
         qa._allowed_command(command + ["--source", "other"])
     with pytest.raises(ValueError, match="QA limit"):
         qa._allowed_command(command + ["--max-age-hours", "8761"])
     with pytest.raises(ValueError, match="require values"):
         qa._allowed_command(command + ["--source"])
+    with pytest.raises(ValueError, match="not on the QA allowlist"):
+        qa._allowed_command(command + ["--details", "--raw-error"])
+    with pytest.raises(ValueError, match="duplicated"):
+        qa._allowed_command(command + ["--details", "--details"])
+
+
+def test_target_reconciliation_allows_only_bounded_read_only_diagnostics():
+    command = [
+        "python", "manage.py", "reconcile_targets", "--dry-run", "--limit", "50000"
+    ]
+    assert qa._allowed_command(command) == [qa.sys.executable, *command[1:]]
+    detailed = command + ["--details"]
+    assert qa._allowed_command(detailed) == [qa.sys.executable, *detailed[1:]]
+    for unsafe in (
+        ["python", "manage.py", "reconcile_targets", "--limit", "50000"],
+        command + ["--apply"],
+        detailed + ["--raw-text"],
+        ["python", "manage.py", "reconcile_targets", "--dry-run", "--limit", "50001"],
+    ):
+        with pytest.raises(ValueError):
+            qa._allowed_command(unsafe)
 
 
 def test_dom_gazette_boundary_inspection_requires_one_bounded_explicit_edition():
@@ -431,6 +701,82 @@ def test_temporary_reviewer_credential_is_scoped_to_synthetic_seed(monkeypatch):
     assert review_env["JURIX_QA_REVIEWER_PASSWORD"] == secret
     assert collections_env["JURIX_QA_REVIEWER_PASSWORD"] == secret
     assert "JURIX_QA_REVIEWER_PASSWORD" not in check_env
+
+
+def test_qa_runner_scopes_reviewer_provisioning_to_exact_create_and_disable_commands(monkeypatch):
+    secret = "qa-reviewer-secret-never-print-this"
+    username = "jurix-pgm-preview-a1b2c3d4"
+    monkeypatch.setenv("JURIX_QA_REVIEWER_PASSWORD", secret)
+    monkeypatch.setenv("JURIX_QA_REVIEWER_USERNAME", username)
+    create = ["python", "manage.py", "provision_pgm_qa_reviewer"]
+    disable = ["python", "manage.py", "provision_pgm_qa_reviewer", "--disable"]
+    preview_create = [
+        "python", "manage.py", "provision_pgm_qa_reviewer", "--username", username,
+    ]
+    pending_relations_create = [
+        *preview_create, "--include-pending-relations",
+    ]
+    preview_disable = [*preview_create, "--disable"]
+
+    assert qa._allowed_command(create) == [qa.sys.executable, *create[1:]]
+    assert qa._allowed_command(disable) == [qa.sys.executable, *disable[1:]]
+    assert qa._allowed_command(preview_create) == [qa.sys.executable, *preview_create[1:]]
+    assert qa._allowed_command(pending_relations_create) == [
+        qa.sys.executable, *pending_relations_create[1:],
+    ]
+    assert qa._allowed_command(preview_disable) == [qa.sys.executable, *preview_disable[1:]]
+    for unsafe in (
+        create + ["--username", "other"],
+        ["python", "manage.py", "provision_pgm_qa_reviewer", "--username", "other"],
+        pending_relations_create + ["--force"],
+        disable + ["--force"],
+    ):
+        with pytest.raises(ValueError):
+            qa._allowed_command(unsafe)
+
+    create_env = qa._command_environment({"JURIX_QA_ONLY": "1"}, create)
+    disable_env = qa._command_environment({"JURIX_QA_ONLY": "1"}, disable)
+    preview_create_env = qa._command_environment({"JURIX_QA_ONLY": "1"}, preview_create)
+    check_env = qa._command_environment({"JURIX_QA_ONLY": "1"}, ["python", "manage.py", "check"])
+    assert create_env["JURIX_QA_REVIEWER_PASSWORD"] == secret
+    assert preview_create_env["JURIX_QA_REVIEWER_PASSWORD"] == secret
+    assert "JURIX_QA_REVIEWER_PASSWORD" not in disable_env
+    assert "JURIX_QA_REVIEWER_PASSWORD" not in check_env
+    assert "JURIX_QA_REVIEWER_USERNAME" not in check_env
+
+
+def test_qa_runner_scopes_candidate_review_browser_credentials_to_local_8287(monkeypatch):
+    secret = "qa-reviewer-secret-never-print-this"
+    username = "jurix-pgm-preview-a1b2c3d4"
+    monkeypatch.setenv("JURIX_QA_REVIEWER_PASSWORD", secret)
+    monkeypatch.setenv("JURIX_QA_REVIEWER_USERNAME", username)
+    command = ["node", "tests/js/document-review-candidate.browser.smoke.mjs"]
+
+    assert qa._allowed_command(command) == ["node.exe", command[1]]
+    scoped = qa._command_environment({"JURIX_QA_ONLY": "1"}, command)
+    assert scoped["JURIX_QA_REVIEWER_PASSWORD"] == secret
+    assert scoped["JURIX_QA_REVIEWER_USERNAME"] == username
+    assert scoped["JURIX_QA_BASE_URL"] == "http://127.0.0.1:8287"
+    with pytest.raises(ValueError):
+        qa._allowed_command(command + ["https://example.com"])
+
+
+def test_qa_runner_scopes_foundation_browser_credentials_to_temporary_reviewer(monkeypatch):
+    secret = "qa-reviewer-secret-never-print-this"
+    username = "jurix-pgm-preview-a1b2c3d4"
+    monkeypatch.setenv("JURIX_QA_REVIEWER_PASSWORD", secret)
+    monkeypatch.setenv("JURIX_QA_REVIEWER_USERNAME", username)
+    command = ["node", "tests/js/foundation-check.browser.smoke.mjs"]
+
+    assert qa._allowed_command(command) == ["node.exe", command[1]]
+    scoped = qa._command_environment({"JURIX_QA_ONLY": "1"}, command)
+    assert scoped["JURIX_QA_REVIEWER_PASSWORD"] == secret
+    assert scoped["JURIX_QA_REVIEWER_USERNAME"] == username
+    assert scoped["JURIX_QA_BASE_URL"] == "http://127.0.0.1:8287"
+
+    monkeypatch.setenv("JURIX_QA_REVIEWER_USERNAME", "jurix-pgm-smoke-reviewer")
+    with pytest.raises(ValueError):
+        qa._command_environment({"JURIX_QA_ONLY": "1"}, command)
 
 
 def test_qa_runner_allows_only_the_authenticated_synthetic_review_browser_test():
@@ -816,15 +1162,68 @@ def test_command_runner_allows_only_the_bounded_normative_qa_worker_and_dispatch
         "python", "manage.py", "extract_archive_candidate_qa", "--document-id",
         "eaa13513-6cfc-4edf-8027-c6a7cc6d70b7",
     ])[0] == qa.sys.executable
+    assert qa._allowed_command([
+        "python", "manage.py", "extract_archive_candidate_qa", "--document-id",
+        "eaa13513-6cfc-4edf-8027-c6a7cc6d70b7", "--max-ocr-pages", "0",
+        "--ocr-timeout-seconds", "15",
+    ])[0] == qa.sys.executable
+    assert qa._allowed_command([
+        "python", "manage.py", "extract_archive_candidate_qa", "--document-id",
+        "eaa13513-6cfc-4edf-8027-c6a7cc6d70b7", "--max-ocr-pages", "10",
+        "--ocr-timeout-seconds", "30",
+    ])[0] == qa.sys.executable
+    assert qa._allowed_command([
+        "python", "manage.py", "extract_archive_candidate_qa", "--document-id",
+        "cb810b42-ecea-4cbc-870a-b2581c30df6c", "--max-ocr-pages", "1",
+        "--ocr-page", "7",
+    ])[0] == qa.sys.executable
+    for args in (
+        ["--max-ocr-pages", "1", "--ocr-page", "6"],
+        ["--max-ocr-pages", "2", "--ocr-page", "7"],
+    ):
+        with pytest.raises(ValueError, match="explicit OCR is restricted"):
+            qa._allowed_command([
+                "python", "manage.py", "extract_archive_candidate_qa", "--document-id",
+                "cb810b42-ecea-4cbc-870a-b2581c30df6c", *args,
+            ])
+    with pytest.raises(ValueError, match="explicit OCR is restricted"):
+        qa._allowed_command([
+            "python", "manage.py", "extract_archive_candidate_qa", "--document-id",
+            "eaa13513-6cfc-4edf-8027-c6a7cc6d70b7", "--max-ocr-pages", "1",
+            "--ocr-page", "7",
+        ])
     with pytest.raises(ValueError, match="valid UUID"):
         qa._allowed_command([
             "python", "manage.py", "extract_archive_candidate_qa", "--document-id", "not-a-uuid",
         ])
-    with pytest.raises(ValueError, match="requires one --document-id"):
+    with pytest.raises(ValueError, match="unsupported flags"):
         qa._allowed_command([
             "python", "manage.py", "extract_archive_candidate_qa", "--document-id",
             "eaa13513-6cfc-4edf-8027-c6a7cc6d70b7", "--all",
         ])
+    for extra in (
+        ["--max-ocr-pages", "11"],
+        ["--max-ocr-pages", "-1"],
+        ["--ocr-timeout-seconds", "31"],
+        ["--ocr-timeout-seconds", "0"],
+        ["--max-ocr-pages", "not-an-integer"],
+        ["--max-ocr-pages", "0", "--max-ocr-pages", "1"],
+    ):
+        with pytest.raises(ValueError):
+            qa._allowed_command([
+                "python", "manage.py", "extract_archive_candidate_qa", "--document-id",
+                "eaa13513-6cfc-4edf-8027-c6a7cc6d70b7", *extra,
+            ])
+
+
+def test_audit_compose_worker_consumes_the_normative_qa_queue():
+    compose_path = MODULE_PATH.parents[1] / "docker-compose.audit.yml"
+    compose = compose_path.read_text(encoding="utf-8")
+
+    assert (
+        "command: celery -A config worker -l warning --pool=solo --concurrency=1 "
+        "--queues normative_qa,celery"
+    ) in compose
     with pytest.raises(ValueError):
         qa._allowed_command([
             "python", "manage.py", "run_normative_qa_pipeline", "--norma-id", "8", "--all",
@@ -856,6 +1255,15 @@ def test_archive_ocr_resume_guard_requires_one_document_and_tiny_explicit_batch(
         base + ["--document-id", document_id, "--dry-run", "--batch-pages", "10"]
     )[0] == qa.sys.executable
     assert qa._allowed_command(
+        base + ["--document-id", document_id, "--pages", "69", "70", "--dry-run", "--batch-pages", "2"]
+    )[0] == qa.sys.executable
+    assert qa._allowed_command(
+        base + [
+            "--document-id", document_id, "--pages", "70", "--retry-unreadable",
+            "--dry-run", "--batch-pages", "1",
+        ]
+    )[0] == qa.sys.executable
+    assert qa._allowed_command(
         base + ["--document-id", document_id, "--apply", "--batch-pages", "1"]
     )[0] == qa.sys.executable
     assert qa._allowed_command(base + ["--pick-next", "--dry-run"])[0] == qa.sys.executable
@@ -869,6 +1277,12 @@ def test_archive_ocr_resume_guard_requires_one_document_and_tiny_explicit_batch(
         ["--document-id", "invalid", "--dry-run"],
         ["--document-id", document_id, "--dry-run", "--batch-pages", "11"],
         ["--document-id", document_id, "--dry-run", "--all"],
+        ["--document-id", document_id, "--pages", "69", "70", "--dry-run", "--batch-pages", "1"],
+        ["--document-id", document_id, "--pages", "69", "--pick-unreadable", "--dry-run"],
+        ["--document-id", document_id, "--pages", "0", "--dry-run"],
+        ["--document-id", document_id, "--pages", "69", "69", "--dry-run"],
+        ["--pick-next", "--pages", "69", "--dry-run"],
+        ["--document-id", document_id, "--pages", "sixty-nine", "--dry-run"],
         ["--dry-run"],
         ["--pick-next", "--apply"],
         ["--document-id", document_id, "--pick-next", "--dry-run"],
@@ -892,6 +1306,90 @@ def test_archive_extraction_coverage_diagnostic_is_read_only_and_accepts_no_opti
     assert qa._allowed_command(command) == [qa.sys.executable, *command[1:]]
     with pytest.raises(ValueError, match="accepts no options"):
         qa._allowed_command(command + ["--all"])
+
+
+def test_archive_search_profiler_is_fixed_and_accepts_no_options():
+    command = ["python", "scripts/profile_archive_search_qa.py"]
+    assert qa._allowed_command(command) == [qa.sys.executable, *command[1:]]
+    with pytest.raises(ValueError, match="not on the QA allowlist"):
+        qa._allowed_command(command + ["--database", "production"])
+
+
+def test_file_backed_archive_commands_run_inside_the_qa_container_volume():
+    args = [
+        "python", "manage.py", "resume_archive_ocr_qa",
+        "--pick-unreadable", "--dry-run", "--batch-pages", "1",
+    ]
+    assert qa._allowed_command(args)[0] == qa.sys.executable
+    assert qa._container_storage_command(args) == [
+        "docker", "compose", "-p", "jurix-normative-qa",
+        "-f", str(qa.ROOT / "docker-compose.audit.yml"),
+        "exec", "-T", "web", "python", "manage.py",
+        *args[2:],
+    ]
+    assert qa._container_storage_command(
+        ["python", "manage.py", "inspect_archive_extraction_coverage_qa"]
+    ) is not None
+    assert qa._container_storage_command(["python", "manage.py", "check"]) is None
+    assert qa._container_storage_command(
+        ["python", "manage.py", "stage_normative_corpus", "--dry-run"]
+    ) is None
+
+
+def test_ctm_2021_extraction_uses_the_host_qa_volume_that_contains_its_blob():
+    args = [
+        "python", "manage.py", "extract_archive_candidate_qa",
+        "--document-id", "a68fdb23-c0aa-4082-8871-fe99096847b9",
+        "--max-ocr-pages", "0", "--ocr-timeout-seconds", "15",
+    ]
+    assert qa._allowed_command(args)[0] == qa.sys.executable
+    assert qa._container_storage_command(args) is None
+
+
+def test_lc258_sapl_ocr_resume_stays_on_host_storage_used_for_staging():
+    args = [
+        "python", "manage.py", "resume_archive_ocr_qa",
+        "--document-id", "00c841d2-4b08-42a3-80b1-f018b1e86d43",
+        "--pages", "11", "12", "13", "14", "15", "16",
+        "--apply", "--batch-pages", "6",
+    ]
+    assert qa._allowed_command(args)[0] == qa.sys.executable
+    assert qa._container_storage_command(args) is None
+
+
+def test_missing_archive_blob_restore_is_bounded_and_confined_to_qa_inventory(tmp_path, monkeypatch):
+    qa_root = tmp_path / "qa"
+    qa_root.mkdir()
+    archive = tmp_path / "source.zip"
+    archive.touch()
+    manifest = qa_root / "inventory.jsonl"
+    monkeypatch.setenv("JURIX_QA_ROOT", str(qa_root))
+    base = [
+        "python", "manage.py", "restore_missing_archive_blobs_qa",
+        "--archive", str(archive), "--manifest", str(manifest), "--limit", "4",
+    ]
+
+    assert qa._allowed_command(base + ["--dry-run"])[0] == qa.sys.executable
+    with pytest.raises(ValueError, match="TEMP storage may differ from the Docker volume"):
+        qa._allowed_command(base + ["--apply"])
+    with pytest.raises(ValueError, match="exactly one mode"):
+        qa._allowed_command(base)
+    with pytest.raises(ValueError, match="exactly one mode"):
+        qa._allowed_command(base + ["--apply", "--dry-run"])
+    with pytest.raises(ValueError, match="between 1 and 10"):
+        qa._allowed_command(base[:-1] + ["11", "--dry-run"])
+    with pytest.raises(ValueError, match="inside JURIX_QA_ROOT"):
+        qa._allowed_command(
+            base[:base.index("--manifest") + 1]
+            + [str(tmp_path / "outside.jsonl"), "--dry-run"]
+        )
+    with pytest.raises(ValueError, match="outside JURIX_QA_ROOT"):
+        qa._allowed_command(
+            base[:base.index("--archive") + 1]
+            + [str(qa_root / "source.zip"), "--manifest", str(manifest), "--dry-run"]
+        )
+    with pytest.raises(ValueError, match="unsupported flag"):
+        qa._allowed_command(base + ["--accept", "--dry-run"])
 
 
 def test_corpus_staging_command_requires_allowlisted_flags_and_qa_manifest(tmp_path, monkeypatch):
@@ -970,3 +1468,39 @@ def test_django_settings_allow_a_separate_cache_namespace_for_qa_test_runs():
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "jurix-test-run-isolated"
+
+
+def test_qa_runner_limits_sapl_candidate_staging_to_exact_promulgated_records():
+    base = ["python", "manage.py", "stage_sapl_normative_candidate_qa"]
+    for sapl_id in ("9406", "1160", "4052", "8823", "925", "254", "3666", "6817"):
+        dry_run = base + ["--sapl-id", sapl_id]
+        apply = dry_run + ["--apply"]
+        assert qa._allowed_command(dry_run) == [qa.sys.executable, *dry_run[1:]]
+        assert qa._allowed_command(apply) == [qa.sys.executable, *apply[1:]]
+    for sapl_id in ("9406", "4052", "1160"):
+        inspect = base + ["--sapl-id", sapl_id, "--inspect-existing"]
+        assert qa._allowed_command(inspect) == [qa.sys.executable, *inspect[1:]]
+    for unsafe in (
+        base + ["--sapl-id", "3667"],
+        base + ["--sapl-id", "3666", "--force"],
+        base + ["--sapl-id", "3666", "--apply", "--sapl-id", "3666"],
+    ):
+        with pytest.raises(ValueError, match="exact QA allowlist"):
+            qa._allowed_command(unsafe)
+
+
+def test_qa_runner_allows_only_exact_synthetic_lc198_identity_isolation():
+    base = [
+        "python", "manage.py", "isolate_synthetic_norma_identity_qa",
+        "--norma-id", "7",
+        "--expected-identity-key", "BR-RN-NATAL|lei_complementar|municipal_lc|198|2021",
+        "--expected-tipo", "Lei Complementar",
+        "--expected-numero", "198",
+        "--expected-ano", "2021",
+    ]
+    assert qa._allowed_command(base)[0] == qa.sys.executable
+    assert qa._allowed_command(base + ["--apply"])[0] == qa.sys.executable
+    with pytest.raises(ValueError):
+        qa._allowed_command(base[:-1] + ["2004"])
+    with pytest.raises(ValueError):
+        qa._allowed_command(base + ["--force"])

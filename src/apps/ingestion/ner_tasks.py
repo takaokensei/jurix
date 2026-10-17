@@ -53,6 +53,21 @@ def _normalize_with_offsets(value: str) -> tuple[str, list[int]]:
     return "".join(normalized), offsets
 
 
+def _unique_quote_span(segment, quote: str) -> tuple[int, int] | None:
+    normalized_source, source_offsets = _normalize_with_offsets(segment.texto or "")
+    normalized_quote, _ = _normalize_with_offsets(quote or "")
+    positions = []
+    cursor = 0
+    while normalized_quote and (found := normalized_source.find(normalized_quote, cursor)) >= 0:
+        positions.append(found)
+        cursor = found + 1
+    if len(positions) != 1:
+        return None
+    normalized_start = positions[0]
+    normalized_end = normalized_start + len(normalized_quote) - 1
+    return source_offsets[normalized_start], source_offsets[normalized_end] + 1
+
+
 def _map_event_evidence(dispositivo: Dispositivo, evidence: dict) -> dict:
     result = {"schema_version": 2, "device_evidence": evidence}
     norma = dispositivo.norma
@@ -75,21 +90,11 @@ def _map_event_evidence(dispositivo: Dispositivo, evidence: dict) -> dict:
     if not segment:
         result["source_status"] = "document_device_not_found"
         return result
-    source_text = segment.texto
-    normalized_source, source_offsets = _normalize_with_offsets(source_text)
-    normalized_quote, _ = _normalize_with_offsets(str(evidence.get("quote") or ""))
-    positions = []
-    cursor = 0
-    while normalized_quote and (found := normalized_source.find(normalized_quote, cursor)) >= 0:
-        positions.append(found)
-        cursor = found + 1
-    if len(positions) != 1:
+    local_span = _unique_quote_span(segment, str(evidence.get("quote") or ""))
+    if local_span is None or segment.start_offset is None:
         result["source_status"] = "quote_not_unique_or_not_found"
         return result
-    normalized_start = positions[0]
-    normalized_end = normalized_start + len(normalized_quote) - 1
-    local_start = source_offsets[normalized_start]
-    local_end = source_offsets[normalized_end] + 1
+    local_start, local_end = local_span
     start = segment.start_offset + local_start
     end = segment.start_offset + local_end
     result.update({
@@ -103,6 +108,46 @@ def _map_event_evidence(dispositivo: Dispositivo, evidence: dict) -> dict:
             None,
         ),
     })
+
+    action_context = evidence.get("action_context")
+    if isinstance(action_context, dict):
+        context_key = action_context.get("source_structural_key")
+        context_quote = str(action_context.get("source_quote") or "")
+        context_segment = (
+            extraction.dispositivos_documentais.filter(structural_key=context_key).first()
+            if context_key
+            else None
+        )
+        context_span = (
+            _unique_quote_span(context_segment, context_quote) if context_segment else None
+        )
+        if context_segment and context_span and context_segment.start_offset is not None:
+            context_start = context_segment.start_offset + context_span[0]
+            context_end = context_segment.start_offset + context_span[1]
+            result["action_context"] = {
+                "kind": action_context.get("kind"),
+                "action": action_context.get("action"),
+                "source_status": "verified_span",
+                "structural_key": context_segment.structural_key,
+                "source_start_offset": context_start,
+                "source_end_offset": context_end,
+                "source_quote": extraction.legal_text[context_start:context_end],
+                "page": next(
+                    (
+                        span.get("page")
+                        for span in extraction.page_map_json
+                        if span.get("start", 0) <= context_start < span.get("end", 0)
+                    ),
+                    None,
+                ),
+            }
+        else:
+            result["source_status"] = "context_source_not_verified"
+            result["action_context"] = {
+                "kind": action_context.get("kind"),
+                "source_status": "context_source_not_verified",
+                "source_structural_key": context_key,
+            }
     return result
 
 
@@ -175,11 +220,13 @@ def extract_entities_task(self, norma_id: int) -> dict[str, Any]:
         extractor = LegalNERExtractor()
 
         # Fetch all dispositivos for this norma
-        dispositivos = Dispositivo.objects.filter(norma=norma, is_active=True).select_related(
-            "norma"
+        dispositivos = list(
+            Dispositivo.objects.filter(norma=norma, is_active=True).select_related(
+                "norma", "dispositivo_pai"
+            )
         )
 
-        if not dispositivos.exists():
+        if not dispositivos:
             logger.warning(
                 f"[Task {task_id}] No dispositivos found for Norma {norma}. "
                 f"Cannot extract entities."
@@ -198,21 +245,59 @@ def extract_entities_task(self, norma_id: int) -> dict[str, Any]:
                 "message": "No dispositivos to process",
             }
 
-        logger.info(f"[Task {task_id}] Found {dispositivos.count()} dispositivos to analyze")
+        logger.info(f"[Task {task_id}] Found {len(dispositivos)} dispositivos to analyze")
 
         # Extract events from each dispositivo
         extracted_rows = []
         occurrences: dict[tuple, int] = {}
         dispositivos_with_events = 0
+        inherited_action_parent_ids: set[int] = set()
 
+        dispositivos_by_id = {device.pk: device for device in dispositivos}
         for dispositivo in dispositivos:
             texto = dispositivo.texto.strip()
 
-            if len(texto) < 20:  # Skip very short texts
-                continue
-
             # Extract events using NER
-            extracted_events = extractor.extract_events(texto=texto, dispositivo_id=dispositivo.id)
+            extracted_events = (
+                extractor.extract_events(texto=texto, dispositivo_id=dispositivo.id)
+                if len(texto) >= 20
+                else []
+            )
+            inherited_from = None
+            if dispositivo.tipo in {"inciso", "alinea", "item"} and not any(
+                event.get("acao") in {"REVOGA", "ALTERA", "SUBSTITUI", "ADICIONA"}
+                for event in extracted_events
+            ):
+                ancestor_id = dispositivo.dispositivo_pai_id
+                while ancestor_id:
+                    ancestor = dispositivos_by_id.get(ancestor_id)
+                    if ancestor is None:
+                        break
+                    introduction = extractor.list_action_introduction(ancestor.texto)
+                    if introduction:
+                        if ancestor.structural_key:
+                            inherited_from = (ancestor, introduction)
+                        break
+                    ancestor_id = ancestor.dispositivo_pai_id
+
+                if inherited_from:
+                    ancestor, introduction = inherited_from
+                    inherited_events = extractor.extract_inherited_list_item_events(
+                        introduction, texto
+                    )
+                    for event in inherited_events:
+                        event["evidence"]["action_context"].update(
+                            {
+                                "source_structural_key": ancestor.structural_key,
+                                "source_revision_fingerprint": ancestor.revision_fingerprint,
+                            }
+                        )
+                    if inherited_events:
+                        inherited_action_parent_ids.add(ancestor.pk)
+                    extracted_events.extend(inherited_events)
+
+            if not extracted_events:
+                continue
 
             if extracted_events:
                 dispositivos_with_events += 1
@@ -284,6 +369,21 @@ def extract_entities_task(self, norma_id: int) -> dict[str, Any]:
                     evento.revision_fingerprint = fingerprint
                     evento.provenance_json = provenance
                     extracted_rows.append(evento)
+
+        # A bare caput such as “Ficam revogados:” is context for its enumerated
+        # children, not a second untargeted relation once child candidates exist.
+        if inherited_action_parent_ids:
+            extracted_rows = [
+                event
+                for event in extracted_rows
+                if not (
+                    event.dispositivo_fonte_id in inherited_action_parent_ids
+                    and event.acao in {"REVOGA", "ALTERA", "ADICIONA", "SUBSTITUI"}
+                    and not event.referencia_tipo
+                    and not event.norma_alvo_id
+                    and not (event.target_reference_json or {}).get("type_candidate")
+                )
+            ]
 
         # Reconcile by evidence revision: keep reviewed IDs and retain superseded events for audit.
         with transaction.atomic():
@@ -375,7 +475,7 @@ def extract_entities_task(self, norma_id: int) -> dict[str, Any]:
             f"[Task {task_id}] Entity extraction completed for Norma {norma}: "
             f"{events_created} new, {events_preserved} preserved, "
             f"{events_inactivated} inactivated from {dispositivos_with_events} dispositivos "
-            f"(out of {dispositivos.count()} total) in {processing_time:.2f}s. "
+                f"(out of {len(dispositivos)} total) in {processing_time:.2f}s. "
             f"Action distribution: {action_stats}"
         )
 
@@ -386,7 +486,7 @@ def extract_entities_task(self, norma_id: int) -> dict[str, Any]:
             "events_created": events_created,
             "events_preserved": events_preserved,
             "events_inactivated": events_inactivated,
-            "dispositivos_processed": dispositivos.count(),
+                "dispositivos_processed": len(dispositivos),
             "dispositivos_with_events": dispositivos_with_events,
             "action_stats": action_stats,
             "processing_time": processing_time,

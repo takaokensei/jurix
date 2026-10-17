@@ -79,14 +79,13 @@ class FakeNorma:
     objects = None
 
 
-def test_replay_requires_existing_partial_row_as_identity_anchor():
+def test_replay_allows_missing_local_rows_after_exact_page_validation():
     FakeNorma.objects = FakeNormaManager([])
 
-    with pytest.raises(SystemExit, match="no existing row anchors"):
-        _validate_existing_replay_anchors(
-            FakeNorma,
-            [{"id": 7, "numero": "7", "ano": 2026}],
-        )
+    assert _validate_existing_replay_anchors(
+        FakeNorma,
+        [{"id": 7, "numero": "7", "ano": 2026}],
+    ) == 0
 
 
 def test_replay_accepts_only_matching_pending_rows_without_local_source():
@@ -103,10 +102,10 @@ def test_replay_accepts_only_matching_pending_rows_without_local_source():
         ]
     )
 
-    _validate_existing_replay_anchors(
+    assert _validate_existing_replay_anchors(
         FakeNorma,
         [{"id": 7, "numero": "7", "ano": 2026}],
-    )
+    ) == 1
 
 
 def test_replay_refuses_row_that_no_longer_matches_the_source():

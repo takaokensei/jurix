@@ -10,7 +10,7 @@ const evidenceDir = process.env.JURIX_EVIDENCE_DIR || '';
 const base = new URL(baseUrl);
 assert.equal(base.protocol, 'http:');
 assert.ok(['127.0.0.1', 'localhost'].includes(base.hostname));
-assert.ok(['8280', '8281', '8282', '8283'].includes(base.port));
+assert.ok(['8280', '8281', '8282', '8283', '8287'].includes(base.port));
 assert.ok(qaRoot && evidenceDir, 'isolated QA root and evidence directory are required');
 
 const tempRoot = await fs.realpath(os.tmpdir());
@@ -129,6 +129,44 @@ try {
   assert.equal(card.target, '_blank');
   assert.deepEqual(pageErrors, []);
 
+  const responsiveDrawerLayouts = [];
+  for (const width of [320, 360, 768, 1280]) {
+    await page.setViewport({ width, height: 900 });
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const layout = await page.evaluate(() => {
+      const panel = document.getElementById('jurix-sources-drawer-panel');
+      const panelRect = panel?.getBoundingClientRect();
+      const body = document.getElementById('jurix-sources-drawer-body');
+      const toggle = panel?.querySelector('.jurix-source-group-toggle-all');
+      const sourceLink = panel?.querySelector('.jurix-rag-source__open');
+      const rect = (element) => {
+        const box = element?.getBoundingClientRect();
+        return box ? { left: box.left, right: box.right, width: box.width, height: box.height } : null;
+      };
+      return {
+        viewportWidth: window.innerWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        panel: rect(panel),
+        bodyClientWidth: body?.clientWidth ?? null,
+        bodyScrollWidth: body?.scrollWidth ?? null,
+        expandAll: rect(toggle),
+        sourceLink: rect(sourceLink),
+      };
+    });
+    assert.ok(layout.documentWidth <= width,
+      `the open sources drawer must not cause page overflow at ${width}px: ${JSON.stringify(layout)}`);
+    assert.ok(layout.panel && layout.panel.left >= -1 && layout.panel.right <= width + 1,
+      `the drawer must stay within the viewport at ${width}px: ${JSON.stringify(layout)}`);
+    assert.ok(layout.bodyClientWidth > 0 && layout.bodyScrollWidth <= layout.bodyClientWidth + 1,
+      `source evidence must reflow without horizontal drawer scrolling at ${width}px: ${JSON.stringify(layout)}`);
+    assert.ok(layout.expandAll?.height >= 44 && layout.expandAll.right <= layout.panel.right,
+      `expand-all must remain a usable visible target at ${width}px: ${JSON.stringify(layout)}`);
+    assert.ok(layout.sourceLink?.height >= 44 && layout.sourceLink.right <= layout.panel.right,
+      `the official SAPL source action must remain usable at ${width}px: ${JSON.stringify(layout)}`);
+    responsiveDrawerLayouts.push(layout);
+  }
+  await page.setViewport({ width: 1280, height: 900 });
+
   const screenshot = path.join(resolvedEvidenceDir, 'pgm-sapl-related-matter-drawer.png');
   await page.screenshot({ path: screenshot, fullPage: false });
   const result = {
@@ -138,6 +176,7 @@ try {
     sourceCount: sources.length,
     proposalCaveatShown: /não comprova, por si, que o texto foi aprovado, promulgado ou entrou em vigor/i.test(answer),
     drawerLinkHost: new URL(card.href).hostname,
+    responsiveDrawerLayouts,
     pageErrors: pageErrors.length,
     screenshot,
   };

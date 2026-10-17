@@ -7,7 +7,11 @@ import pytest
 
 from src.apps.legislation.document_models import NormativeSnapshot
 from src.apps.legislation.models import Norma
-from src.processing.foundation_check import FoundationCheckCancelled, check_foundation
+from src.processing.foundation_check import (
+    FoundationCheckCancelled,
+    _device_matches,
+    check_foundation,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -169,6 +173,67 @@ def test_check_requires_confirmation_and_does_not_query_unqualified_articles():
 
     assert result["references"][0]["status"] == "confirmation_required"
     assert result["references"][0].get("norma_id") is None
+
+
+def test_device_matching_distinguishes_lettered_article_from_base_article():
+    base = SimpleNamespace(
+        source=SimpleNamespace(tipo="artigo", numero="2º", structural_key="article-2")
+    )
+    lettered = SimpleNamespace(
+        source=SimpleNamespace(tipo="artigo", numero="2º-A", structural_key="article-2-a")
+    )
+    projection = SimpleNamespace(devices=(base, lettered))
+
+    assert _device_matches(
+        projection,
+        SimpleNamespace(article="2", paragraph=None, item=None, alinea=None),
+    ) == [base]
+    assert _device_matches(
+        projection,
+        SimpleNamespace(article="2-A", paragraph=None, item=None, alinea=None),
+    ) == [lettered]
+
+
+def test_check_resolves_each_article_in_a_coordinated_citation():
+    norma = _norma()
+
+    def snapshot(as_of):
+        result = _projection(norma, as_of, text="Texto estável")
+        devices = []
+        for number in ("1º", "2º"):
+            source = SimpleNamespace(
+                tipo="artigo",
+                numero=number,
+                structural_key=f"article-{number}",
+                parent_key=None,
+                page_index=0,
+                extracao=SimpleNamespace(documento=SimpleNamespace(public_id=uuid4())),
+            )
+            devices.append(SimpleNamespace(source=source, text=f"Art. {number} Texto", legal_status="in_force"))
+        result.devices = tuple(devices)
+        return result
+
+    with (
+        patch(
+            "src.processing.foundation_check.project_norma_as_of",
+            side_effect=lambda _norma, as_of: snapshot(as_of),
+        ),
+        patch(
+            "src.processing.foundation_check.current_corpus_coverage",
+            return_value=_reviewed_coverage("municipal_lo"),
+        ),
+    ):
+        result = check_foundation(
+            "Arts. 1º e 2º da Lei nº 10/2020",
+            from_date=date(2020, 1, 1),
+            to_date=date(2021, 1, 1),
+        )
+
+    assert [reference["identity"]["article"] for reference in result["references"]] == ["1", "2"]
+    assert [reference["status"] for reference in result["references"]] == [
+        "unchanged_in_checked_scope",
+        "unchanged_in_checked_scope",
+    ]
 
 
 def test_check_rejects_non_increasing_date_range():

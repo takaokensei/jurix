@@ -28,6 +28,11 @@ urlpatterns = [
         name="foundation_check_status",
     ),
     path(
+        "conferir/resultado/<uuid:job_id>/",
+        workspace_views.foundation_check_result_view,
+        name="foundation_check_result",
+    ),
+    path(
         "conferir/<uuid:job_id>/cancelar/",
         workspace_views.foundation_check_cancel_view,
         name="foundation_check_cancel",

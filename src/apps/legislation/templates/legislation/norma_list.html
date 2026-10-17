@@ -90,7 +90,7 @@
                 <p>A busca acima não pesquisa o texto integral destes PDFs. Consulte o acervo completo; os documentos encontrados continuam identificados como candidatos e não comprovam vigência.</p>
             </div>
             <a class="jurix-norma-primary-button" id="archive-global-search-top"
-                href="{% url 'workspace:legal_search' %}?q={{ search_query|urlencode }}{% if selected_type %}&amp;arquivo_tipo={{ selected_type|urlencode }}{% endif %}{% if selected_year %}&amp;arquivo_ano={{ selected_year|urlencode }}{% endif %}">
+                href="{% url 'workspace:legal_search' %}?q={{ archive_candidate_query|urlencode }}{% if selected_type %}&amp;arquivo_tipo={{ selected_type|urlencode }}{% endif %}{% if selected_year %}&amp;arquivo_ano={{ selected_year|urlencode }}{% endif %}">
                 Buscar nos {{ archive_candidate_total }} PDFs pendentes
                 <span aria-hidden="true">→</span>
             </a>

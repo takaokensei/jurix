@@ -49,6 +49,20 @@ test('legacy sources without citation indexes retain their array-order contract'
   window.close();
 });
 
+test('inline citation displays its resolved legal device while retaining the source index', () => {
+  const window = boot();
+  const html = window.JurixMarkdown.normalize('A regra está em [[1]].', [{
+    ...historicalSource,
+    dispositivo_ref: 'Art. 2º > Inciso IV',
+  }]);
+  const rendered = new JSDOM(`<body>${html}</body>`).window.document.querySelector('.jurix-citation');
+
+  assert.equal(rendered?.textContent, 'Art. 2º, inciso IV');
+  assert.equal(rendered?.getAttribute('data-source-index'), '1');
+  assert.match(rendered?.getAttribute('aria-label') || '', /Art\. 1º/);
+  window.close();
+});
+
 test('inline bullet normalization does not turn a legal hyphen into a new list item', () => {
   const window = boot();
   const clause = 'Parágrafo Único - As demais gratificações permanecem regidas por lei específica.';
@@ -425,6 +439,26 @@ test('evidence export keeps a local Jurix PDF route separate from official URLs'
   window.close();
 });
 
+test('local PDF evidence export opens at its cited page', () => {
+  const window = boot();
+  const localPath = '/normas/documentos/12345678-1234-5678-1234-567812345678/pdf/';
+  const packageDto = window.JurixChatRenderer.buildEvidencePackage([{
+    ...historicalSource,
+    page: 61,
+    source_url: null,
+    pdf_url: null,
+    sapl_url: null,
+    local_pdf_url: localPath,
+  }]);
+
+  assert.equal(packageDto.sources[0].local_pdf_url, `${localPath}#page=61`);
+  assert.match(
+    window.JurixChatRenderer.renderEvidenceMarkdown(packageDto),
+    /\]\(<\/normas\/documentos\/12345678-1234-5678-1234-567812345678\/pdf\/#page=61>\)/,
+  );
+  window.close();
+});
+
 test('corpus revision export rejects invalid dates and unsupported completeness values', () => {
   const window = boot();
   const packageDto = window.JurixChatRenderer.buildEvidencePackage([], {
@@ -436,6 +470,42 @@ test('corpus revision export rejects invalid dates and unsupported completeness 
 
   assert.deepEqual({ ...packageDto.corpus_revision }, { revision: 'r8' });
   assert.equal(packageDto.corpus_coverage, null);
+  window.close();
+});
+
+test('unknown review counts and corpus revisions stay unknown instead of becoming zero', () => {
+  const window = boot();
+  const packageDto = window.JurixChatRenderer.buildEvidencePackage([], {
+    revision: null,
+  }, {
+    coverage_status: 'unknown',
+    corpus_revision: { revision: null, digest: null },
+    pending_review: null,
+    sources_checked: [{
+      coverage_status: 'unknown',
+      pending_review: null,
+    }],
+    reason: 'no_reviewed_coverage_scope',
+  });
+
+  assert.equal(packageDto.corpus_coverage.pending_review, null);
+  assert.equal(packageDto.corpus_coverage.sources_checked[0].pending_review, null);
+  assert.equal(packageDto.corpus_coverage.corpus_revision.revision, null);
+  const markdown = window.JurixChatRenderer.renderEvidenceMarkdown(packageDto);
+  assert.doesNotMatch(markdown, /Documentos pendentes de revisão: \*\*0\*\*/);
+  assert.doesNotMatch(markdown, /pendências?:? 0\b/);
+
+  const knownZero = window.JurixChatRenderer.buildEvidencePackage([], null, {
+    coverage_status: 'partial',
+    pending_review: 0,
+    sources_checked: [{ coverage_status: 'partial', pending_review: 0 }],
+  });
+  assert.equal(knownZero.corpus_coverage.pending_review, 0);
+  assert.equal(knownZero.corpus_coverage.sources_checked[0].pending_review, 0);
+  assert.match(
+    window.JurixChatRenderer.renderEvidenceMarkdown(knownZero),
+    /Documentos pendentes de revisão: \*\*0\*\*/,
+  );
   window.close();
 });
 
