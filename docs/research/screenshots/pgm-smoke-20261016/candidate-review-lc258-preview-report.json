@@ -1,0 +1,44 @@
+{
+  "status": "passed",
+  "scenario": "real_sapl_lc258-2024_candidate_segmentation_preview",
+  "document_public_id": "00c841d2-4b08-42a3-80b1-f018b1e86d43",
+  "reviewer_permissions": [
+    "legislation.view_documentonormativo"
+  ],
+  "candidate_extraction_id": 7141,
+  "expected_articles": [
+    "260",
+    "261",
+    "262",
+    "266"
+  ],
+  "preview_target_article": "260",
+  "persisted_preview": false,
+  "article_count": 266,
+  "device_count": 860,
+  "key_articles_visible": [
+    "260",
+    "261",
+    "262",
+    "266"
+  ],
+  "page_errors": [],
+  "persisted_relation_review_checks": [
+    "8 candidates visible and awaiting human review",
+    "nested target identity remains separate from device number",
+    "candidate state does not claim an operative graph edge"
+  ],
+  "target_document_candidate_checks": [
+    "matching SAPL PDF linked as an unreviewed LC 55/2004 candidate",
+    "ordinary-law PDF shown as a species conflict for the LC 1,894/1969 citation",
+    "the matching LC 208/2022 PDF exposes Art. 14 as a bounded, unreviewed preview with a page link",
+    "opening the LC 55 PDF lead returns the local evidence page (HTTP 200)",
+    "document leads stay separate from confirmed relation targets"
+  ],
+  "relation_preview_checks": [
+    "Lei Promulgada 275/2009 · artigo 21",
+    "Lei Promulgada 562/2018",
+    "relation status remains unreviewed"
+  ],
+  "evidence_dir": "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261008\\candidate-preview-1792186928588"
+}

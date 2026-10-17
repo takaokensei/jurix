@@ -1,0 +1,2215 @@
+{
+  "baseUrl": "http://127.0.0.1:8287",
+  "environment": "isolated QA; real local archived PDFs; pending human review; not legal adjudication",
+  "checks": [
+    {
+      "id": "responsive-assistant",
+      "status": "passed",
+      "viewports": [
+        {
+          "width": 320,
+          "scrollWidth": 320,
+          "hasMain": true,
+          "outOfViewportFocusableControls": 0
+        },
+        {
+          "width": 360,
+          "scrollWidth": 360,
+          "hasMain": true,
+          "outOfViewportFocusableControls": 0
+        },
+        {
+          "width": 640,
+          "scrollWidth": 640,
+          "hasMain": true,
+          "outOfViewportFocusableControls": 0
+        },
+        {
+          "width": 768,
+          "scrollWidth": 768,
+          "hasMain": true,
+          "outOfViewportFocusableControls": 0
+        },
+        {
+          "width": 1280,
+          "scrollWidth": 1280,
+          "hasMain": true,
+          "outOfViewportFocusableControls": 0
+        },
+        {
+          "width": 1920,
+          "scrollWidth": 1920,
+          "hasMain": true,
+          "outOfViewportFocusableControls": 0
+        }
+      ]
+    },
+    {
+      "id": "archive-search-summary-responsive",
+      "status": "passed",
+      "viewports": [
+        {
+          "width": 320,
+          "scrollWidth": 320,
+          "summaryVisible": true,
+          "summaryRight": 306,
+          "outOfViewportFocusableControls": 0
+        },
+        {
+          "width": 360,
+          "scrollWidth": 360,
+          "summaryVisible": true,
+          "summaryRight": 346,
+          "outOfViewportFocusableControls": 0
+        },
+        {
+          "width": 640,
+          "scrollWidth": 640,
+          "summaryVisible": true,
+          "summaryRight": 621,
+          "outOfViewportFocusableControls": 0
+        },
+        {
+          "width": 768,
+          "scrollWidth": 768,
+          "summaryVisible": true,
+          "summaryRight": 745,
+          "outOfViewportFocusableControls": 0
+        },
+        {
+          "width": 1280,
+          "scrollWidth": 1280,
+          "summaryVisible": true,
+          "summaryRight": 1242,
+          "outOfViewportFocusableControls": 0
+        },
+        {
+          "width": 1920,
+          "scrollWidth": 1920,
+          "summaryVisible": true,
+          "summaryRight": 1628,
+          "outOfViewportFocusableControls": 0
+        }
+      ]
+    },
+    {
+      "id": "real-archive-accent-insensitive-search",
+      "status": "passed",
+      "candidateCount": 20,
+      "statuses": [
+        "Pendente",
+        "Pendente",
+        "Pendente",
+        "Pendente",
+        "Pendente",
+        "Pendente",
+        "Pendente",
+        "Pendente",
+        "Pendente",
+        "Pendente",
+        "Pendente",
+        "Pendente",
+        "Pendente",
+        "Pendente",
+        "Pendente",
+        "Pendente",
+        "Pendente",
+        "Pendente",
+        "Pendente",
+        "Pendente"
+      ],
+      "caveat": "candidates are unreviewed PDF extractions, not legal conclusions"
+    },
+    {
+      "id": "archive-groups-byte-identical-conflicting-identities-without-merging-records",
+      "status": "passed",
+      "title": "2 documentos candidatos",
+      "summary": "2 PDFs candidatos no acervo local. Ainda em revisão; não são resultados consolidados. Cópias binariamente idênticas foram agrupadas em 1 resultado.\n\nA busca prioriza, dentro desta página, correspondências após o primeiro artigo detectado. É uma heurística de triagem, não uma classificação jurídica.\nVer PDFs candidatos",
+      "group": {
+        "summary": "2 PDFs com bytes idênticos",
+        "caveat": "Hash igual confirma igualdade dos arquivos, não que tenham a mesma identidade jurídica, espécie ou vigência. Confira cada registro e o documento oficial.",
+        "copies": [
+          {
+            "label": "Lei nº 5791 · leiOrdinaria_5791.pdf",
+            "href": "/normas/documentos/3841ced1-3ddc-4d95-a074-3928ece44bc7/"
+          },
+          {
+            "label": "Lei Promulgada nº 5791 · leiPromulgada_5791.pdf",
+            "href": "/normas/documentos/bf388126-f628-4aad-ba0c-ec32854d5123/"
+          }
+        ]
+      },
+      "caveat": "identical bytes do not establish legal identity or force"
+    },
+    {
+      "id": "natural-cosip-query-finds-real-unbuilt-property-pdf-without-legal-promotion",
+      "status": "passed",
+      "title": "18 documentos candidatos",
+      "topCandidates": [
+        {
+          "filename": "Decreto_20161114_11127_.pdf",
+          "excerpt": "Trecho coincidente · corresponde a 6 de 6 grupos da busca · após o primeiro artigo detectado · p. 1: Urbana (IPTU) e da Taxa de Coleta, Remoção, Transporte e Destinação do Lixo (Taxa de Lixo), incidentes sobre unidades edificadas ou não edificadas, podem ser realizados em até 10 (dez) parcelas mensais e sucessivas. § 1º. Os recolhimentos da Contribuição de Iluminação Pública (COSIP) incidente sobre unidades im",
+          "status": "Pendente"
+        },
+        {
+          "filename": "Decreto_20171127_11407_.pdf",
+          "excerpt": "Trecho coincidente · corresponde a 6 de 6 grupos da busca · após o primeiro artigo detectado · p. 1: Transporte e Destinação do Lixo (Taxa de Lixo) não pode ser superior a dois por cento (2%) do valor venal do imóvel calculado nos termos da Lei. § 2º. Os recolhimentos da Contribuição de Iluminação Pública (COSIP) incidente sobre unidades imobiliárias não edificadas podem ser realizados até a data de seu vencime",
+          "status": "Pendente"
+        },
+        {
+          "filename": "Decreto_20211210_12390_.pdf",
+          "excerpt": "Trecho coincidente · corresponde a 6 de 6 grupos da busca · após o primeiro artigo detectado · p. 1: edificadas ou não edificadas, podem ser realizados em parcela única até a data de seu vencimento sem acréscimos. § 1 º. Os recolhimentos da Contribuição de Iluminação Pública (COSIP) incidente sobre unidades imobiliárias não edificadas podem ser realizados até a data de seu vencimento sem acréscimos. § 2º.",
+          "status": "Pendente"
+        },
+        {
+          "filename": "Decreto_20241129_13251_.pdf",
+          "excerpt": "",
+          "status": "Pendente"
+        },
+        {
+          "filename": "Decreto_20171129_11407__republicado.pdf",
+          "excerpt": "",
+          "status": "Pendente"
+        }
+      ],
+      "caveat": "authentic local PDFs remain pending review; search is not a legal conclusion"
+    },
+    {
+      "id": "natural-environmental-waste-search-shows-real-relevant-pdf-without-legal-promotion",
+      "status": "passed",
+      "title": "86 documentos candidatos",
+      "topCandidates": [
+        {
+          "filename": "LeiComplementar_20110701_124_.pdf",
+          "matchLabel": "Trecho coincidente · corresponde a 2 de 2 grupos da busca · após o primeiro artigo detectado · p. 2:",
+          "excerpt": "Trecho coincidente · corresponde a 2 de 2 grupos da busca · após o primeiro artigo detectado · p. 2: preservação permanente; IV – desenvolver metas prioritárias visando à eliminação dos lançamentos clandestinos de águas residuárias e dos resíduos sólidos de qualquer natureza nos sistemas de drenagem pluvial, para assegurar a correta utilização do sistema; V- desenvolver a educação sanitária e ambiental como instru",
+          "status": "Pendente"
+        },
+        {
+          "filename": "LeiComplementar_20140829_141_.pdf",
+          "matchLabel": "Trecho coincidente · corresponde a 2 de 2 grupos da busca · após o primeiro artigo detectado · p. 26:",
+          "excerpt": "Trecho coincidente · corresponde a 2 de 2 grupos da busca · após o primeiro artigo detectado · p. 26: específica,compete: I- regular, através de disciplinamento, fiscalização, autuação e monitoramento, as atividades de saneamento ambiental no âmbito do Município de Natal, atinentes a tratamento e abastecimento de água para consumo humano, drenagem de águas pluviais, manejo de resíduos sólidos e líquidos, incluind",
+          "status": "Pendente"
+        },
+        {
+          "filename": "Decreto_20120203_9615_.pdf",
+          "matchLabel": "Trecho coincidente · corresponde a 2 de 2 grupos da busca · após o primeiro artigo detectado · p. 1:",
+          "excerpt": "Trecho coincidente · corresponde a 2 de 2 grupos da busca · após o primeiro artigo detectado · p. 1: segundo a viabilidade econômica e operacional. § 1o Para fins de simplificar e facilitar as ações de coleta seletiva e educação ambiental para reciclagem e reaproveitamento de resíduos sólidos, recomenda-se a separação simples em resíduos úmidos e secos. Art. 3º Estarão habilitadas à coletar os resíduos reciclá",
+          "status": "Pendente"
+        },
+        {
+          "filename": "LeiOrdinaria20100115_6047.pdf",
+          "matchLabel": "Trecho coincidente · corresponde a 2 de 2 grupos da busca · após o primeiro artigo detectado · p. 40:",
+          "excerpt": "Trecho coincidente · corresponde a 2 de 2 grupos da busca · após o primeiro artigo detectado · p. 40: ambiental. Justificativa : Reduzir o descompasso entre o processo de urbanização e a oferta dos serviços e de infra-estrutura de saneamento ambiental. Indicadores - Taxa de cobertura dos serviços de áqua e esgoto; Taxa de regulação da drenagem; Taxa de cobertura de coleta de residuos sólidos. SEMSUR Abrangência: Munic",
+          "status": "Pendente"
+        },
+        {
+          "filename": "LeiOrdinaria_20190408_6881_.pdf",
+          "matchLabel": "Trecho coincidente · corresponde a 2 de 2 grupos da busca · após o primeiro artigo detectado · p. 1:",
+          "excerpt": "Trecho coincidente · corresponde a 2 de 2 grupos da busca · após o primeiro artigo detectado · p. 1: instituída a criação de propaganda pela Prefeitura de Natal, a ser exibida nas mídias, no âmbito do Município de Natal, acerca da educação ambiental, especificamente sobre a destinação adequada do lixo. Parágrafo Único – A propaganda de que trata o caput deste artigo deverá ser exibida entre as programações locais d o",
+          "status": "Pendente"
+        },
+        {
+          "filename": "Decreto_20221229_12714_.pdf",
+          "matchLabel": "Trecho coincidente · corresponde a 1 de 2 grupos da busca · após o primeiro artigo detectado · p. 3:",
+          "excerpt": "Trecho coincidente · corresponde a 1 de 2 grupos da busca · após o primeiro artigo detectado · p. 3: URBANA 50.000,00 3.3.90.39 15000000 50.000,00 15.451.156.1-238 Revisão e Implementação de Plano Integrado de Resíduos Sólidos 100.000,00 Do Natal 3.3.90.39 15000000 100.000,00 15.451.156.1-239 Elaboração e Implementação de Plano de Gerenciamento de 75.000,00 Resíd",
+          "status": "Pendente"
+        },
+        {
+          "filename": "LeiOrdinaria_20211208_7254_.pdf",
+          "matchLabel": "Trecho coincidente · corresponde a 1 de 2 grupos da busca · após o primeiro artigo detectado · p. 29:",
+          "excerpt": "Trecho coincidente · corresponde a 1 de 2 grupos da busca · após o primeiro artigo detectado · p. 29: 4.100/1992. IV – Gravidade e Impacto Excepcional são as infrações gerais ou os quadros de poluição que atentem contra a higidez ambiental de áreas públicas localizadas em Zonas de Proteção Ambiental (ZPA), Áreas de Preservação Permanente (APP), Unidades de Conservação (UC), nas seguintes condições: a) a supres",
+          "status": "Pendente"
+        },
+        {
+          "filename": "LeiOrdinaria20110126_6207.pdf",
+          "matchLabel": "Trecho coincidente · corresponde a 1 de 2 grupos da busca · após o primeiro artigo detectado · p. 165:",
+          "excerpt": "Trecho coincidente · corresponde a 1 de 2 grupos da busca · após o primeiro artigo detectado · p. 165: área, airavés do desenvolvimento emucacinal e cultural perninentes as caracteristicas flslcas e ambentais. F m 32907 o n o 2987 n o Ambiental 016 - EDUCAÇÃO INTEGRADA 246 o [ 306 EN [ o 18.541 016.2-605 - EDUCAÇÃO 246 o o 206 4o [ [ AMBIENTAL Promover o fortalecmento da emeação — ambiental através — da sensiniização",
+          "status": "Pendente"
+        },
+        {
+          "filename": "LeiComplementar_20211231_206_.pdf",
+          "matchLabel": "Trecho coincidente · corresponde a 1 de 2 grupos da busca · após o primeiro artigo detectado · p. 3:",
+          "excerpt": "Trecho coincidente · corresponde a 1 de 2 grupos da busca · após o primeiro artigo detectado · p. 3: inexistir(em), através da análise do processo de licenciamento, que deve tramitar em uma única fase, no qual se certifica a viabilidade ambiental a autoriza a operação da ETR, estabelecendo as condições e medidas de controle ambiental que devem ser atendidas em sua vigência. XI - Mastro: infraestrutura vertical auto-su",
+          "status": "Pendente"
+        },
+        {
+          "filename": "Decreto_20170125_11181_.pdf",
+          "matchLabel": "Trecho coincidente · corresponde a 1 de 2 grupos da busca · após o primeiro artigo detectado · p. 71:",
+          "excerpt": "Trecho coincidente · corresponde a 1 de 2 grupos da busca · após o primeiro artigo detectado · p. 71: JURÍDICA F 112500 4 10.000,00 3449052000000 - EQUIPAMENTOS E MATERIAL PERMANENTE F 112500 4 10.000,00 15.541.056.2-605 - EDUCAÇÃO AMBIENTAL 60.000,00 Objetivo: POSSIBILITAR O FORTALECIMENTO DA EDUCAÇÃO AMBIENTAL ATRAVÉS DA SENSIBILIZAÇÃO AMBIENTAL, A PARTIR DE MECANISMO QUE POSSIBILITEM COMPREENSÃO PARA O EXERCÍCIO DA",
+          "status": "Pendente"
+        }
+      ],
+      "caveats": [
+        "A relevância é uma estimativa automática de recuperação, não uma conclusão jurídica. Confira o dispositivo e a fonte normativa antes de usar ou citar um resultado.",
+        "Os PDFs locais ainda estão em revisão e não entram nos resultados consolidados. Se consultar esse acervo, confira o PDF original: a extração ainda não é texto jurídico validado.\n\nPerguntar ao assistente sobre os PDFs em revisão Ver PDFs locais disponíveis",
+        "Estes são documentos do acervo local, não normas consolidadas. A identidade vem do arquivo e o texto é extração automática; confira o PDF original antes de usar. Um resultado não comprova vigência nem efeito jurídico.",
+        "A busca ampliou alguns termos por sinônimos controlados. A expansão indica descoberta textual, não equivalência jurídica."
+      ],
+      "caveat": "the archive also contains lexical false positives; each PDF is an unreviewed candidate"
+    },
+    {
+      "id": "normas-main-search-offers-visible-full-corpus-search",
+      "status": "passed",
+      "query": "Lei Complementar nº 258/2024",
+      "responseStatus": 200,
+      "visibleWithoutScrolling": true,
+      "archiveType": "Lei Complementar",
+      "archiveYear": "2024",
+      "result": "Lei Complementar nº 258/2024 · pendente de revisão",
+      "label": "Buscar nos 6670 PDFs pendentes\n→"
+    },
+    {
+      "id": "normas-page-filter-forwards-query-to-global-archive-search",
+      "status": "passed",
+      "query": "Lei Complementar nº 120/2010",
+      "responseStatus": 200
+    },
+    {
+      "id": "normas-archive-candidates-search-and-evidence-detail",
+      "status": "passed",
+      "consolidatedCount": 0,
+      "candidateTotal": 6670,
+      "displayedCandidates": 40,
+      "filteredCount": 1,
+      "evidenceStatus": 200,
+      "pdfAvailable": true,
+      "anonymousReviewForms": 0,
+      "caveat": "PDF candidates are visible for consultation but not approved as consolidated norms"
+    },
+    {
+      "id": "normas-responsive",
+      "status": "passed",
+      "viewports": [
+        {
+          "width": 320,
+          "scrollWidth": 320,
+          "searchPlaceholderWidth": 124,
+          "searchPlaceholderAvailableWidth": 166,
+          "candidateTotal": 6670,
+          "displayedCandidates": 40,
+          "outOfViewportFocusableControls": 0
+        },
+        {
+          "width": 360,
+          "scrollWidth": 360,
+          "searchPlaceholderWidth": 124,
+          "searchPlaceholderAvailableWidth": 206,
+          "candidateTotal": 6670,
+          "displayedCandidates": 40,
+          "outOfViewportFocusableControls": 0
+        },
+        {
+          "width": 640,
+          "scrollWidth": 640,
+          "searchPlaceholderWidth": 124,
+          "searchPlaceholderAvailableWidth": 468,
+          "candidateTotal": 6670,
+          "displayedCandidates": 40,
+          "outOfViewportFocusableControls": 0
+        },
+        {
+          "width": 768,
+          "scrollWidth": 768,
+          "searchPlaceholderWidth": 124,
+          "searchPlaceholderAvailableWidth": 588,
+          "candidateTotal": 6670,
+          "displayedCandidates": 40,
+          "outOfViewportFocusableControls": 0
+        },
+        {
+          "width": 1280,
+          "scrollWidth": 1280,
+          "searchPlaceholderWidth": 124,
+          "searchPlaceholderAvailableWidth": 706,
+          "candidateTotal": 6670,
+          "displayedCandidates": 40,
+          "outOfViewportFocusableControls": 0
+        },
+        {
+          "width": 1920,
+          "scrollWidth": 1920,
+          "searchPlaceholderWidth": 124,
+          "searchPlaceholderAvailableWidth": 839,
+          "candidateTotal": 6670,
+          "displayedCandidates": 40,
+          "outOfViewportFocusableControls": 0
+        }
+      ]
+    },
+    {
+      "id": "normative-graph-honest-empty-state-responsive",
+      "status": "passed",
+      "viewports": [
+        {
+          "width": 320,
+          "scrollWidth": 320,
+          "searchLink": "/pesquisa/"
+        },
+        {
+          "width": 360,
+          "scrollWidth": 360,
+          "searchLink": "/pesquisa/"
+        },
+        {
+          "width": 640,
+          "scrollWidth": 640,
+          "searchLink": "/pesquisa/"
+        },
+        {
+          "width": 768,
+          "scrollWidth": 768,
+          "searchLink": "/pesquisa/"
+        },
+        {
+          "width": 1280,
+          "scrollWidth": 1280,
+          "searchLink": "/pesquisa/"
+        },
+        {
+          "width": 1920,
+          "scrollWidth": 1920,
+          "searchLink": "/pesquisa/"
+        }
+      ],
+      "emptyState": {
+        "width": 1920,
+        "scrollWidth": 1920,
+        "heading": "0 normas",
+        "emptyVisible": true,
+        "emptyText": "Nenhuma norma consolidada disponível para explorar.\n\nO acervo local pode conter PDFs em revisão, mas eles não são tratados como normas confirmadas nem geram relações jurídicas públicas. Use a busca do acervo para localizar documentos candidatos.\n\nBuscar no acervo local",
+        "searchLink": "/pesquisa/",
+        "demoLink": "/explorar/demo-consolidacao/",
+        "demoLinkText": "Abrir grafo demonstrativo da LC 258/2024",
+        "filterFormVisible": false,
+        "relationCards": 0
+      },
+      "caveat": "zero consolidated/reviewed norms; this verifies honesty and navigation, not graph usefulness"
+    },
+    {
+      "id": "lc258-explicit-repeals-and-parallel-relations-responsive",
+      "status": "passed",
+      "viewports": [
+        {
+          "width": 320,
+          "scrollWidth": 320,
+          "sourceNodes": 1,
+          "lc55HistoryTitle": "O que aconteceu com a LC nº 55/2004?",
+          "lc55OriginalQuote": "Art. 34 - A Licença Ambiental observa as seguintes etapas: I – Licença Prévia (LP); II – Licença de Instalação (LI); III – Licença de Operação (LO). § 1º — O prazo de validade deve ser fixado no próprio documento, obedecidas às prescrições estabelecidas nas normas específicas. § 2º — O Poder Executivo define o momento e as condições de exigibilidade das licenças referidas neste artigo.",
+          "lc55OriginalLink": "http://127.0.0.1:8287/normas/documentos/80752f21-67b5-4190-8109-e7cfa30f1551/pdf/#page=9",
+          "lc55OriginalReviewState": "Trecho lido da extração do PDF oficial no staging QA; revisão pendente e extração complete. É evidência documental, não redação consolidada aprovada.",
+          "lc55HistoryGridColumns": 1,
+          "lc55HistoryActs": [
+            "LC nº 173/2017 · Art. 2º",
+            "LC nº 185/2019 · Art. 87",
+            "LC nº 258/2024 · Art. 260, IV"
+          ],
+          "lc55HistorySnapshots": [
+            "Compilação oficial municipal · julho/2019 (snapshot, não ato)"
+          ],
+          "lc55HistoryLinks": [
+            {
+              "href": "http://127.0.0.1:8287/normas/documentos/4e6712c4-8376-4ff7-bec1-41a3f709b062/pdf/#page=1",
+              "text": "Conferir PDF de origem, p. 1"
+            },
+            {
+              "href": "https://natal.rn.gov.br/storage/app/media/legislacao/anexos/LeiComplementar_20171229_173_.pdf#page=1",
+              "text": "Abrir cópia publicada no portal oficial de Natal, p. 1"
+            },
+            {
+              "href": "http://127.0.0.1:8287/normas/documentos/110cba46-d992-4e94-9aab-072d839105f1/pdf/#page=20",
+              "text": "Conferir PDF de origem, p. 20"
+            },
+            {
+              "href": "https://natal.rn.gov.br/storage/app/media/legislacao/anexos/LeiComplementar_20190718_185_.pdf#page=20",
+              "text": "Abrir cópia publicada no portal oficial de Natal, p. 20"
+            },
+            {
+              "href": "https://www.natal.rn.gov.br/storage/app/media/semurb/legislacao/35_Codigo_Obras_Atualizado_Julho_2019.pdf",
+              "text": "Abrir compilação oficial da Prefeitura, p. 16"
+            },
+            {
+              "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2024/4052/lei_complementar_no_258_2024.pdf#page=59",
+              "text": "Conferir PDF de origem, p. 59"
+            }
+          ],
+          "lc55HistoryNotice": "Fontes primárias identificadas, mas a cadeia do Art. 34 ainda tem uma divergência material entre o Art. 87 da LC 185/2019 e a compilação municipal.\n\n§ 4º no ato candidato de 2017: §4º - A regulamentação de que trata o parágrafo anterior, definirá as atividades passíveis de Licença Simplificada (LS), bem como suas modalidades e os procedimentos para o licenciamento.”\n\n§ 4º na compilação oficial de 2019: § 4º - A regulamentação de que trata o parágrafo anterior, definirá as atividades passíveis de Licença Simplificada (LS), bem como suas modalidades e procedimentos para o licenciamento. (Redação dada pela Lei Complementar nº. 173, de 2017)\n\n§ 5º na compilação oficial de 2019: § 5º - As micro e pequenas empresas deverão ter suas atividades inexigíveis de licenciamento, sendo dispensado todos os atos públicos de liberação da atividade econômica para plena e contínua operação e funcionamento do estabelecimento, desde que seu CNAE esteja contemplado no rol taxativo pela legislação específica vigente. (Acrescido pela Lei Complementar nº. 185, de 2019)\n\nO PDF municipal da LC 173 traz no próprio cabeçalho a data de 28/12/2017; o Decreto municipal nº 11.681/2018 menciona “LC 173/2018” apesar de citar a data de 28/12/2017. A divergência está localizada na referência do decreto; a identidade do PDF da lei foi conferida pelo hash da cópia oficial, sem usar a proposição legislativa como fonte de vigência.\n\nA compilação atribui o § 5º à LC 185/2019, enquanto o Art. 87 do PDF promulgado fornece redação de § 3º com outro conteúdo. O sistema registra as duas evidências e deixa o alcance legislativo para revisão jurídica. A LC 258/2024 depois lista a LC 55 entre as revogadas; para processos de licenciamento, seu Art. 262 prevê regra de transição que depende do protocolo e de eventual opção formal pelo novo Código.",
+          "lc55TimelineNotice": "Resultado: localizamos a cadeia promulgada e os documentos oficiais, mas não é seguro publicar uma redação consolidada final do Art. 34 ainda.\n\nEstão comprovados os atos e a sucessão documental: LC 173/2017 acrescenta §§ 3º e 4º; o Art. 87 da LC 185/2019 declara nova redação para o Art. 34; a compilação municipal de julho/2019 não reproduz o mesmo § 3º; a LC 258/2024 revoga expressamente a LC 55 com vigência calculada em 27/03/2025 e regra transitória no Art. 262. O snapshot é mostrado como fonte, não escolhido como texto final.\n\nEstado temporal documentado: o SAPL registra publicação da LC 258/2024 em 27/12/2024; o Art. 266 prevê vacância de 90 dias. Pela contagem do Art. 8º, § 1º, da LC 95/1998, incluindo a publicação e o último dia e iniciando a vigência no dia seguinte, a data calculada é 27/03/2025. A partir daí, o Art. 260, IV, revoga expressamente a LC 55/2004. Confira a ficha oficial da LC 258/2024, o PDF oficial, Arts. 260, 262 e 266 e a regra de contagem da LC 95/1998.\n\nExceção que importa à PGM: pelo Art. 262 da LC 258, processos de licenciamento protocolados até a entrada em vigor e ainda sem despacho decisório são apreciados integralmente segundo a legislação vigente na data do protocolo, salvo manifestação formal do interessado pela análise integral conforme a lei nova. Antes de aplicar isso, confirme protocolo, existência de despacho e eventual opção formal no processo.\n\nPróxima revisão necessária: decidir juridicamente o alcance das reticências e do § 3º do Art. 87, explicar por que a compilação apresenta texto diferente e pesquisar atos posteriores ao snapshot até a entrada em vigor da LC 258. Até lá, a resposta correta do sistema é “cadeia identificada; redação consolidada inconclusiva”.\n\nDivergência de identidade para revisão: o Art. 260, VII, da LC 258/2024 escreve “Lei nº 198, de 12 de novembro de 2021”, enquanto o cadastro oficial do SAPL identifica a norma nº 198 daquela data como Lei Complementar. Não tratamos esses rótulos como equivalentes sem confirmar a identidade do ato e a intenção da referência.\n\nPara usar a regra em um processo, o procurador ainda precisa confirmar o texto do ato no DOM, a data do protocolo, a existência de despacho decisório na entrada em vigor e eventual opção formal do interessado pelo novo Código.",
+          "lc55ParagraphComparison": "Redação documentada em 2017 · candidata\nArt. 34, § 3º · LC 173/2017, Art. 2º\n§3º - A localização/concepção (licença prévia), instalação e a operação de empreendimentos/atividades, que não sejam de forte impacto urbanístico, poderão ser aprovadas por meio de um único documento, através da Licença Simplificada (LS), conforme regulamentação específica.\nAbrir fonte de 2017, p. 1\nAto alterador promulgado · LC 185/2019\nArt. 34, § 3º · LC 185/2019, Art. 87\n§ 3º. As micro e pequenas empresas deverão ter suas atividades inexigíveis de licenciamento, sendo dispensado todos os atos públicos de liberação da atividade econômica para plena e contínua operação e funcionamento do estabelecimento, desde que seu CNAE esteja contemplado no rol taxativo pela legislação específica vigente.”\n\nO Art. 87 da LC 185/2019 diz expressamente que o Art. 34 da LC 55 passa a vigorar com nova redação:\n\nArt. 34 A licença ambiental observa as seguintes etapas: ... § 3º. As micro e pequenas empresas deverão ter suas atividades inexigíveis de licenciamento, sendo dispensado todos os atos públicos de liberação da atividade econômica para plena e contínua operação e funcionamento do estabelecimento, desde que seu CNAE esteja contemplado no rol taxativo pela legislação específica vigente.\nConferir Art. 87 no PDF do acervo, p. 20 Conferir a cópia oficial da LC 185/2019",
+          "lc55ComparisonStatus": "Confronto entre o ato alterador e o snapshot: há divergência material: o Art. 87 da LC 185/2019 imprime a regra das micro e pequenas empresas como § 3º; o snapshot municipal mantém no § 3º a regra da Licença Simplificada e registra a regra das micro e pequenas empresas como § 5º. Nenhuma redação é escolhida automaticamente.",
+          "lc55ParagraphSourceLinks": 3,
+          "lc208OriginalParagraphLink": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2022/1160/pdn_-_lc_208_2022.pdf#page=11",
+          "lc261ReplacementLink": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2025/8823/lei_complementar_no_261_2025.pdf#page=35",
+          "lc261ReplacementQuote": "Acrescer à Subzona de Uso Restrito da ZPA-1 os lotes contidos na faixa marginal de 100 metros ao sul da Avenida da Integração, os lotes do lado sudeste da Avenida Omar O´Grady, entre as Avenidas dos Xavantes e Antoine de Saint Exupery e área delimitada na Tabela de vértices como SUR-1B.",
+          "lc208OriginalParagraphQuote": "§ 2º Acrescer à Subzona de Uso Restrito (SZ-2) da ZPA-1 os lotes contidos na faixa marginal de 100 metros ao sul da Avenida da Integração e os lotes do lado sudeste da Avenida Omar O´Grady, entre as Avenidas dos Xavantes e Antoine de Saint Exupery.",
+          "relationNodes": 3,
+          "graphTargets": 9,
+          "targetCardGridColumns": 1,
+          "targetCardWidth": 262.8125,
+          "diagramHeight": 4726.109375,
+          "namedTargets": 7,
+          "repealEdges": 7,
+          "targetScopeCounts": {
+            "act": 6,
+            "device": 1
+          },
+          "targetScopeNotice": "“Ato citado” significa que o texto não individualiza um artigo; isso não prova revogação integral. “Dispositivo citado” identifica o artigo mencionado, mas não confirma sozinho o alcance ou os efeitos no tempo.",
+          "renderedGraphEdges": 12,
+          "graphEdgesDashPattern": true,
+          "graphEdgesConnectNodes": true,
+          "desktopTargetsFollowTheirEventHub": true,
+          "desktopExpressFanoutStaysUnderItsHub": true,
+          "graphSvgIsDecorative": true,
+          "saplRegistry": {
+            "statuses": {
+              "Lei Complementar nº 1.894 de 31 de dezembro de 1969": {
+                "status": "species_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/3666",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #3666 · Lei Ordinária nº 1894/1969 · 25/12/1969"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1890",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei nº 1.894, de 31 de dezembro de 1969 — Código de Obras antigo"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_n_1.894_69.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de espécie\n            \n          \n          \n          \n            Conflito de espécie no cadastro SAPL\n            A consulta encontrou Lei Ordinária nº 1894/1969, mas a referência do Art. 260 indica outra espécie. Não associamos os registros.\n          \n          \n            Inspecionar ficha SAPL #3666 · Lei Ordinária nº 1894/1969 · 25/12/1969\n            Divergência de data: a referência menciona 31/12/1969; a ficha SAPL está datada de 25/12/1969. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              A fonte municipal identifica o ato como Lei nº 1.894/1969, enquanto o Art. 260 da LC 258/2024 o denomina Lei Complementar. A espécie diverge; não associar nem tratar como revogação integral validada sem revisar a publicação e o regime histórico do ato.\n              Biblioteca Virtual do Natal / SEMURB · 31/12/1969 · ano indicado no título do documento\n              Abrir ficha oficial: Lei nº 1.894, de 31 de dezembro de 1969 — Código de Obras antigo\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei Nº 4.566 de 19 de maio de 1992": {
+                "status": "year_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/6491",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #6491 · Lei Ordinária nº 4566/1994 · 27/08/1994"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1871",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei nº 4.566, de 19 de maio de 1992 — ficha bibliográfica"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_4.566.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de ano\n            \n          \n          \n          \n            O número aparece no SAPL em outro ano\n            A referência do Art. 260 cita Lei nº 4566/1992; o catálogo retornou Lei Ordinária nº 4566/1994. Não associamos os atos.\n          \n          \n            Inspecionar ficha SAPL #6491 · Lei Ordinária nº 4566/1994 · 27/08/1994\n            Divergência de data: a referência menciona 19/05/1992; a ficha SAPL está datada de 27/08/1994. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              Conflito documental de identidade: a ficha BVN cataloga Lei Ordinária, mas o PDF traz ‘DECRETA’ no preâmbulo e chama o ato de ‘presente Decreto’ no Art. 2º e ‘este decreto’ no Art. 7º. A nota do PDF informa publicação no DOE em 21/05/1992. Não classificar nem vincular como lei/decreto sem conferência jurídica da publicação oficial.\n              Biblioteca Virtual do Natal (BVN) · 19/05/1992 (assinatura e publicação na ficha)\n              Abrir ficha oficial: Lei nº 4.566, de 19 de maio de 1992 — ficha bibliográfica\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei nº 4.885 de 07 de outubro de 1997": {
+                "status": "exact_identity_candidate",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/6817",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #6817 · Lei Ordinária nº 4885/1997 · 07/10/1997 · data citada"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1912",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei nº 4.885, de 07 de outubro de 1997 — RITUR"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/ritur_relatorio_de_impacto_sobre_trafego_urbano.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              1 ficha candidata\n            \n          \n          \n          \n            Espécie, número e ano coincidem no cadastro SAPL\n            É uma correspondência cadastral candidata; não confirma que esta seja a edição citada nem que a revogação produziu efeitos.\n          \n          \n            Inspecionar ficha SAPL #6817 · Lei Ordinária nº 4885/1997 · 07/10/1997 · data citada\n            \n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              O PDF contém a Lei nº 4.885/1997 nas páginas iniciais e, a partir da página 3, um Decreto nº 8.227/2007 separado. Trate-os como atos distintos; o arquivo compilado não prova, sozinho, a redação vigente da lei nem a relação de revogação da LC 258/2024.\n              Biblioteca Virtual do Natal (BVN) · 07/10/1997 · assinatura e publicação na ficha BVN\n              Abrir ficha oficial: Lei nº 4.885, de 07 de outubro de 1997 — RITUR\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei Complementar nº 055 de 27 de janeiro de 2004": {
+                "status": "not_checked",
+                "links": [],
+                "note": ""
+              },
+              "Art. 21 da Lei Promulgada nº 275 de 12 de março de 2009": {
+                "status": "identity_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/9050",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #9050 · Lei Complementar nº 275/2026 · 03/02/2026"
+                  },
+                  {
+                    "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: DOM nº 1.538, de 17 de março de 2009 — Lei Promulgada nº 0275/2009"
+                  },
+                  {
+                    "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de ano e espécie\n            \n          \n          \n          \n            O número aparece no SAPL com ano e espécie diferentes\n            A referência do Art. 260 cita Lei Promulgada nº 275/2009; o catálogo retornou Lei Complementar nº 275/2026. Não associamos os atos.\n          \n          \n            Inspecionar ficha SAPL #9050 · Lei Complementar nº 275/2026 · 03/02/2026\n            Divergência de data: a referência menciona 12/03/2009; a ficha SAPL está datada de 03/02/2026. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              O DOM reproduz a Lei Promulgada nº 0275/2009, incluindo o Art. 21 (PDF, páginas 7–9). É fonte do texto promulgado, não prova por si só a vigência atual ou os efeitos da revogação mencionada em 2024.\n              Diário Oficial do Município de Natal · publicado em 17/03/2009; texto datado de 12/03/2009\n              Abrir ficha oficial: DOM nº 1.538, de 17 de março de 2009 — Lei Promulgada nº 0275/2009\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei Promulgada nº 562 de 14 de setembro de 2018": {
+                "status": "date_matched_candidate",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/254",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #254 · Lei Promulgada nº 562/2018 · 14/09/2018 · data citada"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/9202",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #9202 · Lei Promulgada nº 562/2018 · 18/09/2018"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/254",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei Promulgada nº 562, de 14 de setembro de 2018"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2018/254/lp_562.18.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Data citada coincide · ficha candidata\n            \n          \n          \n          \n            Uma ficha tem a data mencionada na citação\n            A data ajuda a priorizar a inspeção, mas a ficha continua sendo apenas uma candidata e não confirma identidade jurídica nem efeito da revogação. Outras fichas permanecem listadas para comparação.\n          \n          \n            Inspecionar ficha SAPL #254 · Lei Promulgada nº 562/2018 · 14/09/2018 · data citada\n            \n          \n            Inspecionar ficha SAPL #9202 · Lei Promulgada nº 562/2018 · 18/09/2018\n            Divergência de data: a referência menciona 14/09/2018; a ficha SAPL está datada de 18/09/2018. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              A ficha oficial e o PDF identificam Lei Promulgada nº 562/2018; o Art. 13 prevê vigência na data da publicação e revoga disposições em contrário. O Art. 260, VI, da LC 258/2024 cita este ato expressamente, mas esta referência não certifica a data de eficácia da revogação nem substitui a conferência do DOM e do caso concreto.\n              SAPL Natal · ficha e texto original · promulgada em 14/09/2018; publicação cadastrada em 18/09/2018\n              Abrir ficha oficial: Lei Promulgada nº 562, de 14 de setembro de 2018\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei nº 198 de 12 de novembro de 2021": {
+                "status": "species_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/925",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #925 · Lei Complementar nº 198/2021 · 12/11/2021 · data citada"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/925",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei Complementar nº 198, de 12 de novembro de 2021"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2021/925/plc_006.21-convertido.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de espécie\n            \n          \n          \n          \n            Conflito de espécie no cadastro SAPL\n            A consulta encontrou Lei Complementar nº 198/2021, mas a referência do Art. 260 indica outra espécie. Não associamos os registros.\n          \n          \n            Inspecionar ficha SAPL #925 · Lei Complementar nº 198/2021 · 12/11/2021 · data citada\n            \n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              O cadastro SAPL identifica este ato como Lei Complementar, embora o Art. 260 da LC 258/2024 cite ‘Lei nº 198’. O PDF ligado como texto original deixa número/data do cabeçalho em branco e traz data final de 06/10/2021; conferir a publicação no DOM antes de consolidar. Se confirmado como LC 198, seus Arts. 1º, 2º e 4º fazem referência à LC 55/2004, mas não substituem por si sós a redação desses artigos.\n              SAPL Natal · ficha oficial e texto original · ficha: 12/11/2021; publicação cadastrada: 20/12/2021\n              Abrir ficha oficial: Lei Complementar nº 198, de 12 de novembro de 2021\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "LC nº 208/2022, Art. 14": {
+                "links": [],
+                "note": ""
+              },
+              "“Disposições em contrário”": {
+                "links": [],
+                "note": ""
+              }
+            },
+            "candidateLinks": [
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/3666",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1890",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_n_1.894_69.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/6491",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1871",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_4.566.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/6817",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1912",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/ritur_relatorio_de_impacto_sobre_trafego_urbano.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/9050",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/254",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/9202",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/254",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2018/254/lp_562.18.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/925",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/925",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2021/925/plc_006.21-convertido.pdf",
+                "rel": "noopener noreferrer"
+              }
+            ],
+            "disclosureCount": 6,
+            "disclosureIsNative": true,
+            "disclosureSummariesNamed": true,
+            "checkedDateVisible": true
+          },
+          "parallelRelations": 2,
+          "demoTitle": "LC 258/2024, Art. 260 — revogações e alterações",
+          "heading": "Rede de relações normativas",
+          "genericRepeal": true,
+          "amendment": true,
+          "focusableOverflow": 0
+        },
+        {
+          "width": 360,
+          "scrollWidth": 360,
+          "sourceNodes": 1,
+          "lc55HistoryTitle": "O que aconteceu com a LC nº 55/2004?",
+          "lc55OriginalQuote": "Art. 34 - A Licença Ambiental observa as seguintes etapas: I – Licença Prévia (LP); II – Licença de Instalação (LI); III – Licença de Operação (LO). § 1º — O prazo de validade deve ser fixado no próprio documento, obedecidas às prescrições estabelecidas nas normas específicas. § 2º — O Poder Executivo define o momento e as condições de exigibilidade das licenças referidas neste artigo.",
+          "lc55OriginalLink": "http://127.0.0.1:8287/normas/documentos/80752f21-67b5-4190-8109-e7cfa30f1551/pdf/#page=9",
+          "lc55OriginalReviewState": "Trecho lido da extração do PDF oficial no staging QA; revisão pendente e extração complete. É evidência documental, não redação consolidada aprovada.",
+          "lc55HistoryGridColumns": 1,
+          "lc55HistoryActs": [
+            "LC nº 173/2017 · Art. 2º",
+            "LC nº 185/2019 · Art. 87",
+            "LC nº 258/2024 · Art. 260, IV"
+          ],
+          "lc55HistorySnapshots": [
+            "Compilação oficial municipal · julho/2019 (snapshot, não ato)"
+          ],
+          "lc55HistoryLinks": [
+            {
+              "href": "http://127.0.0.1:8287/normas/documentos/4e6712c4-8376-4ff7-bec1-41a3f709b062/pdf/#page=1",
+              "text": "Conferir PDF de origem, p. 1"
+            },
+            {
+              "href": "https://natal.rn.gov.br/storage/app/media/legislacao/anexos/LeiComplementar_20171229_173_.pdf#page=1",
+              "text": "Abrir cópia publicada no portal oficial de Natal, p. 1"
+            },
+            {
+              "href": "http://127.0.0.1:8287/normas/documentos/110cba46-d992-4e94-9aab-072d839105f1/pdf/#page=20",
+              "text": "Conferir PDF de origem, p. 20"
+            },
+            {
+              "href": "https://natal.rn.gov.br/storage/app/media/legislacao/anexos/LeiComplementar_20190718_185_.pdf#page=20",
+              "text": "Abrir cópia publicada no portal oficial de Natal, p. 20"
+            },
+            {
+              "href": "https://www.natal.rn.gov.br/storage/app/media/semurb/legislacao/35_Codigo_Obras_Atualizado_Julho_2019.pdf",
+              "text": "Abrir compilação oficial da Prefeitura, p. 16"
+            },
+            {
+              "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2024/4052/lei_complementar_no_258_2024.pdf#page=59",
+              "text": "Conferir PDF de origem, p. 59"
+            }
+          ],
+          "lc55HistoryNotice": "Fontes primárias identificadas, mas a cadeia do Art. 34 ainda tem uma divergência material entre o Art. 87 da LC 185/2019 e a compilação municipal.\n\n§ 4º no ato candidato de 2017: §4º - A regulamentação de que trata o parágrafo anterior, definirá as atividades passíveis de Licença Simplificada (LS), bem como suas modalidades e os procedimentos para o licenciamento.”\n\n§ 4º na compilação oficial de 2019: § 4º - A regulamentação de que trata o parágrafo anterior, definirá as atividades passíveis de Licença Simplificada (LS), bem como suas modalidades e procedimentos para o licenciamento. (Redação dada pela Lei Complementar nº. 173, de 2017)\n\n§ 5º na compilação oficial de 2019: § 5º - As micro e pequenas empresas deverão ter suas atividades inexigíveis de licenciamento, sendo dispensado todos os atos públicos de liberação da atividade econômica para plena e contínua operação e funcionamento do estabelecimento, desde que seu CNAE esteja contemplado no rol taxativo pela legislação específica vigente. (Acrescido pela Lei Complementar nº. 185, de 2019)\n\nO PDF municipal da LC 173 traz no próprio cabeçalho a data de 28/12/2017; o Decreto municipal nº 11.681/2018 menciona “LC 173/2018” apesar de citar a data de 28/12/2017. A divergência está localizada na referência do decreto; a identidade do PDF da lei foi conferida pelo hash da cópia oficial, sem usar a proposição legislativa como fonte de vigência.\n\nA compilação atribui o § 5º à LC 185/2019, enquanto o Art. 87 do PDF promulgado fornece redação de § 3º com outro conteúdo. O sistema registra as duas evidências e deixa o alcance legislativo para revisão jurídica. A LC 258/2024 depois lista a LC 55 entre as revogadas; para processos de licenciamento, seu Art. 262 prevê regra de transição que depende do protocolo e de eventual opção formal pelo novo Código.",
+          "lc55TimelineNotice": "Resultado: localizamos a cadeia promulgada e os documentos oficiais, mas não é seguro publicar uma redação consolidada final do Art. 34 ainda.\n\nEstão comprovados os atos e a sucessão documental: LC 173/2017 acrescenta §§ 3º e 4º; o Art. 87 da LC 185/2019 declara nova redação para o Art. 34; a compilação municipal de julho/2019 não reproduz o mesmo § 3º; a LC 258/2024 revoga expressamente a LC 55 com vigência calculada em 27/03/2025 e regra transitória no Art. 262. O snapshot é mostrado como fonte, não escolhido como texto final.\n\nEstado temporal documentado: o SAPL registra publicação da LC 258/2024 em 27/12/2024; o Art. 266 prevê vacância de 90 dias. Pela contagem do Art. 8º, § 1º, da LC 95/1998, incluindo a publicação e o último dia e iniciando a vigência no dia seguinte, a data calculada é 27/03/2025. A partir daí, o Art. 260, IV, revoga expressamente a LC 55/2004. Confira a ficha oficial da LC 258/2024, o PDF oficial, Arts. 260, 262 e 266 e a regra de contagem da LC 95/1998.\n\nExceção que importa à PGM: pelo Art. 262 da LC 258, processos de licenciamento protocolados até a entrada em vigor e ainda sem despacho decisório são apreciados integralmente segundo a legislação vigente na data do protocolo, salvo manifestação formal do interessado pela análise integral conforme a lei nova. Antes de aplicar isso, confirme protocolo, existência de despacho e eventual opção formal no processo.\n\nPróxima revisão necessária: decidir juridicamente o alcance das reticências e do § 3º do Art. 87, explicar por que a compilação apresenta texto diferente e pesquisar atos posteriores ao snapshot até a entrada em vigor da LC 258. Até lá, a resposta correta do sistema é “cadeia identificada; redação consolidada inconclusiva”.\n\nDivergência de identidade para revisão: o Art. 260, VII, da LC 258/2024 escreve “Lei nº 198, de 12 de novembro de 2021”, enquanto o cadastro oficial do SAPL identifica a norma nº 198 daquela data como Lei Complementar. Não tratamos esses rótulos como equivalentes sem confirmar a identidade do ato e a intenção da referência.\n\nPara usar a regra em um processo, o procurador ainda precisa confirmar o texto do ato no DOM, a data do protocolo, a existência de despacho decisório na entrada em vigor e eventual opção formal do interessado pelo novo Código.",
+          "lc55ParagraphComparison": "Redação documentada em 2017 · candidata\nArt. 34, § 3º · LC 173/2017, Art. 2º\n§3º - A localização/concepção (licença prévia), instalação e a operação de empreendimentos/atividades, que não sejam de forte impacto urbanístico, poderão ser aprovadas por meio de um único documento, através da Licença Simplificada (LS), conforme regulamentação específica.\nAbrir fonte de 2017, p. 1\nAto alterador promulgado · LC 185/2019\nArt. 34, § 3º · LC 185/2019, Art. 87\n§ 3º. As micro e pequenas empresas deverão ter suas atividades inexigíveis de licenciamento, sendo dispensado todos os atos públicos de liberação da atividade econômica para plena e contínua operação e funcionamento do estabelecimento, desde que seu CNAE esteja contemplado no rol taxativo pela legislação específica vigente.”\n\nO Art. 87 da LC 185/2019 diz expressamente que o Art. 34 da LC 55 passa a vigorar com nova redação:\n\nArt. 34 A licença ambiental observa as seguintes etapas: ... § 3º. As micro e pequenas empresas deverão ter suas atividades inexigíveis de licenciamento, sendo dispensado todos os atos públicos de liberação da atividade econômica para plena e contínua operação e funcionamento do estabelecimento, desde que seu CNAE esteja contemplado no rol taxativo pela legislação específica vigente.\nConferir Art. 87 no PDF do acervo, p. 20 Conferir a cópia oficial da LC 185/2019",
+          "lc55ComparisonStatus": "Confronto entre o ato alterador e o snapshot: há divergência material: o Art. 87 da LC 185/2019 imprime a regra das micro e pequenas empresas como § 3º; o snapshot municipal mantém no § 3º a regra da Licença Simplificada e registra a regra das micro e pequenas empresas como § 5º. Nenhuma redação é escolhida automaticamente.",
+          "lc55ParagraphSourceLinks": 3,
+          "lc208OriginalParagraphLink": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2022/1160/pdn_-_lc_208_2022.pdf#page=11",
+          "lc261ReplacementLink": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2025/8823/lei_complementar_no_261_2025.pdf#page=35",
+          "lc261ReplacementQuote": "Acrescer à Subzona de Uso Restrito da ZPA-1 os lotes contidos na faixa marginal de 100 metros ao sul da Avenida da Integração, os lotes do lado sudeste da Avenida Omar O´Grady, entre as Avenidas dos Xavantes e Antoine de Saint Exupery e área delimitada na Tabela de vértices como SUR-1B.",
+          "lc208OriginalParagraphQuote": "§ 2º Acrescer à Subzona de Uso Restrito (SZ-2) da ZPA-1 os lotes contidos na faixa marginal de 100 metros ao sul da Avenida da Integração e os lotes do lado sudeste da Avenida Omar O´Grady, entre as Avenidas dos Xavantes e Antoine de Saint Exupery.",
+          "relationNodes": 3,
+          "graphTargets": 9,
+          "targetCardGridColumns": 1,
+          "targetCardWidth": 302.8125,
+          "diagramHeight": 4481.078125,
+          "namedTargets": 7,
+          "repealEdges": 7,
+          "targetScopeCounts": {
+            "act": 6,
+            "device": 1
+          },
+          "targetScopeNotice": "“Ato citado” significa que o texto não individualiza um artigo; isso não prova revogação integral. “Dispositivo citado” identifica o artigo mencionado, mas não confirma sozinho o alcance ou os efeitos no tempo.",
+          "renderedGraphEdges": 12,
+          "graphEdgesDashPattern": true,
+          "graphEdgesConnectNodes": true,
+          "desktopTargetsFollowTheirEventHub": true,
+          "desktopExpressFanoutStaysUnderItsHub": true,
+          "graphSvgIsDecorative": true,
+          "saplRegistry": {
+            "statuses": {
+              "Lei Complementar nº 1.894 de 31 de dezembro de 1969": {
+                "status": "species_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/3666",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #3666 · Lei Ordinária nº 1894/1969 · 25/12/1969"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1890",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei nº 1.894, de 31 de dezembro de 1969 — Código de Obras antigo"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_n_1.894_69.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de espécie\n            \n          \n          \n          \n            Conflito de espécie no cadastro SAPL\n            A consulta encontrou Lei Ordinária nº 1894/1969, mas a referência do Art. 260 indica outra espécie. Não associamos os registros.\n          \n          \n            Inspecionar ficha SAPL #3666 · Lei Ordinária nº 1894/1969 · 25/12/1969\n            Divergência de data: a referência menciona 31/12/1969; a ficha SAPL está datada de 25/12/1969. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              A fonte municipal identifica o ato como Lei nº 1.894/1969, enquanto o Art. 260 da LC 258/2024 o denomina Lei Complementar. A espécie diverge; não associar nem tratar como revogação integral validada sem revisar a publicação e o regime histórico do ato.\n              Biblioteca Virtual do Natal / SEMURB · 31/12/1969 · ano indicado no título do documento\n              Abrir ficha oficial: Lei nº 1.894, de 31 de dezembro de 1969 — Código de Obras antigo\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei Nº 4.566 de 19 de maio de 1992": {
+                "status": "year_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/6491",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #6491 · Lei Ordinária nº 4566/1994 · 27/08/1994"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1871",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei nº 4.566, de 19 de maio de 1992 — ficha bibliográfica"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_4.566.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de ano\n            \n          \n          \n          \n            O número aparece no SAPL em outro ano\n            A referência do Art. 260 cita Lei nº 4566/1992; o catálogo retornou Lei Ordinária nº 4566/1994. Não associamos os atos.\n          \n          \n            Inspecionar ficha SAPL #6491 · Lei Ordinária nº 4566/1994 · 27/08/1994\n            Divergência de data: a referência menciona 19/05/1992; a ficha SAPL está datada de 27/08/1994. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              Conflito documental de identidade: a ficha BVN cataloga Lei Ordinária, mas o PDF traz ‘DECRETA’ no preâmbulo e chama o ato de ‘presente Decreto’ no Art. 2º e ‘este decreto’ no Art. 7º. A nota do PDF informa publicação no DOE em 21/05/1992. Não classificar nem vincular como lei/decreto sem conferência jurídica da publicação oficial.\n              Biblioteca Virtual do Natal (BVN) · 19/05/1992 (assinatura e publicação na ficha)\n              Abrir ficha oficial: Lei nº 4.566, de 19 de maio de 1992 — ficha bibliográfica\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei nº 4.885 de 07 de outubro de 1997": {
+                "status": "exact_identity_candidate",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/6817",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #6817 · Lei Ordinária nº 4885/1997 · 07/10/1997 · data citada"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1912",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei nº 4.885, de 07 de outubro de 1997 — RITUR"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/ritur_relatorio_de_impacto_sobre_trafego_urbano.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              1 ficha candidata\n            \n          \n          \n          \n            Espécie, número e ano coincidem no cadastro SAPL\n            É uma correspondência cadastral candidata; não confirma que esta seja a edição citada nem que a revogação produziu efeitos.\n          \n          \n            Inspecionar ficha SAPL #6817 · Lei Ordinária nº 4885/1997 · 07/10/1997 · data citada\n            \n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              O PDF contém a Lei nº 4.885/1997 nas páginas iniciais e, a partir da página 3, um Decreto nº 8.227/2007 separado. Trate-os como atos distintos; o arquivo compilado não prova, sozinho, a redação vigente da lei nem a relação de revogação da LC 258/2024.\n              Biblioteca Virtual do Natal (BVN) · 07/10/1997 · assinatura e publicação na ficha BVN\n              Abrir ficha oficial: Lei nº 4.885, de 07 de outubro de 1997 — RITUR\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei Complementar nº 055 de 27 de janeiro de 2004": {
+                "status": "not_checked",
+                "links": [],
+                "note": ""
+              },
+              "Art. 21 da Lei Promulgada nº 275 de 12 de março de 2009": {
+                "status": "identity_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/9050",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #9050 · Lei Complementar nº 275/2026 · 03/02/2026"
+                  },
+                  {
+                    "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: DOM nº 1.538, de 17 de março de 2009 — Lei Promulgada nº 0275/2009"
+                  },
+                  {
+                    "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de ano e espécie\n            \n          \n          \n          \n            O número aparece no SAPL com ano e espécie diferentes\n            A referência do Art. 260 cita Lei Promulgada nº 275/2009; o catálogo retornou Lei Complementar nº 275/2026. Não associamos os atos.\n          \n          \n            Inspecionar ficha SAPL #9050 · Lei Complementar nº 275/2026 · 03/02/2026\n            Divergência de data: a referência menciona 12/03/2009; a ficha SAPL está datada de 03/02/2026. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              O DOM reproduz a Lei Promulgada nº 0275/2009, incluindo o Art. 21 (PDF, páginas 7–9). É fonte do texto promulgado, não prova por si só a vigência atual ou os efeitos da revogação mencionada em 2024.\n              Diário Oficial do Município de Natal · publicado em 17/03/2009; texto datado de 12/03/2009\n              Abrir ficha oficial: DOM nº 1.538, de 17 de março de 2009 — Lei Promulgada nº 0275/2009\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei Promulgada nº 562 de 14 de setembro de 2018": {
+                "status": "date_matched_candidate",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/254",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #254 · Lei Promulgada nº 562/2018 · 14/09/2018 · data citada"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/9202",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #9202 · Lei Promulgada nº 562/2018 · 18/09/2018"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/254",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei Promulgada nº 562, de 14 de setembro de 2018"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2018/254/lp_562.18.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Data citada coincide · ficha candidata\n            \n          \n          \n          \n            Uma ficha tem a data mencionada na citação\n            A data ajuda a priorizar a inspeção, mas a ficha continua sendo apenas uma candidata e não confirma identidade jurídica nem efeito da revogação. Outras fichas permanecem listadas para comparação.\n          \n          \n            Inspecionar ficha SAPL #254 · Lei Promulgada nº 562/2018 · 14/09/2018 · data citada\n            \n          \n            Inspecionar ficha SAPL #9202 · Lei Promulgada nº 562/2018 · 18/09/2018\n            Divergência de data: a referência menciona 14/09/2018; a ficha SAPL está datada de 18/09/2018. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              A ficha oficial e o PDF identificam Lei Promulgada nº 562/2018; o Art. 13 prevê vigência na data da publicação e revoga disposições em contrário. O Art. 260, VI, da LC 258/2024 cita este ato expressamente, mas esta referência não certifica a data de eficácia da revogação nem substitui a conferência do DOM e do caso concreto.\n              SAPL Natal · ficha e texto original · promulgada em 14/09/2018; publicação cadastrada em 18/09/2018\n              Abrir ficha oficial: Lei Promulgada nº 562, de 14 de setembro de 2018\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei nº 198 de 12 de novembro de 2021": {
+                "status": "species_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/925",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #925 · Lei Complementar nº 198/2021 · 12/11/2021 · data citada"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/925",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei Complementar nº 198, de 12 de novembro de 2021"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2021/925/plc_006.21-convertido.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de espécie\n            \n          \n          \n          \n            Conflito de espécie no cadastro SAPL\n            A consulta encontrou Lei Complementar nº 198/2021, mas a referência do Art. 260 indica outra espécie. Não associamos os registros.\n          \n          \n            Inspecionar ficha SAPL #925 · Lei Complementar nº 198/2021 · 12/11/2021 · data citada\n            \n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              O cadastro SAPL identifica este ato como Lei Complementar, embora o Art. 260 da LC 258/2024 cite ‘Lei nº 198’. O PDF ligado como texto original deixa número/data do cabeçalho em branco e traz data final de 06/10/2021; conferir a publicação no DOM antes de consolidar. Se confirmado como LC 198, seus Arts. 1º, 2º e 4º fazem referência à LC 55/2004, mas não substituem por si sós a redação desses artigos.\n              SAPL Natal · ficha oficial e texto original · ficha: 12/11/2021; publicação cadastrada: 20/12/2021\n              Abrir ficha oficial: Lei Complementar nº 198, de 12 de novembro de 2021\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "LC nº 208/2022, Art. 14": {
+                "links": [],
+                "note": ""
+              },
+              "“Disposições em contrário”": {
+                "links": [],
+                "note": ""
+              }
+            },
+            "candidateLinks": [
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/3666",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1890",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_n_1.894_69.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/6491",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1871",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_4.566.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/6817",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1912",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/ritur_relatorio_de_impacto_sobre_trafego_urbano.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/9050",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/254",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/9202",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/254",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2018/254/lp_562.18.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/925",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/925",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2021/925/plc_006.21-convertido.pdf",
+                "rel": "noopener noreferrer"
+              }
+            ],
+            "disclosureCount": 6,
+            "disclosureIsNative": true,
+            "disclosureSummariesNamed": true,
+            "checkedDateVisible": true
+          },
+          "parallelRelations": 2,
+          "demoTitle": "LC 258/2024, Art. 260 — revogações e alterações",
+          "heading": "Rede de relações normativas",
+          "genericRepeal": true,
+          "amendment": true,
+          "focusableOverflow": 0
+        },
+        {
+          "width": 768,
+          "scrollWidth": 768,
+          "sourceNodes": 1,
+          "lc55HistoryTitle": "O que aconteceu com a LC nº 55/2004?",
+          "lc55OriginalQuote": "Art. 34 - A Licença Ambiental observa as seguintes etapas: I – Licença Prévia (LP); II – Licença de Instalação (LI); III – Licença de Operação (LO). § 1º — O prazo de validade deve ser fixado no próprio documento, obedecidas às prescrições estabelecidas nas normas específicas. § 2º — O Poder Executivo define o momento e as condições de exigibilidade das licenças referidas neste artigo.",
+          "lc55OriginalLink": "http://127.0.0.1:8287/normas/documentos/80752f21-67b5-4190-8109-e7cfa30f1551/pdf/#page=9",
+          "lc55OriginalReviewState": "Trecho lido da extração do PDF oficial no staging QA; revisão pendente e extração complete. É evidência documental, não redação consolidada aprovada.",
+          "lc55HistoryGridColumns": 2,
+          "lc55HistoryActs": [
+            "LC nº 173/2017 · Art. 2º",
+            "LC nº 185/2019 · Art. 87",
+            "LC nº 258/2024 · Art. 260, IV"
+          ],
+          "lc55HistorySnapshots": [
+            "Compilação oficial municipal · julho/2019 (snapshot, não ato)"
+          ],
+          "lc55HistoryLinks": [
+            {
+              "href": "http://127.0.0.1:8287/normas/documentos/4e6712c4-8376-4ff7-bec1-41a3f709b062/pdf/#page=1",
+              "text": "Conferir PDF de origem, p. 1"
+            },
+            {
+              "href": "https://natal.rn.gov.br/storage/app/media/legislacao/anexos/LeiComplementar_20171229_173_.pdf#page=1",
+              "text": "Abrir cópia publicada no portal oficial de Natal, p. 1"
+            },
+            {
+              "href": "http://127.0.0.1:8287/normas/documentos/110cba46-d992-4e94-9aab-072d839105f1/pdf/#page=20",
+              "text": "Conferir PDF de origem, p. 20"
+            },
+            {
+              "href": "https://natal.rn.gov.br/storage/app/media/legislacao/anexos/LeiComplementar_20190718_185_.pdf#page=20",
+              "text": "Abrir cópia publicada no portal oficial de Natal, p. 20"
+            },
+            {
+              "href": "https://www.natal.rn.gov.br/storage/app/media/semurb/legislacao/35_Codigo_Obras_Atualizado_Julho_2019.pdf",
+              "text": "Abrir compilação oficial da Prefeitura, p. 16"
+            },
+            {
+              "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2024/4052/lei_complementar_no_258_2024.pdf#page=59",
+              "text": "Conferir PDF de origem, p. 59"
+            }
+          ],
+          "lc55HistoryNotice": "Fontes primárias identificadas, mas a cadeia do Art. 34 ainda tem uma divergência material entre o Art. 87 da LC 185/2019 e a compilação municipal.\n\n§ 4º no ato candidato de 2017: §4º - A regulamentação de que trata o parágrafo anterior, definirá as atividades passíveis de Licença Simplificada (LS), bem como suas modalidades e os procedimentos para o licenciamento.”\n\n§ 4º na compilação oficial de 2019: § 4º - A regulamentação de que trata o parágrafo anterior, definirá as atividades passíveis de Licença Simplificada (LS), bem como suas modalidades e procedimentos para o licenciamento. (Redação dada pela Lei Complementar nº. 173, de 2017)\n\n§ 5º na compilação oficial de 2019: § 5º - As micro e pequenas empresas deverão ter suas atividades inexigíveis de licenciamento, sendo dispensado todos os atos públicos de liberação da atividade econômica para plena e contínua operação e funcionamento do estabelecimento, desde que seu CNAE esteja contemplado no rol taxativo pela legislação específica vigente. (Acrescido pela Lei Complementar nº. 185, de 2019)\n\nO PDF municipal da LC 173 traz no próprio cabeçalho a data de 28/12/2017; o Decreto municipal nº 11.681/2018 menciona “LC 173/2018” apesar de citar a data de 28/12/2017. A divergência está localizada na referência do decreto; a identidade do PDF da lei foi conferida pelo hash da cópia oficial, sem usar a proposição legislativa como fonte de vigência.\n\nA compilação atribui o § 5º à LC 185/2019, enquanto o Art. 87 do PDF promulgado fornece redação de § 3º com outro conteúdo. O sistema registra as duas evidências e deixa o alcance legislativo para revisão jurídica. A LC 258/2024 depois lista a LC 55 entre as revogadas; para processos de licenciamento, seu Art. 262 prevê regra de transição que depende do protocolo e de eventual opção formal pelo novo Código.",
+          "lc55TimelineNotice": "Resultado: localizamos a cadeia promulgada e os documentos oficiais, mas não é seguro publicar uma redação consolidada final do Art. 34 ainda.\n\nEstão comprovados os atos e a sucessão documental: LC 173/2017 acrescenta §§ 3º e 4º; o Art. 87 da LC 185/2019 declara nova redação para o Art. 34; a compilação municipal de julho/2019 não reproduz o mesmo § 3º; a LC 258/2024 revoga expressamente a LC 55 com vigência calculada em 27/03/2025 e regra transitória no Art. 262. O snapshot é mostrado como fonte, não escolhido como texto final.\n\nEstado temporal documentado: o SAPL registra publicação da LC 258/2024 em 27/12/2024; o Art. 266 prevê vacância de 90 dias. Pela contagem do Art. 8º, § 1º, da LC 95/1998, incluindo a publicação e o último dia e iniciando a vigência no dia seguinte, a data calculada é 27/03/2025. A partir daí, o Art. 260, IV, revoga expressamente a LC 55/2004. Confira a ficha oficial da LC 258/2024, o PDF oficial, Arts. 260, 262 e 266 e a regra de contagem da LC 95/1998.\n\nExceção que importa à PGM: pelo Art. 262 da LC 258, processos de licenciamento protocolados até a entrada em vigor e ainda sem despacho decisório são apreciados integralmente segundo a legislação vigente na data do protocolo, salvo manifestação formal do interessado pela análise integral conforme a lei nova. Antes de aplicar isso, confirme protocolo, existência de despacho e eventual opção formal no processo.\n\nPróxima revisão necessária: decidir juridicamente o alcance das reticências e do § 3º do Art. 87, explicar por que a compilação apresenta texto diferente e pesquisar atos posteriores ao snapshot até a entrada em vigor da LC 258. Até lá, a resposta correta do sistema é “cadeia identificada; redação consolidada inconclusiva”.\n\nDivergência de identidade para revisão: o Art. 260, VII, da LC 258/2024 escreve “Lei nº 198, de 12 de novembro de 2021”, enquanto o cadastro oficial do SAPL identifica a norma nº 198 daquela data como Lei Complementar. Não tratamos esses rótulos como equivalentes sem confirmar a identidade do ato e a intenção da referência.\n\nPara usar a regra em um processo, o procurador ainda precisa confirmar o texto do ato no DOM, a data do protocolo, a existência de despacho decisório na entrada em vigor e eventual opção formal do interessado pelo novo Código.",
+          "lc55ParagraphComparison": "Redação documentada em 2017 · candidata\nArt. 34, § 3º · LC 173/2017, Art. 2º\n§3º - A localização/concepção (licença prévia), instalação e a operação de empreendimentos/atividades, que não sejam de forte impacto urbanístico, poderão ser aprovadas por meio de um único documento, através da Licença Simplificada (LS), conforme regulamentação específica.\nAbrir fonte de 2017, p. 1\nAto alterador promulgado · LC 185/2019\nArt. 34, § 3º · LC 185/2019, Art. 87\n§ 3º. As micro e pequenas empresas deverão ter suas atividades inexigíveis de licenciamento, sendo dispensado todos os atos públicos de liberação da atividade econômica para plena e contínua operação e funcionamento do estabelecimento, desde que seu CNAE esteja contemplado no rol taxativo pela legislação específica vigente.”\n\nO Art. 87 da LC 185/2019 diz expressamente que o Art. 34 da LC 55 passa a vigorar com nova redação:\n\nArt. 34 A licença ambiental observa as seguintes etapas: ... § 3º. As micro e pequenas empresas deverão ter suas atividades inexigíveis de licenciamento, sendo dispensado todos os atos públicos de liberação da atividade econômica para plena e contínua operação e funcionamento do estabelecimento, desde que seu CNAE esteja contemplado no rol taxativo pela legislação específica vigente.\nConferir Art. 87 no PDF do acervo, p. 20 Conferir a cópia oficial da LC 185/2019",
+          "lc55ComparisonStatus": "Confronto entre o ato alterador e o snapshot: há divergência material: o Art. 87 da LC 185/2019 imprime a regra das micro e pequenas empresas como § 3º; o snapshot municipal mantém no § 3º a regra da Licença Simplificada e registra a regra das micro e pequenas empresas como § 5º. Nenhuma redação é escolhida automaticamente.",
+          "lc55ParagraphSourceLinks": 3,
+          "lc208OriginalParagraphLink": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2022/1160/pdn_-_lc_208_2022.pdf#page=11",
+          "lc261ReplacementLink": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2025/8823/lei_complementar_no_261_2025.pdf#page=35",
+          "lc261ReplacementQuote": "Acrescer à Subzona de Uso Restrito da ZPA-1 os lotes contidos na faixa marginal de 100 metros ao sul da Avenida da Integração, os lotes do lado sudeste da Avenida Omar O´Grady, entre as Avenidas dos Xavantes e Antoine de Saint Exupery e área delimitada na Tabela de vértices como SUR-1B.",
+          "lc208OriginalParagraphQuote": "§ 2º Acrescer à Subzona de Uso Restrito (SZ-2) da ZPA-1 os lotes contidos na faixa marginal de 100 metros ao sul da Avenida da Integração e os lotes do lado sudeste da Avenida Omar O´Grady, entre as Avenidas dos Xavantes e Antoine de Saint Exupery.",
+          "relationNodes": 3,
+          "graphTargets": 9,
+          "targetCardGridColumns": 2,
+          "targetCardWidth": 338.609375,
+          "diagramHeight": 2581.609375,
+          "namedTargets": 7,
+          "repealEdges": 7,
+          "targetScopeCounts": {
+            "act": 6,
+            "device": 1
+          },
+          "targetScopeNotice": "“Ato citado” significa que o texto não individualiza um artigo; isso não prova revogação integral. “Dispositivo citado” identifica o artigo mencionado, mas não confirma sozinho o alcance ou os efeitos no tempo.",
+          "renderedGraphEdges": 12,
+          "graphEdgesDashPattern": true,
+          "graphEdgesConnectNodes": true,
+          "desktopTargetsFollowTheirEventHub": true,
+          "desktopExpressFanoutStaysUnderItsHub": true,
+          "graphSvgIsDecorative": true,
+          "saplRegistry": {
+            "statuses": {
+              "Lei Complementar nº 1.894 de 31 de dezembro de 1969": {
+                "status": "species_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/3666",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #3666 · Lei Ordinária nº 1894/1969 · 25/12/1969"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1890",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei nº 1.894, de 31 de dezembro de 1969 — Código de Obras antigo"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_n_1.894_69.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de espécie\n            \n          \n          \n          \n            Conflito de espécie no cadastro SAPL\n            A consulta encontrou Lei Ordinária nº 1894/1969, mas a referência do Art. 260 indica outra espécie. Não associamos os registros.\n          \n          \n            Inspecionar ficha SAPL #3666 · Lei Ordinária nº 1894/1969 · 25/12/1969\n            Divergência de data: a referência menciona 31/12/1969; a ficha SAPL está datada de 25/12/1969. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              A fonte municipal identifica o ato como Lei nº 1.894/1969, enquanto o Art. 260 da LC 258/2024 o denomina Lei Complementar. A espécie diverge; não associar nem tratar como revogação integral validada sem revisar a publicação e o regime histórico do ato.\n              Biblioteca Virtual do Natal / SEMURB · 31/12/1969 · ano indicado no título do documento\n              Abrir ficha oficial: Lei nº 1.894, de 31 de dezembro de 1969 — Código de Obras antigo\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei Nº 4.566 de 19 de maio de 1992": {
+                "status": "year_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/6491",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #6491 · Lei Ordinária nº 4566/1994 · 27/08/1994"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1871",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei nº 4.566, de 19 de maio de 1992 — ficha bibliográfica"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_4.566.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de ano\n            \n          \n          \n          \n            O número aparece no SAPL em outro ano\n            A referência do Art. 260 cita Lei nº 4566/1992; o catálogo retornou Lei Ordinária nº 4566/1994. Não associamos os atos.\n          \n          \n            Inspecionar ficha SAPL #6491 · Lei Ordinária nº 4566/1994 · 27/08/1994\n            Divergência de data: a referência menciona 19/05/1992; a ficha SAPL está datada de 27/08/1994. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              Conflito documental de identidade: a ficha BVN cataloga Lei Ordinária, mas o PDF traz ‘DECRETA’ no preâmbulo e chama o ato de ‘presente Decreto’ no Art. 2º e ‘este decreto’ no Art. 7º. A nota do PDF informa publicação no DOE em 21/05/1992. Não classificar nem vincular como lei/decreto sem conferência jurídica da publicação oficial.\n              Biblioteca Virtual do Natal (BVN) · 19/05/1992 (assinatura e publicação na ficha)\n              Abrir ficha oficial: Lei nº 4.566, de 19 de maio de 1992 — ficha bibliográfica\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei nº 4.885 de 07 de outubro de 1997": {
+                "status": "exact_identity_candidate",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/6817",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #6817 · Lei Ordinária nº 4885/1997 · 07/10/1997 · data citada"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1912",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei nº 4.885, de 07 de outubro de 1997 — RITUR"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/ritur_relatorio_de_impacto_sobre_trafego_urbano.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              1 ficha candidata\n            \n          \n          \n          \n            Espécie, número e ano coincidem no cadastro SAPL\n            É uma correspondência cadastral candidata; não confirma que esta seja a edição citada nem que a revogação produziu efeitos.\n          \n          \n            Inspecionar ficha SAPL #6817 · Lei Ordinária nº 4885/1997 · 07/10/1997 · data citada\n            \n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              O PDF contém a Lei nº 4.885/1997 nas páginas iniciais e, a partir da página 3, um Decreto nº 8.227/2007 separado. Trate-os como atos distintos; o arquivo compilado não prova, sozinho, a redação vigente da lei nem a relação de revogação da LC 258/2024.\n              Biblioteca Virtual do Natal (BVN) · 07/10/1997 · assinatura e publicação na ficha BVN\n              Abrir ficha oficial: Lei nº 4.885, de 07 de outubro de 1997 — RITUR\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei Complementar nº 055 de 27 de janeiro de 2004": {
+                "status": "not_checked",
+                "links": [],
+                "note": ""
+              },
+              "Art. 21 da Lei Promulgada nº 275 de 12 de março de 2009": {
+                "status": "identity_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/9050",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #9050 · Lei Complementar nº 275/2026 · 03/02/2026"
+                  },
+                  {
+                    "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: DOM nº 1.538, de 17 de março de 2009 — Lei Promulgada nº 0275/2009"
+                  },
+                  {
+                    "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de ano e espécie\n            \n          \n          \n          \n            O número aparece no SAPL com ano e espécie diferentes\n            A referência do Art. 260 cita Lei Promulgada nº 275/2009; o catálogo retornou Lei Complementar nº 275/2026. Não associamos os atos.\n          \n          \n            Inspecionar ficha SAPL #9050 · Lei Complementar nº 275/2026 · 03/02/2026\n            Divergência de data: a referência menciona 12/03/2009; a ficha SAPL está datada de 03/02/2026. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              O DOM reproduz a Lei Promulgada nº 0275/2009, incluindo o Art. 21 (PDF, páginas 7–9). É fonte do texto promulgado, não prova por si só a vigência atual ou os efeitos da revogação mencionada em 2024.\n              Diário Oficial do Município de Natal · publicado em 17/03/2009; texto datado de 12/03/2009\n              Abrir ficha oficial: DOM nº 1.538, de 17 de março de 2009 — Lei Promulgada nº 0275/2009\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei Promulgada nº 562 de 14 de setembro de 2018": {
+                "status": "date_matched_candidate",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/254",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #254 · Lei Promulgada nº 562/2018 · 14/09/2018 · data citada"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/9202",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #9202 · Lei Promulgada nº 562/2018 · 18/09/2018"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/254",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei Promulgada nº 562, de 14 de setembro de 2018"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2018/254/lp_562.18.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Data citada coincide · ficha candidata\n            \n          \n          \n          \n            Uma ficha tem a data mencionada na citação\n            A data ajuda a priorizar a inspeção, mas a ficha continua sendo apenas uma candidata e não confirma identidade jurídica nem efeito da revogação. Outras fichas permanecem listadas para comparação.\n          \n          \n            Inspecionar ficha SAPL #254 · Lei Promulgada nº 562/2018 · 14/09/2018 · data citada\n            \n          \n            Inspecionar ficha SAPL #9202 · Lei Promulgada nº 562/2018 · 18/09/2018\n            Divergência de data: a referência menciona 14/09/2018; a ficha SAPL está datada de 18/09/2018. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              A ficha oficial e o PDF identificam Lei Promulgada nº 562/2018; o Art. 13 prevê vigência na data da publicação e revoga disposições em contrário. O Art. 260, VI, da LC 258/2024 cita este ato expressamente, mas esta referência não certifica a data de eficácia da revogação nem substitui a conferência do DOM e do caso concreto.\n              SAPL Natal · ficha e texto original · promulgada em 14/09/2018; publicação cadastrada em 18/09/2018\n              Abrir ficha oficial: Lei Promulgada nº 562, de 14 de setembro de 2018\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei nº 198 de 12 de novembro de 2021": {
+                "status": "species_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/925",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #925 · Lei Complementar nº 198/2021 · 12/11/2021 · data citada"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/925",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei Complementar nº 198, de 12 de novembro de 2021"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2021/925/plc_006.21-convertido.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de espécie\n            \n          \n          \n          \n            Conflito de espécie no cadastro SAPL\n            A consulta encontrou Lei Complementar nº 198/2021, mas a referência do Art. 260 indica outra espécie. Não associamos os registros.\n          \n          \n            Inspecionar ficha SAPL #925 · Lei Complementar nº 198/2021 · 12/11/2021 · data citada\n            \n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              O cadastro SAPL identifica este ato como Lei Complementar, embora o Art. 260 da LC 258/2024 cite ‘Lei nº 198’. O PDF ligado como texto original deixa número/data do cabeçalho em branco e traz data final de 06/10/2021; conferir a publicação no DOM antes de consolidar. Se confirmado como LC 198, seus Arts. 1º, 2º e 4º fazem referência à LC 55/2004, mas não substituem por si sós a redação desses artigos.\n              SAPL Natal · ficha oficial e texto original · ficha: 12/11/2021; publicação cadastrada: 20/12/2021\n              Abrir ficha oficial: Lei Complementar nº 198, de 12 de novembro de 2021\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "LC nº 208/2022, Art. 14": {
+                "links": [],
+                "note": ""
+              },
+              "“Disposições em contrário”": {
+                "links": [],
+                "note": ""
+              }
+            },
+            "candidateLinks": [
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/3666",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1890",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_n_1.894_69.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/6491",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1871",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_4.566.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/6817",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1912",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/ritur_relatorio_de_impacto_sobre_trafego_urbano.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/9050",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/254",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/9202",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/254",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2018/254/lp_562.18.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/925",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/925",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2021/925/plc_006.21-convertido.pdf",
+                "rel": "noopener noreferrer"
+              }
+            ],
+            "disclosureCount": 6,
+            "disclosureIsNative": true,
+            "disclosureSummariesNamed": true,
+            "checkedDateVisible": true
+          },
+          "parallelRelations": 2,
+          "demoTitle": "LC 258/2024, Art. 260 — revogações e alterações",
+          "heading": "Rede de relações normativas",
+          "genericRepeal": true,
+          "amendment": true,
+          "focusableOverflow": 0
+        },
+        {
+          "width": 1280,
+          "scrollWidth": 1280,
+          "sourceNodes": 1,
+          "lc55HistoryTitle": "O que aconteceu com a LC nº 55/2004?",
+          "lc55OriginalQuote": "Art. 34 - A Licença Ambiental observa as seguintes etapas: I – Licença Prévia (LP); II – Licença de Instalação (LI); III – Licença de Operação (LO). § 1º — O prazo de validade deve ser fixado no próprio documento, obedecidas às prescrições estabelecidas nas normas específicas. § 2º — O Poder Executivo define o momento e as condições de exigibilidade das licenças referidas neste artigo.",
+          "lc55OriginalLink": "http://127.0.0.1:8287/normas/documentos/80752f21-67b5-4190-8109-e7cfa30f1551/pdf/#page=9",
+          "lc55OriginalReviewState": "Trecho lido da extração do PDF oficial no staging QA; revisão pendente e extração complete. É evidência documental, não redação consolidada aprovada.",
+          "lc55HistoryGridColumns": 4,
+          "lc55HistoryActs": [
+            "LC nº 173/2017 · Art. 2º",
+            "LC nº 185/2019 · Art. 87",
+            "LC nº 258/2024 · Art. 260, IV"
+          ],
+          "lc55HistorySnapshots": [
+            "Compilação oficial municipal · julho/2019 (snapshot, não ato)"
+          ],
+          "lc55HistoryLinks": [
+            {
+              "href": "http://127.0.0.1:8287/normas/documentos/4e6712c4-8376-4ff7-bec1-41a3f709b062/pdf/#page=1",
+              "text": "Conferir PDF de origem, p. 1"
+            },
+            {
+              "href": "https://natal.rn.gov.br/storage/app/media/legislacao/anexos/LeiComplementar_20171229_173_.pdf#page=1",
+              "text": "Abrir cópia publicada no portal oficial de Natal, p. 1"
+            },
+            {
+              "href": "http://127.0.0.1:8287/normas/documentos/110cba46-d992-4e94-9aab-072d839105f1/pdf/#page=20",
+              "text": "Conferir PDF de origem, p. 20"
+            },
+            {
+              "href": "https://natal.rn.gov.br/storage/app/media/legislacao/anexos/LeiComplementar_20190718_185_.pdf#page=20",
+              "text": "Abrir cópia publicada no portal oficial de Natal, p. 20"
+            },
+            {
+              "href": "https://www.natal.rn.gov.br/storage/app/media/semurb/legislacao/35_Codigo_Obras_Atualizado_Julho_2019.pdf",
+              "text": "Abrir compilação oficial da Prefeitura, p. 16"
+            },
+            {
+              "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2024/4052/lei_complementar_no_258_2024.pdf#page=59",
+              "text": "Conferir PDF de origem, p. 59"
+            }
+          ],
+          "lc55HistoryNotice": "Fontes primárias identificadas, mas a cadeia do Art. 34 ainda tem uma divergência material entre o Art. 87 da LC 185/2019 e a compilação municipal.\n\n§ 4º no ato candidato de 2017: §4º - A regulamentação de que trata o parágrafo anterior, definirá as atividades passíveis de Licença Simplificada (LS), bem como suas modalidades e os procedimentos para o licenciamento.”\n\n§ 4º na compilação oficial de 2019: § 4º - A regulamentação de que trata o parágrafo anterior, definirá as atividades passíveis de Licença Simplificada (LS), bem como suas modalidades e procedimentos para o licenciamento. (Redação dada pela Lei Complementar nº. 173, de 2017)\n\n§ 5º na compilação oficial de 2019: § 5º - As micro e pequenas empresas deverão ter suas atividades inexigíveis de licenciamento, sendo dispensado todos os atos públicos de liberação da atividade econômica para plena e contínua operação e funcionamento do estabelecimento, desde que seu CNAE esteja contemplado no rol taxativo pela legislação específica vigente. (Acrescido pela Lei Complementar nº. 185, de 2019)\n\nO PDF municipal da LC 173 traz no próprio cabeçalho a data de 28/12/2017; o Decreto municipal nº 11.681/2018 menciona “LC 173/2018” apesar de citar a data de 28/12/2017. A divergência está localizada na referência do decreto; a identidade do PDF da lei foi conferida pelo hash da cópia oficial, sem usar a proposição legislativa como fonte de vigência.\n\nA compilação atribui o § 5º à LC 185/2019, enquanto o Art. 87 do PDF promulgado fornece redação de § 3º com outro conteúdo. O sistema registra as duas evidências e deixa o alcance legislativo para revisão jurídica. A LC 258/2024 depois lista a LC 55 entre as revogadas; para processos de licenciamento, seu Art. 262 prevê regra de transição que depende do protocolo e de eventual opção formal pelo novo Código.",
+          "lc55TimelineNotice": "Resultado: localizamos a cadeia promulgada e os documentos oficiais, mas não é seguro publicar uma redação consolidada final do Art. 34 ainda.\n\nEstão comprovados os atos e a sucessão documental: LC 173/2017 acrescenta §§ 3º e 4º; o Art. 87 da LC 185/2019 declara nova redação para o Art. 34; a compilação municipal de julho/2019 não reproduz o mesmo § 3º; a LC 258/2024 revoga expressamente a LC 55 com vigência calculada em 27/03/2025 e regra transitória no Art. 262. O snapshot é mostrado como fonte, não escolhido como texto final.\n\nEstado temporal documentado: o SAPL registra publicação da LC 258/2024 em 27/12/2024; o Art. 266 prevê vacância de 90 dias. Pela contagem do Art. 8º, § 1º, da LC 95/1998, incluindo a publicação e o último dia e iniciando a vigência no dia seguinte, a data calculada é 27/03/2025. A partir daí, o Art. 260, IV, revoga expressamente a LC 55/2004. Confira a ficha oficial da LC 258/2024, o PDF oficial, Arts. 260, 262 e 266 e a regra de contagem da LC 95/1998.\n\nExceção que importa à PGM: pelo Art. 262 da LC 258, processos de licenciamento protocolados até a entrada em vigor e ainda sem despacho decisório são apreciados integralmente segundo a legislação vigente na data do protocolo, salvo manifestação formal do interessado pela análise integral conforme a lei nova. Antes de aplicar isso, confirme protocolo, existência de despacho e eventual opção formal no processo.\n\nPróxima revisão necessária: decidir juridicamente o alcance das reticências e do § 3º do Art. 87, explicar por que a compilação apresenta texto diferente e pesquisar atos posteriores ao snapshot até a entrada em vigor da LC 258. Até lá, a resposta correta do sistema é “cadeia identificada; redação consolidada inconclusiva”.\n\nDivergência de identidade para revisão: o Art. 260, VII, da LC 258/2024 escreve “Lei nº 198, de 12 de novembro de 2021”, enquanto o cadastro oficial do SAPL identifica a norma nº 198 daquela data como Lei Complementar. Não tratamos esses rótulos como equivalentes sem confirmar a identidade do ato e a intenção da referência.\n\nPara usar a regra em um processo, o procurador ainda precisa confirmar o texto do ato no DOM, a data do protocolo, a existência de despacho decisório na entrada em vigor e eventual opção formal do interessado pelo novo Código.",
+          "lc55ParagraphComparison": "Redação documentada em 2017 · candidata\nArt. 34, § 3º · LC 173/2017, Art. 2º\n§3º - A localização/concepção (licença prévia), instalação e a operação de empreendimentos/atividades, que não sejam de forte impacto urbanístico, poderão ser aprovadas por meio de um único documento, através da Licença Simplificada (LS), conforme regulamentação específica.\nAbrir fonte de 2017, p. 1\nAto alterador promulgado · LC 185/2019\nArt. 34, § 3º · LC 185/2019, Art. 87\n§ 3º. As micro e pequenas empresas deverão ter suas atividades inexigíveis de licenciamento, sendo dispensado todos os atos públicos de liberação da atividade econômica para plena e contínua operação e funcionamento do estabelecimento, desde que seu CNAE esteja contemplado no rol taxativo pela legislação específica vigente.”\n\nO Art. 87 da LC 185/2019 diz expressamente que o Art. 34 da LC 55 passa a vigorar com nova redação:\n\nArt. 34 A licença ambiental observa as seguintes etapas: ... § 3º. As micro e pequenas empresas deverão ter suas atividades inexigíveis de licenciamento, sendo dispensado todos os atos públicos de liberação da atividade econômica para plena e contínua operação e funcionamento do estabelecimento, desde que seu CNAE esteja contemplado no rol taxativo pela legislação específica vigente.\nConferir Art. 87 no PDF do acervo, p. 20 Conferir a cópia oficial da LC 185/2019",
+          "lc55ComparisonStatus": "Confronto entre o ato alterador e o snapshot: há divergência material: o Art. 87 da LC 185/2019 imprime a regra das micro e pequenas empresas como § 3º; o snapshot municipal mantém no § 3º a regra da Licença Simplificada e registra a regra das micro e pequenas empresas como § 5º. Nenhuma redação é escolhida automaticamente.",
+          "lc55ParagraphSourceLinks": 3,
+          "lc208OriginalParagraphLink": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2022/1160/pdn_-_lc_208_2022.pdf#page=11",
+          "lc261ReplacementLink": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2025/8823/lei_complementar_no_261_2025.pdf#page=35",
+          "lc261ReplacementQuote": "Acrescer à Subzona de Uso Restrito da ZPA-1 os lotes contidos na faixa marginal de 100 metros ao sul da Avenida da Integração, os lotes do lado sudeste da Avenida Omar O´Grady, entre as Avenidas dos Xavantes e Antoine de Saint Exupery e área delimitada na Tabela de vértices como SUR-1B.",
+          "lc208OriginalParagraphQuote": "§ 2º Acrescer à Subzona de Uso Restrito (SZ-2) da ZPA-1 os lotes contidos na faixa marginal de 100 metros ao sul da Avenida da Integração e os lotes do lado sudeste da Avenida Omar O´Grady, entre as Avenidas dos Xavantes e Antoine de Saint Exupery.",
+          "relationNodes": 3,
+          "graphTargets": 9,
+          "targetCardGridColumns": 3,
+          "targetCardWidth": 296.40625,
+          "diagramHeight": 2468.1875,
+          "namedTargets": 7,
+          "repealEdges": 7,
+          "targetScopeCounts": {
+            "act": 6,
+            "device": 1
+          },
+          "targetScopeNotice": "“Ato citado” significa que o texto não individualiza um artigo; isso não prova revogação integral. “Dispositivo citado” identifica o artigo mencionado, mas não confirma sozinho o alcance ou os efeitos no tempo.",
+          "renderedGraphEdges": 12,
+          "graphEdgesDashPattern": true,
+          "graphEdgesConnectNodes": true,
+          "desktopTargetsFollowTheirEventHub": true,
+          "desktopExpressFanoutStaysUnderItsHub": true,
+          "graphSvgIsDecorative": true,
+          "saplRegistry": {
+            "statuses": {
+              "Lei Complementar nº 1.894 de 31 de dezembro de 1969": {
+                "status": "species_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/3666",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #3666 · Lei Ordinária nº 1894/1969 · 25/12/1969"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1890",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei nº 1.894, de 31 de dezembro de 1969 — Código de Obras antigo"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_n_1.894_69.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de espécie\n            \n          \n          \n          \n            Conflito de espécie no cadastro SAPL\n            A consulta encontrou Lei Ordinária nº 1894/1969, mas a referência do Art. 260 indica outra espécie. Não associamos os registros.\n          \n          \n            Inspecionar ficha SAPL #3666 · Lei Ordinária nº 1894/1969 · 25/12/1969\n            Divergência de data: a referência menciona 31/12/1969; a ficha SAPL está datada de 25/12/1969. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              A fonte municipal identifica o ato como Lei nº 1.894/1969, enquanto o Art. 260 da LC 258/2024 o denomina Lei Complementar. A espécie diverge; não associar nem tratar como revogação integral validada sem revisar a publicação e o regime histórico do ato.\n              Biblioteca Virtual do Natal / SEMURB · 31/12/1969 · ano indicado no título do documento\n              Abrir ficha oficial: Lei nº 1.894, de 31 de dezembro de 1969 — Código de Obras antigo\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei Nº 4.566 de 19 de maio de 1992": {
+                "status": "year_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/6491",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #6491 · Lei Ordinária nº 4566/1994 · 27/08/1994"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1871",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei nº 4.566, de 19 de maio de 1992 — ficha bibliográfica"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_4.566.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de ano\n            \n          \n          \n          \n            O número aparece no SAPL em outro ano\n            A referência do Art. 260 cita Lei nº 4566/1992; o catálogo retornou Lei Ordinária nº 4566/1994. Não associamos os atos.\n          \n          \n            Inspecionar ficha SAPL #6491 · Lei Ordinária nº 4566/1994 · 27/08/1994\n            Divergência de data: a referência menciona 19/05/1992; a ficha SAPL está datada de 27/08/1994. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              Conflito documental de identidade: a ficha BVN cataloga Lei Ordinária, mas o PDF traz ‘DECRETA’ no preâmbulo e chama o ato de ‘presente Decreto’ no Art. 2º e ‘este decreto’ no Art. 7º. A nota do PDF informa publicação no DOE em 21/05/1992. Não classificar nem vincular como lei/decreto sem conferência jurídica da publicação oficial.\n              Biblioteca Virtual do Natal (BVN) · 19/05/1992 (assinatura e publicação na ficha)\n              Abrir ficha oficial: Lei nº 4.566, de 19 de maio de 1992 — ficha bibliográfica\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei nº 4.885 de 07 de outubro de 1997": {
+                "status": "exact_identity_candidate",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/6817",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #6817 · Lei Ordinária nº 4885/1997 · 07/10/1997 · data citada"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1912",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei nº 4.885, de 07 de outubro de 1997 — RITUR"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/ritur_relatorio_de_impacto_sobre_trafego_urbano.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              1 ficha candidata\n            \n          \n          \n          \n            Espécie, número e ano coincidem no cadastro SAPL\n            É uma correspondência cadastral candidata; não confirma que esta seja a edição citada nem que a revogação produziu efeitos.\n          \n          \n            Inspecionar ficha SAPL #6817 · Lei Ordinária nº 4885/1997 · 07/10/1997 · data citada\n            \n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              O PDF contém a Lei nº 4.885/1997 nas páginas iniciais e, a partir da página 3, um Decreto nº 8.227/2007 separado. Trate-os como atos distintos; o arquivo compilado não prova, sozinho, a redação vigente da lei nem a relação de revogação da LC 258/2024.\n              Biblioteca Virtual do Natal (BVN) · 07/10/1997 · assinatura e publicação na ficha BVN\n              Abrir ficha oficial: Lei nº 4.885, de 07 de outubro de 1997 — RITUR\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei Complementar nº 055 de 27 de janeiro de 2004": {
+                "status": "not_checked",
+                "links": [],
+                "note": ""
+              },
+              "Art. 21 da Lei Promulgada nº 275 de 12 de março de 2009": {
+                "status": "identity_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/9050",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #9050 · Lei Complementar nº 275/2026 · 03/02/2026"
+                  },
+                  {
+                    "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: DOM nº 1.538, de 17 de março de 2009 — Lei Promulgada nº 0275/2009"
+                  },
+                  {
+                    "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de ano e espécie\n            \n          \n          \n          \n            O número aparece no SAPL com ano e espécie diferentes\n            A referência do Art. 260 cita Lei Promulgada nº 275/2009; o catálogo retornou Lei Complementar nº 275/2026. Não associamos os atos.\n          \n          \n            Inspecionar ficha SAPL #9050 · Lei Complementar nº 275/2026 · 03/02/2026\n            Divergência de data: a referência menciona 12/03/2009; a ficha SAPL está datada de 03/02/2026. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              O DOM reproduz a Lei Promulgada nº 0275/2009, incluindo o Art. 21 (PDF, páginas 7–9). É fonte do texto promulgado, não prova por si só a vigência atual ou os efeitos da revogação mencionada em 2024.\n              Diário Oficial do Município de Natal · publicado em 17/03/2009; texto datado de 12/03/2009\n              Abrir ficha oficial: DOM nº 1.538, de 17 de março de 2009 — Lei Promulgada nº 0275/2009\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei Promulgada nº 562 de 14 de setembro de 2018": {
+                "status": "date_matched_candidate",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/254",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #254 · Lei Promulgada nº 562/2018 · 14/09/2018 · data citada"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/9202",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #9202 · Lei Promulgada nº 562/2018 · 18/09/2018"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/254",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei Promulgada nº 562, de 14 de setembro de 2018"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2018/254/lp_562.18.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Data citada coincide · ficha candidata\n            \n          \n          \n          \n            Uma ficha tem a data mencionada na citação\n            A data ajuda a priorizar a inspeção, mas a ficha continua sendo apenas uma candidata e não confirma identidade jurídica nem efeito da revogação. Outras fichas permanecem listadas para comparação.\n          \n          \n            Inspecionar ficha SAPL #254 · Lei Promulgada nº 562/2018 · 14/09/2018 · data citada\n            \n          \n            Inspecionar ficha SAPL #9202 · Lei Promulgada nº 562/2018 · 18/09/2018\n            Divergência de data: a referência menciona 14/09/2018; a ficha SAPL está datada de 18/09/2018. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              A ficha oficial e o PDF identificam Lei Promulgada nº 562/2018; o Art. 13 prevê vigência na data da publicação e revoga disposições em contrário. O Art. 260, VI, da LC 258/2024 cita este ato expressamente, mas esta referência não certifica a data de eficácia da revogação nem substitui a conferência do DOM e do caso concreto.\n              SAPL Natal · ficha e texto original · promulgada em 14/09/2018; publicação cadastrada em 18/09/2018\n              Abrir ficha oficial: Lei Promulgada nº 562, de 14 de setembro de 2018\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei nº 198 de 12 de novembro de 2021": {
+                "status": "species_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/925",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #925 · Lei Complementar nº 198/2021 · 12/11/2021 · data citada"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/925",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei Complementar nº 198, de 12 de novembro de 2021"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2021/925/plc_006.21-convertido.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de espécie\n            \n          \n          \n          \n            Conflito de espécie no cadastro SAPL\n            A consulta encontrou Lei Complementar nº 198/2021, mas a referência do Art. 260 indica outra espécie. Não associamos os registros.\n          \n          \n            Inspecionar ficha SAPL #925 · Lei Complementar nº 198/2021 · 12/11/2021 · data citada\n            \n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              O cadastro SAPL identifica este ato como Lei Complementar, embora o Art. 260 da LC 258/2024 cite ‘Lei nº 198’. O PDF ligado como texto original deixa número/data do cabeçalho em branco e traz data final de 06/10/2021; conferir a publicação no DOM antes de consolidar. Se confirmado como LC 198, seus Arts. 1º, 2º e 4º fazem referência à LC 55/2004, mas não substituem por si sós a redação desses artigos.\n              SAPL Natal · ficha oficial e texto original · ficha: 12/11/2021; publicação cadastrada: 20/12/2021\n              Abrir ficha oficial: Lei Complementar nº 198, de 12 de novembro de 2021\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "LC nº 208/2022, Art. 14": {
+                "links": [],
+                "note": ""
+              },
+              "“Disposições em contrário”": {
+                "links": [],
+                "note": ""
+              }
+            },
+            "candidateLinks": [
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/3666",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1890",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_n_1.894_69.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/6491",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1871",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_4.566.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/6817",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1912",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/ritur_relatorio_de_impacto_sobre_trafego_urbano.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/9050",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/254",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/9202",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/254",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2018/254/lp_562.18.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/925",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/925",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2021/925/plc_006.21-convertido.pdf",
+                "rel": "noopener noreferrer"
+              }
+            ],
+            "disclosureCount": 6,
+            "disclosureIsNative": true,
+            "disclosureSummariesNamed": true,
+            "checkedDateVisible": true
+          },
+          "parallelRelations": 2,
+          "demoTitle": "LC 258/2024, Art. 260 — revogações e alterações",
+          "heading": "Rede de relações normativas",
+          "genericRepeal": true,
+          "amendment": true,
+          "focusableOverflow": 0
+        },
+        {
+          "width": 1920,
+          "scrollWidth": 1920,
+          "sourceNodes": 1,
+          "lc55HistoryTitle": "O que aconteceu com a LC nº 55/2004?",
+          "lc55OriginalQuote": "Art. 34 - A Licença Ambiental observa as seguintes etapas: I – Licença Prévia (LP); II – Licença de Instalação (LI); III – Licença de Operação (LO). § 1º — O prazo de validade deve ser fixado no próprio documento, obedecidas às prescrições estabelecidas nas normas específicas. § 2º — O Poder Executivo define o momento e as condições de exigibilidade das licenças referidas neste artigo.",
+          "lc55OriginalLink": "http://127.0.0.1:8287/normas/documentos/80752f21-67b5-4190-8109-e7cfa30f1551/pdf/#page=9",
+          "lc55OriginalReviewState": "Trecho lido da extração do PDF oficial no staging QA; revisão pendente e extração complete. É evidência documental, não redação consolidada aprovada.",
+          "lc55HistoryGridColumns": 4,
+          "lc55HistoryActs": [
+            "LC nº 173/2017 · Art. 2º",
+            "LC nº 185/2019 · Art. 87",
+            "LC nº 258/2024 · Art. 260, IV"
+          ],
+          "lc55HistorySnapshots": [
+            "Compilação oficial municipal · julho/2019 (snapshot, não ato)"
+          ],
+          "lc55HistoryLinks": [
+            {
+              "href": "http://127.0.0.1:8287/normas/documentos/4e6712c4-8376-4ff7-bec1-41a3f709b062/pdf/#page=1",
+              "text": "Conferir PDF de origem, p. 1"
+            },
+            {
+              "href": "https://natal.rn.gov.br/storage/app/media/legislacao/anexos/LeiComplementar_20171229_173_.pdf#page=1",
+              "text": "Abrir cópia publicada no portal oficial de Natal, p. 1"
+            },
+            {
+              "href": "http://127.0.0.1:8287/normas/documentos/110cba46-d992-4e94-9aab-072d839105f1/pdf/#page=20",
+              "text": "Conferir PDF de origem, p. 20"
+            },
+            {
+              "href": "https://natal.rn.gov.br/storage/app/media/legislacao/anexos/LeiComplementar_20190718_185_.pdf#page=20",
+              "text": "Abrir cópia publicada no portal oficial de Natal, p. 20"
+            },
+            {
+              "href": "https://www.natal.rn.gov.br/storage/app/media/semurb/legislacao/35_Codigo_Obras_Atualizado_Julho_2019.pdf",
+              "text": "Abrir compilação oficial da Prefeitura, p. 16"
+            },
+            {
+              "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2024/4052/lei_complementar_no_258_2024.pdf#page=59",
+              "text": "Conferir PDF de origem, p. 59"
+            }
+          ],
+          "lc55HistoryNotice": "Fontes primárias identificadas, mas a cadeia do Art. 34 ainda tem uma divergência material entre o Art. 87 da LC 185/2019 e a compilação municipal.\n\n§ 4º no ato candidato de 2017: §4º - A regulamentação de que trata o parágrafo anterior, definirá as atividades passíveis de Licença Simplificada (LS), bem como suas modalidades e os procedimentos para o licenciamento.”\n\n§ 4º na compilação oficial de 2019: § 4º - A regulamentação de que trata o parágrafo anterior, definirá as atividades passíveis de Licença Simplificada (LS), bem como suas modalidades e procedimentos para o licenciamento. (Redação dada pela Lei Complementar nº. 173, de 2017)\n\n§ 5º na compilação oficial de 2019: § 5º - As micro e pequenas empresas deverão ter suas atividades inexigíveis de licenciamento, sendo dispensado todos os atos públicos de liberação da atividade econômica para plena e contínua operação e funcionamento do estabelecimento, desde que seu CNAE esteja contemplado no rol taxativo pela legislação específica vigente. (Acrescido pela Lei Complementar nº. 185, de 2019)\n\nO PDF municipal da LC 173 traz no próprio cabeçalho a data de 28/12/2017; o Decreto municipal nº 11.681/2018 menciona “LC 173/2018” apesar de citar a data de 28/12/2017. A divergência está localizada na referência do decreto; a identidade do PDF da lei foi conferida pelo hash da cópia oficial, sem usar a proposição legislativa como fonte de vigência.\n\nA compilação atribui o § 5º à LC 185/2019, enquanto o Art. 87 do PDF promulgado fornece redação de § 3º com outro conteúdo. O sistema registra as duas evidências e deixa o alcance legislativo para revisão jurídica. A LC 258/2024 depois lista a LC 55 entre as revogadas; para processos de licenciamento, seu Art. 262 prevê regra de transição que depende do protocolo e de eventual opção formal pelo novo Código.",
+          "lc55TimelineNotice": "Resultado: localizamos a cadeia promulgada e os documentos oficiais, mas não é seguro publicar uma redação consolidada final do Art. 34 ainda.\n\nEstão comprovados os atos e a sucessão documental: LC 173/2017 acrescenta §§ 3º e 4º; o Art. 87 da LC 185/2019 declara nova redação para o Art. 34; a compilação municipal de julho/2019 não reproduz o mesmo § 3º; a LC 258/2024 revoga expressamente a LC 55 com vigência calculada em 27/03/2025 e regra transitória no Art. 262. O snapshot é mostrado como fonte, não escolhido como texto final.\n\nEstado temporal documentado: o SAPL registra publicação da LC 258/2024 em 27/12/2024; o Art. 266 prevê vacância de 90 dias. Pela contagem do Art. 8º, § 1º, da LC 95/1998, incluindo a publicação e o último dia e iniciando a vigência no dia seguinte, a data calculada é 27/03/2025. A partir daí, o Art. 260, IV, revoga expressamente a LC 55/2004. Confira a ficha oficial da LC 258/2024, o PDF oficial, Arts. 260, 262 e 266 e a regra de contagem da LC 95/1998.\n\nExceção que importa à PGM: pelo Art. 262 da LC 258, processos de licenciamento protocolados até a entrada em vigor e ainda sem despacho decisório são apreciados integralmente segundo a legislação vigente na data do protocolo, salvo manifestação formal do interessado pela análise integral conforme a lei nova. Antes de aplicar isso, confirme protocolo, existência de despacho e eventual opção formal no processo.\n\nPróxima revisão necessária: decidir juridicamente o alcance das reticências e do § 3º do Art. 87, explicar por que a compilação apresenta texto diferente e pesquisar atos posteriores ao snapshot até a entrada em vigor da LC 258. Até lá, a resposta correta do sistema é “cadeia identificada; redação consolidada inconclusiva”.\n\nDivergência de identidade para revisão: o Art. 260, VII, da LC 258/2024 escreve “Lei nº 198, de 12 de novembro de 2021”, enquanto o cadastro oficial do SAPL identifica a norma nº 198 daquela data como Lei Complementar. Não tratamos esses rótulos como equivalentes sem confirmar a identidade do ato e a intenção da referência.\n\nPara usar a regra em um processo, o procurador ainda precisa confirmar o texto do ato no DOM, a data do protocolo, a existência de despacho decisório na entrada em vigor e eventual opção formal do interessado pelo novo Código.",
+          "lc55ParagraphComparison": "Redação documentada em 2017 · candidata\nArt. 34, § 3º · LC 173/2017, Art. 2º\n§3º - A localização/concepção (licença prévia), instalação e a operação de empreendimentos/atividades, que não sejam de forte impacto urbanístico, poderão ser aprovadas por meio de um único documento, através da Licença Simplificada (LS), conforme regulamentação específica.\nAbrir fonte de 2017, p. 1\nAto alterador promulgado · LC 185/2019\nArt. 34, § 3º · LC 185/2019, Art. 87\n§ 3º. As micro e pequenas empresas deverão ter suas atividades inexigíveis de licenciamento, sendo dispensado todos os atos públicos de liberação da atividade econômica para plena e contínua operação e funcionamento do estabelecimento, desde que seu CNAE esteja contemplado no rol taxativo pela legislação específica vigente.”\n\nO Art. 87 da LC 185/2019 diz expressamente que o Art. 34 da LC 55 passa a vigorar com nova redação:\n\nArt. 34 A licença ambiental observa as seguintes etapas: ... § 3º. As micro e pequenas empresas deverão ter suas atividades inexigíveis de licenciamento, sendo dispensado todos os atos públicos de liberação da atividade econômica para plena e contínua operação e funcionamento do estabelecimento, desde que seu CNAE esteja contemplado no rol taxativo pela legislação específica vigente.\nConferir Art. 87 no PDF do acervo, p. 20 Conferir a cópia oficial da LC 185/2019",
+          "lc55ComparisonStatus": "Confronto entre o ato alterador e o snapshot: há divergência material: o Art. 87 da LC 185/2019 imprime a regra das micro e pequenas empresas como § 3º; o snapshot municipal mantém no § 3º a regra da Licença Simplificada e registra a regra das micro e pequenas empresas como § 5º. Nenhuma redação é escolhida automaticamente.",
+          "lc55ParagraphSourceLinks": 3,
+          "lc208OriginalParagraphLink": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2022/1160/pdn_-_lc_208_2022.pdf#page=11",
+          "lc261ReplacementLink": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2025/8823/lei_complementar_no_261_2025.pdf#page=35",
+          "lc261ReplacementQuote": "Acrescer à Subzona de Uso Restrito da ZPA-1 os lotes contidos na faixa marginal de 100 metros ao sul da Avenida da Integração, os lotes do lado sudeste da Avenida Omar O´Grady, entre as Avenidas dos Xavantes e Antoine de Saint Exupery e área delimitada na Tabela de vértices como SUR-1B.",
+          "lc208OriginalParagraphQuote": "§ 2º Acrescer à Subzona de Uso Restrito (SZ-2) da ZPA-1 os lotes contidos na faixa marginal de 100 metros ao sul da Avenida da Integração e os lotes do lado sudeste da Avenida Omar O´Grady, entre as Avenidas dos Xavantes e Antoine de Saint Exupery.",
+          "relationNodes": 3,
+          "graphTargets": 9,
+          "targetCardGridColumns": 3,
+          "targetCardWidth": 340.65625,
+          "diagramHeight": 2398.59375,
+          "namedTargets": 7,
+          "repealEdges": 7,
+          "targetScopeCounts": {
+            "act": 6,
+            "device": 1
+          },
+          "targetScopeNotice": "“Ato citado” significa que o texto não individualiza um artigo; isso não prova revogação integral. “Dispositivo citado” identifica o artigo mencionado, mas não confirma sozinho o alcance ou os efeitos no tempo.",
+          "renderedGraphEdges": 12,
+          "graphEdgesDashPattern": true,
+          "graphEdgesConnectNodes": true,
+          "desktopTargetsFollowTheirEventHub": true,
+          "desktopExpressFanoutStaysUnderItsHub": true,
+          "graphSvgIsDecorative": true,
+          "saplRegistry": {
+            "statuses": {
+              "Lei Complementar nº 1.894 de 31 de dezembro de 1969": {
+                "status": "species_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/3666",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #3666 · Lei Ordinária nº 1894/1969 · 25/12/1969"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1890",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei nº 1.894, de 31 de dezembro de 1969 — Código de Obras antigo"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_n_1.894_69.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de espécie\n            \n          \n          \n          \n            Conflito de espécie no cadastro SAPL\n            A consulta encontrou Lei Ordinária nº 1894/1969, mas a referência do Art. 260 indica outra espécie. Não associamos os registros.\n          \n          \n            Inspecionar ficha SAPL #3666 · Lei Ordinária nº 1894/1969 · 25/12/1969\n            Divergência de data: a referência menciona 31/12/1969; a ficha SAPL está datada de 25/12/1969. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              A fonte municipal identifica o ato como Lei nº 1.894/1969, enquanto o Art. 260 da LC 258/2024 o denomina Lei Complementar. A espécie diverge; não associar nem tratar como revogação integral validada sem revisar a publicação e o regime histórico do ato.\n              Biblioteca Virtual do Natal / SEMURB · 31/12/1969 · ano indicado no título do documento\n              Abrir ficha oficial: Lei nº 1.894, de 31 de dezembro de 1969 — Código de Obras antigo\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei Nº 4.566 de 19 de maio de 1992": {
+                "status": "year_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/6491",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #6491 · Lei Ordinária nº 4566/1994 · 27/08/1994"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1871",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei nº 4.566, de 19 de maio de 1992 — ficha bibliográfica"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_4.566.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de ano\n            \n          \n          \n          \n            O número aparece no SAPL em outro ano\n            A referência do Art. 260 cita Lei nº 4566/1992; o catálogo retornou Lei Ordinária nº 4566/1994. Não associamos os atos.\n          \n          \n            Inspecionar ficha SAPL #6491 · Lei Ordinária nº 4566/1994 · 27/08/1994\n            Divergência de data: a referência menciona 19/05/1992; a ficha SAPL está datada de 27/08/1994. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              Conflito documental de identidade: a ficha BVN cataloga Lei Ordinária, mas o PDF traz ‘DECRETA’ no preâmbulo e chama o ato de ‘presente Decreto’ no Art. 2º e ‘este decreto’ no Art. 7º. A nota do PDF informa publicação no DOE em 21/05/1992. Não classificar nem vincular como lei/decreto sem conferência jurídica da publicação oficial.\n              Biblioteca Virtual do Natal (BVN) · 19/05/1992 (assinatura e publicação na ficha)\n              Abrir ficha oficial: Lei nº 4.566, de 19 de maio de 1992 — ficha bibliográfica\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei nº 4.885 de 07 de outubro de 1997": {
+                "status": "exact_identity_candidate",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/6817",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #6817 · Lei Ordinária nº 4885/1997 · 07/10/1997 · data citada"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1912",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei nº 4.885, de 07 de outubro de 1997 — RITUR"
+                  },
+                  {
+                    "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/ritur_relatorio_de_impacto_sobre_trafego_urbano.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              1 ficha candidata\n            \n          \n          \n          \n            Espécie, número e ano coincidem no cadastro SAPL\n            É uma correspondência cadastral candidata; não confirma que esta seja a edição citada nem que a revogação produziu efeitos.\n          \n          \n            Inspecionar ficha SAPL #6817 · Lei Ordinária nº 4885/1997 · 07/10/1997 · data citada\n            \n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              O PDF contém a Lei nº 4.885/1997 nas páginas iniciais e, a partir da página 3, um Decreto nº 8.227/2007 separado. Trate-os como atos distintos; o arquivo compilado não prova, sozinho, a redação vigente da lei nem a relação de revogação da LC 258/2024.\n              Biblioteca Virtual do Natal (BVN) · 07/10/1997 · assinatura e publicação na ficha BVN\n              Abrir ficha oficial: Lei nº 4.885, de 07 de outubro de 1997 — RITUR\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei Complementar nº 055 de 27 de janeiro de 2004": {
+                "status": "not_checked",
+                "links": [],
+                "note": ""
+              },
+              "Art. 21 da Lei Promulgada nº 275 de 12 de março de 2009": {
+                "status": "identity_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/9050",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #9050 · Lei Complementar nº 275/2026 · 03/02/2026"
+                  },
+                  {
+                    "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: DOM nº 1.538, de 17 de março de 2009 — Lei Promulgada nº 0275/2009"
+                  },
+                  {
+                    "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de ano e espécie\n            \n          \n          \n          \n            O número aparece no SAPL com ano e espécie diferentes\n            A referência do Art. 260 cita Lei Promulgada nº 275/2009; o catálogo retornou Lei Complementar nº 275/2026. Não associamos os atos.\n          \n          \n            Inspecionar ficha SAPL #9050 · Lei Complementar nº 275/2026 · 03/02/2026\n            Divergência de data: a referência menciona 12/03/2009; a ficha SAPL está datada de 03/02/2026. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              O DOM reproduz a Lei Promulgada nº 0275/2009, incluindo o Art. 21 (PDF, páginas 7–9). É fonte do texto promulgado, não prova por si só a vigência atual ou os efeitos da revogação mencionada em 2024.\n              Diário Oficial do Município de Natal · publicado em 17/03/2009; texto datado de 12/03/2009\n              Abrir ficha oficial: DOM nº 1.538, de 17 de março de 2009 — Lei Promulgada nº 0275/2009\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei Promulgada nº 562 de 14 de setembro de 2018": {
+                "status": "date_matched_candidate",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/254",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #254 · Lei Promulgada nº 562/2018 · 14/09/2018 · data citada"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/9202",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #9202 · Lei Promulgada nº 562/2018 · 18/09/2018"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/254",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei Promulgada nº 562, de 14 de setembro de 2018"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2018/254/lp_562.18.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Data citada coincide · ficha candidata\n            \n          \n          \n          \n            Uma ficha tem a data mencionada na citação\n            A data ajuda a priorizar a inspeção, mas a ficha continua sendo apenas uma candidata e não confirma identidade jurídica nem efeito da revogação. Outras fichas permanecem listadas para comparação.\n          \n          \n            Inspecionar ficha SAPL #254 · Lei Promulgada nº 562/2018 · 14/09/2018 · data citada\n            \n          \n            Inspecionar ficha SAPL #9202 · Lei Promulgada nº 562/2018 · 18/09/2018\n            Divergência de data: a referência menciona 14/09/2018; a ficha SAPL está datada de 18/09/2018. A correspondência exige conferência.\n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              A ficha oficial e o PDF identificam Lei Promulgada nº 562/2018; o Art. 13 prevê vigência na data da publicação e revoga disposições em contrário. O Art. 260, VI, da LC 258/2024 cita este ato expressamente, mas esta referência não certifica a data de eficácia da revogação nem substitui a conferência do DOM e do caso concreto.\n              SAPL Natal · ficha e texto original · promulgada em 14/09/2018; publicação cadastrada em 18/09/2018\n              Abrir ficha oficial: Lei Promulgada nº 562, de 14 de setembro de 2018\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "Lei nº 198 de 12 de novembro de 2021": {
+                "status": "species_conflict",
+                "links": [
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/925",
+                    "rel": "noopener noreferrer",
+                    "text": "Inspecionar ficha SAPL #925 · Lei Complementar nº 198/2021 · 12/11/2021 · data citada"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/norma/925",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir ficha oficial: Lei Complementar nº 198, de 12 de novembro de 2021"
+                  },
+                  {
+                    "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2021/925/plc_006.21-convertido.pdf",
+                    "rel": "noopener noreferrer",
+                    "text": "Abrir documento oficial"
+                  }
+                ],
+                "note": "\n          \n            Catálogo SAPL · 2026-10-15\n            \n              Conflito de espécie\n            \n          \n          \n          \n            Conflito de espécie no cadastro SAPL\n            A consulta encontrou Lei Complementar nº 198/2021, mas a referência do Art. 260 indica outra espécie. Não associamos os registros.\n          \n          \n            Inspecionar ficha SAPL #925 · Lei Complementar nº 198/2021 · 12/11/2021 · data citada\n            \n          \n          \n            \n              Fonte oficial municipal localizada · candidata para revisão\n              O cadastro SAPL identifica este ato como Lei Complementar, embora o Art. 260 da LC 258/2024 cite ‘Lei nº 198’. O PDF ligado como texto original deixa número/data do cabeçalho em branco e traz data final de 06/10/2021; conferir a publicação no DOM antes de consolidar. Se confirmado como LC 198, seus Arts. 1º, 2º e 4º fazem referência à LC 55/2004, mas não substituem por si sós a redação desses artigos.\n              SAPL Natal · ficha oficial e texto original · ficha: 12/11/2021; publicação cadastrada: 20/12/2021\n              Abrir ficha oficial: Lei Complementar nº 198, de 12 de novembro de 2021\n              Abrir documento oficial\n            \n          \n          \n        "
+              },
+              "LC nº 208/2022, Art. 14": {
+                "links": [],
+                "note": ""
+              },
+              "“Disposições em contrário”": {
+                "links": [],
+                "note": ""
+              }
+            },
+            "candidateLinks": [
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/3666",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1890",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_n_1.894_69.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/6491",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1871",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_4.566.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/6817",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/detalheBVN.php?valorRegistro=1912",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://www2.natal.rn.gov.br/bvn/publicacoes/ritur_relatorio_de_impacto_sobre_trafego_urbano.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/9050",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/254",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/9202",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/254",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2018/254/lp_562.18.pdf",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/925",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/norma/925",
+                "rel": "noopener noreferrer"
+              },
+              {
+                "href": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2021/925/plc_006.21-convertido.pdf",
+                "rel": "noopener noreferrer"
+              }
+            ],
+            "disclosureCount": 6,
+            "disclosureIsNative": true,
+            "disclosureSummariesNamed": true,
+            "checkedDateVisible": true
+          },
+          "parallelRelations": 2,
+          "demoTitle": "LC 258/2024, Art. 260 — revogações e alterações",
+          "heading": "Rede de relações normativas",
+          "genericRepeal": true,
+          "amendment": true,
+          "focusableOverflow": 0
+        }
+      ],
+      "legalScope": "seven named Art. 260 references plus Art. 261 amendment and Art. 266 generic repeal; no legal adjudication"
+    },
+    {
+      "id": "lc258-graph-interactive-relation-highlighting",
+      "status": "passed",
+      "details": {
+        "selected": "true",
+        "liveText": "Destaque: o Art. 260 cita seis leis e um artigo para revogação expressa. A relação ainda depende de revisão jurídica.",
+        "emphasizedTargets": 7,
+        "mutedTargets": 2,
+        "mutedLegibility": [
+          {
+            "opacity": 0.84,
+            "headingContrast": 12.15,
+            "explanationContrast": 10.39
+          },
+          {
+            "opacity": 0.84,
+            "headingContrast": 12.15,
+            "explanationContrast": 10.39
+          }
+        ],
+        "allTargetsRemainAvailable": true,
+        "edgeKinds": [
+          "express"
+        ]
+      },
+      "keyboard": "Enter activates the focused native filter button; focus remains visible on the control",
+      "screenshot": "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-lc258-repeals-focused.png"
+    },
+    {
+      "id": "sapl-registry-disclosure-opens-official-record",
+      "status": "passed"
+    },
+    {
+      "id": "archive-caveat-disclosure-is-accessible-and-complete",
+      "status": "passed"
+    },
+    {
+      "id": "build-and-corpus-disclosure",
+      "status": "passed",
+      "note": "release version and source revision are explicit"
+    },
+    {
+      "id": "evidence-export-downloads-structured-provenance",
+      "status": "passed",
+      "schemaVersion": "jurix-evidence-v1",
+      "sourceCount": 4,
+      "pageAnchoredLocalEvidenceCount": 4,
+      "validatedLocalPdfRouteCount": 1,
+      "fields": [
+        "citation_id",
+        "norma",
+        "dispositivo",
+        "excerpt"
+      ]
+    },
+    {
+      "id": "composer-controls-remain-readable-at-1024px",
+      "status": "passed",
+      "display": "grid",
+      "columnCount": 3,
+      "width": 670,
+      "labels": [
+        {
+          "text": "Pesquisa híbrida",
+          "width": 218,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "Legislação municipal",
+          "width": 218,
+          "whiteSpace": "nowrap"
+        },
+        {
+          "text": "Anexar documento",
+          "width": 218,
+          "whiteSpace": "nowrap"
+        }
+      ],
+      "temporal": {
+        "width": 670,
+        "gridColumn": "1 / -1"
+      }
+    },
+    {
+      "id": "source-drawer-reverse-tab-stays-modal",
+      "status": "passed",
+      "remainsInModal": true,
+      "focusedLabel": "Lei Complementar nº 198/2021\n                    4 evidências"
+    },
+    {
+      "id": "source-group-expand-all-state",
+      "status": "passed",
+      "labelAfterExpansion": "Recolher todas as evidências",
+      "expandedGroups": 1
+    },
+    {
+      "id": "source-card-opens-rendered-pdf-in-new-tab",
+      "status": "passed",
+      "target": "_blank",
+      "responseStatus": 200,
+      "contentType": "application/pdf",
+      "title": "",
+      "screenshot": "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-source-pdf-opened.png"
+    },
+    {
+      "id": "real-archive-cross-reference-and-source-drawer",
+      "status": "passed",
+      "evidenceCount": 4,
+      "deviceRefs": [
+        "Art. 1º",
+        "Art. 2º",
+        "Art. 4º",
+        "Art. 6º"
+      ],
+      "drawer": {
+        "visible": true,
+        "title": "Fontes Consultadas (4)",
+        "cards": 4,
+        "groups": 1,
+        "hasContribution": true,
+        "hasPendingReviewNotice": true,
+        "readability": {
+          "excerptFontSize": "14px",
+          "fullTextFontSize": "14px",
+          "contributionFontSize": "13px",
+          "sourceActionHeight": 44,
+          "expandTargetHeight": 44
+        },
+        "geometry": {
+          "viewportWidth": 1024,
+          "left": 544,
+          "right": 1024,
+          "width": 480,
+          "scrollWidth": 479,
+          "clientWidth": 479
+        }
+      },
+      "pdf": {
+        "status": 200,
+        "contentType": "application/pdf",
+        "bytes": 193918,
+        "validPdf": true
+      },
+      "caveat": "local extraction is pending review; this smoke verifies retrieval/UI, not legal correctness"
+    },
+    {
+      "id": "source-drawer-escape-restores-trigger-focus",
+      "status": "passed"
+    },
+    {
+      "id": "missing-amendment-chain-with-grounded-origin-text",
+      "status": "passed",
+      "sourceCount": 2,
+      "sources": [
+        {
+          "norma": "Lei Complementar nº 55/2004",
+          "dispositivo": "Art. 21"
+        },
+        {
+          "norma": "Lei Complementar nº 258/2024",
+          "dispositivo": "Art. 260, inciso IV"
+        }
+      ],
+      "answer": "Com as evidências disponíveis, não foi possível confirmar se o dispositivo consultado foi alterado ou revogado, nem afirmar sua vigência atual. O PDF arquivado registra a redação de origem de Lei Complementar nº 55/2004, Art. 21: “Toda e qualquer obra e/ou serviço só pode ser iniciado após\nobter licenciamento pelo Município, através da expedição do respectivo Alvará\nde construção, de ampliação, de reforma ou de demolição e, quando for o\ncaso, da Licença Ambiental.\n§ 1° - O prazo máximo para aprovação dos projetos é de 30 (trinta) dias\núteis, contados da data da entrada do requerimento no órgão municipal de\nlicenciamento e controle.\n§ 2° - Caso o projeto necessite de adequações à legislação vigente, será\nreiniciado o prazo acima, a partir do atendimento às solicitações do órgão\nmunicipal de licenciamento e controle.\n§ 3° - Findo o prazo definido nos parágrafos 1° e 2°, se o processo não\nhouver sido concluído, o interessado poderá dar início à obra, mediante\ndepósito dos emolumentos e taxas devidos e comunicação ao órgão municipal\nde licenciamento e controle, com obediência aos dispositivos deste Código,\nsujeitando-se, por declaração com firma reconhecida, a demolir o que estiver\nem desacordo com as presentes normas.” Art. 21.\n\nA vigência desta redação ainda não foi confirmada. Confira a linha do tempo normativa e os atos oficiais antes de usar essa redação em uma fundamentação.\n\nComo pista para a conferência, no PDF de Lei Complementar nº 258/2024, Art. 260, inciso IV a extração identifica “Ficam revogados” e o item “Lei Complementar nº 055 de 27 de janeiro de 2004” Art. 260, inciso IV. O vínculo é apenas candidato documental: a extração/relação não está validada e não confirma, por si só, a revogação nem a redação vigente."
+    },
+    {
+      "id": "historical-date-is-transmitted-and-unavailable-version-abstains",
+      "status": "passed",
+      "asOf": "2020-01-01",
+      "sourceCount": 0,
+      "limitation": "archive QA cannot reconstruct a historical version and did not substitute current text",
+      "screenshot": "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-temporal-abstention-2020.png"
+    },
+    {
+      "id": "pgm-transition-chain-covers-revocation-transition-and-origin-article",
+      "status": "passed",
+      "sourceCount": 3,
+      "sources": [
+        {
+          "norma": "Lei Complementar nº 258/2024",
+          "dispositivo": "Art. 260"
+        },
+        {
+          "norma": "Lei Complementar nº 258/2024",
+          "dispositivo": "Art. 262"
+        },
+        {
+          "norma": "Lei Complementar nº 55/2004",
+          "dispositivo": "Art. 21"
+        }
+      ],
+      "answer": "O texto recuperado da Lei Complementar nº 258/2024 inclui a Lei Complementar nº 55/2004 entre os atos revogados Art. 260. A mesma lei prevê tratamento pela legislação da época do protocolo para processos protocolados até sua entrada em vigor e ainda sem despacho decisório, ressalvada a manifestação formal pela análise integral conforme a lei nova Art. 262.\n\nA extração pendente de revisão da Lei Complementar nº 55/2004 trata do licenciamento de obras e dos prazos de análise Art. 21. Isso não basta para afirmar que esse artigo rege o processo concreto: é preciso conferir a data de entrada em vigor da lei nova, a data do protocolo, a existência de despacho, eventual manifestação formal e o histórico oficial posterior da norma antiga. Os PDFs do acervo são pontos de conferência, não uma validação jurídica do caso.",
+      "caveat": "candidate PDF extractions are pending review; no conclusion of applicability or current validity",
+      "screenshot": "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-lc258-transition-and-revocation.png"
+    },
+    {
+      "id": "real-lp275-article21-repeal-source-and-pdf-open",
+      "status": "passed",
+      "sources": [
+        {
+          "norma": "Lei Promulgada nº 275/2009",
+          "dispositivo": "Art. 21",
+          "page": 6
+        },
+        {
+          "norma": "Lei Complementar nº 258/2024",
+          "dispositivo": "Art. 260"
+        }
+      ],
+      "answerStatesBothExtractionsArePending": true,
+      "sourceDrawerOpensLocalPdf": true,
+      "localPdfResponse": {
+        "status": 200,
+        "contentType": "application/pdf",
+        "signature": "%PDF"
+      },
+      "screenshot": "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-lp275-revocation-and-source-drawer.png",
+      "caveat": "public authentic PDF texts are retrieved; both extractions remain pending and no vigency conclusion is made"
+    },
+    {
+      "id": "proposal-rag-smoke",
+      "status": "deferred",
+      "note": "projeto de lei fora do RAG promulgado nesta etapa; habilite JURIX_INCLUDE_PROPOSAL_RAG_SMOKE=1 somente para o teste isolado dessa funcionalidade"
+    },
+    {
+      "id": "real-ctm-article20-amendment-comparison-scoped-sources",
+      "status": "passed",
+      "sourceCount": 2,
+      "sources": [
+        {
+          "citationId": "qa:430cc0a48d8f14418fd7a305",
+          "norm": "Lei nº 3.882/1989",
+          "device": "Art. 20",
+          "edition": "Consolidação municipal · exercício 2024 · revisão pendente"
+        },
+        {
+          "citationId": "qa:4a25643f887c5e5851758f86",
+          "norm": "Lei Complementar nº 271/2025",
+          "device": "Art. 1º",
+          "edition": "PDF oficial SAPL · revisão pendente"
+        }
+      ],
+      "answerWarnsAboutOmittedContinuation": true,
+      "answerAvoidsCurrentnessClaim": true,
+      "drawerMatchesAnswerEvidence": true,
+      "screenshot": "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-ctm-article20-comparison.png",
+      "caveat": "authentic municipal PDF extractions remain pending human review; text comparison does not establish legal effect or current validity"
+    },
+    {
+      "id": "anonymous-reviewer-access-gate",
+      "status": "passed",
+      "finalPath": "/conta/entrar/",
+      "heading": "Acesse Conferir fundamentação",
+      "explainsAuthorization": true,
+      "screenshot": "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-foundation-check-login-context.png"
+    }
+  ],
+  "evidence": [
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-assistant-320px.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-search-320px.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-archive-accent-search.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-archive-identical-pdfs-grouped.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-cosip-natural-archive-search.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-environmental-waste-natural-search.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-normas-320px.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-normas-global-search-bridge-1280px.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-normas-global-search-1280px.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-normas-candidates-1280px.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-graph-honest-empty-state.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-lc258-repeal-graph-320px.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-lc258-repeal-graph-1280px.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-lc258-repeals-focused.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-build-identity.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-source-pdf-opened.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-cross-reference-with-sources.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-temporal-abstention-2020.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-lc258-transition-and-revocation.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-lp275-revocation-and-source-drawer.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-ctm-article20-comparison.png",
+    "C:\\Users\\Cauã V\\AppData\\Local\\Temp\\jurix-pgm-goal-qa-20261016-lp275-retrieval\\browser-smoke-lp275\\pgm-foundation-check-login-context.png"
+  ],
+  "status": "passed",
+  "pageErrors": [],
+  "completedAt": "2026-10-16T22:03:10.291Z"
+}

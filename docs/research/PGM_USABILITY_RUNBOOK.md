@@ -15,7 +15,9 @@ Não inserir número de processo, nomes de partes, peças, pareceres internos ou
 
 ## Jornada automatizada com PDF do acervo
 
-O smoke amplo permite somente servidores QA locais explicitamente allowlisted (`:8010`, `:8011`, `:8016`, `:8017`, `:8028`, `:8029`, `:8030`, `:8040`, `:8280`, `:8281`, `:8282` e `:8283`). O smoke focado de matéria SAPL permite apenas `:8280–:8283`. Na revalidação de 10/10/2026, `:8283` respondeu no profile `config.settings_normative_qa`, com PostgreSQL/Redis isolados e metadata de checkout dirty; os processos antigos foram mantidos. O commit-base não contém os diffs locais. Neste host, as portas `7937–8036` estão reservadas pelo Windows. Antes de executar, confirme health, profile, raiz com os blobs do banco QA e identidade explícita do build atual.
+O smoke amplo permite somente servidores QA locais explicitamente allowlisted (`:8010`, `:8011`, `:8016`, `:8017`, `:8028`, `:8029`, `:8030`, `:8040`, `:8280`, `:8281`, `:8282`, `:8283` e `:8287`). O smoke focado de matéria SAPL permite apenas `:8280–:8283`. Na revalidação de 14/10/2026, `:8287` respondeu com PostgreSQL/Redis isolados e acervo QA; a porta está allowlisted no smoke amplo. A versão e a revisão foram declaradas explicitamente para a execução identificada abaixo; execuções anteriores sem metadados foram reportadas como `unversioned-local-checkout`, não como sucesso. Antes de repetir, confirme health, profile, raiz com os blobs do banco QA e identidade explícita do build atual.
+
+Para uma execução repetível nesta árvore local, registre `git status --short` e use metadados explicitamente: `JURIX_BUILD_REVISION` recebe o SHA-base de `git rev-parse HEAD`, enquanto `JURIX_BUILD_VERSION` deve dizer `qa-dirty-<data>.<execução>` se houver alterações locais. Isso identifica o commit-base, não o conteúdo integral dos diffs. Recrie somente o web do projeto QA (`docker compose -p jurix-normative-qa -f docker-compose.audit.yml up -d --no-deps --force-recreate web`); não use esse comando no Compose de produto. O menu “Esta instância” deve mostrar versão, revisão, ambiente e corpus antes do smoke.
 
 1. Layout e landmark `main` em 320, 360, 640, 768, 1280 e 1920 CSS px, sem overflow horizontal. 640 CSS px é uma aproximação de reflow para desktop a 200%; não equivale a uma validação de zoom nativo de navegador.
 2. Consulta: “A Lei Complementar nº 198/2021 cita ou faz remissão à Lei Complementar nº 55/2004? Liste todos os artigos do PDF arquivado que mencionam a LC 55/2004 e esclareça se isso comprova alteração normativa.”
@@ -30,8 +32,8 @@ Execute no PowerShell, usando a raiz QA já identificada para o banco e os PDFs:
 ```powershell
 $env:JURIX_QA_ONLY = '1'
 $env:JURIX_QA_ROOT = Join-Path $env:TEMP 'jurix-pgm-goal-qa-20261008'
-$env:JURIX_BASE_URL = 'http://127.0.0.1:8283'
-$env:JURIX_EVIDENCE_DIR = Join-Path $env:JURIX_QA_ROOT 'pgm-smoke'
+$env:JURIX_BASE_URL = 'http://127.0.0.1:8287'
+$env:JURIX_EVIDENCE_DIR = Join-Path $env:JURIX_QA_ROOT 'evidence\pgm-smoke'
 .\.venv\Scripts\python.exe scripts/normative_qa.py --run node tests/js/pgm-workflow-smoke.mjs
 ```
 
@@ -51,12 +53,12 @@ $env:JURIX_EVIDENCE_DIR = Join-Path $env:JURIX_QA_ROOT 'pgm-sapl-related-matter-
 
 ## Smoke de geração real com Ollama local
 
-O profile `config.settings_normative_qa` mantém `READINESS_REQUIRE_OLLAMA=False`, portanto `health/ready` pode reportar Ollama como `skipped`. Para verificar geração real, confirme separadamente o serviço local em `127.0.0.1:11434`, o Ollama no `/api/ps` após a execução e execute o smoke de navegador abaixo. Não use uma porta antiga sem validar sua cadeia de processos/build. Nesta sessão, a instância QA corrente é `:8282` com build `qa-dirty-20261010`; a revisão exibida é o commit-base e não contém os diffs locais. O teste cria conversas temporárias apenas no banco QA e requer Chrome/Edge local.
+O profile `config.settings_normative_qa` mantém `READINESS_REQUIRE_OLLAMA=False`, portanto `health/ready` pode reportar Ollama como `skipped`. Para verificar geração real, confirme separadamente o serviço local em `127.0.0.1:11434`, o Ollama no `/api/ps` após a execução e execute o smoke de navegador abaixo. Não use uma porta antiga sem validar sua cadeia de processos/build. Na revalidação de 14/10/2026, o fluxo geral foi exercitado no QA `:8287`, mas não foi medido com Ollama; para uma nova medição, confirme readiness e armazenamento QA antes de usar `:8287`. O teste cria conversas temporárias apenas no banco QA e requer Chrome/Edge local.
 
 ```powershell
 $env:JURIX_QA_ONLY = '1'
 $env:JURIX_QA_ROOT = Join-Path $env:TEMP 'jurix-pgm-goal-qa-20261008'
-$env:JURIX_BASE_URL = 'http://127.0.0.1:8282'
+$env:JURIX_BASE_URL = 'http://127.0.0.1:8287'
 $env:JURIX_EVIDENCE_DIR = Join-Path $env:JURIX_QA_ROOT 'pgm-live-rag-smoke'
 ./.venv/Scripts/python.exe scripts/normative_qa.py --run node tests/js/normative-rag-live-smoke.mjs
 ```
