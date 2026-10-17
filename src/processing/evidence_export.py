@@ -74,12 +74,22 @@ def _safe_coverage_date(value: Any) -> str | None:
     return candidate if parsed.isoformat() == candidate else None
 
 
+def _safe_coverage_identifier(value: Any, *, pattern: re.Pattern, limit: int) -> str | None:
+    if not isinstance(value, str):
+        return None
+    candidate = value.strip()[:limit]
+    return candidate if pattern.fullmatch(candidate) else None
+
+
 def _safe_corpus_coverage(coverage: Any) -> dict[str, Any] | None:
     """Keep the Python evidence package aligned with the browser's safe DTO."""
     if not isinstance(coverage, dict):
         return None
 
     statuses = {"unknown", "partial", "reviewed"}
+    source_pattern = re.compile(r"[a-z0-9][a-z0-9_.-]{0,79}")
+    jurisdiction_pattern = re.compile(r"[A-Z0-9][A-Z0-9_.-]{0,99}")
+    series_pattern = re.compile(r"[a-z0-9][a-z0-9_.-]{0,79}")
 
     def safe_status(value: Any) -> str:
         return value if isinstance(value, str) and value in statuses else "unknown"
@@ -87,78 +97,129 @@ def _safe_corpus_coverage(coverage: Any) -> dict[str, Any] | None:
     def safe_interval(value: Any, *, include_scope: bool = False) -> dict[str, Any] | None:
         if not isinstance(value, dict):
             return None
+        start = _safe_coverage_date(value.get("start"))
+        end = _safe_coverage_date(value.get("end"))
+        if not start or not end or start > end:
+            return None
         interval = {}
         if include_scope:
+            source = _safe_coverage_identifier(value.get("source"), pattern=source_pattern, limit=80)
+            jurisdiction = _safe_coverage_identifier(
+                value.get("jurisdiction"), pattern=jurisdiction_pattern, limit=100
+            )
+            series = _safe_coverage_identifier(value.get("series"), pattern=series_pattern, limit=80)
+            if not source or not jurisdiction or not series:
+                return None
             interval.update(
                 {
-                    "source": _text(value.get("source"), 80),
-                    "jurisdiction": _text(value.get("jurisdiction"), 100),
-                    "series": _text(value.get("series"), 80),
+                    "source": source,
+                    "jurisdiction": jurisdiction,
+                    "series": series,
                 }
             )
         interval.update(
             {
-                "start": _safe_coverage_date(value.get("start")),
-                "end": _safe_coverage_date(value.get("end")),
+                "start": start,
+                "end": end,
             }
         )
-        return interval if interval.get("start") or interval.get("end") else None
+        return interval
 
     def safe_scope(value: Any) -> dict[str, Any] | None:
         if not isinstance(value, dict):
             return None
         raw_intervals = value.get("missing_intervals")
         intervals = None
+        intervals_valid = isinstance(raw_intervals, list)
         if isinstance(raw_intervals, list):
-            intervals = [
-                interval
-                for raw_interval in raw_intervals[:100]
-                if (interval := safe_interval(raw_interval)) is not None
-            ]
+            intervals = []
+            for raw_interval in raw_intervals[:100]:
+                interval = safe_interval(raw_interval)
+                if interval is None:
+                    intervals_valid = False
+                else:
+                    intervals.append(interval)
+            if len(raw_intervals) > 100:
+                intervals_valid = False
+        source = _safe_coverage_identifier(value.get("source"), pattern=source_pattern, limit=80)
+        jurisdiction = _safe_coverage_identifier(
+            value.get("jurisdiction"), pattern=jurisdiction_pattern, limit=100
+        )
+        series = _safe_coverage_identifier(value.get("series"), pattern=series_pattern, limit=80)
+        period_start = _safe_coverage_date(value.get("period_start"))
+        checked_until = _safe_coverage_date(value.get("checked_until"))
+        checksum = (
+            str(value["source_checksum"]).lower()
+            if isinstance(value.get("source_checksum"), str)
+            and _SHA256.fullmatch(value["source_checksum"])
+            else None
+        )
+        pending_review = _safe_coverage_int(value.get("pending_review"))
+        status = safe_status(value.get("coverage_status"))
+        if status == "reviewed" and not (
+            source and jurisdiction and series and period_start and checked_until and checksum
+            and intervals_valid and pending_review == 0
+        ):
+            status = "partial"
         return {
-            "source": _text(value.get("source"), 80),
-            "jurisdiction": _text(value.get("jurisdiction"), 100),
-            "series": _text(value.get("series"), 80),
-            "period_start": _safe_coverage_date(value.get("period_start")),
+            "source": source,
+            "jurisdiction": jurisdiction,
+            "series": series,
+            "period_start": period_start,
             "period_end": _safe_coverage_date(value.get("period_end")),
-            "checked_until": _safe_coverage_date(value.get("checked_until")),
-            "source_checksum": (
-                str(value["source_checksum"]).lower()
-                if isinstance(value.get("source_checksum"), str)
-                and _SHA256.fullmatch(value["source_checksum"])
-                else None
-            ),
-            "coverage_status": safe_status(value.get("coverage_status")),
+            "checked_until": checked_until,
+            "source_checksum": checksum,
+            "coverage_status": status,
             "missing_intervals": intervals,
-            "pending_review": _safe_coverage_int(value.get("pending_review")),
+            "pending_review": pending_review,
             "last_success_at": _aware_datetime(value.get("last_success_at")),
         }
 
     revision = coverage.get("corpus_revision")
     revision = revision if isinstance(revision, dict) else {}
     raw_scopes = coverage.get("sources_checked")
+    scopes_valid = isinstance(raw_scopes, list) and len(raw_scopes) <= 100
     scopes = (
         [scope for raw_scope in raw_scopes[:100] if (scope := safe_scope(raw_scope)) is not None]
         if isinstance(raw_scopes, list)
         else []
     )
     raw_missing = coverage.get("missing_intervals")
-    missing = (
-        [
-            interval
-            for raw_interval in raw_missing[:100]
-            if (interval := safe_interval(raw_interval, include_scope=True)) is not None
-        ]
-        if isinstance(raw_missing, list)
-        else None
-    )
+    missing_valid = isinstance(raw_missing, list) and len(raw_missing) <= 100
+    missing = [] if isinstance(raw_missing, list) else None
+    if isinstance(raw_missing, list):
+        for raw_interval in raw_missing[:100]:
+            interval = safe_interval(raw_interval, include_scope=True)
+            if interval is None:
+                missing_valid = False
+            else:
+                missing.append(interval)
+    checked_until = _safe_coverage_date(coverage.get("checked_until"))
+    pending_review = _safe_coverage_int(coverage.get("pending_review"))
+    status = safe_status(coverage.get("coverage_status"))
+    if status == "reviewed" and not (
+        coverage.get("scope_limited") is True
+        and checked_until
+        and scopes_valid
+        and missing_valid
+        and missing == []
+        and pending_review == 0
+        and scopes
+        and all(
+            scope["coverage_status"] == "reviewed"
+            and scope["missing_intervals"] == []
+            and scope["pending_review"] == 0
+            for scope in scopes
+        )
+    ):
+        status = "partial"
     reason = coverage.get("reason")
     allowed_reasons = {
         "no_reviewed_coverage_scope",
         "registered_scopes_only_not_a_universal_completeness_claim",
     }
     return {
-        "coverage_status": safe_status(coverage.get("coverage_status")),
+        "coverage_status": status,
         "corpus_revision": {
             "revision": _safe_coverage_int(revision.get("revision")),
             "digest": (
@@ -169,10 +230,10 @@ def _safe_corpus_coverage(coverage: Any) -> dict[str, Any] | None:
             ),
         },
         "scope_limited": coverage.get("scope_limited") is True,
-        "checked_until": _safe_coverage_date(coverage.get("checked_until")),
+        "checked_until": checked_until,
         "sources_checked": scopes,
         "missing_intervals": missing,
-        "pending_review": _safe_coverage_int(coverage.get("pending_review")),
+        "pending_review": pending_review,
         "reason": reason if isinstance(reason, str) and reason in allowed_reasons else None,
     }
 

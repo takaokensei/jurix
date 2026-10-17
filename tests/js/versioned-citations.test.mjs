@@ -509,6 +509,37 @@ test('unknown review counts and corpus revisions stay unknown instead of becomin
   window.close();
 });
 
+test('evidence export sanitizes coverage identifiers and downgrades incomplete reviewed claims', () => {
+  const window = boot();
+  const packageDto = window.JurixChatRenderer.buildEvidencePackage([], null, {
+    coverage_status: 'reviewed',
+    corpus_revision: { revision: 3, digest: 'a'.repeat(64) },
+    scope_limited: true,
+    checked_until: '2024-12-31',
+    sources_checked: [{
+      source: 'C:/private/archive',
+      jurisdiction: 'BR-RN-NATAL',
+      series: 'municipal_lc',
+      period_start: '2000-01-01',
+      period_end: '2024-12-31',
+      checked_until: '2024-12-31',
+      source_checksum: 'C:/private/archive',
+      coverage_status: 'reviewed',
+      missing_intervals: [],
+      pending_review: 0,
+    }],
+    missing_intervals: [],
+    pending_review: 0,
+  });
+
+  assert.equal(packageDto.corpus_coverage.coverage_status, 'partial');
+  assert.equal(packageDto.corpus_coverage.sources_checked[0].coverage_status, 'partial');
+  assert.equal(packageDto.corpus_coverage.sources_checked[0].source, null);
+  assert.equal(packageDto.corpus_coverage.sources_checked[0].source_checksum, null);
+  assert.doesNotMatch(JSON.stringify(packageDto.corpus_coverage), /C:\/private\/archive/);
+  window.close();
+});
+
 test('anonymous local history preserves safe versioned citation DTOs and strips unknown secrets', () => {
   const dom = new JSDOM(
     '<!doctype html><html><body data-authenticated="false"></body></html>',

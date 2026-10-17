@@ -470,3 +470,37 @@ def test_corpus_coverage_malformed_container_values_fail_closed_without_raising(
     markdown = render_evidence_markdown(package)
     assert "Cobertura do acervo: **não verificada**." in markdown
     assert "arbitrary-private-reason" not in markdown
+
+
+def test_corpus_coverage_export_rejects_private_scope_ids_and_incomplete_reviewed_claims():
+    package = build_evidence_package(
+        [],
+        corpus_coverage={
+            "coverage_status": "reviewed",
+            "corpus_revision": {"revision": 3, "digest": "a" * 64},
+            "scope_limited": True,
+            "checked_until": "2024-12-31",
+            "sources_checked": [{
+                "source": "C:/private/archive",
+                "jurisdiction": "BR-RN-NATAL",
+                "series": "municipal_lc",
+                "period_start": "2000-01-01",
+                "period_end": "2024-12-31",
+                "checked_until": "2024-12-31",
+                "source_checksum": "C:/private/archive",
+                "coverage_status": "reviewed",
+                "missing_intervals": [],
+                "pending_review": 0,
+            }],
+            "missing_intervals": [],
+            "pending_review": 0,
+            "reason": "registered_scopes_only_not_a_universal_completeness_claim",
+        },
+    )
+
+    coverage = package["corpus_coverage"]
+    assert coverage["coverage_status"] == "partial"
+    assert coverage["sources_checked"][0]["coverage_status"] == "partial"
+    assert coverage["sources_checked"][0]["source"] is None
+    assert coverage["sources_checked"][0]["source_checksum"] is None
+    assert "C:/private/archive" not in render_evidence_json(package)

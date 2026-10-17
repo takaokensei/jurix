@@ -393,25 +393,55 @@
             return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === candidate
                 ? candidate : null;
         };
+        const safeIdentifier = (value, pattern) => {
+            if (typeof value !== 'string') return null;
+            const candidate = value.trim();
+            return candidate.length <= 100 && pattern.test(candidate) ? candidate : null;
+        };
+        const safeIntervals = (value, includeScope = false) => {
+            if (!Array.isArray(value) || value.length > 100) return null;
+            const result = [];
+            for (const interval of value) {
+                if (!interval || typeof interval !== 'object' || Array.isArray(interval)) return null;
+                const start = safeDate(interval.start);
+                const end = safeDate(interval.end);
+                if (!start || !end || start > end) return null;
+                if (!includeScope) {
+                    result.push({ start, end });
+                    continue;
+                }
+                const source = safeIdentifier(interval.source, /^[a-z0-9][a-z0-9_.-]{0,79}$/);
+                const jurisdiction = safeIdentifier(interval.jurisdiction, /^[A-Z0-9][A-Z0-9_.-]{0,99}$/);
+                const series = safeIdentifier(interval.series, /^[a-z0-9][a-z0-9_.-]{0,79}$/);
+                if (!source || !jurisdiction || !series) return null;
+                result.push({ source, jurisdiction, series, start, end });
+            }
+            return result;
+        };
         const safeScope = (scope) => {
             if (!scope || typeof scope !== 'object' || Array.isArray(scope)) return null;
-            const status = allowedStatuses.has(scope.coverage_status) ? scope.coverage_status : 'unknown';
-            const intervals = Array.isArray(scope.missing_intervals)
-                ? scope.missing_intervals.slice(0, 100).map((interval) => ({
-                    start: safeDate(interval?.start),
-                    end: safeDate(interval?.end),
-                })).filter((interval) => interval.start || interval.end)
-                : null;
+            let status = allowedStatuses.has(scope.coverage_status) ? scope.coverage_status : 'unknown';
+            const source = safeIdentifier(scope.source, /^[a-z0-9][a-z0-9_.-]{0,79}$/);
+            const jurisdiction = safeIdentifier(scope.jurisdiction, /^[A-Z0-9][A-Z0-9_.-]{0,99}$/);
+            const series = safeIdentifier(scope.series, /^[a-z0-9][a-z0-9_.-]{0,79}$/);
+            const periodStart = safeDate(scope.period_start);
+            const checkedUntil = safeDate(scope.checked_until);
+            const checksum = /^[a-f0-9]{64}$/i.test(String(scope.source_checksum || ''))
+                ? String(scope.source_checksum).toLowerCase() : null;
+            const intervals = safeIntervals(scope.missing_intervals);
             const pendingReview = safeCount(scope.pending_review);
+            if (status === 'reviewed' && !(
+                source && jurisdiction && series && periodStart && checkedUntil && checksum
+                && intervals !== null && intervals.length === 0 && pendingReview === 0
+            )) status = 'partial';
             return {
-                source: String(scope.source || '').slice(0, 80) || null,
-                jurisdiction: String(scope.jurisdiction || '').slice(0, 100) || null,
-                series: String(scope.series || '').slice(0, 80) || null,
-                period_start: safeDate(scope.period_start),
+                source,
+                jurisdiction,
+                series,
+                period_start: periodStart,
                 period_end: safeDate(scope.period_end),
-                checked_until: safeDate(scope.checked_until),
-                source_checksum: /^[a-f0-9]{64}$/i.test(String(scope.source_checksum || ''))
-                    ? String(scope.source_checksum).toLowerCase() : null,
+                checked_until: checkedUntil,
+                source_checksum: checksum,
                 coverage_status: status,
                 missing_intervals: intervals,
                 pending_review: pendingReview,
@@ -419,24 +449,25 @@
                     ? String(scope.last_success_at) : null,
             };
         };
-        const status = allowedStatuses.has(coverage.coverage_status)
+        let status = allowedStatuses.has(coverage.coverage_status)
             ? coverage.coverage_status : 'unknown';
         const revision = coverage.corpus_revision && typeof coverage.corpus_revision === 'object'
             ? coverage.corpus_revision : {};
         const scopes = Array.isArray(coverage.sources_checked)
             ? coverage.sources_checked.slice(0, 100).map(safeScope).filter(Boolean) : [];
         const rawMissing = coverage.missing_intervals;
-        const missingIntervals = Array.isArray(rawMissing)
-            ? rawMissing.slice(0, 100).map((interval) => ({
-                source: String(interval?.source || '').slice(0, 80) || null,
-                jurisdiction: String(interval?.jurisdiction || '').slice(0, 100) || null,
-                series: String(interval?.series || '').slice(0, 80) || null,
-                start: safeDate(interval?.start),
-                end: safeDate(interval?.end),
-            })).filter((interval) => interval.start || interval.end)
-            : null;
+        const missingIntervals = safeIntervals(rawMissing, true);
         const pendingReview = safeCount(coverage.pending_review);
         const revisionNumber = safeCount(revision.revision);
+        if (status === 'reviewed' && !(
+            coverage.scope_limited === true
+            && safeDate(coverage.checked_until)
+            && missingIntervals !== null && missingIntervals.length === 0
+            && pendingReview === 0 && scopes.length > 0
+            && scopes.every((scope) => scope.coverage_status === 'reviewed')
+            && Array.isArray(coverage.sources_checked)
+            && coverage.sources_checked.length <= 100
+        )) status = 'partial';
         return {
             coverage_status: status,
             corpus_revision: {

@@ -53,6 +53,75 @@ def test_global_revision_counts_never_certify_temporal_coverage():
     assert dto["pending_review"] is None
 
 
+def test_source_rows_strip_private_interval_fields_before_returning_the_dto():
+    dto = build_corpus_coverage(
+        {"revision": 3, "digest": "a" * 64},
+        scopes=[{
+            "source": "archive",
+            "jurisdiction": "BR-RN-NATAL",
+            "series": "municipal_lc",
+            "period_start": date(2000, 1, 1),
+            "period_end": date(2020, 12, 31),
+            "checked_until": date(2020, 12, 31),
+            "source_checksum": "b" * 64,
+            "coverage_status": "partial",
+            "missing_intervals": [{
+                "start": "2005-01-01",
+                "end": "2005-12-31",
+                "internal_path": "C:/private/archive",
+                "query": "private search text",
+            }],
+            "pending_review_count": 2,
+        }],
+    )
+
+    source_row = dto["sources_checked"][0]
+    assert source_row["missing_intervals"] == [{
+        "start": "2005-01-01",
+        "end": "2005-12-31",
+    }]
+    assert "internal_path" not in str(dto)
+    assert "private search text" not in str(dto)
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"missing_intervals": None},
+        {"missing_intervals": [{"start": "2020-99-99", "end": "2021-01-01"}]},
+        {"missing_intervals": [{"start": "2021-01-01", "end": "2020-01-01"}]},
+        {"pending_review_count": None},
+        {"pending_review_count": True},
+        {"checked_until": None},
+        {"source_checksum": "C:/private/archive"},
+        {"source": "C:/private/archive"},
+        {"jurisdiction": "C:/private/archive"},
+        {"series": "C:/private/archive"},
+    ],
+)
+def test_incomplete_reviewed_scope_is_downgraded_to_partial(override):
+    scope = {
+        "source": "sapl",
+        "jurisdiction": "BR-RN-NATAL",
+        "series": "municipal_lc",
+        "period_start": date(2000, 1, 1),
+        "period_end": date(2020, 12, 31),
+        "checked_until": date(2020, 12, 31),
+        "source_checksum": "c" * 64,
+        "coverage_status": "reviewed",
+        "missing_intervals": [],
+        "pending_review_count": 0,
+    }
+    scope.update(override)
+
+    dto = build_corpus_coverage(
+        {"revision": 4, "digest": "d" * 64}, scopes=[scope]
+    )
+
+    assert dto["coverage_status"] == "partial"
+    assert "C:/private/archive" not in str(dto)
+
+
 @pytest.mark.django_db
 def test_partial_scope_is_versioned_and_does_not_leak_arbitrary_interval_fields():
     revision_number = _next_municipal_revision_number()

@@ -36,6 +36,33 @@ def _scope_identity(*, source, jurisdiction, series, period_start, period_end) -
     }
 
 
+def _safe_intervals(value: Any) -> list[dict[str, str]] | None:
+    """Return only valid public date bounds; malformed data stays unknown."""
+    if not isinstance(value, list):
+        return None
+    safe: list[dict[str, str]] = []
+    for interval in value:
+        if not isinstance(interval, dict):
+            return None
+        bounds: dict[str, str] = {}
+        for key in ("start", "end"):
+            raw = interval.get(key)
+            if isinstance(raw, date):
+                parsed = raw
+            elif isinstance(raw, str):
+                try:
+                    parsed = date.fromisoformat(raw)
+                except ValueError:
+                    return None
+            else:
+                return None
+            bounds[key] = parsed.isoformat()
+        if bounds["start"] > bounds["end"]:
+            return None
+        safe.append(bounds)
+    return safe
+
+
 def _coverage_row(scope: Any) -> dict[str, Any]:
     if isinstance(scope, dict):
         row = scope
@@ -53,17 +80,47 @@ def _coverage_row(scope: Any) -> dict[str, Any]:
             "pending_review_count": scope.pending_review_count,
             "last_success_at": scope.last_success_at,
         }
+    missing_intervals = _safe_intervals(row.get("missing_intervals"))
+    pending_review = row.get("pending_review_count", row.get("pending_review"))
+    if (
+        isinstance(pending_review, bool)
+        or not isinstance(pending_review, int)
+        or pending_review < 0
+    ):
+        pending_review = None
+
+    source_value = str(row.get("source") or "").strip().casefold()
+    jurisdiction_value = str(row.get("jurisdiction") or "").strip().upper()
+    series_value = str(row.get("series") or "").strip().casefold()
+    source_valid = bool(re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,79}", source_value))
+    jurisdiction_valid = bool(re.fullmatch(r"[A-Z0-9][A-Z0-9_.-]{0,99}", jurisdiction_value))
+    series_valid = bool(re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,79}", series_value))
+    coverage_status = str(row.get("coverage_status") or "unknown")
+    checksum_value = str(row.get("source_checksum") or "").lower()
+    source_checksum = checksum_value if re.fullmatch(r"[a-f0-9]{64}", checksum_value) else None
+    if coverage_status == "reviewed" and not (
+        source_valid
+        and jurisdiction_valid
+        and series_valid
+        and row.get("period_start")
+        and row.get("checked_until")
+        and source_checksum
+        and missing_intervals is not None
+        and pending_review is not None
+    ):
+        coverage_status = "partial"
+
     return {
-        "source": str(row.get("source") or "")[:80],
-        "jurisdiction": str(row.get("jurisdiction") or "")[:100],
-        "series": str(row.get("series") or "")[:80],
+        "source": source_value if source_valid else "unknown",
+        "jurisdiction": jurisdiction_value if jurisdiction_valid else "unknown",
+        "series": series_value if series_valid else "unknown",
         "period_start": _iso(row.get("period_start")),
         "period_end": _iso(row.get("period_end")),
         "checked_until": _iso(row.get("checked_until")),
-        "source_checksum": str(row.get("source_checksum") or "")[:64] or None,
-        "coverage_status": str(row.get("coverage_status") or "unknown"),
-        "missing_intervals": row.get("missing_intervals"),
-        "pending_review": row.get("pending_review_count", row.get("pending_review")),
+        "source_checksum": source_checksum,
+        "coverage_status": coverage_status,
+        "missing_intervals": missing_intervals,
+        "pending_review": pending_review,
         "last_success_at": _iso(row.get("last_success_at")),
     }
 
@@ -123,8 +180,12 @@ def build_corpus_coverage(
     pending_values = [row["pending_review"] for row in rows]
     has_unresolved_scope = any(
         row["coverage_status"] != "reviewed"
+        or row["missing_intervals"] is None
         or bool(row["missing_intervals"])
-        or row["pending_review"] not in (0, None)
+        or not isinstance(row["pending_review"], int)
+        or isinstance(row["pending_review"], bool)
+        or row["pending_review"] != 0
+        or row["checked_until"] is None
         for row in rows
     )
     if status == "reviewed" and has_unresolved_scope:
