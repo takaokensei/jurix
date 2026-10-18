@@ -4196,13 +4196,25 @@ test('real browser: completed source action remains above the fixed composer on 
 
   try {
     const page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 720 });
+    await page.setViewport({ width: 1280, height: 600 });
     await page.goto(`http://127.0.0.1:${server.address().port}/assistente/`, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#hero-search-input');
+    assert.equal(await page.$eval('#messages-container', (container) =>
+      getComputedStyle(container).scrollBehavior), 'auto');
     await page.type('#hero-search-input', 'O que prevê o Art. 1º da Lei nº 6.021/2009?');
     await page.keyboard.press('Enter');
-    await page.waitForFunction(() => document.querySelector('.message-assistant')?.textContent.includes('estabelece a regra consultada'));
+    await page.waitForFunction(() => {
+      const answer = document.querySelector('.message-assistant .message-body');
+      return answer?.textContent.includes('estabelece a regra consultada')
+        && !answer.hasAttribute('data-streaming')
+        && !document.getElementById('send-button')?.disabled;
+    });
     await page.waitForSelector('.jurix-sources-pill-btn');
+    await page.waitForFunction(() => {
+      const pill = document.querySelector('.jurix-sources-pill-btn');
+      const composer = document.querySelector('#conversation-input-bar')?.getBoundingClientRect();
+      return Boolean(pill && composer && pill.getBoundingClientRect().bottom <= composer.top - 8);
+    });
 
     const layout = await page.evaluate(() => {
       const pill = document.querySelector('.jurix-sources-pill-btn')?.getBoundingClientRect();
@@ -4213,6 +4225,7 @@ test('real browser: completed source action remains above the fixed composer on 
         composerTop: composer?.top,
         gap: pill && composer ? composer.top - pill.bottom : null,
         remainingScroll: container ? container.scrollHeight - container.scrollTop - container.clientHeight : null,
+        scrollTop: container?.scrollTop ?? null,
       };
     });
     assert.ok(layout.gap >= 8, `Source action must remain visibly above the composer with a reading gap: ${JSON.stringify(layout)}`);
