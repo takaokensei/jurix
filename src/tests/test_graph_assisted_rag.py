@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from django.test import override_settings
+from django.utils import timezone
 
 from src.apps.legislation.models import Dispositivo, Norma
 from src.processing.adaptive_rag_service import AdaptiveRAGService
@@ -54,6 +55,14 @@ def _edge(source, target, *, action="ALTERA", event_id="event:1"):
         "publication_on": "2021-12-20",
         "resolution": "resolved",
         "evidence": {"quote": "passa a vigorar com esta redação"},
+    }
+
+
+def _casefile(graph):
+    return {
+        "casefile_id": "a" * 64,
+        "graph": graph,
+        "evidence_package": {"schema_version": "jurix-evidence-v1", "sources": []},
     }
 
 
@@ -117,13 +126,53 @@ def test_relation_intent_is_detected_without_changing_article_scope():
 
 
 @pytest.mark.django_db
+def test_relation_query_resolves_each_explicit_typed_norm_reference(relation_devices):
+    source, target = relation_devices
+    question = (
+        f"A Lei nº {source.norma.numero}/{source.norma.ano} modifica algum dispositivo "
+        f"da Lei nº {target.norma.numero}/{target.norma.ano}? Diferencie alteração de referência."
+    )
+
+    references = AdaptiveRAGService._find_cited_normas(question)
+
+    assert {norma.pk for norma in references} == {source.norma_id, target.norma_id}
+
+
+@pytest.mark.django_db
+def test_relation_query_skips_a_typed_norm_reference_with_duplicate_identity(relation_devices):
+    source, target = relation_devices
+    duplicate_target = Norma.objects.create(
+        tipo="Lei Ordinária",
+        numero=target.norma.numero,
+        ano=target.norma.ano,
+        status="consolidated",
+        data_publicacao="2021-01-02",
+        texto_original="",
+        texto_consolidado="",
+    )
+    question = (
+        f"A Lei nº {source.norma.numero}/{source.norma.ano} modifica algum dispositivo "
+        f"da Lei nº {target.norma.numero}/{target.norma.ano}? Diferencie alteração de referência."
+    )
+
+    references = AdaptiveRAGService._find_cited_normas(question)
+
+    assert source.norma_id in {norma.pk for norma in references}
+    assert target.norma_id not in {norma.pk for norma in references}
+    assert duplicate_target.pk not in {norma.pk for norma in references}
+
+
+@pytest.mark.django_db
 def test_modification_expansion_requires_and_adds_target_text(relation_devices):
     source, target = relation_devices
     baseline = [{"dispositivo": target, "similarity_score": 0.9}]
     edge = _edge(source, target)
     graph = {"edges": [edge], "nodes": [], "truncated": False}
 
-    with patch("src.processing.graph_retrieval.build_normative_graph", return_value=graph):
+    with patch(
+        "src.processing.graph_retrieval.build_normative_casefile",
+        return_value=_casefile(graph),
+    ) as build_casefile:
         rows, trace = expand_relation_evidence(
             "Quem alterou o art. 5º?", baseline,
             relation_intent="modification",
@@ -131,9 +180,11 @@ def test_modification_expansion_requires_and_adds_target_text(relation_devices):
 
     assert [row["dispositivo"].pk for row in rows] == [target.pk, source.pk]
     assert rows[1]["graph_relation"]["role"] == "modifying_device"
+    assert rows[1]["graph_relation"]["casefile_id"] == "a" * 64
     assert rows[1]["graph_relation"]["quote"] in rows[1]["dispositivo"].texto
     assert rows[1]["retrieval_score"] == 0.0
     assert trace["added_evidence_count"] == 1
+    assert build_casefile.call_args.kwargs["as_of"] == timezone.localdate()
 
 
 @pytest.mark.django_db
@@ -145,8 +196,8 @@ def test_relation_metadata_is_preserved_when_both_devices_are_already_retrieved(
         {"dispositivo": source, "similarity_score": 0.81},
     ]
     with patch(
-        "src.processing.graph_retrieval.build_normative_graph",
-        return_value={"edges": [edge], "nodes": [], "truncated": False},
+        "src.processing.graph_retrieval.build_normative_casefile",
+        return_value=_casefile({"edges": [edge], "nodes": [], "truncated": False}),
     ):
         rows, trace = expand_relation_evidence(
             "A Lei nº 9101/2020 altera algum dispositivo da Lei nº 9102/2021?",
@@ -159,6 +210,7 @@ def test_relation_metadata_is_preserved_when_both_devices_are_already_retrieved(
     assert rows[0]["graph_relation"]["role"] == "target_device"
     assert rows[1]["graph_relation"]["role"] == "modifying_device"
     assert all(row["graph_relation"]["action"] == "ALTERA" for row in rows)
+    assert all(row["graph_relation"]["casefile_id"] == "a" * 64 for row in rows)
     assert trace["added_evidence_count"] == 0
     assert trace["annotated_existing_evidence_count"] == 2
 
@@ -168,8 +220,8 @@ def test_reference_is_explicitly_not_treated_as_amendment(relation_devices):
     source, target = relation_devices
     edge = _edge(source, target, action="REFERENCIA", event_id="event:2")
     with patch(
-        "src.processing.graph_retrieval.build_normative_graph",
-        return_value={"edges": [edge], "nodes": [], "truncated": False},
+        "src.processing.graph_retrieval.build_normative_casefile",
+        return_value=_casefile({"edges": [edge], "nodes": [], "truncated": False}),
     ):
         rows, _ = expand_relation_evidence(
             "Quais referências esta lei faz?",
@@ -198,8 +250,10 @@ def test_mixed_relation_expansion_includes_modification_and_reference(relation_d
     reference = _edge(reference_source, target, action="REFERENCIA", event_id="event:reference")
     reference["evidence"]["quote"] = "faz referência à Lei nº 9102/2021"
     with patch(
-        "src.processing.graph_retrieval.build_normative_graph",
-        return_value={"edges": [alteration, reference], "nodes": [], "truncated": False},
+        "src.processing.graph_retrieval.build_normative_casefile",
+        return_value=_casefile({
+            "edges": [alteration, reference], "nodes": [], "truncated": False
+        }),
     ):
         rows, trace = expand_relation_evidence(
             "Qual é a relação normativa? Diferencie alteração confirmada de referência.",
@@ -219,8 +273,10 @@ def test_missing_target_text_and_unrelated_neighbor_are_discarded(relation_devic
     unrelated = _edge(source, target, event_id="event:unrelated")
     unrelated["source"] = "norma:999999"
     with patch(
-        "src.processing.graph_retrieval.build_normative_graph",
-        return_value={"edges": [missing_target, unrelated], "nodes": [], "truncated": False},
+        "src.processing.graph_retrieval.build_normative_casefile",
+        return_value=_casefile({
+            "edges": [missing_target, unrelated], "nodes": [], "truncated": False
+        }),
     ):
         rows, trace = expand_relation_evidence(
             "O que alterou a norma?",
@@ -239,8 +295,8 @@ def test_event_quote_must_match_source_device_text(relation_devices):
     edge = _edge(source, target)
     edge["evidence"]["quote"] = "quote inexistente na fonte"
     with patch(
-        "src.processing.graph_retrieval.build_normative_graph",
-        return_value={"edges": [edge], "nodes": [], "truncated": False},
+        "src.processing.graph_retrieval.build_normative_casefile",
+        return_value=_casefile({"edges": [edge], "nodes": [], "truncated": False}),
     ):
         rows, trace = expand_relation_evidence(
             "Quem alterou esta norma?",
@@ -383,8 +439,8 @@ def test_graph_expansion_is_capped_at_eight_additional_sources(relation_devices)
     source, target = relation_devices
     edges = [_edge(source, target, event_id=f"event:{index}") for index in range(12)]
     with patch(
-        "src.processing.graph_retrieval.build_normative_graph",
-        return_value={"edges": edges, "nodes": [], "truncated": False},
+        "src.processing.graph_retrieval.build_normative_casefile",
+        return_value=_casefile({"edges": edges, "nodes": [], "truncated": False}),
     ):
         rows, trace = expand_relation_evidence(
             "Quem alterou esta norma?",

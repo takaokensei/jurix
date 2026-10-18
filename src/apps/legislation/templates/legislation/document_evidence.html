@@ -5,7 +5,7 @@
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Evidência documental' %}{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261012-hash-disclosure1">{% endblock %}
 {% block content %}
-<main class="card legal-detail-card document-evidence-page" aria-labelledby="evidence-title">
+<section class="card legal-detail-card document-evidence-page" aria-labelledby="evidence-title">
   <p class="legal-detail-eyebrow">{% if document.norma_id %}Documento normativo versionado{% elif document.source_kind == 'archive' %}Candidato do acervo histórico{% else %}Documento em revisão{% endif %}</p>
   <h1 id="evidence-title">{% if document.norma_id %}{{ document.norma }}{% elif candidate_identity_label %}{{ candidate_identity_label }}{% else %}{{ document.original_filename|default:'Documento em revisão' }}{% endif %}</h1>
   {% if identity_review_registered %}<p class="historical-message" role="status" tabindex="-1">Identidade registrada com trilha de revisão. A Norma permanece pendente; texto e segmentação não foram aprovados.</p>{% endif %}
@@ -419,6 +419,6 @@
     </section>{% endif %}
   {% else %}<p>Não há extração disponível para esta revisão.</p>{% endif %}
   {% if document.norma_id %}<p><a href="{% url 'legislation:norma_detail' document.norma_id %}">Voltar à norma</a></p>{% endif %}
-</main>
+</section>
 {% endblock %}
 {% block extra_js %}<script src="{% static 'js/jurix-document-review.js' %}?v=20261008-review-workflow2" defer></script>{% endblock %}

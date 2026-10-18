@@ -94,6 +94,64 @@ def test_amendment_source_can_support_its_explicitly_modified_target_article():
     )
 
 
+@override_settings(RAG_STRICT_MIN_LEXICAL_OVERLAP=0.3)
+def test_strict_grounding_rejects_claim_that_names_two_articles_but_only_cites_one():
+    report = evaluate_strict_grounding(
+        "Os Arts. 1º e 2º estabelecem princípios para o licenciamento urbanístico municipal. [[1]]",
+        [
+            source(
+                "O Art. 2º estabelece princípios para o licenciamento urbanístico municipal.",
+                "Lei Complementar nº 258/2024",
+                "Art. 2º",
+            )
+        ],
+    )
+
+    assert report["grounded"] is False
+    assert report["claims"][0]["supported"] is False
+    assert report["claims"][0]["article_attribution_ok"] is False
+    assert report["claims"][0]["uncovered_article_refs"] == ["1"]
+
+
+@override_settings(RAG_STRICT_MIN_LEXICAL_OVERLAP=0.3)
+def test_strict_grounding_accepts_multi_article_claim_when_both_articles_are_cited():
+    report = evaluate_strict_grounding(
+        "Os Arts. 1º e 2º estabelecem princípios para o licenciamento urbanístico municipal. [[1]][[2]]",
+        [
+            source(
+                "O Art. 1º estabelece regras para o licenciamento urbanístico municipal.",
+                "Lei Complementar nº 258/2024",
+                "Art. 1º",
+            ),
+            source(
+                "O Art. 2º estabelece princípios para o licenciamento urbanístico municipal.",
+                "Lei Complementar nº 258/2024",
+                "Art. 2º",
+            ),
+        ],
+    )
+
+    assert report["grounded"] is True
+    assert report["claims"][0]["article_attribution_ok"] is True
+
+
+@override_settings(RAG_STRICT_MIN_LEXICAL_OVERLAP=0.3)
+def test_amendment_evidence_covers_its_explicitly_targeted_article():
+    report = evaluate_strict_grounding(
+        "A alteração do Art. 1º deu nova redação ao Art. 20 sobre o prazo de licença. [[1]]",
+        [
+            source(
+                "Dê-se nova redação ao Art. 20 da Lei 9001/2020: O prazo da licença será anual.",
+                "Lei nº 9001/2020",
+                "Art. 1º",
+            )
+        ],
+    )
+
+    assert report["grounded"] is True
+    assert report["claims"][0]["article_attribution_ok"] is True
+
+
 @override_settings(RAG_STRICT_MIN_LEXICAL_OVERLAP=0.45)
 def test_strict_grounding_rejects_written_deadline_comparison_without_one_supporting_source():
     report = evaluate_strict_grounding(

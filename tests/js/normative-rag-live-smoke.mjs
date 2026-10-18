@@ -696,6 +696,8 @@ try {
           };
         });
       return {
+        corpusScopeIsFixed: document.querySelector('.jurix-corpus-choice')?.classList.contains('jurix-corpus-choice--fixed') === true
+          && !document.querySelector('.jurix-corpus-choice a'),
         answerCharCount: answerText.length,
         answerMentionsArticleLabels: /art\.?\s*\d+/i.test(answerText),
         answerContainsQuotedExcerpts: /[“”]/.test(answerText),
@@ -796,30 +798,72 @@ try {
     assert.ok(overviewGenerationAttempts.length > 0, 'the overview must exercise the configured local model');
     assert.ok(Number(overviewGenerationMs) > 0);
     assert.equal(overviewUi.sourceControlVisible, true, 'sources must be present without refresh');
+    assert.equal(overviewUi.corpusScopeIsFixed, true, 'starting a conversation must collapse the corpus chooser into its persistent scope label');
+    try {
+      await overviewPage.waitForFunction(() => {
+      const button = [...document.querySelectorAll('.message-assistant .jurix-sources-pill-btn')].at(-1);
+      const composer = document.querySelector('#conversation-input-bar')?.getBoundingClientRect();
+      const scroller = document.querySelector('#messages-container')?.getBoundingClientRect();
+      if (!button) return false;
+      const unobscuredBottom = Math.min(composer?.top ?? window.innerHeight, scroller?.bottom ?? window.innerHeight);
+      return button.getBoundingClientRect().bottom <= unobscuredBottom;
+      }, { timeout: 3000 });
+    } catch (error) {
+      const debug = await overviewPage.evaluate(() => {
+        const button = [...document.querySelectorAll('.message-assistant .jurix-sources-pill-btn')].at(-1);
+        const container = document.querySelector('#messages-container');
+        const composerTop = document.querySelector('#conversation-input-bar')?.getBoundingClientRect().top;
+        return {
+          scrollTop: container?.scrollTop,
+          scrollHeight: container?.scrollHeight,
+          clientHeight: container?.clientHeight,
+          composerTop,
+          buttonBottom: button?.getBoundingClientRect().bottom,
+          reveal: container?.__jurixRevealDebug || null,
+          streamScrollIntent: window.__jurixStreamScrollIntent || null,
+        };
+      });
+      throw new Error(`source-pill re-anchor diagnostic: ${JSON.stringify(debug)}; ${error.message}`);
+    }
     const overviewSourceControlLayout = await overviewPage.evaluate(() => {
       const button = [...document.querySelectorAll('.message-assistant .jurix-sources-pill-btn')].at(-1);
       if (!button) throw new Error('the completed overview has no sources control');
         const rect = button.getBoundingClientRect();
         const composer = document.querySelector('#conversation-input-bar')?.getBoundingClientRect();
         const scroller = document.querySelector('#messages-container')?.getBoundingClientRect();
+        const container = document.querySelector('#messages-container');
         const unobscuredBottom = Math.min(composer?.top ?? window.innerHeight, scroller?.bottom ?? window.innerHeight);
         return {
+          top: rect.top,
           bottom: rect.bottom,
           unobscuredBottom,
+          scrollTop: container?.scrollTop ?? null,
+          scrollHeight: container?.scrollHeight ?? null,
+          clientHeight: container?.clientHeight ?? null,
+          scrollBehavior: container ? getComputedStyle(container).scrollBehavior : null,
+          hitTarget: (() => {
+            const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+            return { tag: target?.tagName || null, className: target?.className?.toString?.() || '', isSource: target?.closest('.jurix-sources-pill-btn') === button };
+          })(),
           hitTargetIsSourceControl: document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
             ?.closest('.jurix-sources-pill-btn') === button,
         };
     });
+    await overviewPage.screenshot({ path: path.join(resolvedEvidenceDir, 'whole-norm-overview-source-layout.png'), fullPage: false });
     assert.ok(
       overviewSourceControlLayout.bottom <= overviewSourceControlLayout.unobscuredBottom,
       `latest consulted-sources control must not be hidden behind the fixed composer: ${JSON.stringify({
         bottom: overviewSourceControlLayout.bottom,
         unobscuredBottom: overviewSourceControlLayout.unobscuredBottom,
+        scrollTop: overviewSourceControlLayout.scrollTop,
+        scrollHeight: overviewSourceControlLayout.scrollHeight,
+        clientHeight: overviewSourceControlLayout.clientHeight,
+        scrollBehavior: overviewSourceControlLayout.scrollBehavior,
       })}`,
     );
     assert.ok(
       overviewSourceControlLayout.hitTargetIsSourceControl,
-      'the latest consulted-sources control must remain the hit target before the user scrolls or focuses it',
+      `the latest consulted-sources control must remain the hit target before the user scrolls or focuses it: ${JSON.stringify(overviewSourceControlLayout)}`,
     );
     const overviewScreenshot = path.join(resolvedEvidenceDir, 'whole-norm-overview.png');
     await overviewPage.setViewport({ width: 1280, height: 900 });
@@ -1331,6 +1375,139 @@ try {
     await relationContext.close();
   }
 
+  const enumerationContext = await browser.createBrowserContext();
+  let enumerationSmoke;
+  try {
+    const enumerationPage = await enumerationContext.newPage();
+    const enumerationErrors = [];
+    enumerationPage.on('pageerror', (error) => enumerationErrors.push(error.name));
+    let enumerationStream = null;
+    enumerationPage.on('response', (response) => {
+      if (new URL(response.url()).pathname === '/api/v1/search/answer/stream/') {
+        enumerationStream = response;
+      }
+    });
+    const enumerationPageResponse = await enumerationPage.goto(
+      new URL('/assistente/?corpus=archive-qa', baseUrl).href,
+      { waitUntil: 'domcontentloaded', timeout: 20000 },
+    );
+    assert.equal(enumerationPageResponse?.status(), 200);
+    const enumerationQuestion =
+      'Confronte o Art. 260, inciso IV, o Art. 262 e o Art. 266 da LC nº 258/2024, ' +
+      'junto do Art. 21 da LC nº 55/2004. Compare somente o que os trechos recuperados ' +
+      'permitem afirmar; indique o que está pendente de revisão e cite as fontes.';
+    await enumerationPage.$eval('#question-textarea', (input, value) => {
+      input.value = value;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }, enumerationQuestion);
+    await enumerationPage.evaluate(() => document.getElementById('chat-form').requestSubmit());
+    await enumerationPage.waitForFunction(() => {
+      const button = document.getElementById('send-button');
+      const answer = document.querySelector('.message-assistant .message-body');
+      return button?.dataset.action === 'send' && answer?.textContent?.trim().length > 0
+        && !answer.querySelector('.jurix-answer-pending') && !answer.hasAttribute('data-streaming');
+    }, { timeout: 180000 });
+    assert.equal(enumerationStream?.status(), 200);
+    const enumerationEvents = (await enumerationStream.text()).split(/\r?\n/)
+      .filter((line) => line.startsWith('data:'))
+      .map((line) => JSON.parse(line.slice(5).trim()));
+    const enumerationSourceEvent = enumerationEvents.find((event) => event.type === 'sources');
+    const enumerationDoneEvent = enumerationEvents.find((event) => event.type === 'done');
+    const enumerationSources = enumerationSourceEvent?.sources || [];
+    const expectedPairs = [
+      { norm: /258\s*\/\s*2024/i, device: /Art\.\s*260\b/i, content: /inciso\s+IV/i },
+      { norm: /258\s*\/\s*2024/i, device: /Art\.\s*262\b/i },
+      { norm: /258\s*\/\s*2024/i, device: /Art\.\s*266\b/i },
+      { norm: /55\s*\/\s*2004/i, device: /Art\.\s*21\b/i },
+    ];
+    const sourcePairs = enumerationSources.map((source) => ({
+      norma: String(source?.norma_ref || source?.norma || ''),
+      dispositivo: String(source?.dispositivo_ref || ''),
+      sourceType: String(source?.source_type || ''),
+      evidenceScope: String(source?.evidence_scope || ''),
+      hasFullText: Boolean(String(source?.full_text || '').trim()),
+      hasEvidenceText: Boolean(String(source?.evidence_text || '').trim()),
+      evidenceExcerptCount: Array.isArray(source?.evidence_excerpts) ? source.evidence_excerpts.length : 0,
+      containsRequestedInciso: /(?:inciso\s+IV|\bIV\s*[-–—.)])/i.test([
+        source?.full_text,
+        source?.evidence_text,
+        source?.text,
+        ...(Array.isArray(source?.evidence_excerpts) ? source.evidence_excerpts : []),
+      ].filter((value) => typeof value === 'string').join(' ')),
+    }));
+    const resolvedPairs = expectedPairs.map((expected) => sourcePairs.some((source) =>
+      expected.norm.test(source.norma) && expected.device.test(source.dispositivo)
+        && (!expected.content || source.containsRequestedInciso)));
+    assert.deepEqual(resolvedPairs, [true, true, true, true],
+      `natural coordinated references must retrieve all four explicit norm/article pairs without cross-assignment: ${JSON.stringify(sourcePairs)}`);
+    assert.ok(sourcePairs.every((source) =>
+      source.evidenceScope === 'isolated_qa_archive'
+        ? /pendente de revisão/i.test(source.sourceType)
+        : true),
+    'archive sources in the answer must remain visibly marked as pending legal review');
+    const enumerationUi = await enumerationPage.evaluate(() => {
+      const answer = document.querySelector('.message-assistant .message-body');
+      const sources = answer?.closest('.message-content')?.querySelector('[id^="sources-"]');
+      return {
+        answerLength: answer?.textContent?.trim().length || 0,
+        sourceControlVisible: Boolean(sources?.querySelector('.jurix-sources-pill-btn')),
+        sourceCount: Array.isArray(sources?._sourcesData) ? sources._sourcesData.length : 0,
+        citationLinkCount: answer?.querySelectorAll(
+          '.jurix-citation[data-source-index], a.jurix-legal-reference-link',
+        ).length || 0,
+        citationLabels: [...(answer?.querySelectorAll('.jurix-citation[data-source-index]') || [])]
+          .map((link) => link.getAttribute('aria-label') || link.textContent || ''),
+        answerMentionsArticle266: /art\.?\s*266\b/i.test(answer?.textContent || ''),
+        rawCitationMarkerVisible: /\[\[\d+\]\]/.test(answer?.textContent || ''),
+      };
+    });
+    assert.equal(enumerationUi.sourceControlVisible, true);
+    assert.ok(enumerationUi.sourceCount >= 4,
+      `the UI should expose each explicitly requested evidence pair: ${JSON.stringify({
+        enumerationUi,
+        eventSourceCount: enumerationSources.length,
+        sourcePairs,
+        doneReason: enumerationDoneEvent?.reason_code || null,
+      })}`);
+    assert.ok(enumerationUi.citationLinkCount > 0);
+    assert.equal(enumerationUi.answerMentionsArticle266, true,
+      'the general comparison must address and cite the explicitly requested commencement article');
+    assert.ok([260, 262, 266, 21].every((article) => enumerationUi.citationLabels.some((label) =>
+      new RegExp(`Art\\.?\\s*${article}\\b`, 'i').test(label))),
+    `each explicitly requested article must appear as a resolvable inline citation: ${JSON.stringify(enumerationUi.citationLabels)}`);
+    assert.equal(enumerationUi.rawCitationMarkerVisible, false);
+    await enumerationPage.click('.message-assistant .jurix-sources-pill-btn');
+    await enumerationPage.waitForSelector('.jurix-rag-source', { timeout: 5000 });
+    const drawerCards = await enumerationPage.$$eval('.jurix-rag-source', (cards) => cards.map((card) => ({
+      norm: card.closest('.jurix-source-group')
+        ?.querySelector('.jurix-source-group__title')?.textContent?.replace(/\s+/g, ' ').trim() || '',
+      device: card.querySelector('.jurix-rag-source__meta-item')?.textContent?.replace(/\s+/g, ' ').trim() || '',
+      containsRequestedInciso: /(?:inciso\s+IV|\bIV\s*[-–—.)])/i.test(card.textContent || ''),
+      status: card.querySelector('.jurix-rag-score-text')?.textContent?.replace(/\s+/g, ' ').trim() || '',
+    })));
+    const drawerPairs = expectedPairs.map((expected) => drawerCards.some((card) =>
+      expected.norm.test(card.norm) && expected.device.test(card.device)
+        && (!expected.content || card.containsRequestedInciso)));
+    assert.deepEqual(drawerPairs, [true, true, true, true],
+      `the source drawer must preserve the same four explicit norm/article pairs: ${JSON.stringify(drawerCards)}`);
+    assert.equal(enumerationErrors.length, 0);
+    enumerationSmoke = {
+      pageStatus: enumerationPageResponse.status(),
+      streamHttpStatus: enumerationStream.status(),
+      status: enumerationDoneEvent?.reason_code || (enumerationDoneEvent?.grounded ? 'grounded' : 'not_grounded'),
+      sourcePairs,
+      resolvedPairs,
+      sourceCount: enumerationUi.sourceCount,
+      citationLinkCount: enumerationUi.citationLinkCount,
+      drawerCards,
+      drawerPairs,
+      uncaughtBrowserErrors: enumerationErrors.length,
+      responseTextStoredInEvidence: false,
+    };
+  } finally {
+    await enumerationContext.close();
+  }
+
   const historyContext = await browser.createBrowserContext();
   let temporalRag;
   try {
@@ -1708,6 +1885,7 @@ try {
     wholeNormOverview,
     cancellation,
     relationSmoke,
+    enumerationSmoke,
     temporalRag,
     accessibilitySmoke,
   };

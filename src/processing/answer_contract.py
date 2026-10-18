@@ -56,6 +56,9 @@ def _safe_graph_relation(value):
         "effective_on", "publication_on", "resolution",
     )
     result = {key: str(value[key])[:160] for key in allowed if value.get(key) is not None}
+    casefile_id = str(value.get("casefile_id") or "")
+    if re.fullmatch(r"[a-fA-F0-9]{64}", casefile_id):
+        result["casefile_id"] = casefile_id.lower()
     result["action"] = action
     quote = str(value.get("quote") or "").strip()
     if quote:
@@ -118,6 +121,7 @@ def build_answer_contract(
             "as_of",
             "published_from",
             "published_to",
+            "corpus",
         }
         and value is not None
     }

@@ -55,7 +55,16 @@ def add_messages(session, n, *, first_user_text="Pergunta"):
     return out
 
 
-SESSION_KEYS = {"id", "title", "slug", "is_active", "is_pinned", "created_at", "updated_at"}
+SESSION_KEYS = {
+    "id",
+    "title",
+    "slug",
+    "is_active",
+    "is_pinned",
+    "created_at",
+    "updated_at",
+    "corpus",
+}
 
 
 # ------------------------------------------------------------- contract: list
@@ -79,9 +88,11 @@ class TestListContract:
         first = body["sessions"][0]
         assert set(first) == SESSION_KEYS | {"message_count", "latest_message_preview"}
         assert first["message_count"] == 3
+        assert first["corpus"] == "consolidated"
         assert first["latest_message_preview"] == "msg 2"
         assert first["slug"]
         assert body["sessions"][1]["message_count"] == 0
+        assert body["sessions"][1]["corpus"] == "consolidated"
         assert body["sessions"][1]["latest_message_preview"] == ""
 
     def test_short_preview_has_no_ellipsis(self, client, user):
@@ -161,6 +172,7 @@ class TestDetailAndSlugContract:
 
         assert body["success"] is True
         assert set(body["session"]) == SESSION_KEYS
+        assert body["session"]["corpus"] == "consolidated"
         assert body["count"] == 25 and body["total_count"] == 30 and body["has_more"] is True
         contents = [m["content"] for m in body["messages"]]
         assert contents == [("Pergunta" if i == 0 else f"msg {i}") for i in range(5, 30)]
@@ -206,6 +218,12 @@ class TestDetailAndSlugContract:
             ],
         )
         session = ChatSession.objects.create(user=user, title="Artigo citado")
+        ChatMessage.objects.create(
+            session=session,
+            role="user",
+            content="Pergunta no acervo documental",
+            metadata_json={"corpus": "archive-qa-unvalidated"},
+        )
         assistant = ChatMessage.objects.create(
             session=session,
             role="assistant",
@@ -229,7 +247,11 @@ class TestDetailAndSlugContract:
         response = fetch(session)
 
         assert response.status_code == 200
-        restored = response.json()["messages"][0]["sources"][0]
+        assert response.json()["session"]["corpus"] == "archive-qa"
+        assistant_message = next(
+            message for message in response.json()["messages"] if message["role"] == "assistant"
+        )
+        restored = assistant_message["sources"][0]
         assert restored["page"] == 2
         assert restored["local_pdf_url"].endswith("/pdf/")
         assistant.refresh_from_db()
@@ -409,6 +431,78 @@ def test_stream_contract_persists_explicitly_cited_sources_without_upgrading_gro
     assert len(done["sources"]) == 1
     assert done["contract"]["timings_ms"] == {"retrieval": 7, "generation": 30}
     assert done["contract"]["generation_attempts"] == [{"attempt": 1, "duration_ms": 30}]
+
+
+def test_stream_done_citations_use_the_done_event_source_order_not_inflight_candidates(client, user):
+    import json
+
+    session = ChatSession.objects.create(user=user, title="Consulta")
+    ChatMessage.objects.create(session=session, role="user", content="Confronte dispositivos")
+    repeal = {
+        "citation_id": "qa:lc258-art260",
+        "norma_ref": "Lei Complementar nº 258/2024",
+        "dispositivo_ref": "Art. 260",
+        "text": "Ficam revogados os atos indicados.",
+    }
+    transition = {
+        "citation_id": "qa:lc258-art262",
+        "norma_ref": "Lei Complementar nº 258/2024",
+        "dispositivo_ref": "Art. 262",
+        "text": "Regra transitória.",
+    }
+    commencement = {
+        "citation_id": "qa:lc258-art266",
+        "norma_ref": "Lei Complementar nº 258/2024",
+        "dispositivo_ref": "Art. 266",
+        "text": "Esta Lei Complementar entra em vigor após a publicação.",
+    }
+    old_device = {
+        "citation_id": "qa:lc55-art21",
+        "norma_ref": "Lei Complementar nº 55/2004",
+        "dispositivo_ref": "Art. 21",
+        "text": "Texto anterior.",
+    }
+    inflight_candidates = [repeal, transition, commencement, old_device, {**old_device, "citation_id": "qa:duplicate"}]
+    final_answer_sources = [repeal, transition, old_device, commencement]
+    events = iter(
+        [
+            {"event": "sources", "sources": inflight_candidates},
+            {"event": "chunk", "chunk": "A regra consta em [[1]], [[2]] e [[4]]."},
+            {
+                "event": "done",
+                "answer": "A regra consta em [[1]], [[2]] e [[4]].",
+                "sources": final_answer_sources,
+                "grounded": True,
+                "grounding": {"grounded": True, "claims": []},
+            },
+        ]
+    )
+
+    with (
+        patch("src.apps.legislation.api_views.RAGService") as rag,
+        patch("src.apps.legislation.api_views.rate_limit_response", return_value=None),
+    ):
+        rag.return_value.stream_answer_question.return_value = events
+        response = client.post(
+            "/api/v1/search/answer/stream/",
+            data=json.dumps({"question": "Confronte dispositivos", "session_id": session.id}),
+            content_type="application/json",
+        )
+        payloads = [
+            json.loads(line[6:])
+            for line in b"".join(response.streaming_content).decode().splitlines()
+            if line.startswith("data: ")
+        ]
+
+    source_event = next(payload for payload in payloads if payload["type"] == "sources")
+    done = next(payload for payload in payloads if payload["type"] == "done")
+    assert len(source_event["sources"]) == 5
+    assert [source["citation_id"] for source in done["sources"]] == [
+        "qa:lc258-art260",
+        "qa:lc258-art262",
+        "qa:lc258-art266",
+    ]
+    assert [source["citation_index"] for source in done["sources"]] == [1, 2, 4]
 
 
 def test_stream_turn_retry_replays_completed_answer_without_generating_again(client, user):

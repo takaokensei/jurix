@@ -90,6 +90,46 @@
     color: var(--figma-text-muted);
 }
 
+.jurix-corpus-choice {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px clamp(16px, 4vw, 32px) 0;
+    color: var(--figma-text-muted);
+    font-size: .8rem;
+}
+.jurix-corpus-choice__label { font-weight: 600; color: var(--figma-text-body); }
+.jurix-corpus-choice__option {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border: 1px solid var(--figma-border);
+    border-radius: 999px;
+    color: var(--figma-text-body);
+    text-decoration: none;
+}
+.jurix-corpus-choice__option:hover, .jurix-corpus-choice__option:focus-visible {
+    border-color: var(--figma-blue-light);
+    color: var(--figma-blue-light);
+}
+.jurix-corpus-choice__option.is-selected {
+    border-color: var(--figma-blue-light);
+    background: color-mix(in srgb, var(--figma-blue-primary) 12%, transparent);
+}
+.jurix-corpus-choice__option small { color: var(--figma-amber, #fbbf24); }
+.jurix-corpus-choice__help { flex-basis: 100%; font-size: .75rem; }
+.jurix-corpus-choice--fixed {
+    min-height: 0;
+    padding: 4px clamp(16px, 4vw, 32px) 0;
+    font-size: .75rem;
+    line-height: 1.35;
+}
+.jurix-corpus-choice__status { color: var(--figma-text-muted); }
+.jurix-corpus-choice :focus-visible { outline: 2px solid var(--figma-blue-light); outline-offset: 2px; }
+
 .jurix-rag-answer {
     position: relative;
 }

@@ -5,8 +5,10 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
+from django.utils import timezone
+
 from src.apps.legislation.models import Dispositivo
-from src.processing.normative_graph import build_normative_graph
+from src.processing.normative_casefile import build_normative_casefile
 
 MAX_GRAPH_EVIDENCE = 8
 MAX_GRAPH_SEEDS = 3
@@ -52,6 +54,7 @@ def _evidence_row(device, event: dict, *, role: str, relation_intent: str) -> di
         "retrieval_strategy": "one_hop_reviewed_graph",
         "evidence_scope": "relation_context",
         "graph_relation": {
+            "casefile_id": event.get("casefile_id"),
             "event_id": event.get("id"),
             "action": action,
             "intent": relation_intent,
@@ -91,6 +94,7 @@ def expand_relation_evidence(
         "enabled": True,
         "intent": relation_intent,
         "seed_norma_ids": [],
+        "casefile_ids": [],
         "added": [],
         "discarded": [],
         "additional_evidence_limit": cap,
@@ -139,12 +143,17 @@ def expand_relation_evidence(
     for norma_id in seed_ids[:MAX_GRAPH_SEEDS]:
         norma = seeds[norma_id]
         try:
-            graph = build_normative_graph(
+            casefile = build_normative_casefile(
                 norma,
-                depth=1,
-                as_of=as_of,
-                actions=tuple(sorted(allowed_actions)),
+                as_of=as_of or timezone.localdate(),
+                graph_depth=1,
+                graph_actions=tuple(sorted(allowed_actions)),
+                include_projection=False,
             )
+            graph = casefile["graph"]
+            casefile_id = str(casefile.get("casefile_id") or "")
+            if casefile_id and casefile_id not in trace["casefile_ids"]:
+                trace["casefile_ids"].append(casefile_id)
         except Exception as exc:  # Preserve baseline retrieval on a graph service failure.
             trace["discarded"].append(
                 {"norma_id": norma_id, "reason": "graph_lookup_failed", "kind": type(exc).__name__}
@@ -154,6 +163,7 @@ def expand_relation_evidence(
         trace.setdefault("graph_truncated", False)
         trace["graph_truncated"] = trace["graph_truncated"] or bool(graph.get("truncated"))
         for edge in graph.get("edges", []):
+            edge = {**edge, "casefile_id": casefile_id}
             action = str(edge.get("action") or "").upper()
             if action not in allowed_actions:
                 trace["discarded"].append(

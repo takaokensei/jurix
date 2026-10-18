@@ -14,6 +14,7 @@ from typing import Any
 from urllib.parse import urlparse, urlsplit, urlunsplit
 
 from django.conf import settings
+from django.db.models import Q
 from django.urls import NoReverseMatch, reverse
 from django.utils.dateparse import parse_datetime
 
@@ -213,6 +214,9 @@ def _safe_graph_relation(value: object) -> dict[str, Any] | None:
         )
         if value.get(key) is not None
     }
+    casefile_id = str(value.get("casefile_id") or "")
+    if re.fullmatch(r"[a-fA-F0-9]{64}", casefile_id):
+        result["casefile_id"] = casefile_id.lower()
     result["action"] = action
     quote = str(value.get("quote") or "").strip()
     if quote:
@@ -677,12 +681,19 @@ def select_answer_citation_sources(
 
 def serialize_chat_session(session: Any) -> dict[str, Any]:
     """Serialize a ChatSession model instance (the single JSON shape used by every endpoint)."""
+    archive_scope = getattr(session, "jurix_archive_corpus", None)
+    if archive_scope is None:
+        archive_scope = session.messages.filter(
+            Q(role="assistant", metadata_json__filters__corpus="archive-qa-unvalidated")
+            | Q(role="user", metadata_json__corpus="archive-qa-unvalidated")
+        ).exists()
     return {
         "id": session.id,
         "title": session.title or "Conversa sem título",
         "slug": session.slug,
         "is_active": session.is_active,
         "is_pinned": bool(getattr(session, "is_pinned", False)),
+        "corpus": "archive-qa" if archive_scope else "consolidated",
         "created_at": session.created_at.isoformat() if session.created_at else None,
         "updated_at": session.updated_at.isoformat() if session.updated_at else None,
     }

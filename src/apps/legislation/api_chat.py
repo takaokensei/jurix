@@ -6,7 +6,7 @@ import logging
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Count, OuterRef, Q, Subquery
+from django.db.models import Count, Exists, OuterRef, Q, Subquery
 from django.http import HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -69,12 +69,19 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
                 .order_by("-created_at", "-id")
                 .values("content")[:1]
             )
+            archive_scope_message = ChatMessage.objects.filter(
+                session=OuterRef("pk"),
+            ).filter(
+                Q(role="assistant", metadata_json__filters__corpus="archive-qa-unvalidated")
+                | Q(role="user", metadata_json__corpus="archive-qa-unvalidated")
+            )
             # Count and latest-question preview come from the same query: no N+1.
             sessions = (
                 ChatSession.objects.filter(user=request.user)
                 .annotate(
                     message_count=Count("messages"),
                     latest_user_content=Subquery(latest_user_message),
+                    jurix_archive_corpus=Exists(archive_scope_message),
                 )
                 .order_by("-is_pinned", "-updated_at", "-id")[: _parse_limit(request.GET.get("limit"))]
             )

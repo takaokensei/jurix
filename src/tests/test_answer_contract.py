@@ -24,6 +24,12 @@ def test_answer_dto_has_stable_provenance_and_excludes_unapproved_filter_fields(
                 "dispositivo_ref": "Art. 7º",
                 "sapl_url": "https://sapl.natal.rn.leg.br/norma/normajuridica/3/",
                 "evidence_text": "Texto do art. 7º.",
+                "graph_relation": {
+                    "casefile_id": "c" * 64,
+                    "event_id": "evento-42",
+                    "action": "ALTERA",
+                    "quote": "Dá nova redação ao Art. 7º.",
+                },
                 "temporal_version": {
                     "as_of": "2026-05-01",
                     "version_hash": "a" * 64,
@@ -67,6 +73,7 @@ def test_answer_dto_has_stable_provenance_and_excludes_unapproved_filter_fields(
     assert dto["sources"][0]["citation_index"] == 1
     assert dto["sources"][0]["official_url"].endswith("/3/")
     assert dto["sources"][0]["evidence_text"] == "Texto do art. 7º."
+    assert dto["sources"][0]["graph_relation"]["casefile_id"] == "c" * 64
     assert dto["sources"][0]["temporal_version"]["snapshot_id"] == 7
     assert dto["sources"][0]["temporal_version"]["status_note"] == "projeção QA"
     assert "never-serialize" not in str(dto)

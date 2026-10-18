@@ -47,6 +47,7 @@ from src.processing.qa_archive_rag import (
     _related_matter_search_limit,
     _requested_archive_norm_title,
     _requested_topic_facets,
+    _same_norm_article_synthesis_instruction,
     _sample_whole_norm_rows,
     _select_facet_sources,
     _source_matches_facet,
@@ -1730,6 +1731,32 @@ class ArchiveQARetrievalTests(SimpleTestCase):
         )
         self.assertFalse(_has_ambiguous_multi_norm_article_scope(question))
 
+    def test_rev02_natural_enumeration_keeps_each_article_with_its_named_norm(self):
+        question = (
+            "Confronte o Art. 260, inciso IV, o Art. 262 e o Art. 266 da LC nº 258/2024, "
+            "junto do Art. 21 da LC nº 55/2004."
+        )
+
+        self.assertEqual(
+            _explicit_article_norm_pairs(question),
+            (
+                (("lei_complementar", "258", 2024), "260"),
+                (("lei_complementar", "258", 2024), "262"),
+                (("lei_complementar", "258", 2024), "266"),
+                (("lei_complementar", "55", 2004), "21"),
+            ),
+        )
+        self.assertFalse(_has_ambiguous_multi_norm_article_scope(question))
+
+    def test_rev02_same_article_competing_norms_stays_unresolved(self):
+        question = (
+            "Para avaliar um processo, compare Art. 21 e Art. 260 entre a LC nº 55/2004 "
+            "e a LC nº 258/2024."
+        )
+
+        self.assertEqual(_explicit_article_norm_pairs(question), ())
+        self.assertTrue(_has_ambiguous_multi_norm_article_scope(question))
+
     def test_repeated_article_follow_up_keeps_its_single_explicit_norm_identity(self):
         question = (
             "Estou conferindo uma fundamentação antiga que usa o Art. 21 da Lei Complementar nº "
@@ -1765,6 +1792,27 @@ class ArchiveQARetrievalTests(SimpleTestCase):
         self.assertEqual(
             _multi_norm_synthesis_instruction(
                 "O que prevê o Art. 21 da Lei Complementar nº 55/2004?"
+            ),
+            "",
+        )
+
+    def test_same_norm_multi_article_instruction_is_concise_and_scoped(self):
+        instruction = _same_norm_article_synthesis_instruction(
+            "Compare o Art. 1º e o Art. 2º da Lei Complementar nº 258/2024."
+        )
+
+        self.assertIn("em até dois parágrafos", instruction)
+        self.assertIn("não invente relação causal", instruction)
+        self.assertIn("citação do artigo que a sustenta", instruction)
+        self.assertEqual(
+            _same_norm_article_synthesis_instruction(
+                "O que prevê o Art. 1º da Lei Complementar nº 258/2024?"
+            ),
+            "",
+        )
+        self.assertEqual(
+            _same_norm_article_synthesis_instruction(
+                "Compare o Art. 1º da LC 55/2004 e o Art. 2º da LC 258/2024."
             ),
             "",
         )
@@ -1843,6 +1891,52 @@ class ArchiveQARetrievalTests(SimpleTestCase):
             sources[2],
         ]
         self.assertIsNone(_archive_transition_synthesis(question, without_transition))
+
+    def test_archive_transition_overview_cites_requested_commencement_article(self):
+        question = (
+            "Confronte o Art. 260, inciso IV, o Art. 262 e o Art. 266 da LC nº 258/2024, "
+            "junto do Art. 21 da LC nº 55/2004. Compare somente o que os trechos recuperados "
+            "permitem afirmar; indique o que está pendente de revisão e cite as fontes."
+        )
+        sources = [
+            {
+                "citation_id": "qa:lc258-art260",
+                "norma_ref": "Lei Complementar nº 258/2024",
+                "dispositivo_ref": "Art. 260",
+                "full_text": "Ficam revogados: IV — Lei Complementar nº 55/2004.",
+            },
+            {
+                "citation_id": "qa:lc258-art262",
+                "norma_ref": "Lei Complementar nº 258/2024",
+                "dispositivo_ref": "Art. 262",
+                "full_text": (
+                    "Os processos protocolados até a entrada em vigor desta Lei e sem despacho "
+                    "decisório serão apreciados integralmente pela legislação em vigor à época "
+                    "do protocolo, salvo "
+                    "manifestação formal pela análise conforme a lei nova."
+                ),
+            },
+            {
+                "citation_id": "qa:lc258-art266",
+                "norma_ref": "Lei Complementar nº 258/2024",
+                "dispositivo_ref": "Art. 266",
+                "full_text": "Esta Lei Complementar entra em vigor 90 dias após sua publicação.",
+            },
+            {
+                "citation_id": "qa:lc55-art21",
+                "norma_ref": "Lei Complementar nº 55/2004",
+                "dispositivo_ref": "Art. 21",
+                "full_text": "Toda obra depende de licenciamento municipal.",
+            },
+        ]
+
+        result = _archive_transition_synthesis(question, sources)
+
+        self.assertIsNotNone(result)
+        answer, claims = result
+        self.assertIn("entrada em vigor", answer.casefold())
+        self.assertIn("[[3]]", answer)
+        self.assertIn("qa:lc258-art266", claims[3]["citation_ids"])
 
     @override_settings(NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True)
     @patch("src.processing.qa_archive_rag.stream_grounded_generation")
@@ -3483,9 +3577,9 @@ class ArchiveQARetrievalTests(SimpleTestCase):
         _mock_archive_candidates(filter_documents, [document])
 
         rows = retrieve_archive_evidence(
-            "Um processo de licenciamento de obra foi protocolado antes da vigência da Lei "
-            "Complementar nº 258/2024. O que o texto da lei prevê para processos anteriores? "
-            "Cite os dispositivos e indique o que não pode ser concluído apenas com o PDF local.",
+            "O que prevê a Lei Complementar nº 258/2024 sobre pedidos de licenciamento "
+            "protocolados antes de sua entrada em vigor? Cite os dispositivos e indique o "
+            "que não pode ser concluído apenas com o PDF local.",
             limit=8,
         )
 
@@ -3520,6 +3614,41 @@ class ArchiveQARetrievalTests(SimpleTestCase):
         self.assertEqual(set(by_article), {"Art. 262", "Art. 266"})
         self.assertIn("sem despacho decisório", by_article["Art. 262"])
         self.assertIn("entra em vigor 90 dias", by_article["Art. 266"])
+
+    @override_settings(NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True)
+    @patch("src.processing.qa_archive_rag.DocumentoNormativo.objects.filter")
+    def test_natural_code_of_works_transition_query_includes_same_act_repeal_and_commencement(
+        self, filter_documents
+    ):
+        document = _archive_document(
+            number="258",
+            year=2024,
+            legal_text=(
+                "Art. 1º. Esta Lei institui o Código de Obras do Município.\n"
+                "Art. 260. Ficam revogadas a Lei Complementar nº 55/2004.\n"
+                "Art. 262. Os processos de licenciamento de obras e edificações protocolados até a data "
+                "de entrada em vigor desta Lei e sem despacho decisório serão apreciados integralmente "
+                "de acordo com a legislação em vigor à época do protocolo, exceto nos casos de "
+                "manifestação formal do interessado, optando pela análise integral nos termos desta Lei.\n"
+                "Art. 266. Esta Lei Complementar entra em vigor 90 dias após a data de sua publicação."
+            ),
+        )
+        document.metadata_json["identity_candidate"]["type"] = "lei_complementar"
+        _mock_archive_candidates(filter_documents, [document])
+
+        rows = retrieve_archive_evidence(
+            "Em um pedido de licenciamento de obra protocolado antes da entrada em vigor do "
+            "Código de Obras atual e ainda sem despacho decisório, quais fatos e dispositivos "
+            "devo conferir? Compare as regras de transição e revogação relevantes.",
+            limit=8,
+        )
+
+        self.assertEqual(
+            {row["dispositivo_ref"] for row in rows},
+            {"Art. 260", "Art. 262", "Art. 266"},
+        )
+        self.assertEqual({row["source_id"] for row in rows}, {str(document.public_id)})
+        self.assertTrue(all(row["coverage"]["extraction_status"] == "complete" for row in rows))
 
     @override_settings(NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True)
     @patch("src.processing.qa_archive_rag.DocumentoNormativo.objects.filter")
@@ -3600,6 +3729,177 @@ class ArchiveQARetrievalTests(SimpleTestCase):
             [claim["citation_ids"] for claim in claims],
             [["qa:lc258-art262"], ["qa:lc258-art266"]],
         )
+
+    def test_anaphoric_transition_repeal_question_uses_same_norm_sources(self):
+        question = (
+            "Com esses trechos, posso concluir que o processo deve necessariamente ser analisado "
+            "pela lei antiga? Explique como a transição do Art. 262 se relaciona com a revogação "
+            "geral e quais fatos ainda precisam ser comprovados. "
+            "(contexto normativo: Lei Complementar nº 258/2024)"
+        )
+        sources = [
+            {
+                "citation_id": "qa:lc258-art262",
+                "norma_ref": "Lei Complementar nº 258/2024",
+                "dispositivo_ref": "Art. 262",
+                "full_text": (
+                    "Art. 262. Os processos de licenciamento protocolados até a data de entrada "
+                    "em vigor desta Lei e sem despacho decisório serão apreciados integralmente "
+                    "de acordo com a legislação em vigor à época do protocolo, exceto nos casos "
+                    "de manifestação formal do interessado, optando pela análise integral nos "
+                    "termos desta Lei."
+                ),
+            },
+            {
+                "citation_id": "qa:lc258-art266",
+                "norma_ref": "Lei Complementar nº 258/2024",
+                "dispositivo_ref": "Art. 266",
+                "full_text": "Art. 266. Esta Lei Complementar entra em vigor 90 dias após sua publicação.",
+            },
+            {
+                "citation_id": "qa:lc258-art260",
+                "norma_ref": "Lei Complementar nº 258/2024",
+                "dispositivo_ref": "Art. 260",
+                "full_text": (
+                    "Art. 260. Ficam revogadas a Lei Complementar nº 55/2004 e outras disposições indicadas."
+                ),
+            },
+        ]
+
+        result = _archive_explicit_transition_pair_synthesis(question, sources)
+
+        self.assertIsNotNone(result)
+        answer, claims = result
+        for article, citation in (
+            ("Art. 260", "[[3]]"),
+            ("Art. 262", "[[1]]"),
+            ("Art. 266", "[[2]]"),
+        ):
+            self.assertIn(article, answer)
+            self.assertIn(citation, answer)
+        self.assertIn("não demonstra que a regra transitória deixe de incidir", answer)
+        self.assertIn("data de protocolo", answer)
+        self.assertIn("manifestação formal", answer)
+        self.assertEqual(
+            [claim["citation_ids"] for claim in claims],
+            [["qa:lc258-art260"], ["qa:lc258-art262"], ["qa:lc258-art266"]],
+        )
+
+    def test_title_scoped_transition_synthesis_cites_repeal_transition_and_commencement(self):
+        question = (
+            "Em um pedido de licenciamento de obra protocolado antes da entrada em vigor do "
+            "Código de Obras atual e ainda sem despacho decisório, quais fatos e dispositivos "
+            "devo conferir para saber qual regime analisar? Compare as regras de transição e "
+            "revogação relevantes, cite as fontes e destaque o que permanece sem revisão jurídica."
+        )
+        sources = [
+            {
+                "citation_id": "qa:lc258-art262",
+                "norma_ref": "Lei Complementar nº 258/2024",
+                "dispositivo_ref": "Art. 262",
+                "full_text": (
+                    "Os processos de licenciamento protocolados até a data de entrada em vigor "
+                    "desta Lei e sem despacho decisório serão apreciados conforme a legislação "
+                    "vigente à época do protocolo, exceto se houver manifestação formal pela lei nova."
+                ),
+            },
+            {
+                "citation_id": "qa:lc258-art266",
+                "norma_ref": "Lei Complementar nº 258/2024",
+                "dispositivo_ref": "Art. 266",
+                "full_text": (
+                    "Esta Lei Complementar entra em vigor 90 dias após a data de sua publicação, "
+                    "revogadas as disposições em contrário."
+                ),
+            },
+            {
+                "citation_id": "qa:lc258-art260",
+                "norma_ref": "Lei Complementar nº 258/2024",
+                "dispositivo_ref": "Art. 260",
+                "full_text": (
+                    "Ficam revogadas a Lei Complementar nº 55/2004 e outras disposições "
+                    "expressamente indicadas nesta cláusula."
+                ),
+            },
+        ]
+
+        result = _archive_transition_commencement_synthesis(question, sources)
+
+        self.assertIsNotNone(result)
+        answer, claims = result
+        for article, citation in (
+            ("Art. 260", "[[3]]"),
+            ("Art. 262", "[[1]]"),
+            ("Art. 266", "[[2]]"),
+        ):
+            self.assertIn(article, answer)
+            self.assertIn(citation, answer)
+        self.assertIn("não confirma os efeitos jurídicos", answer)
+        self.assertIn("não permite concluir qual regime se aplica", answer)
+        self.assertEqual(
+            [claim["citation_ids"] for claim in claims],
+            [["qa:lc258-art260"], ["qa:lc258-art262"], ["qa:lc258-art266"]],
+        )
+
+    @override_settings(NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True)
+    @patch("src.processing.qa_archive_rag.stream_grounded_generation")
+    @patch("src.processing.qa_archive_rag.retrieve_archive_evidence")
+    def test_natural_code_transition_stream_keeps_all_three_cited_sources(
+        self, retrieve, generate
+    ):
+        question = (
+            "Em um pedido de licenciamento de obra protocolado antes da entrada em vigor do "
+            "Código de Obras atual e ainda sem despacho decisório, quais fatos e dispositivos "
+            "devo conferir para saber qual regime analisar? Compare as regras de transição e "
+            "revogação relevantes, cite as fontes e destaque o que permanece sem revisão jurídica."
+        )
+        retrieve.return_value = [
+            {
+                "citation_id": f"qa:lc258-art{article}",
+                "norma_ref": "Lei Complementar nº 258/2024",
+                "dispositivo_ref": f"Art. {article}",
+                "full_text": text,
+                "coverage": {"extraction_status": "partial", "review_accepted": False},
+            }
+            for article, text in (
+                (
+                    "262",
+                    "Os processos de licenciamento protocolados até a data de entrada em vigor desta Lei "
+                    "e sem despacho decisório serão apreciados conforme a legislação vigente à época "
+                    "do protocolo, exceto se houver manifestação formal pela lei nova.",
+                ),
+                (
+                    "266",
+                    "Esta Lei Complementar entra em vigor 90 dias após a data de sua publicação, "
+                    "revogadas as disposições em contrário.",
+                ),
+                ("260", "Ficam revogadas a Lei Complementar nº 55/2004 e outras disposições indicadas."),
+            )
+        ]
+
+        events = list(
+            stream_archive_qa_answer(
+                question,
+                k=8,
+                model="qwen3:8b",
+                temperature=0.1,
+                text_provider={"provider": "ollama"},
+                ollama=MagicMock(),
+            )
+        )
+
+        generate.assert_not_called()
+        sources_event = next(event for event in events if event["event"] == "sources")
+        done_event = next(event for event in events if event["event"] == "done")
+        self.assertEqual(len(sources_event["sources"]), 3)
+        self.assertEqual(len(done_event["sources"]), 3)
+        self.assertEqual(
+            [claim["citation_ids"] for claim in done_event["grounding"]["claims"]],
+            [["qa:lc258-art260"], ["qa:lc258-art262"], ["qa:lc258-art266"]],
+        )
+        self.assertIn("[[1]]", done_event["answer"])
+        self.assertIn("[[2]]", done_event["answer"])
+        self.assertIn("[[3]]", done_event["answer"])
 
     @override_settings(NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True)
     @patch("src.processing.qa_archive_rag.stream_grounded_generation")
@@ -3815,6 +4115,39 @@ class ArchiveQARetrievalTests(SimpleTestCase):
         self.assertEqual([row["dispositivo_ref"] for row in rows], ["Art. 260", "Art. 262"])
         self.assertTrue(all(row["coverage"]["complete"] for row in rows))
         self.assertTrue(all(row["coverage"]["missing_articles"] == [] for row in rows))
+
+    @override_settings(NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True)
+    @patch("src.processing.qa_archive_rag.DocumentoNormativo.objects.filter")
+    def test_anaphoric_transition_repeal_query_adaptively_retrieves_related_clauses(
+        self, filter_documents
+    ):
+        document = _archive_document(
+            number="258",
+            year=2024,
+            legal_text="\n".join(
+                [
+                    "Art. 259. Regra sobre licenciamento.",
+                    "Art. 260. Ficam revogadas a Lei Complementar nº 55/2004 e outras disposições indicadas.",
+                    "Art. 262. Os processos protocolados até a entrada em vigor e sem despacho decisório serão apreciados conforme a legislação da época, salvo manifestação formal pela lei nova.",
+                    "Art. 266. Esta Lei Complementar entra em vigor 90 dias após sua publicação.",
+                ]
+            ),
+        )
+        document.metadata_json["identity_candidate"]["type"] = "lei_complementar"
+        _mock_archive_candidates(filter_documents, [document])
+        question = (
+            "Com esses trechos, explique como a transição do Art. 262 se relaciona com a "
+            "revogação geral e quais fatos ainda precisam ser comprovados. "
+            "(contexto normativo: Lei Complementar nº 258/2024)"
+        )
+
+        rows = retrieve_archive_evidence(question, limit=8)
+
+        self.assertEqual(
+            [row["dispositivo_ref"] for row in rows],
+            ["Art. 260", "Art. 262", "Art. 266"],
+        )
+        self.assertTrue(all(row["norma_ref"] == "Lei Complementar nº 258/2024" for row in rows))
 
     @override_settings(NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True)
     @patch("src.processing.qa_archive_rag.DocumentoNormativo.objects.filter")
@@ -4127,6 +4460,36 @@ class ArchiveQARetrievalTests(SimpleTestCase):
 
         self.assertEqual([row["dispositivo_ref"] for row in rows], ["Art. 59"])
         self.assertIn("base cartográfica do ano de 2006", rows[0]["full_text"])
+
+    @override_settings(NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True)
+    @patch("src.processing.qa_archive_rag.DocumentoNormativo.objects.filter")
+    def test_answer_scope_caveat_does_not_become_topic_for_multiple_requested_articles(
+        self, filter_documents
+    ):
+        document = _archive_document(
+            number="258",
+            year=2024,
+            legal_text=(
+                "LEI COMPLEMENTAR Nº 258/2024.\n"
+                "Art. 1º Esta lei disciplina as regras para construção e fiscalização e os "
+                "procedimentos de licenciamento urbanístico e ambiental.\n"
+                "Art. 2º A aplicação do Código de Obras e Edificações rege-se pelos seguintes "
+                "objetivos e princípios: I - simplificação dos procedimentos; II - valorização "
+                "do usuário do equipamento urbano."
+            ),
+        )
+        document.metadata_json["identity_candidate"]["type"] = "lei_complementar"
+        _mock_archive_candidates(filter_documents, [document])
+
+        question = (
+            "Explique como o objetivo do art. 1º se conecta aos princípios do art. 2º da "
+            "Lei Complementar nº 258/2024, cite os dispositivos e não conclua sobre vigência."
+        )
+
+        self.assertIsNone(_article_topic_phrase(question))
+        rows = retrieve_archive_evidence(question, limit=8)
+
+        self.assertEqual([row["dispositivo_ref"] for row in rows], ["Art. 1º", "Art. 2º"])
 
     @override_settings(NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True)
     @patch("src.processing.qa_archive_rag.stream_grounded_generation")
@@ -5822,7 +6185,8 @@ class ArchiveQARetrievalTests(SimpleTestCase):
         self.assertEqual(final["reason_code"], "qa_archive_ambiguous_multi_norm_article_scope")
         self.assertFalse(final["grounded"])
         self.assertEqual(final["sources"], [])
-        self.assertIn("informe cada referência completa", final["answer"])
+        self.assertIn("a frase não deixa claro qual artigo pertence a qual norma", final["answer"])
+        self.assertIn("confirme somente essa associação", final["answer"])
         self.assertIn("histórico oficial de alterações", final["answer"])
         self.assertNotIn("Art. 21 da LC nº 55/2004", final["answer"])
 
@@ -5865,7 +6229,8 @@ class ArchiveQARetrievalTests(SimpleTestCase):
         self.assertEqual(final["reason_code"], "qa_archive_ambiguous_multi_norm_article_scope")
         self.assertFalse(final["grounded"])
         self.assertEqual(final["sources"], [])
-        self.assertIn("associar com segurança cada artigo", final["answer"])
+        self.assertIn("a frase não deixa claro qual artigo pertence a qual norma", final["answer"])
+        self.assertIn("confirme somente essa associação", final["answer"])
         self.assertNotIn("LC nº 164/2016", final["answer"])
 
     @override_settings(NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True)

@@ -11,26 +11,27 @@
     <!-- Content Security Policy -->
     
     <!-- Stylesheets -->
-    <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20261006-composer-clearance1">
+    <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20261017-instant-chat-reanchor1">
     <link rel="stylesheet" href="{% static 'css/jurix-tokens.css' %}?v=20261002-design-tokens1">
     <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20261009-auth-card-box-sizing1">
-    <link rel="stylesheet" href="{% static 'css/jurix-rag.css' %}?v=20261009-side-sheet-follow-up5">
+    <link rel="stylesheet" href="{% static 'css/jurix-rag.css' %}?v=20261017-corpus-choice2">
     <link rel="stylesheet" href="{% static 'css/jurix-markdown.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat.css' %}?v=20261015-composer-desktop-grid2">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-renderer.css' %}?v=20261007-answer-pending1">
-    <link rel="stylesheet" href="{% static 'css/jurix-chat-controller.css' %}?v=20261002-grounded-stream1">
+    <link rel="stylesheet" href="{% static 'css/jurix-chat-controller.css' %}?v=20261017-corpus-fallback1">
     <link rel="stylesheet" href="{% static 'css/jurix-components.css' %}?v=20261015-compact-corpus-notice1">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-sessions.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-shell.css' %}?v=20260929-sidebar-utilities1">
 <meta name="jurix-authenticated" content="{{ request.user.is_authenticated|yesno:'true,false' }}">
 <link rel="stylesheet" href="{% static 'css/jurix-search-controls.css' %}?v=20261005-temporal-chat-scope1">
-<link rel="stylesheet" href="{% static 'css/jurix-sidebar.css' %}?v=20261009-short-viewport-history2">
+<link rel="stylesheet" href="{% static 'css/jurix-sidebar.css' %}?v=20261017-corpus-choice1">
 </head>
 <body class="figma-theme workspace-page"
       data-chatbot-url="{% url 'workspace:assistant' %}"
       data-norma-list-url="{% url 'legislation:norma_list' %}"
       data-question-max-length="{{ max_question_length }}"
       data-qa-archive-corpus="{{ qa_archive_mode|yesno:'true,false' }}"
+      data-archive-assistant-enabled="{{ archive_assistant_enabled|yesno:'true,false' }}"
       data-logo-icon-url="{% static 'img/logo-icon.svg' %}?v=20260930-quill1"
       data-user-name="{{ request.user.first_name|default:request.user.username|title }}">
     <!-- Skip link for keyboard accessibility -->
@@ -55,8 +56,8 @@
                 <span><strong>Modo Consulta Pública:</strong> As pesquisas realizadas serão mantidas temporariamente durante sua sessão.</span>
             </div>
             {% endif %}
-            {% if qa_archive_mode %}
-            <details class="anonymous-banner jurix-anonymous-banner jurix-corpus-notice">
+            {% if archive_assistant_enabled %}
+            <details class="anonymous-banner jurix-anonymous-banner jurix-corpus-notice" data-corpus-notice="archive"{% if not qa_archive_mode %} hidden{% endif %}>
                 <summary class="jurix-corpus-notice__summary">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M12 3 2.8 19h18.4L12 3Z"></path><path d="M12 9v4m0 3h.01"></path>
@@ -68,12 +69,33 @@
                     {% if qa_archive_source_update_notice %}<p class="jurix-corpus-notice__source-warning">{{ qa_archive_source_update_notice }} Este aviso descreve a sincronização geral do SAPL e do Diário Oficial neste ambiente: não confirma a publicação de cada documento citado nem garante que o acervo contenha todas as edições posteriores.</p>{% endif %}
                 </div>
             </details>
-            {% elif assistant_source_update_notice %}
-            <div class="anonymous-banner jurix-anonymous-banner" role="status">
+            {% endif %}
+            {% if assistant_source_update_notice %}
+            <div class="anonymous-banner jurix-anonymous-banner" role="status" data-corpus-notice="consolidated"{% if qa_archive_mode %} hidden{% endif %}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <circle cx="12" cy="12" r="10"></circle><path d="M12 11v5m0-8h.01"></path>
                 </svg>
                 <span><strong>Atualização das fontes:</strong> {{ assistant_source_update_notice }}</span>
+            </div>
+            {% endif %}
+            {% if archive_assistant_enabled and not qa_archive_mode and not current_session_slug %}
+            <div class="jurix-corpus-choice" role="group" aria-label="Escolha o acervo desta nova pesquisa">
+                <span class="jurix-corpus-choice__label">Pesquisar em:</span>
+                <span class="jurix-corpus-choice__option is-selected" aria-current="true">Normas consolidadas</span>
+                <a class="jurix-corpus-choice__option" href="{% url 'workspace:assistant' %}?new=1&amp;corpus=archive-qa{% if prefill_question %}&amp;question={{ prefill_question|urlencode }}{% endif %}">Acervo documental <small>(em revisão)</small></a>
+                <span class="jurix-corpus-choice__help">Os PDFs locais são fontes candidatas; confira o documento original.</span>
+            </div>
+            {% elif archive_assistant_enabled and qa_archive_mode and not current_session_slug %}
+            <div class="jurix-corpus-choice" role="group" aria-label="Escolha o acervo desta nova pesquisa">
+                <span class="jurix-corpus-choice__label">Pesquisar em:</span>
+                <a class="jurix-corpus-choice__option" href="{% url 'workspace:assistant' %}?new=1{% if prefill_question %}&amp;question={{ prefill_question|urlencode }}{% endif %}">Normas consolidadas</a>
+                <span class="jurix-corpus-choice__option is-selected" aria-current="true">Acervo documental <small>(em revisão)</small></span>
+                <span class="jurix-corpus-choice__help">Os PDFs locais são fontes candidatas; confira o documento original.</span>
+            </div>
+            {% elif archive_assistant_enabled and current_session_slug %}
+            <div class="jurix-corpus-choice jurix-corpus-choice--fixed" role="status">
+                <span class="jurix-corpus-choice__label">Escopo desta conversa:</span>
+                <span class="jurix-corpus-choice__option is-selected">{% if qa_archive_mode %}Acervo documental (em revisão){% else %}Normas consolidadas{% endif %}</span>
             </div>
             {% endif %}
             
@@ -333,7 +355,7 @@
     <script src="{% static 'js/jurix-chat-state.js' %}"></script>
         <script src="{% static 'js/jurix-chat-renderer.js' %}?v=20261012-evidence-event-metadata1"></script>
     <script src="{% static 'js/jurix-dynamic-suggestions.js' %}?v=20261005-archive-qa-suggestions1"></script>
-        <script src="{% static 'js/chat.js' %}?v=20261016-dom-unreviewed-restore2"></script>
+        <script src="{% static 'js/chat.js' %}?v=20261018-corpus-fallback-autosearch1"></script>
     <script src="{% static 'js/jurix-chat-controller.js' %}?v=20261005-finalizing-cancel1"></script>
     <script src="{% static 'js/command_palette.js' %}?v=20260930-query-race1-sidebar2"></script>
     <script src="{% static 'js/jurix-sidebar.js' %}?v=20261009-session-feedback-sidebar1"></script>

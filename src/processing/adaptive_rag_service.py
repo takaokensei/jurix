@@ -140,21 +140,41 @@ class AdaptiveRAGService(RAGService):
         seen_ids = set()
         parsed_references = parse_normative_references(query_text)
         query_plan = classify_normative_query(query_text)
+        relation_scoped_references = bool(
+            query_plan.relation_intent and len(parsed_references) > 1
+        )
         explicit_multi_article = bool(
             query_plan.article_targets and query_plan.kind == "provision"
         )
         for reference in parsed_references:
             # A yearless or multi-reference string does not identify one safe
-            # target. Never let the first regex match silently choose a norma.
-            if (reference.ambiguous and not explicit_multi_article) or reference.year is None:
+            # target in ordinary topical/provision queries. A relation question
+            # is different: its explicitly typed, year-qualified references are
+            # the requested graph scope, even though the parser marks every
+            # member ambiguous merely because the sentence contains >1 norm.
+            # Resolve each such member only when its type/number/year identifies
+            # exactly one local norm; never select the first collision.
+            if reference.year is None:
                 continue
-            for n in Norma.objects.filter(numero=reference.number, ano=reference.year)[:20]:
+            if reference.ambiguous and not explicit_multi_article and not relation_scoped_references:
+                continue
+            if relation_scoped_references and not reference.type_key:
+                continue
+            candidates = list(
+                Norma.objects.filter(numero=reference.number, ano=reference.year)[:20]
+            )
+            typed_candidates = []
+            for n in candidates:
                 display = getattr(n, "get_tipo_display_name", None)
                 actual_type = canonical_type(
                     display() if callable(display) else getattr(n, "tipo", "")
                 )
                 if actual_type != reference.type_key:
                     continue
+                typed_candidates.append(n)
+            if relation_scoped_references and len(typed_candidates) != 1:
+                continue
+            for n in typed_candidates:
                 if n.id not in seen_ids:
                     seen_ids.add(n.id)
                     cited_normas.append(n)

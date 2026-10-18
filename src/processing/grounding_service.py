@@ -709,9 +709,14 @@ def _article_citation_matches(
     Article references inside the provision's body may point to other laws; the
     citation must resolve against the source's own device identifier instead.
     """
-    requested_articles = {
-        str(int(match.group(1))) for match in _ARTICLE_REFERENCE_RE.finditer(claim_text)
-    }
+    requested_articles: set[str] = set()
+    for match in _ARTICLE_REFERENCE_RE.finditer(claim_text):
+        requested_articles.add(str(int(match.group(1))))
+        if re.match(r"arts\b", match.group(0), re.IGNORECASE):
+            remainder = (claim_text or "")[match.end() :]
+            while tail := re.match(r"\s*(?:,|e)\s*(\d{1,4})(?:\s*[º°o])?", remainder, re.I):
+                requested_articles.add(str(int(tail.group(1))))
+                remainder = remainder[tail.end() :]
     if not requested_articles:
         return True
     source_articles = {

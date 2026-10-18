@@ -425,13 +425,20 @@
             const jurisdiction = safeIdentifier(scope.jurisdiction, /^[A-Z0-9][A-Z0-9_.-]{0,99}$/);
             const series = safeIdentifier(scope.series, /^[a-z0-9][a-z0-9_.-]{0,79}$/);
             const periodStart = safeDate(scope.period_start);
+            const rawPeriodEnd = scope.period_end;
+            const periodEnd = safeDate(rawPeriodEnd);
             const checkedUntil = safeDate(scope.checked_until);
+            const periodBoundsValid = Boolean(
+                periodStart
+                && (rawPeriodEnd == null || periodEnd)
+                && (!periodEnd || periodStart <= periodEnd)
+            );
             const checksum = /^[a-f0-9]{64}$/i.test(String(scope.source_checksum || ''))
                 ? String(scope.source_checksum).toLowerCase() : null;
             const intervals = safeIntervals(scope.missing_intervals);
             const pendingReview = safeCount(scope.pending_review);
             if (status === 'reviewed' && !(
-                source && jurisdiction && series && periodStart && checkedUntil && checksum
+                source && jurisdiction && series && periodBoundsValid && checkedUntil && checksum
                 && intervals !== null && intervals.length === 0 && pendingReview === 0
             )) status = 'partial';
             return {
@@ -439,7 +446,7 @@
                 jurisdiction,
                 series,
                 period_start: periodStart,
-                period_end: safeDate(scope.period_end),
+                period_end: periodEnd,
                 checked_until: checkedUntil,
                 source_checksum: checksum,
                 coverage_status: status,

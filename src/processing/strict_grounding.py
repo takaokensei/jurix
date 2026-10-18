@@ -338,6 +338,44 @@ class EvidenceMatch:
         )
 
 
+_ARTICLE_MENTION_RE = re.compile(
+    r"\b(?:art(?:igo)?s?\.?\s*)(\d{1,4})(?:\s*[º°o])?",
+    re.IGNORECASE,
+)
+_ARTICLE_ACTION_RE = re.compile(
+    r"\b(?:de-se\s+nova\s+redacao\s+ao|da\s+nova\s+redacao\s+ao|"
+    r"altera(?:r|ndo|cao)?|revoga(?:r|ndo|cao)?|acrescenta(?:r|ndo|cao)?|"
+    r"suprime(?:r|ndo|ssao)?|renumera(?:r|ndo|cao)?)\b",
+    re.IGNORECASE,
+)
+
+
+def _article_numbers(text: str) -> set[str]:
+    numbers: set[str] = set()
+    for match in _ARTICLE_MENTION_RE.finditer(text or ""):
+        numbers.add(str(int(match.group(1))))
+        # Legal prose commonly abbreviates a plural list as “Arts. 1º e 2º”.
+        # The second number has no repeated “Art.” token, so collect only the
+        # immediately joined list members after an explicit plural marker.
+        if re.match(r"arts\b", match.group(0), re.IGNORECASE):
+            remainder = (text or "")[match.end() :]
+            while tail := re.match(r"\s*(?:,|e)\s*(\d{1,4})(?:\s*[º°o])?", remainder, re.I):
+                numbers.add(str(int(tail.group(1))))
+                remainder = remainder[tail.end() :]
+    return numbers
+
+
+def _operatively_targeted_articles(text: str) -> set[str]:
+    normalized = unicodedata.normalize("NFKD", text or "")
+    normalized = "".join(char for char in normalized if not unicodedata.combining(char)).lower()
+    targets = set()
+    for action in _ARTICLE_ACTION_RE.finditer(normalized):
+        target = _ARTICLE_MENTION_RE.search(normalized, action.end(), action.end() + 160)
+        if target:
+            targets.add(str(int(target.group(1))))
+    return targets
+
+
 def _tokens(text: str) -> set[str]:
     raw_tokens = [
         token.lower() for token in _WORD_RE.findall(text or "") if token.lower() not in _STOPWORDS
@@ -355,6 +393,10 @@ def _numbers(text: str) -> set[str]:
         ),
         text or "",
     )
+    # Article numbers identify legal devices; they are validated collectively
+    # against the cited evidence in evaluate_strict_grounding, not as numeric
+    # facts that every individual evidence item must repeat.
+    normalized_text = _ARTICLE_MENTION_RE.sub(" ", normalized_text)
     # Citation markers are checked against the evidence list by citation
     # policy; their ordinal is not a legal quantity that must occur in text.
     normalized_text = re.sub(r"\[\[\d{1,3}\]\]", " ", normalized_text)
@@ -597,7 +639,14 @@ def evaluate_strict_grounding(
         all_citations_supported = set(claim.citation_indexes).issubset(
             supported_citation_indexes
         )
-        supported = bool(matches) and all_citations_supported
+        requested_articles = _article_numbers(claim.text)
+        covered_articles: set[str] = set()
+        for match in matches:
+            evidence_item = evidence[match["evidence_index"]]
+            covered_articles.update(_article_numbers(evidence_item.identifier))
+            covered_articles.update(_operatively_targeted_articles(evidence_item.text))
+        article_attribution_ok = requested_articles.issubset(covered_articles)
+        supported = bool(matches) and all_citations_supported and article_attribution_ok
         if not supported:
             failed_claims.append(claim.text)
         claim_reports.append(
@@ -607,6 +656,8 @@ def evaluate_strict_grounding(
                 "matches": matches,
                 "rejected_matches": rejected_matches,
                 "citation_refs": list(claim.citation_refs),
+                "article_attribution_ok": article_attribution_ok,
+                "uncovered_article_refs": sorted(requested_articles - covered_articles),
             }
         )
 

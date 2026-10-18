@@ -147,7 +147,14 @@ def _safe_corpus_coverage(coverage: Any) -> dict[str, Any] | None:
         )
         series = _safe_coverage_identifier(value.get("series"), pattern=series_pattern, limit=80)
         period_start = _safe_coverage_date(value.get("period_start"))
+        raw_period_end = value.get("period_end")
+        period_end = _safe_coverage_date(raw_period_end)
         checked_until = _safe_coverage_date(value.get("checked_until"))
+        period_bounds_valid = bool(
+            period_start
+            and (raw_period_end is None or period_end)
+            and (period_end is None or period_start <= period_end)
+        )
         checksum = (
             str(value["source_checksum"]).lower()
             if isinstance(value.get("source_checksum"), str)
@@ -157,7 +164,7 @@ def _safe_corpus_coverage(coverage: Any) -> dict[str, Any] | None:
         pending_review = _safe_coverage_int(value.get("pending_review"))
         status = safe_status(value.get("coverage_status"))
         if status == "reviewed" and not (
-            source and jurisdiction and series and period_start and checked_until and checksum
+            source and jurisdiction and series and period_bounds_valid and checked_until and checksum
             and intervals_valid and pending_review == 0
         ):
             status = "partial"
@@ -166,7 +173,7 @@ def _safe_corpus_coverage(coverage: Any) -> dict[str, Any] | None:
             "jurisdiction": jurisdiction,
             "series": series,
             "period_start": period_start,
-            "period_end": _safe_coverage_date(value.get("period_end")),
+            "period_end": period_end,
             "checked_until": checked_until,
             "source_checksum": checksum,
             "coverage_status": status,
@@ -260,6 +267,9 @@ def _safe_graph_relation(value: Any) -> dict[str, Any] | None:
     if action not in _GRAPH_ACTIONS:
         return None
     result: dict[str, Any] = {"action": action}
+    casefile_id = value.get("casefile_id")
+    if isinstance(casefile_id, str) and _SHA256.fullmatch(casefile_id):
+        result["casefile_id"] = casefile_id.lower()
     for key in (
         "event_id", "intent", "role", "label", "review_status", "effective_status", "resolution"
     ):

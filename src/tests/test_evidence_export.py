@@ -2,6 +2,8 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
+
 from src.processing.evidence_export import (
     build_evidence_package,
     render_evidence_json,
@@ -215,6 +217,7 @@ def test_export_preserves_reviewed_event_snapshot_and_explicit_verification_limi
                     "internal_path": "C:/private",
                 },
                 graph_relation={
+                    "casefile_id": "d" * 64,
                     "event_id": "event-17",
                     "action": "REVOGA",
                     "review_status": "approved",
@@ -234,6 +237,7 @@ def test_export_preserves_reviewed_event_snapshot_and_explicit_verification_limi
     assert row["temporal_version"]["snapshot_id"] == 42
     assert row["temporal_version"]["input_hash"] == "c" * 64
     assert row["graph_relation"]["event_id"] == "event-17"
+    assert row["graph_relation"]["casefile_id"] == "d" * 64
     assert row["graph_relation"]["action"] == "REVOGA"
     assert row["projection_coverage"]["selected_devices"] == 12
     assert "Snapshot: `42`" in markdown
@@ -504,3 +508,34 @@ def test_corpus_coverage_export_rejects_private_scope_ids_and_incomplete_reviewe
     assert coverage["sources_checked"][0]["source"] is None
     assert coverage["sources_checked"][0]["source_checksum"] is None
     assert "C:/private/archive" not in render_evidence_json(package)
+
+
+@pytest.mark.parametrize("period_end", ["2024-99-99", "1999-12-31"])
+def test_corpus_coverage_export_downgrades_invalid_or_reversed_period_bounds(period_end):
+    package = build_evidence_package(
+        [],
+        corpus_coverage={
+            "coverage_status": "reviewed",
+            "corpus_revision": {"revision": 3, "digest": "a" * 64},
+            "scope_limited": True,
+            "checked_until": "2024-12-31",
+            "sources_checked": [{
+                "source": "sapl",
+                "jurisdiction": "BR-RN-NATAL",
+                "series": "municipal_lc",
+                "period_start": "2000-01-01",
+                "period_end": period_end,
+                "checked_until": "2024-12-31",
+                "source_checksum": "b" * 64,
+                "coverage_status": "reviewed",
+                "missing_intervals": [],
+                "pending_review": 0,
+            }],
+            "missing_intervals": [],
+            "pending_review": 0,
+        },
+    )
+
+    coverage = package["corpus_coverage"]
+    assert coverage["coverage_status"] == "partial"
+    assert coverage["sources_checked"][0]["coverage_status"] == "partial"

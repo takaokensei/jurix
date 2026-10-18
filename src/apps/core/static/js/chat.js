@@ -38,6 +38,23 @@
         return null;
     }
 
+    function updateCorpusScopeUI(archiveQaMode) {
+        const archive = archiveQaMode === true;
+        document.body.dataset.qaArchiveCorpus = String(archive);
+        const choice = document.querySelector('.jurix-corpus-choice');
+        if (choice) {
+            choice.classList.add('jurix-corpus-choice--fixed');
+            choice.setAttribute('role', 'status');
+            choice.setAttribute('aria-label', 'Escopo desta conversa');
+            const value = document.createElement('span');
+            value.className = 'jurix-corpus-choice__status';
+            value.textContent = `Escopo desta conversa: ${archive ? 'Acervo documental (em revisão)' : 'Normas consolidadas'}`;
+            choice.replaceChildren(value);
+        }
+        document.querySelector('[data-corpus-notice="archive"]')?.toggleAttribute('hidden', !archive);
+        document.querySelector('[data-corpus-notice="consolidated"]')?.toggleAttribute('hidden', archive);
+    }
+
     // ===== MARKED.JS CONFIGURATION =====
     if (typeof marked !== 'undefined') {
         marked.setOptions({
@@ -241,11 +258,37 @@
         } else if (rect.top < visibleTop) nextTop += rect.top - visibleTop;
         else if (rect.bottom > visibleBottom) nextTop += rect.bottom - visibleBottom;
         if (nextTop !== container.scrollTop) {
-            // Assigning scrollTop is reliably immediate across browser engines.
-            // `scrollTo({ behavior: 'instant' })` is inconsistently honored when
-            // the workspace has a fixed composer overlay, leaving the latest
-            // evidence control underneath it on short viewports.
+            // The workspace stylesheet uses smooth scrolling for ordinary
+            // navigation. This corrective re-anchor must be immediate: until it
+            // completes, the fixed composer can cover the sources/copy control.
+            // Preserve any inline override and restore it on the next frame.
+            let restoreState = container.__jurixInstantScrollRestore;
+            if (!restoreState) {
+                restoreState = {
+                    value: container.style.getPropertyValue('scroll-behavior'),
+                    priority: container.style.getPropertyPriority('scroll-behavior'),
+                    token: 0,
+                };
+                container.__jurixInstantScrollRestore = restoreState;
+            }
+            restoreState.token += 1;
+            const token = restoreState.token;
+            container.style.setProperty('scroll-behavior', 'auto', 'important');
             container.scrollTop = Math.max(0, nextTop);
+            requestAnimationFrame(() => {
+                const pendingRestore = container.__jurixInstantScrollRestore;
+                if (!container.isConnected || pendingRestore?.token !== token) return;
+                if (pendingRestore.value) {
+                    container.style.setProperty(
+                        'scroll-behavior',
+                        pendingRestore.value,
+                        pendingRestore.priority,
+                    );
+                } else {
+                    container.style.removeProperty('scroll-behavior');
+                }
+                delete container.__jurixInstantScrollRestore;
+            });
         }
     }
 
@@ -518,7 +561,11 @@
             if (thisToken !== navSeq) return;
 
             const sessionSlug = encodeURIComponent(sessionData.session.slug || sessionData.session.id);
-            const archiveQaMode = new URLSearchParams(window.location.search).get('corpus') === 'archive-qa';
+            const hasPersistedMessages = Number(sessionData.total_count || 0) > 0;
+            const archiveQaMode = hasPersistedMessages
+                ? sessionData.session.corpus === 'archive-qa'
+                : new URLSearchParams(window.location.search).get('corpus') === 'archive-qa';
+            updateCorpusScopeUI(archiveQaMode);
             if (archiveQaMode) {
                 sessionData.session.corpus = 'archive-qa';
                 window.JurixAnonymousHistory?.ensureSession?.(
@@ -1346,6 +1393,25 @@
         search.href = `${searchBase}?q=${encodeURIComponent(question)}`;
         search.textContent = 'Pesquisar nas normas';
         actions.append(revise, search);
+        const archiveEnabled = document.body?.dataset.archiveAssistantEnabled === 'true';
+        const archiveMode = document.body?.dataset.qaArchiveCorpus === 'true'
+            || new URLSearchParams(window.location.search).get('corpus') === 'archive-qa';
+        if (archiveEnabled && !archiveMode) {
+            const scopeNote = document.createElement('p');
+            scopeNote.className = 'jurix-corpus-search-note';
+            scopeNote.textContent = 'Esta resposta consultou as normas consolidadas. PDFs locais ainda em revisão não foram considerados.';
+            const archiveSearch = document.createElement('a');
+            const assistantBase = document.body.dataset.chatbotUrl || '/assistente/';
+            archiveSearch.href = `${assistantBase}?new=1&corpus=archive-qa&search=1&question=${encodeURIComponent(question)}`;
+            archiveSearch.textContent = 'Buscar também no acervo documental (em revisão)';
+            archiveSearch.className = 'jurix-corpus-search-link';
+            archiveSearch.dataset.archiveSearch = '1';
+            actions.append(scopeNote, archiveSearch);
+            // The fixed composer can overlap the newly appended action when the
+            // answer is short. Re-anchor it into the unobscured message area so
+            // the fallback is actually reachable by pointer and keyboard users.
+            requestAnimationFrame(() => revealMessageControl(archiveSearch));
+        }
         messageDiv.querySelector('.message-content')?.append(actions);
     }
 
@@ -1534,6 +1600,12 @@
         syncComposerScrollClearance();
         const thisToken = ++navSeq;
         const sessionSlug = getSessionSlugFromPath();
+        const pageParams = new URLSearchParams(window.location.search);
+        const autoSearchQuestion = !sessionSlug
+            && pageParams.get('search') === '1'
+            && pageParams.get('corpus') === 'archive-qa'
+            ? String(pageParams.get('question') || '').trim()
+            : '';
 
         if (sessionSlug) {
             try {
@@ -1571,6 +1643,24 @@
             if (!keepBlank && window.JurixAnonymousHistory?.isAnonymous?.()) {
                 const [latest] = window.JurixAnonymousHistory.list();
                 if (latest?.id && thisToken === navSeq) await loadSession(latest.id, true, thisToken);
+            }
+            if (autoSearchQuestion && thisToken === navSeq) {
+                // Consume the one-shot action before submitting so refresh or
+                // browser restoration cannot silently send the same question twice.
+                pageParams.delete('search');
+                pageParams.delete('question');
+                const remainingQuery = pageParams.toString();
+                window.history.replaceState(
+                    {},
+                    '',
+                    `${window.location.pathname}${remainingQuery ? `?${remainingQuery}` : ''}`,
+                );
+                const input = document.getElementById('question-textarea');
+                if (input) {
+                    input.value = autoSearchQuestion;
+                    window.JurixChatShell?.updateCounter?.();
+                    askQuestion(autoSearchQuestion);
+                }
             }
         }
 
@@ -1795,6 +1885,11 @@
 
                 const question = textarea.value.trim();
                 if (!question) return;
+                if (!document.querySelector('.jurix-corpus-choice--fixed')) {
+                    const archiveMode = document.body?.dataset.qaArchiveCorpus === 'true'
+                        || new URLSearchParams(window.location.search).get('corpus') === 'archive-qa';
+                    updateCorpusScopeUI(archiveMode);
+                }
                 streamScrollIntent = 'following';
                 const isRetry = retryingExistingQuestion === question;
                 const retryOfTurnId = isRetry ? pendingRetryTurnId : null;
@@ -2169,9 +2264,16 @@
                                     });
                                 }
                             }
-                            if (['norm_not_in_corpus', 'requested_device_not_in_corpus', 'norm_content_not_in_corpus'].includes(reasonCode)) {
+                            if ([
+                                'norm_not_in_corpus',
+                                'requested_device_not_in_corpus',
+                                'norm_content_not_in_corpus',
+                                'evidence_insufficient',
+                                'qa_archive_topical_evidence_insufficient',
+                            ].includes(reasonCode)) {
                                 appendNormLookupActions(streamElements?.messageDiv, question);
                             }
+                            let sessionRefresh = null;
                             if (doneData.session_id) {
                                 currentSessionId = doneData.session_id;
                                 if (chatState && typeof chatState.setSessionId === 'function') {
@@ -2186,14 +2288,35 @@
                                         || new URLSearchParams(window.location.search).get('corpus') === 'archive-qa';
                                     window.history.replaceState({}, '', archiveQa ? `${sessionUrl}?corpus=archive-qa` : sessionUrl);
                                 }
-                                await loadChatSessions();
-                                if (wasNewSession) {
-                                    window.JurixSidebar?.highlightSessionCreated?.(doneData.session_id);
-                                }
                                 if (wasNewSession) pendingSessionClientId = null;
                                 updateNewChatButtonState();
+                                // Sidebar refresh is secondary to the completed
+                                // answer. Start it now, but do not await the
+                                // network before revealing citations above the
+                                // fixed composer below.
+                                sessionRefresh = loadChatSessions();
                             }
                             chatState?.transition?.('completed', { question });
+                            const revealCompletedSourceControl = () => {
+                                if (!wasFollowingLatest) return;
+                                const sourcePill = streamElements?.sourcesContainer
+                                    ?.querySelector('.jurix-sources-pill-btn');
+                                const copyButton = streamElements?.copyButton;
+                                const target = [sourcePill, copyButton].find((control) =>
+                                    control?.getClientRects().length
+                                ) || streamElements?.messageBody;
+                                revealMessageControl(target);
+                            };
+                            // Run once after the terminal DOM mutations and again
+                            // after layout settles. The source pill can be inserted
+                            // by its fade-in after the stream state has completed.
+                            revealCompletedSourceControl();
+                            if (wasFollowingLatest && typeof ResizeObserver === 'function' && streamElements) {
+                                const finalLayoutObserver = new ResizeObserver(revealCompletedSourceControl);
+                                if (streamElements.messageDiv) finalLayoutObserver.observe(streamElements.messageDiv);
+                                if (streamElements.sourcesContainer) finalLayoutObserver.observe(streamElements.sourcesContainer);
+                                window.setTimeout(() => finalLayoutObserver.disconnect(), 1600);
+                            }
                             // Final citation linking, source-state updates and the
                             // completed composer can change message geometry after
                             // the last streamed chunk. Keep the newest evidence
@@ -2202,26 +2325,19 @@
                             window.requestAnimationFrame(() => {
                                 window.requestAnimationFrame(() => {
                                     if (wasFollowingLatest) {
-                                        const sourcePill = streamElements?.sourcesContainer
-                                            ?.querySelector('.jurix-sources-pill-btn');
-                                        const copyButton = streamElements?.copyButton;
-                                        const isVisibleControl = (control) => {
-                                            if (!control || !control.getClientRects().length) return false;
-                                            const rect = control.getBoundingClientRect();
-                                            const style = window.getComputedStyle(control);
-                                            return rect.width > 0 && rect.height > 0
-                                                && style.display !== 'none'
-                                                && style.visibility !== 'hidden'
-                                                && Number.parseFloat(style.opacity || '1') > 0;
-                                        };
-                                        const revealTarget = [sourcePill, copyButton]
-                                            .find(isVisibleControl) || streamElements?.messageBody;
-                                        revealMessageControl(revealTarget);
+                                        revealCompletedSourceControl();
                                     } else {
                                         scrollToBottomIfAtBottom();
                                     }
                                 });
                             });
+                            if (sessionRefresh) {
+                                await sessionRefresh;
+                                revealCompletedSourceControl();
+                                if (wasNewSession) {
+                                    window.JurixSidebar?.highlightSessionCreated?.(doneData.session_id);
+                                }
+                            }
                         },
                         (errorMsg) => {
                             window.JurixChatRenderer?.clearPendingAnswer?.(streamElements?.pendingAnswer);

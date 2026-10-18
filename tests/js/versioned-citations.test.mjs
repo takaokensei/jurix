@@ -540,6 +540,36 @@ test('evidence export sanitizes coverage identifiers and downgrades incomplete r
   window.close();
 });
 
+test('evidence export downgrades reviewed scopes with invalid or reversed period bounds', () => {
+  const window = boot();
+  for (const periodEnd of ['2024-99-99', '1999-12-31']) {
+    const packageDto = window.JurixChatRenderer.buildEvidencePackage([], null, {
+      coverage_status: 'reviewed',
+      corpus_revision: { revision: 3, digest: 'a'.repeat(64) },
+      scope_limited: true,
+      checked_until: '2024-12-31',
+      sources_checked: [{
+        source: 'sapl',
+        jurisdiction: 'BR-RN-NATAL',
+        series: 'municipal_lc',
+        period_start: '2000-01-01',
+        period_end: periodEnd,
+        checked_until: '2024-12-31',
+        source_checksum: 'b'.repeat(64),
+        coverage_status: 'reviewed',
+        missing_intervals: [],
+        pending_review: 0,
+      }],
+      missing_intervals: [],
+      pending_review: 0,
+    });
+
+    assert.equal(packageDto.corpus_coverage.coverage_status, 'partial');
+    assert.equal(packageDto.corpus_coverage.sources_checked[0].coverage_status, 'partial');
+  }
+  window.close();
+});
+
 test('anonymous local history preserves safe versioned citation DTOs and strips unknown secrets', () => {
   const dom = new JSDOM(
     '<!doctype html><html><body data-authenticated="false"></body></html>',

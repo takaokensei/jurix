@@ -21,6 +21,21 @@ def _iso(value: Any) -> str | None:
     return value.isoformat() if hasattr(value, "isoformat") else value
 
 
+def _coverage_date(value: Any) -> str | None:
+    """Normalize a date-only coverage bound; reject datetimes and bad strings."""
+    if isinstance(value, datetime):
+        return None
+    if isinstance(value, date):
+        return value.isoformat()
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError:
+        return None
+    return parsed.isoformat() if parsed.isoformat() == value else None
+
+
 def _digest(value: dict[str, Any]) -> str:
     payload = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -47,16 +62,10 @@ def _safe_intervals(value: Any) -> list[dict[str, str]] | None:
         bounds: dict[str, str] = {}
         for key in ("start", "end"):
             raw = interval.get(key)
-            if isinstance(raw, date):
-                parsed = raw
-            elif isinstance(raw, str):
-                try:
-                    parsed = date.fromisoformat(raw)
-                except ValueError:
-                    return None
-            else:
+            normalized = _coverage_date(raw)
+            if normalized is None:
                 return None
-            bounds[key] = parsed.isoformat()
+            bounds[key] = normalized
         if bounds["start"] > bounds["end"]:
             return None
         safe.append(bounds)
@@ -96,14 +105,23 @@ def _coverage_row(scope: Any) -> dict[str, Any]:
     jurisdiction_valid = bool(re.fullmatch(r"[A-Z0-9][A-Z0-9_.-]{0,99}", jurisdiction_value))
     series_valid = bool(re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,79}", series_value))
     coverage_status = str(row.get("coverage_status") or "unknown")
+    period_start = _coverage_date(row.get("period_start"))
+    raw_period_end = row.get("period_end")
+    period_end = _coverage_date(raw_period_end)
+    checked_until = _coverage_date(row.get("checked_until"))
+    period_bounds_valid = bool(
+        period_start
+        and (raw_period_end is None or period_end)
+        and (period_end is None or period_start <= period_end)
+    )
     checksum_value = str(row.get("source_checksum") or "").lower()
     source_checksum = checksum_value if re.fullmatch(r"[a-f0-9]{64}", checksum_value) else None
     if coverage_status == "reviewed" and not (
         source_valid
         and jurisdiction_valid
         and series_valid
-        and row.get("period_start")
-        and row.get("checked_until")
+        and period_bounds_valid
+        and checked_until
         and source_checksum
         and missing_intervals is not None
         and pending_review is not None
@@ -114,9 +132,9 @@ def _coverage_row(scope: Any) -> dict[str, Any]:
         "source": source_value if source_valid else "unknown",
         "jurisdiction": jurisdiction_value if jurisdiction_valid else "unknown",
         "series": series_value if series_valid else "unknown",
-        "period_start": _iso(row.get("period_start")),
-        "period_end": _iso(row.get("period_end")),
-        "checked_until": _iso(row.get("checked_until")),
+        "period_start": period_start,
+        "period_end": period_end,
+        "checked_until": checked_until,
         "source_checksum": source_checksum,
         "coverage_status": coverage_status,
         "missing_intervals": missing_intervals,

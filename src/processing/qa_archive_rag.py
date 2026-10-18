@@ -22,6 +22,9 @@ from src.apps.legislation.document_models import (
 )
 from src.apps.legislation.models import Norma
 from src.apps.legislation.source_urls import canonical_norma_url, canonical_sapl_url
+from src.processing.coordinated_article_references import (
+    parse_coordinated_article_norm_pairs,
+)
 from src.processing.document_metadata import compare_identity_to_epigraph, parse_initial_epigraphs
 from src.processing.normative_query import classify_normative_query
 from src.processing.normative_reference import (
@@ -180,7 +183,12 @@ _PROTOCOL_DATE_EVIDENCE_RE = re.compile(
 )
 _PROCESS_TRANSITION_SCOPE_REQUEST_RE = re.compile(
     r"\b(?:regra\s+de\s+transi[cç][aã]o|"
+    r"transi[cç][aã]o\b.{0,80}\b(?:art(?:igo)?\.?\s*\d+|regra)\b|"
     r"manifesta[cç][aã]o\s+formal|op[cç][aã]o\s+formal)\b|"
+    r"\bpedidos?\s+de\s+licenciamento\b.{0,120}\bprotocolad[oa]s?\b"
+    r".{0,120}\b(?:antes|at[eé])\b.{0,80}\b(?:entrada\s+em\s+vigor|vig[eê]ncia)\b|"
+    r"\bpedidos?\s+de\s+licenciamento\b.{0,100}\bprotocolad[oa]s?\b"
+    r".{0,120}\bentrada\s+em\s+vigor\b.{0,120}\bsem\s+despacho\s+decis[oó]rio\b|"
     r"\bprocessos?\b.{0,100}\bprotocolad[oa]s?\b.{0,120}\bentrada\s+em\s+vigor\b"
     r".{0,120}\bsem\s+despacho\s+decis[oó]rio\b|"
     r"\bdespacho\s+decis[oó]rio\b.{0,100}\b(?:automaticamente|lei\s+nova|"
@@ -191,6 +199,11 @@ _PROCESS_TRANSITION_SCOPE_REQUEST_RE = re.compile(
     r"(?:protocolad[oa]s?|sem\s+despacho|despacho\s+decis[oó]rio|"
     r"entrada\s+em\s+vigor|vig[eê]ncia)\b",
     re.IGNORECASE,
+)
+_REPEAL_TRANSITION_RELATION_RE = re.compile(
+    r"(?=.*\btransi[cç][aã]o\b)(?=.*\brevog)"
+    r"(?=.*\b(?:relaciona(?:m)?|rela[cç][aã]o|articula(?:m)?|articula[cç][aã]o)\b).+",
+    re.IGNORECASE | re.DOTALL,
 )
 _AUTO_NEW_LAW_AFTER_DECISION_QUERY_RE = re.compile(
     r"\bdespacho\s+decis[oó]rio\b.{0,100}\b(?:automaticamente|lei\s+nova|"
@@ -2038,6 +2051,60 @@ def _has_ambiguous_multi_norm_article_scope(question: str) -> bool:
     return len(identities) > 1
 
 
+def _ambiguous_article_scope_clarification(question: str) -> str:
+    """Ask for only the missing article-to-norm mapping, without guessing it."""
+    type_labels = {
+        "lei": "Lei",
+        "lei_complementar": "Lei Complementar",
+        "lei_organica": "Lei Orgânica",
+        "lei_promulgada": "Lei Promulgada",
+        "decreto": "Decreto",
+        "decreto_legislativo": "Decreto Legislativo",
+        "decreto_lei": "Decreto-Lei",
+        "resolucao": "Resolução",
+        "portaria": "Portaria",
+        "emenda": "Emenda",
+        "emenda_constitucional": "Emenda Constitucional",
+    }
+    references = []
+    for reference in parse_normative_references(question):
+        if reference.year is None or not reference.number:
+            continue
+        identity = _reference_identity(reference)
+        if identity in {item[0] for item in references}:
+            continue
+        digits = normalize_number(reference.number).lstrip("0") or "0"
+        first_group = len(digits) % 3 or 3
+        formatted_number = ".".join(
+            [digits[:first_group], *(digits[index:index + 3] for index in range(first_group, len(digits), 3))]
+        )
+        label = type_labels.get(reference.type_key, "Norma")
+        references.append((identity, f"{label} nº {formatted_number}/{reference.year}"))
+
+    article_labels = list(dict.fromkeys(
+        f"Art. {article}º" for _start, article in _article_reference_mentions(question)
+    ))
+    if references and article_labels:
+        norm_list = ", ".join(label for _identity, label in references[:6])
+        article_list = ", ".join(article_labels[:12])
+        return (
+            "Identifiquei estas normas na sua pergunta: "
+            f"{norm_list}. Também identifiquei {article_list}, mas a frase não deixa claro "
+            "qual artigo pertence a qual norma. Para eu não atribuir o texto à lei errada, "
+            "confirme somente essa associação — por exemplo: ‘Art. 1º da primeira norma; "
+            "Art. 2º da segunda’. Essa confirmação trata apenas da associação e não determina "
+            "a redação vigente; para isso, confira o texto consolidado e o histórico oficial "
+            "de alterações."
+        )
+    return (
+        "Não consegui associar com segurança cada artigo à norma correspondente nesta pergunta, "
+        "que menciona mais de uma norma. Para evitar atribuir um dispositivo à lei errada, "
+        "informe cada referência completa (artigo, tipo, número e ano) ou consulte um dispositivo "
+        "por vez. Esta busca não determina a redação vigente hoje; confira o texto consolidado "
+        "e o histórico oficial de alterações."
+    )
+
+
 def _explicit_article_norm_pairs(
     question: str,
 ) -> tuple[tuple[tuple[str, str, int | None], str], ...]:
@@ -2054,6 +2121,10 @@ def _explicit_article_norm_pairs(
     norm_matches = list(_NORMATIVE_REFERENCE_SPAN_RE.finditer(raw))
     pairs_by_start = {}
     grouped_mentions: set[int] = set()
+    for start, identity, article_key in parse_coordinated_article_norm_pairs(raw):
+        pairs_by_start[start] = (identity, article_key)
+        grouped_mentions.add(start)
+
     for group in _PLURAL_ARTICLE_GROUP_RE.finditer(raw):
         following = next((match for match in norm_matches if match.start() >= group.end()), None)
         following_gap = raw[group.end() : following.start()] if following else ""
@@ -2339,6 +2410,24 @@ def _multi_norm_synthesis_instruction(question: str) -> str:
     )
 
 
+def _same_norm_article_synthesis_instruction(question: str) -> str:
+    """Keep answers about several devices of one norm concise and correctly attributed."""
+    pairs = _explicit_article_norm_pairs(question)
+    identities = {identity for identity, _article in pairs}
+    articles = {article for _identity, article in pairs}
+    if len(identities) != 1 or len(articles) < 2:
+        return ""
+    return (
+        "\n\nINSTRUÇÃO ESPECÍFICA — MAIS DE UM ARTIGO DA MESMA NORMA:\n"
+        "- Responda diretamente em até dois parágrafos, salvo se o usuário pedir outro formato. "
+        "Não crie um bloco nem uma conclusão repetida para cada artigo.\n"
+        "- Compare ou conecte os dispositivos somente no limite do que o texto demonstra; "
+        "não invente relação causal. Mantenha cada afirmação junto da citação do artigo que a sustenta.\n"
+        "- Sintetize regras próximas sem omitir condições, exceções ou modalidade. Se um dispositivo "
+        "não tiver evidência suficiente, delimite essa parte sem atribuí-la ao outro artigo."
+    )
+
+
 def _text_mentions_normative_identity(text: str, identity: tuple[str, str, int | None]) -> bool:
     """Match an explicit norm citation whose year may be written as a full date."""
     wanted_number = normalize_number(identity[1]).lstrip("0") or "0"
@@ -2545,6 +2634,7 @@ def _archive_transition_synthesis(
                     "para afirmar que esse artigo rege o processo concreto: é preciso conferir a data "
                     "de entrada em vigor da lei nova, a data do protocolo, a existência de despacho, "
                     "eventual manifestação formal e o histórico oficial posterior da norma antiga. "
+                    f"{commencement_note}"
                     "Os PDFs do acervo são pontos de conferência, não uma validação jurídica do caso."
                 )
             claims = [
@@ -2762,7 +2852,22 @@ def _archive_explicit_transition_pair_synthesis(
 
     pairs = _explicit_article_norm_pairs(question)
     mentions = _article_reference_mentions(question)
-    if len(pairs) < 2 or len(pairs) != len(mentions):
+    repeal_relation = bool(_REPEAL_TRANSITION_RELATION_RE.search(question))
+    if not pairs and mentions:
+        norm_references = [
+            reference
+            for reference in parse_normative_references(question)
+            if not reference.ambiguous and reference.year is not None and reference.number
+        ]
+        norm_identities = {_reference_identity(reference) for reference in norm_references}
+        if len(norm_identities) == 1:
+            identity = next(iter(norm_identities))
+            pairs = tuple(
+                (identity, _article_key(article))
+                for _position, article in mentions
+                if _article_key(article)
+            )
+    if not pairs or len(pairs) != len(mentions) or (len(pairs) < 2 and not repeal_relation):
         return None
     identities = {identity for identity, _article in pairs}
     if len(identities) != 1:
@@ -2784,7 +2889,7 @@ def _archive_explicit_transition_pair_synthesis(
             None,
         )
         pair = (norm_identity, _article_key(str(source.get("dispositivo_ref") or "")))
-        if pair in requested_pairs:
+        if pair in requested_pairs or (repeal_relation and norm_identity in identities):
             indexed_sources.append((index, source, pair, text))
 
     protocol_rule = next(
@@ -2803,14 +2908,6 @@ def _archive_explicit_transition_pair_synthesis(
     # repeal, not the owner of Art. 262. Require the exact relational wording,
     # a repeal cue, and an explicit reference from the Art. 260 source to a
     # different act that is also named by the user.
-    repeal_relation = bool(
-        re.search(
-            r"\bse\s+articula\s+com\b.{0,160}\bregra\s+de\s+transi[cç][aã]o\b",
-            question,
-            re.IGNORECASE | re.DOTALL,
-        )
-        and re.search(r"\brevog", question, re.IGNORECASE)
-    )
     repeal_rule = None
     if repeal_relation:
         question_identities = {
@@ -2871,6 +2968,79 @@ def _archive_explicit_transition_pair_synthesis(
             ),
             None,
         )
+
+    if repeal_relation and repeal_rule is None:
+        # A user may ask about a clause's relationship to a general repeal
+        # without naming one of the repealed acts. In that case, explain only
+        # the two extracted texts; do not invent a target or claim legal effect.
+        generic_repeal = next(
+            (
+                entry
+                for entry in indexed_sources
+                if re.search(r"\brevog", entry[3], re.IGNORECASE)
+                and _NORMATIVE_CHANGE_EVIDENCE_RE.search(entry[3])
+            ),
+            None,
+        )
+        if generic_repeal is not None:
+            repeal_index, repeal_source, _pair, repeal_text = generic_repeal
+            transition_index, transition_source, _pair, transition_text = transition_rule
+            repeal_label = str(repeal_source.get("dispositivo_ref") or "dispositivo de revogação")
+            transition_label = str(
+                transition_source.get("dispositivo_ref") or "dispositivo de transição"
+            )
+            norm_label = str(repeal_source.get("norma_ref") or "a norma consultada")
+            repeal_excerpt = re.sub(r"\s+", " ", repeal_text).strip()
+            transition_excerpt = re.sub(r"\s+", " ", transition_text).strip()
+            answer = (
+                f"Na extração local, o **{repeal_label} da {norm_label}** contém a cláusula: "
+                f"“{repeal_excerpt}” [[{repeal_index}]]. O **{transition_label}** prevê: "
+                f"“{transition_excerpt}” [[{transition_index}]]. Os trechos tratam de matérias "
+                "relacionadas, mas a cláusula de revogação, isoladamente, não demonstra que a "
+                "regra transitória deixe de incidir nos processos que atendam às suas condições. "
+                "Também não é possível identificar aqui todo o alcance da revogação nem decidir "
+                "o regime de um processo concreto."
+            )
+            claims = [
+                {
+                    "text": f"Transcrição da cláusula de revogação do {repeal_label}.",
+                    "citation_ids": [str(repeal_source["citation_id"])],
+                },
+                {
+                    "text": f"Transcrição da regra de transição do {transition_label}.",
+                    "citation_ids": [str(transition_source["citation_id"])],
+                },
+            ]
+            commencement = next(
+                (
+                    entry
+                    for entry in indexed_sources
+                    if _EFFECTIVE_DATE_OPERATIVE_RE.search(entry[3])
+                ),
+                None,
+            )
+            if commencement is not None:
+                commencement_index, commencement_source, _pair, _text = commencement
+                commencement_label = str(
+                    commencement_source.get("dispositivo_ref") or "dispositivo de vigência"
+                )
+                answer += (
+                    f" A entrada em vigor também deve ser conferida no **{commencement_label}** "
+                    f"[[{commencement_index}]]."
+                )
+                claims.append(
+                    {
+                        "text": f"A norma contém regra de entrada em vigor no {commencement_label}.",
+                        "citation_ids": [str(commencement_source["citation_id"])],
+                    }
+                )
+            answer += (
+                " A extração dos PDFs locais ainda está pendente de revisão. Para a triagem, "
+                "confira a publicação oficial, a data de protocolo, a existência de despacho "
+                "decisório e eventual manifestação formal do interessado; os trechos, sozinhos, "
+                "não comprovam esses fatos nem determinam o resultado do caso."
+            )
+            return answer, claims
 
     if protocol_rule is not None and protocol_rule[2] != transition_rule[2]:
         first_rule, second_rule = protocol_rule, transition_rule
@@ -2962,7 +3132,7 @@ def _archive_explicit_transition_pair_synthesis(
 def _archive_transition_commencement_synthesis(
     question: str, results: list[dict]
 ) -> tuple[str, list[dict]] | None:
-    """Pair a single norm's transitional rule with its operative start date."""
+    """Synthesize same-act transition, repeal (when asked), and commencement evidence."""
     if not _PROCESS_TRANSITION_SCOPE_REQUEST_RE.search(question):
         return None
     if _article_reference_mentions(question):
@@ -2973,10 +3143,25 @@ def _archive_transition_commencement_synthesis(
         for reference in parse_normative_references(question)
         if not reference.ambiguous and reference.year is not None and reference.number
     ]
-    identities = {_reference_identity(reference) for reference in references}
-    if len(identities) != 1:
-        return None
-    identity = next(iter(identities))
+    if references:
+        identities = {_reference_identity(reference) for reference in references}
+        if len(identities) != 1:
+            return None
+        identity = next(iter(identities))
+    else:
+        # A uniquely resolved title (currently “Código de Obras”) is an
+        # adequate norm scope. Never synthesize across multiple candidate acts.
+        if not _requested_archive_norm_title(question):
+            return None
+        identities = {
+            _reference_identity(reference)
+            for source in results
+            for reference in parse_normative_references(str(source.get("norma_ref") or ""))
+            if not reference.ambiguous and reference.year is not None and reference.number
+        }
+        if len(identities) != 1:
+            return None
+        identity = next(iter(identities))
 
     indexed_sources = []
     for index, source in enumerate(results, 1):
@@ -3004,6 +3189,25 @@ def _archive_transition_commencement_synthesis(
     if transition is None or commencement is None or transition[0] == commencement[0]:
         return None
 
+    asks_about_repeal = bool(re.search(r"\brevog", question, re.IGNORECASE))
+    repeal_candidates = [
+        entry
+        for entry in indexed_sources
+        if asks_about_repeal
+        and re.search(r"\brevog", entry[2], re.IGNORECASE)
+        and _NORMATIVE_CHANGE_EVIDENCE_RE.search(entry[2])
+    ]
+    # Prefer the article that actually names the acts over a neighboring
+    # commencement article whose tail says only “revogadas as disposições em
+    # contrário”. If no specific target is extracted, retain the generic
+    # clause as a candidate but keep the legal-effect warning below.
+    repeal = next(
+        (entry for entry in repeal_candidates if _NORMATIVE_REFERENCE_SPAN_RE.search(entry[2])),
+        repeal_candidates[0] if repeal_candidates else None,
+    )
+    if asks_about_repeal and repeal is None:
+        return None
+
     transition_index, transition_source, _transition_text = transition
     commencement_index, commencement_source, _commencement_text = commencement
     norm_label = str(transition_source.get("norma_ref") or "a norma consultada")
@@ -3011,12 +3215,31 @@ def _archive_transition_commencement_synthesis(
     commencement_article = str(
         commencement_source.get("dispositivo_ref") or "dispositivo de vigência"
     )
-    answer = (
+    answer = ""
+    claims = []
+    if repeal is not None:
+        repeal_index, repeal_source, repeal_text = repeal
+        repeal_article = str(repeal_source.get("dispositivo_ref") or "dispositivo de revogação")
+        repeal_excerpt = re.sub(r"\s+", " ", repeal_text).strip()
+        answer += (
+            f"A extração local da **{norm_label}** também contém uma cláusula de revogação expressa "
+            f"no **{repeal_article}**: “{repeal_excerpt}” [[{repeal_index}]]. "
+            "Ela deve ser conferida no PDF para identificar exatamente os atos abrangidos; a transcrição, "
+            "sozinha, não confirma os efeitos jurídicos sobre cada norma. "
+        )
+        claims.append(
+            {
+                "text": f"A extração do {repeal_article} contém cláusula de revogação expressa.",
+                "citation_ids": [str(repeal_source["citation_id"])],
+            }
+        )
+    commencement_excerpt = re.sub(r"\s+", " ", _commencement_text).strip()
+    answer += (
         f"Para processos de licenciamento protocolados até a entrada em vigor da **{norm_label}** "
         f"e ainda sem despacho decisório, o **{transition_article}** prevê análise segundo a "
         "legislação vigente na data do protocolo, salvo manifestação formal do interessado pela "
-        f"análise integral conforme a lei nova [[{transition_index}]]. O marco temporal está no "
-        f"**{commencement_article}**, que determina a entrada em vigor 90 dias após a publicação "
+        f"análise integral conforme a lei nova [[{transition_index}]]. O marco de vigência está no "
+        f"**{commencement_article}**: “{commencement_excerpt}” "
         f"[[{commencement_index}]].\n\n"
         "Na triagem, confira nos autos a data do protocolo, a publicação oficial e o cálculo da "
         "entrada em vigor, a existência de despacho decisório e eventual manifestação formal. "
@@ -3024,16 +3247,18 @@ def _archive_transition_commencement_synthesis(
         "alterações posteriores. A extração do PDF local ainda está pendente de revisão e não "
         "permite concluir qual regime se aplica ao processo concreto."
     )
-    claims = [
-        {
-            "text": f"{transition_article} da {norm_label} contém a regra transitória descrita.",
-            "citation_ids": [str(transition_source["citation_id"])],
-        },
-        {
-            "text": f"{commencement_article} da {norm_label} fixa a entrada em vigor 90 dias após a publicação.",
-            "citation_ids": [str(commencement_source["citation_id"])],
-        },
-    ]
+    claims.extend(
+        [
+            {
+                "text": f"{transition_article} da {norm_label} contém a regra transitória descrita.",
+                "citation_ids": [str(transition_source["citation_id"])],
+            },
+            {
+                "text": f"{commencement_article} da {norm_label} contém a cláusula de entrada em vigor transcrita.",
+                "citation_ids": [str(commencement_source["citation_id"])],
+            },
+        ]
+    )
     return answer, claims
 
 
@@ -3218,6 +3443,16 @@ def _article_topic_label(question: str) -> str | None:
         or _EXPLICIT_ARTICLE_TOPIC_RE.search(question)
     )
     if not match:
+        return None
+    instruction_before_topic = question[match.start() : match.start("topic")]
+    if re.search(
+        r"\b(?:n[aã]o\s+(?:conclua|afirme|presuma|determine)|sem\s+concluir)\b",
+        instruction_before_topic,
+        re.IGNORECASE,
+    ):
+        # A caution such as “cite os dispositivos e não conclua sobre vigência”
+        # is answer-scope guidance, not a topic that should filter out the
+        # explicitly requested articles.
         return None
     topic = re.sub(r"\s*\(contexto normativo:.*\)\s*$", "", match.group("topic"), flags=re.I)
     topic = re.sub(r"\s+", " ", topic).strip(" \t,.;:")
@@ -4223,7 +4458,9 @@ def retrieve_archive_evidence(question: str, *, limit: int = 8) -> list[dict]:
                 for row in all_articles
                 if _article_key(str(row.get("numero") or "")) in requested_articles
             ]
-            if paired_article_scope and transition_scope_question:
+            if transition_scope_question and (
+                paired_article_scope or exact_ref or requested_norm_title
+            ):
                 has_transition_clause = any(
                     _PROCESS_TRANSITION_EVIDENCE_RE.search(str(article.get("texto") or ""))
                     for article in all_articles
@@ -4234,6 +4471,13 @@ def retrieve_archive_evidence(question: str, *, limit: int = 8) -> list[dict]:
                         for article in all_articles
                         if _EFFECTIVE_DATE_OPERATIVE_RE.search(str(article.get("texto") or ""))
                     )
+            if transition_scope_question and re.search(r"\brevog", question, re.IGNORECASE):
+                target_articles.extend(
+                    article
+                    for article in all_articles
+                    if _NORMATIVE_CHANGE_EVIDENCE_RE.search(str(article.get("texto") or ""))
+                    and _NORMATIVE_REFERENCE_SPAN_RE.search(str(article.get("texto") or ""))
+                )
             if not target_articles:
                 continue
             identity_support = []
@@ -4436,27 +4680,6 @@ def retrieve_archive_evidence(question: str, *, limit: int = 8) -> list[dict]:
             or _supports_article_topic(question, row.get("full_text", ""))
         ]
 
-    if exact_ref and transition_scope_question:
-        # A question about pre-effective-date licensing is about the
-        # transitional provision, not any semantically nearby licensing
-        # article. Also keep the same norm's operative commencement clause:
-        # the transition rule is bounded by its entry-into-force date. A
-        # separate protocol-date rule is included only when explicitly asked.
-        # Otherwise return no evidence rather than unrelated provisions.
-        requested_protocol_articles = set(wanted_articles)
-        rows = [
-            row
-            for row in rows
-            if _PROCESS_TRANSITION_EVIDENCE_RE.search(str(row.get("full_text") or ""))
-            or _EFFECTIVE_DATE_OPERATIVE_RE.search(str(row.get("full_text") or ""))
-            or (
-                preserve_explicit_article_targets
-                and _article_key(str(row.get("dispositivo_ref") or ""))
-                in requested_protocol_articles
-                and _PROTOCOL_DATE_EVIDENCE_RE.search(str(row.get("full_text") or ""))
-            )
-        ]
-
     if exact_ref and _EFFECTIVE_DATE_ARTICLE_QUERY_RE.search(question):
         # A follow-up asking which provision sets the effective date needs the
         # operative commencement clause, not provisions that merely mention
@@ -4493,6 +4716,32 @@ def retrieve_archive_evidence(question: str, *, limit: int = 8) -> list[dict]:
                 if len(newest_origin_ids) == 1
                 else []
             )
+
+    if (exact_ref or requested_norm_title) and transition_scope_question:
+        # Resolve a title-only query to one archive edition before filtering
+        # to transition/repeal/commencement clauses; otherwise the opening
+        # article that identifies the title is removed before edition
+        # disambiguation. This remains retrieval only and does not establish
+        # legal effect.
+        requested_protocol_articles = set(wanted_articles)
+        asks_about_repeal = bool(re.search(r"\brevog", question, re.IGNORECASE))
+        rows = [
+            row
+            for row in rows
+            if _PROCESS_TRANSITION_EVIDENCE_RE.search(str(row.get("full_text") or ""))
+            or _EFFECTIVE_DATE_OPERATIVE_RE.search(str(row.get("full_text") or ""))
+            or (
+                asks_about_repeal
+                and re.search(r"\brevog", str(row.get("full_text") or ""), re.IGNORECASE)
+                and _NORMATIVE_CHANGE_EVIDENCE_RE.search(str(row.get("full_text") or ""))
+            )
+            or (
+                preserve_explicit_article_targets
+                and _article_key(str(row.get("dispositivo_ref") or ""))
+                in requested_protocol_articles
+                and _PROTOCOL_DATE_EVIDENCE_RE.search(str(row.get("full_text") or ""))
+            )
+        ]
 
     # Identical PDFs may coexist in the archive (for example, one filename
     # with a mistaken year and another with the correct year). Avoid spending
@@ -4579,7 +4828,7 @@ def retrieve_archive_evidence(question: str, *, limit: int = 8) -> list[dict]:
                 "inventory_complete": complete_inventory,
                 "complete": complete_inventory,
             }
-    elif exact_ref and not wanted_articles:
+    elif (exact_ref or (requested_norm_title and transition_scope_question)) and not wanted_articles:
         if transition_scope_question:
             # The prior filter already selected only qualifying transition
             # evidence. Do not re-rank it away using generic lexical overlap.
@@ -4627,7 +4876,28 @@ def retrieve_archive_evidence(question: str, *, limit: int = 8) -> list[dict]:
         rows = rows[: max(1, min(max(limit, len(requested_facets)), 12))]
     elif exact_ref and wanted_articles:
         requested = set(wanted_articles)
-        rows = [row for row in rows if _article_key(row.get("dispositivo_ref", "")) in requested]
+        rows = [
+            row
+            for row in rows
+            if _article_key(row.get("dispositivo_ref", "")) in requested
+            or (
+                transition_scope_question
+                and (
+                    _PROCESS_TRANSITION_EVIDENCE_RE.search(str(row.get("full_text") or ""))
+                    or _EFFECTIVE_DATE_OPERATIVE_RE.search(str(row.get("full_text") or ""))
+                    or (
+                        re.search(r"\brevog", question, re.IGNORECASE)
+                        and re.search(r"\brevog", str(row.get("full_text") or ""), re.IGNORECASE)
+                        and _NORMATIVE_CHANGE_EVIDENCE_RE.search(
+                            str(row.get("full_text") or "")
+                        )
+                        and _NORMATIVE_REFERENCE_SPAN_RE.search(
+                            str(row.get("full_text") or "")
+                        )
+                    )
+                )
+            )
+        ]
         if article_topic_phrase and not preserve_explicit_article_targets:
             rows = [
                 row for row in rows if _supports_article_topic(question, row.get("full_text", ""))
@@ -4638,6 +4908,8 @@ def retrieve_archive_evidence(question: str, *, limit: int = 8) -> list[dict]:
                 _article_key(row.get("dispositivo_ref", "")), len(article_order)
             )
         )
+        if transition_scope_question:
+            rows.sort(key=lambda row: (row.get("_device_order", 0), row.get("dispositivo_ref", "")))
         found = {_article_key(row.get("dispositivo_ref", "")) for row in rows}
         missing = [article for article in wanted_articles if article not in found]
         for row in rows:
@@ -4647,7 +4919,13 @@ def retrieve_archive_evidence(question: str, *, limit: int = 8) -> list[dict]:
                 "missing_articles": missing,
                 "complete": not missing,
             }
-        rows = rows[: min(limit, max(len(wanted_articles), 1))]
+        if transition_scope_question:
+            # A transition/repeal question needs the requested provision plus
+            # the same act's operative commencement and repeal clauses. The
+            # generic top-k must not silently discard those evidence roles.
+            rows = rows[: min(max(limit, len(rows), 3), 32)]
+        else:
+            rows = rows[: min(limit, max(len(wanted_articles), 1))]
     elif paired_article_scope:
         rows.sort(key=lambda item: (item["norma_ref"], item["dispositivo_ref"]))
         candidate_rows = rows
@@ -6199,13 +6477,7 @@ def stream_archive_qa_answer(
         # a comparison; when retrieval is empty, fail closed even if the
         # broader relation scan found tangential candidates.
         if _has_ambiguous_multi_norm_article_scope(question):
-            answer = (
-                "Não consegui associar com segurança cada artigo à norma correspondente nesta pergunta, "
-                "que menciona mais de uma norma. Para evitar atribuir um dispositivo à lei errada, "
-                "informe cada referência completa (artigo, tipo, número e ano) ou consulte um dispositivo "
-                "por vez. Esta busca não determina a redação vigente hoje; confira o texto consolidado "
-                "e o histórico oficial de alterações."
-            )
+            answer = _ambiguous_article_scope_clarification(question)
             reason_code = "qa_archive_ambiguous_multi_norm_article_scope"
             coverage = {
                 "corpus": "acervo histórico local pesquisável",
@@ -6713,14 +6985,7 @@ def stream_archive_qa_answer(
         }
         return
 
-    repeal_transition_relation = bool(
-        re.search(
-            r"\bse\s+articula\s+com\b.{0,160}\bregra\s+de\s+transi[cç][aã]o\b",
-            question,
-            re.IGNORECASE | re.DOTALL,
-        )
-        and re.search(r"\brevog", question, re.IGNORECASE)
-    )
+    repeal_transition_relation = bool(_REPEAL_TRANSITION_RELATION_RE.search(question))
     if repeal_transition_relation:
         # The explicit article texts can support a bounded comparison even
         # when extraction coverage is incomplete. The helper quotes only the
@@ -8172,6 +8437,7 @@ def stream_archive_qa_answer(
         generation_question = re.sub(r"\s+", " ", generation_question).strip(" \t,;:")
     prompt = build_prompt(context, generation_question)
     prompt += _multi_norm_synthesis_instruction(question)
+    prompt += _same_norm_article_synthesis_instruction(question)
     if whole_norm_overview:
         prompt += (
             "\n\nINSTRUÇÃO ESPECÍFICA — VISÃO GERAL DA NORMA:\n"

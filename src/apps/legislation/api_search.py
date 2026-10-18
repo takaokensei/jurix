@@ -94,6 +94,8 @@ _CONTEXTUAL_NORM_FOLLOWUP_RE = re.compile(
     r"|(?:(?:e|mas|ent[aã]o)\s+)?(?:essa|esta|a\s+mesma)\s+"
     r"(?:lei|norma)\b"
     r"|com\s+base\s+(?:no|neste|nesse)\s+(?:trecho|dispositivo|artigo|resposta)\b"
+    r"|(?:com|diante\s+de)\s+(?:esses|estes|tais)\s+"
+    r"(?:trechos|dispositivos|fontes|evid[eê]ncias)\b"
     r"|(?:explique|esclare[cç]a|detalhe)\s+(?:isso|esse\s+trecho|o\s+trecho|o\s+dispositivo)\b"
     r"|o\s+que\s+(?:isso|esse\s+trecho|o\s+dispositivo)\s+(?:significa|quer\s+dizer)\b)",
     re.IGNORECASE,
@@ -573,6 +575,26 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
     if session_id is not None and (isinstance(session_id, bool) or not isinstance(session_id, int)):
         return JsonResponse({"success": False, "error": "Invalid session_id"}, status=400)
 
+    # A persisted conversation keeps the corpus used by its first answer. This
+    # restores old client URLs safely and prevents later turns from silently
+    # switching between reviewed norms and unreviewed local PDFs.
+    if request.user.is_authenticated and session_id is not None:
+        existing_session = ChatSession.objects.filter(
+            pk=session_id, user=request.user
+        ).only("pk").first()
+        if existing_session and existing_session.messages.filter(role="user").exists():
+            archive_qa = existing_session.messages.filter(
+                Q(role="assistant", metadata_json__filters__corpus="archive-qa-unvalidated")
+                | Q(role="user", metadata_json__corpus="archive-qa-unvalidated")
+            ).exists()
+            if archive_qa and not getattr(
+                settings, "NORMATIVE_ARCHIVE_ASSISTANT_ENABLED", False
+            ):
+                return JsonResponse(
+                    {"success": False, "error": "O acervo desta conversa está indisponível neste ambiente."},
+                    status=404,
+                )
+
     if not question:
         return JsonResponse({"success": False, "error": "Question is required"}, status=400)
 
@@ -613,7 +635,6 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
         "published_to": retrieval_options.published_to,
         "corpus": "archive-qa-unvalidated" if archive_qa else "consolidated",
     }
-
     # Session management
     chat_session = None
     chat_turn = None
@@ -762,6 +783,11 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                         role="user",
                         content=question,
                         turn=chat_turn,
+                        metadata_json={
+                            "corpus": (
+                                "archive-qa-unvalidated" if archive_qa else "consolidated"
+                            )
+                        },
                     )
                 ChatSession.objects.filter(pk=chat_session.pk).update(updated_at=timezone.now())
         except TurnPayloadConflict as exc:
@@ -907,8 +933,19 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     if not grounded and not reason_code:
                         reason_code = retrieval_reason_code or "evidence_insufficient"
                     final_answer = no_retrieval_message(reason_code) or item.get("answer", "")
+                    # The in-flight `sources` event can contain supplemental or
+                    # duplicate retrieval candidates. Citation markers in the
+                    # final answer are indexed against the source list attached
+                    # to this `done` event, so reconcile against that exact list
+                    # instead of reusing the earlier display list.
+                    done_raw_sources = item.get("sources")
+                    final_sources_list = (
+                        serialize_citation_sources(done_raw_sources)
+                        if isinstance(done_raw_sources, list)
+                        else sources_list
+                    )
                     answer_sources = select_answer_citation_sources(
-                        sources_list,
+                        final_sources_list,
                         final_answer,
                         item.get("grounding") if grounded else {},
                     )

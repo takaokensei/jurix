@@ -86,6 +86,27 @@ def test_bare_wh_followup_inherits_nearest_unambiguous_norm():
     )
 
 
+def test_followup_referring_to_prior_evidence_inherits_its_unambiguous_norm():
+    question = (
+        "Com esses trechos, posso concluir que o processo deve necessariamente ser "
+        "analisado pela lei antiga?"
+    )
+    result = _resolve_article_followup(
+        question,
+        "Em um caso hipotético, pedido de licenciamento sob a Lei Complementar nº 258/2024; "
+        "considere os Arts. 262 e 266.",
+    )
+
+    assert result == question + " (contexto normativo: Lei Complementar nº 258/2024)"
+
+
+def test_followup_referring_to_prior_evidence_does_not_choose_between_norms():
+    question = "Diante desses dispositivos, qual lei se aplica?"
+    history = "Compare a LC 258/2024 com a LC 55/2004 neste processo."
+
+    assert _resolve_article_followup(question, history) == question
+
+
 def test_effective_date_followup_inherits_nearest_unambiguous_norm():
     result = _resolve_article_followup(
         "E quando a lei passou a vigorar?",
