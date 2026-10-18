@@ -166,6 +166,8 @@ def test_reviewer_sees_identity_form_and_registration_stays_pending(review_candi
         page = client.get(url)
         assert page.status_code == 200
         html = page.content.decode()
+        assert html.count("<main") == 1
+        assert 'id="main-content"' in html
         assert "Conferir identidade normativa" in html
         assert "Texto ainda não consolidado" in html
         assert "Esta ação registra apenas a identidade" in html

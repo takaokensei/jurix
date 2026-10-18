@@ -434,6 +434,9 @@ html[data-sidebar-collapsed="true"] .figma-sidebar .figma-nav-list { gap: 7px; }
 /* The composer is fixed over the message scroller. Its measured height is
    supplied by chat.js so the last response actions remain reachable. */
 .figma-theme .figma-scroll-container {
+  /* Chat uses scripted re-anchoring while streaming. Smooth programmatic
+     scrolling can leave citations behind the fixed composer during motion. */
+  scroll-behavior: auto;
   padding-bottom: max(80px, var(--jurix-composer-clearance, 0px));
 }
 

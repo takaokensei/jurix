@@ -5,6 +5,8 @@
 .jurix-sidebar-search { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px; padding: 0; border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--figma-text-muted); cursor: pointer; }
 .jurix-sidebar-search:hover { background: var(--figma-bg-card); color: var(--figma-text-white); }
 .jurix-sidebar .workspace-new-action, .jurix-sidebar .workspace-nav-item { min-height: 44px; font-size: .875rem; }
+.jurix-sidebar .workspace-archive-action { min-height: 44px; padding-block: 6px; color: var(--figma-text-muted); font-size: .78rem; }
+.jurix-sidebar .workspace-archive-action small { color: var(--figma-amber, #fbbf24); font-size: .72rem; }
 .jurix-sidebar .workspace-nav { flex: 0 0 auto; margin: 0; overflow: visible; }
 .jurix-sidebar .workspace-brand-block { flex: 0 0 auto; }
 .jurix-sidebar-recents { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }

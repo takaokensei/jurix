@@ -1,0 +1,83 @@
+{% extends "legislation/workspace/base.html" %}
+{% load static %}
+
+{% block title %}Dossiê temporal — {{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }} — Jurix{% endblock %}
+{% block section_name %}Dossiê temporal{% endblock %}
+{% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Dossiê temporal' %}{% endblock %}
+{% block extra_css %}{% if normative_graph_enabled %}<link rel="stylesheet" href="{% static 'css/jurix-normative-graph.css' %}?v=20261017-casefile1">{% endif %}{% endblock %}
+{% block extra_js %}{% if normative_graph_enabled %}<script src="{% static 'js/jurix-normative-graph.js' %}?v=20261017-casefile1" defer></script>{% endif %}{% endblock %}
+
+{% block content %}
+<section class="workspace-page-header" aria-labelledby="casefile-title">
+    <div>
+        <span class="workspace-eyebrow">Dossiê normativo · consulta em {{ as_of }}</span>
+        <h1 id="casefile-title">{{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }}</h1>
+        {% if norma.ementa %}<p>{{ norma.ementa }}</p>{% endif %}
+    </div>
+    <a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_detail' norma.pk %}">Abrir ficha da norma</a>
+</section>
+
+<form class="workspace-search-panel" method="get" aria-label="Definir data do dossiê">
+    <label>Redação projetada até <input type="date" name="as_of" value="{{ as_of }}" required></label>
+    <button class="workspace-button workspace-button-primary" type="submit">Atualizar dossiê</button>
+</form>
+{% if error %}<p class="workspace-alert" role="alert">{{ error }}</p>{% endif %}
+<p class="workspace-search-caveat" role="note"><strong>Limite jurídico:</strong> a projeção usa somente documentos e decisões revisados disponíveis no sistema. Cobertura incompleta não prova inexistência de alteração; a saída não determina, por si só, vigência nem aplicabilidade ao caso concreto. Confira as fontes oficiais e submeta conclusões a revisão jurídica.</p>
+
+{% if casefile %}
+<p class="workspace-badge" aria-label="Identificador de versão do dossiê">Dossiê {{ casefile.casefile_id|slice:":16" }} · {{ projection_status_label }} · {{ casefile.projection.coverage.device_count }} dispositivos cobertos</p>
+<nav class="workspace-filter-row" aria-label="Seções do dossiê">
+    <a class="workspace-button workspace-button-secondary" href="#texto-na-data">Texto na data</a>
+    <a class="workspace-button workspace-button-secondary" href="#alteracoes">Alterações</a>
+    <a class="workspace-button workspace-button-secondary" href="#grafo">Grafo</a>
+    <a class="workspace-button workspace-button-secondary" href="#fontes">Fontes</a>
+</nav>
+
+<section class="workspace-results-section" id="texto-na-data" aria-labelledby="casefile-text-title">
+    <div class="workspace-section-heading"><div><span class="workspace-eyebrow">Projeção temporal revisada</span><h2 id="casefile-text-title">Texto na data</h2></div><span class="workspace-badge">{{ casefile.projection.devices|length }} dispositivos</span></div>
+    {% if casefile.projection.devices %}
+    <div class="workspace-result-list">
+        {% for device in casefile.projected_devices %}
+        <article class="workspace-result-card">
+            <div class="workspace-result-meta"><strong>{{ device.label }}</strong><span>Situação na projeção: {{ device.legal_status }}</span></div>
+            <p>{{ device.text|linebreaksbr }}</p>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}<div class="workspace-empty-state"><strong>Não há texto histórico reconstruível com segurança para esta data.</strong><p>O sistema não substituiu a redação histórica por um texto atual.</p></div>{% endif %}
+</section>
+
+<section class="workspace-results-section" id="alteracoes" aria-labelledby="casefile-events-title">
+    <div class="workspace-section-heading"><div><span class="workspace-eyebrow">Eventos registrados</span><h2 id="casefile-events-title">Alterações</h2></div></div>
+    <div class="workspace-result-list">
+        {% for item in timeline %}
+        <article class="workspace-result-card">
+            <div class="workspace-result-meta"><span>{% if item.pending %}Pendente de revisão{% elif item.kind == "publication" %}Publicação{% elif item.kind == "effective" %}Efeito/vigência registrada{% else %}Evento normativo{% endif %}</span>{% if item.date_display %}<time>{{ item.date_display }}</time>{% endif %}</div>
+            <h3>{{ item.title }}</h3><p>{{ item.description }}</p>
+            {% if item.source_norma_id %}<a href="{% url 'legislation:norma_detail' item.source_norma_id %}">Abrir norma fonte</a>{% endif %}
+        </article>
+        {% empty %}<div class="workspace-empty-state"><strong>Nenhuma alteração registrada nesta linha do tempo.</strong><p>Isso não confirma que a norma nunca tenha sido alterada.</p></div>{% endfor %}
+    </div>
+</section>
+
+<section class="workspace-results-section" id="grafo" aria-labelledby="casefile-graph-title">
+    <div class="workspace-section-heading"><div><span class="workspace-eyebrow">Relações normativas</span><h2 id="casefile-graph-title">Grafo</h2></div></div>
+    {% if normative_graph_enabled %}{% include 'legislation/_norma_relations.html' with norma=norma initial_graph_payload_id='normative-casefile-graph' %}{{ casefile.graph|json_script:"normative-casefile-graph" }}{% else %}<div class="workspace-empty-state"><strong>Grafo desabilitado nesta instalação.</strong></div>{% endif %}
+</section>
+
+<section class="workspace-results-section" id="fontes" aria-labelledby="casefile-sources-title">
+    <div class="workspace-section-heading"><div><span class="workspace-eyebrow">Rastreabilidade</span><h2 id="casefile-sources-title">Fontes</h2></div><span class="workspace-badge">{{ casefile.evidence_package.sources|length }} evidências</span></div>
+    <p>O pacote estruturado (<code>{{ casefile.evidence_package.schema_version }}</code>) associa cada evidência a uma versão temporal e, quando disponível, a uma fonte oficial ou PDF revisado. Identificador do dossiê: <code>{{ casefile.casefile_id }}</code>.</p>
+    <div class="workspace-result-list">
+        {% for source in casefile.evidence_package.sources|slice:":50" %}
+        <article class="workspace-result-card">
+            <div class="workspace-result-meta"><strong>{{ source.label }}</strong>{% if source.dispositivo %}<span>{{ source.dispositivo }}</span>{% endif %}{% if source.temporal_version.as_of %}<span>Referência em {{ source.temporal_version.as_of }}</span>{% endif %}</div>
+            <p>{{ source.excerpt|truncatechars:700 }}</p>
+            <div class="workspace-filter-row">{% if source.official_url %}<a class="workspace-button workspace-button-secondary" href="{{ source.official_url }}" target="_blank" rel="noopener noreferrer">Abrir fonte oficial</a>{% endif %}{% if source.local_pdf_url %}<a class="workspace-button workspace-button-secondary" href="{{ source.local_pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir PDF revisado</a>{% endif %}</div>
+        </article>
+        {% empty %}<div class="workspace-empty-state"><strong>Nenhuma evidência citável foi gerada.</strong><p>Consulte o estado de cobertura acima; não interprete ausência de evidência como prova de inexistência.</p></div>{% endfor %}
+    </div>
+    {% if casefile.evidence_package.sources|length > 50 %}<p>Exibindo as primeiras 50 evidências de {{ casefile.evidence_package.sources|length }}; o pacote versionado contém a contagem completa.</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

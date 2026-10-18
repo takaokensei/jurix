@@ -1,6 +1,25 @@
 (() => {
   'use strict';
 
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest('a[href^="#"]');
+    if (!link) return;
+    const caseNavigationMenu = link.closest('.pgm-demo__case-nav-menu');
+    if (caseNavigationMenu) {
+      const disclosure = caseNavigationMenu.closest('details');
+      if (disclosure) window.setTimeout(() => { disclosure.open = false; }, 0);
+    }
+    let targetId;
+    try {
+      targetId = decodeURIComponent(link.hash.slice(1));
+    } catch {
+      return;
+    }
+    const target = document.getElementById(targetId);
+    const disclosure = target?.closest('[data-case-disclosure]');
+    if (disclosure && !disclosure.open) disclosure.open = true;
+  });
+
   const namespace = 'http://www.w3.org/2000/svg';
   const graph = document.querySelector('.pgm-demo__network');
   const svg = graph?.querySelector('.pgm-demo__edges');

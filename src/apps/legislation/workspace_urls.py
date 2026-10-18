@@ -17,6 +17,11 @@ urlpatterns = [
     path("pesquisa/", workspace_views.legal_search_view, name="legal_search"),
     path("explorar/", workspace_views.explore_normative_graph_view, name="explore"),
     path(
+        "explorar/norma/<int:pk>/",
+        workspace_views.normative_casefile_view,
+        name="normative_casefile",
+    ),
+    path(
         "explorar/demo-consolidacao/",
         workspace_views.pgm_consolidation_demo_view,
         name="pgm_consolidation_demo",

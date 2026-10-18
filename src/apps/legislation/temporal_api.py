@@ -9,10 +9,10 @@ from django.views.decorators.http import require_GET
 from src.apps.legislation.document_models import NormativeSnapshot
 from src.apps.legislation.document_views import local_pdf_available
 from src.apps.legislation.models import Norma
-from src.processing import normative_projection
 from src.processing.conflict_detection import detect_for_norma
 from src.processing.corpus_coverage import current_corpus_coverage
 from src.processing.corpus_identity import get_corpus_revision
+from src.processing.normative_casefile import build_normative_casefile
 from src.processing.official_urls import safe_official_url
 from src.processing.temporal_scope import build_norma_timeline, parse_iso_date, temporal_status
 
@@ -79,7 +79,8 @@ def norma_version_api(request: HttpRequest, pk: int) -> JsonResponse:
         return JsonResponse({"success": False, "error": str(exc)}, status=400)
     if as_of is None:
         return JsonResponse({"success": False, "error": "Informe as_of no formato AAAA-MM-DD."}, status=400)
-    projection = normative_projection.project_norma_as_of(norma, as_of)
+    casefile = build_normative_casefile(norma, as_of=as_of)
+    projection = casefile["projection"]
     snapshot = NormativeSnapshot.objects.filter(
         norma=norma,
         as_of=as_of,
@@ -98,6 +99,9 @@ def norma_version_api(request: HttpRequest, pk: int) -> JsonResponse:
             "version_hash": projection.content_sha256,
             "input_hash": projection.input_sha256,
             "coverage": projection.coverage,
+            "casefile_id": casefile["casefile_id"],
+            "graph": casefile["graph"],
+            "evidence_package": casefile["evidence_package"],
             "corpus_coverage": current_corpus_coverage(get_corpus_revision()),
             "document": (
                 {

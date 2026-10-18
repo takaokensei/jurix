@@ -4,11 +4,11 @@
 {% block title %}LC 258/2024, Art. 260 · Jurix{% endblock %}
 {% block section_name %}Relações da LC 258/2024{% endblock %}
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Grafo demonstrativo · QA' %}{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'css/jurix-pgm-demo.css' %}?v=20261016-ctm-change-set1">{% endblock %}
-{% block extra_js %}<script src="{% static 'js/jurix-pgm-demo.js' %}?v=20261013-7" defer></script>{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/jurix-pgm-demo.css' %}?v=20261018-anchor-clearance1">{% endblock %}
+{% block extra_js %}<script src="{% static 'js/jurix-pgm-demo.js' %}?v=20261018-case-disclosure2" defer></script>{% endblock %}
 
 {% block content %}
-<main class="pgm-demo" aria-labelledby="pgm-demo-title">
+<div class="pgm-demo" aria-labelledby="pgm-demo-title">
   <header class="workspace-page-header">
     <div>
       <span class="workspace-eyebrow">Demonstração PGM · ambiente QA</span>
@@ -18,11 +18,32 @@
     <span class="pgm-demo__status">Grafo de evidências · revisão jurídica pendente</span>
   </header>
 
+  <nav class="pgm-demo__case-nav" aria-label="Ir direto à parte da demonstração">
+    <span>Nesta demonstração</span>
+    <a class="workspace-button workspace-button-primary" href="#pgm-network-title">Abrir grafo de relações</a>
+    <a class="workspace-button workspace-button-secondary" href="#pgm-ctm-change-set-title">Ver antes e depois</a>
+    <a class="workspace-button workspace-button-secondary" href="#pgm-pipeline-title">Ver cobertura e limites</a>
+    <details class="pgm-demo__case-nav-more">
+      <summary>Outras cadeias desta demonstração</summary>
+      <div class="pgm-demo__case-nav-menu">
+        <a href="#pgm-amendment-title">LC 208/2022 → LC 258/2024 · Art. 14</a>
+        <a href="#pgm-history-title">Histórico da LC 208/2022</a>
+        <a href="#pgm-case-title">Processo de licenciamento · transição</a>
+        <a href="#pgm-lc55-history-title">Histórico da LC 55/2004</a>
+        <a href="#pgm-evidence-title">Fonte do Art. 260</a>
+        <a href="#pgm-transition-title">O que permanece inconclusivo</a>
+      </div>
+    </details>
+  </nav>
+
   <section class="pgm-demo__notice" role="note" aria-label="Limites jurídicos desta demonstração">
     <strong>As arestas representam menções textuais, não conclusões jurídicas validadas.</strong>
     <p>A LC nº 258/2024, Art. 260, diz “Ficam revogados” e lista seis leis e o Art. 21 da Lei Promulgada nº 275/2009. A tela demonstra as menções do texto; não certifica identidade, publicação, vigência, alcance ou efeitos no tempo. Nenhuma relação foi promovida ao grafo do produto.</p>
   </section>
 
+  <details class="pgm-demo__case-disclosure" data-case-disclosure>
+    <summary>Conferir cotejos do Código Tributário Municipal (CTM) · LC 271/2025</summary>
+    <div class="pgm-demo__case-disclosure-content">
   <section class="pgm-demo__case" aria-labelledby="pgm-ctm-art20-title">
     <header>
       <span class="workspace-eyebrow">Cotejo temporal · Código Tributário Municipal</span>
@@ -167,6 +188,8 @@
     </section>
     <p class="pgm-demo__notice" role="note"><strong>Escopo jurídico:</strong> esta tela evidencia diferenças entre dois textos-fonte, não determina por si só a vigência atual. Para uma consolidação utilizável pela PGM ainda é necessária validação de identidade, publicação, integralidade do texto, alterações posteriores e revisão jurídica.</p>
   </section>
+    </div>
+  </details>
 
   <section class="pgm-demo__pipeline" aria-labelledby="pgm-pipeline-title">
     <h2 id="pgm-pipeline-title">Cobertura documental deste caso</h2>
@@ -356,6 +379,9 @@
     </div>
   </section>
 
+  <details class="pgm-demo__case-disclosure" data-case-disclosure>
+    <summary>Explorar outras cadeias e contexto jurídico desta demonstração</summary>
+    <div class="pgm-demo__case-disclosure-content">
   <section class="pgm-demo__case" aria-labelledby="pgm-amendment-title">
     <header>
       <span class="workspace-eyebrow">Confronto de redações · atos promulgados</span>
@@ -575,7 +601,7 @@
       <article>
         <span class="pgm-demo__target-index">Texto anterior · candidato do acervo</span>
         <h3>LC nº 55/2004 · Art. 21</h3>
-        {% if old_article_21 %}<details class="pgm-demo__full-evidence"><summary>Ver trecho extraído do Art. 21</summary><blockquote>{{ old_article_21.quote }}</blockquote></details>{% else %}<p>O Art. 21 não foi localizado na extração candidata; consulte o PDF diretamente.</p>{% endif %}
+        {% if old_article_21 %}<details class="pgm-demo__full-evidence"><summary>Ver trecho extraído do Art. 21</summary><blockquote>{{ old_article_21.quote }}</blockquote></details>{% elif lc55_evidence_document %}<p>O PDF candidato da LC nº 55/2004 foi localizado, mas o Art. 21 não aparece na extração disponível. Confira o documento original antes de comparar.</p>{% else %}<p>O PDF candidato da LC nº 55/2004 não está disponível nesta instância. A menção no Art. 260 da LC nº 258/2024 é mostrada como referência textual, sem cotejo do conteúdo do Art. 21.</p>{% endif %}
         <p><strong>Limite da evidência:</strong> o PDF local é uma consolidação de julho de 2019, não a redação histórica completa na data de qualquer protocolo posterior.</p>
         {% if old_article_21_pdf_url %}<a href="{{ old_article_21_pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir Art. 21 no PDF arquivado{% if old_article_21.page %}, p. {{ old_article_21.page }}{% endif %}</a>{% endif %}
       </article>
@@ -675,6 +701,9 @@
     </aside>
   </section>
 
+    </div>
+  </details>
+
   <section class="pgm-demo__evidence" aria-labelledby="pgm-evidence-title">
     <div><span class="workspace-eyebrow">Trecho que fundamenta as sete referências</span><h2 id="pgm-evidence-title">Evidência do Art. 260</h2></div>
     <article class="pgm-demo__quote">
@@ -697,5 +726,5 @@
     {% endif %}
     <a class="workspace-button workspace-button-secondary" href="{% url 'workspace:explore' %}">Voltar à exploração normativa</a>
   </section>
-</main>
+</div>
 {% endblock %}

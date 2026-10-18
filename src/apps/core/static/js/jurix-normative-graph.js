@@ -186,7 +186,18 @@ function setupRelations(root) {
   const panel = root.querySelector('[data-relations-panel]');
   const panelContent = root.querySelector('[data-relations-panel-content]');
   const closeButton = root.querySelector('[data-relations-close]');
+  const initialPayloadNode = root.dataset.initialPayloadId
+    ? document.getElementById(root.dataset.initialPayloadId)
+    : null;
   let payload = null;
+  if (initialPayloadNode) {
+    try {
+      const initialPayload = JSON.parse(initialPayloadNode.textContent || 'null');
+      if (Array.isArray(initialPayload?.nodes) && Array.isArray(initialPayload?.edges)) payload = initialPayload;
+    } catch {
+      payload = null;
+    }
+  }
   let loading = false;
   let trigger = null;
 
@@ -240,7 +251,11 @@ function setupRelations(root) {
   };
 
   const load = async () => {
-    if (payload || loading) return;
+    if (payload) {
+      draw();
+      return;
+    }
+    if (loading) return;
     loading = true;
     retry.hidden = true;
     setStatus('Carregando relações normativas…', 'loading');

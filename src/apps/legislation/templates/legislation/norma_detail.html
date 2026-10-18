@@ -70,6 +70,7 @@
           <summary>Mais ações</summary>
           <div class="legal-detail-secondary-actions">
         <a href="{% url 'legislation:norma_compare' norma.pk %}" class="btn">Comparar Versões</a>
+        {% if normative_history_enabled %}<a href="{% url 'workspace:normative_casefile' norma.pk %}" class="btn btn-secondary">Abrir dossiê temporal</a>{% endif %}
         <a href="{% url 'legislation:norma_compare' norma.pk %}?history=1&amp;mode=precedent" class="btn btn-secondary">Checar alteração desde uma decisão</a>
         <a href="{% url 'legislation:norma_tree' norma.pk %}" class="btn btn-secondary">Visualizar Árvore</a>
         <button type="button" class="btn btn-secondary" data-copy-citation="{{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }} — {{ norma.ementa|default:'Norma municipal consolidada' }}">Copiar citação</button>

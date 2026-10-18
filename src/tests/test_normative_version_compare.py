@@ -4,9 +4,11 @@ from unittest.mock import patch
 
 import pytest
 from django.test import Client, override_settings
+from django.urls import reverse
 
 from src.apps.legislation.models import Dispositivo, Norma
 from src.processing.legal_diff import build_version_diff
+from src.processing.normative_casefile import _casefile_digest
 
 
 @pytest.fixture
@@ -86,6 +88,60 @@ def test_projected_device_label_is_human_readable_not_a_hash():
     assert row["structural_key"] == "opaque-stable-hash"
 
 
+def test_casefile_digest_tracks_content_and_ignores_generation_time():
+    as_of = date(2026, 10, 17)
+    projection = SimpleNamespace(
+        status="complete",
+        input_sha256="input-v1",
+        content_sha256="content-v1",
+    )
+    graph = {
+        "scope": "reviewed_normative_relation",
+        "nodes": [{"id": "norma:1", "label": "Lei 1"}],
+        "edges": [{"id": "event:1", "action": "amends"}],
+        "truncated": False,
+        "filters": {},
+    }
+    evidence = {
+        "schema_version": "jurix-evidence-v1",
+        "generated_at": "2026-10-17T10:00:00Z",
+        "corpus_coverage": {"complete": True},
+        "sources": [{"id": "source:1", "excerpt": "Art. 1º"}],
+    }
+    kwargs = {
+        "corpus_revision": {"revision": 4, "digest": "corpus-v1"},
+        "projection": projection,
+        "graph": graph,
+        "evidence_package": evidence,
+    }
+    baseline = _casefile_digest(1, as_of, **kwargs)
+
+    timestamp_only = {**evidence, "generated_at": "2026-10-17T11:00:00Z"}
+    assert _casefile_digest(
+        1, as_of, **{**kwargs, "evidence_package": timestamp_only}
+    ) == baseline
+
+    changed_projection = SimpleNamespace(
+        status="complete",
+        input_sha256="input-v1",
+        content_sha256="content-v2",
+    )
+    assert _casefile_digest(
+        1, as_of, **{**kwargs, "projection": changed_projection}
+    ) != baseline
+
+    changed_graph = {**graph, "edges": [{"id": "event:2", "action": "repeals"}]}
+    assert _casefile_digest(1, as_of, **{**kwargs, "graph": changed_graph}) != baseline
+
+    changed_evidence = {
+        **evidence,
+        "sources": [{"id": "source:1", "excerpt": "Art. 1º alterado"}],
+    }
+    assert _casefile_digest(
+        1, as_of, **{**kwargs, "evidence_package": changed_evidence}
+    ) != baseline
+
+
 def _projection(when, *, status="complete", devices=()):
     return SimpleNamespace(
         as_of=when,
@@ -99,6 +155,15 @@ def _projection(when, *, status="complete", devices=()):
     )
 
 
+def _casefile(projection):
+    return {
+        "projection": projection,
+        "graph": {"nodes": [], "edges": []},
+        "evidence_package": {"sources": [], "schema_version": "jurix-evidence-v1"},
+        "casefile_id": "qa-casefile",
+    }
+
+
 @pytest.mark.django_db
 @override_settings(NORMATIVE_HISTORY_ENABLED=True)
 def test_temporal_compare_keeps_dates_in_url_and_labels_jurix_projection(norma):
@@ -107,8 +172,11 @@ def test_temporal_compare_keeps_dates_in_url_and_labels_jurix_projection(norma):
     old = [_device("art:1", "Texto antigo")]
     new = [_device("art:1", "Texto novo")]
     with patch(
-        "src.processing.normative_projection.project_norma_as_of",
-        side_effect=[_projection(before, devices=old), _projection(after, devices=new)],
+        "src.processing.normative_casefile.build_normative_casefile",
+        side_effect=[
+            _casefile(_projection(before, devices=old)),
+            _casefile(_projection(after, devices=new)),
+        ],
     ), patch(
         "src.apps.legislation.views.build_norma_timeline",
         return_value=[
@@ -160,8 +228,11 @@ def test_temporal_compare_explains_unavailable_projection_without_latest_fallbac
         status="not_reconstructable",
     )
     with patch(
-        "src.processing.normative_projection.project_norma_as_of",
-        side_effect=[missing, _projection(date(2026, 1, 1), devices=[_device("art:1", "Atual")])],
+        "src.processing.normative_casefile.build_normative_casefile",
+        side_effect=[
+            _casefile(missing),
+            _casefile(_projection(date(2026, 1, 1), devices=[_device("art:1", "Atual")])),
+        ],
     ):
         response = Client().get(
             f"/normas/{norma.pk}/compare/?from_as_of=2025-01-01&to_as_of=2026-01-01"
@@ -267,10 +338,10 @@ def test_precedent_mode_can_focus_one_device_without_conflating_other_articles(n
         SimpleNamespace(source=other, text="Outro texto atual", legal_status="in_force"),
     ]
     with patch(
-        "src.processing.normative_projection.project_norma_as_of",
+        "src.processing.normative_casefile.build_normative_casefile",
         side_effect=[
-            _projection(date(2025, 1, 1), devices=before_devices),
-            _projection(date(2026, 1, 1), devices=after_devices),
+            _casefile(_projection(date(2025, 1, 1), devices=before_devices)),
+            _casefile(_projection(date(2026, 1, 1), devices=after_devices)),
         ],
     ), patch("src.apps.legislation.views.build_norma_timeline", return_value=[]):
         response = Client().get(
@@ -284,6 +355,24 @@ def test_precedent_mode_can_focus_one_device_without_conflating_other_articles(n
     assert "Art. 1º" in body
     assert "Redação antiga" in body and "Redação nova" in body
     assert "Outro texto antigo" not in body and "Outro texto atual" not in body
+
+
+@pytest.mark.django_db
+@override_settings(NORMATIVE_HISTORY_ENABLED=True, NORMATIVE_GRAPH_ENABLED=True)
+def test_generic_normative_casefile_renders_sections_without_latest_text_fallback(norma):
+    response = Client().get(
+        reverse("workspace:normative_casefile", args=[norma.pk]),
+        {"as_of": "2025-01-01"},
+    )
+
+    body = response.content.decode()
+    assert response.status_code == 200
+    assert 'id="texto-na-data"' in body
+    assert 'id="alteracoes"' in body
+    assert 'id="grafo"' in body
+    assert 'id="fontes"' in body
+    assert "Não há texto histórico reconstruível com segurança para esta data." in body
+    assert norma.texto_consolidado not in body
 
 
 @pytest.mark.django_db

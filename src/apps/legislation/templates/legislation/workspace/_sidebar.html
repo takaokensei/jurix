@@ -15,6 +15,12 @@
                     </svg>
                     <span>Nova pesquisa</span>
                 </a>
+                {% if archive_assistant_enabled %}
+                <a href="{% url 'workspace:assistant' %}?new=1&amp;corpus=archive-qa" class="workspace-new-action workspace-archive-action" aria-label="Nova pesquisa no acervo documental em revisão" title="Pesquisar nos PDFs locais ainda não revisados">
+                    <svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 0 4 22z"></path><path d="M4 4.5v15A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M8 7h8M8 10h6"></path></svg>
+                    <span>Acervo documental <small>(em revisão)</small></span>
+                </a>
+                {% endif %}
             </div>
 
             <nav class="workspace-nav" aria-label="Menu principal">

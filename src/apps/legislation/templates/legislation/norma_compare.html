@@ -72,6 +72,21 @@
                 {% if after_projection.coverage.pending_event_ids %}<li><span class="historical-kind">Pendente</span><strong>{{ after_projection.coverage.pending_event_ids|length }} evento(s) não aplicados</strong><p>Eventos pendentes, conflitantes ou sem sustentação temporal não entram na redação projetada.</p></li>{% endif %}
             </ul>
         </section>
+        <details class="historical-timeline" aria-labelledby="historical-evidence-title">
+            <summary><h2 id="historical-evidence-title">Fontes estruturadas da comparação</h2></summary>
+            <p>O pacote liga cada trecho projetado à norma, à versão temporal e, quando disponível, à relação revisada que sustenta a mudança. Ele não substitui a conferência no documento oficial.</p>
+            <div class="historical-diff-columns">
+                <section aria-label="Fontes da projeção inicial">
+                    <h3>Em {{ from_as_of }} · {{ before_casefile.evidence_package.sources|length }} evidências</h3>
+                    <ul>{% for source in before_casefile.evidence_package.sources|slice:":12" %}<li><strong>{{ source.label }}</strong> · {{ source.dispositivo }}{% if source.official_url %} · <a href="{{ source.official_url }}" target="_blank" rel="noopener noreferrer">Abrir fonte oficial</a>{% elif source.local_pdf_url %} · <a href="{{ source.local_pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir PDF revisado</a>{% endif %}<p>{{ source.excerpt|truncatechars:360 }}</p></li>{% empty %}<li>Esta projeção não produziu evidências citáveis; consulte o motivo de cobertura acima.</li>{% endfor %}</ul>
+                </section>
+                <section aria-label="Fontes da projeção final">
+                    <h3>Em {{ to_as_of }} · {{ after_casefile.evidence_package.sources|length }} evidências</h3>
+                    <ul>{% for source in after_casefile.evidence_package.sources|slice:":12" %}<li><strong>{{ source.label }}</strong> · {{ source.dispositivo }}{% if source.official_url %} · <a href="{{ source.official_url }}" target="_blank" rel="noopener noreferrer">Abrir fonte oficial</a>{% elif source.local_pdf_url %} · <a href="{{ source.local_pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir PDF revisado</a>{% endif %}<p>{{ source.excerpt|truncatechars:360 }}</p></li>{% empty %}<li>Esta projeção não produziu evidências citáveis; consulte o motivo de cobertura acima.</li>{% endfor %}</ul>
+                </section>
+            </div>
+            {% if before_casefile.evidence_package.sources|length > 12 or after_casefile.evidence_package.sources|length > 12 %}<p>Exibição limitada às primeiras 12 evidências por data; o pacote versionado mantém o conjunto completo retornado pelo serviço.</p>{% endif %}
+        </details>
         <p class="compare-method-note" role="note">As datas ficam na URL e podem ser restauradas pelo histórico do navegador. O diff é estrutural e informativo; não declara validade jurídica de uma alteração.</p>
         {% endif %}
         </section>

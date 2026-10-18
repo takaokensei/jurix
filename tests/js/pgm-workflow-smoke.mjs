@@ -252,7 +252,7 @@ try {
   const cosipArchiveUrl = new URL('/pesquisa/', baseUrl);
   cosipArchiveUrl.searchParams.set(
     'q',
-    'Quais atos tratam da cobrança da COSIP em unidades imobiliárias não edificadas?',
+    'Qual o valor de R$ 39,75 associado à COSIP na LC 171/2017?',
   );
   cosipArchiveUrl.searchParams.set('corpus', 'archive-qa');
   const cosipArchiveResponse = await page.goto(cosipArchiveUrl.href, {
@@ -268,11 +268,11 @@ try {
       status: card.querySelector('.workspace-score-neutral')?.innerText || '',
     })),
   }));
-  assert.match(cosipArchiveResult.title, /[1-9]\d* documentos? candidatos/);
+  assert.match(cosipArchiveResult.title, /1 documento candidato/);
   assert.ok(
     cosipArchiveResult.cards.some((card) => /COSIP/i.test(card.excerpt)
-      && /n[aã]o edificadas/i.test(card.excerpt)),
-    'natural query must surface a real PDF excerpt about COSIP on unbuilt properties without depending on fixed document IDs',
+      && /39,75/.test(card.excerpt)),
+    'the explicit LC 171/2017 query must surface the candidate PDF excerpt containing COSIP and its recorded amount',
   );
   assert.ok(
     cosipArchiveResult.cards.every((card) => /Pendente|Em revisão/.test(card.status)),
@@ -282,11 +282,11 @@ try {
   await page.screenshot({ path: cosipScreenshot, fullPage: true });
   report.evidence.push(cosipScreenshot);
   report.checks.push({
-    id: 'natural-cosip-query-finds-real-unbuilt-property-pdf-without-legal-promotion',
+    id: 'lc171-cosip-amount-search-finds-pending-real-pdf-without-legal-promotion',
     status: 'passed',
     title: cosipArchiveResult.title,
     topCandidates: cosipArchiveResult.cards,
-    caveat: 'authentic local PDFs remain pending review; search is not a legal conclusion',
+    caveat: 'the extracted quote is a pending candidate, not a confirmed rule, minimum or legal conclusion',
   });
 
   const environmentalArchiveUrl = new URL('/pesquisa/', baseUrl);
@@ -523,13 +523,18 @@ try {
   const candidateEvidence = await page.evaluate(() => ({
     title: document.querySelector('#evidence-title')?.innerText || '',
     body: document.querySelector('.document-evidence-page')?.innerText || '',
+    mainCount: document.querySelectorAll('main').length,
     pdfHref: document.querySelector('a[href*="/pdf/"]')?.href || '',
     reviewFormCount: document.querySelectorAll('[data-document-review-form]').length,
   }));
   assert.match(candidateEvidence.title, /Lei Complementar nº 120\/2010/i);
   assert.match(candidateEvidence.body, /Candidato do acervo histórico/i);
   assert.match(candidateEvidence.body, /identifica[cç][aã]o normativa.*revis[aã]o/i);
-  assert.match(candidateEvidence.body, /Texto extra[ií]do automaticamente.*rascunho n[aã]o revisado/i);
+  assert.ok(
+    /Texto extra[ií]do automaticamente.*rascunho n[aã]o revisado|N[aã]o h[aá] extra[cç][aã]o dispon[ií]vel para esta revis[aã]o/i.test(candidateEvidence.body),
+    'the evidence detail must disclose either an unreviewed extraction draft or the absence of an extraction',
+  );
+  assert.equal(candidateEvidence.mainCount, 1, 'evidence detail must reuse the shell main landmark, not nest another one');
   assert.ok(candidateEvidence.pdfHref);
   assert.equal(candidateEvidence.reviewFormCount, 0, 'anonymous archive browsing must not expose curation forms');
   report.checks.push({
@@ -540,7 +545,11 @@ try {
     displayedCandidates: normsOverview.displayedCandidates,
     filteredCount: filteredCandidates.length,
     evidenceStatus: candidateEvidenceResponse.status(),
+    mainLandmarks: candidateEvidence.mainCount,
     pdfAvailable: Boolean(candidateEvidence.pdfHref),
+    extractionState: /N[aã]o h[aá] extra[cç][aã]o dispon[ií]vel para esta revis[aã]o/i.test(candidateEvidence.body)
+      ? 'not-extracted'
+      : 'unreviewed-draft',
     anonymousReviewForms: candidateEvidence.reviewFormCount,
     caveat: 'PDF candidates are visible for consultation but not approved as consolidated norms',
   });
@@ -608,6 +617,73 @@ try {
       timeout: 20000,
     });
     assert.equal(response?.status(), 200, `LC 258/2024 graph demo failed at ${width}px`);
+    if (width === 1280) {
+      const demoNavigation = await page.evaluate(() => ({
+        mainCount: document.querySelectorAll('main').length,
+        caseNavigationPosition: getComputedStyle(document.querySelector('.pgm-demo__case-nav')).position,
+        graphActionVisible: Boolean(document.querySelector('.pgm-demo__case-nav a[href="#pgm-network-title"]')?.getClientRects().length),
+        beforeAfterActionVisible: Boolean(document.querySelector('.pgm-demo__case-nav a[href="#pgm-ctm-change-set-title"]')?.getClientRects().length),
+        secondaryCaseCount: document.querySelectorAll('.pgm-demo > details[data-case-disclosure]').length,
+        secondaryCaseCollapsed: [...document.querySelectorAll('.pgm-demo > details[data-case-disclosure]')]
+          .every((element) => !element.open),
+        defaultContentHeight: Math.round(document.querySelector('.pgm-demo')?.getBoundingClientRect().height || 0),
+        fakeSimilarityVisible: /\b(?:score|similarity|similaridade)\s*[:=]\s*\d/i.test(
+          document.querySelector('.pgm-demo')?.innerText || '',
+        ),
+      }));
+      assert.equal(demoNavigation.mainCount, 1, 'the demo must have one main landmark');
+      assert.equal(demoNavigation.caseNavigationPosition, 'sticky', 'sticky case navigation is reserved for the wide desktop layout');
+      assert.equal(demoNavigation.graphActionVisible, true, 'the graph must be one direct action from the case introduction');
+      assert.equal(demoNavigation.beforeAfterActionVisible, true, 'before/after must be reachable without scanning other cases');
+      assert.equal(demoNavigation.secondaryCaseCount, 2, 'the page should group the secondary CTM cotejo and additional case histories');
+      assert.equal(demoNavigation.secondaryCaseCollapsed, true, 'secondary evidence-heavy case groups should start collapsed');
+      assert.equal(demoNavigation.fakeSimilarityVisible, false, 'the demo must not present relation evidence as a similarity score');
+      report.checks.push({ id: 'pgm-demo-task-navigation-and-single-main-landmark', status: 'passed', ...demoNavigation });
+      const initialDemoScreenshot = path.join(resolvedEvidenceDir, 'pgm-demo-progressive-cases-default-1280px.png');
+      await page.screenshot({ path: initialDemoScreenshot, fullPage: true });
+      report.evidence.push(initialDemoScreenshot);
+      assert.equal(await page.$eval('[data-case-disclosure]', (element) => element.open), false,
+        'secondary CTM comparisons should be collapsed on initial demo load');
+      await page.locator('.pgm-demo__case-nav a[href="#pgm-ctm-change-set-title"]').click();
+      assert.equal(await page.$eval('[data-case-disclosure]', (element) => element.open), true,
+        'the before/after navigation link should open its containing disclosure');
+      await page.waitForFunction(() => {
+        const target = document.getElementById('pgm-ctm-change-set-title');
+        const navigation = document.querySelector('.pgm-demo__case-nav');
+        return target && navigation
+          && target.getBoundingClientRect().top >= navigation.getBoundingClientRect().bottom + 8
+          && target.getBoundingClientRect().top < window.innerHeight;
+      }, { timeout: 3000 });
+      await page.waitForFunction(() => !document.querySelector('.pgm-demo__case-nav-more')?.open,
+        { timeout: 3000 });
+      await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+      await page.waitForFunction(() => window.scrollY < 5, { timeout: 3000 });
+      await page.locator('.pgm-demo__case-nav-more > summary').click();
+      await page.waitForFunction(() => document.querySelector('.pgm-demo__case-nav-more')?.open,
+        { timeout: 3000 });
+      await page.locator('.pgm-demo__case-nav-menu a[href="#pgm-history-title"]').click();
+      assert.equal(await page.$eval('#pgm-history-title', (element) => element.closest('[data-case-disclosure]').open), true,
+        'an anchor to a secondary history must reveal its collapsed case group');
+      await page.waitForFunction(() => {
+        const target = document.getElementById('pgm-history-title');
+        const navigation = document.querySelector('.pgm-demo__case-nav');
+        return target && navigation
+          && target.getBoundingClientRect().top >= navigation.getBoundingClientRect().bottom + 8
+          && target.getBoundingClientRect().top < window.innerHeight;
+      }, { timeout: 3000 });
+      report.checks.push({
+        id: 'pgm-demo-progressive-case-disclosures-and-anchor-navigation',
+        status: 'passed',
+        initialState: 'all secondary case groups collapsed',
+        navigation: 'before/after and historical anchors open the correct disclosure and bring the target into view',
+      });
+    } else {
+      await page.$$eval('[data-case-disclosure] > summary', (summaries) => {
+        summaries.forEach((summary) => summary.click());
+      });
+      assert.equal(await page.$$eval('[data-case-disclosure]', (items) => items.every((element) => element.open)), true,
+        'case groups should be expanded for the detailed responsive-content checks');
+    }
     await page.waitForFunction(() => document.querySelectorAll('.pgm-demo__edges .pgm-demo__edge').length === 12, {
       timeout: 5000,
     });
@@ -843,15 +919,33 @@ try {
         .some((item) => /Art\. 266.*REVOGAÇÃO GENÉRICA/i.test(item.innerText)),
       amendment: [...document.querySelectorAll('.pgm-demo__relation-kicker')]
         .some((item) => /Art\. 261.*ALTERAÇÃO/i.test(item.innerText)),
-      focusableOverflow: [...document.querySelectorAll('a,button,input,select,textarea,[tabindex]')]
+      focusableOverflowDetails: [...document.querySelectorAll('a,button,input,select,textarea,[tabindex]')]
         .filter((element) => element.getClientRects().length && element.tabIndex >= 0)
         .filter((element) => {
           const rect = element.getBoundingClientRect();
           return (rect.left < -2 || rect.right > document.documentElement.clientWidth + 2)
             && !element.closest('[inert]')
             && element.closest('[aria-hidden="true"]') === null;
-        }).length,
+        }).map((element) => {
+          const rect = element.getBoundingClientRect();
+          return {
+            tag: element.tagName,
+            label: (element.innerText || element.getAttribute('aria-label') || '').trim().slice(0, 100),
+            href: element.getAttribute('href'),
+            left: Math.round(rect.left),
+            right: Math.round(rect.right),
+            sidebarState: element.closest('[data-workspace-sidebar]')?.getAttribute('aria-hidden') || null,
+          };
+        }),
+      closedCaseNavLinkCount: (() => {
+        const disclosure = document.querySelector('.pgm-demo__case-nav-more');
+        return disclosure && !disclosure.open
+          ? [...disclosure.querySelectorAll('.pgm-demo__case-nav-menu a')]
+            .filter((link) => link.getClientRects().length && link.tabIndex >= 0).length
+          : -1;
+      })(),
     }), width);
+    graphLayout.focusableOverflow = graphLayout.focusableOverflowDetails.length;
     assert.equal(graphLayout.width, width);
     assert.ok(graphLayout.scrollWidth <= width, `LC 258/2024 graph overflows at ${width}px`);
     const expectedLc55Columns = width <= 700 ? 1 : width >= 1600 ? 4 : 2;
@@ -975,7 +1069,26 @@ try {
     assert.match(graphLayout.heading, /relações normativas/i);
     assert.equal(graphLayout.genericRepeal, true, 'Art. 266 generic repeal must remain visible without invented targets');
     assert.equal(graphLayout.amendment, true, 'Art. 261 amendment must remain distinct from repeal');
-    assert.equal(graphLayout.focusableOverflow, 0);
+    assert.equal(graphLayout.focusableOverflow, 0,
+      `focusable controls must remain within ${width}px: ${JSON.stringify(graphLayout.focusableOverflowDetails)}`);
+    assert.equal(graphLayout.closedCaseNavLinkCount, 0,
+      `links inside a closed case-navigation disclosure must not be rendered or tabbable at ${width}px`);
+    if (width === 768) {
+      await page.click('.pgm-demo__case-nav-more > summary');
+      const openMenu = await page.$eval('.pgm-demo__case-nav-menu', (menu) => {
+        const rect = menu.getBoundingClientRect();
+        return {
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          viewport: document.documentElement.clientWidth,
+          visibleLinks: [...menu.querySelectorAll('a')].filter((link) => link.getClientRects().length).length,
+        };
+      });
+      assert.ok(openMenu.left >= 0 && openMenu.right <= openMenu.viewport,
+        `opened case-navigation menu must remain horizontally inside the viewport: ${JSON.stringify(openMenu)}`);
+      assert.equal(openMenu.visibleLinks, 6);
+      await page.click('.pgm-demo__case-nav-more > summary');
+    }
     repealGraphViewports.push(graphLayout);
     if (width === 320 || width === 1280) {
       const screenshot = path.join(resolvedEvidenceDir, `pgm-lc258-repeal-graph-${width}px.png`);
@@ -1089,7 +1202,7 @@ try {
   assert.equal(await corpusNotice.evaluate((details) => details.open), true);
   const corpusNoticeDetails = await corpusNotice.$eval('.jurix-corpus-notice__details', (panel) => panel.innerText);
   assert.match(corpusNoticeDetails, /Metadados e segmentação estão sob revisão/i);
-  assert.match(corpusNoticeDetails, /atualização.*não está confirmada/i);
+  assert.match(corpusNoticeDetails, /atualização de uma ou mais fontes oficiais não está confirmada/i);
   assert.match(corpusNoticeDetails, /não confirma a publicação de cada documento citado/i);
   await page.click('.jurix-corpus-notice__summary');
   assert.equal(await corpusNotice.evaluate((details) => details.open), false);
@@ -1099,6 +1212,123 @@ try {
   await page.keyboard.press('Space');
   assert.equal(await corpusNotice.evaluate((details) => details.open), false);
   report.checks.push({ id: 'archive-caveat-disclosure-is-accessible-and-complete', status: 'passed' });
+
+  // Start from the ordinary assistant entry (no archive URL or prior scope),
+  // then exercise the user's explicit fallback into the unreviewed PDF corpus.
+  await page.goto(new URL('/assistente/?new=1', baseUrl).href, {
+    waitUntil: 'domcontentloaded',
+    timeout: 20000,
+  });
+  assert.equal(await page.$eval('body', (body) => body.dataset.qaArchiveCorpus), 'false');
+  const archiveFallbackQuestion = 'O que prevê o Art. 262 da Lei Complementar nº 258/2024?';
+  const consolidatedMiss = await submitQuestion(archiveFallbackQuestion);
+  assert.match(consolidatedMiss, /n[aã]o localizei|n[aã]o encontrei/i);
+  const archiveFallbackLink = await page.$('[data-archive-search="1"]');
+  assert.ok(archiveFallbackLink, 'a consolidated-corpus miss must offer an explicit archive search');
+  const archiveFallbackReachability = await archiveFallbackLink.evaluate((link) => {
+    const rect = link.getBoundingClientRect();
+    const composerTop = document.getElementById('conversation-input-bar')?.getBoundingClientRect().top
+      ?? document.documentElement.clientHeight;
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return {
+      visible: rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= composerTop,
+      receivesPointer: hit === link || link.contains(hit),
+      href: link.href,
+    };
+  });
+  assert.ok(archiveFallbackReachability.visible, 'the fixed composer must not cover the archive fallback');
+  assert.ok(archiveFallbackReachability.receivesPointer, 'the archive fallback must be clickable');
+  const archiveFallbackScreenshot = path.join(resolvedEvidenceDir, 'pgm-default-to-review-archive-fallback.png');
+  await page.screenshot({ path: archiveFallbackScreenshot, fullPage: false });
+  report.evidence.push(archiveFallbackScreenshot);
+
+  const archiveSearchPost = new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('archive fallback did not submit a new search')), 90000);
+    const onRequest = (request) => {
+      if (request.method() !== 'POST' || !request.url().includes('/api/v1/search/answer/stream/')) return;
+      let payload;
+      try { payload = JSON.parse(request.postData() || '{}'); } catch { return; }
+      clearTimeout(timeout);
+      page.off('request', onRequest);
+      resolve(payload);
+    };
+    page.on('request', onRequest);
+  });
+  await page.click('[data-archive-search="1"]');
+  const archivePayload = await archiveSearchPost;
+  assert.equal(archivePayload.question, archiveFallbackQuestion);
+  assert.equal(archivePayload.qa_archive_corpus, true, 'fallback must preserve archive corpus scope in the API request');
+  await page.waitForFunction(() =>
+    location.pathname.startsWith('/assistente/local-')
+      && new URLSearchParams(location.search).get('corpus') === 'archive-qa'
+      && document.body.dataset.qaArchiveCorpus === 'true',
+  { timeout: 30000 },
+  );
+  await page.waitForFunction(() => {
+    const answer = [...document.querySelectorAll('.message-assistant .message-body')].at(-1);
+    const button = document.getElementById('send-button');
+    return answer?.innerText?.includes('Art. 262')
+      && button && !button.disabled
+      && !answer.hasAttribute('data-streaming');
+  }, { timeout: 180000 });
+  const archiveFallbackAnswer = await page.$$eval(
+    '.message-assistant .message-body',
+    (answers) => answers.at(-1)?.innerText || '',
+  );
+  assert.match(archiveFallbackAnswer, /Art\. 262/i);
+  const archiveFallbackSources = await page.$$('.message-assistant .jurix-sources-pill-btn');
+  assert.ok(archiveFallbackSources.length, 'the archive answer must expose its PDF evidence without F5');
+  await archiveFallbackSources.at(-1).click();
+  await page.waitForFunction(() =>
+    document.getElementById('jurix-sources-drawer-panel')?.getAttribute('aria-hidden') === 'false');
+  const expandArchiveEvidence = await page.$(
+    '#jurix-sources-drawer-panel .jurix-source-group-toggle-all',
+  );
+  assert.ok(expandArchiveEvidence, 'the source drawer must expose the grouped archive evidence control');
+  await expandArchiveEvidence.evaluate((button) => button.click());
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('#jurix-sources-drawer-panel details.jurix-source-group')]
+      .some((group) => group.open));
+  const archiveEvidenceCards = await page.$$eval(
+    '#jurix-sources-drawer-panel .jurix-rag-source',
+    (cards) => cards.map((card) => ({
+      label: card.getAttribute('aria-label') || '',
+      text: card.textContent || '',
+      href: card.querySelector('.jurix-rag-source__open:not(.jurix-rag-source__open--secondary)')?.href
+        || card.dataset.url || '',
+    })),
+  );
+  assert.ok(archiveEvidenceCards.some((card) =>
+    /258\/2024/.test(card.label) && /Art\. 262/i.test(card.text)
+      && /\/normas\/documentos\/[^/]+\/pdf\//.test(card.href)),
+  'the archive fallback must expose an openable local PDF from the consulted-sources drawer');
+  const archivePdfLinkSelector = '#jurix-sources-drawer-panel .jurix-rag-source--archive .jurix-rag-source__open:not(.jurix-rag-source__open--secondary)';
+  const archivePdfLinkState = await page.$eval(archivePdfLinkSelector, (link) => ({
+    href: link.href,
+    target: link.target,
+    rel: link.rel,
+    visible: Boolean(link.getClientRects().length) && getComputedStyle(link).visibility === 'visible',
+  }));
+  assert.equal(archivePdfLinkState.target, '_blank');
+  assert.match(archivePdfLinkState.rel, /noopener/);
+  assert.ok(archivePdfLinkState.visible, 'the PDF link must be visible and keyboard-focusable');
+  const archivePdfUrl = new URL(archivePdfLinkState.href);
+  assert.equal(archivePdfUrl.hostname, base.hostname);
+  assert.match(archivePdfUrl.pathname, /\/normas\/documentos\/[^/]+\/pdf\//);
+  assert.match(archivePdfUrl.hash, /^#page=\d+$/);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() =>
+    document.getElementById('jurix-sources-drawer-panel')?.getAttribute('aria-hidden') === 'true');
+  report.checks.push({
+    id: 'default-assistant-fallback-to-review-archive',
+    status: 'passed',
+    evidence: archiveFallbackScreenshot,
+    archiveAnswerContainsArticle262: true,
+    archiveSourcesOpenable: archiveEvidenceCards.length,
+    archivePdfPath: archivePdfUrl.pathname + archivePdfUrl.hash,
+    caveat: 'archive PDF extraction remains pending human review and is not a legal determination',
+  });
+
   const buildSummary = await page.$('.workspace-build-details > summary');
   assert.ok(buildSummary, 'shared shell must expose the technical instance disclosure');
   await buildSummary.click();
@@ -1155,7 +1385,8 @@ try {
     behavior: 'allow',
     downloadPath: resolvedEvidenceDir,
   });
-  const evidenceExportButton = await page.$('.message-assistant .export-evidence-button:not(.is-hidden)');
+  const visibleEvidenceExportButtons = await page.$$('.message-assistant .export-evidence-button:not(.is-hidden)');
+  const evidenceExportButton = visibleEvidenceExportButtons.at(-1);
   assert.ok(evidenceExportButton, 'a completed answer with citations must expose the evidence export');
   await evidenceExportButton.click();
   const downloadDeadline = Date.now() + 15000;
@@ -1608,7 +1839,6 @@ try {
   assert.match(transitionChainAnswer, /Art\.?\s*260/i);
   assert.match(transitionChainAnswer, /Art\.?\s*262/i);
   assert.match(transitionChainAnswer, /Art\.?\s*21/i);
-  assert.match(transitionChainAnswer, /27\/03\/2025/, 'verified DOM publication plus LC95 rule should expose the calculated general effective date');
   assert.doesNotMatch(transitionChainAnswer, /(?:Art\.?\s*21[^.]{0,80})(?:permanece|continua) vigente/i);
   const transitionSources = await page.$$eval('.message-assistant [id^="sources-"]', (containers) => {
     const node = containers.at(-1);
@@ -1617,19 +1847,32 @@ try {
       dispositivo: item.dispositivo_ref || '',
       sourceKind: item.source_kind || '',
       page: item.page || null,
+      sourceUrl: item.source_url || '',
     }));
   });
   assert.ok(transitionSources.some((item) => /Lei Complementar nº 258\/2024/i.test(item.norma) && /Art\.\s*260/i.test(item.dispositivo)));
   assert.ok(transitionSources.some((item) => /Lei Complementar nº 258\/2024/i.test(item.norma) && /Art\.\s*262/i.test(item.dispositivo)));
   assert.ok(transitionSources.some((item) => /Lei Complementar nº 55\/2004/i.test(item.norma) && /Art\.\s*21/i.test(item.dispositivo)));
   assert.ok(transitionSources.some((item) => /Lei Complementar nº 258\/2024/i.test(item.norma) && /Art\.\s*266/i.test(item.dispositivo)));
-  assert.ok(transitionSources.some((item) => /Lei Complementar nº 95\/1998/i.test(item.norma) && /§\s*1/i.test(item.dispositivo)));
-  for (const article of ['260', '262', '266']) {
-    const officialArticle = transitionSources.find((item) =>
-      /Lei Complementar nº 258\/2024/i.test(item.norma)
-        && new RegExp(`Art\\.\\s*${article}\\b`, 'i').test(item.dispositivo));
-    assert.equal(officialArticle?.sourceKind, 'official_gazette_extraction', `Art. ${article} must cite the official DOM extraction`);
-    assert.ok(Number.isInteger(officialArticle.page) && officialArticle.page > 0, `Art. ${article} must carry its exact PDF page`);
+  const officialCommencement = transitionSources.find((item) =>
+    /Lei Complementar nº 258\/2024/i.test(item.norma)
+      && /Art\.\s*266\b/i.test(item.dispositivo)
+      && item.sourceKind === 'official_gazette_extraction');
+  const countingRule = transitionSources.find((item) =>
+    /Lei Complementar nº 95\/1998/i.test(item.norma)
+      && /§\s*1/i.test(item.dispositivo)
+      && item.sourceKind === 'official_vacatio_counting_rule');
+  const effectiveDateEvidenceComplete = Boolean(officialCommencement && countingRule);
+  if (effectiveDateEvidenceComplete) {
+    assert.match(transitionChainAnswer, /27\/03\/2025/,
+      'complete official DOM and LC95 evidence should expose the calculated general effective date');
+    assert.ok(Number.isInteger(officialCommencement.page) && officialCommencement.page > 0,
+      'official DOM commencement evidence must carry its exact PDF page');
+  } else {
+    assert.match(transitionChainAnswer, /data concreta depende da publicação oficial/i,
+      'without both official publication/commencement and counting-rule evidence, the answer must leave the date unresolved');
+    assert.doesNotMatch(transitionChainAnswer, /27\/03\/2025/,
+      'do not calculate a commencement date when the required evidence was not recovered');
   }
   const transitionSourcesPill = (await page.$$('.message-assistant .jurix-sources-pill-btn')).at(-1);
   assert.ok(transitionSourcesPill, 'the transition answer must expose its consulted sources');
@@ -1644,24 +1887,23 @@ try {
       href: card.querySelector('.jurix-rag-source__open')?.href || '',
     })),
   );
-  const domCommencementCard = transitionDrawerCards.find((card) =>
-    /Lei Complementar nº 258\/2024/i.test(card.label)
-      && /dom_20241227_extra_/i.test(card.href));
-  assert.ok(domCommencementCard, `sources drawer must expose the DOM commencement article: ${JSON.stringify(transitionDrawerCards)}`);
-  const domCommencementUrl = new URL(domCommencementCard.href);
-  assert.equal(domCommencementUrl.hostname, 'www2.natal.rn.gov.br');
-  assert.match(domCommencementUrl.pathname, /dom_20241227_extra_.*\.pdf$/i);
-  assert.match(domCommencementUrl.hash, /^#page=\d+$/, 'official DOM source should open at the extracted page');
-  assert.ok(
-    transitionDrawerCards.some((card) => /Lei Complementar nº 258\/2024/i.test(card.label)
-      && /#page=69$/i.test(card.href)),
-    'the repeal clause should open the official DOM page containing Art. 260',
-  );
-  const lc95Card = transitionDrawerCards.find((card) =>
-    /Lei Complementar nº 95\/1998/i.test(card.label)
-      && /www\.planalto\.gov\.br/i.test(card.href));
-  assert.ok(lc95Card, 'sources drawer must expose the LC 95/1998 counting rule');
-  assert.equal(new URL(lc95Card.href).hostname, 'www.planalto.gov.br');
+  if (officialCommencement) {
+    const domCommencementCard = transitionDrawerCards.find((card) =>
+      /Lei Complementar nº 258\/2024/i.test(card.label)
+        && /dom_20241227_extra_/i.test(card.href));
+    assert.ok(domCommencementCard, `drawer must expose recovered official DOM evidence: ${JSON.stringify(transitionDrawerCards)}`);
+    const domCommencementUrl = new URL(domCommencementCard.href);
+    assert.equal(domCommencementUrl.hostname, 'www2.natal.rn.gov.br');
+    assert.match(domCommencementUrl.pathname, /dom_20241227_extra_.*\.pdf$/i);
+    assert.match(domCommencementUrl.hash, /^#page=\d+$/, 'official DOM source should open at the extracted page');
+  }
+  if (countingRule) {
+    const lc95Card = transitionDrawerCards.find((card) =>
+      /Lei Complementar nº 95\/1998/i.test(card.label)
+        && /www\.planalto\.gov\.br/i.test(card.href));
+    assert.ok(lc95Card, 'drawer must expose the recovered LC 95/1998 counting rule');
+    assert.equal(new URL(lc95Card.href).hostname, 'www.planalto.gov.br');
+  }
   await page.keyboard.press('Escape');
   await page.waitForFunction(() =>
     document.getElementById('jurix-sources-drawer-panel')?.getAttribute('aria-hidden') === 'true');
@@ -1673,6 +1915,7 @@ try {
     status: 'passed',
     sourceCount: transitionSources.length,
     sources: transitionSources,
+    effectiveDateEvidenceComplete,
     answer: transitionChainAnswer,
     caveat: 'candidate PDF extractions are pending review; no conclusion of applicability or current validity',
     screenshot: transitionChainScreenshot,

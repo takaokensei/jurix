@@ -19,8 +19,8 @@ from src.processing.corpus_identity import get_corpus_revision
 from src.processing.normative_graph import (
     VALID_ACTIONS,
     build_candidate_document_graph,
-    build_normative_graph,
 )
+from src.processing.normative_casefile import build_normative_casefile
 from src.processing.temporal_scope import parse_iso_date
 
 
@@ -94,18 +94,23 @@ def norma_relations_api(request: HttpRequest, pk: int) -> JsonResponse:
         except Exception:
             pass
     try:
-        graph = build_normative_graph(
+        casefile = build_normative_casefile(
             norma,
-            depth=depth,
             as_of=as_of,
-            actions=actions,
+            graph_depth=depth,
+            graph_actions=actions,
+            include_projection=False,
             include_pending=include_pending,
+            user=request.user,
         )
+        graph = casefile["graph"]
     except ValueError as exc:
         return JsonResponse({"success": False, "error": str(exc)}, status=400)
     body = {
         "success": True,
         "norma": {"id": norma.pk, "ref": str(norma)},
+        "casefile_id": casefile["casefile_id"],
+        "evidence_package": casefile["evidence_package"],
         "corpus_coverage": current_corpus_coverage(get_corpus_revision()),
         **graph,
     }

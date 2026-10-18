@@ -26,7 +26,6 @@ from src.apps.legislation.models import (
     Topic,
 )
 from src.apps.legislation.workspace_views import (
-    _classify_pgm_archive_candidates,
     _deduplicate_search_results,
     _parse_repeal_candidates,
     _pgm_article_evidence,
@@ -47,6 +46,7 @@ from src.apps.legislation.workspace_views import (
     _rank_history,
 )
 from src.apps.operations.models import CorpusRevision
+from src.processing.candidate_relation_service import classify_identity_candidates
 from src.processing.normative_consolidation_preview import (
     build_article_23_snapshot,
     build_article_150_snapshot,
@@ -56,6 +56,74 @@ from src.processing.normative_consolidation_preview import (
 )
 
 pytestmark = pytest.mark.django_db
+
+
+@override_settings(NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True)
+def test_new_assistant_exposes_both_corpus_scopes_and_preserves_prefill(client):
+    consolidated = client.get(
+        "/assistente/",
+        {"new": "1", "question": "Art. 1º da LC 258/2024"},
+    )
+    archive = client.get(
+        "/assistente/",
+        {
+            "new": "1",
+            "corpus": "archive-qa",
+            "question": "Art. 1º da LC 258/2024",
+        },
+    )
+
+    consolidated_body = consolidated.content.decode()
+    archive_body = archive.content.decode()
+    assert consolidated.status_code == archive.status_code == 200
+    assert 'aria-label="Escolha o acervo desta nova pesquisa"' in consolidated_body
+    assert 'aria-current="true">Normas consolidadas</span>' in consolidated_body
+    assert (
+        'href="/assistente/?new=1&amp;corpus=archive-qa'
+        '&amp;question=Art.%201%C2%BA%20da%20LC%20258/2024"'
+    ) in consolidated_body
+    assert 'aria-current="true">Acervo documental <small>(em revisão)</small></span>' in archive_body
+    assert (
+        'href="/assistente/?new=1&amp;question=Art.%201%C2%BA%20da%20LC%20258/2024"'
+    ) in archive_body
+
+
+@override_settings(NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True)
+def test_answered_conversation_keeps_its_saved_corpus_scope(client):
+    user = get_user_model().objects.create_user(username="corpus-scope-test")
+    archive_session = ChatSession.objects.create(user=user, title="Acervo QA")
+    ChatMessage.objects.create(
+        session=archive_session,
+        role="assistant",
+        content="Resposta candidata.",
+        metadata_json={"filters": {"corpus": "archive-qa-unvalidated"}},
+    )
+    consolidated_session = ChatSession.objects.create(user=user, title="Normas consolidadas")
+    ChatMessage.objects.create(
+        session=consolidated_session,
+        role="assistant",
+        content="Resposta consolidada.",
+        metadata_json={"filters": {"corpus": "consolidated"}},
+    )
+    client.force_login(user)
+
+    archive_response = client.get(
+        f"/assistente/{archive_session.slug}/?corpus=consolidated"
+    )
+    consolidated_response = client.get(
+        f"/assistente/{consolidated_session.slug}/?corpus=archive-qa"
+    )
+
+    archive_body = archive_response.content.decode()
+    consolidated_body = consolidated_response.content.decode()
+    assert archive_response.status_code == consolidated_response.status_code == 200
+    assert "Escopo desta conversa:" in archive_body
+    assert "Acervo documental (em revisão)" in archive_body
+    assert "Escolha o acervo desta nova pesquisa" not in archive_body
+    assert "Escopo desta conversa:" in consolidated_body
+    assert "Normas consolidadas" in consolidated_body
+    assert "Acervo documental (em revisão)" not in consolidated_body
+    assert "Escolha o acervo desta nova pesquisa" not in consolidated_body
 
 
 def test_ctm_art20_candidate_timeline_compares_real_editions_without_asserting_vigency():
@@ -418,13 +486,35 @@ def test_pgm_lc55_timeline_shows_unavailable_original_text_without_fake_page_anc
     assert "A Licença Ambiental observa as seguintes etapas" not in body
 
 
+def test_pgm_demo_discloses_missing_lc55_candidate_without_claiming_comparison():
+    request = RequestFactory().get("/explorar/demo-consolidacao/")
+    request.user = AnonymousUser()
+    body = render_to_string(
+        "legislation/workspace/pgm_consolidation_demo.html",
+        {
+            "old_article_21": None,
+            "lc55_evidence_document": None,
+            "lc55_original_official_pdf_url": (
+                "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_complementar_n_055.pdf"
+            ),
+        },
+        request=request,
+    )
+
+    assert (
+        "O PDF candidato da LC nº 55/2004 não está disponível nesta instância. "
+        "A menção no Art. 260 da LC nº 258/2024 é mostrada como referência textual, "
+        "sem cotejo do conteúdo do Art. 21."
+    ) in body
+
+
 def test_pgm_demo_does_not_select_duplicate_archive_identity_automatically():
     candidates = [
         SimpleNamespace(metadata_json={"identity_candidate": {"type": "lei"}}),
         SimpleNamespace(metadata_json={"identity_candidate": {"type": "lei"}}),
     ]
 
-    result = _classify_pgm_archive_candidates(candidates, "lei")
+    result = classify_identity_candidates(candidates, "lei")
 
     assert result["state"] == "ambiguous"
     assert result["document"] is None
@@ -438,7 +528,7 @@ def test_pgm_demo_keeps_truncated_identity_candidates_ambiguous():
         for _ in range(8)
     ]
 
-    result = _classify_pgm_archive_candidates(candidates, "lei", truncated=True)
+    result = classify_identity_candidates(candidates, "lei", truncated=True)
 
     assert result["state"] == "ambiguous"
     assert result["document"] is None
@@ -452,8 +542,8 @@ def test_pgm_demo_distinguishes_species_conflicts_from_matching_candidate():
         metadata_json={"identity_candidate": {"type": "lei_complementar"}}
     )
 
-    exact_result = _classify_pgm_archive_candidates([exact, wrong_type], "lei")
-    conflict_result = _classify_pgm_archive_candidates([wrong_type], "lei")
+    exact_result = classify_identity_candidates([exact, wrong_type], "lei")
+    conflict_result = classify_identity_candidates([wrong_type], "lei")
 
     assert exact_result["state"] == "candidate"
     assert exact_result["document"] is exact
@@ -887,7 +977,8 @@ def test_assistant_warns_that_archive_may_become_stale_when_update_queue_is_down
         assert "o acervo pode ficar desatualizado" in body
         assert "Confira a fonte oficial" in body
     archive_body = archive_response.content.decode()
-    assert '<details class="anonymous-banner jurix-anonymous-banner jurix-corpus-notice">' in archive_body
+    assert 'class="anonymous-banner jurix-anonymous-banner jurix-corpus-notice"' in archive_body
+    assert 'data-corpus-notice="archive"' in archive_body
     assert "Acervo histórico local — extrações pendentes de revisão." in archive_body
     assert "Atualização do acervo não confirmada." in archive_body
     assert "Este aviso descreve a sincronização geral do SAPL e do Diário Oficial" in archive_body
@@ -1995,15 +2086,17 @@ def test_explore_resolves_explicit_norm_identity_without_cross_type_or_year_matc
 def test_explore_selection_uses_only_consolidated_norms_and_reuses_public_graph(norma):
     candidate = Norma.objects.create(tipo="Lei", numero="124", ano=2026, status="pending")
     client = Client()
-    with override_settings(NORMATIVE_GRAPH_ENABLED=True):
+    with override_settings(NORMATIVE_GRAPH_ENABLED=True, NORMATIVE_HISTORY_ENABLED=True):
         selected = client.get(f"/explorar/?norma={norma.pk}")
         hidden = client.get(f"/explorar/?norma={candidate.pk}")
 
     assert selected.status_code == 200
     assert f"data-api-url=\"/api/v1/normas/{norma.pk}/relations/\"" in selected.content.decode()
     assert "Norma selecionada" in selected.content.decode()
+    assert reverse("workspace:normative_casefile", args=[norma.pk]) in selected.content.decode()
     assert "Norma selecionada" not in hidden.content.decode()
     assert "124/2026" not in hidden.content.decode()
+    assert reverse("workspace:normative_casefile", args=[candidate.pk]) not in hidden.content.decode()
 
 
 def test_explore_candidate_relations_are_staff_only_and_preserve_source_scope(norma):

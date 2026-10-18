@@ -26,6 +26,33 @@ function mountGraph() {
   return dom;
 }
 
+test('selecionar uma cadeia fecha o menu sticky e abre a seção de destino', async () => {
+  const dom = new JSDOM(`<div class="pgm-demo">
+    <nav class="pgm-demo__case-nav">
+      <details class="pgm-demo__case-nav-more" open>
+        <summary>Outras cadeias</summary>
+        <div class="pgm-demo__case-nav-menu"><a href="#case-target">Histórico da norma</a></div>
+      </details>
+    </nav>
+    <details data-case-disclosure><summary>Cotejo principal</summary><h2 id="primary-target">Cotejo</h2></details>
+    <details data-case-disclosure><summary>Outras cadeias</summary><h2 id="case-target">Histórico</h2></details>
+    <section class="pgm-demo__network"></section>
+  </div>`, { url: 'https://jurix.test/', runScripts: 'outside-only' });
+  dom.window.eval(script);
+
+  const [primaryDisclosure, secondaryDisclosure] = dom.window.document.querySelectorAll('[data-case-disclosure]');
+  assert.equal(primaryDisclosure.open, false);
+  assert.equal(secondaryDisclosure.open, false);
+  dom.window.document.querySelector('.pgm-demo__case-nav-menu a').click();
+  await new Promise((resolve) => dom.window.setTimeout(resolve, 0));
+
+  assert.equal(dom.window.document.querySelector('.pgm-demo__case-nav-more').open, false);
+  assert.equal(primaryDisclosure.open, false, 'unrelated collapsed case remains closed');
+  assert.equal(secondaryDisclosure.open, true, 'the anchored case opens on demand');
+  assert.equal(dom.window.location.hash, '#case-target');
+  dom.window.close();
+});
+
 test('grafo destaca as sete revogações expressas sem esconder as outras relações', () => {
   const dom = mountGraph();
   const { document } = dom.window;

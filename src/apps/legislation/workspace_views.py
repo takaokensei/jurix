@@ -40,6 +40,10 @@ from src.apps.legislation.foundation_jobs import (
 from src.apps.legislation.relations_api import can_view_pending_relations
 from src.apps.legislation.source_urls import canonical_norma_url, canonical_sapl_url
 from src.clients.sapl.sapl_types import resolve_norma_type_display
+from src.processing.candidate_relation_service import (
+    build_candidate_relation_evidence,
+    classify_identity_candidates,
+)
 from src.processing.collection_evidence import (
     collection_evidence_impact,
     save_collection_evidence,
@@ -2064,11 +2068,66 @@ def explore_normative_graph_view(request):
             "include_pending_relations": include_pending_relations,
             "can_view_candidates": can_view_candidates,
             "normative_graph_enabled": getattr(settings, "NORMATIVE_GRAPH_ENABLED", False),
+            "normative_history_enabled": getattr(settings, "NORMATIVE_HISTORY_ENABLED", False),
             "pgm_consolidation_demo_enabled": bool(
                 getattr(settings, "DEBUG", False)
                 and getattr(settings, "PGM_CONSOLIDATION_DEMO_ENABLED", False)
             ),
             "query_string": query_params.urlencode(),
+            "active_nav": "explore",
+        },
+    )
+
+
+def normative_casefile_view(request, pk: int):
+    """Show a reviewed, date-scoped dossier using shared projection/graph/evidence services."""
+    if not getattr(settings, "NORMATIVE_HISTORY_ENABLED", False):
+        raise Http404("A ficha temporal não está habilitada nesta instalação.")
+    norma = (
+        consolidated_normas_for_product()
+        .select_related("documento_base__accepted_extraction")
+        .filter(pk=pk)
+        .first()
+    )
+    if norma is None:
+        raise Http404("Norma consolidada não encontrada.")
+
+    from src.processing.normative_casefile import build_normative_casefile
+    from src.processing.temporal_scope import build_norma_timeline
+
+    as_of_raw = request.GET.get("as_of", "").strip()[:10]
+    as_of = parse_date(as_of_raw) if as_of_raw else timezone.localdate()
+    error = ""
+    casefile = None
+    timeline = []
+    if as_of is None:
+        error = "Informe a data no formato AAAA-MM-DD."
+    elif as_of > timezone.localdate():
+        error = "A data de referência não pode estar no futuro."
+    else:
+        casefile = build_normative_casefile(norma, as_of=as_of)
+        timeline = build_norma_timeline(norma, as_of=as_of)
+
+    projection_status_labels = {
+        "complete": "Projeção completa dentro do escopo revisado",
+        "partial": "Projeção parcial — há eventos ou dispositivos pendentes",
+        "not_reconstructable": "Não foi possível reconstruir esta data com segurança",
+    }
+    return render(
+        request,
+        "legislation/workspace/normative_casefile.html",
+        {
+            "norma": norma,
+            "casefile": casefile,
+            "as_of": as_of.isoformat() if as_of else as_of_raw,
+            "error": error,
+            "timeline": timeline,
+            "projection_status_label": (
+                projection_status_labels.get(casefile["projection"].status, "Estado desconhecido")
+                if casefile
+                else ""
+            ),
+            "normative_graph_enabled": getattr(settings, "NORMATIVE_GRAPH_ENABLED", False),
             "active_nav": "explore",
         },
     )
@@ -2853,181 +2912,6 @@ def _pgm_lc55_chain_candidate(
     return result
 
 
-def _classify_pgm_archive_candidates(documents, expected_type, *, truncated=False):
-    """Never select a PDF when multiple pending files share the same identity."""
-    exact = [
-        document
-        for document in documents
-        if (document.metadata_json or {}).get("identity_candidate", {}).get("type")
-        == expected_type
-    ]
-    conflicts = [document for document in documents if document not in exact]
-    if truncated or len(exact) > 1:
-        return {
-            "state": "ambiguous",
-            "document": None,
-            "conflicts": conflicts,
-            "ambiguous_candidates": list(documents),
-            "candidate_list_truncated": truncated,
-        }
-    if exact:
-        return {
-            "state": "candidate",
-            "document": exact[0],
-            "conflicts": conflicts,
-            "ambiguous_candidates": [],
-            "candidate_list_truncated": False,
-        }
-    if conflicts:
-        return {
-            "state": "identity_conflict",
-            "document": None,
-            "conflicts": conflicts,
-            "ambiguous_candidates": [],
-            "candidate_list_truncated": False,
-        }
-    return {
-        "state": "not_found",
-        "document": None,
-        "conflicts": [],
-        "ambiguous_candidates": [],
-        "candidate_list_truncated": False,
-    }
-
-
-def _pgm_lc261_repeal_targets(extraction, *, source_pdf_url: str, user=None) -> list[dict]:
-    """List the extracted Art. 117 targets without turning them into legal edges."""
-    if extraction is None:
-        return []
-
-    from src.apps.legislation.document_models import EventoNormativoCandidato
-
-    candidates = list(
-        EventoNormativoCandidato.objects.filter(extracao=extraction, action="REVOGA")
-        .order_by("source_structural_key", "pk")
-    )
-    years = {
-        int(candidate.target_reference_json.get("year_candidate"))
-        for candidate in candidates
-        if str(candidate.target_reference_json.get("year_candidate", "")).isdecimal()
-    }
-    possible_documents_by_year: dict[int, list[DocumentoNormativo]] = {}
-    if years:
-        for document in DocumentoNormativo.objects.filter(
-            source_kind__in=(
-                DocumentoNormativo.SourceKind.ARCHIVE,
-                DocumentoNormativo.SourceKind.SAPL,
-            ),
-            metadata_json__identity_candidate__year__in=sorted(years),
-        ).only("id", "public_id", "source_kind", "official_url", "original_filename", "metadata_json"):
-            identity = (document.metadata_json or {}).get("identity_candidate") or {}
-            try:
-                year = int(identity.get("year"))
-            except (TypeError, ValueError):
-                continue
-            possible_documents_by_year.setdefault(year, []).append(document)
-
-    result = []
-    type_labels = {
-        "lei": "Lei",
-        "lei_complementar": "Lei Complementar",
-        "lei_promulgada": "Lei Promulgada",
-        "lei_organica": "Lei Orgânica",
-    }
-    for candidate in candidates:
-        reference = candidate.target_reference_json or {}
-        raw_number = str(reference.get("number_candidate") or "").strip()
-        try:
-            year = int(reference.get("year_candidate"))
-        except (TypeError, ValueError):
-            continue
-        if not raw_number:
-            continue
-        number = normalize_number(raw_number)
-        expected_type = canonical_type(str(reference.get("type_candidate") or ""))
-        matching_documents = [
-            document
-            for document in possible_documents_by_year.get(year, [])
-            if normalize_number(
-                str(((document.metadata_json or {}).get("identity_candidate") or {}).get("number") or "")
-            ) == number
-        ]
-        exact_documents = [
-            document for document in matching_documents
-            if canonical_type(
-                str(((document.metadata_json or {}).get("identity_candidate") or {}).get("type") or "")
-            ) == expected_type
-        ]
-        conflicting_documents = [doc for doc in matching_documents if doc not in exact_documents]
-        registry_record = PGM_LC261_SAPL_REGISTRY_RECORDS.get((number, year))
-        if exact_documents and (len(exact_documents) > 1 or conflicting_documents):
-            state = "ambiguous"
-        elif exact_documents:
-            state = "candidate"
-        elif matching_documents or registry_record:
-            state = "identity_conflict"
-        else:
-            state = "not_found"
-
-        structural_type = str(reference.get("structural_type") or "").casefold()
-        structural_number = str(
-            reference.get("structural_article_number")
-            or reference.get("structural_number")
-            or ""
-        ).strip()
-        device_label = ""
-        if structural_type in {"artigo", "paragrafo", "inciso", "alinea", "item"} and structural_number:
-            device_prefix = {
-                "artigo": "Art.",
-                "paragrafo": "§",
-                "inciso": "inciso",
-                "alinea": "alínea",
-                "item": "item",
-            }[structural_type]
-            device_label = f"{device_prefix} {structural_number}"
-        expected_type_display = type_labels.get(expected_type, str(reference.get("type_candidate") or "Ato"))
-        citation = f"{expected_type_display} nº {raw_number}/{year}"
-        if device_label:
-            citation = f"{citation}, {device_label}"
-
-        documents = []
-        for document in exact_documents + [doc for doc in conflicting_documents if doc not in exact_documents]:
-            identity = (document.metadata_json or {}).get("identity_candidate") or {}
-            local_pdf_url = _pgm_document_pdf_url(document, user=user)
-            documents.append({
-                "type_display": type_labels.get(
-                    canonical_type(str(identity.get("type") or "")),
-                    str(identity.get("type") or "Espécie não identificada"),
-                ),
-                "filename": document.original_filename,
-                "pdf_url": local_pdf_url or "",
-                "pdf_access_required": bool(local_pdf_available(document) and not local_pdf_url),
-                "official_url": safe_official_url(document.official_url),
-                "matches_expected_type": document in exact_documents,
-            })
-
-        result.append({
-            "source_device": candidate.source_device_label,
-            "target_text": re.sub(
-                r"\s+", " ",
-                str((candidate.evidence_json or {}).get("target_quote") or candidate.target_text),
-            ).strip(),
-            "citation": citation,
-            "expected_type": expected_type_display,
-            "state": state,
-            "documents": documents,
-            "sapl_url": (
-                f"https://sapl.natal.rn.leg.br/norma/{registry_record[0]}"
-                if registry_record else ""
-            ),
-            "sapl_type_display": type_labels.get(registry_record[1], "") if registry_record else "",
-            "sapl_publication_date": registry_record[2] if registry_record else "",
-            "source_pdf_url": source_pdf_url,
-        })
-    result.sort(key=lambda row: (row["source_device"], row["citation"]))
-    return result
-
-
 def pgm_consolidation_demo_view(request):
     """Show a read-only, QA-only graph of every act named by LC 258/2024 Art. 260."""
     if not (
@@ -3108,7 +2992,7 @@ def pgm_consolidation_demo_view(request):
         ) if normalized_number and year else []
         candidate_list_truncated = len(candidate_documents) > 8
         possible_documents = candidate_documents[:8]
-        classification = _classify_pgm_archive_candidates(
+        classification = classify_identity_candidates(
             possible_documents,
             expected_type,
             truncated=candidate_list_truncated,
@@ -3206,12 +3090,9 @@ def pgm_consolidation_demo_view(request):
         user=request.user,
     )
     lc55_evidence_document = lc55_reference["document"] or lc55_original_source["document"]
-    if lc55_evidence_document is None:
-        raise Http404("O PDF candidato da LC 55/2004 não foi localizado para conferência.")
-
     lc55_evidence_extraction = lc55_evidence_document.extracoes.filter(
         status=ExtracaoDocumento.Status.COMPLETE
-    ).order_by("-created_at", "-pk").first()
+    ).order_by("-created_at", "-pk").first() if lc55_evidence_document else None
     old_article_21 = _pgm_article_evidence(lc55_evidence_extraction, "21")
     lc55_snapshot_candidate = _pgm_lc55_chain_candidate(
         "BR-RN-NATAL|lei_complementar|municipal_lc|55|2004",
@@ -3272,10 +3153,12 @@ def pgm_consolidation_demo_view(request):
         lc261_article_117["page"] if lc261_article_117 else None,
         user=request.user,
     )
-    lc261_repeal_targets = _pgm_lc261_repeal_targets(
+    lc261_repeal_targets = build_candidate_relation_evidence(
         lc261_extraction,
-        source_pdf_url=lc261_pdf_url,
-        user=request.user,
+        source_pdf_url=lc261_pdf_url or "",
+        document_pdf_url=lambda document: _pgm_document_pdf_url(document, user=request.user),
+        pdf_access_required=local_pdf_available,
+        sapl_registry_records=PGM_LC261_SAPL_REGISTRY_RECORDS,
     )
     lc261_article_118_pdf_url = _pgm_document_pdf_url(
         lc261_document,
@@ -3470,6 +3353,7 @@ def pgm_consolidation_demo_view(request):
             "source_pdf_url": source_pdf_url,
             "source_segmentation_count": source_segmentation_count,
             "old_article_21": old_article_21,
+            "lc55_evidence_document": lc55_evidence_document,
             "old_article_21_pdf_url": lc55_pdf_url,
             "lc208_document": lc208_document,
             "lc208_article_14": lc208_article_14,

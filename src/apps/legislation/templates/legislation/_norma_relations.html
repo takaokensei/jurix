@@ -1,5 +1,5 @@
 <section class="card legal-detail-card normative-relations" data-normative-relations
-         data-api-url="{% url 'legislation_api:norma_relations' norma.pk %}{% if include_pending_relations %}?include_pending=true{% endif %}">
+         data-api-url="{% url 'legislation_api:norma_relations' norma.pk %}{% if include_pending_relations %}?include_pending=true{% endif %}"{% if initial_graph_payload_id %} data-initial-payload-id="{{ initial_graph_payload_id }}"{% endif %}>
   <details data-relations-disclosure>
     <summary class="normative-relations__summary" data-relations-toggle>
       <span>

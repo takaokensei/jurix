@@ -609,6 +609,7 @@ class NormaDetailView(DetailView):
                 "temporal_status_verified": corpus_revision.get("completeness") == "complete",
                 "temporal_metadata_reviewed": norma_base_identity_reviewed(norma),
                 "normative_graph_enabled": getattr(settings, "NORMATIVE_GRAPH_ENABLED", False),
+                "normative_history_enabled": getattr(settings, "NORMATIVE_HISTORY_ENABLED", False),
             }
         )
 
@@ -665,6 +666,8 @@ def norma_compare_view(request: HttpRequest, pk: int) -> HttpResponse:
         "historical_notice": "",
         "before_projection": None,
         "after_projection": None,
+        "before_casefile": None,
+        "after_casefile": None,
         "corpus_coverage_note": "",
     }
     if historical_mode:
@@ -727,10 +730,14 @@ def norma_compare_view(request: HttpRequest, pk: int) -> HttpResponse:
                     DocumentoNormativo,
                     NormativeSnapshot,
                 )
-                from src.processing.normative_projection import project_norma_as_of
+                from src.processing.normative_casefile import build_normative_casefile
 
-                before = project_norma_as_of(norma, before_date)
-                after = project_norma_as_of(norma, after_date)
+                before_casefile = build_normative_casefile(norma, as_of=before_date)
+                after_casefile = build_normative_casefile(norma, as_of=after_date)
+                before = before_casefile["projection"]
+                after = after_casefile["projection"]
+                historical_context["before_casefile"] = before_casefile
+                historical_context["after_casefile"] = after_casefile
                 historical_context["before_projection"] = before
                 historical_context["after_projection"] = after
                 terminal_status = NormativeSnapshot.Status.NOT_RECONSTRUCTABLE
@@ -974,10 +981,22 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
                     )
 
         # Render chat interface
-        qa_archive_mode = (
-            getattr(settings, "NORMATIVE_ARCHIVE_ASSISTANT_ENABLED", False)
-            and request.GET.get("corpus") == "archive-qa"
+        archive_assistant_enabled = getattr(
+            settings, "NORMATIVE_ARCHIVE_ASSISTANT_ENABLED", False
         )
+        if active_session:
+            has_answer = active_session.messages.filter(role="assistant").exists()
+            if has_answer:
+                from src.apps.legislation.serializers import serialize_chat_session
+
+                requested_archive = (
+                    serialize_chat_session(active_session).get("corpus") == "archive-qa"
+                )
+            else:
+                requested_archive = request.GET.get("corpus") == "archive-qa"
+        else:
+            requested_archive = request.GET.get("corpus") == "archive-qa"
+        qa_archive_mode = archive_assistant_enabled and requested_archive
         source_update_notice = _assistant_source_update_notice()
         context = {
             "page_title": "Assistente Jurídico - Jurix",
@@ -990,12 +1009,11 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
             "prefill_question": prefill_question,
             "max_question_length": settings.LLM_MAX_QUESTION_LENGTH,
             "qa_archive_mode": qa_archive_mode,
+            "archive_assistant_enabled": archive_assistant_enabled,
             "qa_archive_source_update_notice": (
-                source_update_notice if qa_archive_mode else ""
+                source_update_notice if archive_assistant_enabled else ""
             ),
-            "assistant_source_update_notice": (
-                "" if qa_archive_mode else source_update_notice
-            ),
+            "assistant_source_update_notice": source_update_notice,
         }
         return render(request, "legislation/chatbot.html", context)
 
