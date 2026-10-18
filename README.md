@@ -236,56 +236,25 @@ jurix/
 
 ### Quick Start
 
-```bash
-# 1. Clone o repositório
-git clone https://github.com/takaokensei/jurix.git
-cd jurix
+O caminho recomendado para explorar o protótipo é o perfil isolado de QA. Ele usa a porta `8287`, banco/Redis próprios e não lê seu `.env`:
 
-# 2. Configure Ollama no host
-# No Windows (PowerShell como Administrador):
-ollama pull llama3
-# Depois habilite "Expose Ollama to the network" nas configurações
+```powershell
+$env:JURIX_BUILD_VERSION = 'local-qa'
+$env:JURIX_BUILD_REVISION = (git rev-parse --short HEAD).Trim()
 
-# 3. Configure variáveis de ambiente
-cp .env.example .env
-# Edite .env com suas configurações:
-# OLLAMA_BASE_URL=http://host.docker.internal:11434
-# SAPL_API_URL=https://camaranatal.rn.gov.br/sapl/api/
-# POSTGRES_PASSWORD=seu_password_seguro
-
-# 4. Build e inicie os containers
-docker-compose up --build
-
-# 5. Aguarde inicialização completa
-# Verifique logs: docker-compose logs -f web
-
-# 6. Execute migrações iniciais (em outro terminal)
-docker-compose exec web python manage.py migrate
-
-# 7. Crie superusuário
-docker-compose exec web python manage.py createsuperuser
-
-# 8. Acesse o sistema
-# Django Admin: http://localhost:8000/admin
-# Chatbot RAG: http://localhost:8000/normas/chatbot/
-# Lista de Normas: http://localhost:8000/normas/
-# API REST: http://localhost:8000/api/v1/
+docker compose -p jurix-normative-qa -f docker-compose.audit.yml up -d --build db redis web worker
+docker compose -p jurix-normative-qa -f docker-compose.audit.yml exec -T web python manage.py migrate --noinput
+docker compose -p jurix-normative-qa -f docker-compose.audit.yml ps
+Invoke-WebRequest http://127.0.0.1:8287/api/v1/health/ready/
+docker compose -p jurix-normative-qa -f docker-compose.audit.yml exec -T worker celery -A config inspect ping --timeout=5
 ```
 
-### Verificação de Instalação
+Abra `http://127.0.0.1:8287/assistente/?new=1` e escolha **Acervo documental (em revisão)** para pesquisar PDFs candidatos. A demonstração de relações da LC 258/2024 fica em `http://127.0.0.1:8287/explorar/demo-consolidacao/`. Um QA recém-criado não contém os PDFs locais: os resultados vistos nesta máquina dependem do volume e dos documentos que foram preparados localmente. A página de demonstração pode ser explorada sem tomar os relacionamentos como conclusões jurídicas.
 
-```bash
-# Teste conectividade Ollama
-curl http://localhost:11434/api/version
+O endpoint de prontidão deve confirmar banco, pgvector, Redis e migrations. Ollama/corpus podem aparecer como `skipped`; isso não confirma geração nem cobertura documental. O worker deve responder `pong`, o que confirma disponibilidade do processo, não a conclusão de uma tarefa. Para interromper serviços sem apagar os volumes QA:
 
-# Verifique containers ativos
-docker-compose ps
-
-# Teste worker Celery
-docker-compose exec worker celery -A config inspect ping
-
-# Acesse PostgreSQL
-docker-compose exec db psql -U jurix -d jurix_db
+```powershell
+docker compose -p jurix-normative-qa -f docker-compose.audit.yml stop
 ```
 
 <br/>
@@ -294,56 +263,27 @@ docker-compose exec db psql -U jurix -d jurix_db
 
 ### Comandos Essenciais
 
-```bash
-# 🔄 Gerenciamento de Containers
-docker-compose up -d              # Inicia em background
-docker-compose down               # Para todos os serviços
-docker-compose restart web        # Reinicia Django
-docker-compose logs -f worker     # Logs do Celery em tempo real
+```powershell
+# 🔄 Perfil QA isolado
+docker compose -p jurix-normative-qa -f docker-compose.audit.yml ps
+docker compose -p jurix-normative-qa -f docker-compose.audit.yml logs --tail 100 web worker
+docker compose -p jurix-normative-qa -f docker-compose.audit.yml exec -T worker celery -A config inspect active_queues
 
-# 🗄️ Database Management
-docker-compose exec web python manage.py makemigrations
-docker-compose exec web python manage.py migrate
-docker-compose exec web python manage.py dbshell
-
-# 🧹 Manutenção
-docker-compose exec web python manage.py shell_plus  # Django shell avançado
-docker-compose exec web python manage.py createsuperuser
-docker-compose exec web python manage.py collectstatic --noinput
-
-# 🧪 Testing
-docker-compose exec web pytest src/tests/
-docker-compose exec web python manage.py test --parallel
-
-# 📊 Monitoring
-docker-compose exec web python manage.py show_urls  # Lista todas as rotas
-docker-compose exec worker celery -A config inspect stats  # Status Celery
+# 🧪 Suíte Python do checkout atual (os testes são excluídos da imagem de runtime)
+$workspacePath = (Get-Location).Path
+docker compose -p jurix-normative-qa -f docker-compose.audit.yml run --rm --no-deps --volume "${workspacePath}:/workspace:ro" --workdir /workspace web python -m pytest -p no:cacheprovider -q src/tests/
 ```
 
-### Desenvolvimento Local (Sem Docker)
+### Desenvolvimento Python local (alternativa)
 
-```bash
-# 1. Crie ambiente virtual
-python3.12 -m venv venv
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
+As dependências da aplicação estão em `requirements.txt`; `pyproject.toml` configura ferramentas e testes, mas atualmente não declara as dependências de runtime. No PowerShell:
 
-# 2. Instale dependências
-pip install -r requirements.txt
-
-# 3. Configure PostgreSQL local + pgvector
-createdb jurix_db
-psql jurix_db -c "CREATE EXTENSION vector;"
-
-# 4. Execute migrations
-python manage.py migrate
-
-# 5. Inicie servidor de desenvolvimento
-python manage.py runserver
-
-# 6. (Terminal separado) Inicie Celery worker
-celery -A config worker -l info
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
+
+Não aponte o ambiente QA para um banco de produto. Não use `migrate`, `makemigrations`, shell administrativo ou ingestão no perfil de produto para reproduzir esta demonstração. Os PDFs QA e as extrações locais não são publicados com o repositório.
 
 <br/>
 
@@ -456,13 +396,29 @@ celery -A config worker -l info
 
 <div align="center">
 
-**Atualizado em 14/10/2026 — protótipo de pesquisa; corpus e grafo normativo ainda em validação.** A base Django/PostgreSQL/pgvector e os fluxos de pesquisa continuam sendo a fundação do produto. O ciclo atual acrescenta ingestão documental rastreável, revisão humana de metadados e eventos, identidade normativa, versões temporais, relações jurídicas explícitas e expansão experimental do RAG.
+**Atualizado em 18/10/2026 — protótipo de pesquisa; corpus e grafo normativo ainda em validação.** A base Django/PostgreSQL/pgvector e os fluxos de pesquisa continuam sendo a fundação do produto. O ciclo atual acrescenta ingestão documental rastreável, revisão humana de metadados e eventos, identidade normativa, versões temporais, relações jurídicas explícitas e expansão experimental do RAG. A entrada no acervo documental pode ser escolhida por conversa, enumerações explicitamente pareadas usam uma gramática conservadora e a página demonstrativa agora recolhe cadeias secundárias, mantendo navegação direta para o grafo e os cotejos. Estes fluxos têm regressões automatizadas e smoke local de QA; isso não constitui adjudicação jurídica nem avaliação com procuradores.
 
-O código e os testes técnicos não equivalem a um corpus juridicamente validado. Em consulta somente leitura ao banco QA isolado em 14/10, havia **6.664 PDFs candidatos**, todos pendentes e sem extração aceita: 6.660 com última extração técnica `complete`, 3 `partial` e 1 `unreadable`, em 7.100 versões de extração. “Complete” descreve o processamento técnico, não fidelidade do texto, identidade aprovada, vigência ou cobertura legislativa. Esses números são específicos desta instância QA e não representam o banco local de produto nem o universo de normas municipais. O uso de relações no RAG permanece opt-in e depende de relações revisadas e evidência textual suficiente. Resultados científicos ficam **não avaliados** até existir amostra municipal adjudicada por pessoas — o gate definido no protocolo é de pelo menos 20 normas-piloto humanas.
+O código e os testes técnicos não equivalem a um corpus juridicamente validado. No QA isolado em 18/10, há **6.662 PDFs válidos**: 1.382 extrações técnicas completas, 8 parciais e 5.272 sem extração; documentos e extrações continuam pendentes, sem aceitação ou promoção. Restam 940 páginas adiadas pelo orçamento OCR nos oito documentos parciais. Os lotes recentes foram registrados no mapa de páginas como OCR tentado; o status parcial corresponde ao backlog ainda não processado, não a uma conclusão de ilegibilidade dessas páginas. Esses totais pertencem somente à instância QA local, não representam o banco de produto nem o universo de normas municipais. “Extração completa” descreve processamento técnico, não fidelidade do texto, identidade aprovada, vigência ou cobertura legislativa. O uso de relações no RAG permanece opt-in e depende de relações revisadas e evidência textual suficiente. Resultados científicos ficam **não avaliados** até existir amostra municipal adjudicada por pessoas — o gate definido no protocolo é de pelo menos 20 normas-piloto humanas.
+
+Em 18/10/2026, a fila técnica de consulta ao catálogo SAPL percorreu **1.390/1.390 correspondências**, com 1.308 itens novos, 82 já existentes e zero falhas de tentativa. Essa fila é distinta do checkpoint de extração do corpus e não significa que os 6.671 PDFs foram processados cronologicamente. Documentos e extrações seguem pendentes, sem vínculo, aceite ou promoção. Uma comparação QA somente-leitura em três PDFs reais mediu correspondências textuais de células tabulares candidatas e não encontrou tabelas semânticas no HTML do Poppler; a amostra é pequena e não justifica trocar o extrator nem valida tabelas juridicamente. Consulte o [diário de progresso](docs/research/NORMATIVE_IMPLEMENTATION_PROGRESS.md) e o [relatório multiamostra](docs/research/evidence/review-20261018/pdf-layout-benchmark-multisample-20261018.md) para universos, comandos, resultados por lote e limitações; não interprete processamento técnico como cobertura legislativa.
 
 O volume de normas e dispositivos depende do corpus configurado localmente; consulte a tela **Normas** ou a API para os totais atuais. Veja [`docs/research/NORMATIVE_GRAPH_DELIVERY.md`](docs/research/NORMATIVE_GRAPH_DELIVERY.md) para escopo e [`docs/research/NORMATIVE_GRAPH_OPERATIONS.md`](docs/research/NORMATIVE_GRAPH_OPERATIONS.md) para validação e ativação controlada.
 
-Na validação QA mais recente registrada, o smoke Chromium percorreu 29 verificações em seis larguras de 320 a 1920 px, sem erros de página; 28 passaram e 1 ficou apenas informativa porque o build local não tinha versão identificada. A suíte Python integral passou com **1.971 testes, 6 ignorados e 0 falhas**; a suíte JavaScript agregou **274 passados, 5 ignorados e 0 falhas**. `manage.py check`, orçamento de arquitetura e contrato documental passaram. Há testes condicionais ignorados quando falta URL de QA/revisor; eles não contam como validação de runtime. O profile QA observado em 14/10 respondeu HTTP 200 em `http://127.0.0.1:8287`, mas a porta é efêmera, não uma porta fixa do produto. Extrações e relações do acervo seguem pendentes de revisão; os testes não são validação jurídica, estudo com procuradores, avaliação científica nem prova de vigência. Nenhum resultado de produção ou prontidão para uso em processos da PGM foi demonstrado; veja [`docs/research/PGM_PILOT_DELIVERY.md`](docs/research/PGM_PILOT_DELIVERY.md) e [`docs/research/PGM_USABILITY_RESULTS.md`](docs/research/PGM_USABILITY_RESULTS.md) para evidências, limitações e gates restantes.
+Para contribuir sem confundir extração técnica com revisão jurídica, consulte [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+#### Perfil local de demonstração QA (Docker)
+
+O perfil de demonstração isolada usa PostgreSQL/Redis próprios, armazenamento QA separado e a porta `8287`. No PowerShell, a partir da raiz do repositório:
+
+```powershell
+docker compose -p jurix-normative-qa -f docker-compose.audit.yml up -d --build db redis web worker
+docker compose -p jurix-normative-qa -f docker-compose.audit.yml exec -T web python manage.py migrate --noinput
+docker compose -p jurix-normative-qa -f docker-compose.audit.yml ps
+```
+
+Abra `http://127.0.0.1:8287/`. Para parar sem remover os volumes QA, use `docker compose -p jurix-normative-qa -f docker-compose.audit.yml stop`. Esse perfil não é produção: o acervo permanece candidato, sem revisão/aceitação jurídica, e não deve ser promovido automaticamente ao corpus de produto. O assistente com Ollama também requer o serviço local configurado e acessível pelo Docker.
+
+**Verificação local mais recente (18/10/2026):** o perfil Docker QA `:8287` passou pelo smoke Chromium com 34 verificações: 33 passaram, zero falharam e o RAG de projetos de lei ficou deferred por estar fora do escopo. O painel de instância confirmou versão QA explícita. As suítes focadas de ficha temporal/grafo/exportação/rotas passaram com **162 testes**; as regressões de recuperação/contexto passaram com **234 testes**. `manage.py check` passou. Um dump QA de 47,6 MB foi verificado e restaurado em PostgreSQL descartável com contagens de migrações e normas coincidentes; isso não ensaia restore do banco de produto. Esses números não são a suíte integral e não representam teste em produção, revisão jurídica ou estudo com procuradores. A captura da demonstração registra cerca de 4,8 mil CSS px de conteúdo inicial a 1280×900, com cadeias secundárias recolhidas e atalhos para expandi-las. O servidor local de QA `:8291` é independente; nenhuma dessas portas deve ser presumida como a instância de produto aberta pelo usuário. Para limites e evidências, veja [`docs/research/PGM_PILOT_DELIVERY.md`](docs/research/PGM_PILOT_DELIVERY.md), [`docs/research/PGM_USABILITY_RESULTS.md`](docs/research/PGM_USABILITY_RESULTS.md) e o diário abaixo.
 
 </div>
 
@@ -978,11 +934,29 @@ O trabalho recente unificou fluxos de assistente, normas e pesquisa, priorizando
 
 Na suíte Python isolada de QA em 06/10/2026, **1.317 testes passaram, 3 foram ignorados e houve 7 avisos**. A suíte JavaScript terminou com exit 0; o grupo Chromium integrado passou **37/37**. O smoke de produto no Django QA `8015` cobriu **42 combinações de rota/largura**, 15 interações e seis verificações de tema claro, sem falhas. Um smoke adicional com Ollama real confirmou fontes antes do texto, citações estruturadas, cópia Markdown, cancelamento/retry, restauração por F5 e abstenção segura; na consulta de overview foram cobertos 20/39 dispositivos e essa parcialidade foi informada. São testes técnicos locais, não métricas de campo nem validação jurídica.
 
-Permanecem como gates: concluir os fluxos R01–R24 do runbook, zoom nativo de 200%, validação com tecnologia assistiva, adjudicação humana de ao menos 20 normas, reconciliação SAPL confiável e experimento RAG com warm elegível/gold humano. Os 40 PDFs arquivados continuam pendentes no QA, sem promoção para corpus de produto; o worker Celery de produto está unhealthy. Consulte [`docs/research/NORMATIVE_IMPLEMENTATION_PROGRESS.md`](docs/research/NORMATIVE_IMPLEMENTATION_PROGRESS.md), [`docs/research/NORMATIVE_GRAPH_DELIVERY.md`](docs/research/NORMATIVE_GRAPH_DELIVERY.md) e [`docs/research/NORMATIVE_GRAPH_OPERATIONS.md`](docs/research/NORMATIVE_GRAPH_OPERATIONS.md) para estado, evidências e limites.
+**Snapshot operacional QA — 17/10/2026:** o perfil isolado `jurix-normative-qa` usa `http://127.0.0.1:8287/` quando o Docker QA está em execução. No build QA identificado `qa-dirty-20261017.demo2`, `/api/v1/health/ready/` informou banco, pgvector, Redis e migrations disponíveis; Ollama/corpus apareceram como `skipped`, portanto isso não comprova geração por modelo nem completude jurídica. O diagnóstico de contagens anterior aos lotes encontrou 6.671 PDFs candidatos, todos com pelo menos uma extração técnica; naquela medição, a extração mais recente de 6.668 estava marcada completa, duas parciais e uma ilegível. Isso **não** equivale a revisão jurídica: o catálogo não possui norma real consolidada visível ao produto. O checkpoint de extração candidata chegou a 230/6.671, em ordem por UUID, não por data de publicação. Os lotes 190→200 e 200→210/210→220/220→230 concluíram 40/40 extrações; veja as métricas individuais no diário de progresso. Em leitura agregada do subconjunto anterior de 190 documentos, 103 tinham 192 layouts candidatos (ocupação mediana 0,8); 10 páginas rasterizadas não passaram pelo detector raster. São sidecars estruturais não revisados, não substituem o texto jurídico nem foram aceitos/promovidos. Nenhum candidato foi aceito ou promovido. Em uma sondagem somente-leitura de 100 PDFs, 65 páginas tinham tabelas detectáveis; a versão instalada do PyMuPDF não ofereceu saída Markdown e o HTML inspecionado representava texto posicionado, não tabela semântica, então o extrator não foi trocado. As suítes focadas previamente passaram: **185 testes** (1 ignorado, 2 avisos) em projeção/grafo/comparação/workspace/exportação/contratos, **209** no parser/RAG e **113** na suíte de workspace (1 ignorado); na retomada, **65 testes** de extração/revisão de tabelas e **14** de checkpoint passaram. Após corrigir links do disclosure da demo que estavam visíveis/tabuláveis fora da tela, o smoke PGM em `:8287` passou **31 checks, 0 falhas e 1 deferred intencional** em 320–1920 px; cobre busca no acervo, fontes/PDF local, grafo, cotejos e gates de revisão. No cenário temporal, não calculou a data porque as fontes DOM/LC 95 não foram recuperadas; a resposta manteve essa lacuna explícita. Evidência sanitizada no root temporário local indicado em `docs/research/NORMATIVE_IMPLEMENTATION_PROGRESS.md`. Consulte esse diário para comandos, escopo e ressalvas.
+
+Permanecem como gates: concluir os fluxos R01–R24 do runbook, zoom nativo de 200%, validação com tecnologia assistiva, adjudicação humana de ao menos 20 normas, revisão jurídica das relações e experimento RAG com gold humano. O lote documental histórico permanece no QA, pendente de revisão e sem promoção para corpus de produto; ingestões e extrações candidatas não equivalem a consolidação. O worker Celery do perfil de produto precisa de diagnóstico operacional separado. Consulte [`docs/research/NORMATIVE_IMPLEMENTATION_PROGRESS.md`](docs/research/NORMATIVE_IMPLEMENTATION_PROGRESS.md), [`docs/research/NORMATIVE_GRAPH_DELIVERY.md`](docs/research/NORMATIVE_GRAPH_DELIVERY.md) e [`docs/research/NORMATIVE_GRAPH_OPERATIONS.md`](docs/research/NORMATIVE_GRAPH_OPERATIONS.md) para estado, evidências e limites.
 
 **PIBIC Report:** Available in `docs/PIBIC_RELATORIO_FINAL_ESBOCO.md`
 
+**Retomada de validação QA — 17/10/2026:** `tests/js/pgm-workflow-smoke.mjs` concluiu 31 checks sem falhas e 1 cenário deferred intencional, em larguras de 320–1920 px. No runner QA isolado, os testes de retomada de extração, extração documental e revisão concluíram **79 passed**; Ruff, `manage.py check` e `git diff --check` passaram. O checkpoint chegou a **294/6.671**: sete lotes limitados desde 230 tiveram 63/63 extrações completas; um PDF de 71 páginas entre eles resultou parcial sob o teto de até 10 páginas OCR. Todos seguem pendentes e sem vínculo/promoção. Esses resultados validam comportamento técnico, não revisão jurídica, consolidação de normas ou prontidão para uso em processos reais; detalhes e ressalvas estão em `docs/research/NORMATIVE_IMPLEMENTATION_PROGRESS.md`.
+
+Na medição QA de cobertura de extração registrada em 17/10, datas extraídas eram apenas candidatas: no universo de 6.671 documentos pendentes, **7** tinham data candidata ISO válida, **6.664** não tinham data e nenhuma era revisada. Esse resultado descreve metadados extraídos dos PDFs; não contradiz a fila separada de consulta ao catálogo SAPL concluída depois. Nenhuma dessas datas candidatas foi aceita como fato jurídico.
+
+**Snapshot operacional QA — 18/10/2026:** o perfil isolado Docker `jurix-normative-qa` em `:8287` respondeu `ready` para banco, pgvector, Redis e migrations; o endpoint marcou Ollama/corpus como `skipped`, portanto isso não comprova inferência por modelo nem completude jurídica. O smoke PGM em Chromium terminou com **34 verificações: 33 passaram, zero falharam e 1 deferred fora do escopo**, em 320, 360, 640, 768, 1280 e 1920 px; a identidade do build QA foi explícita. A demonstração recolhe por padrão o cotejo do CTM e as demais cadeias secundárias; links internos expandem a seção correta. Os PDFs/extrações continuam candidatos não revisados.
+
+Na verificação integral anterior do checkout, `src/tests/` terminou com **2.249 testes aprovados, 7 ignorados e 10 avisos**, em 257,41 s. Após as alterações QA deste ciclo, a suíte integral ainda não foi validada com um único perfil que cubra corretamente os testes padrão e os subprocessos QA: execuções de container/host tiveram falhas de configuração de harness. Em contraste, os 211 testes focados de RAG/diagnóstico passaram após a correção atual; `manage.py check` e Ruff também passaram. Após inspecionar o plano e guardar um dump prévio, apliquei as 18 migrations pendentes exclusivamente no banco QA `:55432`; `:8287` voltou a `ready` e o worker respondeu `pong`. Ollama e corpus continuam `skipped` no readiness. Isso verifica contratos específicos, não confirma vigência nem substitui revisão humana ou avaliação com procuradores.
+
+Na fila de identidade SAPL↔PDF em QA, o checkpoint chegou a **1.390/1.390 correspondências**: 1.308 itens novos e 82 já existentes, sem falhas. Isso não é um contador de normas consolidadas nem afirma cobertura de todos os PDFs. As extrações continuam pendentes de revisão e sem promoção. Resultados, comandos, universo e ressalvas estão no [diário de progresso](docs/research/NORMATIVE_IMPLEMENTATION_PROGRESS.md); capturas do smoke são armazenadas em área temporária local e não fazem parte do repositório.
+
+**Atualização do acervo QA — 18/10/2026:** reconstituí o staging do ZIP local no banco isolado `:55432`: 6.663 entradas verificadas, 6.662 PDFs válidos registrados e um PDF vazio preservado como falha de origem. A fila estrita SAPL↔PDF de 1.390 candidatos foi processada integralmente: 1.379 extrações técnicas completas e 11 parciais, todas pendentes de revisão; 5.272 PDFs ainda não têm extração porque não pertencem à fila estrita. Nas parciais, o limite de dez páginas OCR por documento deixou 1.067 páginas pendentes (`ocr_page_budget_exceeded`). Não houve falhas de execução, extrações duplicadas, vínculos normativos, aceitação ou promoção. O endpoint `:8287` está `ready`; readiness informa Ollama/corpus como `skipped`, portanto não comprova inferência real. Nenhum dado foi gravado no banco de produto e `:8293` não foi acessado.
+
+**Smoke de recuperação/Ollama QA — 18/10/2026:** o serviço Ollama do container alcançou `llama3`; uma geração curta respondeu em 3,8 s e um teste do stream do provider entregou 8 chunks em 374 ms. No fluxo RAG para a LC 258/2024, uma pergunta sobre os Arts. 1º e 2º revelou que a frase “não conclua sobre vigência” virava indevidamente um filtro temático. Corrigi o filtro para preservar os dois dispositivos; a consulta real passou a recuperar ambos e o `llama3` respondeu em 5,2 s, com 4 chunks e citações para o PDF local. O estado final foi `generation_partial_after_grounded_prefix`, não uma resposta completa; a fonte segue “extração pendente de revisão”. A consulta do Art. 260 recuperou a cláusula de revogação na página 60 por uma resposta determinística sem chamada ao modelo. Isso é teste técnico de QA, não valida revogações nem vigência. Consulte o diário para limitações e comandos.
+
 O projeto demonstra uma arquitetura de pesquisa para processamento jurídico local com Ollama quando configurado. Cobertura, qualidade jurídica, segurança operacional, acessibilidade e prontidão de produção ainda dependem dos gates documentados; a interface segue tokens e componentes próprios, sem declaração de conformidade formal.
+
+**Atualização operacional do QA — 17/10/2026:** o worker do Compose QA foi reconstruído com o checkout atual depois que uma imagem antiga rejeitou a configuração de container QA. A rotina QA agora aceita apenas os settings isolado/local e isolado/container; regressões negativas mantêm `config.settings` comum bloqueado. O worker responde ao ping Celery e está saudável; as filas `normative_qa` e `celery` estão vazias. As 45 mensagens QA que estavam no broker foram reconhecidas; os estados agregados de trabalho normativo permaneceram inalterados (itens concluídos, falhos ou aguardando revisão), sem aceite ou promoção. `manage.py check` passou e os 18 testes focados de pipeline/configuração passaram. A sincronização SAPL está atual; a do Diário Oficial está desatualizada, por isso a interface ainda avisa corretamente que a atualização das fontes oficiais não está confirmada. Isto valida somente o perfil QA local, não o worker de produto, deployment, nem prontidão jurídica.
 
 ---
 

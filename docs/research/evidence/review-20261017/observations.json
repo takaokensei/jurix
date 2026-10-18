@@ -1,0 +1,50 @@
+{
+  "observed_on": "2026-10-17",
+  "instance": "http://127.0.0.1:8287",
+  "profile": "isolated_qa",
+  "checkout": "main / d3592597 plus pre-existing working-tree changes",
+  "database_method": "Django aggregate queries inside SET TRANSACTION READ ONLY",
+  "counts": {
+    "documents_by_origin": {"archive": 6671, "legacy": 22, "official_gazette": 31, "sapl": 8},
+    "documents_by_review": {"approved": 17, "pending": 6715},
+    "approved_legacy_documents_explicitly_marked_synthetic": 17,
+    "accepted_extractions_on_legacy_documents": 20,
+    "accepted_extractions_on_archive_sapl_or_gazette_documents": 0,
+    "product_visible_norm_records": 195,
+    "product_visible_consolidated_norms": 0,
+    "candidate_events": 1761,
+    "coverage_scopes": {"partial": 1}
+  },
+  "runtime_checks": {
+    "readiness": "ready; database, pgvector, redis and migrations ok; Ollama and corpus checks skipped by endpoint",
+    "search_258_2024_in_normas": "0 consolidated results; offers link to archive search",
+    "search_258_2024_in_archive": "1 pending document found",
+    "normal_explore": "0 norms available",
+    "default_assistant_query": "no supporting information returned",
+    "archive_assistant_natural_grouped_references": "rejected as ambiguous",
+    "archive_assistant_repeated_complete_references": "answer with 5 sources; pending review explicitly identified",
+    "sources_mouse_click": "after locator repositioning, composer textarea intercepted the click at source button center",
+    "sources_direct_click_after_reload": "succeeded; button rectangle y=315 and center hit test returned the button",
+    "source_overlap_classification": "not established as a general product defect; automation repositioning may contribute",
+    "sources_keyboard_activation": "drawer opened with Enter",
+    "source_button_rectangle": {"x": 346, "y": 426, "width": 446.734375, "height": 33.1875},
+    "copy_using_keyboard": "2361 characters with valid Markdown links using angle-bracket destinations",
+    "local_pdf_get": {"status": 200, "content_type": "application/pdf", "magic": "%PDF-"},
+    "local_pdf_head": "405; GET succeeded, therefore not classified as missing PDF",
+    "conferir_anonymous": "redirected to login with explanation; authenticated workflow not exercised",
+    "demo_mobile_after_reload": {"viewport_width": 360, "document_width": 345, "page_height": 60739, "heading_count": 76},
+    "sources_mobile": {"viewport_width": 360, "document_width": 360}
+  },
+  "fresh_verification": {
+    "python_focused": "76 passed in 1.30 s; isolated normative QA settings and disposable pytest database",
+    "django_check": "no issues",
+    "architecture_budget": "passed; the two large modules identified in the assessment are absent from DEFAULT_BUDGETS"
+  },
+  "limitations": [
+    "One public hypothetical licensing scenario, not a procurador participant study",
+    "No legal adjudication or verification of applicable law",
+    "No claim of measured LLM streaming latency, field accuracy or full WCAG conformance",
+    "QA worker was not started for this assessment; source queue warning is environment-dependent",
+    "No production data writes, legal approvals, migrations, commits or push"
+  ]
+}
