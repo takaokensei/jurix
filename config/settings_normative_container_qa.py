@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from copy import deepcopy
 from pathlib import Path
 from tempfile import gettempdir
@@ -39,9 +40,27 @@ def _require_container_qa_environment() -> tuple[Path, str, str]:
         "database": database.path.lstrip("/"),
         "password": database.password,
     }
-    if actual_database != _EXPECTED_DATABASE:
+    expected_connection = {
+        key: value for key, value in _EXPECTED_DATABASE.items() if key != "database"
+    }
+    actual_connection = {
+        key: value for key, value in actual_database.items() if key != "database"
+    }
+    database_name = actual_database["database"]
+    allowed_name = database_name == _EXPECTED_DATABASE["database"] or bool(
+        re.fullmatch(r"jurix_migtest_[0-9]+", database_name)
+    )
+    if actual_connection != expected_connection:
+        mismatched_fields = sorted(
+            key for key, value in expected_connection.items() if actual_connection.get(key) != value
+        )
         raise ImproperlyConfigured(
-            "Container QA settings only accept the dedicated audit database service."
+            "Container QA settings only accept the dedicated audit database service "
+            f"(mismatched connection fields: {', '.join(mismatched_fields)})."
+        )
+    if not allowed_name:
+        raise ImproperlyConfigured(
+            "Container QA settings only accept the audit database or a namespaced migration scratch database."
         )
 
     expected_urls = {
@@ -88,7 +107,7 @@ JURIX_BUILD_PROFILE = "qa"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": _EXPECTED_DATABASE["database"],
+        "NAME": urlparse(_DATABASE_URL).path.lstrip("/"),
         "USER": _EXPECTED_DATABASE["username"],
         "PASSWORD": _EXPECTED_DATABASE["password"],
         "HOST": _EXPECTED_DATABASE["hostname"],

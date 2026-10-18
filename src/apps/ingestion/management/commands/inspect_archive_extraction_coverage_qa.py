@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from collections import Counter
+from datetime import date
 from pathlib import Path
 from statistics import median
 
@@ -129,6 +130,52 @@ def _ocr_budget_workload(skipped_page_counts: list[int]) -> dict[str, object]:
     }
 
 
+def _publication_date_candidate_coverage(metadata_rows) -> dict[str, object]:
+    """Count extracted publication-date candidates without treating them as facts."""
+    counts: Counter[str] = Counter()
+    years: Counter[str] = Counter()
+    total = 0
+    for metadata in metadata_rows:
+        total += 1
+        candidates = metadata if isinstance(metadata, dict) else {}
+        publication = candidates.get("publication")
+        publication = publication if isinstance(publication, dict) else {}
+        raw_date = publication.get("data_publicacao")
+        if raw_date in (None, ""):
+            counts["missing"] += 1
+            continue
+        if not isinstance(raw_date, str):
+            counts["malformed"] += 1
+            continue
+        try:
+            parsed = date.fromisoformat(raw_date)
+        except ValueError:
+            counts["malformed"] += 1
+            continue
+        if parsed.isoformat() != raw_date:
+            counts["malformed"] += 1
+            continue
+        counts["valid_unreviewed_candidate"] += 1
+        years[str(parsed.year)] += 1
+
+    return {
+        "scope_documents": total,
+        "valid_unreviewed_candidate_dates": counts["valid_unreviewed_candidate"],
+        "missing_candidate_dates": counts["missing"],
+        "malformed_candidate_dates": counts["malformed"],
+        "candidate_counts_by_year": dict(sorted(years.items())),
+        "dates_are_reviewed_facts": False,
+    }
+
+
+def _normalize_nullable_status_counts(status_counts) -> dict[str, int]:
+    """Make grouped status keys JSON-safe while distinguishing missing status."""
+    return {
+        str(status) if status is not None else "null": count
+        for status, count in status_counts
+    }
+
+
 class Command(BaseCommand):
     help = "Compara documentos únicos e versões de extração no acervo QA sem expor conteúdo."
 
@@ -164,7 +211,7 @@ class Command(BaseCommand):
         latest_extraction = ExtracaoDocumento.objects.filter(
             documento_id=OuterRef("pk")
         ).order_by("-created_at", "-pk")
-        latest_by_status = dict(
+        latest_by_status = _normalize_nullable_status_counts(
             candidates.annotate(
                 latest_extraction_status=Subquery(latest_extraction.values("status")[:1])
             )
@@ -172,6 +219,18 @@ class Command(BaseCommand):
             .annotate(count=Count("pk"))
             .order_by("latest_extraction_status")
             .values_list("latest_extraction_status", "count")
+        )
+        latest_metadata = ExtracaoDocumento.objects.filter(
+            documento_id=OuterRef("pk")
+        ).order_by("-created_at", "-pk")
+        publication_date_candidates = _publication_date_candidate_coverage(
+            candidates.annotate(
+                latest_metadata_candidates=Subquery(
+                    latest_metadata.values("metadata_candidates_json")[:1]
+                )
+            ).values_list("latest_metadata_candidates", flat=True).iterator(
+                chunk_size=500
+            )
         )
 
         incomplete_rows = candidates.annotate(
@@ -255,6 +314,7 @@ class Command(BaseCommand):
             "extraction_record_count": extraction_records,
             "extraction_records_by_status": records_by_status,
             "documents_by_latest_extraction_status": latest_by_status,
+            "publication_date_candidate_coverage": publication_date_candidates,
             "incomplete_extractions_by_reason": dict(sorted(incomplete_reason_counts.items())),
             "incomplete_documents_with_ocr_attempts": incomplete_documents_with_ocr_attempts,
             "incomplete_ocr_budget_skipped_page_count": incomplete_ocr_budget_skipped_pages,

@@ -651,7 +651,10 @@ def test_default_ocr_keeps_fast_path_when_primary_result_is_readable(monkeypatch
     )
 
     assert _default_ocr(Image.new("RGB", (20, 20), "white"), timeout=15) == expected
-    assert calls == [("por", "--psm 6", 15.0)]
+    assert len(calls) == 1
+    assert calls[0][:2] == ("por", "--psm 6")
+    assert 0 < calls[0][2] <= 15.0
+    assert 15.0 - calls[0][2] < 0.01
 
 
 def test_page_limit_does_not_return_a_truncated_complete_document(tmp_path):

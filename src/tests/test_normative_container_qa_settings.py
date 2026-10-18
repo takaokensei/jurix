@@ -88,6 +88,20 @@ def test_container_qa_profile_uses_only_isolated_services_and_disables_beat(tmp_
     assert settings["sapl_base"] == "https://sapl.natal.rn.leg.br/api"
 
 
+def test_container_qa_profile_allows_only_namespaced_migration_scratch_database(tmp_path):
+    temp_root = tmp_path / "container-temp"
+    temp_root.mkdir()
+    env = _container_qa_env(temp_root / "jurix-normative-qa", temp_root)
+    env["DATABASE_URL"] = (
+        env["DATABASE_URL"].rsplit("/", 1)[0] + "/jurix_migtest_12345"
+    )
+
+    result = _load_profile(env)
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["database"] == "jurix_migtest_12345"
+
+
 @pytest.mark.parametrize(
     ("variable", "value"),
     [

@@ -26,6 +26,18 @@ from src.processing.qa_archive_rag import (
 )
 
 ALLOWED_SAPL_DOCUMENT_IDS = {UUID("cb810b42-ecea-4cbc-870a-b2581c30df6c")}
+ALLOWED_QA_SETTINGS_MODULES = {
+    "config.settings_normative_qa",
+    "config.settings_normative_container_qa",
+}
+
+
+def _is_isolated_qa_environment(environ: dict[str, str], assistant_enabled: bool) -> bool:
+    return (
+        environ.get("JURIX_QA_ONLY") == "1"
+        and environ.get("DJANGO_SETTINGS_MODULE") in ALLOWED_QA_SETTINGS_MODULES
+        and assistant_enabled
+    )
 
 
 def _generation_mode(done: dict) -> str:
@@ -49,10 +61,8 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        if (
-            os.environ.get("JURIX_QA_ONLY") != "1"
-            or os.environ.get("DJANGO_SETTINGS_MODULE") != "config.settings_normative_qa"
-            or not getattr(settings, "NORMATIVE_ARCHIVE_ASSISTANT_ENABLED", False)
+        if not _is_isolated_qa_environment(
+            os.environ, getattr(settings, "NORMATIVE_ARCHIVE_ASSISTANT_ENABLED", False)
         ):
             raise CommandError("Este diagnóstico exige o ambiente QA normativo isolado.")
 

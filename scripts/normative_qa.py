@@ -143,6 +143,14 @@ def _allowed_command(command: list[str]) -> list[str]:
                 ("showmigrations",),
                 ("check_source_sync_health",),
                 (
+                    "audit_archive_sapl_crosswalk_qa",
+                    "--max-pages", "2", "--page-size", "100",
+                ),
+                (
+                    "audit_archive_sapl_crosswalk_qa",
+                    "--max-pages", "100", "--page-size", "100",
+                ),
+                (
                     "isolate_synthetic_norma_identity_qa",
                     "--norma-id", "7",
                     "--expected-identity-key",
@@ -661,12 +669,18 @@ def _allowed_command(command: list[str]) -> list[str]:
                             raise ValueError("archive OCR resume batch size must be between 1 and 10")
                 elif command_args[:1] == ["extract_archive_candidates_batch_qa"]:
                     options = command_args[1:]
-                    allowed_flags = {"--dry-run", "--apply", "--batch-size", "--resume"}
+                    allowed_flags = {
+                        "--dry-run", "--apply", "--batch-size", "--resume", "--publication-order"
+                    }
                     if any(item.startswith("--") and item not in allowed_flags for item in options):
                         raise ValueError("archive batch extraction received an unsupported flag")
                     if options.count("--apply") + options.count("--dry-run") != 1:
                         raise ValueError("archive batch extraction requires exactly one of --apply or --dry-run")
-                    if options.count("--resume") > 1 or options.count("--batch-size") > 1:
+                    if (
+                        options.count("--resume") > 1
+                        or options.count("--batch-size") > 1
+                        or options.count("--publication-order") > 1
+                    ):
                         raise ValueError("archive batch extraction options must not be repeated")
                     if "--resume" in options and not ({"--apply", "--dry-run"} & set(options)):
                         raise ValueError("archive batch extraction --resume requires --apply or --dry-run")
@@ -741,6 +755,12 @@ def _allowed_command(command: list[str]) -> list[str]:
                 elif command_args[:1] == ["inspect_archive_extraction_coverage_qa"]:
                     if command_args != ["inspect_archive_extraction_coverage_qa"]:
                         raise ValueError("archive extraction coverage inspection accepts no options")
+                elif command_args == ["diagnose_archive_transition_retrieval_qa"]:
+                    # Read-only, fixed-scenario trace of title-based transition
+                    # retrieval against the isolated QA archive. It emits only
+                    # act identity, article labels, extraction status and
+                    # predicate matches—not extracted legal text or file paths.
+                    pass
                 elif command_args[:1] == ["stage_lc55_official_candidate_qa"]:
                     options = command_args[1:]
                     if "--pdf-path" not in options:
@@ -1054,6 +1074,8 @@ def _command_environment(env: dict[str, str], command: list[str]) -> dict[str, s
         "python", "manage.py", "diagnose_sapl", "--limit", "10", "--max-pages", "4"
     ]:
         scoped["SAPL_BASE_URL"] = "https://sapl.natal.rn.leg.br/api"
+    elif parts[:3] == ["python", "manage.py", "audit_archive_sapl_crosswalk_qa"]:
+        scoped["SAPL_BASE_URL"] = "https://sapl.natal.rn.leg.br/api"
     elif parts == [
         "python", "scripts/run_qa_sapl_incremental.py",
         "--tipo", "1", "--ano", "2026", "--limit", "10", "--max-pages", "1",
@@ -1120,6 +1142,13 @@ def _command_environment(env: dict[str, str], command: list[str]) -> dict[str, s
 def _container_storage_command(command: list[str]) -> list[str] | None:
     """Run file-backed corpus operations in the app container's QA volume."""
     parts = command[1:] if command[:1] == ["--"] else command
+    if (
+        parts[:3] == ["python", "manage.py", "extract_archive_candidates_batch_qa"]
+        and "--publication-order" in parts
+    ):
+        # This mode requires the host QA archive mirror and host-side SAPL
+        # crosswalk checkpoint; the standard UUID-order mode stays container-backed.
+        return None
     if (
         len(parts) >= 3
         and parts[:3] == ["python", "manage.py", "extract_archive_candidate_qa"]

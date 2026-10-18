@@ -687,6 +687,29 @@ def test_sapl_diagnostic_is_exact_bounded_read_only_probe_to_natal():
     assert scoped["SAPL_BASE_URL"] == "https://sapl.natal.rn.leg.br/api"
 
 
+def test_archive_sapl_crosswalk_is_limited_to_read_only_page_budgets():
+    prefix = ["python", "manage.py", "audit_archive_sapl_crosswalk_qa"]
+    for command in (
+        prefix + ["--max-pages", "2", "--page-size", "100"],
+        prefix + ["--max-pages", "100", "--page-size", "100"],
+    ):
+        assert qa._allowed_command(command) == [qa.sys.executable, *command[1:]]
+        scoped = qa._command_environment(
+            {"JURIX_QA_ONLY": "1", "SAPL_BASE_URL": "http://untrusted.invalid/api"},
+            command,
+        )
+        assert scoped["SAPL_BASE_URL"] == "https://sapl.natal.rn.leg.br/api"
+
+    for unsafe in (
+        prefix + ["--max-pages", "101", "--page-size", "100"],
+        prefix + ["--max-pages", "2", "--page-size", "101"],
+        prefix + ["--max-pages", "2", "--page-size", "100", "--apply"],
+        prefix + ["--max-pages", "100", "--page-size", "50"],
+    ):
+        with pytest.raises(ValueError):
+            qa._allowed_command(unsafe)
+
+
 def test_temporary_reviewer_credential_is_scoped_to_synthetic_seed(monkeypatch):
     secret = "qa-reviewer-secret-never-print-this"
     monkeypatch.setenv("JURIX_QA_REVIEWER_PASSWORD", secret)
@@ -1235,6 +1258,16 @@ def test_archive_batch_extraction_guard_enforces_qa_sized_batches_and_explicit_m
     assert qa._allowed_command(base + ["--dry-run", "--batch-size", "10"])[0] == qa.sys.executable
     assert qa._allowed_command(base + ["--dry-run", "--resume", "--batch-size", "1"])[0] == qa.sys.executable
     assert qa._allowed_command(base + ["--apply", "--resume", "--batch-size", "5"])[0] == qa.sys.executable
+    assert qa._allowed_command(
+        base + ["--dry-run", "--publication-order", "--batch-size", "10"]
+    )[0] == qa.sys.executable
+    assert qa._allowed_command(
+        base + ["--apply", "--publication-order", "--resume", "--batch-size", "10"]
+    )[0] == qa.sys.executable
+    assert qa._container_storage_command(
+        [*base, "--apply", "--publication-order", "--batch-size", "10"]
+    ) is None
+    assert qa._container_storage_command([*base, "--apply", "--batch-size", "10"]) is not None
     for options in (
         [],
         ["--apply", "--dry-run"],
@@ -1243,6 +1276,7 @@ def test_archive_batch_extraction_guard_enforces_qa_sized_batches_and_explicit_m
         ["--dry-run", "--batch-size", "0"],
         ["--apply", "--resume", "--all"],
         ["--resume"],
+        ["--dry-run", "--publication-order", "--publication-order"],
     ):
         with pytest.raises(ValueError):
             qa._allowed_command(base + options)

@@ -214,7 +214,11 @@ def _extract_archive_candidate(
 def _require_normative_qa() -> None:
     if (
         os.environ.get("JURIX_QA_ONLY") != "1"
-        or os.environ.get("DJANGO_SETTINGS_MODULE") != "config.settings_normative_qa"
+        or os.environ.get("DJANGO_SETTINGS_MODULE")
+        not in {
+            "config.settings_normative_qa",
+            "config.settings_normative_container_qa",
+        }
         or not getattr(settings, "NORMATIVE_ARCHIVE_ENABLED", False)
     ):
         raise RuntimeError("Normative worker requires the isolated normative QA settings.")

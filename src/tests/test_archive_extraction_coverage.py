@@ -6,7 +6,9 @@ from src.apps.ingestion.management.commands.inspect_archive_extraction_coverage_
     _incomplete_reason,
     _incomplete_storage_coverage,
     _inventory_content_hashes,
+    _normalize_nullable_status_counts,
     _ocr_budget_workload,
+    _publication_date_candidate_coverage,
 )
 from src.apps.ingestion.management.commands.restore_missing_archive_blobs_qa import (
     _entry_sha256,
@@ -59,6 +61,34 @@ def test_ocr_budget_workload_empty_result_has_no_fake_percentiles():
     assert result["skipped_pages_total"] == 0
     assert result["per_document_median"] is None
     assert result["per_document_p90"] is None
+
+
+def test_publication_date_coverage_counts_unreviewed_candidates_without_exposing_dates():
+    result = _publication_date_candidate_coverage([
+        {"publication": {"data_publicacao": "2024-12-27"}},
+        {"publication": {"data_publicacao": "2024-12-27"}},
+        {"publication": {"data_publicacao": "2024-02-30"}},
+        {"publication": {"data_publicacao": None}},
+        {},
+        None,
+    ])
+
+    assert result == {
+        "scope_documents": 6,
+        "valid_unreviewed_candidate_dates": 2,
+        "missing_candidate_dates": 3,
+        "malformed_candidate_dates": 1,
+        "candidate_counts_by_year": {"2024": 2},
+        "dates_are_reviewed_facts": False,
+    }
+    assert "2024-12-27" not in str(result)
+
+
+def test_nullable_latest_extraction_status_is_safe_for_sorted_json():
+    assert _normalize_nullable_status_counts([(None, 6662), ("complete", 10)]) == {
+        "complete": 10,
+        "null": 6662,
+    }
 
 
 def test_incomplete_storage_coverage_reports_only_integrity_counts(tmp_path):

@@ -114,6 +114,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "config.context_processors.google_fonts",
+                "config.context_processors.archive_assistant",
                 "src.apps.core.build_identity.workspace_build_context",
             ],
         },

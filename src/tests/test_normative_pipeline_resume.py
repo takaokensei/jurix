@@ -24,6 +24,29 @@ from src.apps.operations.models import NormativeWorkItem
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
+@pytest.mark.parametrize(
+    "settings_module",
+    ["config.settings_normative_qa", "config.settings_normative_container_qa"],
+)
+def test_normative_worker_accepts_only_the_two_explicit_qa_settings(
+    monkeypatch, settings, settings_module
+):
+    monkeypatch.setenv("JURIX_QA_ONLY", "1")
+    monkeypatch.setenv("DJANGO_SETTINGS_MODULE", settings_module)
+    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True, raising=False)
+
+    normative_tasks._require_normative_qa()
+
+
+def test_normative_worker_rejects_default_django_settings(monkeypatch, settings):
+    monkeypatch.setenv("JURIX_QA_ONLY", "1")
+    monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "config.settings")
+    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True, raising=False)
+
+    with pytest.raises(RuntimeError, match="isolated normative QA settings"):
+        normative_tasks._require_normative_qa()
+
+
 def _approved_norma(number="9911"):
     def digest(value):
         return hashlib.sha256(value.encode()).hexdigest()
@@ -289,7 +312,7 @@ def test_extraction_creates_only_candidate_for_hash_verified_qa_pdf(
     )
     norma.documento_base = document
     norma.save(update_fields=["documento_base", "updated_at"])
-    monkeypatch.setattr(settings, "QA_ROOT", qa_root)
+    monkeypatch.setattr(settings, "QA_ROOT", qa_root, raising=False)
 
     digest = hashlib.sha256(b"candidate text").hexdigest()
     tesseract_configured = {"value": False}
@@ -356,8 +379,8 @@ def test_single_archive_extraction_command_stops_at_human_review(
     monkeypatch.setenv("JURIX_QA_ONLY", "1")
     monkeypatch.setenv("DJANGO_SETTINGS_MODULE", settings_module)
     monkeypatch.setenv("JURIX_QA_ROOT", str(qa_root))
-    monkeypatch.setattr(settings, "QA_ROOT", qa_root)
-    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True)
+    monkeypatch.setattr(settings, "QA_ROOT", qa_root, raising=False)
+    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True, raising=False)
     extraction_hash = hashlib.sha256(b"candidate legal text").hexdigest()
     reused_text = "previous OCR page"
     previous_extraction = ExtracaoDocumento.objects.create(
@@ -439,8 +462,8 @@ def test_archive_batch_extraction_dry_run_and_resume_never_accept_or_link_docume
     monkeypatch.setenv("JURIX_QA_ONLY", "1")
     monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "config.settings_normative_qa")
     monkeypatch.setenv("JURIX_QA_ROOT", str(qa_root))
-    monkeypatch.setattr(settings, "QA_ROOT", qa_root)
-    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True)
+    monkeypatch.setattr(settings, "QA_ROOT", qa_root, raising=False)
+    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True, raising=False)
     documents = []
     for index in range(2):
         pdf = fitz.open()
@@ -466,7 +489,13 @@ def test_archive_batch_extraction_dry_run_and_resume_never_accept_or_link_docume
 
     from src.apps.ingestion.management.commands import extract_archive_candidates_batch_qa
 
+    ordered_documents = sorted(documents, key=lambda document: str(document.public_id))
+    failed_documents = set()
+
     def extract(document, **_kwargs):
+        if document.pk == ordered_documents[1].pk and document.pk not in failed_documents:
+            failed_documents.add(document.pk)
+            raise RuntimeError("bounded QA extraction failure")
         return ExtracaoDocumento.objects.create(
             documento=document,
             extractor_version="qa-test-v1",
@@ -493,14 +522,47 @@ def test_archive_batch_extraction_dry_run_and_resume_never_accept_or_link_docume
     call_command("extract_archive_candidates_batch_qa", apply=True, batch_size=1, stdout=output)
     first = json.loads(output.getvalue())
     assert first["cursor"] == 1
+    assert first["ordering"] == "public_id"
+    assert first["batch_failure_count"] == 0
+    assert first["batch_summary"]["latest_extraction_statuses"] == {"complete": 1}
     assert first["review_accepted"] is False
     assert first["norma_linkage_created"] is False
 
     output = StringIO()
-    call_command("extract_archive_candidates_batch_qa", apply=True, resume=True, batch_size=1, stdout=output)
+    error_output = StringIO()
+    with pytest.raises(CommandError, match="checkpoint preservado"):
+        call_command(
+            "extract_archive_candidates_batch_qa",
+            apply=True,
+            resume=True,
+            batch_size=1,
+            stdout=output,
+            stderr=error_output,
+        )
+    failure = json.loads(error_output.getvalue())
+    assert failure["batch_failure_count"] == 1
+    assert failure["batch_processed_before_failure"] == 0
+    checkpoint = json.loads(
+        (qa_root / extract_archive_candidates_batch_qa.CHECKPOINT_NAME).read_text(
+            encoding="utf-8"
+        )
+    )
+    assert checkpoint["failed_attempts"] == 1
+    assert checkpoint["cursor"] == 1
+
+    output = StringIO()
+    call_command(
+        "extract_archive_candidates_batch_qa",
+        apply=True,
+        resume=True,
+        batch_size=1,
+        stdout=output,
+    )
     second = json.loads(output.getvalue())
     assert second["status"] == "completed"
     assert second["cursor"] == 2
+    assert second["failed_attempts_total"] == 1
+    assert second["batch_summary"]["latest_extraction_statuses"] == {"complete": 1}
     for document in documents:
         document.refresh_from_db()
         assert document.review_status == DocumentoNormativo.ReviewStatus.PENDING
@@ -538,8 +600,8 @@ def test_archive_ocr_resume_is_one_document_bounded_and_never_accepts_candidate(
     monkeypatch.setenv("JURIX_QA_ONLY", "1")
     monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "config.settings_normative_qa")
     monkeypatch.setenv("JURIX_QA_ROOT", str(qa_root))
-    monkeypatch.setattr(settings, "QA_ROOT", qa_root)
-    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True)
+    monkeypatch.setattr(settings, "QA_ROOT", qa_root, raising=False)
+    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True, raising=False)
 
     pdf = fitz.open()
     pdf.new_page().insert_text((72, 72), "QA page one")
@@ -791,8 +853,8 @@ def test_sapl_normative_candidate_can_resume_selected_ocr_pages_without_acceptan
     monkeypatch.setenv("JURIX_QA_ONLY", "1")
     monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "config.settings_normative_container_qa")
     monkeypatch.setenv("JURIX_QA_ROOT", str(qa_root))
-    monkeypatch.setattr(settings, "QA_ROOT", qa_root)
-    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True)
+    monkeypatch.setattr(settings, "QA_ROOT", qa_root, raising=False)
+    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True, raising=False)
 
     pdf = fitz.open()
     pdf.new_page().insert_text((72, 72), "LC 258 artigo recuperável")
@@ -917,8 +979,8 @@ def test_archive_ocr_dry_run_skips_missing_blob_and_picks_next_verified_candidat
     monkeypatch.setenv("JURIX_QA_ONLY", "1")
     monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "config.settings_normative_container_qa")
     monkeypatch.setenv("JURIX_QA_ROOT", str(qa_root))
-    monkeypatch.setattr(settings, "QA_ROOT", qa_root)
-    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True)
+    monkeypatch.setattr(settings, "QA_ROOT", qa_root, raising=False)
+    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True, raising=False)
 
     pdf = fitz.open()
     pdf.new_page().insert_text((72, 72), "PDF íntegro de QA")
@@ -984,8 +1046,8 @@ def test_archive_ocr_resume_can_reclassify_only_visually_empty_pages_without_ocr
     monkeypatch.setenv("JURIX_QA_ONLY", "1")
     monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "config.settings_normative_qa")
     monkeypatch.setenv("JURIX_QA_ROOT", str(qa_root))
-    monkeypatch.setattr(settings, "QA_ROOT", qa_root)
-    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True)
+    monkeypatch.setattr(settings, "QA_ROOT", qa_root, raising=False)
+    monkeypatch.setattr(settings, "NORMATIVE_ARCHIVE_ENABLED", True, raising=False)
 
     pdf = fitz.open()
     pdf.new_page().insert_text((72, 72), "Decreto QA com conteúdo normativo")
