@@ -1,0 +1,8 @@
+docs/
+benchmarks/
+tests/
+staticfiles/
+*.md
+*.json
+*.html
+*.png
