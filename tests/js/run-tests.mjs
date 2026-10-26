@@ -1,8 +1,9 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = path.dirname(new URL(import.meta.url).pathname).replace(/^\//, '').replace(/^([A-Za-z]):/, '$1:');
+const root = path.dirname(fileURLToPath(import.meta.url));
 const files = fs.readdirSync(root)
   .filter((name) => name.endsWith('.test.mjs'))
   .sort();
