@@ -1,0 +1,251 @@
+================================================================================
+EVIDÊNCIA DE VERIFICAÇÃO DE FECHAMENTO — JURIX (chore/agent-readiness)
+Data/Hora: 2026-10-26T19:04:30-03:00
+Worktree: L:\Jurix-agent-readiness
+Base commit: 1ac3ab753dacb779e5b7b5a0fe99beae74ed6ac3
+================================================================================
+
+## 1. ESTADO DO BRANCH
+
+--- 1.1 git log --oneline main..HEAD ---
+30d3aac6 docs(agents): finalize repository governance and audit closure
+97f15d64 docs(agents): add reorganization report
+a6eef9a3 fix(ci): use fileURLToPath in js runner and collectstatic in ci
+cbb03d71 chore(config): add missing ignore rules to gitignore
+9921b73e chore(config): add agent rules and ignore rules
+996f87cb docs: add agent entrypoint, state, mvp, and backlog
+770e6c50 chore(docs): archive historical status and versioned duplicates
+c13b5cd2 chore(docs): archive progress diaries
+
+--- 1.2 git diff --stat main..HEAD ---
+ .agents/rules/jurix.md                             |    2 +
+ .github/workflows/ci.yml                           |    1 +
+ .gitignore                                         |    5 +
+ .graphifyignore                                    |    8 +
+ AGENTS.md                                          |   56 +
+ CLAUDE.md                                          |    1 +
+ README.md                                          |   16 +-
+ STATE.md                                           |   59 +
+ docs/README.md                                     |   38 +
+ docs/agents/blocked/T-002.md                       |   13 +
+ docs/agents/reorg-manifest.csv                     | 1679 ++++++++++++++++++++
+ docs/agents/reorg-report.md                        |   85 +
+ docs/archive/progress/FRONTEND_LOG.md              |    0
+ GOAL.md => docs/archive/progress/GOAL.md           |    0
+ .../JURIX_NORMATIVE_GRAPH_IMPLEMENTATION_PLAN.md   |    0
+ .../JURIX_NORMATIVE_GRAPH_TEST_RUNBOOK.md          |    0
+ .../progress}/NORMATIVE_GRAPH_DELIVERY.md          |    0
+ .../progress}/NORMATIVE_IMPLEMENTATION_PROGRESS.md |    0
+ .../progress}/PGM_PILOT_DELIVERY.md                |    0
+ .../status}/JURIX_DESIGN_SYSTEM_SPEC.proposed.md   |    0
+ docs/{audit => archive/status}/JURIX_FULL_AUDIT.md |    0
+ .../status}/JURIX_FULL_AUDIT.proposed.md           |    0
+ .../status}/JURIX_LUNA_EXECUTION_GUIDE.md          |    0
+ .../status}/JURIX_LUNA_EXECUTION_GUIDE.proposed.md |    0
+ .../status}/JURIX_MASTER_IMPLEMENTATION_PLAN.md    |    0
+ .../JURIX_MASTER_IMPLEMENTATION_PLAN.proposed.md   |    0
+ .../status}/JURIX_PGM_IMPLEMENTATION_PLAN.md       |    0
+ .../JURIX_PGM_READINESS_ASSESSMENT_2026-10-07.md   |    0
+ .../status}/JURIX_RESEARCH_PRODUCT_REASSESSMENT.md |    0
+ .../status}/JURIX_REVIEW_AND_ROADMAP_2026-10-17.md |    0
+ .../status}/PGM_USABILITY_RESULTS.md               |    0
+ .../status}/PGM_USABILITY_RUNBOOK.md               |    0
+ .../status}/PIBIC_RELATORIO_FINAL_ESBOCO.md        |    0
+ .../status}/QA_COLOPHON_REPAIR.md                  |    0
+ .../status}/QA_RELEASE_CHECKLIST.md                |    0
+ docs/{ => archive/status}/api-contract-v2.md       |    0
+ .../status}/architecture-boundaries-v2.md          |    0
+ .../status}/architecture-contract-v2.md            |    0
+ docs/{ => archive/status}/audit-fixes-2026-09.md   |    0
+ .../status}/benchmark-review-template-v2.md        |    0
+ docs/{ => archive/status}/ci-gates-v2.md           |    0
+ docs/{ => archive/status}/disaster-recovery-v2.md  |    0
+ .../status}/engineering-assurance-ledger-v4.md     |    0
+ .../status}/engineering-checklist-v3.md            |    0
+ .../status}/hardening-v3-ui-and-suggestions.md     |    0
+ docs/{ => archive/status}/ingestion-safety-v2.md   |    0
+ .../status}/jurix-2-0-phase2-phase3-v4.md          |    0
+ .../jurix-patch-5-temporal-rag-suggestions.md      |    0
+ docs/{ => archive/status}/migration-gate-v2.md     |    0
+ .../status}/norma-ui-and-dynamic-suggestions-v3.md |    0
+ .../{ => archive/status}/operational-runbook-v2.md |    0
+ docs/{ => archive/status}/operations-runbook-v2.md |    0
+ docs/{ => archive/status}/operator-faq-v2.md       |    0
+ docs/{ => archive/status}/pibic-gap-plan.md        |    0
+ .../status}/product-acceptance-matrix.md           |    0
+ .../status}/production-artifact-contract-v2.md     |    0
+ docs/{ => archive/status}/rag-evaluation-v2.md     |    0
+ docs/{ => archive/status}/release-checklist-v2.md  |    0
+ docs/{ => archive/status}/release-v1.2-plan.md     |    0
+ .../status}/security-threat-model-v2.md            |    0
+ .../status}/slo-and-observability-v2.md            |    0
+ .../status}/temporal-rag-v4.md                     |    0
+ docs/{ => archive/status}/test-strategy-v3.md      |    0
+ docs/{ => archive/status}/threat-model-v2.md       |    0
+ .../status}/v1.2-production-acceptance.md          |    0
+ docs/{ => archive/status}/v6-postmortem-v2.md      |    0
+ .../status}/visual-audit-2026-09.md                |    0
+ docs/backlog.md                                    |  230 +++
+ docs/current-status.md                             |    4 +-
+ docs/mvp.md                                        |   38 +
+ tests/js/run-tests.mjs                             |    3 +-
+ 71 files changed, 2227 insertions(+), 11 deletions(-)
+
+--- 1.3 git diff -M --name-status main..HEAD | Select-String "^D" ---
+(vazio — zero arquivos deletados)
+
+--- 1.4 git status --short ---
+(vazio — working tree limpo)
+
+--- 1.5 git diff --stat main..HEAD -- src/ ---
+(vazio — zero arquivos alterados em src/)
+
+================================================================================
+## 2. BACKLOG
+
+--- 2.1 Select-String -Path docs\backlog.md -Pattern "^## T-" ---
+docs\backlog.md:7:## T-009 — Testes fim a fim do motor de consolidação e regra *fail-closed*
+docs\backlog.md:28:## T-001 — Reescrever `README.md` da raiz (~150 linhas)
+docs\backlog.md:45:## T-002 — Limpeza física de binários no histórico Git (`git filter-repo`)
+docs\backlog.md:52:## T-003 — Adjudicação humana do Corpus Ouro da PGM
+docs\backlog.md:68:## T-004 — Formatação global `ruff` em `src/` em PR dedicado
+docs\backlog.md:86:## T-005 — Corrigir 3 testes JS quebrados por asserção literal de `?v=`
+docs\backlog.md:106:## T-006 — Corrigir ou isolar falhas de `pytest` pós-`collectstatic`
+docs\backlog.md:123:## T-007 — Consolidar workflows do GitHub Actions e remover branch `develop`
+docs\backlog.md:141:## T-008 — Separar testes E2E de browser (`real.browser.test.mjs`) e alertar `skipped`
+docs\backlog.md:160:## T-010 — Endpoint/view somente leitura de norma consolidada (*fail-closed*)
+docs\backlog.md:179:## T-011 — CI: Automação, linting e manutenção de workflows do GitHub Actions
+docs\backlog.md:196:## T-012 — Acessibilidade e tipografia de rótulos e controles em telas estreitas
+docs\backlog.md:214:## T-013 — Hardening de Content Security Policy (CSP) e integridade de fontes
+
+--- 2.2 Select-String -Path docs\backlog.md -Pattern "Status" ---
+docs\backlog.md:10:- **Status**: PRONTA (Primeira tarefa para agente / `tarefa_atual`)
+docs\backlog.md:31:- **Status**: PRONTA
+docs\backlog.md:48:- **Status**: BLOQUEADA (Requer janela combinada e autorização expressa do dono; não executável por agentes autônomos. Texto completo em `docs/agents/blocked/T-002.md`).
+docs\backlog.md:55:- **Status**: BLOQUEADA POR HUMANO (PGM / Jurídico — tarefa exclusiva de validação institucional humana, excluída de qualquer lista de escolha de trabalho para agentes autônomos).
+docs\backlog.md:71:- **Status**: AGUARDA APROVAÇÃO DO DONO
+docs\backlog.md:89:- **Status**: PRONTA
+docs\backlog.md:109:- **Status**: PRONTA
+docs\backlog.md:126:- **Status**: BLOQUEADA até aprovação e verificação de develop com git ls-remote --heads origin develop
+docs\backlog.md:144:- **Status**: PRONTA
+docs\backlog.md:163:- **Status**: BLOQUEADA (Depende de T-001 e T-002)
+docs\backlog.md:182:- **Status**: AGUARDA APROVAÇÃO DO DONO
+docs\backlog.md:199:- **Status**: PRONTA
+docs\backlog.md:217:- **Status**: AGUARDA APROVAÇÃO DO DONO
+
+--- 2.3 Test-Path docs\agents\blocked\T-002.md ---
+True
+
+--- 2.4 git ls-files | Select-String "JURIX_MASTER_IMPLEMENTATION_PLAN|JURIX_LUNA_EXECUTION_GUIDE" ---
+docs/archive/status/JURIX_LUNA_EXECUTION_GUIDE.md
+docs/archive/status/JURIX_LUNA_EXECUTION_GUIDE.proposed.md
+docs/archive/status/JURIX_MASTER_IMPLEMENTATION_PLAN.md
+docs/archive/status/JURIX_MASTER_IMPLEMENTATION_PLAN.proposed.md
+(Todos os arquivos residem exclusivamente em docs/archive/status/; nenhum fora do arquivo congelado)
+
+================================================================================
+## 3. GOVERNANÇA
+
+--- 3.1 Linhas de AGENTS.md ---
+56 (máximo permitido: 80)
+
+--- 3.2 Linhas de STATE.md ---
+59 (máximo permitido: 150)
+
+--- 3.3 Select-String -Path STATE.md -Pattern "tarefa_atual" ---
+STATE.md:5:tarefa_atual: T-009
+STATE.md:52:- **`tarefa_atual`**: `T-009` em [`docs/backlog.md`](docs/backlog.md): *Testes fim a fim do motor de consolidação (`src/processing/consolidation_engine.py`) cobrindo `REVOGA`, `ALTERA`, `ADICIONA` e `SUBSTITUI` em ordem cronológica, mais a regra fail-closed para evento não validado.*
+STATE.md:58:3. Em `docs/backlog.md`, marque a tarefa concluída e atualize o campo `tarefa_atual` acima com a próxima tarefa pronta da fila.
+
+--- 3.4 Get-Content CLAUDE.md ---
+@AGENTS.md
+
+--- 3.5 Get-Content .agents\rules\jurix.md ---
+Siga rigorosamente as instruções operacionais, limites de escopo e comandos de validação definidos em @AGENTS.md.
+@AGENTS.md
+
+--- 3.6 Frase canônica em AGENTS.md ---
+AGENTS.md:5:Para APIs de Django, Celery, pgvector e HTMX, consulte a documentação oficial da versão fixada em requirements.txt.
+
+--- 3.7 Select-String -Path AGENTS.md -Pattern "tarefa_atual|backlog inteiro" ---
+AGENTS.md:10:2. Identifique o campo `tarefa_atual` no [`STATE.md`](STATE.md). Não leia o backlog inteiro: consulte em [`docs/backlog.md`](docs/backlog.md) apenas a tarefa indicada em `tarefa_atual`.
+AGENTS.md:34:- **Uma tarefa por branch**: trabalhe apenas no escopo da `tarefa_atual`.
+
+--- 3.8 Verificação dos caminhos do mapa em AGENTS.md ---
+True  .github/workflows/
+True  docs/
+True  docs/archive/
+True  docs/backlog.md
+True  docs/mvp.md
+True  docs/README.md
+True  docs/ui-audit/
+True  scripts/
+True  src/apps/core/
+True  src/apps/ingestion/
+True  src/apps/legislation/
+True  src/apps/operations/
+True  src/clients/
+True  src/llm_engine/
+True  src/observability/
+True  src/processing/
+True  src/tests/
+True  tests/js/
+
+================================================================================
+## 4. COLETA E FALHAS DO PYTEST (EXECUÇÃO COM SQLITE EM DEV/CI)
+
+--- 4.1 Coleta de testes pytest ---
+collected 2264 items ======================== 2264 tests collected in 1.25s ========================
+
+--- 4.2 Comparação de nomes de falhas (falhas_base_nomes.txt vs falhas_pos_nomes.txt) ---
+Contagem falhas baseline: 29
+Contagem falhas pós-reorganização: 28
+Compare-Object SideIndicator '=>' (novas falhas): (vazio — 0 falhas novas)
+Passou de falha para aprovado:
+src/tests/test_api_security.py::TestRateLimit::test_limit_is_per_client
+(Executado isoladamente 3 vezes consecutivas: 3/3 aprovações com exit=0)
+
+Ambiente pytest: SQLite apenas (USE_SQLITE=True, serviços Postgres/Redis locais inativos).
+
+================================================================================
+## 5. JAVASCRIPT PER FILE (INCLUINDO csp_security.test.js e real.browser.test.mjs)
+
+archive-candidate-filter.test.mjs         exit=0  # pass 8 # fail 0 # skipped 0
+chat.security.test.mjs                    exit=0  # pass 41 # fail 0 # skipped 0
+composer-limits.test.mjs                  exit=0  # pass 1 # fail 0 # skipped 0
+csp.test.mjs                              exit=0  # pass 10 # fail 0 # skipped 0
+csp_security.test.js                      exit=0  # pass 2 # fail 0 # skipped 0
+document-review.test.mjs                  exit=0  # pass 3 # fail 0 # skipped 0
+dynamic-suggestions-v5.test.mjs           exit=0  # pass 3 # fail 0 # skipped 0
+foundation-check.test.mjs                 exit=0  # pass 4 # fail 0 # skipped 0
+jurix.audit-regressions.test.mjs          exit=0  # pass 0 # fail 0 # skipped 1
+norma_ui_v3.test.mjs                      exit=1  # pass 50 # fail 1 # skipped 0
+normative-admin-review.browser.test.mjs   exit=0  # pass 0 # fail 0 # skipped 2
+normative-collections.browser.test.mjs   exit=0  # pass 0 # fail 0 # skipped 1
+normative-graph.test.mjs                  exit=0  # pass 7 # fail 0 # skipped 1
+pagination.and.storage.test.mjs           exit=0  # pass 4 # fail 0 # skipped 0
+pgm-demo-interaction.test.mjs             exit=0  # pass 3 # fail 0 # skipped 0
+real.browser.test.mjs                     exit=0  # pass 41 # fail 0 # skipped 0
+search-controls.test.mjs                  exit=0  # pass 1 # fail 0 # skipped 0
+session-created-toast.test.mjs            exit=1  # pass 0 # fail 1 # skipped 0
+sidebar.unification.test.mjs              exit=1  # pass 6 # fail 1 # skipped 0
+streaming.behavior.test.mjs               exit=0  # pass 69 # fail 0 # skipped 0
+temporal-compare-history.test.mjs         exit=0  # pass 3 # fail 0 # skipped 0
+versioned-citations.test.mjs              exit=0  # pass 21 # fail 0 # skipped 0
+visual.foundation.test.mjs                exit=0  # pass 4 # fail 0 # skipped 0
+visual_contracts.test.mjs                 exit=0  # pass 3 # fail 0 # skipped 0
+
+Nenhum arquivo teve fail maior ou pass menor em relação ao baseline js_per_file.txt.
+
+================================================================================
+## 6. RELATÓRIO (docs\agents\reorg-report.md)
+
+Linhas totais: 85 (máximo: 200)
+Itens na seção "Não verificado":
+1. Leitura de AGENTS.md pelo Google Antigravity
+2. Resolução de @AGENTS.md em .agents/rules/jurix.md
+3. Carregamento de CLAUDE.md pelo Claude Code
+4. Disponibilidade do Context7
+5. Geração de grafo pelo Graphify (CLI não instalado)
+6. Execução de pytest com PostgreSQL e pgvector reais (executado em SQLite)
+Retificação de docs/environment-hardening-v2.env.example e docs/postgresql-diagnostics-v2.sql registrada na Seção 3.
