@@ -67,9 +67,14 @@ docker-compose.override.yml
 .coverage
 .coverage.*
 coverage.json
+coverage.xml
 htmlcov/
 .pytest_cache/
 
 
 # Frontend test dependencies (tests/js)
 tests/js/node_modules/
+node_modules/
+
+# Graphify output
+graphify-out/
