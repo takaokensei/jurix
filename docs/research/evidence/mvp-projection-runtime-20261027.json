@@ -1,0 +1,319 @@
+{
+  "schema": "jurix-mvp-projection-smoke-v1",
+  "executed_at": "2026-10-27T19:06:04.611974+00:00",
+  "corpus_revision": "2ac9edb525e58228c18824cbce16e33955ba7993f8299a84116a409cb5da20f7",
+  "instance": {
+    "version": "1.2.0",
+    "revision": "1ac3ab753dacb779e5b7b5a0fe99beae74ed6ac3",
+    "content_sha256": "6b5e90c39e788bdc730329471ba662eec53f8b8a57c1bb36dc263eabb279e190",
+    "profile": "qa",
+    "corpus_revision": "2ac9edb525e58228c18824cbce16e33955ba7993f8299a84116a409cb5da20f7",
+    "generation": {
+      "model": "llama3",
+      "context_chars": 8000
+    }
+  },
+  "norms": [
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|261|2025",
+      "casefile_id": "bfd06b5e7e33c43a2954c2cce3aa8e73e5e113f4816ff11dab9a3896fd3f959a",
+      "devices": 1,
+      "events": 1,
+      "sources": 2
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_promulgada|562|2018",
+      "casefile_id": "ec4404a247b9ef07161a241af371f29de1ed493664f1ca12ffa3c8c5746a057a",
+      "devices": 12,
+      "events": 1,
+      "sources": 16
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_promulgada|275|2009",
+      "casefile_id": "60b3041bddbfc7225d6b349d27d9cb0c9ed9ae737150a38cf6e2e0be65617e30",
+      "devices": 1,
+      "events": 1,
+      "sources": 4
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|4885|1997",
+      "casefile_id": "6628219963944af58fbdd9a85c44a60fe434940620ec13784ba0e97997a79237",
+      "devices": 8,
+      "events": 1,
+      "sources": 12
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|7807|2025",
+      "casefile_id": "f1b3ee90c8c632d5c390692fe3a1bc0ea66562dc6c99c03f414c4b3deb121185",
+      "devices": 2,
+      "events": 0,
+      "sources": 2
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|208|2022",
+      "casefile_id": "98294a5d89601ccf39d3bcf541dda072238fcba237536dd99406926176dec357",
+      "devices": 1,
+      "events": 1,
+      "sources": 3
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|7810|2025",
+      "casefile_id": "6b75e3513af761175ab14c797f5c688bd4205f43f464cacfe0622175b38ce682",
+      "devices": 3,
+      "events": 0,
+      "sources": 3
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|258|2024",
+      "casefile_id": "75bac8cad0b9439882ca53400602ffcba7735476205df7634cab0f39e447d8a4",
+      "devices": 1,
+      "events": 7,
+      "sources": 14
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|7806|2025",
+      "casefile_id": "0c8102d38b422900a75994cbdd36233701654386c2e7744735b32bacb6836c05",
+      "devices": 5,
+      "events": 0,
+      "sources": 5
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|7808|2025",
+      "casefile_id": "900f2c4a91dc6c8cee9281774b52ef396a4f164291f077e580ca165e65cc484d",
+      "devices": 6,
+      "events": 0,
+      "sources": 6
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|1894|1969",
+      "casefile_id": "f71a99276a079249a3427ea281563b698f68accdb7fdfd4ce51b8d1282514af8",
+      "devices": 12,
+      "events": 0,
+      "sources": 12
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|3882|1989",
+      "casefile_id": "fe51e8035f7eab135af3d7f1be9bafef7ea0fbf9a70324abb376b94f60bbea4f",
+      "devices": 1,
+      "events": 1,
+      "sources": 5
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|7280|2021",
+      "casefile_id": "f3c92dc67ed34ef0562ee440bc8a3aa0dfc95c8841fd5da30a092b4569bce747",
+      "devices": 12,
+      "events": 0,
+      "sources": 12
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|185|2019",
+      "casefile_id": "16869d2209b20c8a3b8800b894406c6d3366c7448eae508cab73871d85b459f1",
+      "devices": 1,
+      "events": 1,
+      "sources": 2
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|173|2017",
+      "casefile_id": "378335ed9a71c26eb98f01c18baa895401af7c44fcacda3212f01aa5a62cb5b7",
+      "devices": 1,
+      "events": 2,
+      "sources": 4
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|271|2025",
+      "casefile_id": "44fc30d254ce0710fb56205fe29086aa60efdac87b5f43118b28ba68bba6ebeb",
+      "devices": 1,
+      "events": 1,
+      "sources": 6
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|7805|2025",
+      "casefile_id": "f184673ebaa6f20fc623c2680419db7739deecfc1cbd603a4646fdc3db1393aa",
+      "devices": 6,
+      "events": 0,
+      "sources": 6
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|141|2014",
+      "casefile_id": "ed7bd70b526ab4e3188adbeccc60288838dbdd465ab7b2d011d9520713ac6073",
+      "devices": 12,
+      "events": 0,
+      "sources": 12
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|55|2004",
+      "casefile_id": "3455bd967400eddf40c3cf77b1a5e28f2993b687be30a5f196225c10703a09f2",
+      "devices": 1,
+      "events": 4,
+      "sources": 9
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|7811|2025",
+      "casefile_id": "1eafa16e7d921e01691bc21e0bc1d0226bd25b5b7ce80191d9d9fc8951590efe",
+      "devices": 4,
+      "events": 0,
+      "sources": 4
+    }
+  ],
+  "pdfs": [
+    {
+      "sha256": "05afadb171050ff16063e9ee707b2d92e53033fd20e52528d3fcb36e210a6251",
+      "status": 200,
+      "bytes": 16779971,
+      "elapsed_ms": 158
+    },
+    {
+      "sha256": "079b0967563a670c9c880baee1642239d0d08ce19738f0c3adf83a0c3cecb119",
+      "status": 200,
+      "bytes": 615846,
+      "elapsed_ms": 56
+    },
+    {
+      "sha256": "121b46b52e9485d44311359a4164e167d059e59bd8bde1ec949387eade416897",
+      "status": 200,
+      "bytes": 135508,
+      "elapsed_ms": 68
+    },
+    {
+      "sha256": "19e3dde9a7a580c4ad0fe229c086cba5b7a0aa916bea2af9dba56b7be21016f8",
+      "status": 200,
+      "bytes": 159002,
+      "elapsed_ms": 30
+    },
+    {
+      "sha256": "2f77c8c3ad4fc41e7c482fb15c010fee1d16b3967052d7eeae3c802fe09b8852",
+      "status": 200,
+      "bytes": 600383,
+      "elapsed_ms": 35
+    },
+    {
+      "sha256": "397670b25da69cf3a739143742d156cfee8db7f5936f2c77aaf9d777caf95256",
+      "status": 200,
+      "bytes": 1718964,
+      "elapsed_ms": 44
+    },
+    {
+      "sha256": "4c71dec7e7154e873bbfdc4ee60b063a72815161ae6f38dd00a9647a073e949b",
+      "status": 200,
+      "bytes": 8399,
+      "elapsed_ms": 67
+    },
+    {
+      "sha256": "55214abf8e8ef14b05ae79bafa1109c360699aa8e40e489bc8e3e534fc4d76d3",
+      "status": 200,
+      "bytes": 3838098,
+      "elapsed_ms": 104
+    },
+    {
+      "sha256": "5750e8daac8f84bc70ab5d3c077a96abdd16b42747d56951caa3119e875bb607",
+      "status": 200,
+      "bytes": 115544,
+      "elapsed_ms": 70
+    },
+    {
+      "sha256": "5ed80c8d2aa8729aef0b1d797cb837a7015cb4422bd7b6a622d423b01ea8dc55",
+      "status": 200,
+      "bytes": 97776,
+      "elapsed_ms": 31
+    },
+    {
+      "sha256": "6327772563ab1c863f1b5cd10168994d8c8d7d591d4c785857dbac842c808be2",
+      "status": 200,
+      "bytes": 230926,
+      "elapsed_ms": 31
+    },
+    {
+      "sha256": "6d1f99099693632ed2d54c3d4acb869cc872f337d8d25be62ac2d86554d7d9fc",
+      "status": 200,
+      "bytes": 1139970,
+      "elapsed_ms": 62
+    },
+    {
+      "sha256": "6e56f6b4683ef4f9f6ccc63971ae6b52358221360b3096586a386922991051da",
+      "status": 200,
+      "bytes": 1717385,
+      "elapsed_ms": 44
+    },
+    {
+      "sha256": "795c884ea3184e73da6368dfb8647f695f2e53ba1941756f45c09a4eaffbca24",
+      "status": 200,
+      "bytes": 731250,
+      "elapsed_ms": 37
+    },
+    {
+      "sha256": "7b4562db8cb0b47146a2466014d02e34f026a023f93d2b870282f6f56eade6e2",
+      "status": 200,
+      "bytes": 630387,
+      "elapsed_ms": 37
+    },
+    {
+      "sha256": "90fbf8a12e2640745ccaf740c2fa69d7fc1273c6979672248871d8a9917a0a14",
+      "status": 200,
+      "bytes": 181124,
+      "elapsed_ms": 69
+    },
+    {
+      "sha256": "aeb6e6b137382df8094822d4aff92c4b9dbecccb442eaeae2c3b6008722de137",
+      "status": 200,
+      "bytes": 112730,
+      "elapsed_ms": 28
+    },
+    {
+      "sha256": "b9017fb398be7f2c80401fdf6694212e630822fab8022fb4cedef4ddc4eaae87",
+      "status": 200,
+      "bytes": 450536,
+      "elapsed_ms": 55
+    },
+    {
+      "sha256": "d26179b27a87b3d410589cfd2f280bdd6233641e67edf1a91aa910eb90c44979",
+      "status": 200,
+      "bytes": 287290,
+      "elapsed_ms": 72
+    },
+    {
+      "sha256": "d29da8bfed5b1fe1495c7e30d9c7ac194a007b4140c96468703f87303cf43630",
+      "status": 200,
+      "bytes": 152146,
+      "elapsed_ms": 70
+    },
+    {
+      "sha256": "f4065608d85c99d72a02048fdce5c8072740c070308253dae1fcf9f8454093af",
+      "status": 200,
+      "bytes": 558941,
+      "elapsed_ms": 36
+    },
+    {
+      "sha256": "f6c20c66649afeeab85471c67588075854b97abf9b77f049915ac6f0396526ee",
+      "status": 200,
+      "bytes": 288752,
+      "elapsed_ms": 34
+    },
+    {
+      "sha256": "f82d4e40165b4fd42f5224fff23cde78438e163c04ddf6d0ed93690ea1159ed1",
+      "status": 200,
+      "bytes": 4317807,
+      "elapsed_ms": 74
+    }
+  ],
+  "boundaries": [
+    {
+      "date": "2025-03-26",
+      "status": "reconstructed",
+      "legal_status": "no_change_found_in_scope",
+      "projection_id": "2ac27b4125fc46bf61f4106a5d6b968ab93d88aaa5a282047dc8bfeadc812344"
+    },
+    {
+      "date": "2025-03-27",
+      "status": "reconstructed",
+      "legal_status": "revoked_in_scope",
+      "projection_id": "6cfa071ebd9cd60fc55f4b5fc21cb1f2636fe269e3b7b910a9df20e6a419ae2c"
+    },
+    {
+      "date": "2025-03-28",
+      "status": "reconstructed",
+      "legal_status": "revoked_in_scope",
+      "projection_id": "0f927c266ee1b6662e6e064a77bcc5e9febdb8961591f7aed8c0cd83c8d96ed4"
+    }
+  ],
+  "passed": true
+}

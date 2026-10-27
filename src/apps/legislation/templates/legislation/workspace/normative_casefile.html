@@ -1,13 +1,16 @@
 {% extends "legislation/workspace/base.html" %}
 {% load static %}
 
-{% block title %}Dossiê temporal — {{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }} — Jurix{% endblock %}
+{% block title %}Dossiê — {% if pilot_casefile %}{{ casefile.label }}{% else %}{{ norma.get_tipo_display_name }} nº {{ norma.numero }}/{{ norma.ano }}{% endif %} — Jurix{% endblock %}
 {% block section_name %}Dossiê temporal{% endblock %}
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Dossiê temporal' %}{% endblock %}
-{% block extra_css %}{% if normative_graph_enabled %}<link rel="stylesheet" href="{% static 'css/jurix-normative-graph.css' %}?v=20261017-casefile1">{% endif %}{% endblock %}
-{% block extra_js %}{% if normative_graph_enabled %}<script src="{% static 'js/jurix-normative-graph.js' %}?v=20261017-casefile1" defer></script>{% endif %}{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/jurix-casefile.css' %}?v=20261027-pilot1">{% if normative_graph_enabled %}<link rel="stylesheet" href="{% static 'css/jurix-normative-graph.css' %}?v=20261017-casefile1">{% endif %}{% endblock %}
+{% block extra_js %}<script src="{% static 'js/jurix-normative-casefile.js' %}?v=20261018-casefile-tabs1" defer></script>{% if normative_graph_enabled %}<script src="{% static 'js/jurix-normative-graph.js' %}?v=20261027-pilot1" defer></script>{% endif %}{% endblock %}
 
 {% block content %}
+{% if pilot_casefile %}
+{% include 'legislation/workspace/_pilot_casefile.html' %}
+{% else %}
 <section class="workspace-page-header" aria-labelledby="casefile-title">
     <div>
         <span class="workspace-eyebrow">Dossiê normativo · consulta em {{ as_of }}</span>
@@ -26,14 +29,24 @@
 
 {% if casefile %}
 <p class="workspace-badge" aria-label="Identificador de versão do dossiê">Dossiê {{ casefile.casefile_id|slice:":16" }} · {{ projection_status_label }} · {{ casefile.projection.coverage.device_count }} dispositivos cobertos</p>
-<nav class="workspace-filter-row" aria-label="Seções do dossiê">
-    <a class="workspace-button workspace-button-secondary" href="#texto-na-data">Texto na data</a>
-    <a class="workspace-button workspace-button-secondary" href="#alteracoes">Alterações</a>
-    <a class="workspace-button workspace-button-secondary" href="#grafo">Grafo</a>
-    <a class="workspace-button workspace-button-secondary" href="#fontes">Fontes</a>
+<section class="casefile-summary" aria-labelledby="casefile-summary-title">
+    <div class="casefile-summary__heading"><div><span class="workspace-eyebrow">Visão geral</span><h2 id="casefile-summary-title">O que sabemos nesta data</h2></div><span class="workspace-badge">{{ as_of|date:"d/m/Y" }}</span></div>
+    <p>Esta ficha reúne somente dispositivos e eventos revisados disponíveis no Jurix. Cobertura incompleta não prova que inexistam alterações; confirme a fonte oficial antes de usar a projeção em um caso concreto.</p>
+    <dl class="casefile-summary__stats">
+        <div><dt>Estado da projeção</dt><dd>{{ projection_status_label }}</dd></div>
+        <div><dt>Dispositivos cobertos</dt><dd>{{ casefile.projection.coverage.device_count }}</dd></div>
+        <div><dt>Eventos na linha do tempo</dt><dd>{{ timeline|length }}</dd></div>
+        <div><dt>Evidências rastreáveis</dt><dd>{{ casefile.evidence_package.sources|length }}</dd></div>
+    </dl>
+</section>
+<nav class="casefile-tabs" data-casefile-tabs aria-label="Seções do dossiê">
+    <a href="#texto-na-data">Texto na data</a>
+    <a href="#alteracoes">Alterações</a>
+    <a href="#grafo">Grafo</a>
+    <a href="#fontes">Fontes</a>
 </nav>
 
-<section class="workspace-results-section" id="texto-na-data" aria-labelledby="casefile-text-title">
+<section class="workspace-results-section" id="texto-na-data" data-casefile-panel aria-labelledby="casefile-text-title">
     <div class="workspace-section-heading"><div><span class="workspace-eyebrow">Projeção temporal revisada</span><h2 id="casefile-text-title">Texto na data</h2></div><span class="workspace-badge">{{ casefile.projection.devices|length }} dispositivos</span></div>
     {% if casefile.projection.devices %}
     <div class="workspace-result-list">
@@ -47,7 +60,7 @@
     {% else %}<div class="workspace-empty-state"><strong>Não há texto histórico reconstruível com segurança para esta data.</strong><p>O sistema não substituiu a redação histórica por um texto atual.</p></div>{% endif %}
 </section>
 
-<section class="workspace-results-section" id="alteracoes" aria-labelledby="casefile-events-title">
+<section class="workspace-results-section" id="alteracoes" data-casefile-panel aria-labelledby="casefile-events-title">
     <div class="workspace-section-heading"><div><span class="workspace-eyebrow">Eventos registrados</span><h2 id="casefile-events-title">Alterações</h2></div></div>
     <div class="workspace-result-list">
         {% for item in timeline %}
@@ -60,12 +73,12 @@
     </div>
 </section>
 
-<section class="workspace-results-section" id="grafo" aria-labelledby="casefile-graph-title">
+<section class="workspace-results-section" id="grafo" data-casefile-panel aria-labelledby="casefile-graph-title">
     <div class="workspace-section-heading"><div><span class="workspace-eyebrow">Relações normativas</span><h2 id="casefile-graph-title">Grafo</h2></div></div>
     {% if normative_graph_enabled %}{% include 'legislation/_norma_relations.html' with norma=norma initial_graph_payload_id='normative-casefile-graph' %}{{ casefile.graph|json_script:"normative-casefile-graph" }}{% else %}<div class="workspace-empty-state"><strong>Grafo desabilitado nesta instalação.</strong></div>{% endif %}
 </section>
 
-<section class="workspace-results-section" id="fontes" aria-labelledby="casefile-sources-title">
+<section class="workspace-results-section" id="fontes" data-casefile-panel aria-labelledby="casefile-sources-title">
     <div class="workspace-section-heading"><div><span class="workspace-eyebrow">Rastreabilidade</span><h2 id="casefile-sources-title">Fontes</h2></div><span class="workspace-badge">{{ casefile.evidence_package.sources|length }} evidências</span></div>
     <p>O pacote estruturado (<code>{{ casefile.evidence_package.schema_version }}</code>) associa cada evidência a uma versão temporal e, quando disponível, a uma fonte oficial ou PDF revisado. Identificador do dossiê: <code>{{ casefile.casefile_id }}</code>.</p>
     <div class="workspace-result-list">
@@ -79,5 +92,6 @@
     </div>
     {% if casefile.evidence_package.sources|length > 50 %}<p>Exibindo as primeiras 50 evidências de {{ casefile.evidence_package.sources|length }}; o pacote versionado contém a contagem completa.</p>{% endif %}
 </section>
+{% endif %}
 {% endif %}
 {% endblock %}

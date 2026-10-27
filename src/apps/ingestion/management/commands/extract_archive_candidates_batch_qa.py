@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import tempfile
 from collections import Counter
 from pathlib import Path
@@ -23,6 +24,9 @@ from src.processing.document_extraction import (
 
 CHECKPOINT_NAME = "archive-extraction-checkpoint.json"
 SAPL_DATE_CHECKPOINT_NAME = "archive-extraction-sapl-date-v2-checkpoint.json"
+LEGACY_PRIORITY_QUEUE_CHECKPOINT_NAME = "archive-extraction-priority-v1-checkpoint.json"
+PRIORITY_QUEUE_CHECKPOINT_NAME = "archive-extraction-priority-v2-checkpoint.json"
+PRIORITY_SNAPSHOT_CHECKPOINT_PREFIX = "archive-extraction-priority-v2-snapshot-"
 CHECKPOINT_SCHEMA = 1
 BATCH_OCR_PAGE_BUDGET = 10
 BATCH_OCR_TIMEOUT_SECONDS = 15
@@ -121,9 +125,23 @@ def _checkpoint_path(name: str = CHECKPOINT_NAME) -> Path:
     root = Path(getattr(settings, "QA_ROOT", os.environ.get("JURIX_QA_ROOT", ""))).resolve()
     if not root.is_dir():
         raise CommandError("A raiz QA isolada não está disponível.")
-    if name not in {CHECKPOINT_NAME, SAPL_DATE_CHECKPOINT_NAME}:
+    if name not in {
+        CHECKPOINT_NAME,
+        SAPL_DATE_CHECKPOINT_NAME,
+        LEGACY_PRIORITY_QUEUE_CHECKPOINT_NAME,
+        PRIORITY_QUEUE_CHECKPOINT_NAME,
+    } and not re.fullmatch(
+        rf"{re.escape(PRIORITY_SNAPSHOT_CHECKPOINT_PREFIX)}[0-9a-f]{{16}}-checkpoint\.json",
+        name,
+    ):
         raise CommandError("Nome de checkpoint QA não permitido.")
     return root / name
+
+
+def _snapshot_checkpoint_name(fingerprint: str) -> str:
+    if not re.fullmatch(r"[0-9a-f]{64}", fingerprint):
+        raise CommandError("Fingerprint QA inválido para snapshot.")
+    return f"{PRIORITY_SNAPSHOT_CHECKPOINT_PREFIX}{fingerprint[:16]}-checkpoint.json"
 
 
 def _save_checkpoint(path: Path, checkpoint: dict) -> None:
@@ -227,6 +245,97 @@ def _publication_ordered_candidate_rows(qa_root: Path):
     return rows, ordering_fingerprint_fields, summary
 
 
+def _all_publication_ordered_candidate_rows(qa_root: Path):
+    """Build a complete QA-only queue without implying unresolved legal identity."""
+    from src.processing.archive_sapl_crosswalk import (
+        rank_archive_candidates_for_qa_extraction,
+    )
+
+    crosswalk_path = qa_root / "sapl-archive-crosswalk-cursor.json"
+    try:
+        crosswalk = json.loads(crosswalk_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise CommandError("Crosswalk SAPL completo não está disponível no QA.") from exc
+    if (
+        crosswalk.get("schema_version") != 1
+        or crosswalk.get("complete") is not True
+        or len(crosswalk.get("records") or []) != crosswalk.get("total_entries")
+    ):
+        raise CommandError("Crosswalk SAPL incompleto/inconsistente; não ordenarei por prioridade.")
+
+    documents = list(
+        DocumentoNormativo.objects.filter(
+            source_kind=DocumentoNormativo.SourceKind.ARCHIVE,
+            review_status=DocumentoNormativo.ReviewStatus.PENDING,
+            accepted_extraction__isnull=True,
+        )
+        .exclude(storage_key="")
+        .exclude(content_sha256="")
+        .values_list(
+            "pk", "public_id", "original_filename", "storage_key", "content_sha256", "size_bytes"
+        )
+    )
+    archive_rows = [
+        {
+            "document_id": pk,
+            "public_id": str(public_id),
+            "filename": filename,
+            "storage_key": storage_key,
+            "content_sha256": content_sha256,
+            "size_bytes": size_bytes,
+        }
+        for pk, public_id, filename, storage_key, content_sha256, size_bytes in documents
+    ]
+    ranked = rank_archive_candidates_for_qa_extraction(
+        archive_rows,
+        crosswalk["records"],
+        {int(key): value for key, value in crosswalk["type_labels"].items()},
+    )
+    already_current_ids = set(
+        ExtracaoDocumento.objects.filter(
+            documento_id__in=[item["document_id"] for item in ranked],
+            extractor_version__startswith="pymupdf-",
+            policy_fingerprint=_current_extraction_policy_fingerprint(),
+            quality_json__pipeline_candidate_only=True,
+        ).values_list("documento_id", flat=True)
+    )
+    # Keep the full catalog as the resumable universe, but start with missing
+    # extractions. The initial order is snapshotted in the checkpoint so that
+    # candidates becoming extracted during an apply do not reshuffle the cursor.
+    ranked.sort(key=lambda item: item["document_id"] in already_current_ids)
+    queue = ranked
+    basis_counts = Counter(item["priority_basis"] for item in ranked)
+    rows = [
+        (item["public_id"], item["storage_key"], item["content_sha256"], item["size_bytes"])
+        for item in queue
+    ]
+    ordering_fields = [
+        "|".join(
+            (
+                item["priority_basis"],
+                item["publication_date_candidate"] or "",
+                str(item["act_year_candidate"] or ""),
+                item["act_number_candidate"] or "",
+            )
+        )
+        for item in queue
+    ]
+    summary = {
+        "catalog_scan_complete": True,
+        "universe_candidates": len(ranked),
+        "queue_candidates": len(queue),
+        "extraction_candidates": len(queue) - len(already_current_ids),
+        "already_currently_extracted_candidates": len(already_current_ids),
+        "strict_sapl_date_priority_candidates": basis_counts["sapl_publication_date_candidate"],
+        "strict_sapl_year_number_fallback_candidates": basis_counts["sapl_year_number_fallback"],
+        "filename_year_number_priority_candidates": basis_counts["filename_year_number_fallback"],
+        "unresolved_stable_id_candidates": basis_counts["unresolved_stable_public_id"],
+        "identity_linkage_created": False,
+        "dates_and_filename_keys_are_reviewed_legal_facts": False,
+    }
+    return rows, ordering_fields, summary
+
+
 class Command(BaseCommand):
     help = "Extrai PDFs locais em lotes retomáveis, sempre como candidatos pendentes de revisão QA."
 
@@ -236,7 +345,14 @@ class Command(BaseCommand):
         mode.add_argument("--apply", action="store_true")
         parser.add_argument("--batch-size", type=int, default=10)
         parser.add_argument("--resume", action="store_true")
-        parser.add_argument("--publication-order", action="store_true")
+        ordering_group = parser.add_mutually_exclusive_group()
+        ordering_group.add_argument("--publication-order", action="store_true")
+        ordering_group.add_argument("--all-publication-order", action="store_true")
+        parser.add_argument(
+            "--new-snapshot",
+            action="store_true",
+            help="Usa checkpoint próprio do fingerprint atual; preserva checkpoints anteriores.",
+        )
 
     def handle(self, *args, **options):
         if (
@@ -256,20 +372,23 @@ class Command(BaseCommand):
             raise CommandError("--resume exige --apply ou --dry-run.")
 
         publication_order = options["publication_order"]
+        all_publication_order = options["all_publication_order"]
+        if options["new_snapshot"] and not all_publication_order:
+            raise CommandError("--new-snapshot exige --all-publication-order.")
         ordering = (
-            "SAPL:data_publicacao-desc;fallback=ano,numero"
+            "SAPL:data_publicacao-desc;fallback=ano,numero;strict-1to1"
             if publication_order
+            else "SAPL-date-candidate;filename-year-number-candidate;unresolved=public_id"
+            if all_publication_order
             else "public_id"
         )
-        checkpoint_name = SAPL_DATE_CHECKPOINT_NAME if publication_order else CHECKPOINT_NAME
-        checkpoint_path = _checkpoint_path(checkpoint_name)
-        exists = checkpoint_path.exists()
-        if options["apply"] and exists != options["resume"]:
-            raise CommandError(
-                "Checkpoint existente exige --resume; sem checkpoint, inicie sem --resume."
-            )
-        if options["resume"] and not exists:
-            raise CommandError("Não existe checkpoint QA para retomar.")
+        checkpoint_name = (
+            SAPL_DATE_CHECKPOINT_NAME
+            if publication_order
+            else PRIORITY_QUEUE_CHECKPOINT_NAME
+            if all_publication_order
+            else CHECKPOINT_NAME
+        )
 
         qa_root = Path(getattr(settings, "QA_ROOT", os.environ["JURIX_QA_ROOT"])).resolve()
         ordering_summary = None
@@ -278,9 +397,33 @@ class Command(BaseCommand):
             fingerprint = _universe_fingerprint(
                 [(*row, order_field) for row, order_field in zip(rows, ordering_fingerprint_fields, strict=True)]
             )
+        elif all_publication_order:
+            rows, ordering_fingerprint_fields, ordering_summary = _all_publication_ordered_candidate_rows(qa_root)
+            fingerprint_rows = sorted(
+                (
+                    (*row, order_field)
+                    for row, order_field in zip(
+                        rows, ordering_fingerprint_fields, strict=True
+                    )
+                ),
+                key=lambda item: str(item[0]),
+            )
+            fingerprint = _universe_fingerprint(
+                fingerprint_rows
+            )
         else:
             rows = _candidate_rows()
             fingerprint = _universe_fingerprint(rows)
+        if options["new_snapshot"]:
+            checkpoint_name = _snapshot_checkpoint_name(fingerprint)
+        checkpoint_path = _checkpoint_path(checkpoint_name)
+        exists = checkpoint_path.exists()
+        if options["apply"] and exists != options["resume"]:
+            raise CommandError(
+                "Checkpoint existente exige --resume; sem checkpoint, inicie sem --resume."
+            )
+        if options["resume"] and not exists:
+            raise CommandError("Não existe checkpoint QA para retomar.")
         if options["resume"]:
             try:
                 checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
@@ -293,8 +436,25 @@ class Command(BaseCommand):
                 or checkpoint.get("ordering", "public_id") != ordering
             ):
                 raise CommandError("Universo de candidatos mudou; checkpoint não será aplicado.")
+            if all_publication_order:
+                queue_public_ids = checkpoint.get("queue_public_ids")
+                rows_by_public_id = {
+                    str(row[0]): (row, ordering_fingerprint_fields[index])
+                    for index, row in enumerate(rows)
+                }
+                if (
+                    not isinstance(queue_public_ids, list)
+                    or len(queue_public_ids) != len(rows)
+                    or len(set(queue_public_ids)) != len(rows)
+                    or any(public_id not in rows_by_public_id for public_id in queue_public_ids)
+                ):
+                    raise CommandError("Snapshot da fila QA inválido; checkpoint não será alterado.")
+                rows = [rows_by_public_id[public_id][0] for public_id in queue_public_ids]
+                ordering_fingerprint_fields = [
+                    rows_by_public_id[public_id][1] for public_id in queue_public_ids
+                ]
             if checkpoint.get("status") == "completed":
-                self.stdout.write(json.dumps({"status": "completed", "remaining": 0}, sort_keys=True))
+                self.stdout.write(json.dumps({"status": "completed", "remaining": 0, "checkpoint_file": checkpoint_path.name}, sort_keys=True))
                 return
         else:
             checkpoint = {
@@ -309,6 +469,8 @@ class Command(BaseCommand):
                 "status": "pending",
                 "ordering": ordering,
             }
+            if all_publication_order:
+                checkpoint["queue_public_ids"] = [str(row[0]) for row in rows]
         checkpoint.setdefault("failed_attempts", 0)
 
         if not rows and options["apply"]:
@@ -318,6 +480,70 @@ class Command(BaseCommand):
         start = checkpoint["cursor"]
         if not isinstance(start, int) or not 0 <= start <= len(rows):
             raise CommandError("Cursor do checkpoint QA fora do intervalo.")
+
+        # A full-archive queue deliberately keeps already extracted documents
+        # in its frozen universe. Advance a contiguous prefix of current-policy
+        # extractions in one checkpoint write instead of reopening thousands of
+        # unchanged PDFs or issuing one write per skipped document.
+        fast_forwarded_existing = 0
+        if options["apply"] and all_publication_order and start < len(rows):
+            remaining_public_ids = [str(row[0]) for row in rows[start:]]
+            current_policy_public_ids = {
+                str(public_id)
+                for public_id in ExtracaoDocumento.objects.filter(
+                    documento__public_id__in=remaining_public_ids,
+                    extractor_version__startswith="pymupdf-",
+                    policy_fingerprint=_current_extraction_policy_fingerprint(),
+                    quality_json__pipeline_candidate_only=True,
+                ).values_list("documento__public_id", flat=True)
+            }
+            while (
+                start + fast_forwarded_existing < len(rows)
+                and str(rows[start + fast_forwarded_existing][0])
+                in current_policy_public_ids
+            ):
+                fast_forwarded_existing += 1
+
+            if fast_forwarded_existing:
+                start += fast_forwarded_existing
+                checkpoint["skipped_existing"] += fast_forwarded_existing
+                checkpoint["processed"] += fast_forwarded_existing
+                checkpoint["cursor"] = start
+                checkpoint["status"] = "completed" if start == len(rows) else "pending"
+                checkpoint.pop("failed_item", None)
+                checkpoint.pop("error_type", None)
+                _save_checkpoint(checkpoint_path, checkpoint)
+
+                if start == len(rows):
+                    self.stdout.write(
+                        json.dumps(
+                            {
+                                "mode": "apply",
+                                "status": checkpoint["status"],
+                                "ordering": ordering,
+                                "checkpoint_file": checkpoint_path.name,
+                                "ordering_summary": ordering_summary,
+                                "batch_processed": fast_forwarded_existing,
+                                "batch_failure_count": 0,
+                                "fast_forwarded_existing": fast_forwarded_existing,
+                                "cursor": checkpoint["cursor"],
+                                "universe_candidates": (
+                                    ordering_summary["universe_candidates"]
+                                    if all_publication_order
+                                    else len(rows)
+                                ),
+                                "queue_candidates": len(rows),
+                                "candidate_extractions_created_total": checkpoint["created"],
+                                "skipped_existing_total": checkpoint["skipped_existing"],
+                                "failed_attempts_total": checkpoint["failed_attempts"],
+                                "review_accepted": False,
+                                "norma_linkage_created": False,
+                            },
+                            sort_keys=True,
+                        )
+                    )
+                    return
+
         batch = rows[start : start + batch_size]
         verified_bytes = 0
         existing_extractions = 0
@@ -343,22 +569,37 @@ class Command(BaseCommand):
             if _has_current_pipeline_extraction(document_id):
                 existing_extractions += 1
 
+        batch_priority_preview = [
+            {
+                "public_id": str(row[0]),
+                "ordering_candidate": ordering_fingerprint_fields[start + offset],
+            }
+            for offset, row in enumerate(batch)
+        ] if all_publication_order else None
+
         if options["dry_run"]:
             self.stdout.write(
                 json.dumps(
                     {
                         "mode": "dry-run",
                         "ordering": ordering,
+                        "checkpoint_file": checkpoint_path.name,
                         "ordering_summary": ordering_summary,
                         "batch_size": batch_size,
                         "cursor": start,
                         "batch_candidates": len(batch),
-                        "universe_candidates": len(rows),
+                        "universe_candidates": (
+                            ordering_summary["universe_candidates"]
+                            if all_publication_order
+                            else len(rows)
+                        ),
+                        "queue_candidates": len(rows),
                         "current_policy_extractions_in_batch": existing_extractions,
                         "legacy_or_staging_extractions_to_refresh": len(batch) - existing_extractions,
                         "verified_pdf_bytes": verified_bytes,
                         "page_counts": page_counts,
                         "ocr_page_counts": ocr_page_counts,
+                        **({"batch_priority_preview": batch_priority_preview} if batch_priority_preview is not None else {}),
                         "checkpoint_written": False,
                     },
                     sort_keys=True,
@@ -418,15 +659,23 @@ class Command(BaseCommand):
                     "mode": "apply",
                     "status": checkpoint["status"],
                     "ordering": ordering,
+                    "checkpoint_file": checkpoint_path.name,
                     "ordering_summary": ordering_summary,
                     "batch_processed": len(batch),
                     "batch_failure_count": 0,
+                    "fast_forwarded_existing": fast_forwarded_existing,
                     "batch_summary": batch_summary,
                     "cursor": checkpoint["cursor"],
-                    "universe_candidates": len(rows),
+                    "universe_candidates": (
+                        ordering_summary["universe_candidates"]
+                        if all_publication_order
+                        else len(rows)
+                    ),
+                    "queue_candidates": len(rows),
                     "candidate_extractions_created_total": checkpoint["created"],
                     "skipped_existing_total": checkpoint["skipped_existing"],
                     "failed_attempts_total": checkpoint["failed_attempts"],
+                    **({"batch_priority_preview": batch_priority_preview} if batch_priority_preview is not None else {}),
                     "pending_archive_extractions_by_status": dict(
                         DocumentoNormativo.objects.filter(
                             source_kind=DocumentoNormativo.SourceKind.ARCHIVE,

@@ -2,6 +2,7 @@ from src.apps.ingestion.management.commands.audit_archive_sapl_crosswalk_qa impo
 from src.processing.archive_sapl_crosswalk import (
     archive_identity_candidate,
     rank_archive_candidates_by_publication,
+    rank_archive_candidates_for_qa_extraction,
     summarize_crosswalk,
 )
 
@@ -88,3 +89,33 @@ def test_publication_order_uses_sapl_date_then_act_year_and_number_and_skips_amb
         None,
         "2024-12-20",
     ]
+
+
+def test_qa_extraction_order_covers_unmatched_and_ambiguous_pdfs_without_linking_them():
+    archives = [
+        {"document_id": 1, "public_id": "strict", "filename": "Lei_10_2026.pdf", "storage_key": "1.pdf", "content_sha256": "a" * 64, "size_bytes": 10},
+        {"document_id": 2, "public_id": "fallback", "filename": "Lei_11_2025.pdf", "storage_key": "2.pdf", "content_sha256": "b" * 64, "size_bytes": 20},
+        {"document_id": 3, "public_id": "duplicate-a", "filename": "Lei_12_2024_original.pdf", "storage_key": "3.pdf", "content_sha256": "c" * 64, "size_bytes": 30},
+        {"document_id": 4, "public_id": "duplicate-b", "filename": "Lei_12_2024_copia.pdf", "storage_key": "4.pdf", "content_sha256": "d" * 64, "size_bytes": 40},
+        {"document_id": 5, "public_id": "unresolved", "filename": "scan_legislacao.pdf", "storage_key": "5.pdf", "content_sha256": "e" * 64, "size_bytes": 50},
+    ]
+    catalog = [
+        {"id": 1, "tipo": 1, "numero": "10", "ano": 2026, "data_publicacao": "2026-02-03"},
+        {"id": 2, "tipo": 1, "numero": "12", "ano": 2024, "data_publicacao": "2024-05-01"},
+    ]
+
+    result = rank_archive_candidates_for_qa_extraction(archives, catalog, {1: "Lei Ordinária"})
+
+    assert [item["public_id"] for item in result] == [
+        "strict", "fallback", "duplicate-b", "duplicate-a", "unresolved",
+    ]
+    assert [item["priority_basis"] for item in result] == [
+        "sapl_publication_date_candidate",
+        "filename_year_number_fallback",
+        "filename_year_number_fallback",
+        "filename_year_number_fallback",
+        "unresolved_stable_public_id",
+    ]
+    assert result[0]["publication_date_candidate"] == "2026-02-03"
+    assert all(item["publication_date_candidate"] is None for item in result[1:])
+    assert all(item["act_year_candidate"] is None for item in result[-1:])

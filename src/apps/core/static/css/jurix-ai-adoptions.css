@@ -1,0 +1,32 @@
+.ai-adoptions-page{width:min(1120px,100%);margin-inline:auto;padding:clamp(1rem,3vw,2rem);display:grid;gap:1.25rem}
+.ai-adoptions-page .workspace-page-header{display:flex;align-items:flex-end;justify-content:space-between;gap:1.25rem}
+.ai-adoptions-page h1{margin:.3rem 0 .5rem;font-size:clamp(1.55rem,3vw,2.15rem)}
+.ai-adoptions-page h2{margin:.25rem 0;font-size:1.25rem}
+.ai-adoptions-page p{line-height:1.6}
+.ai-adoptions-notice{display:grid;gap:.35rem;padding:1rem 1.15rem;border:1px solid var(--border-subtle,#334155);border-left:4px solid var(--accent,#60a5fa);border-radius:14px;background:var(--surface-raised,#111827);line-height:1.55}
+.ai-adoption-case{display:grid;gap:1rem;padding:clamp(1rem,2.5vw,1.5rem);border:1px solid var(--border-subtle,#334155);border-radius:18px;background:var(--surface,#0b1220);box-shadow:0 12px 30px #0002}
+.ai-adoption-case.is-conflict{border-color:color-mix(in srgb,#f59e0b 55%,var(--border-subtle,#334155))}
+.ai-adoption-case__header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
+.ai-adoption-case__header p,.ai-adoption-meta{margin:.35rem 0 0;color:var(--text-muted,#94a3b8)}
+.ai-adoption-status{flex:none;padding:.4rem .7rem;border-radius:999px;background:var(--surface-raised,#111827);border:1px solid var(--border-subtle,#334155);font-size:.84rem}
+.ai-adoption-graph{list-style:none;margin:0;padding:0;display:grid;gap:.75rem}
+.ai-adoption-edge{display:grid;grid-template-columns:minmax(0,1fr) minmax(5rem,.22fr) minmax(0,1fr);align-items:stretch;gap:.6rem;padding:.8rem;border:1px solid var(--border-subtle,#334155);border-radius:14px;background:var(--surface-raised,#111827)}
+.ai-adoption-node{min-width:0;display:flex;flex-direction:column;gap:.4rem;padding:.85rem;border-radius:11px;background:var(--surface,#0b1220)}
+.ai-adoption-node>span,.ai-adoption-node small{color:var(--text-muted,#94a3b8);font-size:.82rem}
+.ai-adoption-node strong{overflow-wrap:anywhere;line-height:1.45}
+.ai-adoption-node--source{border:1px solid color-mix(in srgb,#60a5fa 40%,transparent)}
+.ai-adoption-node--target{border:1px solid color-mix(in srgb,#a78bfa 38%,transparent)}
+.ai-adoption-arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;color:var(--text-muted,#94a3b8);font-size:.8rem;text-align:center}
+.ai-adoption-arrow span:last-child{font-size:1.4rem;color:var(--accent,#60a5fa)}
+.ai-adoption-links{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:auto;padding-top:.25rem}
+.ai-adoption-links a{min-height:2.75rem;display:inline-flex;align-items:center;color:var(--accent,#60a5fa);font-weight:600;text-underline-offset:.18em}
+.ai-adoption-evidence,.ai-adoption-limitations,.ai-adoption-provenance{grid-column:1/-1;border-top:1px solid var(--border-subtle,#334155);padding-top:.65rem}
+.ai-adoptions-page summary{cursor:pointer;min-height:2.75rem;display:flex;align-items:center;color:var(--accent,#60a5fa);font-weight:600}
+.ai-adoption-evidence blockquote{margin:.5rem 0;padding:.75rem 1rem;border-left:3px solid var(--accent,#60a5fa);background:var(--surface,#0b1220);white-space:pre-wrap;line-height:1.6}
+.ai-adoption-hash,.ai-adoption-provenance dd{overflow-wrap:anywhere;font-family:ui-monospace,monospace;font-size:.78rem}
+.ai-adoption-limitations ul{margin:.25rem 0;padding-left:1.25rem;line-height:1.65}
+.ai-adoption-provenance dl{display:grid;grid-template-columns:minmax(8rem,.3fr) minmax(0,1fr);gap:.5rem 1rem}
+.ai-adoption-provenance dt{font-weight:700}.ai-adoption-provenance dd{margin:0}
+.ai-adoption-page a:focus-visible,.ai-adoption-page summary:focus-visible{outline:3px solid var(--focus-ring,#93c5fd);outline-offset:3px;border-radius:4px}
+@media(max-width:680px){.ai-adoptions-page .workspace-page-header,.ai-adoption-case__header{align-items:stretch;flex-direction:column}.ai-adoption-edge{grid-template-columns:minmax(0,1fr)}.ai-adoption-arrow{flex-direction:row}.ai-adoption-arrow span:last-child{transform:rotate(90deg)}.ai-adoption-provenance dl{grid-template-columns:1fr;gap:.15rem}.ai-adoption-provenance dd{margin-bottom:.65rem}}
+@media(prefers-reduced-motion:reduce){.ai-adoptions-page *{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}

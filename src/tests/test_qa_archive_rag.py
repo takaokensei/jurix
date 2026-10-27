@@ -12,6 +12,7 @@ from src.processing.qa_archive_rag import (
     _PROCESS_TRANSITION_EVIDENCE_RE,
     _PROCESS_TRANSITION_SCOPE_REQUEST_RE,
     _WHOLE_NORM_CONTEXT_BUDGET_CHARS,
+    _archive_explicit_amendment_synthesis,
     _archive_explicit_repeal_scope_synthesis,
     _archive_explicit_transition_pair_synthesis,
     _archive_relation_candidate_sources,
@@ -25,6 +26,7 @@ from src.processing.qa_archive_rag import (
     _article_topic_phrase,
     _dedupe_relation_candidate_sources,
     _enumerated_topic_facets,
+    _explicit_amendment_article_scope,
     _explicit_article_norm_pairs,
     _facet_evidence_map,
     _facet_excerpt,
@@ -35,6 +37,7 @@ from src.processing.qa_archive_rag import (
     _is_whole_norm_request,
     _matching_archive_article_sources,
     _metadata_only_sapl_norma_source,
+    _missing_explicit_article_norm_pairs,
     _multi_norm_synthesis_instruction,
     _official_dom_article_source,
     _official_dom_articles_sources,
@@ -53,6 +56,8 @@ from src.processing.qa_archive_rag import (
     _source_matches_facet,
     _strong_topic_phrase_rows,
     _supplement_missing_explicit_official_articles,
+    _target_normative_device_sources,
+    _text_mentions_norm_identity,
     _tokens,
     _vacatio_counting_rule_source,
     _vacatio_effective_date,
@@ -103,6 +108,70 @@ def test_official_sapl_publication_source_requires_one_exact_nonsynthetic_identi
 
     queryset.__getitem__.return_value = [norma, norma]
     assert _official_sapl_publication_source(reference) is None
+
+
+def test_target_device_lookup_includes_only_exact_unlinked_lp275_official_candidate():
+    reference = SimpleNamespace(
+        type_key="lei_promulgada",
+        number="275",
+        year=2009,
+    )
+    extraction = SimpleNamespace(
+        status=ExtracaoDocumento.Status.COMPLETE,
+        legal_text="Art. 21 - O rebaixamento de guias para acesso de veículos será feito conforme este artigo.",
+        page_map_json=[{"start": 0, "end": 100, "page": 4}],
+        extraction_sha256="a" * 64,
+    )
+    extraction_manager = MagicMock()
+    extraction_manager.order_by.return_value.first.return_value = extraction
+    document = SimpleNamespace(
+        source_kind=DocumentoNormativo.SourceKind.ARCHIVE,
+        review_status=DocumentoNormativo.ReviewStatus.PENDING,
+        accepted_extraction_id=None,
+        norma_id=None,
+        public_id="8dea863e-e736-452e-8ca6-288f6061d239",
+        content_sha256="b" * 64,
+        official_url=(
+            "https://www.natal.rn.gov.br/storage/app/media/semurb/legislacao/leis/"
+            "5-lei-promulgada-275-2009-regulamenta-as-calcadas-no-municipio.pdf"
+        ),
+        metadata_json={
+            "identity_candidate": {
+                "type": "lei_promulgada",
+                "number": "275",
+                "year": 2009,
+            },
+            "identity_status": "candidate",
+            "rag_eligible": False,
+            "source_provenance": {
+                "kind": "municipal_official_repository",
+                "official_url": (
+                    "https://www.natal.rn.gov.br/storage/app/media/semurb/legislacao/leis/"
+                    "5-lei-promulgada-275-2009-regulamenta-as-calcadas-no-municipio.pdf"
+                ),
+            },
+        },
+        extracoes=extraction_manager,
+    )
+    queryset = MagicMock()
+    queryset.filter.return_value = queryset
+    queryset.order_by.return_value = queryset
+    queryset.__getitem__.return_value = [document]
+
+    with patch.object(DocumentoNormativo.objects, "filter", return_value=queryset):
+        sources = _target_normative_device_sources(reference, ("21",))
+
+    assert len(sources) == 1
+    assert sources[0]["norma_ref"] == "Lei Promulgada nº 275/2009"
+    assert sources[0]["dispositivo_ref"] == "Art. 21"
+    assert "O rebaixamento de guias" in sources[0]["full_text"]
+    assert sources[0]["relation_review_status"] == "candidate_unreviewed"
+    assert sources[0]["local_pdf_url"].endswith("/pdf/")
+    assert sources[0]["pdf_url"].endswith("#page=4")
+
+    document.metadata_json["source_provenance"]["kind"] = "unverified_source"
+    with patch.object(DocumentoNormativo.objects, "filter", return_value=queryset):
+        assert _target_normative_device_sources(reference, ("21",)) == []
 
 
 def test_whole_norm_empty_sapl_search_does_not_claim_article_level_coverage():
@@ -366,6 +435,107 @@ def _completed_generation_stream(result):
     JURIX_BUILD_PROFILE="",
 )
 class ArchiveQARetrievalTests(SimpleTestCase):
+    def test_explicit_amendment_synthesis_quotes_only_added_paragraphs(self):
+        question = (
+            "Que parágrafos a Lei Complementar nº 173/2017 acrescenta ao Art. 34 "
+            "da Lei Complementar nº 55/2004?"
+        )
+        amendment = {
+            "citation_id": "qa:amendment-art2",
+            "norma_ref": "Lei Complementar nº 173/2017",
+            "dispositivo_ref": "Art. 2º",
+            "full_text": (
+                "O Art. 34 da Lei Complementar n.º 55, de 27 de janeiro de 2004, passa a "
+                "vigorar acrescido dos seguintes parágrafos: Art. 34 — ... § 1º — .... "
+                "§ 2º — .... § 3º — A licença simplificada obedecerá ao regulamento municipal. "
+                "§ 4º — O regulamento definirá as modalidades e os procedimentos aplicáveis."
+            ),
+        }
+        commencement = {
+            "citation_id": "qa:amendment-art3",
+            "norma_ref": "Lei Complementar nº 173/2017",
+            "dispositivo_ref": "Art. 3º",
+            "full_text": "Esta Lei Complementar entra em vigor a partir da data de sua publicação.",
+        }
+
+        result = _archive_explicit_amendment_synthesis(question, [amendment, commencement])
+
+        self.assertIsNotNone(result)
+        answer, sources, claims, coverage = result
+        self.assertEqual([source["citation_id"] for source in sources], ["qa:amendment-art2", "qa:amendment-art3"])
+        self.assertIn("**§ 3º:**", answer)
+        self.assertIn("**§ 4º:**", answer)
+        self.assertNotIn("§ 1º:**", answer)
+        self.assertNotIn("§ 2º:**", answer)
+        self.assertIn("[[1]]", answer)
+        self.assertIn("[[2]]", answer)
+        self.assertFalse(coverage["legal_effect_reviewed"])
+        self.assertEqual([claim["citation_ids"] for claim in claims], [["qa:amendment-art2"], ["qa:amendment-art3"]])
+
+    @override_settings(NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True)
+    @patch("src.processing.qa_archive_rag.DocumentoNormativo.objects.filter")
+    def test_amendment_query_retrieves_amending_clause_and_target_article_not_tangential_law(
+        self, filter_documents
+    ):
+        amendment = _archive_document(
+            number="173",
+            year=2017,
+            legal_text=(
+                "Art. 1º Esta Lei Complementar altera o Art. 34 da Lei Complementar n.º 55, "
+                "de 27 de janeiro de 2004.\n"
+                "Art. 2º O Art. 34 da Lei Complementar n.º 55, de 27 de janeiro de 2004 "
+                "passa a vigorar acrescido "
+                "dos seguintes parágrafos: § 3º A licença simplificada observará regulamento.\n"
+                "Art. 3º Esta Lei Complementar entra em vigor a partir da data de sua publicação."
+            ),
+        )
+        amendment.metadata_json["identity_candidate"]["type"] = "lei_complementar"
+        target = _archive_document(
+            number="55",
+            year=2004,
+            legal_text=(
+                "Art. 34. A licença ambiental observa as etapas prévia, instalação e operação, "
+                "com análise técnica, publicidade dos atos e respeito às regras municipais aplicáveis."
+            ),
+        )
+        target.metadata_json["identity_candidate"]["type"] = "lei_complementar"
+        tangential = _archive_document(
+            number="258",
+            year=2024,
+            legal_text="Art. 260. Fica revogada a Lei Complementar nº 55/2004.",
+        )
+        tangential.metadata_json["identity_candidate"]["type"] = "lei_complementar"
+        _mock_archive_candidates(filter_documents, [amendment, target, tangential])
+        question = (
+            "Que parágrafos a Lei Complementar nº 173/2017 acrescenta ao Art. 34 "
+            "da Lei Complementar nº 55/2004?"
+        )
+
+        self.assertEqual(
+            _explicit_amendment_article_scope(question),
+            (("lei_complementar", "173", 2017), ("lei_complementar", "55", 2004), "34"),
+        )
+        self.assertTrue(
+            _text_mentions_norm_identity(
+                "Art. 2º altera a Lei Complementar n.º 55, de 27 de janeiro de 2004.",
+                ("lei_complementar", "55", 2004),
+            )
+        )
+        rows = retrieve_archive_evidence(question, limit=8)
+
+        self.assertEqual(
+            {(row["norma_ref"], row["dispositivo_ref"]) for row in rows},
+            {
+                ("Lei Complementar nº 173/2017", "Art. 2º"),
+                ("Lei Complementar nº 173/2017", "Art. 3º"),
+                ("Lei Complementar nº 55/2004", "Art. 34"),
+            },
+        )
+        roles = {row["coverage"]["amendment_evidence_role"] for row in rows}
+        self.assertEqual(roles, {"amendment_clause", "amendment_commencement", "target_provision"})
+        self.assertTrue(all(row["coverage"]["complete"] is True for row in rows))
+        self.assertTrue(all(row["coverage"]["legal_effect_reviewed"] is False for row in rows))
+
     def test_archive_shortlist_drops_question_framing_but_keeps_legal_topic_terms(self):
         tokens = _tokens(
             "Em qual ato municipal disponível no acervo consta que a COSIP incide "
@@ -1732,21 +1902,32 @@ class ArchiveQARetrievalTests(SimpleTestCase):
         self.assertFalse(_has_ambiguous_multi_norm_article_scope(question))
 
     def test_rev02_natural_enumeration_keeps_each_article_with_its_named_norm(self):
-        question = (
+        natural_question = (
             "Confronte o Art. 260, inciso IV, o Art. 262 e o Art. 266 da LC nº 258/2024, "
             "junto do Art. 21 da LC nº 55/2004."
         )
-
-        self.assertEqual(
-            _explicit_article_norm_pairs(question),
-            (
-                (("lei_complementar", "258", 2024), "260"),
-                (("lei_complementar", "258", 2024), "262"),
-                (("lei_complementar", "258", 2024), "266"),
-                (("lei_complementar", "55", 2004), "21"),
-            ),
+        editorial_variant = (
+            "Confronte os artigos 260, IV; 262; e 266 da Lei Complementar nº 258/2024, "
+            "além do art. 21 da LC nº 55/2004."
         )
-        self.assertFalse(_has_ambiguous_multi_norm_article_scope(question))
+        explicit_question = (
+            "Confronte o Art. 260, inciso IV, da LC nº 258/2024, o Art. 262 da LC nº 258/2024, "
+            "o Art. 266 da LC nº 258/2024 e o Art. 21 da LC nº 55/2004."
+        )
+        expected_pairs = (
+            (("lei_complementar", "258", 2024), "260"),
+            (("lei_complementar", "258", 2024), "262"),
+            (("lei_complementar", "258", 2024), "266"),
+            (("lei_complementar", "55", 2004), "21"),
+        )
+
+        natural_pairs = _explicit_article_norm_pairs(natural_question)
+        self.assertEqual(natural_pairs, expected_pairs)
+        self.assertEqual(_explicit_article_norm_pairs(editorial_variant), expected_pairs)
+        self.assertEqual(_explicit_article_norm_pairs(explicit_question), natural_pairs)
+        self.assertFalse(_has_ambiguous_multi_norm_article_scope(natural_question))
+        self.assertFalse(_has_ambiguous_multi_norm_article_scope(editorial_variant))
+        self.assertFalse(_has_ambiguous_multi_norm_article_scope(explicit_question))
 
     def test_rev02_same_article_competing_norms_stays_unresolved(self):
         question = (
@@ -1756,6 +1937,91 @@ class ArchiveQARetrievalTests(SimpleTestCase):
 
         self.assertEqual(_explicit_article_norm_pairs(question), ())
         self.assertTrue(_has_ambiguous_multi_norm_article_scope(question))
+
+    def test_rev02_missing_pair_reports_only_unretrieved_explicit_device(self):
+        question = (
+            "Confronte o Art. 260, inciso IV, o Art. 262 e o Art. 266 da LC nº 258/2024, "
+            "junto do Art. 21 da LC nº 55/2004."
+        )
+        sources = [
+            {"citation_id": "a", "norma_ref": "Lei Complementar nº 258/2024", "dispositivo_ref": "Art. 260"},
+            {"citation_id": "b", "norma_ref": "Lei Complementar nº 258/2024", "dispositivo_ref": "Art. 262"},
+            {"citation_id": "c", "norma_ref": "Lei Complementar nº 258/2024", "dispositivo_ref": "Art. 266"},
+        ]
+
+        self.assertEqual(
+            _missing_explicit_article_norm_pairs(question, sources),
+            ("Art. 21 da Lei Complementar nº 55/2004",),
+        )
+        self.assertEqual(_missing_explicit_article_norm_pairs(
+            "Compare Art. 21 e Art. 260 entre a LC nº 55/2004 e a LC nº 258/2024.", sources
+        ), ())
+
+    @override_settings(NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True)
+    @patch("src.processing.qa_archive_rag.stream_grounded_generation")
+    @patch("src.processing.qa_archive_rag.retrieve_archive_evidence")
+    def test_rev02_partial_retrieval_quotes_found_pairs_and_names_missing_pair(self, retrieve, generate):
+        question = (
+            "Confronte o Art. 260, inciso IV, o Art. 262 e o Art. 266 da LC nº 258/2024, "
+            "junto do Art. 21 da LC nº 55/2004. Compare somente o que os trechos recuperados "
+            "permitem afirmar; indique o que está pendente de revisão e cite as fontes."
+        )
+        retrieve.return_value = [
+            {
+                "citation_id": "qa:lc258-art260",
+                "norma_ref": "Lei Complementar nº 258/2024",
+                "dispositivo_ref": "Art. 260",
+                "full_text": "Art. 260. Ficam revogados: IV — Lei Complementar nº 55/2004.",
+                "similarity_score": 0.95,
+            },
+            {
+                "citation_id": "qa:lc258-art262",
+                "norma_ref": "Lei Complementar nº 258/2024",
+                "dispositivo_ref": "Art. 262",
+                "full_text": "Art. 262. Processos anteriores seguem a regra de transição prevista.",
+                "similarity_score": 0.94,
+            },
+            {
+                "citation_id": "qa:lc258-art266",
+                "norma_ref": "Lei Complementar nº 258/2024",
+                "dispositivo_ref": "Art. 266",
+                "full_text": "Art. 266. Esta Lei Complementar entra em vigor 90 dias após sua publicação.",
+                "similarity_score": 0.93,
+            },
+        ]
+        generate.return_value = _completed_generation_stream(
+            {
+                "answer": "Uma resposta sem suporte suficiente. [[1]]",
+                "grounding": {"grounded": False, "failed_claims": ["unsupported"]},
+                "source_only": False,
+                "generation_attempts": [{"duration_ms": 5}],
+            }
+        )
+
+        events = list(
+            stream_archive_qa_answer(
+                question,
+                k=8,
+                model="llama3",
+                temperature=0.1,
+                text_provider={"provider": "ollama"},
+                ollama=MagicMock(),
+            )
+        )
+        final = events[-1]
+
+        self.assertTrue(final["grounded"])
+        self.assertEqual(final["reason_code"], "qa_archive_evidence_map_fallback")
+        self.assertEqual(
+            [source["citation_id"] for source in final["sources"]],
+            ["qa:lc258-art260", "qa:lc258-art262", "qa:lc258-art266"],
+        )
+        self.assertIn("Art. 260", final["answer"])
+        self.assertIn("Art. 262", final["answer"])
+        self.assertIn("Art. 266", final["answer"])
+        self.assertIn("Art. 21 da Lei Complementar nº 55/2004", final["answer"])
+        self.assertIn("não confirma que o dispositivo ou a norma não exista", final["answer"])
+        self.assertNotIn("Não encontrei, nos trechos recuperados, um dispositivo", final["answer"])
 
     def test_repeated_article_follow_up_keeps_its_single_explicit_norm_identity(self):
         question = (

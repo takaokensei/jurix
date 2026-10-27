@@ -77,6 +77,15 @@
 .pgm-demo__target-node h3 { margin: .55rem 0; font-size: 1rem; line-height: 1.45; overflow-wrap: anywhere; }
 .pgm-demo__target-node p { margin: .45rem 0; color: var(--jurix-text-body); font-size: var(--jurix-type-caption); line-height: 1.55; overflow-wrap: anywhere; }
 .pgm-demo__target-state { display: inline-flex; padding: .25rem .45rem; border: 1px solid var(--jurix-border); border-radius: .35rem; color: var(--jurix-text); background: var(--jurix-canvas); font-size: var(--jurix-type-caption); font-weight: 650; }
+.pgm-demo__target-evidence { margin-top: .55rem; border: 1px solid var(--jurix-border); border-radius: var(--jurix-radius-sm); background: color-mix(in srgb, var(--jurix-canvas) 84%, transparent); }
+.pgm-demo__target-evidence summary { display: flex; min-height: 2.75rem; align-items: center; justify-content: space-between; gap: .5rem; padding: .4rem .65rem; color: var(--jurix-link); font-size: var(--jurix-type-caption); font-weight: 700; cursor: pointer; list-style: none; }
+.pgm-demo__target-evidence summary::-webkit-details-marker { display: none; }
+.pgm-demo__target-evidence summary::after { width: .45rem; height: .45rem; flex: 0 0 auto; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; content: ""; transform: rotate(45deg) translateY(-2px); transition: transform 160ms ease; }
+.pgm-demo__target-evidence[open] summary::after { transform: rotate(225deg) translate(-2px, -1px); }
+.pgm-demo__target-evidence:focus-within { outline: 2px solid var(--jurix-focus, var(--jurix-action)); outline-offset: 2px; }
+.pgm-demo__target-evidence-content { display: grid; gap: .3rem; padding: 0 .65rem .65rem; }
+.pgm-demo__target-evidence-content > p { margin: .2rem 0; }
+.pgm-demo__target-evidence-content > a { width: fit-content; }
 .pgm-demo__sapl-evidence { margin-top: .7rem; border: 1px solid var(--jurix-border); border-radius: var(--jurix-radius-sm); background: color-mix(in srgb, var(--jurix-canvas) 84%, transparent); }
 .pgm-demo__sapl-evidence summary { display: flex; min-height: 2.75rem; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .3rem .55rem; padding: .45rem .6rem; cursor: pointer; list-style: none; }
 .pgm-demo__sapl-evidence summary::-webkit-details-marker { display: none; }
@@ -206,7 +215,7 @@
   .pgm-demo__graph-controls > span { width: 100%; }
   .pgm-demo__graph-controls button { flex: 1 1 9rem; }
 }
-@media (prefers-reduced-motion: reduce) { .pgm-demo__graph-controls button { transition: none; } .pgm-demo__target-node[data-graph-emphasis="active"] { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pgm-demo__graph-controls button, .pgm-demo__target-evidence summary::after, .pgm-demo__sapl-evidence summary::after { transition: none; } .pgm-demo__target-node[data-graph-emphasis="active"] { transform: none; } }
 
 /* The QA preview is a directed, vertical map: source -> legal event -> cited targets. */
 .pgm-demo__diagram {

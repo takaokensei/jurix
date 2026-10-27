@@ -602,3 +602,68 @@ class SnapshotDispositivo(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValidationError("Dispositivos de snapshot são preservados para auditoria.")
+
+
+class AIPilotAdoption(models.Model):
+    """Immutable record that a project owner adopted an AI documentary review for a pilot."""
+
+    class Case(models.TextChoices):
+        CTM_ART20 = "ctm_art20_lc271", "CTM, Art. 20 / LC 271"
+        LC258_REPEALS = "lc258_art260", "LC 258, Art. 260"
+        LC55_CONFLICT = "lc55_art34_conflict", "LC 55, Art. 34 (divergência)"
+        LC208_LC261 = "lc208_art18_lc261_art118", "LC 208 / LC 261"
+
+    case_key = models.CharField(max_length=48, choices=Case.choices)
+    revision = models.PositiveSmallIntegerField(default=1)
+    decision = models.CharField(max_length=32, default="adopted_for_pilot")
+    adopted_on = models.DateField()
+    adoption_basis = models.CharField(max_length=40, default="project_owner_explicit")
+    review_kind = models.CharField(max_length=32, default="ai_documentary_review")
+    review_draft_sha256 = models.CharField(max_length=64, validators=[sha256_validator])
+    review_report_sha256 = models.CharField(max_length=64, validators=[sha256_validator])
+    source_manifest_sha256 = models.CharField(max_length=64, validators=[sha256_validator])
+    norma = models.ForeignKey(
+        "legislation.Norma",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="ai_pilot_adoptions",
+    )
+    evidence_json = models.JSONField(default=dict)
+    limitations_json = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    objects = SnapshotAppendOnlyQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["case_key", "revision", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["case_key", "revision"], name="unique_ai_pilot_case_revision"
+            )
+        ]
+        indexes = [models.Index(fields=["case_key", "decision"], name="ai_pilot_case_dec_idx")]
+
+    def __str__(self) -> str:
+        return f"Adoção IA {self.case_key} · revisão {self.revision}"
+
+    def save(self, *args, **kwargs):
+        if self.pk and type(self).objects.filter(pk=self.pk).exists():
+            raise ValidationError("Adoções são imutáveis; crie outra revisão.")
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def clean(self):
+        super().clean()
+        if self.decision != "adopted_for_pilot":
+            raise ValidationError({"decision": "A adoção não altera o estado jurídico global."})
+        if self.adoption_basis != "project_owner_explicit":
+            raise ValidationError({"adoption_basis": "Base de adoção deve ser explícita."})
+        if self.review_kind != "ai_documentary_review":
+            raise ValidationError({"review_kind": "Este registro não representa revisão humana."})
+        if not isinstance(self.evidence_json, dict) or not self.evidence_json:
+            raise ValidationError({"evidence_json": "Informe o escopo documental adotado."})
+        if not isinstance(self.limitations_json, list) or not self.limitations_json:
+            raise ValidationError({"limitations_json": "Registre os limites da adoção."})
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Adoções do piloto são preservadas para auditoria.")

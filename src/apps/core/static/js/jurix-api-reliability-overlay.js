@@ -143,8 +143,10 @@
         if (!anonymous()) {
           return originalStream(question, sessionId, callbacks);
         }
-        const corpus = callbacks?.searchOptions?.qa_archive_corpus === true ? 'archive-qa' : null;
-        const localId = window.JurixAnonymousHistory.ensureSession(sessionId, question, { corpus });
+        const corpus = callbacks?.searchOptions?.pilot_corpus === true ? 'pilot' : callbacks?.searchOptions?.qa_archive_corpus === true ? 'archive-qa' : null;
+        const localId = window.JurixAnonymousHistory.ensureSession(sessionId, question, {
+          corpus, corpus_revision: callbacks?.searchOptions?.corpus_revision,
+        });
         const history = window.JurixAnonymousHistory.get(localId);
         const previousContext = [];
         let previousUserTurns = 0;
@@ -172,7 +174,9 @@
         });
         // Keep enough user turns to retain an explicit normative scope. The
         // API applies its own 10k character cap to the complete context.
-        const previousQuestion = previousContext.join('\n').slice(0, 10000);
+        const previousQuestion = corpus === 'pilot'
+          ? (history?.pilot_context || callbacks?.searchOptions?.previous_question || previousContext.join('\n').slice(0, 10000))
+          : previousContext.join('\n').slice(0, 10000);
         const retryPrepared = retryExistingQuestion === true &&
           window.JurixAnonymousHistory.prepareRetry(localId, question);
         if (!retryPrepared) window.JurixAnonymousHistory.addMessage(localId, 'user', question, []);
@@ -181,14 +185,16 @@
         let verifiedAnswer = '';
         let sources = [];
         let sourceCoverage = null;
+        let pilotBinding = null;
+        const interruptedMetadata = () => pilotBinding
+          ? { pilot: pilotBinding, response_state: 'interrupted' } : null;
         const wrappedChunk = (chunk, chunkMetadata) => {
           const text = String(chunk || '');
           answer = chunkMetadata?.replace ? text : answer + text;
           if (!chunkMetadata?.provisional) {
             verifiedAnswer = chunkMetadata?.replace ? text : verifiedAnswer + text;
-            // Retrieved sources are provisional until the terminal SSE event
-            // confirms grounding. Never make them durable during generation.
-            window.JurixAnonymousHistory.updateLastAssistant(localId, verifiedAnswer, [], false);
+            window.JurixAnonymousHistory.updateLastAssistant(localId, verifiedAnswer,
+              pilotBinding ? sources : [], false, interruptedMetadata());
           }
           return onChunk?.(chunk, chunkMetadata);
         };
@@ -200,6 +206,13 @@
         const wrappedSources = (items, confidence, sourceMetadata, ...rest) => {
           sourceCoverage = sourceMetadata?.coverage || null;
           sources = withSourceCoverage(items);
+          pilotBinding = sourceMetadata?.pilot || null;
+          if (sourceMetadata?.pilot) window.JurixAnonymousHistory.ensureSession(localId, null, {
+            corpus: 'pilot', corpus_revision: sourceMetadata.pilot.corpus_revision,
+            pilot_context: sourceMetadata.pilot.context_question || '',
+          });
+          if (pilotBinding) window.JurixAnonymousHistory.updateLastAssistant(
+            localId, verifiedAnswer, sources, false, interruptedMetadata());
           return onSources?.(sources, confidence, sourceMetadata, ...rest);
         };
         const wrappedDone = (doneEvent, ...rest) => {
@@ -217,7 +230,11 @@
           const retainedSources = window.JurixAnonymousHistory.sourcesForAnswer?.(
             answer, terminalSources, grounded
           ) || (grounded ? terminalSources : []);
-          window.JurixAnonymousHistory.updateLastAssistant(localId, answer, retainedSources, grounded);
+          const metadata = pilotBinding ? {
+            ...(doneEvent?.contract || {}), pilot: doneEvent?.contract?.pilot || pilotBinding,
+            response_state: 'completed',
+          } : doneEvent?.contract;
+          window.JurixAnonymousHistory.updateLastAssistant(localId, answer, retainedSources, grounded, metadata);
           return onDone?.({
             ...doneEvent,
             answer,
@@ -227,7 +244,8 @@
           }, ...rest);
         };
         const wrappedError = (error) => {
-          if (verifiedAnswer.trim()) window.JurixAnonymousHistory.updateLastAssistant(localId, verifiedAnswer, [], false);
+          if (verifiedAnswer.trim() || pilotBinding) window.JurixAnonymousHistory.updateLastAssistant(
+            localId, verifiedAnswer, pilotBinding ? sources : [], false, interruptedMetadata());
           return onError?.(error);
         };
         const wrappedTitle = (event) => {

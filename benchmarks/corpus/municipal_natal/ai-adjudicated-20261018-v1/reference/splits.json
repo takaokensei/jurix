@@ -1,0 +1,102 @@
+{
+  "n01": {
+    "norma_key": "BR-RN-NATAL|lei|3882|1989",
+    "chain_key": "ctm",
+    "split": "development"
+  },
+  "n02": {
+    "norma_key": "BR-RN-NATAL|lei_complementar|271|2025",
+    "chain_key": "ctm",
+    "split": "development"
+  },
+  "n03": {
+    "norma_key": "BR-RN-NATAL|lei_complementar|258|2024",
+    "chain_key": "urbanismo",
+    "split": "test"
+  },
+  "n04": {
+    "norma_key": "BR-RN-NATAL|lei_complementar|55|2004",
+    "chain_key": "urbanismo",
+    "split": "test"
+  },
+  "n05": {
+    "norma_key": "BR-RN-NATAL|lei_complementar|173|2017",
+    "chain_key": "urbanismo",
+    "split": "test"
+  },
+  "n06": {
+    "norma_key": "BR-RN-NATAL|lei_complementar|185|2019",
+    "chain_key": "urbanismo",
+    "split": "test"
+  },
+  "n07": {
+    "norma_key": "BR-RN-NATAL|lei_complementar|208|2022",
+    "chain_key": "urbanismo",
+    "split": "test"
+  },
+  "n08": {
+    "norma_key": "BR-RN-NATAL|lei_complementar|261|2025",
+    "chain_key": "urbanismo",
+    "split": "test"
+  },
+  "n09": {
+    "norma_key": "BR-RN-NATAL|lei|4885|1997",
+    "chain_key": "urbanismo",
+    "split": "test"
+  },
+  "n10": {
+    "norma_key": "BR-RN-NATAL|lei_promulgada|275|2009",
+    "chain_key": "urbanismo",
+    "split": "test"
+  },
+  "n11": {
+    "norma_key": "BR-RN-NATAL|lei_promulgada|562|2018",
+    "chain_key": "urbanismo",
+    "split": "test"
+  },
+  "n12": {
+    "norma_key": "BR-RN-NATAL|lei|1894|1969",
+    "chain_key": "urbanismo",
+    "split": "test"
+  },
+  "n13": {
+    "norma_key": "BR-RN-NATAL|lei_complementar|141|2014",
+    "chain_key": "ctm",
+    "split": "development"
+  },
+  "n14": {
+    "norma_key": "BR-RN-NATAL|lei|7805|2025",
+    "chain_key": "isolada_7805",
+    "split": "development"
+  },
+  "n15": {
+    "norma_key": "BR-RN-NATAL|lei|7806|2025",
+    "chain_key": "isolada_7806",
+    "split": "validation"
+  },
+  "n16": {
+    "norma_key": "BR-RN-NATAL|lei|7807|2025",
+    "chain_key": "ppa",
+    "split": "validation"
+  },
+  "n17": {
+    "norma_key": "BR-RN-NATAL|lei|7808|2025",
+    "chain_key": "isolada_7808",
+    "split": "development"
+  },
+  "n18": {
+    "norma_key": "BR-RN-NATAL|lei|7810|2025",
+    "chain_key": "isolada_7810",
+    "split": "test"
+  },
+  "n19": {
+    "norma_key": "BR-RN-NATAL|lei|7811|2025",
+    "chain_key": "isolada_7811",
+    "split": "test"
+  },
+  "n20": {
+    "norma_key": "BR-RN-NATAL|lei|7280|2021",
+    "chain_key": "ppa",
+    "split": "validation"
+  }
+}

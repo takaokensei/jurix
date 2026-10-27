@@ -38,9 +38,11 @@
         return null;
     }
 
-    function updateCorpusScopeUI(archiveQaMode) {
+    function updateCorpusScopeUI(archiveQaMode, pilotMode = null) {
         const archive = archiveQaMode === true;
+        const pilot = pilotMode === null ? document.body.dataset.pilotCorpus === 'true' : pilotMode === true;
         document.body.dataset.qaArchiveCorpus = String(archive);
+        document.body.dataset.pilotCorpus = String(pilot);
         const choice = document.querySelector('.jurix-corpus-choice');
         if (choice) {
             choice.classList.add('jurix-corpus-choice--fixed');
@@ -48,11 +50,12 @@
             choice.setAttribute('aria-label', 'Escopo desta conversa');
             const value = document.createElement('span');
             value.className = 'jurix-corpus-choice__status';
-            value.textContent = `Escopo desta conversa: ${archive ? 'Acervo documental (em revisão)' : 'Normas consolidadas'}`;
+            value.textContent = `Escopo desta conversa: ${pilot ? 'Corpus operacional · piloto experimental' : archive ? 'Acervo documental (em revisão)' : 'Normas consolidadas'}`;
             choice.replaceChildren(value);
         }
         document.querySelector('[data-corpus-notice="archive"]')?.toggleAttribute('hidden', !archive);
-        document.querySelector('[data-corpus-notice="consolidated"]')?.toggleAttribute('hidden', archive);
+        document.querySelector('[data-corpus-notice="consolidated"]')?.toggleAttribute('hidden', archive || pilot);
+        document.querySelector('[data-corpus-notice="pilot"]')?.toggleAttribute('hidden', !pilot);
     }
 
     // ===== MARKED.JS CONFIGURATION =====
@@ -565,7 +568,12 @@
             const archiveQaMode = hasPersistedMessages
                 ? sessionData.session.corpus === 'archive-qa'
                 : new URLSearchParams(window.location.search).get('corpus') === 'archive-qa';
-            updateCorpusScopeUI(archiveQaMode);
+            const pilotMode = hasPersistedMessages ? sessionData.session.corpus === 'pilot' : document.body.dataset.pilotCorpus === 'true';
+            updateCorpusScopeUI(archiveQaMode, pilotMode);
+            const pilotMetadata = [...(sessionData.messages || [])].reverse().find(message => message?.metadata?.pilot)?.metadata?.pilot;
+            document.body.dataset.pilotCorpusRevision = pilotMode
+                ? (pilotMetadata?.corpus_revision || sessionData.session.corpus_revision || document.body.dataset.pilotCorpusRevision || '') : '';
+            document.body.dataset.pilotContextQuestion = pilotMode ? (pilotMetadata?.context_question || sessionData.session.pilot_context || '') : '';
             if (archiveQaMode) {
                 sessionData.session.corpus = 'archive-qa';
                 window.JurixAnonymousHistory?.ensureSession?.(
@@ -574,7 +582,7 @@
                     { corpus: 'archive-qa' },
                 );
             }
-            const corpusQuery = sessionData.session.corpus === 'archive-qa' ? '?corpus=archive-qa' : '';
+            const corpusQuery = pilotMode ? '?corpus=pilot' : sessionData.session.corpus === 'archive-qa' ? '?corpus=archive-qa' : '';
             const sessionUrl = `${config.chatbotUrl}${sessionSlug}/${corpusQuery}`;
             const currentUrl = `${window.location.pathname}${window.location.search}`;
             if (pushHistory && currentUrl !== sessionUrl) {
@@ -997,7 +1005,8 @@
         if (!messagesWrapper) return;
         document.getElementById('welcome-state')?.classList.add('is-hidden');
 
-        const interrupted = metadata && metadata.interrupted === true;
+        const interrupted = metadata && (metadata.interrupted === true
+            || ['interrupted', 'cancelled'].includes(metadata.response_state));
 
         const timestamp = window.JurixChatRenderer?.formatTimestamp(createdAt) || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         const uid = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -1438,7 +1447,7 @@
         const normaRef = source.norma || source.norma_ref || 'Norma';
         const dispositivoRef = source.dispositivo_ref || '';
         const snippet = source.text || source.full_text || '';
-        const isLocalArchive = source.evidence_scope === 'isolated_qa_archive';
+        const isLocalArchive = ['isolated_qa_archive', 'ai_pilot'].includes(source.evidence_scope);
         const linkUrl = window.JurixRagUI?.buildSourceUrl?.(source)
             || (isLocalArchive
                 ? safeHttpUrl(source.local_pdf_url)
@@ -2025,14 +2034,15 @@
         // composer element (which can be replaced while a new chat is created).
         const archiveQaMode = document.body?.dataset.qaArchiveCorpus === 'true'
             || new URLSearchParams(window.location.search).get('corpus') === 'archive-qa';
+        const pilotMode = document.body?.dataset.pilotCorpus === 'true';
         return chatAPI.streamAnswer(question, sessionId, {
             onSession(data) {
                 currentSessionId = data.session_id;
-                if (archiveQaMode) {
+                if (archiveQaMode || pilotMode) {
                     window.JurixAnonymousHistory?.ensureSession?.(
                         currentSessionId,
                         question,
-                        { corpus: 'archive-qa' },
+                        { corpus: pilotMode ? 'pilot' : 'archive-qa' },
                     );
                 }
                 chatState?.setSessionId?.(currentSessionId);
@@ -2045,11 +2055,17 @@
                         ? `${config.chatbotUrl}${encodeURIComponent(data.session_id)}/`
                         : null;
                 if (sessionPath) {
-                    window.history.replaceState({}, '', archiveQaMode ? `${sessionPath}?corpus=archive-qa` : sessionPath);
+                    window.history.replaceState({}, '', pilotMode ? `${sessionPath}?corpus=pilot` : archiveQaMode ? `${sessionPath}?corpus=archive-qa` : sessionPath);
                 }
             },
             onChunk,
-            onSources,
+            onSources(sources, confidence, metadata) {
+                if (metadata?.pilot) {
+                    document.body.dataset.pilotCorpusRevision = metadata.pilot.corpus_revision || '';
+                    document.body.dataset.pilotContextQuestion = metadata.pilot.context_question || '';
+                }
+                return onSources?.(sources, confidence, metadata);
+            },
             onDone,
             onError,
             onStatus,
@@ -2063,6 +2079,11 @@
             retryExistingQuestion,
             searchOptions: {
                 ...controls,
+                ...(pilotMode ? {
+                    pilot_corpus: true,
+                    corpus_revision: document.body.dataset.pilotCorpusRevision || '',
+                    ...(document.body.dataset.pilotContextQuestion ? { previous_question: document.body.dataset.pilotContextQuestion } : {}),
+                } : {}),
                 ...(archiveQaMode
                     ? { qa_archive_corpus: true }
                     : {}),

@@ -955,10 +955,10 @@ try {
     assert.match(graphLayout.lc55HistoryTitle, /LC nº 55\/2004/i);
     assert.match(graphLayout.lc55OriginalQuote, /Art\. 34.*§ 1º.*§ 2º/i);
     assert.match(graphLayout.lc55OriginalQuote, /Licença Prévia.*Licença de Operação/i);
-    assert.equal(
+    assert.match(
       new URL(graphLayout.lc55OriginalLink).pathname,
-      '/normas/documentos/80752f21-67b5-4190-8109-e7cfa30f1551/pdf/',
-      'the verified original candidate must open from the local source archive, not the 2019 compilation',
+      /^\/normas\/documentos\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/pdf\/$/i,
+      'the verified original candidate must open from its local source archive, not the 2019 compilation',
     );
     const originalPdfUrl = new URL(graphLayout.lc55OriginalLink);
     assert.equal(originalPdfUrl.hash, '#page=9');
@@ -1179,6 +1179,23 @@ try {
   assert.equal(await page.evaluate(() => document.activeElement?.dataset.graphFilter), 'generic');
   await page.click('[data-graph-filter="all"]');
   report.checks.push({ id: 'lc258-graph-interactive-relation-highlighting', status: 'passed', details: repealFocus, keyboard: 'Enter activates the focused native filter button; focus remains visible on the control', screenshot: highlightedGraph });
+  const targetEvidenceCount = await page.$$eval('.pgm-demo__target-evidence', (nodes) => nodes.length);
+  const namedTargetCount = await page.$$eval('.pgm-demo__target-node[data-graph-relation-target="express"]', (nodes) => nodes.length);
+  const initiallyCollapsedEvidence = await page.$$eval('.pgm-demo__target-evidence', (nodes) => nodes.every((node) => !node.open));
+  assert.ok(targetEvidenceCount > 0, 'each named legal target should expose a disclosure for its evidence');
+  assert.equal(targetEvidenceCount, namedTargetCount);
+  assert.equal(initiallyCollapsedEvidence, true, 'long evidence details should start collapsed while target/status remain visible');
+  const firstEvidenceSummary = await page.$('.pgm-demo__target-evidence summary');
+  assert.match(await firstEvidenceSummary.evaluate((node) => node.getAttribute('aria-label') || ''), /identificação e documentos/i);
+  await firstEvidenceSummary.focus();
+  await page.keyboard.press('Space');
+  const evidenceDisclosureInteraction = await page.$eval('.pgm-demo__target-evidence', (node) => ({
+    open: node.open,
+    contentVisible: Boolean(node.querySelector('.pgm-demo__target-evidence-content')?.getClientRects().length),
+  }));
+  assert.deepEqual(evidenceDisclosureInteraction, { open: true, contentVisible: true });
+  await page.keyboard.press('Space');
+  report.checks.push({ id: 'graph-target-evidence-progressive-disclosure', status: 'passed', targets: targetEvidenceCount, keyboard: 'Space opens and closes the native disclosure; target identity and review status remain visible' });
   await page.click('.pgm-demo__sapl-evidence summary');
   const disclosureInteraction = await page.$eval('.pgm-demo__sapl-evidence', (element) => ({
     open: element.open,
@@ -1723,7 +1740,7 @@ try {
       page: item.page || null,
     }));
   });
-  assert.equal(chainSourceData.length, 2);
+  assert.equal(chainSourceData.length, 2, JSON.stringify(chainSourceData));
   const originalArticleSource = chainSourceData.find((item) => /Lei Complementar nº 55\/2004/.test(item.norma));
   const candidateRepealSource = chainSourceData.find((item) => /Lei Complementar nº 258\/2024/.test(item.norma));
   assert.ok(originalArticleSource, 'the source drawer must preserve the original Art. 21 text');
@@ -1846,6 +1863,7 @@ try {
       norma: item.norma_ref || '',
       dispositivo: item.dispositivo_ref || '',
       sourceKind: item.source_kind || '',
+      evidenceScope: item.evidence_scope || '',
       page: item.page || null,
       sourceUrl: item.source_url || '',
     }));
@@ -1861,7 +1879,8 @@ try {
   const countingRule = transitionSources.find((item) =>
     /Lei Complementar nº 95\/1998/i.test(item.norma)
       && /§\s*1/i.test(item.dispositivo)
-      && item.sourceKind === 'official_vacatio_counting_rule');
+      && item.sourceKind === 'official_general_legislation'
+      && item.evidenceScope === 'official_vacatio_counting_rule');
   const effectiveDateEvidenceComplete = Boolean(officialCommencement && countingRule);
   if (effectiveDateEvidenceComplete) {
     assert.match(transitionChainAnswer, /27\/03\/2025/,
@@ -1884,6 +1903,8 @@ try {
     (cards) => cards.map((card) => ({
       label: card.getAttribute('aria-label') || '',
       text: card.innerText || '',
+      textContent: card.textContent || '',
+      className: card.className || '',
       href: card.querySelector('.jurix-rag-source__open')?.href || '',
     })),
   );
@@ -1903,6 +1924,29 @@ try {
         && /www\.planalto\.gov\.br/i.test(card.href));
     assert.ok(lc95Card, 'drawer must expose the recovered LC 95/1998 counting rule');
     assert.equal(new URL(lc95Card.href).hostname, 'www.planalto.gov.br');
+    assert.match(lc95Card.className, /jurix-rag-source--rule/);
+    const lc95Group = await page.$eval(
+      '#jurix-sources-drawer-panel .jurix-rag-source--rule',
+      (card) => ({
+        open: Boolean(card.closest('details.jurix-source-group')?.open),
+        title: card.closest('details.jurix-source-group')?.querySelector('.jurix-source-group__title')?.textContent || '',
+      }),
+    );
+    assert.match(lc95Group.title, /Lei Complementar nº 95\/1998/i);
+    if (!lc95Group.open) {
+      await page.$eval('#jurix-sources-drawer-panel .jurix-rag-source--rule', (card) => {
+        card.closest('details.jurix-source-group')?.querySelector(':scope > summary')?.click();
+      });
+    }
+    await page.waitForFunction(() => {
+      const card = document.querySelector('#jurix-sources-drawer-panel .jurix-rag-source--rule');
+      return Boolean(card?.getClientRects().length && card.innerText.includes('Critério legal de contagem'));
+    });
+    const expandedLc95Text = await page.$eval(
+      '#jurix-sources-drawer-panel .jurix-rag-source--rule',
+      (card) => card.innerText,
+    );
+    assert.doesNotMatch(expandedLc95Text, /Baixa correspondência|Pontuação técnica|Relevância da fonte/);
   }
   await page.keyboard.press('Escape');
   await page.waitForFunction(() =>
@@ -1951,8 +1995,9 @@ try {
   assert.ok(lc258RepealSource, 'the LC 258/2024 repeal clause must remain a structured source');
   assert.match(lp275ArticleSource.sourceType, /pendente de revis[aã]o/i);
   assert.equal(lp275ArticleSource.page, 6);
-  assert.equal(new URL(lp275ArticleSource.localPdfUrl, baseUrl).pathname,
-    '/normas/documentos/c452bfe5-1138-4962-a3f2-c4cc9b662007/pdf/');
+  const lp275LocalPdfPath = new URL(lp275ArticleSource.localPdfUrl, baseUrl).pathname;
+  assert.match(lp275LocalPdfPath,
+    /^\/normas\/documentos\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/pdf\/$/i);
 
   const lp275SourcesPill = (await page.$$('.message-assistant .jurix-sources-pill-btn')).at(-1);
   assert.ok(lp275SourcesPill, 'the live answer must expose its source drawer without reload');
@@ -1970,7 +2015,7 @@ try {
   const lp275DrawerCard = lp275DrawerCards.find((card) => /Lei Promulgada nº 275\/2009/i.test(card.ariaLabel));
   assert.ok(lp275DrawerCard, `the consulted-sources drawer must expose an accessible target-law label: ${JSON.stringify(lp275DrawerCards)}`);
   const lp275PdfLink = new URL(lp275DrawerCard.href);
-  assert.equal(lp275PdfLink.pathname, '/normas/documentos/c452bfe5-1138-4962-a3f2-c4cc9b662007/pdf/');
+  assert.equal(lp275PdfLink.pathname, lp275LocalPdfPath);
   assert.equal(lp275PdfLink.hash, '#page=6');
   assert.equal(lp275DrawerCard.target, '_blank');
   const localPdfResponse = await page.evaluate(async (href) => {

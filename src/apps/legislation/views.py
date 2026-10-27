@@ -515,6 +515,25 @@ class NormaListView(ListView):
         context["filtered_count"] = (
             page_obj.paginator.count if page_obj is not None else self.object_list.count()
         )
+        from src.apps.legislation.pilot_catalog import pilot_catalog_context
+
+        context.update(pilot_catalog_context(self.request))
+        context["available_years"] = sorted(
+            set(context["available_years"]) | set(context.get("pilot_available_years", [])), reverse=True
+        )
+        for kind in context.get("pilot_available_types", []):
+            label = _norma_tipo_label(kind)
+            if label not in seen_type_labels:
+                context["available_type_options"].append({"value": kind, "label": label})
+                seen_type_labels.add(label)
+        if context["selected_scope"] in {"experimental", "documentos"}:
+            context["normas"] = []
+            context["filtered_count"] = 0
+        context["filtered_count"] += context.get("pilot_filtered_count", 0)
+        if context["selected_scope"] in {"experimental", "revisadas"}:
+            context["archive_candidates"] = []
+            context["dom_edition_candidates"] = []
+            context["sapl_catalog_page"] = None
         return context
 
 
@@ -997,6 +1016,21 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
         else:
             requested_archive = request.GET.get("corpus") == "archive-qa"
         qa_archive_mode = archive_assistant_enabled and requested_archive
+        from src.apps.legislation.pilot_catalog import operational_pilot
+        try:
+            pilot_data = operational_pilot()
+        except (OSError, ValueError, KeyError, TypeError):
+            pilot_data = None
+        requested_pilot = request.GET.get("corpus", "pilot" if pilot_data else "consolidated") == "pilot"
+        pilot_revision = pilot_data["corpus_revision"] if pilot_data else ""
+        if active_session and active_session.messages.filter(role="user").exists():
+            scope_message = active_session.messages.filter(role="user").order_by("created_at", "id").values_list("metadata_json", flat=True).first() or {}
+            requested_pilot = scope_message.get("corpus") == "ai-pilot"
+            if requested_pilot:
+                pilot_revision = scope_message.get("corpus_revision") or pilot_revision
+        qa_pilot_mode = bool(pilot_data and requested_pilot)
+        if qa_pilot_mode:
+            qa_archive_mode = False
         source_update_notice = _assistant_source_update_notice()
         context = {
             "page_title": "Assistente Jurídico - Jurix",
@@ -1009,6 +1043,9 @@ def chatbot_view(request: HttpRequest, session_slug: str = None) -> HttpResponse
             "prefill_question": prefill_question,
             "max_question_length": settings.LLM_MAX_QUESTION_LENGTH,
             "qa_archive_mode": qa_archive_mode,
+            "qa_pilot_mode": qa_pilot_mode,
+            "pilot_corpus_revision": pilot_revision if qa_pilot_mode else "",
+            "pilot_norm_count": len({source["norma_key"] for source in pilot_data["sources"]}) if pilot_data else 0,
             "archive_assistant_enabled": archive_assistant_enabled,
             "qa_archive_source_update_notice": (
                 source_update_notice if archive_assistant_enabled else ""

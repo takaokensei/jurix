@@ -23,7 +23,7 @@ def _write_pdf(path: Path, *, year: int = 2022, marker: str | None = None, text:
         or (
             "LEI Nº 3.882, DE 11 DE DEZEMBRO DE 1989.\n"
             f"Valores atualizados para o exercício de {year}.\n"
-            f"Alterada pela {marker or ('Lei Complementar nº 197, publicada no DOM de 18/06/2021' if year == 2021 else 'Lei Complementar nº 217/2022' if year == 2022 else 'Lei Complementar nº 257/2024')}."
+            f"Alterada pela {marker or ('Lei Complementar nº 197, publicada no DOM de 18/06/2021' if year == 2021 else 'Lei Complementar nº 217, publicada no DOM de 02/09/2022' if year == 2022 else 'Lei Complementar nº 257/2024')}."
         ),
     )
     pdf.save(path)
@@ -94,13 +94,28 @@ def test_ctm_consolidation_apply_is_idempotent_pending_and_not_rag_eligible(
     assert document.metadata_json["edition_candidate"] == {
         "kind": "official_consolidated_text",
         "declared_value_year": 2022,
-        "amendment_list_includes": "Lei Complementar nº 217/2022",
+        "amendment_list_includes": "Lei Complementar nº 217, publicada no DOM de 02/09/2022",
         "temporal_limit": "Não declara atualização posterior ao exercício de 2022",
         "review_status": "unreviewed",
     }
     assert document.metadata_json["rag_eligible"] is False
     stored = qa_root / "normative-archive" / document.storage_key
     assert stored.read_bytes() == pdf_path.read_bytes()
+
+
+def test_ctm_2022_marker_requires_the_publication_date_printed_in_official_pdf(
+    tmp_path, monkeypatch
+):
+    qa_root = tmp_path / "qa"
+    pdf_path = _write_pdf(
+        qa_root / "evidence" / "ctm-3882-1989" / "lei3882-1989-consolidado-exercicio-2022.pdf",
+        marker="Lei Complementar nº 217, publicada no DOM de 03/09/2022",
+    )
+    _qa_env(monkeypatch, qa_root)
+
+    with override_settings(QA_ROOT=qa_root, NORMATIVE_ARCHIVE_ENABLED=True):
+        with pytest.raises(ValueError, match="confirma o marco de alteração declarado"):
+            stage_ctm_consolidation(pdf_path=pdf_path)
 
 
 def test_ctm_consolidation_rejects_pdf_without_declared_identity_or_year(

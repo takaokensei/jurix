@@ -59,6 +59,8 @@ def _run_renderer(command: list[str], timeout: int) -> str:
         check=False,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=timeout,
     )
     if result.returncode != 0:

@@ -203,7 +203,7 @@ def test_ctm_art20_candidate_timeline_compares_real_editions_without_asserting_v
         "source_label": "Lei Complementar nº 271/2025",
         "target_scope": "article",
         "target_device": "artigo 20",
-        "review_state": "extração pendente",
+        "review_state": "revisão jurídica pendente",
         "action_quote": "passam a vigorar",
         "target_text": "arts. 20, 23 e 25 da Lei nº 3.882/1989",
         "page": 1,
@@ -1489,6 +1489,10 @@ def test_pgm_consolidation_demo_renders_device_level_draft_with_review_caveats()
         request=request,
     )
     assert "Minuta de consolidação textual por dispositivo" in body
+    assert body.count('class="pgm-demo__target-evidence"') == 4
+    assert 'aria-label="Abrir detalhes da identificação e documentos de Lei nº 4.566 de 19 de maio de 1992"' in body
+    assert "Ver evidências e documentos" in body
+    assert "PDF candidato correspondente" in body
     assert "Art. 20 da Lei nº 3.882/1989" in body
     assert "Consolidação municipal · exercício 2021" in body
     assert "Consolidação municipal · exercício 2022" in body
@@ -2445,6 +2449,8 @@ def test_norma_list_surfaces_archive_candidates_only_in_qa():
     assert "não equivalem a redações consolidadas ou vigentes" in body
     assert "Estes documentos compõem o acervo histórico local e estão disponíveis para consulta." in body
     assert "Ainda não foram consolidados no corpus principal" in body
+    assert "O Gold é um conjunto de referência para avaliação técnica, com adjudicação por IA." in body
+    assert "Ele não representa revisão jurídica independente, consolidação nem confirmação de vigência." in body
     assert "Identidade candidata reconhecida; falta revisão humana." in body
     assert 'id="archive-candidate-search"' in body
     assert 'id="archive-global-search"' in body
@@ -2905,6 +2911,40 @@ def test_legal_search_collapses_multiple_device_hits_per_norm(norma):
         bounded = Client().get(f"/api/v1/normas/?page_size={page_size}")
         assert bounded.status_code == 200
         assert bounded.json()["pagination"]["page_size"] == 1
+
+
+@override_settings(
+    DEBUG=True,
+    NORMATIVE_ARCHIVE_ENABLED=True,
+    NORMATIVE_ARCHIVE_REVIEW_UI_ENABLED=True,
+    NORMATIVE_ARCHIVE_ASSISTANT_ENABLED=True,
+)
+@patch("src.apps.legislation.workspace_views.search_archive_documents")
+def test_legal_search_keeps_archive_assistant_entry_visible_with_consolidated_hits(
+    search_archive, norma
+):
+    search_archive.return_value = {
+        "results": [],
+        "count": 0,
+        "record_count": 0,
+        "page": None,
+        "expanded": False,
+        "groups": (),
+        "types": [],
+        "years": [],
+        "total_candidates": 5,
+    }
+    query = f"Lei nº {norma.numero}/{norma.ano}"
+
+    response = Client().get("/pesquisa/", {"q": query})
+
+    body = response.content.decode()
+    assert response.status_code == 200
+    assert "resultado consolidado" in body
+    assert 'class="workspace-corpus-entry"' in body
+    assert "Perguntar usando PDFs em revisão" in body
+    assert "corpus=archive-qa" in body
+    assert "question=Lei%20n%C2%BA%20" in body
 
 
 @pytest.mark.skipif(

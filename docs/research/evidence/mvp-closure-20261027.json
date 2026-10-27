@@ -1,0 +1,71 @@
+{
+  "kind": "planning_evidence_not_runtime_acceptance",
+  "observed_on": "2026-10-27",
+  "timezone": "America/Fortaleza",
+  "checkout": "L:/Jurix",
+  "branch": "main",
+  "head": "1ac3ab75",
+  "dirty_status_entries_before_artifacts": 85,
+  "cached_upstream_comparison": {"ahead": 0, "behind": 12, "fetched_this_session": false},
+  "environment": {
+    "C_Jurix_git_repository": false,
+    "web_8293_listening_last_probe": false,
+    "web_8294_listening_last_probe": false,
+    "qa_database_55432_listening_last_probe": false,
+    "qa_redis_16380_listening_last_probe": false,
+    "ollama_11434_listening_last_probe": true,
+    "runtime_application_tested": false,
+    "database_counts_refreshed": false
+  },
+  "graphify": {
+    "package": "graphifyy==0.9.96",
+    "execution": "uvx --from graphifyy==0.9.96 --python 3.12 python -m graphify.extract <16 explicit code files>",
+    "mode": "local_ast",
+    "nodes": 556,
+    "edges": 1417,
+    "sources": 16,
+    "failed_sources": 0,
+    "skipped_sources": 0,
+    "semantic_pdf_analysis": false,
+    "hooks_installed": false,
+    "local_cache_created": "graphify-out/",
+    "source": "https://github.com/Graphify-Labs/graphify/tree/v8",
+    "notes": [
+      "The first JSON parsing attempt failed because the extractor prints an AST cache line before JSON; the cached retry parsed successfully.",
+      "AST connections guide code inspection; they do not verify legal relations."
+    ]
+  },
+  "context7": {
+    "transport": "official_http_jsonrpc",
+    "endpoint": "https://mcp.context7.com/mcp",
+    "server_version": "4.4.3",
+    "initialize_http_status": 200,
+    "tools_list_executed": true,
+    "resolve_library_id_executed": true,
+    "query_docs_executed": true,
+    "library_used": "/websites/djangoproject_en/5.2",
+    "topic": "Django transaction.atomic and on_commit for versioned imports and cache invalidation",
+    "returned_primary_source": "https://docs.djangoproject.com/en/5.2/topics/db/transactions",
+    "local_code_sent": false,
+    "credentials_created_or_modified": false
+  },
+  "gold_validation": {
+    "command": "uv run --no-project --python 3.12 --with jsonschema python scripts/pgm_project_gold.py",
+    "exit_code": 0,
+    "valid": true,
+    "project_gold_ready": true,
+    "scientific_human_gold_ready": false,
+    "review_kind": "ai",
+    "package_files_verified": 37,
+    "distinct_norms": 20,
+    "spans": 41,
+    "events": 13,
+    "queries": 28,
+    "pdfs_verified_this_run": 0,
+    "original_texts_verified_this_run": 0,
+    "adoption_sha256": "3e67c4d68dcffe76bf73077224861499296c6bf59c591436d2c6429b1139c14b"
+  },
+  "application_implementation_performed": false,
+  "database_mutations": 0,
+  "git_mutations": false
+}

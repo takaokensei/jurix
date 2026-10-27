@@ -1,0 +1,59 @@
+{
+  "valid": true,
+  "ai_reference_ready": true,
+  "scientific_human_gold_ready": false,
+  "human_adjudications": 0,
+  "distinct_norms": 20,
+  "adjudications_ai": 20,
+  "spans": 41,
+  "events": 13,
+  "queries": 28,
+  "relation_families": [
+    "ctm",
+    "ppa",
+    "urbanismo"
+  ],
+  "pdfs_verified": 20,
+  "original_texts_verified": 20,
+  "errors": [],
+  "pending_human_validator": {
+    "valid": true,
+    "release_ready": false,
+    "schema_version": 2,
+    "manifest_records": 20,
+    "normas_distintas": 20,
+    "annotations": 20,
+    "reviewed_pilot_documents": 0,
+    "reviewed_pilot_norms": 0,
+    "errors": [],
+    "warnings": [
+      "manifest.v2:1: condição de uso requer revisão antes da publicação",
+      "manifest.v2:2: condição de uso requer revisão antes da publicação",
+      "manifest.v2:3: condição de uso requer revisão antes da publicação",
+      "manifest.v2:4: condição de uso requer revisão antes da publicação",
+      "manifest.v2:5: condição de uso requer revisão antes da publicação",
+      "manifest.v2:6: condição de uso requer revisão antes da publicação",
+      "manifest.v2:7: condição de uso requer revisão antes da publicação",
+      "manifest.v2:8: condição de uso requer revisão antes da publicação",
+      "manifest.v2:9: condição de uso requer revisão antes da publicação",
+      "manifest.v2:10: condição de uso requer revisão antes da publicação",
+      "manifest.v2:11: condição de uso requer revisão antes da publicação",
+      "manifest.v2:12: condição de uso requer revisão antes da publicação",
+      "manifest.v2:13: condição de uso requer revisão antes da publicação",
+      "manifest.v2:14: condição de uso requer revisão antes da publicação",
+      "manifest.v2:15: condição de uso requer revisão antes da publicação",
+      "manifest.v2:16: condição de uso requer revisão antes da publicação",
+      "manifest.v2:17: condição de uso requer revisão antes da publicação",
+      "manifest.v2:18: condição de uso requer revisão antes da publicação",
+      "manifest.v2:19: condição de uso requer revisão antes da publicação",
+      "manifest.v2:20: condição de uso requer revisão antes da publicação",
+      "gate científico bloqueado: 0/20 normas distintas revisadas e adjudicadas por humanos"
+    ]
+  },
+  "limits": [
+    "AI session, no independent reviewers",
+    "Retrospective sample exposed to development",
+    "Selected devices and non-exhaustive events",
+    "No legal validity guarantee or whole-corpus accuracy estimate"
+  ]
+}

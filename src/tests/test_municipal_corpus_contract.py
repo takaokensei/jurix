@@ -204,6 +204,32 @@ def test_v2_rejects_unverified_external_official_url(tmp_path):
     assert any("URL oficial" in error for error in report["errors"])
 
 
+def test_v2_accepts_dom_and_bvn_official_sources_without_unlocking_human_gold(tmp_path):
+    for url in (
+        "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom.pdf",
+        "https://www2.natal.rn.gov.br/bvn/publicacoes/lei.pdf",
+    ):
+        manifest, annotations, _, _ = _v2_case(tmp_path, official_url=url)
+        report = validate_corpus(manifest, annotations, min_reviewed_pilot=1)
+        assert report["valid"] is True
+        assert report["release_ready"] is False
+        assert report["reviewed_pilot_norms"] == 0
+
+
+def test_v2_rejects_official_host_spoofing_and_credentials(tmp_path):
+    for url in (
+        "https://natal.rn.gov.br.evil.invalid/law.pdf",
+        "https://natal.rn.gov.br@evil.invalid/law.pdf",
+        "https://user@natal.rn.gov.br/law.pdf",
+        "http://natal.rn.gov.br/law.pdf",
+        "https://natal.rn.gov.br:9999/law.pdf",
+    ):
+        manifest, annotations, _, _ = _v2_case(tmp_path, official_url=url)
+        report = validate_corpus(manifest, annotations)
+        assert report["valid"] is False
+        assert any("URL oficial" in error for error in report["errors"])
+
+
 def test_v2_rejects_source_revision_hash_mismatch_and_conflicting_quote(tmp_path):
     manifest, annotations, _record, annotation = _v2_case(tmp_path)
     annotation["revision"]["source_text_sha256"] = "c" * 64

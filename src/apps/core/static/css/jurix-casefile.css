@@ -1,0 +1,151 @@
+.casefile-summary {
+    display: grid;
+    gap: 14px;
+    margin: 18px 0 22px;
+    padding: clamp(16px, 2.5vw, 24px);
+    border: 1px solid var(--figma-border);
+    border-radius: var(--jurix-radius-lg, 16px);
+    background: var(--figma-bg-surface);
+}
+
+.casefile-query { display: grid; grid-template-columns: auto minmax(120px, 1fr) auto minmax(170px, 1fr) auto; gap: 12px; align-items: center; margin-block: 20px; }
+.casefile-query > .workspace-button { grid-column: auto; grid-row: auto; }
+.casefile-query input, .casefile-query select { min-height: 44px; max-width: 100%; color: var(--figma-text-white); background: var(--figma-bg-surface); border: 1px solid var(--figma-border-strong); border-radius: 8px; padding: 8px; font: inherit; }
+.casefile-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.casefile-comparison > section { min-width: 0; }
+.casefile-text { overflow-wrap: anywhere; line-height: 1.7; }
+.casefile-text--revoked { text-decoration: line-through; }
+.casefile-digest { overflow-wrap: anywhere; font-size: .8125rem; line-height: 1.6; }
+[data-pilot-graph] .normative-relations__svg { height: auto; min-width: 45rem; }
+[data-pilot-projection] { margin-block: 16px; }
+[data-pilot-projection] h3 { margin: 0; }
+@media (max-width: 768px) {
+    .casefile-comparison { grid-template-columns: minmax(0, 1fr); }
+    .casefile-query { align-items: stretch; grid-template-columns: minmax(0, 1fr); }
+}
+
+.casefile-summary__heading,
+.casefile-summary__stats > div {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.casefile-summary__heading h2 {
+    margin: 4px 0 0;
+    color: var(--figma-text-white);
+    font-size: clamp(1.1rem, 2vw, 1.35rem);
+}
+
+.casefile-summary > p {
+    max-width: 78ch;
+    margin: 0;
+    color: var(--figma-text-muted);
+    line-height: 1.6;
+}
+
+.casefile-summary__stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+    gap: 10px;
+    margin: 0;
+}
+
+.casefile-summary__stats > div {
+    min-width: 0;
+    min-height: 66px;
+    flex-direction: column;
+    justify-content: center;
+    padding: 10px 12px;
+    border: 1px solid var(--figma-border);
+    border-radius: var(--jurix-radius-sm, 10px);
+    background: var(--figma-bg-root);
+}
+
+.casefile-summary__stats dt {
+    color: var(--figma-text-muted);
+    font-size: var(--jurix-type-caption, .8125rem);
+}
+
+.casefile-summary__stats dd {
+    margin: 0;
+    color: var(--figma-text-white);
+    font-size: var(--jurix-type-label, .875rem);
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.casefile-tabs {
+    position: sticky;
+    z-index: 5;
+    top: 8px;
+    display: flex;
+    gap: 6px;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 0 18px;
+    padding: 5px;
+    overflow-x: auto;
+    border: 1px solid var(--figma-border);
+    border-radius: 13px;
+    background: color-mix(in srgb, var(--figma-bg-surface) 94%, transparent);
+    backdrop-filter: blur(12px);
+}
+
+.casefile-tabs a {
+    display: inline-flex;
+    min-height: 44px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    color: var(--figma-text-muted);
+    font: inherit;
+    font-size: var(--jurix-type-label, .875rem);
+    font-weight: 650;
+    text-decoration: none;
+}
+
+.casefile-tabs a:hover,
+.casefile-tabs a:focus-visible {
+    color: var(--figma-text-white);
+    background: var(--figma-bg-root);
+}
+
+.casefile-tabs a:focus-visible {
+    outline: 2px solid var(--figma-blue-light);
+    outline-offset: 2px;
+}
+
+.casefile-tabs a[aria-selected="true"] {
+    border-color: var(--figma-border-strong);
+    color: var(--figma-text-white);
+    background: var(--figma-bg-root);
+}
+
+[data-casefile-panel][hidden] {
+    display: none !important;
+}
+
+@media (max-width: 600px) {
+    .casefile-tabs {
+        position: static;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .casefile-tabs a {
+        padding-inline: 11px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .casefile-tabs,
+    .casefile-tabs * {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+    }
+}

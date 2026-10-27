@@ -18,11 +18,15 @@ ALLOWED_EXTRACTIONS = {
     7114: ("lei_complementar", "217", "2022"),
     7115: ("lei_complementar", "217", "2022"),
     7141: ("lei_complementar", "258", "2024"),
+    # Current QA archive extraction of the official LC 258 PDF, limited to Art. 260.
+    1391: ("lei_complementar", "258", "2024"),
     7135: ("lei_complementar", "261", "2025"),
     7144: ("lei_complementar", "198", "2021"),
     7149: ("lei_complementar", "271", "2025"),
     7150: ("lei_complementar", "271", "2025"),
     7151: ("lei_complementar", "271", "2025"),
+    # Freshly extracted official LC 271 PDF for the isolated CTM demo QA run.
+    6920: ("lei_complementar", "271", "2025"),
 }
 
 
@@ -64,11 +68,12 @@ class Command(BaseCommand):
             raise CommandError("Extração fora da allowlist de atos promulgados PGM.")
         source_article = options.get("source_article")
         if source_article is not None and (
-            extraction_ids not in ([7135], [7114], [7115], [7141], [7149], [7151])
+            extraction_ids not in ([7135], [7114], [7115], [7141], [1391], [7149], [7151], [6920])
             or (extraction_ids == [7135] and source_article != "118")
             or (extraction_ids in ([7114], [7115]) and source_article != "1")
             or (extraction_ids == [7141] and source_article != "261")
-            or (extraction_ids in ([7149], [7151]) and source_article not in {"1", "2", "3", "5"})
+            or (extraction_ids == [1391] and source_article != "260")
+            or (extraction_ids in ([7149], [7151], [6920]) and source_article not in {"1", "2", "3", "5"})
         ):
             raise CommandError(
                 "O recorte está restrito aos dispositivos promulgados allowlisted da cadeia PGM QA."

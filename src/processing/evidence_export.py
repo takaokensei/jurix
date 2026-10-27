@@ -9,7 +9,10 @@ from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
 _MAX_EXCERPT_LENGTH = 4_000
-_LOCAL_PDF_PATH = re.compile(r"^/normas/documentos/[0-9a-fA-F-]{36}/pdf/(?:#page=\d+)?$")
+_LOCAL_PDF_PATH = re.compile(
+    r"^(?:/normas/documentos/[0-9a-fA-F-]{36}/pdf/|"
+    r"/explorar/fontes/[0-9a-f]{64}/\?revision=[0-9a-f]{64})(?:#page=\d+)?$"
+)
 _SHA256 = re.compile(r"^[0-9a-fA-F]{64}$")
 _GRAPH_ACTIONS = {"ALTERA", "SUBSTITUI", "ADICIONA", "REVOGA", "REFERENCIA"}
 

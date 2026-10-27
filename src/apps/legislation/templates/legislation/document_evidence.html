@@ -3,19 +3,20 @@
 {% block title %}Evidência documental — Jurix{% endblock %}
 {% block section_name %}Evidência documental{% endblock %}
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Evidência documental' %}{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261012-hash-disclosure1">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/jurix-legal-detail.css' %}?v=20261018-technical-disclosure1">{% endblock %}
 {% block content %}
 <section class="card legal-detail-card document-evidence-page" aria-labelledby="evidence-title">
   <p class="legal-detail-eyebrow">{% if document.norma_id %}Documento normativo versionado{% elif document.source_kind == 'archive' %}Candidato do acervo histórico{% else %}Documento em revisão{% endif %}</p>
-  <h1 id="evidence-title">{% if document.norma_id %}{{ document.norma }}{% elif candidate_identity_label %}{{ candidate_identity_label }}{% else %}{{ document.original_filename|default:'Documento em revisão' }}{% endif %}</h1>
+  <h1 id="evidence-title">{% if pilot_document %}{{ pilot_document.label }}{% elif document.norma_id %}{{ document.norma }}{% elif candidate_identity_label %}{{ candidate_identity_label }}{% else %}{{ document.original_filename|default:'Documento em revisão' }}{% endif %}</h1>
   {% if identity_review_registered %}<p class="historical-message" role="status" tabindex="-1">Identidade registrada com trilha de revisão. A Norma permanece pendente; texto e segmentação não foram aprovados.</p>{% endif %}
   {% if extraction_review_registered %}<p class="historical-message" role="status" tabindex="-1">Extração registrada como revisada para esta versão. O documento ainda não foi promovido nem segmentado para uso consolidado.</p>{% endif %}
   {% if segmentation_generated %}<p class="historical-message" role="status" tabindex="-1">Prévia de segmentação gerada. Os dispositivos ainda precisam de cotejo humano e não podem alimentar a projeção temporal.</p>{% endif %}
   {% if segmentation_preview_generated %}<p class="historical-message" role="status" tabindex="-1">Prévia temporária calculada em memória. Nada foi gravado, aprovado ou incluído no RAG; confira os limites diretamente no PDF.</p>{% endif %}
   {% if request.GET.segmentation == 'reviewed' %}<p class="historical-message" role="status" tabindex="-1">Revisão da segmentação registrada para esta versão exata. Isso não aprova eventos de alteração nem certifica a vigência histórica.</p>{% endif %}
   {% if candidate_identity_label and not document.norma_id %}<p class="document-evidence-filename"><strong>Arquivo recebido:</strong> {{ document.original_filename }}</p>{% endif %}
-  {% if document.source_kind == 'archive' %}<p class="historical-message historical-message--warning" role="note"><strong>Documento do acervo histórico local.</strong> O PDF arquivado permanece preservado; a identificação normativa, a extração do texto e a segmentação precisam de revisão antes de integrar o corpus consolidado.</p>{% endif %}
-  {% if candidate_extraction %}<p class="historical-message historical-message--warning" role="note"><strong>Texto extraído automaticamente — rascunho não revisado.</strong> A extração abaixo não está aceita nem promove o documento. Compare cada trecho com o PDF antes de usar em uma análise jurídica.</p>{% endif %}
+  {% if document.source_kind == 'archive' or candidate_extraction %}<div class="historical-message historical-message--warning document-evidence-review-notice" role="note">{% if document.source_kind == 'archive' %}<strong>Documento do acervo histórico local.</strong> O PDF arquivado permanece preservado; a identificação normativa, a extração do texto e a segmentação precisam de revisão antes de integrar o corpus consolidado.{% endif %}{% if document.source_kind == 'archive' and candidate_extraction %}<br>{% endif %}{% if candidate_extraction %}<strong>Texto extraído automaticamente — rascunho não revisado.</strong> A extração abaixo não está aceita nem promove o documento. Compare cada trecho com o PDF antes de usar em uma análise jurídica.{% endif %}</div>{% endif %}
+  <details class="document-evidence-technical">
+    <summary>Detalhes técnicos da extração e do arquivo</summary>
   {% if extraction_quality_summary %}
     <section class="document-review-panel document-extraction-quality" aria-labelledby="document-extraction-quality-title">
       <div class="document-review-panel__header">
@@ -49,6 +50,7 @@
     <div><dt>Integridade do arquivo</dt><dd><code class="document-evidence-hash__preview">{{ document.content_sha256|slice:":12" }}…</code><details class="document-evidence-hash"><summary>Ver SHA-256 completo</summary><code>{{ document.content_sha256 }}</code></details></dd></div>
     {% if extraction %}<div><dt>{% if candidate_extraction %}Rascunho de extração{% else %}Versão da extração{% endif %}</dt><dd>{{ extraction.text_version }} · {{ extraction.page_count }} páginas · {{ extraction.get_status_display }}</dd></div>{% endif %}
   </dl>
+  </details>
   {% if staff_can_view_candidate %}
     <section class="document-review-panel document-review-observations" aria-labelledby="document-observations-title">
       <div class="document-review-panel__header">
@@ -408,7 +410,20 @@
     {% if local_pdf_available %}<a class="btn btn-primary" href="{% url 'legislation:document_pdf' document.public_id %}" target="_blank" rel="noopener noreferrer">Abrir PDF arquivado (nova aba)</a>{% endif %}
     <a class="btn btn-secondary" href="{% url 'legislation:norma_list' %}#archive-candidates-title">Voltar aos candidatos do acervo</a>
   </div>
-  {% if extraction %}
+  {% if pilot_document %}
+  <section aria-labelledby="pilot-device-index" data-pilot-document>
+    <h2 id="pilot-device-index">Artigos da fonte documental</h2>
+    <p>Segmentação experimental com referência ao PDF. Não equivale a redação consolidada ou confirmação de vigência.</p>
+    <nav class="document-evidence-index" aria-label="Artigos da fonte"><ul>{% for article in pilot_document.articles %}<li><a href="#pilot-device-{{ article.key }}">{{ article.label }}</a></li>{% endfor %}</ul></nav>
+    {% for article in pilot_document.articles %}
+    <details id="pilot-device-{{ article.key }}" class="document-evidence-device">
+      <summary>{{ article.label }}{% if article.page %} · página {{ article.page }}{% endif %}</summary>
+      <pre>{{ article.text }}</pre>
+      {% if article.page %}<a class="workspace-button workspace-button-secondary" href="{% url 'legislation:document_pdf' document.public_id %}#page={{ article.page }}" target="_blank" rel="noopener noreferrer">Conferir {{ article.label }} no PDF ↗</a>{% endif %}
+    </details>
+    {% endfor %}
+  </section>
+  {% elif extraction %}
     {% if devices %}<nav class="document-evidence-index" aria-label="Dispositivos extraídos"><h2>Índice do documento</h2><ul>{% for device in devices %}<li><a href="#device-{{ device.structural_key }}">{{ device.tipo }} {{ device.numero }}</a></li>{% endfor %}</ul></nav>{% endif %}
     {% if devices %}<section aria-label="Texto documental">
       {% for device in devices %}<article id="device-{{ device.structural_key }}" class="document-evidence-device"><h2>{{ device.tipo }} {{ device.numero }}</h2><pre>{{ device.texto }}</pre></article>{% endfor %}

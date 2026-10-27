@@ -559,6 +559,12 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
         return JsonResponse({"success": False, "error": "Invalid request body"}, status=400)
 
     archive_qa = data.get("qa_archive_corpus", False)
+    pilot_mode = data.get("pilot_corpus", False)
+    pilot_revision = data.get("corpus_revision", "")
+    if not isinstance(pilot_mode, bool) or not isinstance(pilot_revision, str) or (pilot_revision and not re.fullmatch(r"[a-f0-9]{64}", pilot_revision)):
+        return JsonResponse({"success": False, "error": "Revisão ou escopo experimental inválido."}, status=400)
+    if pilot_mode and archive_qa:
+        return JsonResponse({"success": False, "error": "Selecione um único corpus por conversa."}, status=400)
     if not isinstance(archive_qa, bool):
         return JsonResponse({"success": False, "error": "Escopo do corpus de teste inválido."}, status=400)
     if archive_qa and not getattr(settings, "NORMATIVE_ARCHIVE_ASSISTANT_ENABLED", False):
@@ -583,6 +589,10 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
             pk=session_id, user=request.user
         ).only("pk").first()
         if existing_session and existing_session.messages.filter(role="user").exists():
+            first_scope = existing_session.messages.filter(role="user").order_by("created_at", "id").values_list("metadata_json", flat=True).first() or {}
+            pilot_mode = first_scope.get("corpus") == "ai-pilot"
+            if pilot_mode:
+                pilot_revision = first_scope.get("corpus_revision") or pilot_revision
             archive_qa = existing_session.messages.filter(
                 Q(role="assistant", metadata_json__filters__corpus="archive-qa-unvalidated")
                 | Q(role="user", metadata_json__corpus="archive-qa-unvalidated")
@@ -594,6 +604,18 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     {"success": False, "error": "O acervo desta conversa está indisponível neste ambiente."},
                     status=404,
                 )
+
+    pilot_corpus = None
+    if pilot_mode:
+        from src.apps.legislation.pilot_catalog import operational_pilot
+        try:
+            pilot_corpus = operational_pilot(pilot_revision or None)
+        except (OSError, ValueError, KeyError, TypeError):
+            return JsonResponse({"success": False, "error": "A revisão desta conversa está indisponível. Inicie uma nova consulta para usar a coleção atual."}, status=409)
+        if pilot_corpus is None:
+            return JsonResponse({"success": False, "error": "Corpus experimental indisponível nesta instância."}, status=404)
+        pilot_revision = pilot_corpus["corpus_revision"]
+        archive_qa = False
 
     if not question:
         return JsonResponse({"success": False, "error": "Question is required"}, status=400)
@@ -633,7 +655,7 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
         "as_of": retrieval_options.as_of,
         "published_from": retrieval_options.published_from,
         "published_to": retrieval_options.published_to,
-        "corpus": "archive-qa-unvalidated" if archive_qa else "consolidated",
+        "corpus": "ai-pilot" if pilot_mode else "archive-qa-unvalidated" if archive_qa else "consolidated",
     }
     # Session management
     chat_session = None
@@ -685,6 +707,7 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                         "retrieval": retrieval_options.fingerprint(),
                         "provider": text_provider,
                         "qa_archive_corpus": archive_qa,
+                        **({"pilot_corpus": True, "corpus_revision": pilot_revision} if pilot_mode else {}),
                         "retry_of": str(retry_of_client_turn_id or ""),
                     }
                     chat_turn, created_turn = reserve_authenticated_turn(
@@ -766,6 +789,8 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     .order_by("-created_at", "-id")
                     .first()
                 )
+                if pilot_mode and latest_assistant:
+                    context_question = (latest_assistant.metadata_json or {}).get("pilot", {}).get("context_question") or context_question
                 if (
                     latest_assistant
                     and (latest_assistant.metadata_json or {}).get("grounded") is True
@@ -773,7 +798,7 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     evidence_context = _grounded_source_context(
                         latest_assistant.sources_json or []
                     )
-                    if evidence_context:
+                    if evidence_context and not pilot_mode:
                         context_question = "\n".join(
                             [*evidence_context, context_question]
                         )
@@ -785,8 +810,9 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                         turn=chat_turn,
                         metadata_json={
                             "corpus": (
-                                "archive-qa-unvalidated" if archive_qa else "consolidated"
-                            )
+                                "ai-pilot" if pilot_mode else "archive-qa-unvalidated" if archive_qa else "consolidated"
+                            ),
+                            **({"corpus_revision": pilot_revision} if pilot_mode else {}),
                         },
                     )
                 ChatSession.objects.filter(pk=chat_session.pk).update(updated_at=timezone.now())
@@ -822,8 +848,18 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
             if chat_session:
                 yield f"data: {json.dumps({'type': 'session', 'session_id': chat_session.id, 'session_slug': chat_session.slug})}\n\n"
             retrieval_question = _resolve_article_followup(question, context_question)
-            rag_service = RAGService()
-            if archive_qa:
+            if pilot_mode:
+                from src.processing.pilot_rag import stream_pilot_answer
+                from src.llm_engine.ollama_service import OllamaService
+                stream_gen = stream_pilot_answer(
+                    pilot_corpus, question, previous_question=context_question,
+                    as_of=retrieval_options.as_of, k=k,
+                    context_chars=getattr(settings, "RAG_MAX_CONTEXT_CHARS", 8000),
+                    model=model, temperature=temperature, text_provider=text_provider,
+                    ollama=OllamaService(), should_cancel=lambda: is_generation_cancelled(generation_id),
+                )
+            elif archive_qa:
+                rag_service = RAGService()
                 from src.processing.qa_archive_rag import stream_archive_qa_answer
 
                 stream_gen = stream_archive_qa_answer(
@@ -843,6 +879,7 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                     should_cancel=lambda: is_generation_cancelled(generation_id),
                 )
             else:
+                rag_service = RAGService()
                 stream_gen = rag_service.stream_answer_question(
                     retrieval_question,
                     k=k,
@@ -903,6 +940,7 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                         "coverage": item.get("coverage")
                         or next((s.get("coverage") for s in raw_sources if s.get("coverage")), None),
                         "reason_code": item.get("reason_code"),
+                        **({"pilot": item["pilot"]} if item.get("pilot") else {}),
                     }
                     yield f"data: {json.dumps(payload)}\n\n"
                 elif ev_type == "chunk":
@@ -959,13 +997,16 @@ def chatbot_stream_api(request: HttpRequest) -> HttpResponse:
                         discarded_sources=item.get("discarded_sources", []),
                         grounding=item.get("grounding", {}),
                         grounded=grounded,
-                        corpus_coverage=current_corpus_coverage(),
+                        corpus_revision={"digest": pilot_revision, "completeness": "partial"} if pilot_mode else None,
+                        corpus_coverage={"coverage_status": "partial", "scope_limited": True, "sources_checked": [], "pending_review": len(pilot_corpus["sources"])} if pilot_mode else current_corpus_coverage(),
                         cached=item.get("cached", False),
                         request_id=request_id,
                         timings_ms=item.get("timings_ms"),
                         generation_attempts=item.get("generation_attempts"),
                         reason_code=reason_code,
                     )
+                    if item.get("pilot"):
+                        provenance["pilot"] = item["pilot"]
                     if request.user.is_authenticated and chat_session:
                         try:
                             with transaction.atomic():

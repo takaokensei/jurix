@@ -1,0 +1,188 @@
+{
+  "created_at": "2026-10-18T23:14:23.229302+00:00",
+  "seed": "jurix-pgm-ai-20261018-v1",
+  "method": "Amostra intencional retrospectiva: 13 atos dos casos documentais, seis leis de janeiro de 2025 e a lei-base do PPA; sem usar saídas de recuperação como gabarito.",
+  "prior_exposure": "Casos centrais já foram usados no desenvolvimento; não é teste científico cego nem estimativa de desempenho no acervo inteiro.",
+  "units": [
+    {
+      "unit_id": "n01",
+      "type": "lei",
+      "number": "3882",
+      "year": 1989,
+      "chain": "ctm",
+      "pdf_sha256": "6d1f99099693632ed2d54c3d4acb869cc872f337d8d25be62ac2d86554d7d9fc",
+      "text_sha256": "f1d9f163fa17fe6a5c69cef39a9e3865b9b7585606695688e6981de64513f8de"
+    },
+    {
+      "unit_id": "n02",
+      "type": "lei_complementar",
+      "number": "271",
+      "year": 2025,
+      "chain": "ctm",
+      "pdf_sha256": "b9017fb398be7f2c80401fdf6694212e630822fab8022fb4cedef4ddc4eaae87",
+      "text_sha256": "6eadfbb0d79a0aa3886f2c60d8d9e317b7a74ab466584753c7c93efd7623f696"
+    },
+    {
+      "unit_id": "n03",
+      "type": "lei_complementar",
+      "number": "258",
+      "year": 2024,
+      "chain": "urbanismo",
+      "pdf_sha256": "55214abf8e8ef14b05ae79bafa1109c360699aa8e40e489bc8e3e534fc4d76d3",
+      "text_sha256": "6e4f7fce35313926aac5dbd121e40c077529e499f728ed9cc4bca1114b7be3ec"
+    },
+    {
+      "unit_id": "n04",
+      "type": "lei_complementar",
+      "number": "55",
+      "year": 2004,
+      "chain": "urbanismo",
+      "pdf_sha256": "f4065608d85c99d72a02048fdce5c8072740c070308253dae1fcf9f8454093af",
+      "text_sha256": "eb659537195c36e39f42f83d39a7e292e72769872667fcd9acf6679d3a446cd1"
+    },
+    {
+      "unit_id": "n05",
+      "type": "lei_complementar",
+      "number": "173",
+      "year": 2017,
+      "chain": "urbanismo",
+      "pdf_sha256": "aeb6e6b137382df8094822d4aff92c4b9dbecccb442eaeae2c3b6008722de137",
+      "text_sha256": "eef7fae1e02b3a1d239eba434b5c61916aba7187a1973b1f4c65f21026109e54"
+    },
+    {
+      "unit_id": "n06",
+      "type": "lei_complementar",
+      "number": "185",
+      "year": 2019,
+      "chain": "urbanismo",
+      "pdf_sha256": "7b4562db8cb0b47146a2466014d02e34f026a023f93d2b870282f6f56eade6e2",
+      "text_sha256": "6e20505874605e457bf81d3dea8a04252734410227cbdfce2caa15a40e074fb1"
+    },
+    {
+      "unit_id": "n07",
+      "type": "lei_complementar",
+      "number": "208",
+      "year": 2022,
+      "chain": "urbanismo",
+      "pdf_sha256": "397670b25da69cf3a739143742d156cfee8db7f5936f2c77aaf9d777caf95256",
+      "text_sha256": "f7f650cd2e12cc7153966e29f9626880156fd451b7cc96e6b003d48fff76ae81"
+    },
+    {
+      "unit_id": "n08",
+      "type": "lei_complementar",
+      "number": "261",
+      "year": 2025,
+      "chain": "urbanismo",
+      "pdf_sha256": "05afadb171050ff16063e9ee707b2d92e53033fd20e52528d3fcb36e210a6251",
+      "text_sha256": "8fcb790eb76d1f0b183fbb39fc31bfb8e8e5c0cb516a453a686d1674a46257f2"
+    },
+    {
+      "unit_id": "n09",
+      "type": "lei",
+      "number": "4885",
+      "year": 1997,
+      "chain": "urbanismo",
+      "pdf_sha256": "19e3dde9a7a580c4ad0fe229c086cba5b7a0aa916bea2af9dba56b7be21016f8",
+      "text_sha256": "21e3ddd8c22d92ebfe2de2340c030f3768e7f1ad5bd430ac6269be3c90f6f451"
+    },
+    {
+      "unit_id": "n10",
+      "type": "lei_promulgada",
+      "number": "275",
+      "year": 2009,
+      "chain": "urbanismo",
+      "pdf_sha256": "121b46b52e9485d44311359a4164e167d059e59bd8bde1ec949387eade416897",
+      "text_sha256": "efee7f9c77d61e3dd4b94c5ab9daafaf2ce62effc212b6d04196ff466eb4b040"
+    },
+    {
+      "unit_id": "n11",
+      "type": "lei_promulgada",
+      "number": "562",
+      "year": 2018,
+      "chain": "urbanismo",
+      "pdf_sha256": "079b0967563a670c9c880baee1642239d0d08ce19738f0c3adf83a0c3cecb119",
+      "text_sha256": "3bc6cb785b18409951302fdb1f63cc2996a69aed5a2d861a5ddce265bfc1bec7"
+    },
+    {
+      "unit_id": "n12",
+      "type": "lei",
+      "number": "1894",
+      "year": 1969,
+      "chain": "urbanismo",
+      "pdf_sha256": "6327772563ab1c863f1b5cd10168994d8c8d7d591d4c785857dbac842c808be2",
+      "text_sha256": "15129dc49588b5355460b646cee5052c5274df3e4c40ad5ea13edb472cde368c"
+    },
+    {
+      "unit_id": "n13",
+      "type": "lei_complementar",
+      "number": "141",
+      "year": 2014,
+      "chain": "ctm",
+      "pdf_sha256": "d29da8bfed5b1fe1495c7e30d9c7ac194a007b4140c96468703f87303cf43630",
+      "text_sha256": "8cccea746af01f5118ffe2b9f373c390d8a5fca98b98c5b506ac34513eb4aca9"
+    },
+    {
+      "unit_id": "n14",
+      "type": "lei",
+      "number": "7805",
+      "year": 2025,
+      "chain": "isolada_7805",
+      "pdf_sha256": "d26179b27a87b3d410589cfd2f280bdd6233641e67edf1a91aa910eb90c44979",
+      "text_sha256": "1f897641c27f1730267edd1ca817802d8b4185fb141eb37263232921cd79ad6a"
+    },
+    {
+      "unit_id": "n15",
+      "type": "lei",
+      "number": "7806",
+      "year": 2025,
+      "chain": "isolada_7806",
+      "pdf_sha256": "5750e8daac8f84bc70ab5d3c077a96abdd16b42747d56951caa3119e875bb607",
+      "text_sha256": "c46d81c4ed09aea1725804abe449e1d7f2f04d980475782941bcb85d165bd739"
+    },
+    {
+      "unit_id": "n16",
+      "type": "lei",
+      "number": "7807",
+      "year": 2025,
+      "chain": "ppa",
+      "pdf_sha256": "2f77c8c3ad4fc41e7c482fb15c010fee1d16b3967052d7eeae3c802fe09b8852",
+      "text_sha256": "d95df0b525b71b1e29fa351da7d8b04384175d242d933b0a0f6312864c9234ec"
+    },
+    {
+      "unit_id": "n17",
+      "type": "lei",
+      "number": "7808",
+      "year": 2025,
+      "chain": "isolada_7808",
+      "pdf_sha256": "5ed80c8d2aa8729aef0b1d797cb837a7015cb4422bd7b6a622d423b01ea8dc55",
+      "text_sha256": "24fefdd67626431b1e346c2b96edf1a4bc42eb5270d77fe14e68042089b60c75"
+    },
+    {
+      "unit_id": "n18",
+      "type": "lei",
+      "number": "7810",
+      "year": 2025,
+      "chain": "isolada_7810",
+      "pdf_sha256": "4c71dec7e7154e873bbfdc4ee60b063a72815161ae6f38dd00a9647a073e949b",
+      "text_sha256": "392b8a7e0ac0786b2617944fa083f522c74762f1b435aa029664f1f1cbe3332d"
+    },
+    {
+      "unit_id": "n19",
+      "type": "lei",
+      "number": "7811",
+      "year": 2025,
+      "chain": "isolada_7811",
+      "pdf_sha256": "f6c20c66649afeeab85471c67588075854b97abf9b77f049915ac6f0396526ee",
+      "text_sha256": "2465853e9c5beebba87af80c955f85c3c21c752c260c7a78238de1421d6e82f8"
+    },
+    {
+      "unit_id": "n20",
+      "type": "lei",
+      "number": "7280",
+      "year": 2021,
+      "chain": "ppa",
+      "pdf_sha256": "6e56f6b4683ef4f9f6ccc63971ae6b52358221360b3096586a386922991051da",
+      "text_sha256": "6e63a47a31d2f05ee247ad101d813d7cd0ef20536bc84c61c65f5b9f4832f3fa"
+    }
+  ]
+}

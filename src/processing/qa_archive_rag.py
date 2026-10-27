@@ -26,7 +26,7 @@ from src.processing.coordinated_article_references import (
     parse_coordinated_article_norm_pairs,
 )
 from src.processing.document_metadata import compare_identity_to_epigraph, parse_initial_epigraphs
-from src.processing.normative_query import classify_normative_query
+from src.processing.normative_query import classify_normative_query, requested_edition_scope
 from src.processing.normative_reference import (
     canonical_type,
     normalize_number,
@@ -56,11 +56,11 @@ _NORMATIVE_REFERENCE_SPAN_RE = re.compile(
 )
 _ARTICLE_RE = re.compile(r"\bart(?:igo)?\.?\s*(\d{1,4})\s*[º°ªo]?", re.IGNORECASE)
 _PLURAL_ARTICLE_GROUP_RE = re.compile(
-    r"\barts\.?\s*(?P<articles>\d{1,4}\s*[º°ªo]?"
-    r"(?:\s*,\s*inciso\s+[ivxlcdm]+)?"
-    r"(?:\s*(?:,\s*(?:e\s+|ou\s+)?|\be\s+|\bou\s+)"
+    r"\bart(?:s|igo(?:s)?)?\.?\s*(?P<articles>\d{1,4}\s*[º°ªo]?"
+    r"(?:\s*,\s*(?:inciso\s+)?[ivxlcdm]+)?"
+    r"(?:\s*(?:,\s*(?:e\s+|ou\s+)?|;\s*(?:e\s+|ou\s+)?|\be\s+|\bou\s+)"
     r"\s*(?:inciso\s+[ivxlcdm]+\s*,\s*)?"
-    r"(?:art\.?\s*)?\d{1,4}\s*[º°ªo]?)+)",
+    r"(?:art(?:igo)?\.?\s*)?\d{1,4}\s*[º°ªo]?)+)",
     re.IGNORECASE,
 )
 _APPENDIX_QUERY_RE = re.compile(
@@ -113,6 +113,12 @@ _HISTORICAL_WORDING_QUERY_RE = re.compile(
 )
 _EXPLICIT_TEXT_COMPARISON_QUERY_RE = re.compile(
     r"\b(?:compare|comparar|comparem|diferen[cç]a(?:s)?\s+entre|" r"confronte|coteje)\b",
+    re.IGNORECASE,
+)
+_EXPLICIT_AMENDMENT_QUERY_RE = re.compile(
+    r"\b(?:acrescent(?:a|am|ou|aram)|adicion(?:a|am|ou|aram)|inclu(?:i|em|iu|íram)|"
+    r"inser(?:e|em|iu|iram)|alter(?:a|am|ou|aram)|modific(?:a|am|ou|aram)|"
+    r"substitu(?:i|em|iu|íram)|d[aá]\s+nova\s+reda[cç][aã]o)\b",
     re.IGNORECASE,
 )
 _CONTEXTUAL_MULTI_ARTICLE_TOPIC_RE = re.compile(
@@ -252,6 +258,13 @@ _NORMATIVE_CHANGE_EVIDENCE_RE = re.compile(
     r"modific(?:a|am|ou|aram|ar|ando)|suprim(?:e|em|iu|iram|ir)|"
     r"acrescent(?:a|am|ou|aram|ar)|adiciona(?:m)?)|"
     r"revogam-se|alteram-se)\b",
+    re.IGNORECASE,
+)
+_AMENDMENT_OPERATIVE_CLAUSE_RE = re.compile(
+    r"\b(?:passa[m]?\s+a\s+vigorar|d[êe]-se\s+nova\s+reda[cç][aã]o|"
+    r"fica[m]?\s+(?:acrescid[oa]s?|inclu[ií]d[oa]s?|alterad[oa]s?)|"
+    r"(?:acrescent(?:a|am|ou|aram)|adiciona(?:m)?|inclu[ií](?:ram)?|"
+    r"substitu[ií](?:ram)?|modific(?:a|am|ou|aram)))\b",
     re.IGNORECASE,
 )
 _MULTI_ARTICLE_SYNTHESIS_RE = re.compile(
@@ -1187,34 +1200,7 @@ def _requested_archive_edition_scope(question: str, references) -> tuple[tuple |
     the law. Bind it to the closest explicit legal reference in the question;
     never apply it to every cited norm in a comparison.
     """
-    edition_match = re.search(
-        r"\b(?:consolida[cç][aã]o|consolidado|consolidada|texto\s+consolidado)\b"
-        r".{0,80}?\b(?:(?:exerc[ií]cio|ano)\s*(?:de\s*)?|de\s*)"
-        r"((?:19|20)\d{2})\b",
-        str(question or ""),
-        re.IGNORECASE,
-    )
-    if not edition_match:
-        return None, None
-    candidates = [reference for reference in references if not reference.ambiguous]
-    if len(candidates) == 1:
-        return candidates[0].identity, int(edition_match.group(1))
-
-    reference_spans = []
-    for span in _NORMATIVE_REFERENCE_SPAN_RE.finditer(str(question or "")):
-        span_references = parse_normative_references(span.group(0))
-        if len(span_references) == 1 and not span_references[0].ambiguous:
-            reference_spans.append((span.start(), span.end(), span_references[0]))
-    if not reference_spans:
-        return None, None
-    marker_start, marker_end = edition_match.span()
-
-    def distance(item):
-        start, end, _reference = item
-        return max(marker_start - end, start - marker_end, 0)
-
-    nearest = min(reference_spans, key=distance)
-    return nearest[2].identity, int(edition_match.group(1))
+    return requested_edition_scope(question, references)
 
 
 def _candidate_official_pdf_url(document: DocumentoNormativo) -> str | None:
@@ -1514,7 +1500,12 @@ def _target_normative_device_sources(
     # alternate JSON number formats remain supported.
     documents = (
         DocumentoNormativo.objects.filter(
-            source_kind=DocumentoNormativo.SourceKind.SAPL,
+            source_kind__in={
+                DocumentoNormativo.SourceKind.SAPL,
+                DocumentoNormativo.SourceKind.ARCHIVE,
+            },
+            review_status=DocumentoNormativo.ReviewStatus.PENDING,
+            accepted_extraction__isnull=True,
         )
         .filter(_archive_identity_query(reference))
         .order_by("pk")[:20]
@@ -1523,6 +1514,19 @@ def _target_normative_device_sources(
     wanted_articles = {normalize_number(value).lstrip("0") or "0" for value in article_targets}
     for document in documents:
         metadata = document.metadata_json if isinstance(document.metadata_json, dict) else {}
+        if document.source_kind == DocumentoNormativo.SourceKind.ARCHIVE:
+            provenance = metadata.get("source_provenance")
+            provenance = provenance if isinstance(provenance, dict) else {}
+            if (
+                document.norma_id is not None
+                or metadata.get("identity_status") != "candidate"
+                or metadata.get("rag_eligible") is not False
+                or provenance.get("kind") != "municipal_official_repository"
+                or provenance.get("official_url")
+                != "https://www.natal.rn.gov.br/storage/app/media/semurb/legislacao/leis/"
+                "5-lei-promulgada-275-2009-regulamenta-as-calcadas-no-municipio.pdf"
+            ):
+                continue
         identity = _candidate_identity(document)
         try:
             identity_year = int(identity.get("year"))
@@ -1599,9 +1603,20 @@ def _target_normative_device_sources(
             )
             official_url = str(document.official_url or "").strip()
             parsed_url = urlparse(official_url)
+            allowed_sapl_url = (
+                parsed_url.scheme == "https"
+                and parsed_url.hostname == "sapl.natal.rn.leg.br"
+                and parsed_url.path.startswith("/media/sapl/public/normajuridica/")
+            )
+            allowed_lp275_url = (
+                parsed_url.scheme == "https"
+                and parsed_url.hostname == "www.natal.rn.gov.br"
+                and parsed_url.path
+                == "/storage/app/media/semurb/legislacao/leis/"
+                "5-lei-promulgada-275-2009-regulamenta-as-calcadas-no-municipio.pdf"
+            )
             if (
-                parsed_url.scheme != "https"
-                or parsed_url.hostname != "sapl.natal.rn.leg.br"
+                not (allowed_sapl_url or allowed_lp275_url)
                 or parsed_url.username
                 or parsed_url.password
             ):
@@ -2328,6 +2343,152 @@ def _explicit_article_norm_pairs(
     )
 
 
+def _explicit_amendment_article_scope(question: str):
+    """Resolve the named amendment act separately from its target provision.
+
+    Example: “Que parágrafos a LC A acrescenta ao Art. 34 da LC B?” names
+    the amendment source (A) and pairs the sole article mention with target B.
+    This is intentionally narrow: one target article, one other named act, and
+    an explicit amendment verb are required.
+    """
+    if not _EXPLICIT_AMENDMENT_QUERY_RE.search(question or ""):
+        return None
+    mentions = _article_reference_mentions(question)
+    pairs = tuple(dict.fromkeys(_explicit_article_norm_pairs(question)))
+    if len(mentions) != 1 or len(pairs) != 1:
+        return None
+    target_identity, target_article = pairs[0]
+    references = {
+        _reference_identity(reference)
+        for reference in parse_normative_references(question)
+        if reference.type_key and reference.year is not None and reference.number
+    }
+    source_identities = references - {target_identity}
+    if len(source_identities) != 1:
+        return None
+    return next(iter(source_identities)), target_identity, target_article
+
+
+def _text_mentions_norm_identity(text: str, identity: tuple[str, str, int | None]) -> bool:
+    """Match a norm identity when a PDF spells its date instead of ``/year``.
+
+    Legal acts commonly cite an older norm as “Lei Complementar n. 55, de 27
+    de janeiro de 2004”. The general reference parser intentionally does not
+    guess that the date belongs to a preceding citation; this narrow helper is
+    used only after the question has supplied an exact target identity.
+    """
+    type_key, raw_number, year = identity
+    label = _TYPE_LABELS.get(type_key)
+    number = normalize_number(str(raw_number)).lstrip("0") or "0"
+    if not label or not number or year is None:
+        return False
+    normalized = re.sub(r"\s+", " ", _fold(text))
+    label_pattern = r"\s+".join(re.escape(part) for part in _fold(label).split())
+    number_pattern = re.escape(number)
+    reference = re.compile(
+        rf"\b{label_pattern}\s*(?:n[.oº°]*\s*)?0*{number_pattern}\b"
+        rf"(?P<tail>.{{0,100}}?)(?:/\s*{year}\b|\bde\b.{{0,90}}?\b{year}\b)",
+        re.IGNORECASE,
+    )
+    return bool(reference.search(normalized))
+
+
+def _archive_explicit_amendment_synthesis(question: str, sources: list[dict]):
+    """Quote substantively extracted paragraphs from an explicit amendment clause."""
+    scope = _explicit_amendment_article_scope(question)
+    if not scope:
+        return None
+    source_identity, target_identity, target_article = scope
+    for source in sources:
+        if _archive_source_norm_identity(source) != source_identity:
+            continue
+        if not _AMENDMENT_OPERATIVE_CLAUSE_RE.search(str(source.get("full_text") or "")):
+            continue
+        text = re.sub(r"\s+", " ", str(source.get("full_text") or "")).strip()
+        if not _text_mentions_norm_identity(text, target_identity):
+            continue
+        mentioned_articles = {article for _position, article in _article_reference_mentions(text)}
+        if target_article not in mentioned_articles:
+            continue
+        operative = re.search(
+            r"\b(?:acrescid[oa]s?|inclu[ií]d[oa]s?|alterad[oa]s?|"
+            r"passa[m]?\s+a\s+vigorar)\b.{0,100}?\b(?:seguintes|par[aá]grafos|reda[cç][aã]o)",
+            text,
+            re.IGNORECASE,
+        )
+        if not operative:
+            continue
+        paragraph_tail = text[operative.end() :]
+        markers = list(re.finditer(r"§{1,2}\s*(\d+)\s*[ºª°]?", paragraph_tail))
+        additions = []
+        for index, marker in enumerate(markers):
+            end = markers[index + 1].start() if index + 1 < len(markers) else len(paragraph_tail)
+            body = paragraph_tail[marker.end() : end].strip(" \t\r\n-–—:;,.\"'“”")
+            body = re.sub(r"\s+", " ", body).strip()
+            if len(re.findall(r"[a-z]{3,}", _fold(body))) < 3:
+                continue
+            additions.append((int(marker.group(1)), body))
+        if not additions:
+            continue
+
+        commencement = next(
+            (
+                candidate
+                for candidate in sources
+                if candidate is not source
+                and _archive_source_norm_identity(candidate) == source_identity
+                and _EFFECTIVE_DATE_OPERATIVE_RE.search(
+                    str(candidate.get("full_text") or "")
+                )
+            ),
+            None,
+        )
+        selected_sources = [source, *([commencement] if commencement else [])]
+        source_index = 1
+        norm_label = str(source.get("norma_ref") or "a norma alteradora")
+        device_label = str(source.get("dispositivo_ref") or "dispositivo do ato alterador")
+        target_label = _TYPE_LABELS.get(target_identity[0], "Norma")
+        target_ref = f"{target_label} nº {target_identity[1]}/{target_identity[2]}"
+        answer = (
+            f"A extração do **{norm_label}, {device_label}** afirma que o **Art. {target_article} "
+            f"da {target_ref}** passa a incluir os seguintes parágrafos: [[{source_index}]]"
+        )
+        answer += "\n\n" + "\n\n".join(
+            f"- **§ {number}º:** “{body}” [[{source_index}]]" for number, body in additions
+        )
+        if commencement:
+            answer += (
+                "\n\nO **Art. 3º da LC nº 173/2017** dispõe sobre a entrada em vigor na data da "
+                "publicação [[2]]. Ainda assim, as extrações locais estão pendentes de revisão e "
+                "não confirmam, por si sós, a vigência atual nem alterações posteriores. Confira o PDF oficial."
+            )
+        else:
+            answer += (
+                "\n\nNão localizei a cláusula de vigência nesta recuperação. As extrações locais estão "
+                "pendentes de revisão e não confirmam, por si sós, a vigência atual nem alterações "
+                "posteriores. Confira o PDF oficial."
+            )
+        claim = {
+            "text": "A extração do ato alterador contém os parágrafos transcritos acima.",
+            "citation_ids": [str(source.get("citation_id") or "")],
+        }
+        claims = [claim]
+        if commencement:
+            claims.append(
+                {
+                    "text": "O Art. 3º da extração prevê entrada em vigor na data da publicação.",
+                    "citation_ids": [str(commencement.get("citation_id") or "")],
+                }
+            )
+        return answer, selected_sources, claims, {
+            "coverage_status": "explicit_amendment_text_extracted_pending_review",
+            "legal_effect_reviewed": False,
+            "temporal_scope_available": False,
+            "added_paragraph_numbers": [number for number, _body in additions],
+        }
+    return None
+
+
 def _matching_archive_article_sources(
     article_norm_pairs: tuple[tuple[tuple[str, str, int | None], str], ...],
     sources: list[dict],
@@ -2355,6 +2516,49 @@ def _matching_archive_article_sources(
         seen_citations.add(citation_id)
         matched.append(source)
     return matched
+
+
+def _missing_explicit_article_norm_pairs(question: str, sources: list[dict]) -> tuple[str, ...]:
+    """List only confidently paired requested provisions absent from retrieved evidence."""
+    article_mentions = _article_reference_mentions(question)
+    requested = tuple(dict.fromkeys(_explicit_article_norm_pairs(question)))
+    if not requested or len(requested) != len(article_mentions):
+        # If the wording did not resolve every article to exactly one norm,
+        # do not manufacture a missing-reference diagnosis from an ambiguous scope.
+        return ()
+
+    matched = {
+        (identity, _article_key(str(source.get("dispositivo_ref") or "")))
+        for source in _matching_archive_article_sources(requested, sources)
+        for identity in {
+            _reference_identity(reference)
+            for reference in parse_normative_references(str(source.get("norma_ref") or ""))
+            if reference.year is not None and reference.number
+        }
+    }
+    missing = []
+    for identity, article in requested:
+        if (identity, article) in matched:
+            continue
+        type_key, number, year = identity
+        label = _TYPE_LABELS.get(type_key, "Norma")
+        normalized_number = normalize_number(number).lstrip("0") or "0"
+        first_group = len(normalized_number) % 3 or 3
+        formatted_number = ".".join(
+            [normalized_number[:first_group]]
+            + [
+                normalized_number[index:index + 3]
+                for index in range(first_group, len(normalized_number), 3)
+            ]
+        )
+        norm = f"{label} nº {formatted_number}/{year}"
+        preposition = (
+            "do"
+            if type_key in {"decreto", "decreto_lei", "decreto_legislativo"}
+            else "da"
+        )
+        missing.append(f"Art. {article} {preposition} {norm}")
+    return tuple(missing)
 
 
 def _related_matter_search_limit(status: str | None, *, article_scope: bool = True) -> str:
@@ -3994,7 +4198,8 @@ def _page_index_for_excerpt(article: dict, excerpt: str, page_map: list[dict] | 
 
 
 def _sample_whole_norm_rows(
-    rows: list[dict], *, topic_tokens: set[str] | None = None
+    rows: list[dict], *, topic_tokens: set[str] | None = None,
+    budget_chars: int = _WHOLE_NORM_CONTEXT_BUDGET_CHARS,
 ) -> tuple[list[dict], int]:
     """Keep every article that fits; otherwise sample by scope or across the norm."""
     total = len(rows)
@@ -4003,7 +4208,7 @@ def _sample_whole_norm_rows(
 
     text_lengths = [len(str(row.get("full_text") or "")) for row in rows]
     total_chars = sum(text_lengths)
-    if total_chars <= _WHOLE_NORM_CONTEXT_BUDGET_CHARS:
+    if total_chars <= budget_chars:
         return rows, total
 
     if topic_tokens:
@@ -4033,14 +4238,14 @@ def _sample_whole_norm_rows(
         selected_chars = 0
         for _overlap_score, _retrieval_score, _index, row in ranked:
             row_chars = len(str(row.get("full_text") or ""))
-            if selected_chars + row_chars <= _WHOLE_NORM_CONTEXT_BUDGET_CHARS:
+            if selected_chars + row_chars <= budget_chars:
                 selected.append(row)
                 selected_chars += row_chars
         selected_ids = {id(row) for row in selected}
         return [row for row in rows if id(row) in selected_ids], total
 
     average_chars = max(1, total_chars // total)
-    budget_count = max(1, _WHOLE_NORM_CONTEXT_BUDGET_CHARS // average_chars)
+    budget_count = max(1, budget_chars // average_chars)
     sample_size = min(total, budget_count)
     while sample_size:
         if sample_size == 1:
@@ -4051,7 +4256,7 @@ def _sample_whole_norm_rows(
             ]
         # The average-size estimate can miss uneven articles. Reduce the
         # evenly-spaced sample until its actual evidence text fits the budget.
-        if sum(text_lengths[index] for index in indexes) <= _WHOLE_NORM_CONTEXT_BUDGET_CHARS:
+        if sum(text_lengths[index] for index in indexes) <= budget_chars:
             return [rows[index] for index in indexes], total
         sample_size -= 1
 
@@ -4079,6 +4284,7 @@ def retrieve_archive_evidence(question: str, *, limit: int = 8) -> list[dict]:
         reference for reference in parsed_references if reference.year is not None
     ]
     explicit_norm_identities = {reference.identity for reference in explicit_norm_references}
+    explicit_amendment_scope = _explicit_amendment_article_scope(question)
     one_exact_norm_reference = (
         bool(parsed_references)
         and len(explicit_norm_references) == len(parsed_references)
@@ -4089,7 +4295,10 @@ def retrieve_archive_evidence(question: str, *, limit: int = 8) -> list[dict]:
     explicit_article_norm_pairs = _explicit_article_norm_pairs(question)
     paired_article_scope = (
         len(explicit_article_norm_pairs) == len(_article_reference_mentions(question))
-        and len(explicit_article_norm_pairs) > 1
+        and (
+            len(explicit_article_norm_pairs) > 1
+            or explicit_amendment_scope is not None
+        )
         and not _cross_reference_scan_scope(question)
     )
     article_targets_by_identity: dict[tuple[str, str, int | None], set[str]] = {}
@@ -4266,7 +4475,11 @@ def retrieve_archive_evidence(question: str, *, limit: int = 8) -> list[dict]:
             if paired_article_scope
             else set(wanted_articles)
         )
-        if paired_article_scope and not document_article_targets:
+        is_amendment_source = bool(
+            explicit_amendment_scope
+            and candidate_identity == explicit_amendment_scope[0]
+        )
+        if paired_article_scope and not document_article_targets and not is_amendment_source:
             continue
         if exact_ref:
             candidate_number = normalize_number(str(identity.get("number") or ""))
@@ -4927,10 +5140,69 @@ def retrieve_archive_evidence(question: str, *, limit: int = 8) -> list[dict]:
         else:
             rows = rows[: min(limit, max(len(wanted_articles), 1))]
     elif paired_article_scope:
-        rows.sort(key=lambda item: (item["norma_ref"], item["dispositivo_ref"]))
-        candidate_rows = rows
-        rows = rows[: min(max(limit, len(explicit_article_norm_pairs)), 32)]
-        if transition_scope_question:
+        if explicit_amendment_scope:
+            source_identity, target_identity, target_article = explicit_amendment_scope
+            amendment_rows = []
+            for row in rows:
+                row_identity = _archive_source_norm_identity(row)
+                article = _archive_source_article(row)
+                role = None
+                if row_identity == target_identity and article == target_article:
+                    role = "target_provision"
+                elif row_identity == source_identity:
+                    text = str(row.get("full_text") or "")
+                    text_identities = {
+                        _reference_identity(reference)
+                        for reference in parse_normative_references(text)
+                        if reference.year is not None and reference.number
+                    }
+                    if _text_mentions_norm_identity(text, target_identity):
+                        text_identities.add(target_identity)
+                    text_articles = {
+                        article_key for _position, article_key in _article_reference_mentions(text)
+                    }
+                    if (
+                        target_identity in text_identities
+                        and target_article in text_articles
+                        and _AMENDMENT_OPERATIVE_CLAUSE_RE.search(text)
+                    ):
+                        role = "amendment_clause"
+                    elif _EFFECTIVE_DATE_OPERATIVE_RE.search(text):
+                        role = "amendment_commencement"
+                if role:
+                    row["coverage"] = {
+                        **row["coverage"],
+                        "explicit_amendment_scope": True,
+                        "amendment_evidence_role": role,
+                        "legal_effect_reviewed": False,
+                    }
+                    amendment_rows.append(row)
+            roles = {
+                row["coverage"].get("amendment_evidence_role") for row in amendment_rows
+            }
+            complete_amendment_pair = {
+                "target_provision",
+                "amendment_clause",
+            }.issubset(roles)
+            for row in amendment_rows:
+                row["coverage"]["complete"] = complete_amendment_pair
+            rows = amendment_rows
+            rows.sort(
+                key=lambda item: (
+                    0
+                    if item["coverage"].get("amendment_evidence_role") == "amendment_clause"
+                    else 1
+                    if item["coverage"].get("amendment_evidence_role") == "target_provision"
+                    else 2,
+                    item["norma_ref"],
+                    item["dispositivo_ref"],
+                )
+            )
+        else:
+            rows.sort(key=lambda item: (item["norma_ref"], item["dispositivo_ref"]))
+            candidate_rows = rows
+            rows = rows[: min(max(limit, len(explicit_article_norm_pairs)), 32)]
+        if transition_scope_question and not explicit_amendment_scope:
             transition_rows = [
                 row
                 for row in candidate_rows
@@ -4981,7 +5253,7 @@ def retrieve_archive_evidence(question: str, *, limit: int = 8) -> list[dict]:
                     for identity, article in explicit_article_norm_pairs
                 ],
                 "missing_article_norm_pairs": missing_pairs,
-                "complete": not missing_pairs,
+                "complete": row["coverage"].get("complete", True) and not missing_pairs,
             }
     elif explicit_multi_references and wanted_articles:
         requested = set(wanted_articles)
@@ -6826,6 +7098,13 @@ def stream_archive_qa_answer(
         )
         transition_synthesis = _archive_transition_synthesis(question, results)
 
+    amendment_synthesis = _archive_explicit_amendment_synthesis(question, results)
+    if amendment_synthesis is not None:
+        _, amendment_sources, _, _ = amendment_synthesis
+        results = amendment_sources
+        relation_candidate_sources = []
+        supplemental_sources = []
+
     yield {
         "event": "sources",
         "sources": [*results, *supplemental_sources, *relation_candidate_sources],
@@ -6842,6 +7121,33 @@ def stream_archive_qa_answer(
             "sources_retrieved": len(results),
         },
     }
+
+    if amendment_synthesis is not None:
+        answer, amendment_sources, amendment_claims, amendment_coverage = amendment_synthesis
+        yield {"event": "status", "status": "grounding"}
+        for offset in range(0, len(answer), 72):
+            raise_if_cancelled(should_cancel)
+            yield {"event": "chunk", "chunk": answer[offset : offset + 72], "provisional": False}
+        yield {"event": "status", "status": "finalizing"}
+        yield {
+            "event": "done",
+            "answer": answer,
+            "sources": amendment_sources,
+            "grounded": True,
+            "source_only": True,
+            "reason_code": "qa_archive_explicit_amendment_text",
+            "grounding": {
+                "grounded": True,
+                "score": 1.0,
+                "claims": amendment_claims,
+                "failed_claims": [],
+                "validation_scope": "literal_amendment_paragraphs_only_no_current_effect_conclusion",
+            },
+            "coverage": amendment_coverage,
+            "timings_ms": {"retrieval": retrieval_ms, "generation": 0},
+            "generation_attempts": [],
+        }
+        return
 
     if transition_synthesis is not None:
         answer, grounding_claims = transition_synthesis
@@ -7924,6 +8230,11 @@ def stream_archive_qa_answer(
     exact_references = [ref for ref in parsed_references if not ref.ambiguous]
     query_plan = classify_normative_query(question)
     article_targets = tuple(query_plan.article_targets)
+    explicit_article_norm_pairs = tuple(dict.fromkeys(_explicit_article_norm_pairs(question)))
+    has_complete_explicit_article_pairing = (
+        bool(explicit_article_norm_pairs)
+        and len(explicit_article_norm_pairs) == len(_article_reference_mentions(question))
+    )
     requested_facets = _requested_topic_facets(question)
     # The reference parser intentionally marks a single norm mention as
     # ambiguous when a question names multiple articles: it cannot attach one
@@ -8916,7 +9227,9 @@ def stream_archive_qa_answer(
                 grounded = bool(reference_groups)
                 reason_code = "qa_archive_evidence_only_fallback"
         else:
-            topical_evidence_map = not has_single_explicit_norm
+            topical_evidence_map = not (
+                has_single_explicit_norm or has_complete_explicit_article_pairing
+            )
             if requested_facets:
                 facet_sources = [
                     (index, source)
@@ -9024,6 +9337,16 @@ def stream_archive_qa_answer(
                     f"{excerpt['device']}: “{excerpt['text']}” [[{excerpt['citation_index']}]]"
                     for excerpt in excerpts
                 )
+                missing_reference_pairs = _missing_explicit_article_norm_pairs(
+                    question, results
+                )
+                if missing_reference_pairs:
+                    answer_parts.append(
+                        "Não localizei evidência legível entre as fontes recuperadas para "
+                        + ", ".join(missing_reference_pairs)
+                        + ". Isso não confirma que o dispositivo ou a norma não exista; "
+                        "significa apenas que esta busca não trouxe esse trecho para conferência."
+                    )
                 if _ARTICLE_SCOPE_LIMITS_REQUEST_RE.search(question):
                     answer_parts.append(
                         "Esses excertos, isoladamente, não permitem concluir se uma obra "

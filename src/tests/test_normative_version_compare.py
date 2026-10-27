@@ -1,3 +1,4 @@
+import re
 from datetime import date
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -7,8 +8,9 @@ from django.test import Client, override_settings
 from django.urls import reverse
 
 from src.apps.legislation.models import Dispositivo, Norma
+from src.processing.evidence_export import build_evidence_package
 from src.processing.legal_diff import build_version_diff
-from src.processing.normative_casefile import _casefile_digest
+from src.processing.normative_casefile import _casefile_digest, build_normative_casefile
 
 
 @pytest.fixture
@@ -140,6 +142,63 @@ def test_casefile_digest_tracks_content_and_ignores_generation_time():
     assert _casefile_digest(
         1, as_of, **{**kwargs, "evidence_package": changed_evidence}
     ) != baseline
+
+
+@pytest.mark.django_db
+def test_casefile_id_is_shared_by_graph_and_exported_relation_evidence(norma):
+    target = Norma.objects.create(
+        tipo="Lei",
+        numero="124",
+        ano=2026,
+        status="consolidated",
+        texto_original="",
+        texto_consolidado="",
+    )
+    graph = {
+        "scope": "reviewed_normative_relation",
+        "nodes": [
+            {"id": f"norma:{norma.pk}", "label": str(norma)},
+            {"id": f"norma:{target.pk}", "label": str(target)},
+        ],
+        "edges": [
+            {
+                "id": "event:casefile-integration",
+                "source": f"norma:{norma.pk}",
+                "target": f"norma:{target.pk}",
+                "action": "ALTERA",
+                "review_status": "confirmed",
+                "effective_status": "confirmed",
+                "source_device_key": "a" * 64,
+                "target_device_key": "b" * 64,
+                "evidence": {"quote": "dá nova redação ao Art. 1º"},
+            }
+        ],
+        "truncated": False,
+        "filters": {},
+    }
+
+    with (
+        patch("src.processing.normative_casefile.build_normative_graph", return_value=graph),
+        patch(
+            "src.processing.normative_casefile.get_corpus_revision",
+            return_value={"revision": 7, "digest": "c" * 64},
+        ),
+    ):
+        casefile = build_normative_casefile(
+            norma,
+            as_of=date(2026, 10, 18),
+            include_projection=False,
+        )
+
+    casefile_id = casefile["casefile_id"]
+    graph_edge = casefile["graph"]["edges"][0]
+    exported_relation = casefile["evidence_package"]["sources"][0]["graph_relation"]
+    assert graph_edge["casefile_id"] == casefile_id
+    assert exported_relation["casefile_id"] == casefile_id
+    assert exported_relation["event_id"] == graph_edge["id"]
+
+    exported = build_evidence_package(casefile["evidence_package"]["sources"])
+    assert exported["sources"][0]["graph_relation"]["casefile_id"] == casefile_id
 
 
 def _projection(when, *, status="complete", devices=()):
@@ -367,12 +426,54 @@ def test_generic_normative_casefile_renders_sections_without_latest_text_fallbac
 
     body = response.content.decode()
     assert response.status_code == 200
+    assert 'id="casefile-summary-title"' in body
+    assert 'data-casefile-tabs' in body
+    assert 'aria-label="Seções do dossiê"' in body
     assert 'id="texto-na-data"' in body
     assert 'id="alteracoes"' in body
     assert 'id="grafo"' in body
     assert 'id="fontes"' in body
+    assert "Dispositivos cobertos" in body
+    assert "Evidências rastreáveis" in body
     assert "Não há texto histórico reconstruível com segurança para esta data." in body
     assert norma.texto_consolidado not in body
+
+
+@pytest.mark.django_db
+@override_settings(NORMATIVE_HISTORY_ENABLED=True, NORMATIVE_GRAPH_ENABLED=True)
+def test_two_normas_use_the_same_generic_casefile_route_and_schema(norma):
+    second_norma = Norma.objects.create(
+        tipo="Lei Complementar",
+        numero="456",
+        ano=2025,
+        status="consolidated",
+        ementa="Outra norma de teste",
+        texto_original="Art. 1º Outro texto.",
+        texto_consolidado="Lei Complementar nº 456/2025\nArt. 1º Outro texto.",
+    )
+    client = Client()
+    responses = [
+        client.get(
+            reverse("workspace:normative_casefile", args=[selected.pk]),
+            {"as_of": "2025-01-01"},
+        )
+        for selected in (norma, second_norma)
+    ]
+
+    assert [response.status_code for response in responses] == [200, 200]
+    bodies = [response.content.decode() for response in responses]
+    for body in bodies:
+        assert 'data-casefile-tabs' in body
+        assert 'aria-label="Seções do dossiê"' in body
+        assert 'id="texto-na-data"' in body
+        assert 'id="alteracoes"' in body
+        assert 'id="grafo"' in body
+        assert 'id="fontes"' in body
+    casefile_ids = [
+        re.search(r"Identificador do dossiê: <code>([a-f0-9]{64})</code>", body).group(1)
+        for body in bodies
+    ]
+    assert casefile_ids[0] != casefile_ids[1]
 
 
 @pytest.mark.django_db

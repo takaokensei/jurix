@@ -9,11 +9,12 @@ Provides RESTful API endpoints for:
 
 from django.urls import path
 
-from . import api_cancel, api_views, document_views, relations_api, temporal_api
+from . import api_cancel, api_health, api_views, document_views, relations_api, temporal_api
 
 app_name = "legislation_api"
 
 urlpatterns = [
+    path("health/instance/", api_health.health_instance_api, name="health_instance"),
     # Liveness/readiness probes.
     path(
         "health/live/",

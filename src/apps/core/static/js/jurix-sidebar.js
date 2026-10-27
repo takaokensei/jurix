@@ -13,7 +13,8 @@
     }
     function sessionUrl(session) {
         const base = `${document.body.dataset.chatbotUrl || '/assistente/'}${encodeURIComponent(session.slug || session.id)}/`;
-        return session.corpus === 'archive-qa' ? `${base}?corpus=archive-qa` : base;
+        return ['pilot', 'archive-qa'].includes(session.corpus)
+            ? `${base}?corpus=${session.corpus}` : base;
     }
 
     function announce(message, isError = false) {

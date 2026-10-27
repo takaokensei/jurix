@@ -204,3 +204,55 @@ def rank_archive_candidates_by_publication(archive_rows, catalog_records, type_l
         return ordering_date, item["act_year"], number_sort, item["public_id"]
 
     return sorted(ranked, key=sort_key, reverse=True)
+
+
+def rank_archive_candidates_for_qa_extraction(archive_rows, catalog_records, type_labels):
+    """Order every archive PDF for QA extraction without linking unresolved identities.
+
+    Unique filename-to-SAPL matches use SAPL publication date as a queue-priority
+    candidate. All other rows fall back to a uniquely parsed filename year/number,
+    then to stable public ID. The returned classification is operational metadata,
+    not a reviewed publication fact, identity assertion, or legal-effect relation.
+    """
+    strict_matches = {
+        item["public_id"]: item
+        for item in rank_archive_candidates_by_publication(
+            archive_rows, catalog_records, type_labels
+        )
+    }
+    prioritized = []
+    for row in archive_rows:
+        public_id = str(row["public_id"])
+        strict = strict_matches.get(public_id)
+        filename_key = archive_identity_candidate(str(row.get("filename") or ""))
+        if strict:
+            act_year = strict["act_year"]
+            act_number = strict["act_number"]
+            publication_date = strict["publication_date"]
+            basis = "sapl_publication_date_candidate" if publication_date else "sapl_year_number_fallback"
+        elif filename_key:
+            _type_key, act_number, act_year = filename_key
+            publication_date = None
+            basis = "filename_year_number_fallback"
+        else:
+            act_year = 0
+            act_number = ""
+            publication_date = None
+            basis = "unresolved_stable_public_id"
+
+        candidate_date = _parse_publication_date(publication_date)
+        ordering_date = candidate_date or (date(act_year, 1, 1) if act_year else date.min)
+        number_sort = (0, int(act_number)) if act_number.isdecimal() else (1, act_number.casefold())
+        prioritized.append({
+            **row,
+            "publication_date_candidate": publication_date,
+            "act_year_candidate": act_year or None,
+            "act_number_candidate": act_number or None,
+            "priority_basis": basis,
+            "_sort_key": (ordering_date, act_year, number_sort, public_id),
+        })
+
+    prioritized.sort(key=lambda item: item["_sort_key"], reverse=True)
+    for item in prioritized:
+        item.pop("_sort_key", None)
+    return prioritized

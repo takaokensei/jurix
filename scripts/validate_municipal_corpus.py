@@ -319,8 +319,16 @@ def _validate_v2_corpus(
         official_url = document.get("official_url")
         if official_url is not None:
             parsed = urlparse(official_url if isinstance(official_url, str) else "")
-            if parsed.scheme != "https" or parsed.hostname != "sapl.natal.rn.leg.br":
-                errors.append(f"{prefix}: URL oficial não é um endereço HTTPS do SAPL Natal")
+            official_hosts = {
+                "sapl.natal.rn.leg.br", "natal.rn.gov.br", "www.natal.rn.gov.br",
+                "www2.natal.rn.gov.br", "ppa.natal.rn.gov.br", "prafrente.natal.rn.gov.br",
+            }
+            if (
+                parsed.scheme != "https" or parsed.hostname not in official_hosts
+                or parsed.username is not None or parsed.password is not None
+                or parsed.netloc not in official_hosts
+            ):
+                errors.append(f"{prefix}: URL oficial não é um endereço HTTPS oficial de Natal")
         if source_kind == "sapl" and official_url is None:
             errors.append(f"{prefix}: documento SAPL requer URL oficial confirmada")
         if source_kind == "sapl" and sapl_id is None:

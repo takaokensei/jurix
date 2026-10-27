@@ -213,6 +213,37 @@ def test_existing_8219_registry_conflicts_are_reported_without_mutation(monkeypa
     assert (norma.tipo, norma.pdf_url, norma.identity_key, norma.identity_json) == before
 
 
+def test_legacy_lp562_without_identity_key_can_only_receive_pending_source(monkeypatch):
+    identity = staging._validated_record(
+        _client(monkeypatch, _lp562_record()), 254
+    )[2]["identity"]
+    legacy = SimpleNamespace(
+        sapl_id=254,
+        identity_key=None,
+        tipo="Lei Promulgada",
+        numero="562",
+        ano=2018,
+        data_publicacao=staging._ALLOWED_RECORDS[254]["publication_date"],
+        pdf_url=staging._ALLOWED_RECORDS[254]["official_pdf"],
+        sapl_metadata={},
+        status=Norma.Status.PENDING,
+        documento_base_id=None,
+        texto_original="",
+        texto_consolidado="",
+    )
+
+    conflicts = staging._existing_norma_conflicts(
+        legacy,
+        identity=identity,
+        expected=staging._ALLOWED_RECORDS[254],
+        publication_date=staging._ALLOWED_RECORDS[254]["publication_date"],
+        pdf_url=staging._ALLOWED_RECORDS[254]["official_pdf"],
+    )
+
+    assert conflicts == []
+    assert legacy.identity_key is None
+
+
 def _client(monkeypatch, payload=None):
     client = SimpleNamespace(
         fetch_norma_by_id=lambda sapl_id: payload or _record(),

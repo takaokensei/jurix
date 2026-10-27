@@ -63,6 +63,16 @@ def health_live_api(request: HttpRequest) -> JsonResponse:
     return JsonResponse({"status": "alive"})
 
 
+@require_http_methods(["GET"])
+def health_instance_api(request: HttpRequest) -> JsonResponse:
+    """Identify the opt-in local pilot without revealing infrastructure details."""
+    if getattr(settings, "JURIX_BUILD_PROFILE", "") != "qa":
+        return JsonResponse({"error": "not_found"}, status=404)
+    from src.apps.core.build_identity import instance_identity
+
+    return JsonResponse(instance_identity())
+
+
 def _check_database() -> tuple[bool, str]:
     """Check database connectivity."""
     try:

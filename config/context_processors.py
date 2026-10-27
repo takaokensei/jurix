@@ -8,7 +8,14 @@ def google_fonts(_request):
 
 def archive_assistant(_request):
     """Expose whether the isolated, explicitly unreviewed archive assistant is enabled."""
+    from src.apps.legislation.pilot_catalog import operational_pilot
+
+    try:
+        enabled = operational_pilot() is not None
+    except (OSError, ValueError, KeyError, TypeError):
+        enabled = False
     return {
+        "operational_pilot_enabled": enabled,
         "archive_assistant_enabled": bool(
             getattr(settings, "NORMATIVE_ARCHIVE_ASSISTANT_ENABLED", False)
         )

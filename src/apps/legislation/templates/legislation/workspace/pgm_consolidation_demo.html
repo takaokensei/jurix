@@ -4,7 +4,7 @@
 {% block title %}LC 258/2024, Art. 260 · Jurix{% endblock %}
 {% block section_name %}Relações da LC 258/2024{% endblock %}
 {% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Grafo demonstrativo · QA' %}{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'css/jurix-pgm-demo.css' %}?v=20261018-anchor-clearance1">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/jurix-pgm-demo.css' %}?v=20261018-compact-evidence1">{% endblock %}
 {% block extra_js %}<script src="{% static 'js/jurix-pgm-demo.js' %}?v=20261018-case-disclosure2" defer></script>{% endblock %}
 
 {% block content %}
@@ -54,7 +54,7 @@
     <ol class="pgm-demo__timeline pgm-demo__timeline--dated-snapshots" aria-label="Evidências em ordem cronológica para o Art. 20 do Código Tributário Municipal">
       {% for item in ctm_art20_candidate_timeline.rows %}
       <li>
-        <span class="pgm-demo__target-index">{% if item.key == "amendment_2025" %}Ato modificador · extração pendente{% else %}Recorte consolidado · revisão pendente{% endif %}</span>
+        <span class="pgm-demo__target-index">{% if item.key == "amendment_2025" %}Ato modificador · revisão pendente{% else %}Recorte consolidado · revisão pendente{% endif %}</span>
         <h3>{{ item.label }}</h3>
         {% if item.relation_evidence %}
         <p><strong>Menção de alteração no ato-fonte ({{ item.relation_evidence.review_state }}):</strong> {{ item.relation_evidence.action_quote }} · {{ item.relation_evidence.target_text }}</p>
@@ -276,6 +276,19 @@
         <h3>{{ item.citation }}</h3>
         {% if item.state == "candidate" %}
           <span class="pgm-demo__target-state">PDF candidato correspondente</span>
+        {% elif item.state == "ambiguous" %}
+          <span class="pgm-demo__target-state">Identidade ambígua · nenhum PDF selecionado</span>
+        {% elif item.state == "identity_conflict" %}
+          <span class="pgm-demo__target-state">Conflito de espécie normativa</span>
+        {% elif item.sapl_registry.official_sources %}
+          <span class="pgm-demo__target-state">PDF não integrado ao lote QA · fonte oficial candidata disponível</span>
+        {% else %}
+          <span class="pgm-demo__target-state">PDF não localizado neste lote QA</span>
+        {% endif %}
+        <details class="pgm-demo__target-evidence">
+          <summary aria-label="Abrir detalhes da identificação e documentos de {{ item.citation }}">Ver evidências e documentos</summary>
+          <div class="pgm-demo__target-evidence-content">
+        {% if item.state == "candidate" %}
           <p>Identidade textual coincide por espécie, número e ano; o documento e sua edição seguem pendentes de revisão.</p>
           {% if item.pdf_url %}<a href="{{ item.pdf_url }}" target="_blank" rel="noopener noreferrer">Conferir PDF no acervo{% if item.page %}, p. {{ item.page }}{% endif %}</a>{% else %}<p>O documento candidato foi identificado, mas o PDF local não está disponível nesta sessão. Consulte a ficha oficial abaixo ou solicite acesso de revisão.</p>{% endif %}
           {% if item.review_url %}<a href="{{ item.review_url }}">Revisar identidade e extração no Jurix (área restrita)</a>{% endif %}
@@ -290,18 +303,17 @@
           </ul>
           {% if item.candidate_list_truncated %}<small>Lista limitada aos oito primeiros candidatos; existem outros documentos compatíveis.</small>{% endif %}
         {% elif item.state == "identity_conflict" %}
-          <span class="pgm-demo__target-state">Conflito de espécie normativa</span>
           <p>A lista cita <strong>{{ item.expected_type_display }}</strong>, mas o arquivo encontrado tem outra identidade candidata. Não associamos os atos automaticamente.</p>
           {% for conflict in item.conflicts %}{% if conflict.pdf_url %}<a href="{{ conflict.pdf_url }}" target="_blank" rel="noopener noreferrer">Inspecionar candidato identificado como {{ conflict.candidate_type }}</a>{% else %}<span>Candidato identificado como {{ conflict.candidate_type }} · PDF indisponível nesta sessão</span>{% endif %}<small>{{ conflict.document.original_filename }}</small>{% endfor %}
         {% else %}
           {% if item.sapl_registry.official_sources %}
-            <span class="pgm-demo__target-state">PDF não integrado ao lote QA · fonte oficial candidata disponível</span>
             <p>O Art. 260 cita este ato, mas ainda não há PDF local para cotejo. Expanda os detalhes do catálogo para abrir a fonte oficial candidata; ela não confirma, por si só, identidade ou efeito jurídico.</p>
           {% else %}
-            <span class="pgm-demo__target-state">PDF não localizado neste lote QA</span>
             <p>O Art. 260 cita este ato, mas não há documento local com identidade correspondente disponível para cotejo.</p>
           {% endif %}
         {% endif %}
+          </div>
+        </details>
         {% if item.sapl_registry.records %}
         <details class="pgm-demo__sapl-evidence">
           <summary aria-label="Abrir detalhes da consulta cadastral ao SAPL">
@@ -408,6 +420,12 @@
     <aside class="pgm-demo__notice" role="note">
       <strong>Resultado desta comparação: alteração expressa no texto-fonte; efeito e redação consolidada ainda pendentes.</strong>
       <p>Ambos os PDFs e suas extrações permanecem candidatos não aceitos no QA. O sistema não promoveu evento, não calculou vigência nem concluiu que esta é a única alteração posterior do Art. 14. Confirme a íntegra, publicação, vigência e eventuais atos posteriores antes de aplicar a redação a um processo.</p>
+      {% if lc208_document.metadata_json.association_status == "identity_conflict_unlinked" %}
+      <p><strong>A fonte oficial da LC 208 está exibida sem associação à Norma:</strong> o registro QA existente tem conflito de identidade. O PDF foi mantido como candidato independente; nenhuma chave, texto consolidado ou vínculo conflitante foi alterado. Confirme a identidade antes de usar a comparação.</p>
+      {% endif %}
+      {% if lc261_document.metadata_json.association_status == "identity_conflict_unlinked" %}
+      <p><strong>A fonte oficial da LC 261 está exibida sem associação à Norma:</strong> o registro QA existente tem conflito de identidade. O PDF e a extração permanecem candidatos independentes, sem aceitação ou consolidação. Confirme a identidade, a redação e os efeitos temporais antes de usar a comparação.</p>
+      {% endif %}
     </aside>
     {% else %}
     <p class="pgm-demo__notice" role="status">O confronto de redações não está disponível: uma das fontes candidatas ou o trecho correspondente não foi localizado. Nenhuma versão foi presumida.</p>

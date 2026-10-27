@@ -32,7 +32,7 @@ services:
     entrypoint: ["/usr/local/bin/jurix-runtime"]
     command: ["python", "manage.py", "runserver", "0.0.0.0:8000", "--noreload"]
     ports:
-      - "127.0.0.1:8287:8000"
+      - "127.0.0.1:${JURIX_QA_WEB_PORT:-8287}:8000"
     environment:
       JURIX_QA_ONLY: "1"
       JURIX_QA_ROOT: /app/data/normative-qa
@@ -45,6 +45,7 @@ services:
       DJANGO_SECRET_KEY: audit-only-local-secret-not-for-production
       JURIX_BUILD_VERSION: ${JURIX_BUILD_VERSION:-}
       JURIX_BUILD_REVISION: ${JURIX_BUILD_REVISION:-}
+      JURIX_BUILD_CONTENT_SHA256: ${JURIX_BUILD_CONTENT_SHA256:-}
       DEBUG: "True"
       USE_LOCMEM_CACHE: "False"
       CELERY_TASK_ALWAYS_EAGER: "False"
@@ -70,6 +71,9 @@ services:
     entrypoint: ["/usr/local/bin/jurix-runtime"]
     command: celery -A config worker -l warning --pool=solo --concurrency=1 --queues normative_qa,celery
     environment:
+      JURIX_BUILD_VERSION: ${JURIX_BUILD_VERSION:-}
+      JURIX_BUILD_REVISION: ${JURIX_BUILD_REVISION:-}
+      JURIX_BUILD_CONTENT_SHA256: ${JURIX_BUILD_CONTENT_SHA256:-}
       JURIX_QA_ONLY: "1"
       JURIX_QA_ROOT: /app/data/normative-qa
       DJANGO_SKIP_DOTENV: "1"

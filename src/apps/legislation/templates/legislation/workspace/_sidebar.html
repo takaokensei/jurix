@@ -24,6 +24,7 @@
             </div>
 
             <nav class="workspace-nav" aria-label="Menu principal">
+                {% if operational_pilot_enabled %}<a href="{% url 'workspace:pilot_casefile' %}" class="workspace-nav-item" title="Comparar redações e relações do corpus operacional"><svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 4h7v16H4zM14 4h6v16h-6M8 8h1M8 12h1M16 8h2M16 12h2"></path></svg><span>Consolidação experimental</span></a>{% endif %}
                 <a href="{% url 'workspace:assistant' %}" class="workspace-nav-item{% if active_nav == 'assistant' or sidebar_assistant %} is-active{% endif %}" aria-label="Assistente" title="Assistente">
                     <svg class="workspace-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span>Assistente</span>
                 </a>

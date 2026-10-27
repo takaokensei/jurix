@@ -1809,6 +1809,37 @@ test('official general legislation source opens Planalto from the evidence drawe
   } finally { w.close(); }
 });
 
+test('official vacatio counting rule is shown as methodological evidence, not a similarity score', () => {
+  const w = guestWindow();
+  try {
+    w.eval(read('jurix-rag.js'));
+    const source = {
+      citation_index: 1,
+      citation_id: 'official:lc95-art8-paragraph1',
+      citation_label: 'Lei Complementar nº 95/1998, Art. 8º, § 1º',
+      norma_ref: 'Lei Complementar nº 95/1998',
+      dispositivo_ref: 'Art. 8º, § 1º',
+      source_kind: 'official_general_legislation',
+      evidence_scope: 'official_vacatio_counting_rule',
+      source_type: 'Legislação federal oficial — critério de contagem de vacatio legis',
+      source_url: 'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp95.htm',
+      full_text: 'A contagem inclui a data da publicação e o último dia do prazo.',
+      similarity_score: 0,
+    };
+    const holder = w.document.createElement('div');
+    holder.innerHTML = w.JurixRagUI.renderEvidenceCard(source);
+
+    assert.ok(holder.querySelector('.jurix-rag-source--rule'));
+    assert.match(holder.querySelector('.source-score')?.textContent || '', /Critério legal de contagem/);
+    assert.match(holder.querySelector('.source-score')?.getAttribute('aria-label') || '', /não é uma pontuação de relevância/i);
+    assert.equal(holder.querySelector('.jurix-rag-score-meter'), null);
+    assert.doesNotMatch(holder.textContent || '', /Baixa correspondência|Pontuação técnica|Relevância/);
+    assert.equal(holder.querySelector('.jurix-rag-source__open')?.getAttribute('href'), source.source_url);
+  } finally {
+    w.close();
+  }
+});
+
 test('metadata-only SAPL norm record is linked without being presented as legal text', () => {
   const w = guestWindow();
   try {

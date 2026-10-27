@@ -160,6 +160,10 @@
 .relation-extraction-details dd { margin:4px 0 0; overflow-wrap:anywhere; }
 .relation-extraction-details dd small { display:block; margin-top:4px; color:var(--figma-text-muted); }
 .document-evidence-page { max-width: min(100%, 96ch); }
+.document-evidence-technical { margin:18px 0; padding:0 14px 14px; border:1px solid var(--figma-border); border-radius:12px; background:var(--figma-bg-sidebar); }
+.document-evidence-technical > summary { display:flex; min-height:48px; align-items:center; cursor:pointer; color:var(--figma-text-muted); font-weight:650; }
+.document-evidence-technical > summary:focus-visible { outline:3px solid var(--figma-accent); outline-offset:3px; border-radius:5px; }
+.document-evidence-technical[open] > summary { margin-bottom:6px; color:var(--figma-text-body); }
 .document-evidence-page .relation-extraction-details { grid-template-columns:repeat(2,minmax(0,1fr)); }
 .document-evidence-page .relation-extraction-details > div:nth-child(4) { grid-column:1 / -1; }
 .document-evidence-filename { margin-top:-6px; color:var(--figma-text-muted); overflow-wrap:anywhere; }

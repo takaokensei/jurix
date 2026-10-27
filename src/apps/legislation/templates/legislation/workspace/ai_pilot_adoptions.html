@@ -1,0 +1,88 @@
+{% extends 'legislation/workspace/base.html' %}
+{% load static %}
+
+{% block title %}Consolidações assistidas por IA · Jurix{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/jurix-ai-adoptions.css' %}?v=20261018-adoption1">{% endblock %}
+{% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Casos-piloto' %}{% endblock %}
+
+{% block content %}
+<div class="ai-adoptions-page">
+    <header class="workspace-page-header" aria-labelledby="ai-adoptions-title">
+        <div>
+            <span class="workspace-eyebrow">Pesquisa · base experimental</span>
+            <h1 id="ai-adoptions-title">Consolidações assistidas por IA</h1>
+            <p>Recortes documentais adotados pelo responsável do projeto para avançar o piloto, com fontes, limites e conflitos preservados.</p>
+        </div>
+        <a class="workspace-button workspace-button-secondary" href="{% url 'workspace:explore' %}">Explorar normas</a>
+    </header>
+
+    <aside class="ai-adoptions-notice" aria-label="Limites da adoção">
+        <strong>Escopo de piloto, não certificação jurídica.</strong>
+        <span>Os registros abaixo identificam adoção explícita de análise documental por IA. Isso não equivale a revisão humana independente, gold standard, completude histórica ou confirmação da vigência atual.</span>
+    </aside>
+
+    {% for case in cases %}
+    <article class="ai-adoption-case{% if case.conflict_case %} is-conflict{% endif %}" aria-labelledby="ai-case-{{ forloop.counter }}">
+        <header class="ai-adoption-case__header">
+            <div>
+                <span class="workspace-eyebrow">Caso {{ forloop.counter }} · revisão {{ case.revision }}</span>
+                <h2 id="ai-case-{{ forloop.counter }}">{{ case.label }}</h2>
+                {% if case.norma %}<p>{{ case.norma.get_tipo_display_name }} nº {{ case.norma.numero }}/{{ case.norma.ano }}</p>{% endif %}
+            </div>
+            <span class="ai-adoption-status">{% if case.conflict_case %}Conflito preservado{% else %}Adotado para piloto{% endif %}</span>
+        </header>
+
+        <p class="ai-adoption-meta">Adoção do projeto em {{ case.adopted_on|date:"d/m/Y" }} · {{ case.events|length }} relações documentais no escopo</p>
+
+        <ol class="ai-adoption-graph" aria-label="Relações documentais deste caso">
+            {% for event in case.events %}
+            <li class="ai-adoption-edge">
+                <div class="ai-adoption-node ai-adoption-node--source">
+                    <span>Dispositivo citado</span>
+                    <strong>{{ event.source_label }}</strong>
+                    {% if event.article %}<small>Art. {{ event.article }}</small>{% endif %}
+                    <div class="ai-adoption-links">
+                        {% if event.local_href %}<a href="{{ event.local_href }}" target="_blank" rel="noopener">Abrir PDF local</a>{% endif %}
+                        {% if event.source_href %}<a href="{{ event.source_href }}" target="_blank" rel="noopener">Fonte oficial</a>{% endif %}
+                    </div>
+                </div>
+                <div class="ai-adoption-arrow" aria-label="Ação {{ event.action }}">
+                    <span>{{ event.action }}</span><span aria-hidden="true">→</span>
+                </div>
+                <div class="ai-adoption-node ai-adoption-node--target">
+                    <span>Alvo documental</span>
+                    <strong>{{ event.target }}</strong>
+                    <small>{{ event.resolution|default:"Resolução não informada" }}</small>
+                </div>
+                <details class="ai-adoption-evidence">
+                    <summary>Ver trecho, análise e localização</summary>
+                    <blockquote>{{ event.quote }}</blockquote>
+                    {% if event.assessment %}<p>{{ event.assessment }}</p>{% endif %}
+                    {% if event.pages %}<p>Página(s) indicadas no recorte: {{ event.pages|join:", " }}</p>{% endif %}
+                    {% if event.pdf_sha256 %}<p class="ai-adoption-hash">SHA-256 do PDF: {{ event.pdf_sha256 }}</p>{% endif %}
+                </details>
+            </li>
+            {% empty %}
+            <li>Nenhum vínculo documental neste escopo.</li>
+            {% endfor %}
+        </ol>
+
+        <details class="ai-adoption-limitations">
+            <summary>Limites e pendências deste caso</summary>
+            <ul>{% for limitation in case.limitations %}<li>{{ limitation }}</li>{% endfor %}</ul>
+        </details>
+
+        <details class="ai-adoption-provenance">
+            <summary>Proveniência da adoção</summary>
+            <dl>
+                <dt>Tipo</dt><dd>Revisão documental assistida por IA, adotada para o piloto</dd>
+                <dt>SHA-256 da minuta</dt><dd>{{ case.review_draft_sha256 }}</dd>
+                <dt>SHA-256 do relatório</dt><dd>{{ case.report_sha256 }}</dd>
+            </dl>
+        </details>
+    </article>
+    {% empty %}
+    <div class="workspace-empty-state"><strong>Nenhum caso-piloto adotado neste ambiente.</strong><p>As adoções aparecem aqui quando carregadas no banco de QA.</p></div>
+    {% endfor %}
+</div>
+{% endblock %}

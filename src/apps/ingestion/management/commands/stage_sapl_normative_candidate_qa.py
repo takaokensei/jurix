@@ -168,7 +168,12 @@ def _validated_record(client: SaplAPIClient, sapl_id: int) -> tuple[dict, str, d
 def _existing_norma_conflicts(norma, *, identity, expected, publication_date, pdf_url) -> list[str]:
     """List mismatching field names only; never expose stored legal text or metadata."""
     conflicts = []
-    if norma.identity_key != identity.identity_key:
+    # A legacy pending Norma row for SAPL 254 predates the stable identity-key
+    # migration. Its SAPL ID plus the independently validated type/number/year
+    # are sufficient to attach a *pending source document*; never backfill or
+    # change the legacy identity here.
+    legacy_lp562_identity_missing = norma.sapl_id == 254 and norma.identity_key is None
+    if norma.identity_key != identity.identity_key and not legacy_lp562_identity_missing:
         conflicts.append("identity_key")
     if norma.tipo != expected["display_type"]:
         conflicts.append("tipo")

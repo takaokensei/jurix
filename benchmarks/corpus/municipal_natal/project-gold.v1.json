@@ -1,0 +1,46 @@
+{
+  "schema_version": "jurix-project-gold-v1",
+  "gold_id": "jurix-pgm-gold-v1",
+  "title": "Gold Standard Jurix v1 — adjudicação por IA",
+  "status": "adopted",
+  "adoption_date": "2026-10-18",
+  "authorization": {
+    "source": "project_owner_instruction_in_this_conversation",
+    "instruction": "Eu quero consolidar como um gold standard.",
+    "scope": "Adotar o conjunto congelado de 20 normas como gabarito oficial interno do projeto."
+  },
+  "adjudication": {
+    "review_kind": "ai",
+    "independent_review": false,
+    "human_approved": false
+  },
+  "reference": {
+    "path": "ai-adjudicated-20261018-v1/reference",
+    "hash_index_sha256": "513d9a2dfe141d88786a7ed5e6510f30b3e12f6ecb546cd94b13aa71dbc97735",
+    "package_index_sha256": "868a2e28ef75e1548e5735b2783b85a62ff8722de4c66a2234084740d7535460"
+  },
+  "expected_counts": {
+    "distinct_norms": 20,
+    "adjudications_ai": 20,
+    "spans": 41,
+    "events": 13,
+    "queries": 28,
+    "relation_families": ["ctm", "ppa", "urbanismo"]
+  },
+  "coverage": {
+    "devices": "selected_excerpts",
+    "events_exhaustive": false,
+    "complete_current_validity": false,
+    "prior_development_exposure": true
+  },
+  "evaluation_policy": {
+    "label": "Avaliação contra o Gold Standard Jurix v1, adjudicado por IA",
+    "project_evaluation_authorized": true,
+    "scientific_human_gold_ready": false,
+    "keep_unresolved_and_abstention_cases": true,
+    "keep_chain_splits": true,
+    "predictions_must_be_separate": true,
+    "unannotated_events_are_not_automatically_false_positives": true,
+    "successor": "Qualquer correção de rótulo ou mudança de amostra gera nova versão com motivo e hashes; nunca ajustar o gabarito às predições."
+  }
+}

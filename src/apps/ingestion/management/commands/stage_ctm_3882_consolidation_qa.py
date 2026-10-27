@@ -30,8 +30,8 @@ EDITIONS = {
     "lei3882-1989-consolidado-exercicio-2022.pdf": {
         "source_url": "https://www.natal.rn.gov.br/sefin/legislacao/lei/LEI3882-1989_2022.pdf",
         "value_year": 2022,
-        "amendment_marker": "Lei Complementar nº 217/2022",
-        "amendment_pattern": r"lei complementar n.{0,2}\s*217/2022\b",
+        "amendment_marker": "Lei Complementar nº 217, publicada no DOM de 02/09/2022",
+        "amendment_pattern": r"lei complementar n.{0,2}\s*217\b.{0,80}dom.{0,20}02/09/2022",
         "temporal_limit": "Não declara atualização posterior ao exercício de 2022",
     },
     "lei3882-1989-consolidado-exercicio-2024.pdf": {

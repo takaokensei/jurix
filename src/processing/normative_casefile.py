@@ -288,6 +288,19 @@ def build_normative_casefile(
         graph=graph,
         evidence_package=evidence_package,
     )
+    # Bind each outward-facing representation to the same immutable dossier
+    # identifier. The digest is computed before this annotation to avoid a
+    # recursive hash; the source graph and evidence content remain digest inputs.
+    if graph is not None:
+        for edge in graph.get("edges", []):
+            if isinstance(edge, dict):
+                edge["casefile_id"] = casefile_digest
+    for source in evidence_package.get("sources", []):
+        if not isinstance(source, dict):
+            continue
+        relation = source.get("graph_relation")
+        if isinstance(relation, dict):
+            relation["casefile_id"] = casefile_digest
     return {
         "casefile_id": casefile_digest,
         "casefile_schema_version": "jurix-normative-casefile-v2",

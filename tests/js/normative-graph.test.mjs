@@ -36,6 +36,19 @@ const fixture = {
 };
 const settle = () => new Promise((resolve) => setTimeout(resolve, 10));
 
+test('a própria aresta SVG abre a mesma evidência da lista', async () => {
+  const dom = await boot();
+  open(dom);
+  await settle();
+  const line = dom.window.document.querySelector('line.normative-relations__edge');
+  line.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+  const panel = dom.window.document.querySelector('[data-relations-panel]');
+  assert.equal(panel.hidden, false);
+  assert.match(panel.textContent, /trecho de evidência/);
+  assert.equal(panel.querySelector('script'), null);
+  dom.window.close();
+});
+
 async function boot(fetchImpl = async () => ({ ok: true, json: async () => fixture })) {
   const dom = new JSDOM(html, { url: 'http://jurix.test/normas/42/', runScripts: 'outside-only' });
   dom.window.matchMedia = () => ({ matches: true });

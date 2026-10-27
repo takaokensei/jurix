@@ -401,6 +401,7 @@ def test_explicit_reference_match_kind_survives_model_source_serialization():
         sapl_id=4,
         data_publicacao=date(2026, 1, 1),
         data_vigencia=None,
+        documento_base=SimpleNamespace(content_sha256="A" * 64, metadata_json={}),
         get_tipo_display_name=lambda: "Lei",
     )
     dispositivo = SimpleNamespace(
@@ -416,6 +417,7 @@ def test_explicit_reference_match_kind_survives_model_source_serialization():
 
     assert result["match_kind"] == "explicit_reference"
     assert result["dispositivo_id"] == 9
+    assert result["document_sha256"] == "a" * 64
 
 
 def test_synthetic_qa_document_is_explicitly_marked_in_citation_dto():

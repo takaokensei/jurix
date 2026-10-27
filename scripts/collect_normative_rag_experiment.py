@@ -18,6 +18,7 @@ from urllib.request import urlopen
 
 ARMS = ("baseline", "graph", "graph_temporal")
 MAX_CASES = 12
+MAX_PROJECT_GOLD_CASES = 28
 TOKEN_BUDGET = 2048
 _CITATION_MARKER = re.compile(r"\[\[(\d{1,3})\]\]")
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -25,9 +26,14 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-def validate_cases(rows: list[dict], *, max_cases: int = MAX_CASES) -> list[dict]:
-    if not rows or len(rows) > max_cases or len(rows) > MAX_CASES:
-        raise ValueError(f"case count must be between 1 and {min(max_cases, MAX_CASES)}")
+def validate_cases(
+    rows: list[dict], *, max_cases: int = MAX_CASES, reference_kind: str = "synthetic"
+) -> list[dict]:
+    limit = MAX_PROJECT_GOLD_CASES if reference_kind == "project_gold_ai" else MAX_CASES
+    if reference_kind not in {"synthetic", "project_gold_ai"}:
+        raise ValueError("unknown evaluation reference kind")
+    if not rows or len(rows) > max_cases or len(rows) > limit:
+        raise ValueError(f"case count must be between 1 and {min(max_cases, limit)}")
     seen = set()
     validated = []
     for index, row in enumerate(rows, 1):
@@ -43,8 +49,15 @@ def validate_cases(rows: list[dict], *, max_cases: int = MAX_CASES) -> list[dict
         review = row.get("human_review")
         if isinstance(review, dict) and review.get("review_kind") == "human":
             raise ValueError("technical collector refuses pre-adjudicated human gold")
-        if row.get("synthetic_qa_fixture") is not True:
+        if reference_kind == "synthetic" and row.get("synthetic_qa_fixture") is not True:
             raise ValueError("technical collector requires explicitly synthetic QA fixtures")
+        if reference_kind == "project_gold_ai" and (
+            row.get("review_kind") != "ai"
+            or row.get("human_evidence_review") is not False
+            or not isinstance(row.get("expected_unit_ids"), list)
+            or not row["expected_unit_ids"]
+        ):
+            raise ValueError("project gold cases must retain AI provenance and source-unit ids")
         relation_chain_keys = row.get("relation_chain_keys", [])
         if (
             not isinstance(relation_chain_keys, list)
@@ -62,6 +75,21 @@ def validate_cases(rows: list[dict], *, max_cases: int = MAX_CASES) -> list[dict
                 date.fromisoformat(as_of)
             except (TypeError, ValueError) as exc:
                 raise ValueError(f"case {row['case_id']}: as_of must be an ISO date") from exc
+        human_review = (
+            {
+                "review_kind": "synthetic",
+                "status": "pending",
+                "reviewer_id": None,
+                "reviewed_at": None,
+            }
+            if reference_kind == "synthetic"
+            else {
+                "review_kind": "ai_project_gold",
+                "status": "adopted_reference",
+                "reviewer_id": None,
+                "reviewed_at": None,
+            }
+        )
         validated.append({
             **row,
             "expected_source_ids": row.get("expected_source_ids", []),
@@ -72,20 +100,19 @@ def validate_cases(rows: list[dict], *, max_cases: int = MAX_CASES) -> list[dict
             "norma_key": row.get("norma_key"),
             "document_key": row.get("document_key"),
             "condition_of_use": row.get("condition_of_use", "unknown"),
-            "human_review": {
-                "review_kind": "synthetic",
-                "status": "pending",
-                "reviewer_id": None,
-                "reviewed_at": None,
-            },
+            "human_review": human_review,
             "human_evidence_review": False,
+            "evaluation_reference_kind": reference_kind,
         })
     return validated
 
 
-def _read_cases(path: Path, *, max_cases: int) -> list[dict]:
-    if not 1 <= max_cases <= MAX_CASES:
-        raise ValueError(f"max-cases must be between 1 and {MAX_CASES}")
+def _read_cases(
+    path: Path, *, max_cases: int, reference_kind: str = "synthetic"
+) -> list[dict]:
+    limit = MAX_PROJECT_GOLD_CASES if reference_kind == "project_gold_ai" else MAX_CASES
+    if not 1 <= max_cases <= limit:
+        raise ValueError(f"max-cases must be between 1 and {limit}")
     rows = []
     for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         if not line.strip():
@@ -96,7 +123,54 @@ def _read_cases(path: Path, *, max_cases: int) -> list[dict]:
             raise ValueError(f"{path.name}:{line_number}: invalid JSON") from exc
     if not rows:
         raise ValueError("case file is empty")
-    return validate_cases(rows[:max_cases], max_cases=max_cases)
+    return validate_cases(rows[:max_cases], max_cases=max_cases, reference_kind=reference_kind)
+
+
+def _read_project_gold_cases(gold_path: Path) -> tuple[list[dict], str, str]:
+    """Load frozen project-gold queries without fabricating human adjudication."""
+    from scripts.pgm_project_gold import validate_gold
+
+    validation = validate_gold(gold_path)
+    if not validation["valid"] or not validation["project_gold_ready"]:
+        raise ValueError("adopted project gold failed integrity validation")
+    gold = json.loads(gold_path.read_text(encoding="utf-8"))
+    queries_path = (
+        gold_path.parent / gold["reference"]["path"] / "queries.ai.jsonl"
+    ).resolve()
+    reference_root = (gold_path.parent / gold["reference"]["path"]).resolve()
+    if not queries_path.is_relative_to(reference_root) or not queries_path.is_file():
+        raise ValueError("adopted project gold query file is missing or escapes its reference")
+    rows = []
+    source_unit_map = {
+        str(origin["document_key"]).removeprefix("sha256:").lower(): str(origin["unit_id"])
+        for line in (reference_root / "source-origins.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+        for origin in [json.loads(line)]
+    }
+    source_unit_map.update({
+        str(evidence["document_key"]).removeprefix("sha256:").lower(): str(evidence["source_id"])
+        for line in (reference_root / "supporting-evidence.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+        for evidence in [json.loads(line)]
+        if evidence.get("document_key") and evidence.get("source_id")
+    })
+    for line_number, line in enumerate(queries_path.read_text(encoding="utf-8").splitlines(), 1):
+        if line.strip():
+            row = json.loads(line)
+            if row.get("review_kind") != "ai" or row.get("human_evidence_review") is not False:
+                raise ValueError(f"project gold query {line_number} has invalid adjudication provenance")
+            norma_keys = row.get("expected_norma_keys", [])
+            rows.append({
+                **row,
+                "norma_key": norma_keys[0] if len(norma_keys) == 1 else None,
+                "document_key": ",".join(row.get("expected_source_ids", [])) or None,
+                "condition_of_use": "unknown",
+                "gold_source_unit_map": source_unit_map,
+            })
+    expected = gold["expected_counts"]["queries"]
+    if len(rows) != expected:
+        raise ValueError("project gold query count differs from the adopted manifest")
+    return rows, gold["gold_id"], validation["adoption_sha256"]
 
 
 def _ensure_qa_runtime() -> tuple[object, str, str]:
@@ -245,6 +319,17 @@ def _source_ids_and_versions(raw_sources: list[dict]) -> tuple[list[str], list[d
     return ids, serialized
 
 
+def _gold_citation_id(source: dict, source_to_unit: dict[str, str]) -> str | None:
+    digest = str(source.get("document_sha256") or "").lower()
+    unit_id = source_to_unit.get(digest)
+    device = str(source.get("dispositivo_ref") or "")
+    article = re.search(r"\bart\.?\s*(\d+(?:\.\d+)*)", device, re.IGNORECASE)
+    if not unit_id or not article:
+        return None
+    number = article.group(1).rstrip(".")
+    return f"{unit_id}:art:{number}"
+
+
 def _retrieval_trace(raw_sources: list[dict]) -> dict:
     """Keep enough sanitized provenance to prove whether a graph arm added evidence."""
     strategies = sorted({
@@ -305,10 +390,36 @@ def _prediction_for_run(
         raise RuntimeError(f"case {case['case_id']} arm {arm}: stream ended without done")
 
     retrieved_ids, serialized_sources = _source_ids_and_versions(source_rows)
+    retrieved_source_records = [
+        {
+            "citation_id": source.get("citation_id"),
+            "document_sha256": source.get("document_sha256"),
+            "norma_ref": source.get("norma_ref"),
+            "dispositivo_ref": source.get("dispositivo_ref"),
+            "source_kind": source.get("source_kind"),
+            "source_type": source.get("source_type"),
+            "synthetic_fixture": source.get("synthetic_fixture") is True,
+        }
+        for source in serialized_sources
+    ]
+    if case.get("evaluation_reference_kind") == "project_gold_ai":
+        source_to_unit = case.get("gold_source_unit_map") or {
+            source_id.removeprefix("sha256:").lower(): case.get("expected_unit_ids", [])[index]
+            for index, source_id in enumerate(case.get("expected_source_ids", []))
+            if index < len(case.get("expected_unit_ids", []))
+        }
+        retrieved_ids = list(dict.fromkeys(
+            "sha256:" + str(source.get("document_sha256")).lower()
+            for source in serialized_sources
+            if re.fullmatch(r"[a-fA-F0-9]{64}", str(source.get("document_sha256") or ""))
+        ))
     retrieval_trace = _retrieval_trace(source_rows)
     answer = str(done.get("answer") or "")
     cited_positions = {int(match.group(1)) for match in _CITATION_MARKER.finditer(answer)}
     citation_ids = []
+    gold_citation_ids = []
+    cited_source_records = []
+    gold_versions = {}
     cited_versions = {}
     for position in sorted(cited_positions):
         if not 1 <= position <= len(serialized_sources):
@@ -319,6 +430,24 @@ def _prediction_for_run(
             continue
         citation_id = str(citation_id)
         citation_ids.append(citation_id)
+        cited_source_records.append({
+            "citation_id": citation_id,
+            "document_sha256": source.get("document_sha256"),
+            "norma_ref": source.get("norma_ref"),
+            "dispositivo_ref": source.get("dispositivo_ref"),
+            "source_kind": source.get("source_kind"),
+            "source_type": source.get("source_type"),
+            "synthetic_fixture": source.get("synthetic_fixture") is True,
+        })
+        if case.get("evaluation_reference_kind") == "project_gold_ai":
+            gold_citation_id = _gold_citation_id(source, source_to_unit)
+            if gold_citation_id:
+                gold_citation_ids.append(gold_citation_id)
+            digest = str(source.get("document_sha256") or "").lower()
+            temporal_version = source.get("temporal_version") or {}
+            version_hash = temporal_version.get("version_hash")
+            if digest and version_hash:
+                gold_versions["sha256:" + digest] = str(version_hash)
         version = source.get("temporal_version") or {}
         version_hash = version.get("version_hash")
         if version_hash:
@@ -341,17 +470,22 @@ def _prediction_for_run(
         "hardware": hardware,
         "cache_state": cache_state,
         "retrieved_source_ids": retrieved_ids,
+        "retrieved_source_records": retrieved_source_records,
         **retrieval_trace,
         "cited_citation_ids": list(dict.fromkeys(citation_ids)),
+        "cited_gold_citation_ids": list(dict.fromkeys(gold_citation_ids)),
+        "cited_source_records": cited_source_records,
         "expected_source_ids": case["expected_source_ids"],
         "expected_citation_ids": case["expected_citation_ids"],
         "expected_versions": case["expected_versions"],
         "cited_versions": cited_versions,
+        "cited_gold_versions": gold_versions,
         "expected_abstain": case["expected_abstain"],
         "abstained": (done.get("grounded") is False)
         or done.get("reason_code") == "insufficient_evidence",
         "human_evidence_review": False,
         "human_review": case["human_review"],
+        "evaluation_reference_kind": case.get("evaluation_reference_kind", "synthetic"),
         "norma_key": case.get("norma_key"),
         "document_key": case.get("document_key"),
         "relation_chain_keys": case["relation_chain_keys"],
@@ -370,7 +504,8 @@ def _prediction_for_run(
 
 
 def collect(cases: list[dict], *, output: Path, temperature: float, max_sources: int,
-            include_warm: bool = True) -> dict:
+            include_warm: bool = True, reference_kind: str = "synthetic",
+            project_gold_id: str | None = None, project_gold_sha256: str | None = None) -> dict:
     settings, model, qa_root_text = _ensure_qa_runtime()
     qa_root = Path(qa_root_text)
     output = output.resolve()
@@ -516,8 +651,15 @@ def collect(cases: list[dict], *, output: Path, temperature: float, max_sources:
     summary = {
         "status": "technical_smoke_only",
         "scientific_claim_allowed": False,
+        "dataset_origin": (
+            "adopted_ai_project_gold"
+            if reference_kind == "project_gold_ai"
+            else "synthetic_qa_fixtures_only"
+        ),
+        "evaluation_reference_kind": reference_kind,
+        "project_gold_id": project_gold_id,
+        "project_gold_adoption_sha256": project_gold_sha256,
         "human_gold_present": False,
-        "dataset_origin": "synthetic_qa_fixtures_only",
         "case_count": len(cases),
         "selected_case_ids": [case["case_id"] for case in cases],
         "cold_paired_groups": cold_groups,
@@ -546,9 +688,14 @@ def collect(cases: list[dict], *, output: Path, temperature: float, max_sources:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--cases", required=True, type=Path)
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument("--cases", type=Path)
+    input_group.add_argument(
+        "--project-gold", nargs="?", const="benchmarks/corpus/municipal_natal/project-gold.v1.json",
+        type=Path, help="Collect the adopted AI-adjudicated project gold (not human-scientific gold).",
+    )
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--max-cases", type=int, default=MAX_CASES)
+    parser.add_argument("--max-cases", type=int)
     parser.add_argument("--temperature", type=float, default=0.1)
     parser.add_argument("--max-sources", type=int, default=12)
     parser.add_argument("--no-warm-cache", action="store_true")
@@ -556,13 +703,29 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if not 0 <= args.temperature <= 1 or not 1 <= args.max_sources <= 48:
             raise ValueError("temperature or max-sources outside the supported QA range")
-        cases = _read_cases(args.cases, max_cases=args.max_cases)
+        project_gold_id = project_gold_sha256 = None
+        if args.project_gold:
+            cases_raw, project_gold_id, project_gold_sha256 = _read_project_gold_cases(
+                args.project_gold.resolve()
+            )
+            max_cases = args.max_cases or MAX_PROJECT_GOLD_CASES
+            cases = validate_cases(
+                cases_raw[:max_cases], max_cases=max_cases, reference_kind="project_gold_ai"
+            )
+            reference_kind = "project_gold_ai"
+        else:
+            max_cases = args.max_cases or MAX_CASES
+            cases = _read_cases(args.cases, max_cases=max_cases)
+            reference_kind = "synthetic"
         result = collect(
             cases,
             output=args.output,
             temperature=args.temperature,
             max_sources=args.max_sources,
             include_warm=not args.no_warm_cache,
+            reference_kind=reference_kind,
+            project_gold_id=project_gold_id,
+            project_gold_sha256=project_gold_sha256,
         )
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return 0

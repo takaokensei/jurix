@@ -1,0 +1,47 @@
+{
+  "created_at": "2026-10-18T23:38:22.635764+00:00",
+  "review_kind": "ai",
+  "same_session_recheck": true,
+  "independent_human_review": false,
+  "git_head": "1ac3ab753dacb779e5b7b5a0fe99beae74ed6ac3",
+  "git_branch": "main",
+  "source_and_protocol_sha256": {
+    "scripts/build_pgm_ai_adjudicated.py": "373f32a1e6808872395f966d5a4dfbccc77ff41c16a251344d702432a0910117",
+    "scripts/prepare_pgm_ai_adjudication.py": "a7c8fe15a8bb9b088943779380bb5255e69ab6bbc7ae704d0abedbd23c27a149",
+    "scripts/export_pgm_ai_review_sources_qa.py": "a22b85052d2487c144b4bcf8be52f5cee8cb8f87297c2e9aca8e6918e54e9b0d",
+    "scripts/validate_pgm_ai_adjudicated.py": "52f10f338c139a92404a13b327063548d997c8ff803abf7d479af19d1d63bf7d",
+    "scripts/validate_municipal_corpus.py": "b9d5f62e30f609e66f929e0910b2213080b77af38bbec82335e2aff352c3c449",
+    "docs/research/PGM_GOLD_ADJUDICATION.md": "9b4d7fa8de923f595fb21fa293af2bfdcdde2654e4145dde2e989de8ca812ddc",
+    "docs/research/AI_CONSOLIDATION_ACCEPTANCE_2026-10-18.md": "6f275223bf134cd10c08a8ea2ef908997d33aa438ecd9c93d5b38b08e95e0fab"
+  },
+  "curation_sha256": "f873ff64c53ee9d470cb16a30390c4f057b3fc1144720783ec48e6115c37a2b5",
+  "reference_hash_index_sha256": "513d9a2dfe141d88786a7ed5e6510f30b3e12f6ecb546cd94b13aa71dbc97735",
+  "validation": {
+    "valid": true,
+    "distinct_norms": 20,
+    "adjudications_ai": 20,
+    "spans": 41,
+    "events": 13,
+    "queries": 28,
+    "relation_families": [
+      "ctm",
+      "ppa",
+      "urbanismo"
+    ],
+    "pdfs_verified": 20,
+    "original_texts_verified": 20,
+    "scientific_human_gold_ready": false
+  },
+  "tests": {
+    "passed": 22,
+    "failed": 0,
+    "files": [
+      "src/tests/test_municipal_corpus_contract.py",
+      "src/tests/test_pgm_ai_reference.py"
+    ]
+  },
+  "original_pdf_distribution": false,
+  "db_operations": "public_source_reads_in_QA_only",
+  "source_artifacts_external_cache": "L:/temp/jurix-ai-adjudication-20261018-v1/",
+  "previous_review_external_cache": "L:/temp/jurix-document-review-20261018/"
+}

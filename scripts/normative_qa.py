@@ -23,6 +23,7 @@ CONTAINER_STORAGE_COMMANDS = {
     "extract_archive_candidates_batch_qa",
     "inspect_archive_extraction_coverage_qa",
     "resume_archive_ocr_qa",
+    "stage_lc55_original_candidate_qa",
 }
 HOST_STORAGE_SAPL_CANDIDATES = {
     # LC 258/2024 was staged by the host runner into JURIX_QA_ROOT. Keep its
@@ -41,6 +42,8 @@ HOST_STORAGE_QA_DOCUMENTS = {
     "cb810b42-ecea-4cbc-870a-b2581c30df6c",
     # Official municipal LP 275/2009 PDF staged in the host QA evidence volume.
     "c452bfe5-1138-4962-a3f2-c4cc9b662007",
+    # Official LP 275/2009 candidate staged from its previously hash-verified QA PDF.
+    "8dea863e-e736-452e-8ca6-288f6061d239",
 }
 
 
@@ -502,7 +505,7 @@ def _allowed_command(command: list[str]) -> list[str]:
                         for sapl_id in ("9406", "1160", "4052", "8823", "925", "254", "3666", "6817")
                     } | {
                         ("--sapl-id", sapl_id, "--inspect-existing")
-                        for sapl_id in ("9406", "4052", "1160")
+                        for sapl_id in ("9406", "4052", "1160", "254")
                     }
                     if tuple(command_args[1:]) not in allowed_staging:
                         raise ValueError(
@@ -531,7 +534,7 @@ def _allowed_command(command: list[str]) -> list[str]:
                         if item == "--extraction-id"
                     ]
                     if len(ids) != options.count("--extraction-id") or any(
-                        value not in {"7114", "7115", "7135", "7141", "7144", "7149", "7150", "7151"} for value in ids
+                        value not in {"1391", "6920", "7114", "7115", "7135", "7141", "7144", "7149", "7150", "7151"} for value in ids
                     ):
                         raise ValueError("LC chain relation extraction is restricted to exact QA IDs")
                     if len(set(ids)) != len(ids):
@@ -543,12 +546,14 @@ def _allowed_command(command: list[str]) -> list[str]:
                         ) or (
                             ids in (["7114"], ["7115"]) and source_article == "1"
                         ) or (
-                            ids in (["7149"], ["7150"], ["7151"])
+                                ids in (["7149"], ["7150"], ["7151"], ["6920"])
                             and source_article in {"1", "2", "3", "5"}
-                        ) or (ids == ["7141"] and source_article == "261")
+                        ) or (ids == ["7141"] and source_article == "261") or (
+                            ids == ["1391"] and source_article == "260"
+                        )
                         if not allowed_source_article:
                             raise ValueError(
-                                "source article extraction is restricted to LC 217/2022 Art. 1 or LC 261/2025 Art. 118"
+                                "source article extraction is restricted to the exact allowlisted QA act and article"
                             )
                 elif command_args[:1] == ["extract_sapl_normative_candidate_qa"]:
                     options = command_args[1:]
@@ -581,6 +586,9 @@ def _allowed_command(command: list[str]) -> list[str]:
                         raise ValueError("SAPL candidate extraction is restricted to the promulgated QA allowlist")
                     if not 1 <= max_pages <= 500 or not 0 <= max_ocr_pages <= 10 or not 1 <= ocr_timeout <= 30:
                         raise ValueError("SAPL candidate extraction exceeds its bounded QA limits")
+                elif command_args[:1] == ["extract_lc261_unlinked_candidate_qa"]:
+                    if command_args[1:]:
+                        raise ValueError("LC 261 unlinked extraction accepts no arguments")
                 elif command_args[:1] == ["resume_archive_ocr_qa"]:
                     options = command_args[1:]
                     allowed_flags = {
@@ -670,7 +678,8 @@ def _allowed_command(command: list[str]) -> list[str]:
                 elif command_args[:1] == ["extract_archive_candidates_batch_qa"]:
                     options = command_args[1:]
                     allowed_flags = {
-                        "--dry-run", "--apply", "--batch-size", "--resume", "--publication-order"
+                        "--dry-run", "--apply", "--batch-size", "--resume",
+                        "--publication-order", "--all-publication-order", "--new-snapshot",
                     }
                     if any(item.startswith("--") and item not in allowed_flags for item in options):
                         raise ValueError("archive batch extraction received an unsupported flag")
@@ -680,8 +689,14 @@ def _allowed_command(command: list[str]) -> list[str]:
                         options.count("--resume") > 1
                         or options.count("--batch-size") > 1
                         or options.count("--publication-order") > 1
+                        or options.count("--all-publication-order") > 1
+                        or options.count("--new-snapshot") > 1
                     ):
                         raise ValueError("archive batch extraction options must not be repeated")
+                    if {"--publication-order", "--all-publication-order"}.issubset(options):
+                        raise ValueError("archive batch extraction ordering modes are mutually exclusive")
+                    if "--new-snapshot" in options and "--all-publication-order" not in options:
+                        raise ValueError("archive batch extraction --new-snapshot requires --all-publication-order")
                     if "--resume" in options and not ({"--apply", "--dry-run"} & set(options)):
                         raise ValueError("archive batch extraction --resume requires --apply or --dry-run")
                     if "--batch-size" in options:
@@ -717,6 +732,21 @@ def _allowed_command(command: list[str]) -> list[str]:
                 elif command_args[:1] == ["inspect_ctm_article20_timeline_qa"]:
                     if command_args != ["inspect_ctm_article20_timeline_qa"]:
                         raise ValueError("CTM Art. 20 timeline inspection accepts no options")
+                elif command_args[:1] == ["inspect_pgm_demo_readiness_qa"]:
+                    if command_args != ["inspect_pgm_demo_readiness_qa"]:
+                        raise ValueError("PGM demo readiness inspection accepts no options")
+                elif command_args[:1] == ["adopt_ai_pilot_review_qa"]:
+                    expected_package = Path(
+                        r"L:\temp\jurix-document-review-20261018\package-v2"
+                    ).resolve()
+                    if command_args != [
+                        "adopt_ai_pilot_review_qa",
+                        "--package-root",
+                        str(expected_package),
+                    ]:
+                        raise ValueError(
+                            "AI pilot adoption import is restricted to the frozen, hash-pinned review package"
+                        )
                 elif command_args[:1] == ["restore_missing_archive_blobs_qa"]:
                     options = command_args[1:]
                     allowed_flags = {"--archive", "--manifest", "--limit", "--dry-run", "--apply"}
@@ -777,6 +807,16 @@ def _allowed_command(command: list[str]) -> list[str]:
                     allowed_root = (qa_root / "evidence" / "lc55-2004").resolve()
                     if not pdf_path.is_relative_to(allowed_root) or pdf_path.name != "lc55-codigo-obras-consolidado-julho-2019.pdf":
                         raise ValueError("LC 55 PDF must stay in its exact QA evidence directory")
+                elif command_args[:1] == ["stage_lc55_original_candidate_qa"]:
+                    expected_pdf = "/app/data/normative-qa/evidence/lc55-2004/lc55-original-2004.pdf"
+                    if command_args[1:] not in (["--pdf-path", expected_pdf], ["--pdf-path", expected_pdf, "--apply"]):
+                        raise ValueError("LC 55 original staging is restricted to its fixed QA evidence PDF")
+                elif command_args[:1] == ["stage_lc208_unlinked_sapl_candidate_qa"]:
+                    if command_args[1:] not in ([], ["--apply"]):
+                        raise ValueError("LC 208 unlinked staging accepts only optional --apply")
+                elif command_args[:1] == ["stage_lc261_unlinked_sapl_candidate_qa"]:
+                    if command_args[1:] not in ([], ["--apply"]):
+                        raise ValueError("LC 261 unlinked staging accepts only optional --apply")
                 elif command_args[:1] == ["stage_bvn_4566_1992_candidate_qa"]:
                     options = command_args[1:]
                     if "--pdf-path" not in options or options.count("--pdf-path") != 1:
@@ -954,6 +994,9 @@ def _allowed_command(command: list[str]) -> list[str]:
                     }
                     if generate and query not in live_generation_queries:
                         raise ValueError("live generation is restricted to the exact public PGM QA scenario")
+                elif command_args[:1] == ["build_pgm_pilot_qa"]:
+                    if command_args[1:] not in ([], ["--fetch-missing"]):
+                        raise ValueError("pilot build only accepts its fixed source selection in isolated QA")
                 elif command_args[:1] == ["reconcile_targets"]:
                     if command_args[1:] not in (
                         ["--dry-run", "--limit", "50000"],
@@ -988,7 +1031,7 @@ def _allowed_command(command: list[str]) -> list[str]:
             pass
         elif args[:1] == ["scripts/collect_normative_rag_experiment.py"]:
             allowed_flags = {
-                "--cases", "--output", "--max-cases", "--temperature", "--max-sources",
+                "--cases", "--project-gold", "--output", "--max-cases", "--temperature", "--max-sources",
                 "--no-warm-cache",
             }
             options = args[1:]
@@ -997,18 +1040,55 @@ def _allowed_command(command: list[str]) -> list[str]:
             elif any(item.startswith("--") and item not in allowed_flags for item in options):
                 raise ValueError("RAG experiment collector received an unsupported flag")
             else:
-                if "--cases" not in options or "--output" not in options:
-                    raise ValueError("RAG experiment collector requires explicit cases and output")
-                if options.index("--cases") + 1 >= len(options) or options.index("--output") + 1 >= len(options):
-                    raise ValueError("RAG experiment collector path option has no value")
-                cases_path = Path(options[options.index("--cases") + 1]).resolve()
+                has_cases = "--cases" in options
+                has_project_gold = "--project-gold" in options
+                if has_cases == has_project_gold or "--output" not in options:
+                    raise ValueError("RAG collector requires exactly one explicit reference and output")
+                reference_flag = "--cases" if has_cases else "--project-gold"
+                if options.index(reference_flag) + 1 >= len(options) or options.index("--output") + 1 >= len(options):
+                    raise ValueError("RAG experiment reference/output path option has no value")
+                reference_path = Path(options[options.index(reference_flag) + 1]).resolve()
                 output_path = Path(options[options.index("--output") + 1]).resolve()
                 cases_root = (ROOT / "benchmarks" / "corpus" / "municipal_natal").resolve()
                 qa_root = Path(os.environ["JURIX_QA_ROOT"]).resolve()
-                if not cases_path.is_relative_to(cases_root):
-                    raise ValueError("RAG experiment cases must be inside the municipal QA benchmark directory")
+                if not reference_path.is_relative_to(cases_root):
+                    raise ValueError("RAG experiment reference must be inside the municipal QA benchmark directory")
                 if not output_path.is_relative_to(qa_root) or output_path == qa_root:
                     raise ValueError("RAG experiment output must stay inside JURIX_QA_ROOT")
+        elif args[:1] == ["scripts/evaluate_pgm_project_gold_archive.py"]:
+            allowed_flags = {"--gold", "--limit", "--output"}
+            options = args[1:]
+            if any(item.startswith("--") and item not in allowed_flags for item in options):
+                raise ValueError("archive gold evaluation received an unsupported flag")
+            if options.count("--output") != 1 or options.count("--gold") > 1 or options.count("--limit") > 1:
+                raise ValueError("archive gold evaluation requires one output and accepts one gold/limit")
+            if "--gold" in options:
+                gold_index = options.index("--gold")
+                if gold_index + 1 >= len(options):
+                    raise ValueError("archive gold --gold requires a value")
+                gold_path = Path(options[gold_index + 1]).resolve()
+            else:
+                gold_path = (ROOT / "benchmarks/corpus/municipal_natal/project-gold.v1.json").resolve()
+            expected_gold = (ROOT / "benchmarks/corpus/municipal_natal/project-gold.v1.json").resolve()
+            if gold_path != expected_gold:
+                raise ValueError("archive gold evaluation accepts only the adopted project gold")
+            output_index = options.index("--output")
+            if output_index + 1 >= len(options):
+                raise ValueError("archive gold --output requires a value")
+            output_path = Path(options[output_index + 1]).resolve()
+            qa_root = Path(os.environ["JURIX_QA_ROOT"]).resolve()
+            if not output_path.is_relative_to(qa_root) or output_path == qa_root:
+                raise ValueError("archive gold report output must stay inside JURIX_QA_ROOT")
+            if "--limit" in options:
+                limit_index = options.index("--limit")
+                if limit_index + 1 >= len(options):
+                    raise ValueError("archive gold --limit requires a value")
+                try:
+                    limit = int(options[limit_index + 1])
+                except ValueError as exc:
+                    raise ValueError("archive gold limit must be an integer") from exc
+                if not 1 <= limit <= 48:
+                    raise ValueError("archive gold limit must be between 1 and 48")
         elif args[:1] == ["scripts/inventory_normative_archive.py"]:
             if len(args) != 5 or args[1] != "--archive" or args[3] != "--output":
                 raise ValueError("inventory command requires --archive and --output only")
@@ -1144,10 +1224,13 @@ def _container_storage_command(command: list[str]) -> list[str] | None:
     parts = command[1:] if command[:1] == ["--"] else command
     if (
         parts[:3] == ["python", "manage.py", "extract_archive_candidates_batch_qa"]
-        and "--publication-order" in parts
+        and (
+            "--publication-order" in parts
+            or "--all-publication-order" in parts
+        )
     ):
-        # This mode requires the host QA archive mirror and host-side SAPL
-        # crosswalk checkpoint; the standard UUID-order mode stays container-backed.
+        # These modes require the host QA archive mirror and host-side SAPL
+        # crosswalk checkpoint; standard UUID-order mode stays container-backed.
         return None
     if (
         len(parts) >= 3

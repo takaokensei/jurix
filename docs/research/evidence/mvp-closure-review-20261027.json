@@ -1,0 +1,113 @@
+{
+  "schema_version": "jurix-mvp-closure-plan-review-v1",
+  "observed_on": "2026-10-27",
+  "checkout": "L:/Jurix",
+  "review_kind": "code_and_plan_review_not_runtime_acceptance",
+  "original_plan": {
+    "path": "docs/research/JURIX_MVP_CLOSURE_PLAN_2026-10-27.md",
+    "sha256": "4179a6d0c7f64abfea4c2c0b5a84109bc715e420fd3016dfbdb9daa2abfebd38",
+    "unchanged": true
+  },
+  "reviewed_plan": {
+    "path": "docs/research/JURIX_MVP_CLOSURE_PLAN_2026-10-27.reviewed.md",
+    "sha256": "eb0d1973d1d9856ac4cc68bb847c589a458aab99f5ff0d9bda96d05b67a8b586",
+    "tasks": 12,
+    "gates": 12
+  },
+  "findings": [
+    "RV-01: 20 norms require 23 source PDFs; 21 expected by queries",
+    "RV-02: src/llm_engine/prompts.py does not exist; shared prompt lives in src/processing/rag_prompt.py",
+    "RV-03: arbitrary restore database rejected by current QA guards",
+    "RV-04: evaluator top-5 vs plan top-12 and excerpt/projection digest mismatch",
+    "RV-05: source recall insufficient to prove claim grounding",
+    "RV-06: original gate could pass without dated temporal example",
+    "RV-07: missing corpus activation/canonical hash/cache isolation contract",
+    "RV-08: missing explicit security, accessibility, failure and concurrency acceptance",
+    "RV-09: documentary fallback could mask unusable LLM generation"
+  ],
+  "counts": {
+    "norms": 20,
+    "primary_pdfs": 20,
+    "unique_all_pdfs": 23,
+    "query_required_pdfs": 21,
+    "negative_case_ids": 8
+  },
+  "verifications": [
+    {
+      "name": "scripts/pgm_project_gold.py",
+      "executed": true,
+      "exit_code": 0,
+      "valid": true,
+      "verified_package_files": 37,
+      "spans": 41,
+      "events": 13,
+      "queries": 28,
+      "pdfs_verified_this_run": 0,
+      "original_texts_verified_this_run": 0,
+      "independent_review": false
+    },
+    {
+      "name": "scripts/validate_documentation_contract.py",
+      "executed": true,
+      "exit_code": 0
+    },
+    {
+      "name": "git diff --check",
+      "executed": true,
+      "exit_code": 0,
+      "note": "Preexisting CRLF warning in docs/audit/2026-10-02/http-events.jsonl"
+    },
+    {
+      "name": "revised_plan_structure_and_known_contradictions",
+      "executed": true,
+      "result": "pass",
+      "tasks": 12,
+      "gates": 12,
+      "fences": 6
+    }
+  ],
+  "preservation": {
+    "preexisting_tracked_files_hashed": 51,
+    "changed_preexisting_tracked_files": [],
+    "original_plan_unchanged": true,
+    "gold_unchanged": true,
+    "application_code_edited": false,
+    "database_mutations": false,
+    "git_history_mutations": false
+  },
+  "runtime": {
+    "web_8294_listener": false,
+    "qa_db_55432_listener": false,
+    "qa_redis_16380_listener": false,
+    "ollama_11434_listener": true,
+    "application_suites_run": false,
+    "browser_run": false,
+    "inference_run": false,
+    "restore_run": false,
+    "limitation": "This turn checks a plan, not product acceptance. QA services were not started."
+  },
+  "references": [
+    {
+      "url": "https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/",
+      "verified": true
+    },
+    {
+      "url": "https://docs.djangoproject.com/en/5.2/topics/db/transactions/",
+      "verified": true
+    },
+    {
+      "url": "https://www.w3.org/TR/WCAG22/",
+      "verified": true
+    },
+    {
+      "url": "https://genai.owasp.org/llmrisk/llm01-prompt-injection/",
+      "verified": true
+    },
+    {
+      "url": "https://developer.apple.com/design/human-interface-guidelines/accessibility",
+      "verified": true,
+      "method": "official accessibility.md fetched through PowerShell after browser extractor content-type limitation"
+    }
+  ],
+  "conclusion": "Revised plan is suitable for a bounded high-quality local research MVP, conditional on executed gates. No prospective 9/10, institutional/legal certification, or independent scientific validation claimed."
+}

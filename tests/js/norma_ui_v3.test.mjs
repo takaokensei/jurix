@@ -279,9 +279,9 @@ test('changed assistant and workspace visual assets use cache-busted URLs', asyn
   assert.match(chat, /css\/jurix-rag\.css['"] %\}\?v=/);
   assert.match(chat, /js\/jurix-rag\.js['"] %\}\?v=/);
   assert.match(chat, /js\/jurix-chat-renderer\.js['"] %\}\?v=/);
-  assert.match(chat, /js\/jurix-rag\.js['"] %\}\?v=20261016-reference-destination-label3/);
+  assert.match(chat, /js\/jurix-rag\.js['"] %\}\?v=20261018-rule-source-evidence1/);
   assert.match(chat, /js\/chat\.js['"] %\}\?v=/);
-  assert.match(chat, /js\/chat\.js['"] %\}\?v=20261016-dom-unreviewed-restore2/);
+  assert.match(chat, /js\/chat\.js['"] %\}\?v=20261018-corpus-fallback-autosearch1/);
   assert.match(workspace, /css\/jurix-figma\.css['"] %\}\?v=/);
 });
 

@@ -44,7 +44,8 @@
 
   function sourcesForAnswer(content, sources, grounded = false) {
     const rows = Array.isArray(sources) ? sources : [];
-    if (grounded) return rows.slice(0, 20);
+    const limit = rows.some(source => source?.evidence_scope === 'ai_pilot') ? 999 : 20;
+    if (grounded) return rows.slice(0, limit);
     const indexes = new Set([...String(content || '').matchAll(/\[\[(\d{1,3})\]\]/g)]
       .map(match => Number(match[1])).filter(index => index > 0));
     if (!indexes.size) return [];
@@ -56,7 +57,7 @@
       return citationIndex && indexes.has(citationIndex)
         ? [{ ...source, citation_index: citationIndex }]
         : [];
-    }).slice(0, 20);
+    }).slice(0, limit);
   }
 
   function pickFields(value, fields) {
@@ -66,7 +67,28 @@
       .map(key => [key, value[key]]));
   }
 
+  function pilotMetadata(metadata) {
+    if (!/^[a-f0-9]{64}$/.test(metadata?.pilot?.corpus_revision || '')) return null;
+    return {
+      pilot: pickFields(metadata.pilot, ['corpus_revision', 'casefile_id', 'casefile_ids', 'casefile_links', 'context_question', 'norma_keys', 'generation_mode', 'llm_succeeded', 'fallback_reason']),
+      corpus_revision: pickFields(metadata.corpus_revision, ['digest', 'revision', 'completeness']),
+      response_state: ['completed', 'interrupted', 'cancelled'].includes(metadata.response_state)
+        ? metadata.response_state : 'completed',
+    };
+  }
+
+  function retainedSources(message) {
+    // Retrieved evidence remains inspectable after a dropped stream. This
+    // records document availability, never a successfully grounded answer.
+    if (pilotMetadata(message.metadata)?.response_state === 'interrupted'
+        || pilotMetadata(message.metadata)?.response_state === 'cancelled') {
+      return (Array.isArray(message.sources) ? message.sources : []).slice(0, 999);
+    }
+    return sourcesForAnswer(message.content, message.sources, message.grounded === true);
+  }
+
   function isArchiveQaSession(session) {
+    if (session?.corpus === 'pilot') return false;
     if (session?.corpus === 'archive-qa') return true;
     return (session?.messages || []).some(message => {
       if (message?.role !== 'assistant') return false;
@@ -178,7 +200,8 @@
         content: String(message.content || '').slice(0, 30_000),
         created_at: message.created_at || now(),
         grounded: message.grounded === true,
-        sources: sourcesForAnswer(message.content, message.sources, message.grounded === true),
+        sources: retainedSources(message),
+        ...(pilotMetadata(message.metadata) ? { metadata: pilotMetadata(message.metadata) } : {}),
       }));
     });
     return state;
@@ -212,7 +235,7 @@
     const state = read();
     const requestedId = id === null || id === undefined ? '' : String(id);
     const sessionId = requestedId && !/^\d{1,19}$/.test(requestedId) ? requestedId : newId();
-    const corpus = metadata?.corpus === 'archive-qa' ? 'archive-qa' : null;
+    const corpus = ['archive-qa', 'pilot'].includes(metadata?.corpus) ? metadata.corpus : null;
     let session = findSession(state, id) || findSession(state, sessionId);
     if (!session) {
       session = {
@@ -228,6 +251,10 @@
       session.title = String(title).slice(0, 120);
     }
     if (corpus) session.corpus = corpus;
+    if (corpus === 'pilot') {
+      if (/^[a-f0-9]{64}$/.test(metadata?.corpus_revision || '')) session.corpus_revision = metadata.corpus_revision;
+      if (typeof metadata?.pilot_context === 'string') session.pilot_context = metadata.pilot_context.slice(0, 2000);
+    }
     session.updated_at = now();
     write(state);
     return session.id;
@@ -245,7 +272,10 @@
       content: String(content || ''),
       created_at: now(),
       grounded: false,
-      sources: Array.isArray(sources) ? sources.slice(0, 20) : [],
+      sources: Array.isArray(sources) ? sources.slice(0, session.corpus === 'pilot' ? 999 : 20) : [],
+      ...(session.corpus === 'pilot' && session.corpus_revision ? {
+        metadata: { pilot: { corpus_revision: session.corpus_revision }, response_state: 'completed' },
+      } : {}),
     });
     if (role === 'user' && session.title === 'Nova pesquisa') {
       session.title = String(content || 'Nova pesquisa').slice(0, 120);
@@ -254,7 +284,7 @@
     write(state);
   }
 
-  function updateLastAssistant(sessionId, content, sources, grounded = false) {
+  function updateLastAssistant(sessionId, content, sources, grounded = false, metadata = null) {
     const state = read();
     const session = findSession(state, sessionId);
     if (!session) return;
@@ -272,6 +302,17 @@
         grounded: grounded === true,
         sources: sourcesForAnswer(content, sources, grounded === true),
       });
+    }
+    if (metadata?.pilot && /^[a-f0-9]{64}$/.test(metadata.pilot.corpus_revision || '')) {
+      const message = messages[messages.length - 1];
+      message.metadata = pilotMetadata(metadata);
+      if (['interrupted', 'cancelled'].includes(message.metadata.response_state)) {
+        message.grounded = false;
+        message.sources = Array.isArray(sources) ? sources.slice(0, 999) : [];
+      }
+      session.corpus = 'pilot';
+      session.corpus_revision = metadata.pilot.corpus_revision;
+      session.pilot_context = String(metadata.pilot.context_question || '').slice(0, 2000);
     }
     session.updated_at = now();
     write(state);
@@ -295,7 +336,7 @@
       id: session.id,
       slug: session.id,
       title: session.title,
-      corpus: isArchiveQaSession(session) ? 'archive-qa' : null,
+      corpus: session.corpus === 'pilot' ? 'pilot' : isArchiveQaSession(session) ? 'archive-qa' : null,
       is_pinned: session.is_pinned === true,
       created_at: session.created_at,
       updated_at: session.updated_at,
@@ -363,6 +404,7 @@
       'data_vigencia', 'citation_id', 'citation_index', 'citation_label',
       'retrieval_strategy', 'evidence_scope', 'coverage', 'dispositivo_structural_key',
       'synthetic_fixture',
+      'document_sha256', 'text_sha256', 'span', 'basis', 'casefile_id', 'corpus_revision', 'norma_key',
       'temporal_version', 'graph_relation',
     ];
     const state = prune(read());
@@ -372,7 +414,10 @@
       sessions: state.sessions.map(session => ({
         id: String(session.id),
         title: String(session.title || 'Nova pesquisa').slice(0, 120),
-        ...(isArchiveQaSession(session) ? { corpus: 'archive-qa' } : {}),
+        ...(session.corpus === 'pilot' ? {
+          corpus: 'pilot', corpus_revision: session.corpus_revision,
+          pilot_context: session.pilot_context,
+        } : isArchiveQaSession(session) ? { corpus: 'archive-qa' } : {}),
         created_at: session.created_at,
         updated_at: session.updated_at,
         messages: session.messages.map(message => ({
@@ -380,8 +425,9 @@
           content: String(message.content || ''),
           created_at: message.created_at,
           grounded: message.role === 'assistant' && message.grounded === true,
+          ...(pilotMetadata(message.metadata) ? { metadata: pilotMetadata(message.metadata) } : {}),
           sources: message.role === 'assistant'
-            ? sourcesForAnswer(message.content, message.sources, message.grounded === true).map(source =>
+            ? retainedSources(message).map(source =>
               exportSource(source, allowedSourceFields))
             : [],
         })),

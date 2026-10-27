@@ -82,6 +82,10 @@ def chat_sessions_api(request: HttpRequest) -> JsonResponse:
                     message_count=Count("messages"),
                     latest_user_content=Subquery(latest_user_message),
                     jurix_archive_corpus=Exists(archive_scope_message),
+                    jurix_pilot_corpus=Exists(ChatMessage.objects.filter(session=OuterRef("pk")).filter(
+                        Q(role="assistant", metadata_json__filters__corpus="ai-pilot")
+                        | Q(role="user", metadata_json__corpus="ai-pilot")
+                    )),
                 )
                 .order_by("-is_pinned", "-updated_at", "-id")[: _parse_limit(request.GET.get("limit"))]
             )

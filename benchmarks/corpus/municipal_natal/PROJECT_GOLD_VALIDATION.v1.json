@@ -1,0 +1,38 @@
+{
+  "schema_version": "jurix-project-gold-validation-v1",
+  "validated_at": "2026-10-19T00:21:37.303430+00:00",
+  "valid": true,
+  "project_gold_ready": true,
+  "scientific_human_gold_ready": false,
+  "human_adjudications": 0,
+  "errors": [],
+  "gold_id": "jurix-pgm-gold-v1",
+  "title": "Gold Standard Jurix v1 — adjudicação por IA",
+  "evidence_status": "Avaliação contra o Gold Standard Jurix v1, adjudicado por IA",
+  "review_kind": "ai",
+  "independent_review": false,
+  "adoption_sha256": "3e67c4d68dcffe76bf73077224861499296c6bf59c591436d2c6429b1139c14b",
+  "reference_hash_index_sha256": "513d9a2dfe141d88786a7ed5e6510f30b3e12f6ecb546cd94b13aa71dbc97735",
+  "package_hash_index_sha256": "868a2e28ef75e1548e5735b2783b85a62ff8722de4c66a2234084740d7535460",
+  "package_files_verified": 37,
+  "counts": {
+    "distinct_norms": 20,
+    "adjudications_ai": 20,
+    "spans": 41,
+    "events": 13,
+    "queries": 28,
+    "relation_families": [
+      "ctm",
+      "ppa",
+      "urbanismo"
+    ]
+  },
+  "pdfs_verified_this_run": 20,
+  "original_texts_verified_this_run": 20,
+  "reference_limits": [
+    "AI session, no independent reviewers",
+    "Retrospective sample exposed to development",
+    "Selected devices and non-exhaustive events",
+    "No legal validity guarantee or whole-corpus accuracy estimate"
+  ]
+}

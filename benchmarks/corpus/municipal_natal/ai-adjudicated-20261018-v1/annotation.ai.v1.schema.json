@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Adjudicação documental por IA — referência técnica Jurix",
+  "type": "object",
+  "required": ["schema_version", "annotation", "adjudication"],
+  "properties": {
+    "schema_version": {"const": "jurix-ai-adjudicated-v1"},
+    "annotation": {"type": "object"},
+    "adjudication": {
+      "type": "object",
+      "required": ["decision_id", "norma_key", "status", "review_kind", "reviewer_id", "adjudicated_at", "independent_review", "human_approved", "decision", "supporting_span_ids", "source_text_sha256", "global_current_validity"],
+      "properties": {
+        "decision_id": {"type": "string", "minLength": 1},
+        "unit_id": {"type": "string", "minLength": 1},
+        "norma_key": {"type": "string", "minLength": 1},
+        "status": {"const": "adjudicated_by_ai"},
+        "review_kind": {"const": "ai"},
+        "reviewer_id": {"type": "string", "minLength": 1},
+        "adjudicated_at": {"type": "string", "format": "date-time"},
+        "independent_review": {"const": false},
+        "human_approved": {"const": false},
+        "decision": {"type": "string", "minLength": 1},
+        "supporting_span_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "source_text_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "global_current_validity": {"const": "not_determined"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

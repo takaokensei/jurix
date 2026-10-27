@@ -1,0 +1,56 @@
+{% extends 'legislation/workspace/base.html' %}
+{% load static %}
+
+{% block title %}Gold Standard do projeto · Jurix{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/jurix-pgm-gold.css' %}?v=20261018-gold-catalog5">{% endblock %}
+{% block topbar %}{% include 'legislation/workspace/_topbar.html' with topbar_section='Gold Standard do projeto' %}{% endblock %}
+
+{% block content %}
+<div class="pgm-gold-page">
+    <header class="workspace-page-header">
+        <div>
+            <span class="workspace-eyebrow">Pesquisa · conjunto de avaliação</span>
+            <h1 id="pgm-gold-title">Gold Standard Jurix v1</h1>
+            <p>{{ cases|length }} casos documentais usados para avaliar recuperação e relações normativas. Esta coleção é independente do catálogo de normas consolidadas.</p>
+        </div>
+        <a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_list' %}">Voltar a Normas</a>
+    </header>
+
+    <aside class="pgm-gold-notice" role="note" aria-label="Limites do conjunto">
+        <strong>Gabarito de avaliação adjudicado por IA — não certificação jurídica.</strong>
+        <p>Os documentos permanecem candidatos QA pendentes. A adoção do Gold não comprova vigência atual, cobertura exaustiva, revisão humana independente ou consolidação. Não use esta tela como lista de normas vigentes.</p>
+    </aside>
+
+    <section class="pgm-gold-grid" aria-label="Casos do conjunto Gold">
+        {% for case in cases %}
+        <article class="pgm-gold-card" aria-labelledby="pgm-gold-case-{{ forloop.counter }}">
+            <div class="pgm-gold-card__topline">
+                <span class="pgm-gold-card__unit">Caso {{ case.unit_id|upper }}</span>
+                {% if case.is_unresolved_case %}<span class="pgm-gold-card__badge pgm-gold-card__badge--caution">Inclui abstenção</span>{% else %}<span class="pgm-gold-card__badge">Avaliação IA</span>{% endif %}
+            </div>
+            <h2 id="pgm-gold-case-{{ forloop.counter }}">{{ case.label }}</h2>
+            <details class="pgm-gold-card__technical-key">
+                <summary>Identificador técnico</summary>
+                <code>{{ case.norma_key }}</code>
+            </details>
+            <dl class="pgm-gold-card__facts">
+                <div><dt>Dispositivos anotados</dt><dd>{{ case.devices|length }}</dd></div>
+                <div><dt>Relações no escopo</dt><dd>{{ case.event_count }}</dd></div>
+                <div><dt>Perguntas de avaliação</dt><dd>{{ case.query_count }}</dd></div>
+            </dl>
+            {% if case.devices %}<p class="pgm-gold-card__devices">Referências: {{ case.devices|join:", " }}</p>{% endif %}
+            <div class="pgm-gold-card__source">
+                {% if case.document %}
+                <span class="pgm-gold-card__pending">{{ case.source_label }}</span>
+                <a class="workspace-button workspace-button-secondary" href="{{ case.evidence_url }}"{% if case.external_source %} target="_blank" rel="noopener noreferrer"{% endif %} aria-label="{% if case.external_source %}Abrir PDF oficial de {{ case.label }} no SAPL (nova aba){% else %}Abrir evidência e PDF de {{ case.label }}{% endif %}">{% if case.external_source %}Abrir PDF oficial no SAPL ↗{% else %}Abrir evidência e PDF{% endif %}</a>
+                {% else %}
+                <span class="pgm-gold-card__missing">PDF correspondente não localizado no banco QA.</span>
+                {% endif %}
+            </div>
+        </article>
+        {% empty %}
+        <div class="workspace-empty-state"><strong>Pacote Gold sem casos disponíveis.</strong><p>Confira a integridade do pacote versionado antes de usá-lo.</p></div>
+        {% endfor %}
+    </section>
+</div>
+{% endblock %}

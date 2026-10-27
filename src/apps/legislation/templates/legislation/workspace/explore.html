@@ -8,8 +8,10 @@
 {% block extra_js %}{% if normative_graph_enabled %}<script src="{% static 'js/jurix-normative-graph.js' %}?v=20261008-explore1" defer></script>{% endif %}{% endblock %}
 
 {% block content %}
+{% if operational_pilot_enabled %}<aside class="workspace-corpus-entry"><div><strong>Corpus para consolidação experimental</strong><p>Compare redações e explore alterações com evidência nos PDFs do piloto.</p></div><a class="workspace-button workspace-button-primary" href="{% url 'workspace:pilot_casefile' %}">Abrir coleção operacional</a></aside>{% endif %}
 <section class="workspace-page-header">
     <div><span class="workspace-eyebrow">Exploração normativa</span><h1>Explorar relações</h1><p>{% if include_pending_relations %}Revise relações extraídas. Cada vínculo mostra seu próprio estado de revisão e não deve ser tratado automaticamente como efeito jurídico.{% else %}Navegue por normas consolidadas e consulte relações revisadas com suas evidências.{% endif %}</p></div>
+    <a class="workspace-button workspace-button-secondary" href="{% url 'workspace:ai_pilot_adoptions' %}">Casos adotados para o piloto</a>
 </section>
 
 {% if pgm_consolidation_demo_enabled %}<aside class="workspace-search-caveat" role="note"><strong>Demonstração PGM em QA:</strong> grafo somente leitura das sete referências expressas de revogação no Art. 260 da LC nº 258/2024, com PDFs candidatos e relações ainda pendentes de revisão jurídica. <a class="workspace-button workspace-button-secondary" href="{% url 'workspace:pgm_consolidation_demo' %}">Abrir grafo demonstrativo da LC 258/2024</a></aside>{% endif %}

@@ -1026,6 +1026,8 @@ def test_candidate_extraction_page_exposes_staging_ocr_gaps_and_pdf_page_links(
     html = response.content.decode()
     visible_text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html))
     assert response.status_code == 200
+    assert '<details class="document-evidence-technical">' in html
+    assert '<details class="document-evidence-technical" open>' not in html
     assert "Qualidade por página" in html
     assert "Texto nativo: 39 páginas" in visible_text
     assert "OCR automático: 0 páginas" in visible_text

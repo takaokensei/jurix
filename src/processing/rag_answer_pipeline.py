@@ -362,6 +362,7 @@ def stream_model_attempt(
     temperature: float,
     text_provider: dict[str, Any] | None,
     should_cancel: Callable[[], bool] | None = None,
+    max_tokens: int = 2048,
 ) -> Iterable[str]:
     """Select the configured text provider without owning provider state."""
     if text_provider and text_provider.get("provider") != "ollama":
@@ -371,14 +372,14 @@ def stream_model_attempt(
             prompt,
             text_provider,
             temperature=temperature,
-            max_tokens=2048,
+            max_tokens=max_tokens,
             should_cancel=should_cancel,
         )
     return ollama.stream_text(
         prompt,
         model=model,
         temperature=temperature,
-        max_tokens=2048,
+        max_tokens=max_tokens,
         should_cancel=should_cancel,
     )
 

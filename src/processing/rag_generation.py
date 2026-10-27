@@ -84,6 +84,12 @@ def answer_uses_only_sources(answer: str, results: list[dict[str, Any]]) -> bool
             if num and year:
                 allowed.add(f"{num}/{year}")
                 allowed.add(f"{norma.numero}/{year}")
+        else:
+            from src.processing.normative_reference import parse_normative_references
+
+            for reference in parse_normative_references(str(result.get("norma_ref") or "")):
+                if reference.year is not None:
+                    allowed.add(f"{reference.number}/{reference.year}")
     cited_raw = re.findall(
         r"\b(?:Lei|Decreto|Resolução|Portaria)\s*(?:n[º°o.]*\s*)?(\d[\d.]*/\d{4})",
         answer,

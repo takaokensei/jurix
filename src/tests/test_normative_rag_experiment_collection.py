@@ -4,13 +4,17 @@ from pathlib import Path
 import pytest
 
 from scripts.collect_normative_rag_experiment import (
+    MAX_PROJECT_GOLD_CASES,
+    _gold_citation_id,
     _make_options,
     _probe_warm_cache,
     _read_cases,
+    _read_project_gold_cases,
     _retrieval_trace,
     _warm_cache_bypass_reason,
     validate_cases,
 )
+from scripts.evaluate_pgm_project_gold import _metrics, _source_identity_diagnostics
 from src.processing.adaptive_retrieval import RetrievalOptions
 
 
@@ -87,6 +91,96 @@ def test_case_limit_selects_a_deterministic_prefix(tmp_path):
     selected = _read_cases(case_path, max_cases=1)
 
     assert [row["case_id"] for row in selected] == ["case-1"]
+
+
+def test_project_gold_collection_preserves_ai_provenance_and_accepts_28_cases():
+    root = Path(__file__).resolve().parents[2]
+    gold_path = root / "benchmarks/corpus/municipal_natal/project-gold.v1.json"
+    rows, gold_id, adoption_sha256 = _read_project_gold_cases(gold_path)
+
+    validated = validate_cases(
+        rows, max_cases=MAX_PROJECT_GOLD_CASES, reference_kind="project_gold_ai"
+    )
+
+    assert len(validated) == 28
+    assert gold_id == "jurix-pgm-gold-v1"
+    assert len(adoption_sha256) == 64
+    assert all(row["human_review"]["review_kind"] == "ai_project_gold" for row in validated)
+    assert all(row["human_evidence_review"] is False for row in validated)
+    assert all(row["evaluation_reference_kind"] == "project_gold_ai" for row in validated)
+    assert all("synthetic_qa_fixture" not in row for row in validated)
+    assert validated[0]["gold_source_unit_map"]["6d1f99099693632ed2d54c3d4acb869cc872f337d8d25be62ac2d86554d7d9fc"] == "n01"
+
+
+def test_project_gold_citations_map_hash_and_article_to_stable_gold_id():
+    citation_id = _gold_citation_id(
+        {"document_sha256": "a" * 64, "dispositivo_ref": "Art. 20, inciso II"},
+        {"a" * 64: "n01"},
+    )
+
+    assert citation_id == "n01:art:20"
+    assert _gold_citation_id(
+        {"document_sha256": "b" * 64, "dispositivo_ref": "Art. 21"},
+        {"a" * 64: "n01"},
+    ) is None
+
+
+def test_project_gold_collection_rejects_wrong_provenance():
+    candidate = {
+        "case_id": "gold-1",
+        "query": "Pergunta do gold?",
+        "review_kind": "human",
+        "human_evidence_review": False,
+        "expected_unit_ids": ["n01"],
+    }
+
+    with pytest.raises(ValueError, match="AI provenance"):
+        validate_cases([candidate], reference_kind="project_gold_ai")
+
+
+def test_project_gold_metrics_count_unmapped_citations_as_predictions():
+    row = {
+        "expected_source_ids": ["sha256:" + "a" * 64],
+        "retrieved_source_ids": ["sha256:" + "a" * 64],
+        "expected_citation_ids": ["n01:art:1"],
+        "cited_gold_citation_ids": ["n01:art:1"],
+        "cited_source_records": [
+            {"citation_id": "db-citation-1", "document_sha256": "a" * 64},
+            {"citation_id": "db-citation-2", "document_sha256": None},
+        ],
+        "expected_versions": {},
+        "cited_gold_versions": {},
+        "expected_abstain": False,
+        "abstained": False,
+    }
+
+    metrics = _metrics([row])
+
+    assert metrics["source_recall_at_5"] == 1.0
+    assert metrics["citation_precision"] == 0.5
+    assert metrics["citation_recall"] == 1.0
+
+
+def test_project_gold_source_diagnostics_expose_unidentified_retrieval():
+    diagnostics = _source_identity_diagnostics([
+        {
+            "expected_source_ids": ["sha256:" + "a" * 64],
+            "retrieved_source_records": [
+                {"document_sha256": "a" * 64, "synthetic_fixture": False},
+                {"document_sha256": None, "synthetic_fixture": True},
+            ],
+        }
+    ])
+
+    assert diagnostics == {
+        "retrieved_source_records": 2,
+        "sources_with_document_hash": 1,
+        "sources_matching_any_gold_pdf_hash": 1,
+        "sources_without_gold_hash_match": 0,
+        "sources_missing_document_hash": 1,
+        "sources_labeled_synthetic": 1,
+        "gold_document_identity_coverage": 0.5,
+    }
 
 
 def test_collector_rejects_invalid_historical_scope():

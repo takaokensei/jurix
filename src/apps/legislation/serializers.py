@@ -325,6 +325,11 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
             norma_id = getattr(norma, "id", None)
             base_document = getattr(norma, "documento_base", None)
             base_metadata = getattr(base_document, "metadata_json", {})
+            document_sha256 = getattr(base_document, "content_sha256", None)
+            if not isinstance(document_sha256, str) or not re.fullmatch(
+                r"[a-fA-F0-9]{64}", document_sha256
+            ):
+                document_sha256 = None
             synthetic_fixture = (
                 isinstance(base_metadata, dict) and base_metadata.get("synthetic") is True
             )
@@ -336,6 +341,7 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
             logger.warning(f"Error accessing norma attributes: {e}")
             norma_tipo, norma_numero, norma_ano = "Tipo não identificado", "", ""
             norma_id, pdf_url, sapl_url = None, None, None
+            document_sha256 = None
             publication_date, effective_date = None, None
             synthetic_fixture = False
 
@@ -393,6 +399,7 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
             "match_kind": source.get("match_kind"),
             "norma_ref": norma_ref_str,
             "norma_id": norma_id,
+            "document_sha256": document_sha256.lower() if document_sha256 else None,
             "dispositivo_ref": disp_identifier,
             "citation_id": _citation_identity(norma_id, disp_id, structural_key, temporal_version),
             "citation_label": citation_label,
@@ -499,6 +506,25 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
             if isinstance(start, int) and isinstance(end, int) and 0 <= start <= end
             else None
         )
+    pilot_metadata = {}
+    pilot_revision = source.get("corpus_revision")
+    pilot_casefile_id = source.get("casefile_id")
+    if (source.get("evidence_scope") == "ai_pilot" and document_sha256
+            and isinstance(pilot_revision, str) and re.fullmatch(r"[a-f0-9]{64}", pilot_revision)
+            and isinstance(pilot_casefile_id, str) and re.fullmatch(r"[a-f0-9]{64}", pilot_casefile_id)):
+        from src.processing.pilot_casefile import source_url as pilot_source_url
+        local_pdf_url = pilot_source_url(document_sha256.lower(), pilot_revision, page)
+        pilot_metadata = {
+            "basis": "ai_pilot", "casefile_id": pilot_casefile_id, "corpus_revision": pilot_revision,
+            "similarity_score": None, "relevance_band": None, "distance": None,
+            "contribution": "Evidência documental do corpus experimental",
+        }
+        text_digest = source.get("text_sha256")
+        if isinstance(text_digest, str) and re.fullmatch(r"[a-f0-9]{64}", text_digest):
+            pilot_metadata["text_sha256"] = text_digest
+        norma_key = source.get("norma_key")
+        if isinstance(norma_key, str) and re.fullmatch(r"BR-RN-NATAL\|[a-z_]+\|\d+\|\d{4}", norma_key):
+            pilot_metadata["norma_key"] = norma_key
     return {
         "id": disp_id,
         "text": disp_texto[:200] + ("..." if len(disp_texto) > 200 else ""),
@@ -550,6 +576,7 @@ def serialize_dispositivo_source(source: dict[str, Any]) -> dict[str, Any]:
         "dispositivo_structural_key": structural_key or None,
         "temporal_version": temporal_version,
         "graph_relation": graph_relation,
+        **pilot_metadata,
     }
 
 
@@ -687,13 +714,19 @@ def serialize_chat_session(session: Any) -> dict[str, Any]:
             Q(role="assistant", metadata_json__filters__corpus="archive-qa-unvalidated")
             | Q(role="user", metadata_json__corpus="archive-qa-unvalidated")
         ).exists()
+    pilot_scope = getattr(session, "jurix_pilot_corpus", None)
+    if pilot_scope is None:
+        pilot_scope = session.messages.filter(
+            Q(role="assistant", metadata_json__filters__corpus="ai-pilot")
+            | Q(role="user", metadata_json__corpus="ai-pilot")
+        ).exists()
     return {
         "id": session.id,
         "title": session.title or "Conversa sem título",
         "slug": session.slug,
         "is_active": session.is_active,
         "is_pinned": bool(getattr(session, "is_pinned", False)),
-        "corpus": "archive-qa" if archive_scope else "consolidated",
+        "corpus": "pilot" if pilot_scope else "archive-qa" if archive_scope else "consolidated",
         "created_at": session.created_at.isoformat() if session.created_at else None,
         "updated_at": session.updated_at.isoformat() if session.updated_at else None,
     }

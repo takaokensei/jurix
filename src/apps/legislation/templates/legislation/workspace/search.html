@@ -12,6 +12,7 @@
 <form class="workspace-search-panel" method="get" role="search" aria-label="Pesquisa jurídica">
     <label class="workspace-search-input"><span class="sr-only">Consulta</span><input type="search" name="q" maxlength="200" value="{{ query }}" placeholder="Ex.: zoneamento ou IPTU progressivo"></label>
     <div class="workspace-filter-row">
+        <label>Acervo<select name="escopo"><option value="todos"{% if selected_scope == 'todos' %} selected{% endif %}>Todos</option><option value="experimental"{% if selected_scope == 'experimental' %} selected{% endif %}>Consulta experimental</option><option value="documentos"{% if selected_scope == 'documentos' %} selected{% endif %}>Documentos</option><option value="revisadas"{% if selected_scope == 'revisadas' %} selected{% endif %}>Revisadas</option></select></label>
         <label>Tipo<select name="tipo"><option value="">Todos os tipos</option>{% for item in types %}<option value="{{ item.value }}"{% if norma_type == item.value %} selected{% endif %}>{{ item.label }}</option>{% endfor %}</select></label>
         <label>Ano<select name="ano"><option value="">Todos os anos</option>{% for item in years %}<option value="{{ item }}"{% if year == item %} selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
         <label>Relevância mínima<select name="similaridade"><option value="0"{% if min_similarity == 0 %} selected{% endif %}>Sem limiar</option><option value="0.5"{% if min_similarity == 0.5 %} selected{% endif %}>50%</option><option value="0.65"{% if min_similarity == 0.65 %} selected{% endif %}>65%</option><option value="0.8"{% if min_similarity == 0.8 %} selected{% endif %}>80%</option></select></label>
@@ -32,7 +33,21 @@
     <button class="workspace-button workspace-button-primary" type="submit">Pesquisar</button>
 </form>
 
+{% if archive_assistant_available %}
+<aside class="workspace-corpus-entry" aria-label="Escopo de pesquisa documental">
+    <div>
+        <span class="workspace-eyebrow">Acervo documental</span>
+        <p><strong>PDFs locais em revisão</strong> são pesquisados separadamente das normas consolidadas. Os trechos são candidatos e não confirmam vigência.</p>
+    </div>
+    <a class="workspace-button workspace-button-secondary" href="{% url 'workspace:assistant' %}?new=1&amp;corpus=archive-qa{% if query %}&amp;question={{ query|urlencode }}{% endif %}">
+        Perguntar usando PDFs em revisão <span aria-hidden="true">→</span>
+    </a>
+</aside>
+{% endif %}
+
 {% if search_error %}<div class="workspace-alert" role="alert" aria-live="assertive">{{ search_error }}</div>{% endif %}
+{% if pilot_error %}<p role="alert">O corpus experimental não pôde ser carregado. Os outros resultados conservam seu próprio escopo.</p>{% endif %}
+{% if pilot_entries %}<section class="workspace-results-section" aria-labelledby="pilot-search-title"><h2 id="pilot-search-title">Consulta experimental · {{ pilot_filtered_count }} normas</h2><p>Correspondências de identidade e título no corpus operacional; não são pontuações de similaridade ou certificação de vigência.</p><div class="workspace-result-list">{% for entry in pilot_entries %}<article class="workspace-result-card"><h3><a href="{{ entry.casefile_url }}">{{ entry.label }}</a></h3><p>{{ entry.device_count }} dispositivos identificados · {{ entry.source_count }} fontes</p><a href="{{ entry.casefile_url }}">Consultar texto, alterações e grafo</a>{% if entry.pdf_url %} · <a href="{{ entry.pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir PDF</a>{% endif %}</article>{% endfor %}</div><a href="{% url 'legislation:norma_list' %}?escopo=experimental&amp;q={{ query|urlencode }}">Ver coleção e todos os filtros</a></section>{% endif %}
 
 <section class="workspace-results-section" aria-live="polite">
     <div class="workspace-section-heading"><div><span class="workspace-eyebrow">Resultados</span><h2>{% if has_search %}{{ result_count }} {% if result_count == 1 %}resultado consolidado{% else %}resultados consolidados{% endif %}{% else %}Comece uma pesquisa{% endif %}</h2></div>{% if has_search %}<span class="workspace-badge">{% if search_mode == 'semantic' %}Busca semântica{% elif search_mode == 'lexical' %}Busca textual{% elif search_mode == 'topic' %}Tema confirmado{% else %}Busca não executada{% endif %}</span>{% endif %}</div>
@@ -66,7 +81,7 @@
         {% endif %}
         {% endfor %}
     </div>
-    {% elif has_search %}
+    {% elif has_search and not pilot_entries %}
     <div class="workspace-empty-state workspace-search-empty">
         <strong>{{ empty_state_title }}</strong>
         <p>{{ empty_state_description }}</p>
@@ -74,9 +89,6 @@
         {% if archive_search_available and query %}
         <div class="workspace-search-caveat" role="note">
             <p>Os PDFs locais ainda estão em revisão e não entram nos resultados consolidados. Se consultar esse acervo, confira o PDF original: a extração ainda não é texto jurídico validado.</p>
-            {% if archive_assistant_available %}
-            <a class="workspace-button workspace-button-primary" href="{% url 'workspace:assistant' %}?new=1&amp;corpus=archive-qa&amp;question={{ query|urlencode }}">Perguntar ao assistente sobre os PDFs em revisão</a>
-            {% endif %}
             <a class="workspace-button workspace-button-secondary" href="{% url 'legislation:norma_list' %}#archive-candidates">Ver PDFs locais disponíveis</a>
         </div>
         {% endif %}

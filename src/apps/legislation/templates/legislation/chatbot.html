@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="{% static 'css/jurix-figma.css' %}?v=20261017-instant-chat-reanchor1">
     <link rel="stylesheet" href="{% static 'css/jurix-tokens.css' %}?v=20261002-design-tokens1">
     <link rel="stylesheet" href="{% static 'css/workspace.css' %}?v=20261009-auth-card-box-sizing1">
-    <link rel="stylesheet" href="{% static 'css/jurix-rag.css' %}?v=20261017-corpus-choice2">
+    <link rel="stylesheet" href="{% static 'css/jurix-rag.css' %}?v=20261018-rule-source-evidence1">
     <link rel="stylesheet" href="{% static 'css/jurix-markdown.css' %}">
     <link rel="stylesheet" href="{% static 'css/jurix-chat.css' %}?v=20261015-composer-desktop-grid2">
     <link rel="stylesheet" href="{% static 'css/jurix-chat-renderer.css' %}?v=20261007-answer-pending1">
@@ -31,6 +31,8 @@
       data-norma-list-url="{% url 'legislation:norma_list' %}"
       data-question-max-length="{{ max_question_length }}"
       data-qa-archive-corpus="{{ qa_archive_mode|yesno:'true,false' }}"
+      data-pilot-corpus="{{ qa_pilot_mode|yesno:'true,false' }}"
+      data-pilot-corpus-revision="{{ pilot_corpus_revision }}"
       data-archive-assistant-enabled="{{ archive_assistant_enabled|yesno:'true,false' }}"
       data-logo-icon-url="{% static 'img/logo-icon.svg' %}?v=20260930-quill1"
       data-user-name="{{ request.user.first_name|default:request.user.username|title }}">
@@ -71,14 +73,22 @@
             </details>
             {% endif %}
             {% if assistant_source_update_notice %}
-            <div class="anonymous-banner jurix-anonymous-banner" role="status" data-corpus-notice="consolidated"{% if qa_archive_mode %} hidden{% endif %}>
+            <div class="anonymous-banner jurix-anonymous-banner" role="status" data-corpus-notice="consolidated"{% if qa_archive_mode or qa_pilot_mode %} hidden{% endif %}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <circle cx="12" cy="12" r="10"></circle><path d="M12 11v5m0-8h.01"></path>
                 </svg>
                 <span><strong>Atualização das fontes:</strong> {{ assistant_source_update_notice }}</span>
             </div>
             {% endif %}
-            {% if archive_assistant_enabled and not qa_archive_mode and not current_session_slug %}
+            {% if operational_pilot_enabled %}
+            <div class="jurix-corpus-choice{% if current_session_slug %} jurix-corpus-choice--fixed{% endif %}" role="{% if current_session_slug %}status{% else %}group{% endif %}" aria-label="Escolha o acervo desta pesquisa">
+                <span class="jurix-corpus-choice__label">{% if current_session_slug %}Escopo desta conversa:{% else %}Pesquisar em:{% endif %}</span>
+                {% if qa_pilot_mode %}<span class="jurix-corpus-choice__option is-selected" aria-current="true">Piloto · {{ pilot_norm_count }} normas</span>{% elif not current_session_slug %}<a class="jurix-corpus-choice__option" href="{% url 'workspace:assistant' %}?new=1&amp;corpus=pilot">Piloto · {{ pilot_norm_count }} normas</a>{% endif %}
+                {% if qa_archive_mode %}<span class="jurix-corpus-choice__option is-selected" aria-current="true">Acervo documental</span>{% elif not current_session_slug %}<a class="jurix-corpus-choice__option" href="{% url 'workspace:assistant' %}?new=1&amp;corpus=archive-qa">Acervo documental</a>{% endif %}
+                {% if not qa_pilot_mode and not qa_archive_mode %}<span class="jurix-corpus-choice__option is-selected" aria-current="true">Normas revisadas</span>{% elif not current_session_slug %}<a class="jurix-corpus-choice__option" href="{% url 'workspace:assistant' %}?new=1&amp;corpus=consolidated">Normas revisadas</a>{% endif %}
+            </div>
+            <div class="anonymous-banner jurix-anonymous-banner" role="note" data-corpus-notice="pilot"{% if not qa_pilot_mode %} hidden{% endif %}>Reconstrução experimental por IA no corpus delimitado. Confira os PDFs e os limites indicados em cada resposta. <a href="{% url 'workspace:pilot_casefile' %}">Abrir normas e comparações</a></div>
+            {% elif archive_assistant_enabled and not qa_archive_mode and not current_session_slug %}
             <div class="jurix-corpus-choice" role="group" aria-label="Escolha o acervo desta nova pesquisa">
                 <span class="jurix-corpus-choice__label">Pesquisar em:</span>
                 <span class="jurix-corpus-choice__option is-selected" aria-current="true">Normas consolidadas</span>
@@ -347,7 +357,7 @@
     <!-- Jurix Configuration: read from data-* attributes on <body> by config.js (CSP: no inline script) -->
     <script src="{% static 'js/config.js' %}"></script>
     <script src="{% static 'js/jurix-markdown.js' %}?v=20261007-compact-citations-no-hyphen-bullets1"></script>
-        <script src="{% static 'js/jurix-rag.js' %}?v=20261016-reference-destination-label3"></script>
+        <script src="{% static 'js/jurix-rag.js' %}?v=20261018-rule-source-evidence1"></script>
         <script src="{% static 'js/jurix-anonymous-history.js' %}?v=20261009-sapl-consultation-time1"></script>
     <script src="{% static 'js/jurix-chat-api.js' %}?v=20261007-session-id-contract3"></script>
     <script src="{% static 'js/jurix-api-reliability-overlay.js' %}?v=20261009-coverage-persistence1"></script>

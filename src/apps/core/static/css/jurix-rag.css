@@ -517,6 +517,12 @@
     max-width: none;
     color: var(--jurix-evidence-text-secondary);
 }
+.jurix-rag-source--rule .source-score {
+    display: flex;
+    flex: 0 0 auto;
+    max-width: none;
+    color: var(--jurix-evidence-text-secondary);
+}
 .jurix-rag-source .score-bar {
     background: color-mix(in srgb, var(--jurix-evidence-muted) 25%, transparent);
 }

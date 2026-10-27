@@ -1,0 +1,361 @@
+{
+  "schema_version": "jurix-pilot-source-selection-v1",
+  "jurisdiction": "BR-RN-NATAL",
+  "provenance": "Public document identities selected for the operational pilot; contains no expected answers or evaluation labels.",
+  "documents": [
+    {
+      "norma_key": "BR-RN-NATAL|lei|3882|1989",
+      "identity": {
+        "ano": 1989,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "3882",
+        "tipo": "lei"
+      },
+      "pdf_sha256": "6d1f99099693632ed2d54c3d4acb869cc872f337d8d25be62ac2d86554d7d9fc",
+      "official_url": "https://www.natal.rn.gov.br/sefin/legislacao/lei/LEI3882-1989_2024.pdf",
+      "source_role": "primary",
+      "aliases": [
+        "CTM",
+        "Código Tributário Municipal",
+        "Código Tributário do Município do Natal"
+      ],
+      "edition_year": 2024,
+      "edition_kind": "compilation"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|271|2025",
+      "identity": {
+        "ano": 2025,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "271",
+        "tipo": "lei_complementar"
+      },
+      "pdf_sha256": "b9017fb398be7f2c80401fdf6694212e630822fab8022fb4cedef4ddc4eaae87",
+      "official_url": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2025/8975/lei_complementar_no_271_2025.pdf",
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|258|2024",
+      "identity": {
+        "ano": 2024,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "258",
+        "tipo": "lei_complementar"
+      },
+      "pdf_sha256": "55214abf8e8ef14b05ae79bafa1109c360699aa8e40e489bc8e3e534fc4d76d3",
+      "official_url": null,
+      "source_role": "primary",
+      "aliases": [
+        "Código de Obras de Natal"
+      ],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|55|2004",
+      "identity": {
+        "ano": 2004,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "55",
+        "tipo": "lei_complementar"
+      },
+      "pdf_sha256": "f4065608d85c99d72a02048fdce5c8072740c070308253dae1fcf9f8454093af",
+      "official_url": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_complementar_n_055.pdf",
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "historical_compilation"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|173|2017",
+      "identity": {
+        "ano": 2017,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "173",
+        "tipo": "lei_complementar"
+      },
+      "pdf_sha256": "aeb6e6b137382df8094822d4aff92c4b9dbecccb442eaeae2c3b6008722de137",
+      "official_url": "https://natal.rn.gov.br/storage/app/media/legislacao/anexos/LeiComplementar_20171229_173_.pdf",
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|185|2019",
+      "identity": {
+        "ano": 2019,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "185",
+        "tipo": "lei_complementar"
+      },
+      "pdf_sha256": "7b4562db8cb0b47146a2466014d02e34f026a023f93d2b870282f6f56eade6e2",
+      "official_url": "https://natal.rn.gov.br/storage/app/media/legislacao/anexos/LeiComplementar_20190718_185_.pdf",
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|208|2022",
+      "identity": {
+        "ano": 2022,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "208",
+        "tipo": "lei_complementar"
+      },
+      "pdf_sha256": "397670b25da69cf3a739143742d156cfee8db7f5936f2c77aaf9d777caf95256",
+      "official_url": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2022/1160/pdn_-_lc_208_2022.pdf",
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|261|2025",
+      "identity": {
+        "ano": 2025,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "261",
+        "tipo": "lei_complementar"
+      },
+      "pdf_sha256": "05afadb171050ff16063e9ee707b2d92e53033fd20e52528d3fcb36e210a6251",
+      "official_url": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2025/8823/lei_complementar_no_261_2025.pdf",
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|4885|1997",
+      "identity": {
+        "ano": 1997,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "4885",
+        "tipo": "lei"
+      },
+      "pdf_sha256": "19e3dde9a7a580c4ad0fe229c086cba5b7a0aa916bea2af9dba56b7be21016f8",
+      "official_url": "https://www2.natal.rn.gov.br/bvn/publicacoes/ritur_relatorio_de_impacto_sobre_trafego_urbano.pdf",
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_promulgada|275|2009",
+      "identity": {
+        "ano": 2009,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "275",
+        "tipo": "lei_promulgada"
+      },
+      "pdf_sha256": "121b46b52e9485d44311359a4164e167d059e59bd8bde1ec949387eade416897",
+      "official_url": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20090317.pdf",
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_promulgada|562|2018",
+      "identity": {
+        "ano": 2018,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "562",
+        "tipo": "lei_promulgada"
+      },
+      "pdf_sha256": "079b0967563a670c9c880baee1642239d0d08ce19738f0c3adf83a0c3cecb119",
+      "official_url": "https://sapl.natal.rn.leg.br/media/sapl/public/normajuridica/2018/254/lp_562.18.pdf",
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|1894|1969",
+      "identity": {
+        "ano": 1969,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "1894",
+        "tipo": "lei"
+      },
+      "pdf_sha256": "6327772563ab1c863f1b5cd10168994d8c8d7d591d4c785857dbac842c808be2",
+      "official_url": "https://www2.natal.rn.gov.br/bvn/publicacoes/lei_n_1.894_69.pdf",
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|141|2014",
+      "identity": {
+        "ano": 2014,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "141",
+        "tipo": "lei_complementar"
+      },
+      "pdf_sha256": "d29da8bfed5b1fe1495c7e30d9c7ac194a007b4140c96468703f87303cf43630",
+      "official_url": null,
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|7805|2025",
+      "identity": {
+        "ano": 2025,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "7805",
+        "tipo": "lei"
+      },
+      "pdf_sha256": "d26179b27a87b3d410589cfd2f280bdd6233641e67edf1a91aa910eb90c44979",
+      "official_url": null,
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|7806|2025",
+      "identity": {
+        "ano": 2025,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "7806",
+        "tipo": "lei"
+      },
+      "pdf_sha256": "5750e8daac8f84bc70ab5d3c077a96abdd16b42747d56951caa3119e875bb607",
+      "official_url": null,
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|7807|2025",
+      "identity": {
+        "ano": 2025,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "7807",
+        "tipo": "lei"
+      },
+      "pdf_sha256": "2f77c8c3ad4fc41e7c482fb15c010fee1d16b3967052d7eeae3c802fe09b8852",
+      "official_url": null,
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|7808|2025",
+      "identity": {
+        "ano": 2025,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "7808",
+        "tipo": "lei"
+      },
+      "pdf_sha256": "5ed80c8d2aa8729aef0b1d797cb837a7015cb4422bd7b6a622d423b01ea8dc55",
+      "official_url": null,
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|7810|2025",
+      "identity": {
+        "ano": 2025,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "7810",
+        "tipo": "lei"
+      },
+      "pdf_sha256": "4c71dec7e7154e873bbfdc4ee60b063a72815161ae6f38dd00a9647a073e949b",
+      "official_url": null,
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|7811|2025",
+      "identity": {
+        "ano": 2025,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "7811",
+        "tipo": "lei"
+      },
+      "pdf_sha256": "f6c20c66649afeeab85471c67588075854b97abf9b77f049915ac6f0396526ee",
+      "official_url": null,
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei|7280|2021",
+      "identity": {
+        "ano": 2021,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "7280",
+        "tipo": "lei"
+      },
+      "pdf_sha256": "6e56f6b4683ef4f9f6ccc63971ae6b52358221360b3096586a386922991051da",
+      "official_url": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20211231_d5463378b9ee874de50e153f35daeb33.pdf",
+      "source_role": "primary",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "reproduction"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|271|2025",
+      "identity": {
+        "ano": 2025,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "271",
+        "tipo": "lei_complementar"
+      },
+      "pdf_sha256": "90fbf8a12e2640745ccaf740c2fa69d7fc1273c6979672248871d8a9917a0a14",
+      "official_url": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20251216_extra_f56130954932a6ec421028e3224ffc68.pdf",
+      "title": "DOM 5935 — edição extra, LC 271",
+      "source_role": "supporting",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "official_publication"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|258|2024",
+      "identity": {
+        "ano": 2024,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "258",
+        "tipo": "lei_complementar"
+      },
+      "pdf_sha256": "f82d4e40165b4fd42f5224fff23cde78438e163c04ddf6d0ed93690ea1159ed1",
+      "official_url": "https://natal.rn.gov.br/storage/app/media/DOM/anexos/dom_20241227_extra_0aaf5ad445c342a04c28c91e2275c838.pdf",
+      "title": "DOM 5615 — edição extra, LC 258",
+      "source_role": "supporting",
+      "aliases": [],
+      "edition_year": null,
+      "edition_kind": "official_publication"
+    },
+    {
+      "norma_key": "BR-RN-NATAL|lei_complementar|55|2004",
+      "identity": {
+        "ano": 2004,
+        "jurisdicao": "BR-RN-NATAL",
+        "numero": "55",
+        "tipo": "lei_complementar"
+      },
+      "pdf_sha256": "795c884ea3184e73da6368dfb8647f695f2e53ba1941756f45c09a4eaffbca24",
+      "official_url": "https://natal.rn.gov.br/storage/app/media/semurb/legislacao/35_Codigo_Obras_Atualizado_Julho_2019.pdf",
+      "title": "LC 55/2004 — compilação SEMURB julho/2019",
+      "source_role": "supporting",
+      "aliases": [],
+      "edition_year": 2019,
+      "edition_kind": "compilation"
+    }
+  ]
+}

@@ -14,6 +14,37 @@ from src.apps.legislation.document_views import _document_path
 from src.processing.official_urls import safe_official_url
 
 
+@pytest.mark.django_db
+def test_public_pilot_pdf_membership_never_grants_product_access(tmp_path, monkeypatch):
+    from django.contrib.auth.models import AnonymousUser
+    from django.http import Http404
+    from django.test import RequestFactory
+
+    from src.apps.legislation.document_views import _authorized_document
+    from src.processing.pilot_corpus import publish_revision
+
+    digest = hashlib.sha256(b"public-pilot-pdf").hexdigest()
+    document = DocumentoNormativo.objects.create(
+        document_key=digest, content_sha256=digest,
+        source_kind=DocumentoNormativo.SourceKind.SAPL, source_ref="pilot-access-test",
+    )
+    publish_revision(tmp_path / "pilot", [{
+        "pdf_sha256": digest, "norma_key": "BR-RN-NATAL|lei|20|2026", "source_role": "primary",
+    }], report={})
+    request = RequestFactory().get("/normas/documentos/example/pdf/")
+    request.user = AnonymousUser()
+    monkeypatch.setenv("JURIX_QA_ONLY", "1")
+    with override_settings(QA_ROOT=tmp_path, JURIX_BUILD_PROFILE="qa", NORMATIVE_ARCHIVE_ENABLED=True):
+        assert _authorized_document(request, document.public_id).pk == document.pk
+    with override_settings(QA_ROOT=tmp_path, JURIX_BUILD_PROFILE="production", NORMATIVE_ARCHIVE_ENABLED=True):
+        with pytest.raises(Http404):
+            _authorized_document(request, document.public_id)
+    monkeypatch.setenv("JURIX_QA_ONLY", "0")
+    with override_settings(QA_ROOT=tmp_path, JURIX_BUILD_PROFILE="qa", NORMATIVE_ARCHIVE_ENABLED=True):
+        with pytest.raises(Http404):
+            _authorized_document(request, document.public_id)
+
+
 @pytest.fixture
 def document_map(tmp_path, monkeypatch):
     root = tmp_path / "qa"
@@ -96,6 +127,7 @@ def test_archive_candidates_are_inspectable_only_behind_explicit_qa_flag():
     assert "Documento do acervo histórico local." in evidence.content.decode()
     assert "a identificação normativa, a extração do texto e a segmentação precisam de revisão" in evidence.content.decode()
     assert "Texto extraído automaticamente — rascunho não revisado" in evidence.content.decode()
+    assert evidence.content.decode().count('class="historical-message historical-message--warning document-evidence-review-notice" role="note"') == 1
     assert "Texto extraído sem segmentação" in evidence.content.decode()
     assert "Índice do documento" not in evidence.content.decode()
     assert "<details><summary>Texto integral extraído (rascunho)</summary>" in evidence.content.decode()

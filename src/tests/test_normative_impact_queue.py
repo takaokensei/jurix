@@ -382,6 +382,16 @@ def test_redelivered_task_skips_an_active_lease_or_review_checkpoint():
     assert duplicate_review["status"] == NormativeWorkItem.Status.AWAITING_REVIEW
 
 
+def test_stale_task_for_deleted_work_item_is_acknowledged_without_retry():
+    result = process_normative_work_item_task.apply(args=[999_999], throw=True).get()
+
+    assert result == {
+        "item_id": 999_999,
+        "status": "missing",
+        "skipped": "missing_work_item",
+    }
+
+
 def test_segmentation_waits_for_approved_source_then_materializes_exact_extraction(monkeypatch):
     from src.apps.ingestion import normative_tasks
 

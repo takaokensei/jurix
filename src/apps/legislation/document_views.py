@@ -216,10 +216,22 @@ def _authorized_document(request: HttpRequest, document_id) -> DocumentoNormativ
             DocumentoNormativo.ReviewStatus.IN_REVIEW,
         }
     )
+    qa_pilot_source = False
+    if (
+        os.environ.get("JURIX_QA_ONLY") == "1"
+        and getattr(settings, "JURIX_BUILD_PROFILE", "") == "qa"
+        and getattr(settings, "NORMATIVE_ARCHIVE_ENABLED", False)
+        and document.review_status in {document.ReviewStatus.PENDING, document.ReviewStatus.IN_REVIEW}
+    ):
+        from src.processing.pilot_corpus import has_active_source
+
+        root = getattr(settings, "QA_ROOT", None)
+        qa_pilot_source = bool(root and has_active_source(Path(root) / "pilot", document.content_sha256))
     if (
         not _approved_public_document(document)
         and not _staff_can_view_candidate(request)
         and not qa_archive_review
+        and not qa_pilot_source
     ):
         # Deliberately hide candidate existence from anonymous/unauthorized users.
         raise Http404("Documento não encontrado.")
@@ -819,8 +831,11 @@ def _document_evidence_context(
                     "fingerprint_prefix": review.target_fingerprint[:12],
                 }
             )
+    from src.apps.legislation.pilot_catalog import pilot_document_context
+
     return {
         "document": document,
+        "pilot_document": pilot_document_context(document),
         "candidate_identity_label": candidate_identity_label,
         "extraction": extraction,
         "segmentation_appendix_scope": _appendix_scope_for_display(extraction),

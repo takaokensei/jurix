@@ -5,7 +5,11 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from src.processing.normative_reference import NormativeReference, parse_normative_references
+from src.processing.normative_reference import (
+    _REFERENCE_RE,
+    NormativeReference,
+    parse_normative_references,
+)
 
 _WHOLE_NORMA_INTENT = re.compile(
     r"(?:\bo\s+que\s+(?:prev[eê]|estabelece|disp[oõ]e|determina|diz)\b|"
@@ -189,3 +193,27 @@ def classify_normative_query(question: str) -> NormativeQueryPlan:
 def _canonical_article_target(value: str) -> str:
     folded = value.casefold().replace("º", "").replace("ª", "").replace("°", "")
     return re.sub(r"[^a-z0-9]", "", folded)
+
+
+def requested_edition_scope(question: str, references) -> tuple[tuple | None, int | None]:
+    """Bind a document-edition year to the nearest explicit act, not all acts."""
+    match = re.search(
+        r"\b(?:compila[cç][aã]o|compilado|compilada|consolida[cç][aã]o|consolidado|consolidada|texto\s+consolidado)\b"
+        r".{0,80}?\b(?:(?:exerc[ií]cio|ano)\s*(?:de\s*)?|de\s*)((?:19|20)\d{2})\b",
+        str(question or ""), re.IGNORECASE,
+    )
+    if not match:
+        return None, None
+    references = list(references)
+    if len(references) == 1:
+        return references[0].identity, int(match.group(1))
+    spans = []
+    for span in _REFERENCE_RE.finditer(question):
+        parsed = parse_normative_references(span.group(0))
+        if len(parsed) == 1:
+            spans.append((span.start(), span.end(), parsed[0].identity))
+    if not spans:
+        return None, int(match.group(1))
+    left, right = match.span()
+    nearest = min(spans, key=lambda item: max(left - item[1], item[0] - right, 0))
+    return nearest[2], int(match.group(1))

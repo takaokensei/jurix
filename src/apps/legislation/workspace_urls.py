@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from . import workspace_views
+from . import pilot_views, workspace_views
 
 app_name = "workspace"
 
@@ -16,6 +16,18 @@ urlpatterns = [
     path("configuracoes/", workspace_views.settings_view, name="settings"),
     path("pesquisa/", workspace_views.legal_search_view, name="legal_search"),
     path("explorar/", workspace_views.explore_normative_graph_view, name="explore"),
+    path("explorar/piloto/", pilot_views.casefile_view, name="pilot_casefile"),
+    path("explorar/fontes/<str:pdf_sha256>/", pilot_views.source_pdf_view, name="pilot_source_pdf"),
+    path(
+        "explorar/adocoes-ia/",
+        workspace_views.ai_pilot_adoptions_view,
+        name="ai_pilot_adoptions",
+    ),
+    path(
+        "explorar/gold-standard/",
+        workspace_views.pgm_project_gold_view,
+        name="pgm_project_gold",
+    ),
     path(
         "explorar/norma/<int:pk>/",
         workspace_views.normative_casefile_view,

@@ -1,0 +1,185 @@
+{
+  "schema_version": "jurix-mvp-closure-progress-v1",
+  "observed_on": "2026-10-27",
+  "checkout": "L:/Jurix",
+  "branch": "main",
+  "head": "1ac3ab75",
+  "plan_sha256": "eb0d1973d1d9856ac4cc68bb847c589a458aab99f5ff0d9bda96d05b67a8b586",
+  "gold_sha256": "3e67c4d68dcffe76bf73077224861499296c6bf59c591436d2c6429b1139c14b",
+  "application": {
+    "url": "http://127.0.0.1:8294/assistente/",
+    "expected_build": {
+      "version": "1.2.0",
+      "revision": "1ac3ab753dacb779e5b7b5a0fe99beae74ed6ac3",
+      "content_sha256": "84160d0a73a8f82aefbb3c65811e7273799881e7a272c2ac0aa0fcf1cb21ad90",
+      "profile": "qa"
+    },
+    "instance": {
+      "version": "1.2.0",
+      "revision": "1ac3ab753dacb779e5b7b5a0fe99beae74ed6ac3",
+      "content_sha256": "84160d0a73a8f82aefbb3c65811e7273799881e7a272c2ac0aa0fcf1cb21ad90",
+      "profile": "qa",
+      "corpus_revision": "b20fb0251883609a7ec4f9f2f3000ebeb9a229d911f258a48947507a25aabc96",
+      "generation": {
+        "model": "llama3",
+        "context_chars": 8000
+      }
+    },
+    "compatible": true,
+    "web_listening": true,
+    "readiness": {
+      "status": "ready",
+      "dependencies": {
+        "database": "ok",
+        "pgvector": "ok",
+        "redis": "ok",
+        "migrations": "ok",
+        "ollama": "skipped",
+        "corpus": "skipped"
+      }
+    },
+    "database_listening": true,
+    "redis_listening": true,
+    "ollama": {
+      "available": true,
+      "version": "0.15.4",
+      "models": [
+        {
+          "name": "qwen3:8b",
+          "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41"
+        },
+        {
+          "name": "llama3.1:8b",
+          "digest": "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e"
+        },
+        {
+          "name": "qwen2.5:7b",
+          "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e"
+        },
+        {
+          "name": "nomic-embed-text:latest",
+          "digest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f"
+        },
+        {
+          "name": "llama3:latest",
+          "digest": "365c0bd3c000a25d28ddbf732fe1c6add414de7275464c4e4d1c3b5fcb5d8ad1"
+        }
+      ],
+      "configured_model": "llama3",
+      "configured_model_available": true,
+      "configured_model_digest": "365c0bd3c000a25d28ddbf732fe1c6add414de7275464c4e4d1c3b5fcb5d8ad1"
+    },
+    "containers": [
+      {
+        "service": "db",
+        "running": true,
+        "health": "healthy"
+      },
+      {
+        "service": "redis",
+        "running": true,
+        "health": "healthy"
+      },
+      {
+        "service": "web",
+        "running": true,
+        "health": "healthy"
+      },
+      {
+        "service": "worker",
+        "running": true,
+        "health": "healthy"
+      }
+    ],
+    "ready": true
+  },
+  "corpus_sources_verified_in_canonical_volume": 23,
+  "pdf_http_bodies_sha256_verified": 23,
+  "source_readiness": {
+    "chain_projection_note": "Document/relationship/date readiness is checked in M-05/M-06; source inventory alone is insufficient.",
+    "chain_projection_ready": false,
+    "expected_sources": 23,
+    "failures": [],
+    "preexisting_document_state_preserved": true,
+    "processed_sources": 23,
+    "schema_version": "jurix-pilot-readiness-v1",
+    "source_integrity_ready": true
+  },
+  "task_status": {
+    "M01": "implemented_and_runtime_verified",
+    "M02": "sources_verified_chain_readiness_pending",
+    "M03": "resolver_implemented_and_unit_verified_chat_integration_pending_M08",
+    "M04": "catalog_and_device_smoke_passed_remaining_discovery_paths_pending",
+    "M05": "pending",
+    "M06": "pending",
+    "M07": "pending",
+    "M08": "pending",
+    "M09": "pending",
+    "M10": "pending",
+    "M11": "pending",
+    "M12": "pending"
+  },
+  "full_objective_complete": false,
+  "goal_left_active": true,
+  "test_runs": [
+    {
+      "group": "baseline_build_compose",
+      "passed": 5
+    },
+    {
+      "group": "build_runtime_safety",
+      "passed": 12
+    },
+    {
+      "group": "corpus_guards",
+      "passed": 68
+    },
+    {
+      "group": "document_access_build_gazette_guards",
+      "passed": 102
+    },
+    {
+      "group": "query_parser_archive_rag_corpus",
+      "passed": 252
+    },
+    {
+      "group": "workspace_catalog_isolated_test_root",
+      "passed": 117,
+      "skipped": 1
+    },
+    {
+      "group": "final_catalog_document_build",
+      "passed": 14
+    }
+  ],
+  "test_counts_overlap": true,
+  "browser_smoke": {
+    "catalog": true,
+    "search_258_2024": true,
+    "source_article_260_expansion": true,
+    "pdf_page_60_rendered": true,
+    "full_M11": false
+  },
+  "screenshots": [
+    {
+      "name": "lc258-art260-pdf-page60.png",
+      "sha256": "B07D2372C80261BEFAB902FD703A549788E58EBE02FF7D0379DAB51B00524701"
+    },
+    {
+      "name": "lc258-art260.png",
+      "sha256": "5C8D7BE55518E99EB15E2EBBD2D112E7A5F0D61986C185967265A47A8DAB0C5B"
+    }
+  ],
+  "changes_to_product_database": false,
+  "new_schema_migrations_applied": false,
+  "reviewed_candidates_promoted": false,
+  "commits_push_merge_branch_switch": false,
+  "limits": [
+    "No temporal projection acceptance yet",
+    "No full 28x3 RAG experiment in this implementation turn",
+    "No full mobile/accessibility acceptance",
+    "No independent restore",
+    "No legal or institutional validation claimed"
+  ],
+  "transient_issue_resolved": "Legacy catalogue test originally used operational corpus root. Repeated in isolated test root without changing the empty-reviewed-corpus assertion."
+}

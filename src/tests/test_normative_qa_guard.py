@@ -278,7 +278,15 @@ def test_qa_runner_limits_sapl_candidate_extraction_to_promulgated_candidates():
         qa._allowed_command(command[:4] + ["f4a5c8f6-7ca2-4b5c-935e-033572a33510"] + command[5:])
 
 
-def test_qa_runner_limits_relation_candidate_extraction_to_two_exact_chain_ids():
+def test_qa_runner_allows_only_no_argument_lc261_unlinked_extraction():
+    base = ["python", "manage.py", "extract_lc261_unlinked_candidate_qa"]
+    assert qa._allowed_command(base) == [qa.sys.executable, *base[1:]]
+    for unsafe in (base + ["--apply"], base + ["--document-id", "anything"]):
+        with pytest.raises(ValueError, match="accepts no arguments"):
+            qa._allowed_command(unsafe)
+
+
+def test_qa_runner_limits_relation_candidate_extraction_to_exact_qa_chain_ids():
     base = ["python", "manage.py", "extract_lc_chain_relation_candidates_qa"]
     dry_run = base + ["--extraction-id", "7135"]
     apply = dry_run + ["--apply"]
@@ -307,9 +315,17 @@ def test_qa_runner_limits_relation_candidate_extraction_to_two_exact_chain_ids()
     assert qa._allowed_command(lc271_native_revision) == [
         qa.sys.executable, *lc271_native_revision[1:]
     ]
+    current_qa_lc271 = base + ["--extraction-id", "6920", "--source-article", "1"]
+    assert qa._allowed_command(current_qa_lc271) == [
+        qa.sys.executable, *current_qa_lc271[1:]
+    ]
     lc258_article_261 = base + ["--extraction-id", "7141", "--source-article", "261"]
     assert qa._allowed_command(lc258_article_261) == [
         qa.sys.executable, *lc258_article_261[1:]
+    ]
+    lc258_repeal_article = base + ["--extraction-id", "1391", "--source-article", "260"]
+    assert qa._allowed_command(lc258_repeal_article) == [
+        qa.sys.executable, *lc258_repeal_article[1:]
     ]
     for unsafe in (
         base + ["--extraction-id", "1"],
@@ -319,6 +335,7 @@ def test_qa_runner_limits_relation_candidate_extraction_to_two_exact_chain_ids()
         base + ["--extraction-id", "7135", "--apply", "--force"],
         base + ["--extraction-id", "7141", "--source-article", "118"],
         base + ["--extraction-id", "7141", "--source-article", "260"],
+        base + ["--extraction-id", "1391", "--source-article", "261"],
         base + ["--extraction-id", "7135", "--source-article", "117"],
         base + ["--extraction-id", "7135", "--source-article", "118", "--source-article", "118"],
         base + ["--extraction-id", "7135", "--source-article"],
@@ -363,7 +380,40 @@ def test_qa_runner_confines_lc55_candidate_staging_to_its_qa_evidence_file(tmp_p
     assert qa._allowed_command(base + ["--apply"]) == [qa.sys.executable, *base[1:], "--apply"]
     with pytest.raises(ValueError, match="exact QA evidence directory"):
         qa._allowed_command(base[:-1] + [str(tmp_path / "outside.pdf")])
-    with pytest.raises(ValueError, match="only --pdf-path and --apply"):
+
+
+def test_qa_runner_allows_only_the_fixed_container_qa_lc55_original():
+    base = [
+        "python", "manage.py", "stage_lc55_original_candidate_qa",
+        "--pdf-path", "/app/data/normative-qa/evidence/lc55-2004/lc55-original-2004.pdf",
+    ]
+    assert qa._allowed_command(base) == [qa.sys.executable, *base[1:]]
+    assert qa._allowed_command(base + ["--apply"]) == [qa.sys.executable, *base[1:], "--apply"]
+    for unsafe in (
+        base[:-1] + ["/tmp/other.pdf"],
+        base + ["--force"],
+    ):
+        with pytest.raises(ValueError, match="fixed QA evidence PDF"):
+            qa._allowed_command(unsafe)
+
+
+def test_qa_runner_allows_only_bounded_lc208_unlinked_candidate_staging():
+    base = ["python", "manage.py", "stage_lc208_unlinked_sapl_candidate_qa"]
+    assert qa._allowed_command(base) == [qa.sys.executable, *base[1:]]
+    assert qa._allowed_command(base + ["--apply"]) == [qa.sys.executable, *base[1:], "--apply"]
+    for unsafe in (base + ["--force"], base + ["--sapl-id", "4052"]):
+        with pytest.raises(ValueError, match="only optional --apply"):
+            qa._allowed_command(unsafe)
+
+
+def test_qa_runner_allows_only_bounded_lc261_unlinked_candidate_staging():
+    base = ["python", "manage.py", "stage_lc261_unlinked_sapl_candidate_qa"]
+    assert qa._allowed_command(base) == [qa.sys.executable, *base[1:]]
+    assert qa._allowed_command(base + ["--apply"]) == [qa.sys.executable, *base[1:], "--apply"]
+    for unsafe in (base + ["--force"], base + ["--sapl-id", "1160"]):
+        with pytest.raises(ValueError, match="only optional --apply"):
+            qa._allowed_command(unsafe)
+    with pytest.raises(ValueError, match="only optional --apply"):
         qa._allowed_command(base + ["--source-url", "https://attacker.invalid/file.pdf"])
 
 
@@ -540,9 +590,25 @@ def test_qa_runner_confines_live_rag_experiment_to_versioned_cases_and_qa_output
     ]
 
     assert qa._allowed_command(command) == [qa.sys.executable, *command[1:]]
+    project_gold_command = [
+        "python", "scripts/collect_normative_rag_experiment.py",
+        "--project-gold", "benchmarks/corpus/municipal_natal/project-gold.v1.json",
+        "--output", output, "--max-cases", "28", "--no-warm-cache",
+    ]
+    assert qa._allowed_command(project_gold_command) == [
+        qa.sys.executable, *project_gold_command[1:]
+    ]
+    with pytest.raises(ValueError, match="exactly one explicit reference"):
+        qa._allowed_command(project_gold_command + ["--cases", cases])
+    with pytest.raises(ValueError, match="reference must be inside"):
+        qa._allowed_command([
+            "python", "scripts/collect_normative_rag_experiment.py",
+            "--project-gold", str(tmp_path / "external-gold.json"),
+            "--output", output,
+        ])
     with pytest.raises(ValueError, match="output must stay"):
         qa._allowed_command(command[:-1] + [str(tmp_path / "outside.jsonl")])
-    with pytest.raises(ValueError, match="cases must be inside"):
+    with pytest.raises(ValueError, match="reference must be inside"):
         qa._allowed_command([
             "python", "scripts/collect_normative_rag_experiment.py",
             "--cases", str(tmp_path / "external.jsonl"), "--output", output,
@@ -553,10 +619,35 @@ def test_qa_runner_allows_collector_help_without_relaxing_experiment_paths():
     command = ["python", "scripts/collect_normative_rag_experiment.py", "--help"]
 
     assert qa._allowed_command(command) == [qa.sys.executable, *command[1:]]
-    with pytest.raises(ValueError, match="requires explicit cases and output"):
+    with pytest.raises(ValueError, match="exactly one explicit reference and output"):
         qa._allowed_command([
             "python", "scripts/collect_normative_rag_experiment.py", "--no-warm-cache",
         ])
+
+
+def test_qa_runner_confines_project_gold_archive_retrieval_evaluation(tmp_path, monkeypatch):
+    qa_root = tmp_path / "qa"
+    qa_root.mkdir()
+    monkeypatch.setenv("JURIX_QA_ROOT", str(qa_root))
+    output = str(qa_root / "archive-retrieval.json")
+    command = [
+        "python", "scripts/evaluate_pgm_project_gold_archive.py",
+        "--output", output,
+    ]
+
+    assert qa._allowed_command(command) == [qa.sys.executable, *command[1:]]
+    with pytest.raises(ValueError, match="only the adopted project gold"):
+        qa._allowed_command([
+            "python", "scripts/evaluate_pgm_project_gold_archive.py",
+            "--gold", str(tmp_path / "other-gold.json"), "--output", output,
+        ])
+    with pytest.raises(ValueError, match="output must stay"):
+        qa._allowed_command([
+            "python", "scripts/evaluate_pgm_project_gold_archive.py",
+            "--output", str(tmp_path / "outside.json"),
+        ])
+    with pytest.raises(ValueError, match="between 1 and 48"):
+        qa._allowed_command([*command, "--limit", "49"])
 
 
 def test_qa_runner_allows_only_the_live_rag_browser_smoke():
@@ -1264,8 +1355,20 @@ def test_archive_batch_extraction_guard_enforces_qa_sized_batches_and_explicit_m
     assert qa._allowed_command(
         base + ["--apply", "--publication-order", "--resume", "--batch-size", "10"]
     )[0] == qa.sys.executable
+    assert qa._allowed_command(
+        base + ["--dry-run", "--all-publication-order", "--batch-size", "1"]
+    )[0] == qa.sys.executable
+    assert qa._allowed_command(
+        base + ["--apply", "--all-publication-order", "--resume", "--batch-size", "10"]
+    )[0] == qa.sys.executable
+    assert qa._allowed_command(
+        base + ["--dry-run", "--all-publication-order", "--new-snapshot", "--batch-size", "10"]
+    )[0] == qa.sys.executable
     assert qa._container_storage_command(
         [*base, "--apply", "--publication-order", "--batch-size", "10"]
+    ) is None
+    assert qa._container_storage_command(
+        [*base, "--dry-run", "--all-publication-order", "--batch-size", "1"]
     ) is None
     assert qa._container_storage_command([*base, "--apply", "--batch-size", "10"]) is not None
     for options in (
@@ -1277,6 +1380,10 @@ def test_archive_batch_extraction_guard_enforces_qa_sized_batches_and_explicit_m
         ["--apply", "--resume", "--all"],
         ["--resume"],
         ["--dry-run", "--publication-order", "--publication-order"],
+        ["--dry-run", "--all-publication-order", "--all-publication-order"],
+        ["--dry-run", "--publication-order", "--all-publication-order"],
+        ["--dry-run", "--new-snapshot"],
+        ["--dry-run", "--all-publication-order", "--new-snapshot", "--new-snapshot"],
     ):
         with pytest.raises(ValueError):
             qa._allowed_command(base + options)
@@ -1342,6 +1449,20 @@ def test_archive_extraction_coverage_diagnostic_is_read_only_and_accepts_no_opti
         qa._allowed_command(command + ["--all"])
 
 
+def test_ctm_article20_timeline_diagnostic_is_read_only_and_accepts_no_options():
+    command = ["python", "manage.py", "inspect_ctm_article20_timeline_qa"]
+    assert qa._allowed_command(command) == [qa.sys.executable, *command[1:]]
+    with pytest.raises(ValueError, match="accepts no options"):
+        qa._allowed_command(command + ["--apply"])
+
+
+def test_pgm_demo_readiness_diagnostic_is_read_only_and_accepts_no_options():
+    command = ["python", "manage.py", "inspect_pgm_demo_readiness_qa"]
+    assert qa._allowed_command(command) == [qa.sys.executable, *command[1:]]
+    with pytest.raises(ValueError, match="accepts no options"):
+        qa._allowed_command(command + ["--apply"])
+
+
 def test_archive_search_profiler_is_fixed_and_accepts_no_options():
     command = ["python", "scripts/profile_archive_search_qa.py"]
     assert qa._allowed_command(command) == [qa.sys.executable, *command[1:]]
@@ -1374,6 +1495,16 @@ def test_ctm_2021_extraction_uses_the_host_qa_volume_that_contains_its_blob():
     args = [
         "python", "manage.py", "extract_archive_candidate_qa",
         "--document-id", "a68fdb23-c0aa-4082-8871-fe99096847b9",
+        "--max-ocr-pages", "0", "--ocr-timeout-seconds", "15",
+    ]
+    assert qa._allowed_command(args)[0] == qa.sys.executable
+    assert qa._container_storage_command(args) is None
+
+
+def test_lp275_extraction_uses_the_host_qa_volume_that_contains_its_blob():
+    args = [
+        "python", "manage.py", "extract_archive_candidate_qa",
+        "--document-id", "8dea863e-e736-452e-8ca6-288f6061d239",
         "--max-ocr-pages", "0", "--ocr-timeout-seconds", "15",
     ]
     assert qa._allowed_command(args)[0] == qa.sys.executable
@@ -1511,7 +1642,7 @@ def test_qa_runner_limits_sapl_candidate_staging_to_exact_promulgated_records():
         apply = dry_run + ["--apply"]
         assert qa._allowed_command(dry_run) == [qa.sys.executable, *dry_run[1:]]
         assert qa._allowed_command(apply) == [qa.sys.executable, *apply[1:]]
-    for sapl_id in ("9406", "4052", "1160"):
+    for sapl_id in ("9406", "4052", "1160", "254"):
         inspect = base + ["--sapl-id", sapl_id, "--inspect-existing"]
         assert qa._allowed_command(inspect) == [qa.sys.executable, *inspect[1:]]
     for unsafe in (

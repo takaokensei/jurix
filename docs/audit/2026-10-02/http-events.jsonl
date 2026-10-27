@@ -474,3 +474,16 @@
 {"path": "/api/v1/search/answer/stream/", "method": "POST", "status": 200, "response_header_ms": 4, "queries": 1, "query_ms": 0}
 {"path": "/assistente/local-0b13a5c5-a158-4445-9488-4ad90d7387dd/", "method": "GET", "status": 200, "response_header_ms": 14, "queries": 3, "query_ms": 0}
 {"path": "/api/v1/suggestions/", "method": "GET", "status": 200, "response_header_ms": 54, "queries": 2, "query_ms": 16}
+{"path": "/assistente/", "method": "GET", "status": 200, "response_header_ms": 5, "queries": 3, "query_ms": 0}
+{"path": "/api/v1/suggestions/", "method": "GET", "status": 200, "response_header_ms": 7, "queries": 2, "query_ms": 0}
+{"path": "/api/v1/search/answer/stream/", "method": "POST", "status": 200, "response_header_ms": 4, "queries": 1, "query_ms": 0}
+{"path": "/assistente/", "method": "GET", "status": 200, "response_header_ms": 5, "queries": 3, "query_ms": 0}
+{"path": "/api/v1/suggestions/", "method": "GET", "status": 200, "response_header_ms": 6, "queries": 2, "query_ms": 0}
+{"path": "/api/v1/search/answer/stream/", "method": "POST", "status": 200, "response_header_ms": 2, "queries": 1, "query_ms": 0}
+{"path": "/api/v1/search/answer/stream/", "method": "POST", "status": 200, "response_header_ms": 3, "queries": 1, "query_ms": 0}
+{"path": "/assistente/local-75b549be-bdf5-4f7f-bf9d-ba250ee0a696/", "method": "GET", "status": 200, "response_header_ms": 5, "queries": 3, "query_ms": 0}
+{"path": "/api/v1/suggestions/", "method": "GET", "status": 200, "response_header_ms": 4, "queries": 2, "query_ms": 0}
+{"path": "/api/v1/search/answer/stream/", "method": "POST", "status": 200, "response_header_ms": 2, "queries": 1, "query_ms": 0}
+{"path": "/api/v1/search/answer/stream/", "method": "POST", "status": 200, "response_header_ms": 3, "queries": 1, "query_ms": 0}
+{"path": "/api/v1/search/answer/stream/", "method": "POST", "status": 200, "response_header_ms": 2, "queries": 1, "query_ms": 0}
+{"path": "/api/v1/search/answer/stream/", "method": "POST", "status": 200, "response_header_ms": 2, "queries": 1, "query_ms": 0}

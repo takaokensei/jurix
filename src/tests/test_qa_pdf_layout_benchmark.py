@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
+import scripts.benchmark_pdf_layout_qa as benchmark
 from scripts.benchmark_pdf_layout_qa import _require_qa, _table_summary
 
 
@@ -44,3 +47,19 @@ def test_table_benchmark_refuses_non_qa_execution(monkeypatch):
         assert "QA normativo isolado" in str(error)
     else:
         raise AssertionError("O benchmark deve recusar o perfil de produto")
+
+
+def test_renderer_decodes_poppler_output_independent_of_windows_ansi_codepage(monkeypatch):
+    observed = {}
+
+    def fake_run(command, **kwargs):
+        observed.update(kwargs)
+        return SimpleNamespace(returncode=0, stdout="texto legal — tabela")
+
+    monkeypatch.setattr(benchmark.subprocess, "run", fake_run)
+
+    assert benchmark._run_renderer(["pdftohtml", "-stdout", "documento.pdf"], 30) == (
+        "texto legal — tabela"
+    )
+    assert observed["encoding"] == "utf-8"
+    assert observed["errors"] == "replace"

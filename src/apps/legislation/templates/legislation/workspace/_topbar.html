@@ -43,6 +43,7 @@
             <dl>
                 <dt>Build</dt><dd>{{ jurix_build.version }}</dd>
                 <dt>Revisão</dt><dd>{{ jurix_build.revision }}</dd>
+                {% if jurix_build.content_sha256 %}<dt>Conteúdo</dt><dd>{{ jurix_build.content_sha256|slice:":12" }}</dd>{% endif %}
                 <dt>Ambiente</dt><dd>{{ jurix_build.profile }}</dd>
                 <dt>Corpus</dt><dd>{{ jurix_build.corpus }}</dd>
             </dl>

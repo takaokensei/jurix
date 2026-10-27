@@ -51,6 +51,15 @@
 
             <div class="jurix-norma-filter-grid" id="norma-filter-grid">
                 <div class="jurix-norma-field">
+                    <label for="norma-escopo">Acervo</label>
+                    <select class="jurix-norma-select" id="norma-escopo" name="escopo">
+                        <option value="todos" {% if selected_scope == 'todos' %}selected{% endif %}>Todos</option>
+                        <option value="experimental" {% if selected_scope == 'experimental' %}selected{% endif %}>Consulta experimental</option>
+                        <option value="documentos" {% if selected_scope == 'documentos' %}selected{% endif %}>Documentos</option>
+                        <option value="revisadas" {% if selected_scope == 'revisadas' %}selected{% endif %}>Revisadas</option>
+                    </select>
+                </div>
+                <div class="jurix-norma-field">
                     <label for="norma-tipo">Tipo</label>
                     <select class="jurix-norma-select" id="norma-tipo" name="tipo">
                         <option value="">Todos os tipos</option>
@@ -82,7 +91,7 @@
             </div>
         </form>
 
-        {% if archive_candidate_total and search_query %}
+        {% if archive_candidate_total and search_query and not pilot_entries %}
         <aside class="jurix-norma-archive-bridge" aria-labelledby="norma-archive-bridge-title">
             <div>
                 <span class="jurix-norma-eyebrow">Acervo histórico · revisão pendente</span>
@@ -100,8 +109,8 @@
         <div class="jurix-norma-results-bar">
             <div class="jurix-norma-summary" id="resultados" aria-label="Resumo do acervo e da pesquisa">
                 <div class="jurix-norma-stat">
-                    <span class="jurix-norma-stat-value">{{ total_consolidated }}</span>
-                    <span class="jurix-norma-stat-label">normas consolidadas</span>
+                    <span class="jurix-norma-stat-value">{% if pilot_total and selected_scope != 'revisadas' %}{{ pilot_total }}{% else %}{{ total_consolidated }}{% endif %}</span>
+                    <span class="jurix-norma-stat-label">{% if pilot_total and selected_scope != 'revisadas' %}normas no piloto{% else %}normas consolidadas{% endif %}</span>
                 </div>
                 <div class="jurix-norma-stat">
                     <span class="jurix-norma-stat-value">{{ filtered_count }}</span>
@@ -120,6 +129,36 @@
             </div>
         </div>
     </section>
+
+    {% if pilot_error %}<p role="alert">O acervo experimental está temporariamente indisponível. Verifique o estado da instância.</p>{% endif %}
+    {% if pilot_entries %}
+    <section aria-labelledby="pilot-normas-title" data-pilot-catalog>
+        <h2 id="pilot-normas-title">Normas para consulta experimental</h2>
+        <p>{{ pilot_filtered_count }} norma{{ pilot_filtered_count|pluralize }} encontrada{{ pilot_filtered_count|pluralize }} no piloto de {{ pilot_total }} normas. Textos documentais com dispositivos identificados; a cobertura não certifica vigência atual.</p>
+        <div class="jurix-norma-grid">
+            {% for entry in pilot_entries %}
+            <article class="jurix-norma-card" data-pilot-norma="{{ entry.norma_key }}">
+                <div class="jurix-norma-card-main">
+                    <div class="jurix-norma-meta-row"><span>Acervo documental · consulta experimental</span></div>
+                    <h3 class="jurix-norma-card-title">{{ entry.label }}</h3>
+                    <p class="jurix-norma-card-ementa">{{ entry.device_count }} dispositivos identificados · {{ entry.source_count }} fonte{{ entry.source_count|pluralize }}{% if entry.edition_year %} · edição {{ entry.edition_year }}{% endif %}</p>
+                    <p>Extração técnica; relações e datas dependem da cobertura documental.</p>
+                </div>
+                <div class="jurix-norma-card-actions">
+                    <a class="jurix-norma-card-link" href="{{ entry.casefile_url }}">Consultar norma e alterações →</a>
+                    {% if entry.evidence_url %}<a class="jurix-norma-card-link" href="{{ entry.evidence_url }}">Ver texto e fontes →</a>{% endif %}
+                    {% if entry.pdf_url %}<a class="jurix-norma-card-link" href="{{ entry.pdf_url }}" target="_blank" rel="noopener noreferrer">Abrir PDF ↗</a>{% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% if pilot_page.has_other_pages %}<nav class="jurix-norma-pagination" aria-label="Paginação das normas experimentais">
+            {% if pilot_page.has_previous %}<a class="jurix-norma-page-link" href="?escopo={{ selected_scope|urlencode }}&q={{ search_query|urlencode }}&tipo={{ selected_type|urlencode }}&ano={{ selected_year|urlencode }}&ordenar={{ ordering|urlencode }}&piloto_pagina={{ pilot_page.previous_page_number }}">← Anterior</a>{% endif %}
+            <span>{{ pilot_page.number }} / {{ pilot_page.paginator.num_pages }}</span>
+            {% if pilot_page.has_next %}<a class="jurix-norma-page-link" href="?escopo={{ selected_scope|urlencode }}&q={{ search_query|urlencode }}&tipo={{ selected_type|urlencode }}&ano={{ selected_year|urlencode }}&ordenar={{ ordering|urlencode }}&piloto_pagina={{ pilot_page.next_page_number }}">Próxima →</a>{% endif %}
+        </nav>{% endif %}
+    </section>
+    {% endif %}
 
     {% if normas %}
     <section aria-labelledby="normas-results-heading">
@@ -172,11 +211,13 @@
         </nav>
         {% endif %}
     </section>
-    {% else %}
+    {% elif not pilot_entries and not pilot_error %}
     <section class="jurix-norma-empty{% if sapl_catalog_total %} jurix-norma-empty--catalog{% endif %}" aria-labelledby="norma-empty-title">
         <div class="jurix-norma-empty-icon" aria-hidden="true">⌕</div>
         <h2 id="norma-empty-title">
-            {% if search_query or selected_type or selected_year %}
+            {% if selected_scope == 'experimental' %}
+                Nenhuma norma experimental corresponde aos filtros
+            {% elif search_query or selected_type or selected_year %}
                 Nenhuma norma consolidada corresponde aos filtros
             {% elif archive_candidate_count %}
                 Nenhuma norma consolidada disponível
@@ -185,7 +226,9 @@
             {% endif %}
         </h2>
         <p>
-            {% if search_query or selected_type or selected_year %}
+            {% if selected_scope == 'experimental' %}
+                A pesquisa foi feita na coleção operacional de {{ pilot_total }} normas. Remova filtros ou escolha Todos para pesquisar também os documentos do acervo.
+            {% elif search_query or selected_type or selected_year %}
                 {% if sapl_catalog_total %}Há registros do catálogo oficial abaixo, mas eles contêm somente metadados e não equivalem a texto consolidado ou evidência jurídica.{% else %}Não encontramos normas consolidadas para os filtros atuais. PDFs candidatos em revisão são exibidos em uma seção separada e não equivalem a normas consolidadas. Tente ampliar a pesquisa ou remover um dos filtros.{% endif %}
             {% elif archive_candidate_count %}
                 Ainda não há normas consolidadas. Os PDFs candidatos do acervo histórico aparecem abaixo, em seção separada, e permanecem pendentes de revisão; eles não equivalem a redações consolidadas ou vigentes.
@@ -293,6 +336,8 @@
                 {% if archive_assistant_enabled %}
                 <a class="jurix-norma-primary-button" href="{% url 'workspace:assistant' %}?new=1&amp;corpus=archive-qa">Perguntar ao assistente sobre o acervo</a>
                 {% endif %}
+                <a class="jurix-norma-secondary-button" href="{% url 'workspace:pgm_project_gold' %}">Abrir conjunto Gold de avaliação</a>
+                <p>O Gold é um conjunto de referência para avaliação técnica, com adjudicação por IA. Ele não representa revisão jurídica independente, consolidação nem confirmação de vigência.</p>
             </div>
             <span class="jurix-archive-candidates-count">{{ archive_candidate_count }} exibidos · {{ archive_candidate_total }} no acervo</span>
         </div>

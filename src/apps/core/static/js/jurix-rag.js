@@ -191,7 +191,7 @@
             fill.setAttribute('aria-hidden', 'true');
         });
         container.querySelectorAll('.source-score').forEach((score) => {
-            if (score.closest('.jurix-rag-source--coverage, .jurix-rag-source--explicit')) return;
+            if (score.closest('.jurix-rag-source--coverage, .jurix-rag-source--explicit, .jurix-rag-source--relation, .jurix-rag-source--archive, .jurix-rag-source--rule, .jurix-rag-source--catalog, .jurix-rag-source--matter, .jurix-rag-source--gazette')) return;
             const label = score.querySelector('.jurix-rag-score-label');
             const value = score.querySelector('span');
             if (!label && value) {
@@ -231,8 +231,18 @@
     }
 
     function buildSourceUrl(source = {}) {
-        const isLocalArchive = source.evidence_scope === 'isolated_qa_archive';
+        const isPilot = source.evidence_scope === 'ai_pilot';
+        const isLocalArchive = ['isolated_qa_archive', 'ai_pilot'].includes(source.evidence_scope);
         const localPdfUrl = isLocalArchive ? safeHttpUrl(source.local_pdf_url) : null;
+        if (isPilot) {
+            if (!localPdfUrl) return null;
+            const local = new URL(localPdfUrl);
+            if (local.origin !== window.location.origin
+                || !/^\/explorar\/fontes\/[a-f0-9]{64}\/$/.test(local.pathname)
+                || !/^[a-f0-9]{64}$/.test(local.searchParams.get('revision') || '')
+                || local.pathname.split('/')[3] !== source.document_sha256
+                || local.searchParams.get('revision') !== source.corpus_revision) return null;
+        }
         const pdfUrl = isLocalArchive ? localPdfUrl : safeHttpUrl(source.pdf_url);
         const officialGeneralUrl = safeOfficialGeneralLegislationUrl(source);
         const url = pdfUrl || officialGeneralUrl || (isLocalArchive ? null : safeHttpUrl(source.sapl_url));
@@ -332,12 +342,13 @@
         const isCatalogMetadata = safeSource.source_kind === 'sapl_normative_catalog'
             || safeSource.evidence_scope === 'official_normative_catalog_metadata';
         const isOfficialGazetteExtraction = safeSource.source_kind === 'official_gazette_extraction';
+        const isOfficialCountingRule = safeSource.evidence_scope === 'official_vacatio_counting_rule';
         // Restored conversations keep graph_relation but may not keep match_kind.
         const graphRelation = safeSource.match_kind === 'normative_graph_relation'
             || Boolean(safeSource.graph_relation && typeof safeSource.graph_relation === 'object');
-        const isLocalArchive = safeSource.evidence_scope === 'isolated_qa_archive';
+        const isLocalArchive = ['isolated_qa_archive', 'ai_pilot'].includes(safeSource.evidence_scope);
         const { normalized, percent } = getSourceScore(safeSource);
-        const band = isCatalogMetadata ? 'catalog' : isLegislativeMatter || isProposalDocument ? 'matter' : isOfficialGazetteExtraction ? 'gazette' : scopeBased ? 'coverage' : explicitReference ? 'explicit' : graphRelation ? 'relation' : isLocalArchive ? 'archive' : normalized >= 0.8 ? 'high' : normalized >= 0.6 ? 'medium' : 'low';
+        const band = isCatalogMetadata ? 'catalog' : isLegislativeMatter || isProposalDocument ? 'matter' : isOfficialGazetteExtraction ? 'gazette' : isOfficialCountingRule ? 'rule' : scopeBased ? 'coverage' : explicitReference ? 'explicit' : graphRelation ? 'relation' : isLocalArchive ? 'archive' : normalized >= 0.8 ? 'high' : normalized >= 0.6 ? 'medium' : 'low';
         const relevanceLabel = getRelevanceLabel(normalized);
         const contributionLabel = getContributionLabel(safeSource, normalized);
 
@@ -436,6 +447,8 @@
                         ? `<div class="source-score" aria-label="Registro de catálogo SAPL; metadados identificam o ato, mas não comprovam seu texto, vigência ou alterações"><span class="jurix-rag-score-text">Cadastro SAPL — texto legal não integrado</span></div>`
                         : isOfficialGazetteExtraction
                         ? `<div class="source-score" aria-label="Texto localizado na edição oficial do Diário Oficial por extração automatizada ainda não revisada"><span class="jurix-rag-score-text">Diário Oficial — extração não revisada</span></div>`
+                        : isOfficialCountingRule
+                        ? `<div class="source-score" aria-label="Critério legal geral usado para explicar a contagem; não é uma pontuação de relevância nem confirma a vigência do ato consultado"><span class="jurix-rag-score-text">Critério legal de contagem</span></div>`
                         : isLegislativeMatter
                         ? `<div class="source-score" aria-label="Registro oficial de matéria legislativa; não representa norma vigente"><span class="jurix-rag-score-text">Registro de matéria legislativa</span></div>`
                         : scopeBased
@@ -484,7 +497,7 @@
                     ${openAction}
                 </div>
 
-                ${isCatalogMetadata || isLegislativeMatter || isProposalDocument || isOfficialGazetteExtraction || scopeBased || explicitReference || graphRelation || isLocalArchive ? '' : `<span class="jurix-rag-sr-only">${escapeHtml(relevanceLabel)}. Pontuação técnica de recuperação: ${percent}%.</span>`}
+                ${isCatalogMetadata || isLegislativeMatter || isProposalDocument || isOfficialGazetteExtraction || isOfficialCountingRule || scopeBased || explicitReference || graphRelation || isLocalArchive ? '' : `<span class="jurix-rag-sr-only">${escapeHtml(relevanceLabel)}. Pontuação técnica de recuperação: ${percent}%.</span>`}
             </article>
         `;
     }
@@ -523,7 +536,7 @@
             const identity = normKey(norm.match(normPattern), proposalSource);
             return identity && href ? {
                 identity, article, inciso, href, label: norm + ', ' + device, device,
-                localArchive: source?.evidence_scope === 'isolated_qa_archive',
+                localArchive: ['isolated_qa_archive', 'ai_pilot'].includes(source?.evidence_scope),
                 officialGeneralLegislation: source?.source_kind === 'official_general_legislation',
             } : null;
         }).filter(Boolean);
@@ -917,7 +930,7 @@
         const isMatterSource = (source) => source?.source_kind === 'sapl_legislative_matter'
             || source?.evidence_scope === 'official_legislative_matter'
             || /matéria legislativa.*(?:registro oficial )?sapl/i.test(source?.source_type || '');
-        const isArchiveSource = (source) => source?.evidence_scope === 'isolated_qa_archive'
+        const isArchiveSource = (source) => ['isolated_qa_archive', 'ai_pilot'].includes(source?.evidence_scope)
             || /acervo histórico local/i.test(source?.source_type || '');
         const hasSyntheticSource = sourceRows.some((source) => source?.synthetic_fixture === true);
         const hasQaSource = sourceRows.some(isArchiveSource);

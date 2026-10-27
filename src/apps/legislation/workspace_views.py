@@ -1,12 +1,14 @@
 """Product-workspace views: assistant, search, collections, history and settings."""
 
 import hashlib
+import json
 import logging
 import math
 import re
 import uuid
 from collections import Counter
 from datetime import date, timedelta
+from pathlib import Path
 
 from django.conf import settings
 from django.contrib import messages
@@ -27,6 +29,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods, require_POST
 
 from src.apps.legislation.document_models import (
+    AIPilotAdoption,
     DocumentoNormativo,
     ExtracaoDocumento,
 )
@@ -681,6 +684,9 @@ def _exact_normative_search_results(reference, norma_type, year):
 
 def legal_search_view(request):
     """Dedicated semantic/legal search surface with lexical fallback."""
+    from src.apps.legislation.pilot_catalog import pilot_catalog_context
+
+    pilot_context = pilot_catalog_context(request)
     query = request.GET.get("q", "").strip()
     norma_type = request.GET.get("tipo", "").strip()
     year_raw = request.GET.get("ano", "").strip()
@@ -723,7 +729,7 @@ def legal_search_view(request):
         search_error = "Busca muito longa (máximo de 200 caracteres)."
         search_mode = "não executada"
 
-    if query and len(query) <= 200:
+    if query and len(query) <= 200 and pilot_context["selected_scope"] in {"todos", "revisadas"} and not pilot_context.get("pilot_reference_exact"):
         references = parse_normative_references(query)
         exact_reference = references[0] if len(references) == 1 else None
         exact_results = _exact_normative_search_results(exact_reference, norma_type, year)
@@ -890,7 +896,7 @@ def legal_search_view(request):
         or archive_extraction_status
         or archive_recent_browse
     )
-    if archive_search_available:
+    if archive_search_available and pilot_context["selected_scope"] in {"todos", "documentos"}:
         try:
             archive_search = search_archive_documents(
                 query,
@@ -1072,6 +1078,7 @@ def legal_search_view(request):
         request,
         "legislation/workspace/search.html",
         {
+            **pilot_context,
             "query": query,
             "has_search": bool(query or topic_code),
             "archive_search_available": archive_search_available,
@@ -2133,6 +2140,215 @@ def normative_casefile_view(request, pk: int):
     )
 
 
+def pgm_project_gold_view(request):
+    """Browse the frozen AI-adjudicated benchmark without promoting QA documents."""
+    if not getattr(settings, "NORMATIVE_ARCHIVE_ENABLED", False):
+        raise Http404("A coleção de avaliação não está habilitada nesta instalação.")
+
+    reference_root = (
+        Path(__file__).resolve().parents[3]
+        / "benchmarks"
+        / "corpus"
+        / "municipal_natal"
+        / "ai-adjudicated-20261018-v1"
+        / "reference"
+    )
+    try:
+        origins = [
+            json.loads(line)
+            for line in (reference_root / "source-origins.jsonl").read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        annotations = {
+            row["annotation"]["annotation_id"].split(":")[1]: row["annotation"]
+            for row in (
+                json.loads(line)
+                for line in (reference_root / "annotations.ai-adjudicated.jsonl")
+                .read_text(encoding="utf-8")
+                .splitlines()
+                if line.strip()
+            )
+        }
+        queries = [
+            json.loads(line)
+            for line in (reference_root / "queries.ai.jsonl").read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        logger.exception("Unable to load the versioned PGM project gold package")
+        raise Http404("A coleção de avaliação está indisponível.") from exc
+
+    hashes = {
+        row.get("document_key", "").removeprefix("sha256:")
+        for row in origins
+        if isinstance(row.get("document_key"), str)
+    }
+    documents = {
+        document.content_sha256: document
+        for document in DocumentoNormativo.objects.filter(content_sha256__in=hashes)
+    }
+    type_labels = {
+        "lei": "Lei",
+        "lei_complementar": "Lei Complementar",
+        "lei_ordinaria": "Lei Ordinária",
+        "lei_promulgada": "Lei Promulgada",
+        "decreto": "Decreto",
+        "decreto_legislativo": "Decreto Legislativo",
+    }
+    device_labels = {
+        "art": "Art.",
+        "artigo": "Art.",
+        "par": "§",
+        "paragrafo": "§",
+        "inciso": "inciso",
+        "alinea": "alínea",
+        "item": "item",
+    }
+    cases = []
+    for origin in origins:
+        key_parts = str(origin.get("norma_key", "")).split("|")
+        if len(key_parts) != 4:
+            continue
+        _, type_key, number, year = key_parts
+        unit_id = str(origin.get("unit_id", ""))
+        annotation = annotations.get(unit_id, {})
+        annotation_events = annotation.get("events", [])
+        spans = annotation.get("spans", [])
+        devices = []
+        for span in spans:
+            device_key = str(span.get("device_key", ""))
+            device_type, separator, device_number = device_key.partition(":")
+            if not separator:
+                continue
+            label = device_labels.get(device_type.casefold(), device_type.capitalize())
+            devices.append(f"{label} {device_number}".strip())
+        document = documents.get(str(origin.get("document_key", "")).removeprefix("sha256:"))
+        public_sapl_candidate = bool(
+            document
+            and document.source_kind == DocumentoNormativo.SourceKind.SAPL
+            and document.review_status != DocumentoNormativo.ReviewStatus.APPROVED
+            and document.official_url
+        )
+        queries_for_case = [row for row in queries if unit_id in row.get("expected_unit_ids", [])]
+        formatted_number = f"{int(number):,}".replace(",", ".") if number.isdigit() else number
+        cases.append(
+            {
+                "unit_id": unit_id,
+                "label": f"{type_labels.get(type_key, 'Norma')} nº {formatted_number}/{year}",
+                "norma_key": origin.get("norma_key", ""),
+                "devices": devices,
+                "event_count": len(annotation_events),
+                "query_count": len(queries_for_case),
+                "document": document,
+                "evidence_url": (
+                    document.official_url
+                    if public_sapl_candidate
+                    else reverse("legislation:document_evidence", kwargs={"document_id": document.public_id})
+                    if document
+                    else ""
+                ),
+                "external_source": public_sapl_candidate,
+                "source_label": (
+                    "PDF oficial SAPL · candidato não revisado"
+                    if public_sapl_candidate
+                    else f"PDF correspondente no QA · {document.get_review_status_display()}"
+                    if document
+                    else "PDF não disponível no QA"
+                ),
+                "review_status": document.get_review_status_display() if document else "PDF não disponível no QA",
+                "is_unresolved_case": any(
+                    query.get("expected_abstain") for query in queries_for_case
+                ),
+            }
+        )
+
+    return render(
+        request,
+        "legislation/workspace/pgm_project_gold.html",
+        {
+            "cases": cases,
+            "gold_id": "jurix-pgm-gold-v1",
+            "active_nav": "explore",
+        },
+    )
+
+
+def ai_pilot_adoptions_view(request):
+    """Show explicitly adopted AI-review scopes as a separate pilot evidence graph."""
+    adoptions = list(
+        AIPilotAdoption.objects.filter(decision="adopted_for_pilot")
+        .select_related("norma")
+        .order_by("case_key", "revision")
+    )
+    public_ids = {
+        source.get("document_id")
+        for adoption in adoptions
+        for source in adoption.evidence_json.get("sources", [])
+        if source.get("document_id")
+    }
+    documents = {
+        str(document.public_id): document
+        for document in DocumentoNormativo.objects.filter(public_id__in=public_ids)
+    }
+    case_labels = dict(AIPilotAdoption.Case.choices)
+    cases = []
+    for adoption in adoptions:
+        payload = adoption.evidence_json
+        source_by_id = {row.get("source_id"): row for row in payload.get("sources", [])}
+        events = []
+        for event in payload.get("events", []):
+            evidence = event.get("evidence") or {}
+            source = source_by_id.get(evidence.get("source_id"), {})
+            target = event.get("target")
+            if isinstance(target, dict):
+                target_label = target.get("confirmed_identity") or target.get("literal_target") or str(target)
+            else:
+                target_label = str(target or "Alvo não especificado")
+            source_label = source.get("title") or f"Fonte {evidence.get('source_id', '')}"
+            source_href = safe_official_url(source.get("url"))
+            local_document = documents.get(str(source.get("document_id") or ""))
+            local_href = (
+                reverse("legislation:document_pdf", args=(local_document.public_id,))
+                if local_document
+                else ""
+            )
+            events.append(
+                {
+                    "key": event.get("relation_key"),
+                    "action": event.get("action"),
+                    "article": evidence.get("article"),
+                    "target": target_label,
+                    "resolution": event.get("target_resolution"),
+                    "assessment": event.get("documentary_assessment", ""),
+                    "quote": evidence.get("quote", ""),
+                    "pages": evidence.get("pages", []),
+                    "source_label": source_label,
+                    "source_href": source_href,
+                    "local_href": local_href,
+                    "pdf_sha256": source.get("pdf_sha256", ""),
+                }
+            )
+        cases.append(
+            {
+                "key": adoption.case_key,
+                "label": case_labels.get(adoption.case_key, adoption.case_key),
+                "revision": adoption.revision,
+                "adopted_on": adoption.adopted_on,
+                "norma": adoption.norma,
+                "review_draft_sha256": adoption.review_draft_sha256,
+                "report_sha256": adoption.review_report_sha256,
+                "events": events,
+                "limitations": adoption.limitations_json,
+                "conflict_case": adoption.case_key == AIPilotAdoption.Case.LC55_CONFLICT,
+            }
+        )
+    return render(
+        request,
+        "legislation/workspace/ai_pilot_adoptions.html",
+        {"cases": cases, "active_nav": "explore"},
+    )
+
+
 def _parse_repeal_candidates(legal_text):
     article_match = re.search(
         r"\bArt\.\s*260\.\s*Ficam revogados:(.*?)(?=\bArt\.\s*261\b)",
@@ -2712,7 +2928,7 @@ def _pgm_ctm_art20_relation_candidate(document, *, user=None) -> dict | None:
             "target_device": "Artigo 20",
             "action_quote": evidence.get("action_quote") or candidate.action_quote,
             "target_text": evidence.get("target_quote") or candidate.target_text,
-            "review_state": "extração confirmada" if latest_review else "extração pendente",
+            "review_state": "revisão jurídica registrada" if latest_review else "revisão jurídica pendente",
             "page": page,
             "pdf_url": _pgm_document_pdf_url(document, page, user=user)
             or safe_official_url(document.official_url),
@@ -2920,6 +3136,11 @@ def pgm_consolidation_demo_view(request):
     ):
         raise Http404("Prévia disponível somente no ambiente QA autorizado.")
 
+    from src.apps.legislation.pilot_catalog import operational_pilot
+
+    if operational_pilot():
+        return redirect("workspace:pilot_casefile")
+
     from src.apps.legislation.document_models import ExtracaoDocumento
 
     source_document = (
@@ -3102,12 +3323,27 @@ def pgm_consolidation_demo_view(request):
         user=request.user,
     )
     lc55_extraction = lc55_snapshot_candidate.get("extraction")
+    lc208_identity_key = "BR-RN-NATAL|lei_complementar|municipal_lc|208|2022"
+    lc208_existing_norma_identity_conflict = Norma.objects.filter(sapl_id=1160).exclude(
+        identity_key=lc208_identity_key
+    ).exists()
     lc208_document = (
         DocumentoNormativo.objects.filter(
             source_kind=DocumentoNormativo.SourceKind.SAPL,
-            norma__sapl_id=1160,
             review_status=DocumentoNormativo.ReviewStatus.PENDING,
             accepted_extraction__isnull=True,
+        )
+        .filter(
+            Q(norma__sapl_id=1160, norma__identity_key=lc208_identity_key)
+            | Q(
+                norma__isnull=True,
+                metadata_json__sapl_id=1160,
+                metadata_json__identity_status="candidate",
+                metadata_json__identity_key=lc208_identity_key,
+                metadata_json__identity_key_candidate=lc208_identity_key,
+                metadata_json__source_provenance__kind="sapl_norma_pdf",
+                metadata_json__association_status="identity_conflict_unlinked",
+            )
         )
         .select_related("norma")
         .order_by("created_at", "pk")
@@ -3126,9 +3362,20 @@ def pgm_consolidation_demo_view(request):
     lc261_document = (
         DocumentoNormativo.objects.filter(
             source_kind=DocumentoNormativo.SourceKind.SAPL,
-            norma__sapl_id=8823,
             review_status=DocumentoNormativo.ReviewStatus.PENDING,
             accepted_extraction__isnull=True,
+        )
+        .filter(
+            Q(norma__sapl_id=8823, norma__identity_key="BR-RN-NATAL|lei_complementar|municipal_lc|261|2025")
+            | Q(
+                norma__isnull=True,
+                metadata_json__sapl_id=8823,
+                metadata_json__identity_status="candidate",
+                metadata_json__identity_key="BR-RN-NATAL|lei_complementar|municipal_lc|261|2025",
+                metadata_json__identity_key_candidate="BR-RN-NATAL|lei_complementar|municipal_lc|261|2025",
+                metadata_json__source_provenance__kind="sapl_norma_pdf",
+                metadata_json__association_status="identity_conflict_unlinked",
+            )
         )
         .select_related("norma")
         .order_by("created_at", "pk")
@@ -3356,6 +3603,7 @@ def pgm_consolidation_demo_view(request):
             "lc55_evidence_document": lc55_evidence_document,
             "old_article_21_pdf_url": lc55_pdf_url,
             "lc208_document": lc208_document,
+            "lc208_existing_norma_identity_conflict": lc208_existing_norma_identity_conflict,
             "lc208_article_14": lc208_article_14,
             "lc208_article_14_pdf_url": lc208_pdf_url,
             "lc258_new_article_14": lc258_new_article_14,

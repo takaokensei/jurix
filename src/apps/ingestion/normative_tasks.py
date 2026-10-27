@@ -568,6 +568,14 @@ def process_normative_work_item_task(self, item_id: int):
     _require_normative_qa()
     try:
         item, token = claim_normative_work_item(item_id)
+    except NormativeWorkItem.DoesNotExist:
+        # A stale broker message can outlive deletion of its QA work item.
+        # Acknowledge it as a no-op instead of retrying a permanently missing row.
+        return {
+            "item_id": item_id,
+            "status": "missing",
+            "skipped": "missing_work_item",
+        }
     except RuntimeError:
         current = NormativeWorkItem.objects.get(pk=item_id)
         active_lease = (

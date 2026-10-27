@@ -2,6 +2,17 @@
 
 Este diretório formaliza o experimento principal do PIBIC/UFRN. O corpus de trabalho é **municipal e proveniente do SAPL de Natal/RN**; benchmarks federais são considerados apenas como generalização secundária e não como gate principal do projeto.
 
+## Gold standard adotado pelo projeto
+
+O **Gold Standard Jurix v1, adjudicado por IA**, é o gabarito interno adotado
+pelo responsável em 18/10/2026: 20 normas distintas, 41 recortes, 13 relações
+e 28 perguntas. O registro [`project-gold.v1.json`](project-gold.v1.json) fixa
+a versão e os hashes. A decisão e os comandos estão no
+[guia de uso](../../../docs/research/PGM_PROJECT_GOLD_STANDARD_V1.md).
+Execute `uv run --with jsonschema python scripts/pgm_project_gold.py` na raiz
+para conferir a adoção e a integridade do conjunto. A autoria é IA; as metas
+de revisão humana independente da seção científica abaixo continuam registradas.
+
 ## Meta científica do ciclo atual
 
 - A amostra intencional aprovada pelo plano de pesquisa é de **150–200 normas**.

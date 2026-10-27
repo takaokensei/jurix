@@ -46,7 +46,7 @@ function svgNode(tag, attrs = {}, text = '') {
   return node;
 }
 
-function renderGraph(svg, groups, nodes, rootId) {
+function renderGraph(svg, groups, nodes, rootId, onSelect) {
   svg.replaceChildren();
   if (!groups.length) return;
   const connected = new Set();
@@ -63,8 +63,20 @@ function renderGraph(svg, groups, nodes, rootId) {
     const from = positions.get(group.source);
     const to = positions.get(group.target);
     if (!from || !to) continue;
-    svg.append(svgNode('line', { x1: from.x + 125, y1: from.y, x2: to.x - 125, y2: to.y, class: 'normative-relations__edge' }));
-    svg.append(svgNode('text', { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 - 6, 'text-anchor': 'middle', class: 'normative-relations__edge-label' }, `${group.events.length} vínculo${group.events.length === 1 ? '' : 's'}`));
+    const direction = to.x > from.x ? 1 : -1;
+    const line = svgNode('line', { x1: from.x + direction * 125, y1: from.y, x2: to.x - direction * 125, y2: to.y, class: 'normative-relations__edge' });
+    const caption = group.events.map((event) => `${ACTION_LABELS[event.action] || event.action}${event.resolution === 'conflict' ? ' · conflito' : event.resolution === 'unresolved' ? ' · pendente' : ''}`).filter((label, index, all) => all.indexOf(label) === index).join(' / ');
+    const label = svgNode('text', { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 - 6, 'text-anchor': 'middle', class: 'normative-relations__edge-label' }, caption);
+    if (onSelect) {
+      line.style.cursor = 'pointer';
+      line.addEventListener('click', () => onSelect(group));
+      const hit = svgNode('line', { x1: from.x + direction * 125, y1: from.y, x2: to.x - direction * 125, y2: to.y, stroke: 'transparent', 'stroke-width': 24 });
+      hit.style.cursor = label.style.cursor = 'pointer';
+      hit.addEventListener('click', () => onSelect(group));
+      label.addEventListener('click', () => onSelect(group));
+      svg.append(hit);
+    }
+    svg.append(line, label);
   }
   for (const id of ids) {
     const pos = positions.get(id);
@@ -119,12 +131,16 @@ function createEventDetails(edge, nodes) {
         ? 'Extração rejeitada pelo revisor; preservada para auditoria'
     : edge.review_status === 'rejected'
       ? 'Rejeitado; preservado para auditoria'
-      : 'Candidato pendente de revisão';
-  item.append(element('p', `Revisão do vínculo: ${reviewLabel}. ${['confirmed', 'candidate_confirmed'].includes(edge.review_status) ? '' : 'Este candidato não comprova efeito jurídico.'}`));
+      : edge.review_status === 'ai_pilot'
+        ? `Análise IA adotada no piloto · ${edge.resolution === 'conflict' ? 'conflito documental' : edge.resolution === 'unresolved' ? 'alvo não resolvido' : edge.resolution === 'partial' ? 'extração parcial' : 'alvo identificado no escopo'}`
+        : 'Candidato pendente de revisão';
+  item.append(element('p', `Revisão do vínculo: ${reviewLabel}. ${['confirmed', 'candidate_confirmed', 'ai_pilot'].includes(edge.review_status) ? '' : 'Este candidato não comprova efeito jurídico.'}`));
   if (edge.action === 'REFERENCIA' || edge.action === 'REGULAMENTA') {
     item.append(element('p', `Data considerada: publicação da norma de origem${edge.publication_on ? ` (${edge.publication_on})` : ' (não informada)'}. Esta relação não afirma alteração ou revogação.`));
   } else {
-    const dateLabel = edge.effective_status === 'not_assessed'
+    const dateLabel = edge.review_status === 'ai_pilot' && edge.effective_on
+      ? `Início calculado no piloto: ${edge.effective_on}; publicação: ${edge.publication_on || 'não comprovada'}. Efeitos especiais/fiscais não presumidos.`
+      : edge.effective_status === 'not_assessed'
       ? 'Efeito jurídico: não avaliado; este vínculo representa somente uma relação extraída do documento.'
       : edge.effective_status === 'confirmed' && edge.effective_on
       ? `Efeito registrado em ${edge.effective_on}`
@@ -132,6 +148,14 @@ function createEventDetails(edge, nodes) {
     item.append(element('p', dateLabel));
   }
   if (edge.evidence?.quote) item.append(element('blockquote', edge.evidence.quote));
+  const localPdf = validUrl(edge.local_pdf_url, { sameOrigin: true });
+  if (localPdf) {
+    const link = element('a', 'Conferir cláusula no PDF (nova aba)');
+    link.href = localPdf.href;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    item.append(link);
+  }
   const targetDocuments = Array.isArray(edge.evidence?.target_document_candidates)
     ? edge.evidence.target_document_candidates
     : [];
@@ -232,6 +256,7 @@ function setupRelations(root) {
     const groups = groupRelations(edges);
     list.replaceChildren();
     closePanel(false);
+    const buttons = new Map();
     for (const group of groups) {
       const item = element('li');
       const button = element('button', null, 'normative-relations__group-button');
@@ -240,11 +265,12 @@ function setupRelations(root) {
       const count = element('span', `${group.events.length} vínculo${group.events.length === 1 ? '' : 's'}`, 'normative-relations__group-count');
       button.append(label, count);
       button.addEventListener('click', () => openPanel(group, button, nodes));
+      buttons.set(group.key, button);
       item.append(button);
       list.append(item);
     }
     graphWrap.hidden = groups.length === 0;
-    renderGraph(svg, groups, nodes, payload.root_id || `norma:${payload.norma?.id}`);
+    renderGraph(svg, groups, nodes, payload.root_id || `norma:${payload.norma?.id}`, (group) => openPanel(group, buttons.get(group.key), nodes));
     truncated.hidden = !payload.truncated;
     const availability = edges.length === 1 ? 'disponível' : 'disponíveis';
     setStatus(groups.length ? `${groups.length} grupo${groups.length === 1 ? '' : 's'} de relações; ${edges.length} vínculo${edges.length === 1 ? '' : 's'} ${availability}.` : (chosen ? 'Nenhuma relação corresponde a este filtro.' : 'Esta norma não possui relações públicas disponíveis no corpus.'));

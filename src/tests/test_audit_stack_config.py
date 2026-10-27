@@ -24,7 +24,7 @@ def test_audit_compose_isolated_from_normal_stack():
     assert "JURIX_BUILD_VERSION: ${JURIX_BUILD_VERSION:-}" in compose
     assert "JURIX_BUILD_REVISION: ${JURIX_BUILD_REVISION:-}" in compose
     assert "audit_qa_root:/app/data/normative-qa" in compose
-    assert '"127.0.0.1:8287:8000"' in compose
+    assert '"127.0.0.1:${JURIX_QA_WEB_PORT:-8287}:8000"' in compose
     assert compose.count("audit_qa_root:/app/data/normative-qa") == 3
     assert compose.count("OLLAMA_BASE_URL: http://host.docker.internal:11434") == 2
     assert "runserver" in compose and "0.0.0.0:8000" in compose and "--noreload" in compose
