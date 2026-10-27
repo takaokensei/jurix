@@ -2,7 +2,7 @@
 
 > Última atualização: 2026-10-26 (Branch `chore/agent-readiness`, base `1ac3ab75`)
 
-tarefa_atual: T-009
+tarefa_atual: T-011
 
 ## 1. Estado Real por Subsistema
 
@@ -49,7 +49,7 @@ Medido sobre `1ac3ab753dacb779e5b7b5a0fe99beae74ed6ac3` (artefatos completos em 
 
 ## 4. Tarefa Atual e Próxima Recomendada
 
-- **`tarefa_atual`**: `T-009` em [`docs/backlog.md`](docs/backlog.md): *Testes fim a fim do motor de consolidação (`src/processing/consolidation_engine.py`) cobrindo `REVOGA`, `ALTERA`, `ADICIONA` e `SUBSTITUI` em ordem cronológica, mais a regra fail-closed para evento não validado.*
+- **`tarefa_atual`**: `T-011` em [`docs/backlog.md`](docs/backlog.md): CI consultivo até T-011; diagnóstico é a próxima tarefa de organização (se o dono preferir produto primeiro, alternar para T-009).
 
 ## 5. Como Atualizar Este Arquivo ao Fechar uma Tarefa
 

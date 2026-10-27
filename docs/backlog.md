@@ -179,7 +179,7 @@ Tarefas pequenas, independentes e verificáveis com status explícito.
 ## T-011 — CI: Automação, linting e manutenção de workflows do GitHub Actions
 
 - **ID**: `T-011`
-- **Status**: AGUARDA APROVAÇÃO DO DONO
+- **Status**: PRONTA (`tarefa_atual` — CI consultivo até T-011; diagnóstico é a próxima tarefa de organização)
 - **Objetivo**: Estabelecer padronização, automações complementares ou linting de workflows do GitHub Actions (`actionlint`/pinning de actions por hash), preservando a regra de que `.github/workflows/` só muda por T-007 ou T-011.
 - **Arquivos prováveis**:
   - `.github/workflows/`
@@ -189,7 +189,7 @@ Tarefas pequenas, independentes e verificáveis com status explícito.
   python scripts/validate_staging_contract.py
   ```
 - **Critério de pronto**: Workflows validados e contratos de release e staging sem falhas.
-- **Dependências**: Aprovação do dono.
+- **Dependências**: Nenhuma.
 
 ---
 
@@ -228,3 +228,20 @@ Tarefas pequenas, independentes e verificáveis com status explícito.
   ```
 - **Critério de pronto**: Zero requisições não autorizadas por CSP e fallback de fontes locais íntegro.
 - **Dependências**: Aprovação do dono.
+
+---
+
+## T-014 — Otimização de paginação e consulta do histórico de sessões
+
+- **ID**: `T-014`
+- **Status**: PRONTA
+- **Objetivo**: Garantir busca e paginação eficientes no histórico de sessões sem sobrecarga de memória quando houver mais de 500 registros.
+- **Arquivos prováveis**:
+  - `src/apps/legislation/workspace_views.py`
+  - `src/tests/test_workspace_routes.py`
+- **Comando de verificação**:
+  ```bash
+  pytest src/tests/test_workspace_routes.py -q -p no:cacheprovider
+  ```
+- **Critério de pronto**: Paginação executada em query SQL delimitada (`limit`/`offset`) sem carregar instâncias excedentes na memória.
+- **Dependências**: Nenhuma.

@@ -54,7 +54,8 @@
 ## 3. Resumo das Decisões do Manifesto (`docs/agents/reorg-manifest.csv`)
 
 - **`MANTER`: 770 arquivos** — Código em `src/`, testes, configurações e contratos ativos.
-- **`ARQUIVAR`: 55 arquivos** — Movidos via `git mv` (7 em `docs/archive/progress/` e 48 em `docs/archive/status/`), preservando histórico e atualizando links em `README.md` e `docs/current-status.md`.
+- **`ARQUIVAR`: 56 arquivos** — Movidos via `git mv` (7 em `docs/archive/progress/` e 49 em `docs/archive/status/`, incluindo `docs/audit/2026-10-01/JURIX_LUNA_IMPLEMENTATION_2026-10-01.md` arquivado no Passo 2 por conter tarefas executáveis RP-001 a RP-050), preservando histórico e atualizando links em `README.md` e `docs/current-status.md`.
+- **Arquivos não movidos no Passo 2**: `verify_vector_query_plan.py`, `test_colophon_repair_plan.py` e `test_vector_query_plan_contract.py` mantidos em `src/` por serem código e testes de produto, e não fontes de tarefas.
 - **`INDICAR`: 853 arquivos** — Mantidos onde estão; indicados para limpeza coordenada futura via `git filter-repo` (`T-002`), sendo 751 binários e 102 relatórios/JSONs em `docs/ui-audit/` e `docs/research/evidence/`.
 - **`REVISAR`: 0 arquivos**.
 
